@@ -1,0 +1,1882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulton Planning Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout. A garden-shed clipboard. Sidebar of the week's plans, a working form on the right, paper-like field cards. */
+:root{
+  --bg:#f3f5ef; --paper:#fffffb; --ink:#22332a; --muted:#5d6e63; --line:#d5ddd2;
+  --moss:#2f5a43; --moss-soft:#e3ece4; --marigold:#c47a06; --marigold-soft:#fbefd8;
+  --clay:#a24f35; --clay-soft:#f6e3dc; --sky:#2f6a86; --sky-soft:#e0edf3;
+  --focus:#c47a06;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a16; --paper:#1c241f; --ink:#e6ece6; --muted:#9fb0a5; --line:#33413a;
+  --moss:#8cc4a2; --moss-soft:#24352b; --marigold:#f0b44a; --marigold-soft:#3a2e17;
+  --clay:#e59a80; --clay-soft:#3b2620; --sky:#86c1dc; --sky-soft:#1d3039; --focus:#f0b44a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a16; --paper:#1c241f; --ink:#e6ece6; --muted:#9fb0a5; --line:#33413a;
+  --moss:#8cc4a2; --moss-soft:#24352b; --marigold:#f0b44a; --marigold-soft:#3a2e17;
+  --clay:#e59a80; --clay-soft:#3b2620; --sky:#86c1dc; --sky-soft:#1d3039; --focus:#f0b44a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:14px 60px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:6px 16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.brand{display:flex;flex-direction:column;gap:0}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.brand h1{font-size:26px;font-weight:700;color:var(--moss);line-height:1.1}
+.top .spacer{flex:1}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.who label{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.side{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px)}
+@media (max-width:900px){.side{position:static}}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.panel h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:var(--body);font-weight:600;margin-bottom:10px}
+.weeknav{display:flex;align-items:center;gap:6px}
+.weeknav .wk{flex:1;text-align:center;font-family:var(--display);font-weight:500;font-size:16px}
+.iconbtn{border:1px solid var(--line);background:transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}
+.iconbtn:hover{background:var(--moss-soft)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
+.newbtns{display:grid;gap:8px}
+.newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
+.newbtn:hover{border-color:var(--moss)}
+.newbtn b{font-weight:600}
+.newbtn span{font-size:12.5px;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:4px}
+.group-h{font-size:12px;color:var(--muted);font-weight:600;margin-top:8px}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid transparent;background:transparent;text-align:left;border-radius:8px;padding:7px 8px;cursor:pointer;width:100%}
+.item:hover{background:var(--bg)}
+.item[aria-current="true"]{background:var(--moss-soft);border-color:var(--line)}
+.item .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 6px}
+.tag.classroom{background:var(--moss-soft);color:var(--moss)}
+.tag.individual{background:var(--sky-soft);color:var(--sky)}
+.tag.smallgroup{background:var(--marigold-soft);color:var(--marigold)}
+.status{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.status.ready{border-color:var(--marigold);color:var(--marigold)}
+.status.reviewed{border-color:var(--moss);color:var(--moss)}
+.empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
+.linkbtn{background:none;border:none;padding:0;color:var(--moss);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13.5px}
+.btn{border:1px solid var(--moss);background:var(--moss);color:var(--paper);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--moss)}
+.btn.warn{background:transparent;color:var(--clay);border-color:var(--clay)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.small{padding:5px 10px;font-size:13px}
+input[type=text],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
+textarea{resize:vertical;line-height:1.55;min-height:84px}
+.main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.head{display:flex;flex-direction:column;gap:12px}
+.head-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between}
+.head h2{font-size:30px;font-weight:700;line-height:1.1}
+.head .sub{color:var(--muted);font-size:14px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.meta label,.fld-label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:transparent;padding:6px 12px;cursor:pointer;font-size:13.5px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--moss);color:var(--paper)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.savestate{font-size:12.5px;color:var(--muted)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card .lbl{font-family:var(--display);font-weight:500;font-size:18px}
+.card .hint{color:var(--muted);font-size:13.5px;max-width:72ch}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px dashed var(--line);background:var(--bg);border-radius:999px;padding:2px 10px;font-size:12.5px;cursor:pointer}
+.chip:hover{border-color:var(--moss);border-style:solid}
+.chip.on{background:var(--moss-soft);border-style:solid;border-color:var(--moss);color:var(--moss)}
+.chiprow-label{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.cardfoot{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between}
+.nudge{font-size:13px;color:var(--clay);background:var(--clay-soft);border-radius:6px;padding:3px 9px}
+.nudge.ok{color:var(--moss);background:var(--moss-soft)}
+.ex{font-size:13.5px;border-left:3px solid var(--moss);background:var(--bg);padding:8px 12px;border-radius:0 6px 6px 0;display:grid;gap:4px}
+.ex .weak{color:var(--clay)}
+.ex b{font-weight:600}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:700px){.two{grid-template-columns:minmax(0,1fr)}}
+.ai{background:var(--marigold-soft);border:1px solid color-mix(in srgb,var(--marigold) 40%,transparent);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.ai .lbl{font-family:var(--display);font-weight:500;font-size:18px}
+.ai p{margin:0;font-size:13.5px;color:var(--muted)}
+.ref{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--sky-soft);font-size:14px;display:grid;gap:4px}
+.ref b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sky)}
+.webwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px}
+@media (max-width:1100px){.webwrap{grid-template-columns:minmax(0,1fr)}}
+.branch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
+.branch textarea{min-height:52px}
+.svgbox{border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.svgbox svg{display:block;width:100%;min-width:420px;height:auto}
+.conn{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.conn select{width:auto;flex:1;min-width:120px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.confirm{display:flex;gap:8px;align-items:center;background:var(--clay-soft);border-radius:8px;padding:6px 10px;font-size:13.5px;flex-wrap:wrap}
+.welcome{display:grid;gap:14px}
+.welcome .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.welcome .step{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.welcome .step h3{font-size:17px;margin-bottom:4px}
+.welcome .step p{margin:0;color:var(--muted);font-size:14px}
+.review{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:8px}
+.muted{color:var(--muted)}
+
+.nav{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--paper)}
+.nav button{border:none;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
+.nav button[aria-pressed="true"]{background:var(--moss);color:var(--paper)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat b{display:block;font-family:var(--display);font-size:28px;font-weight:700;color:var(--moss);font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:13px;color:var(--muted)}
+.main section,.main>div{min-width:0}
+.tablewrap{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)}
+table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+.grid2 th,.grid2 td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.grid2 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.grid2 tr:last-child td{border-bottom:none}
+.cellbtn{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:none;background:transparent;padding:2px;cursor:pointer;text-align:left}
+.dot{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line);display:inline-block}
+.dot.draft{border-color:var(--muted);background:transparent}
+.dot.ready{border-color:var(--marigold);background:var(--marigold)}
+.dot.reviewed{border-color:var(--moss);background:var(--moss)}
+.cnt{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.thread{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:8px;min-width:0}
+.thread h3{font-size:19px;font-weight:500}
+.thread .q{font-size:15px;color:var(--ink)}
+.tl{display:flex;gap:3px;flex-wrap:wrap;align-items:center}
+.tl i{width:12px;height:12px;border-radius:3px;background:var(--bg);border:1px solid var(--line);display:inline-block}
+.tl i.on{background:var(--moss);border-color:var(--moss)}
+.evid{font-size:13.5px;display:grid;gap:4px;border-left:3px solid var(--line);padding-left:10px}
+.st-emerging{border-color:var(--sky);color:var(--sky)}
+.st-growing{border-color:var(--marigold);color:var(--marigold)}
+.st-deepening{border-color:var(--moss);color:var(--moss)}
+.st-resting,.st-closed{border-color:var(--line);color:var(--muted)}
+.threads{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
+.terms{display:flex;flex-wrap:wrap;gap:6px}
+.term{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
+.term small{color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.result{display:grid;gap:2px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:9px 12px;text-align:left;cursor:pointer;width:100%}
+.result:hover{border-color:var(--moss)}
+.result mark{background:var(--marigold-soft);color:inherit;border-radius:2px}
+.secthead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.secthead h2{font-size:22px;font-weight:500}
+.story{display:grid;gap:8px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);background:var(--paper);padding:22px 16px;display:grid;gap:8px;justify-items:center;text-align:center}
+.drop.over{border-color:var(--moss);background:var(--moss-soft)}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px}
+.thumb{position:relative;width:120px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:6px;display:grid;gap:4px;font-size:12px}
+.thumb img{width:100%;height:120px;object-fit:cover;border-radius:4px;background:var(--bg)}
+.thumb .doc{height:120px;display:grid;place-items:center;background:var(--bg);border-radius:4px;color:var(--muted);font-weight:600}
+.thumb button{position:absolute;top:2px;right:2px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--paper);cursor:pointer}
+.sugg{border:1px solid color-mix(in srgb,var(--marigold) 45%,transparent);background:var(--marigold-soft);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+.sugg b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--marigold)}
+.sugg .err{color:var(--clay)}
+.due{display:grid;gap:4px}
+.due .item{grid-template-columns:minmax(0,1fr) auto}
+.roster{display:grid;gap:6px}
+.rname{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;background:var(--bg)}
+.rname button{border:none;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
+.radio{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads and overview</button></div>
+    <div class="spacer"></div>
+    <div class="who">
+      <label for="me">Educator</label>
+      <input id="me" type="text" list="educators" placeholder="Your name" style="width:170px">
+      <span class="savestate" id="conn">Connecting</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="side">
+      <section class="panel">
+        <h3>Week of</h3>
+        <div class="weeknav">
+          <button class="iconbtn" id="prevwk" aria-label="Previous week">&#8249;</button>
+          <div class="wk" id="wklabel"></div>
+          <button class="iconbtn" id="nextwk" aria-label="Next week">&#8250;</button>
+        </div>
+        <div class="filters" id="filters"></div>
+      </section>
+      <section class="panel">
+        <h3>Start a plan</h3>
+        <div class="newbtns">
+          <button class="newbtn" data-new="classroom"><b>Classroom Curriculum Plan</b><span>Together as a team, weekly, with the curriculum web</span></button>
+          <button class="newbtn" data-new="individual"><b>Individual Curriculum Plan</b><span>Your small group or an area of the classroom</span></button>
+          <button class="newbtn" id="importbtn" style="border-style:dashed"><b>Upload a plan or photo</b><span>Transcribe a paper, PDF, or Word plan into the app</span></button>
+        </div>
+      </section>
+      <section class="panel" id="duepanel" hidden>
+        <h3 style="color:var(--clay)">Final remarks due</h3>
+        <div class="due" id="due"></div>
+      </section>
+      <section class="panel">
+        <h3>This week's plans</h3>
+        <div class="list" id="list"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn small ghost" id="packet">Week packet PDF</button>
+          <button class="btn small ghost" id="packetw">Week packet Word</button>
+          <button class="btn small ghost" id="blanks">Blank forms PDF</button>
+          <button class="btn small ghost" id="blanksw">Blank forms Word</button>
+        </div>
+      </section>
+      <section class="panel">
+        <h3>Program</h3>
+        <button class="btn small ghost" data-view="settings">Program settings</button>
+        <div class="cnt" style="margin-top:6px">Small groups, educators, spaces, materials, and seasonal concepts</div>
+      </section>
+    </aside>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+<datalist id="educators"></datalist><datalist id="placelist"></datalist>
+<div class="toast" id="toast" hidden></div>
+
+<style>
+#gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+#gate .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:28px 24px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px}
+#gate h1{font-family:var(--display);font-size:1.7rem;color:var(--moss)}
+#gate input{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:10px 12px;font-size:1rem;width:100%}
+#gate .msg{font-size:.9rem;min-height:1.2em;color:var(--muted)}
+#gate .msg.bad{color:var(--clay)}
+.who-chip{font-size:.85rem;color:var(--muted);display:flex;gap:8px;align-items:center}
+</style>
+<div id="gate" hidden>
+  <form class="card" id="gate-form" autocomplete="off">
+    <svg width="34" height="34" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 28V15M15 15c-4-1-7-4-8-8M15 15c4-1 7-4 8-8M15 19c-3 0-5-2-6-4M15 19c3 0 5-2 6-4M15 11V3" fill="none" stroke="var(--moss)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 28h16" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <div><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Planning Studio</h1></div>
+    <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
+    <input id="gate-code" type="password" autocomplete="current-password" required>
+    <button class="btn" id="gate-btn" type="submit" style="justify-content:center">Sign in</button>
+    <div class="msg muted" id="gate-msg" aria-live="polite"></div>
+  </form>
+</div>
+<script>
+"use strict";
+/* Connects Planning Studio to its server on Render.
+   Plans live in a private GitHub repository behind that server. */
+(function(){
+  const qs=new URLSearchParams(location.search);
+  // only the school's own server, or a local test server when the page itself is opened locally
+  const DEFAULT_SERVER="https://fulton-planning.onrender.com";
+  const want=(qs.get("server")||"").replace(/\/+$/,"");
+  const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+  const SERVER= local? want : DEFAULT_SERVER;
+  const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+  const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
+  const Store={data:{plans:{},threads:{},scans:{},settings:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", wroteAt:{}};
+  window.FP_HOSTED=true;
+  window.FP_NAME=()=>Auth.name||"";
+  window.FP_DIRECTOR=()=>!!Auth.director;
+
+  function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } }
+  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); location.reload(); }
+  window.FP_SIGN_OUT=signOut;
+
+  async function api(path, body, signal){
+    let r;
+    const payload=JSON.stringify(body||{});
+    // while the page is closing, let the last save finish in the background
+    const keepalive=document.visibilityState==="hidden" && payload.length<60000;
+    try{ r=await fetch(SERVER+path,{method:"POST",signal,keepalive,headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:payload}); }
+    catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The Planning Studio server could not be reached. Check your internet connection and try again."}; }
+    let j={}; try{ j=await r.json(); }catch(e){}
+    if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
+    if(r.status===429) throw {code:"rate_limited", message:j.error};
+    if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
+    if(!r.ok) throw {status:r.status, message:j.error||("The server answered "+r.status+".")};
+    return j;
+  }
+  function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
+  function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={plans:{},threads:{},scans:{},settings:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  let polling=false;
+  async function poll(){
+    if(document.hidden || !Auth.token || polling) return;
+    polling=true; const sent=Date.now();
+    try{
+      const j=await api("/api/changes",{since:Store.rev, bootId:Store.bootId});
+      if(j.reload){ await loadAll(); return; }
+      let any=false;
+      for(const [kind,docs] of Object.entries(j.changes||{})) for(const [id,doc] of Object.entries(docs)){
+        if((Store.wroteAt[kind+"/"+id]||0)>=sent) continue;   // this browser saved it after the check left, so its copy is newer
+        any=true; Store.data[kind]=Store.data[kind]||{}; if(doc) Store.data[kind][id]=doc; else delete Store.data[kind][id]; }
+      if(j.rev>Store.rev) Store.rev=j.rev; if(j.fileKey) Store.fileKey=j.fileKey; saveBanner(j.saveError||j.saveWarn, !j.saveError); if(any) notify();
+    }catch(e){} finally{ polling=false; }
+  }
+
+  /* wake the server, which sleeps after 15 quiet minutes on Render's free plan */
+  async function wake(){
+    const t0=Date.now(); let tries=0;
+    while(Date.now()-t0<150000){
+      try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } } }catch(e){}
+      tries++; gateMsg(tries<2? "Connecting…" : "Waking the server. The first visit after a quiet stretch takes about a minute.");
+      await new Promise(r=>setTimeout(r, tries<3?2000:4000));
+    }
+    gateMsg("The server did not wake up. Try again in a minute.",true); return false;
+  }
+  function showGate(){
+    const g=document.getElementById("gate"); g.hidden=false;
+    const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code");
+    setTimeout(()=>c.focus(),50);
+    return new Promise(resolve=>{
+      f.onsubmit=async e=>{ e.preventDefault(); b.disabled=true; b.textContent="Signing in…";
+        try{ if(!(await wake())) throw {message:""}; const j=await api("/login",{passcode:c.value}); Auth.token=j.token; Auth.name=j.name; Auth.director=!!j.director; LS.set("fp-token",j.token); LS.set("fp-name",j.name); LS.set("fp-director",j.director?"1":null); g.hidden=true; resolve(); }
+        catch(err){ if(err.message) gateMsg(err.message,true); b.disabled=false; b.textContent="Sign in"; c.select(); } };
+    });
+  }
+  async function start(){
+    if(!Auth.token) await showGate();
+    else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);
+      const t=setTimeout(()=>{ note.textContent="Waking the server. The first visit after a quiet stretch takes about a minute."; },2500);
+      const ok=await wake(); clearTimeout(t); if(!ok){ note.textContent="The Planning Studio server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; throw new Error("down"); }
+      g.hidden=true; document.getElementById("gate-form").style.display=""; note.remove(); }
+    await loadAll();
+    setInterval(poll, 15000);
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(); });
+    const top=document.querySelector(".who");
+    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=(Auth.name||"")+(Auth.director?", director":""); w.lastChild.onclick=signOut; top.append(w); }
+  }
+  Store.ready=start();
+
+  function snap(id,d){ return {id, exists:!!d, data:()=>d?JSON.parse(JSON.stringify(d)):undefined, metadata:{fromCache:false,hasPendingWrites:false}}; }
+  function query(kind){
+    const q={ limit(){return q}, where(){return q}, orderBy(){return q},
+      onSnapshot(next){ const fire=()=>{ const docs=Object.entries(Store.data[kind]||{}).map(([id,d])=>snap(id,d)); next({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}}); }; Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
+      async get(){ const docs=Object.entries(Store.data[kind]||{}).map(([id,d])=>snap(id,d)); return {docs,size:docs.length,empty:!docs.length}; },
+      doc(id){ return docRef(kind+"/"+id); } };
+    return q;
+  }
+  function docRef(path){
+    const [kind,id]=path.split("/");
+    const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra}); Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); return r.doc; };
+    return { id, path,
+      async get(){ return snap(id, Store.data[kind]?.[id]); },
+      onSnapshot(next){ const fire=()=>next(snap(id, Store.data[kind]?.[id])); Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
+      set:(data)=>write("set",{data}), create:(data)=>write("create",{data}), update:(patch)=>write("update",{patch}), delete:()=>write("delete",{}) };
+  }
+  const db={ collection:query, doc:docRef };
+  const user={ id:async()=>Auth.name, can:async()=>true, canEdit:()=>!!Auth.director, isOwner:()=>!!Auth.director, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
+
+  function blobToJpegB64(blob, max=1800){
+    return new Promise(async(resolve,reject)=>{
+      try{ const bmp=await createImageBitmap(blob); const s=Math.min(1,max/Math.max(bmp.width,bmp.height)); const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*s); cv.height=Math.round(bmp.height*s);
+        const c=cv.getContext("2d"); c.fillStyle="#fff"; c.fillRect(0,0,cv.width,cv.height); c.drawImage(bmp,0,0,cv.width,cv.height);
+        cv.toBlob(b=>{ const fr=new FileReader(); fr.onload=()=>resolve(String(fr.result).split(",")[1]); fr.onerror=reject; fr.readAsDataURL(b); },"image/jpeg",.85); }
+      catch(e){ reject({code:"image_rejected"}); }
+    });
+  }
+  function blobToB64(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=rej; fr.readAsDataURL(blob); }); }
+  function looseJson(t){ t=String(t||"").trim(); try{ return JSON.parse(t); }catch(e){} const f=t.match(/```(?:json)?\s*([\s\S]*?)```/); if(f){ try{ return JSON.parse(f[1]); }catch(e){} } const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a){ try{ return JSON.parse(t.slice(a,b+1)); }catch(e){} } return undefined; }
+  async function ask(input, opts={}){
+    if(opts.signal?.aborted) throw {code:"cancelled"};
+    const content=[]; const imgs=opts.images? (Array.isArray(opts.images)?opts.images:[...(opts.images.length!=null&&!(opts.images instanceof Blob)?opts.images:[opts.images])]) : [];
+    for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b)}});
+    const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
+    content.push({type:"text",text});
+    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex"}, opts.signal);
+    return j;
+  }
+  const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
+    limits:async()=>({maxPromptBytes:262144, images:{maxCount:5, maxInputBytes:20e6, mediaTypes:["image/jpeg","image/png","image/webp","image/gif"]}}),
+    json:async(input,opts)=>{ const j=await ask(input,opts); const v=looseJson(j.text); if(v===undefined) throw {code:"invalid_json", text:j.text}; return v; }
+  });
+  const downloads={ async save({filename,data}){ const blob=data instanceof Blob? data : new Blob([data]); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); return {status:"saved"}; } };
+  const caps={db,user,sample,downloads};
+  window.claude={ use:async(name)=>{ await Store.ready; return caps[name]||null; } };
+  window.addEventListener("pagehide",()=>{ try{ if(Auth.token) navigator.sendBeacon && fetch(SERVER+"/api/save-now",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+Auth.token},body:"{}"}); }catch(e){} });
+})();
+</script>
+
+<script>
+/* ---------- Program data, from the Teacher Policies & Procedures and Small Group Work policy ---------- */
+const CLASSROOMS=["West","North","South"];
+let GROUPS=[
+  {name:"Cosmos",room:"West",educator:"Delia M"},{name:"Yarrow",room:"West",educator:"Delia M"},{name:"Zinnia",room:"West",educator:"Delia F"},{name:"Borage",room:"West",educator:"Delia F"},
+  {name:"Marigold",room:"North",educator:"Maren"},{name:"Morning Glory",room:"North",educator:"Odette"},{name:"Sunflower",room:"North",educator:"Ines"},
+  {name:"Poppy",room:"South",educator:"Corinne"},{name:"Lavender",room:"South",educator:"Talia"},{name:"Iris",room:"South",educator:"Tobin"}];
+const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()],{name:"Noor",room:""},{name:"Bea",room:""}];
+let roster=DEFAULT_ROSTER.slice();
+function rosterNames(){return roster.map(r=>r.name)}
+let PLACES=["Library","Classroom","Art atelier","Nature atelier","Culinary atelier","Indoor piazza","Outdoor piazza","North yard","Rabbit yard","Garden","Tire swing yard","Tire swing studio","Log yard","Log studio","Long yard","Goat yard"];
+const LANGUAGES=["Dialogue and words","Drawing and mark-making","Mapping","Clay and sculpture","Building and construction","Movement and body","Dramatic play","Music and sound","Light and shadow","Loose parts arrangement","Painting","Emergent writing","Recording and comparing"];
+let MATERIALS={
+  "Natural":["pinecones","seed pods","river stones","sticks","bark","leaves","shells","sand","soil","water","garden flowers"],
+  "Loose parts":["wood rounds","cardboard tubes","spools","rings","corks","fabric scraps","baskets","small rolling objects"],
+  "Building":["unit blocks","long wooden boards","planks","crates","connectors","string","tape"],
+  "Mark-making":["clipboards","paper","pencils","fine markers","charcoal","oil pastels","watercolor"],
+  "Sculpture":["clay","wire","dough","recycled cardboard"],
+  "Light":["light table","overhead projector","mirrors","colored acrylics","flashlights"],
+  "Investigation":["magnifiers","measuring tapes","balance scale","timers","ramps","textured surfaces"],
+  "Atelier":["paint","warming trays","glue","scissors","tape","hot glue gun with an educator"],
+  "Culinary":["garden harvest","cutting boards","measuring cups","mortar and pestle","recipe cards"],
+  "Outdoor challenge":["milk crates","giant spools","climbing challenges","native forageable plants"],
+  "Recording":["camera","children's journals","documentation panel","sticky notes"]};
+let SEASONS={Fall:["The self","Family","Safety","Relationships","How do we treat others?","How do we treat materials?","Harvest","Colors","Light and shadows","Ocean life"],Winter:["Family","Music","Human body","Rain","Weather","Drama","Puppets","Community","Caring for others"],Spring:["Growth","Planting","Water","Animals","Insects","Outdoors","Transportation","Sun","Wind","Conservation","Plant sale","Famous artist"]};
+const PROGRAM_DEFAULTS=()=>JSON.parse(JSON.stringify({groups:GROUPS,places:PLACES,materials:MATERIALS,seasons:SEASONS}));
+let PDEF=null;
+function seasonOf(wk){const m=parseIso(wk).getMonth();return m>=8&&m<=10?"Fall":(m===11||m<=1)?"Winter":"Spring"}
+const PROGRAM="Fulton Community School & Farm (Child Family Community, Inc.) is a Reggio-inspired, nature-based early childhood program in Santa Rosa, California, with a garden, farm animals, and art, nature, library, and culinary ateliers. Its mission is to respect and honor the whole child and support children as citizens of the world who follow their imagination into deep discovery. Guiding principles are social constructivism, the image of the child as competent and capable, the educator as researcher and partner, relationships, environment as the third teacher, family involvement, collaboration, documentation, and projects that last days to months. The curriculum is emergent, child-directed and educator-guided, following the cycle of informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, which leads back to informal observation. At its center are visible purposeful learning, emergent curriculum, project work, and community. Classrooms are mixed-age. Risky play is valued, as safe as necessary rather than as safe as possible. The school does not celebrate holidays and instead discusses the values behind them. Families receive weekly classroom newsletters and Friday picture digests through Kaymbu.";
+const DOC_PLAN=["Photos","Children's words and quotes","Work samples","Revisit an earlier drawing or map","Post work at children's eye level","Notepad observations"];
+const WEAK=[["theme","Name what children are doing or wondering. Themes are outside our approach."],["activity","Connect it to children's thinking, not an activity."],["enjoyed","Say how thinking changed, not whether they enjoyed it."],["had fun","Say how thinking changed, not whether they had fun."],["learn about","Phrase it as a question children are holding."],["talk about","Describe how children will share and compare ideas."],["set up","Name the specific materials and how the space changes."],["all children","Our plans hold several threads at once. Name the different groups."],["worksheet","Worksheets are outside our approach."],["craft","Offer open materials as languages for thinking."],["halloween","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["christmas","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["thanksgiving","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["valentine","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["easter","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["holiday","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."]];
+
+const FORMS={
+ classroom:{name:"Classroom Curriculum Plan",short:"Classroom",who:"Completed together by the classroom team",fields:[
+  {k:"observation",label:"Observation",rows:5,min:15,
+   hint:"Shared observations across the classroom. What are different children exploring, and are they returning to it over time?",
+   strong:"Some children are exploring movement and speed through ramps, while others are focused on building and stabilizing structures. Both groups are revisiting their work over time.",weak:"Children are interested in ramps",
+   starters:["Some children are ","while others are ","This has continued over several days and "]},
+  {k:"intentions",label:"Intentions and questions for the week",rows:4,min:8,
+   hint:"Questions that guide investigation and grow from children's thinking.",
+   strong:"What makes something go faster or slower? How do we work together when we have different ideas?",weak:"Learn about ramps",
+   starters:["What makes ","How do we ","What happens if ","How might we "]},
+  {k:"meeting",label:"Meeting time questions, concepts and ideas",rows:4,min:10,
+   hint:"How meeting time will support shared meaning-making, sharing discoveries and comparing ideas.",
+   strong:"Invite children to share discoveries and compare ideas, allowing different thinking to be discussed.",weak:"Talk about ramps",
+   starters:["Invite children to share ","Revisit the group's drawings of ","Compare ideas about ","Ask what they notice about "]},
+  {k:"interests",label:"Expressed interests of individual and small group",rows:5,min:15,groups:true,
+   hint:"Connect individual and small group work to the classroom community. Name the different threads.",
+   strong:"One group is testing speed and distance, while another is focused on building and stability. Both are influencing how materials are used across the classroom.",weak:"All children are working on ramps",
+   starters:["One group is ","while another is ","Both are influencing "]},
+  {k:"indoor",label:"Provocations and environmental changes, indoor",pdf:"Indoor",rows:5,min:15,materials:true,pair:"outdoor",
+   hint:"What is being added, removed, adjusted, or restructured. Name specific materials with options for choice, and connect them to children's thinking.",
+   strong:"Expanded ramp area with long wooden boards, cardboard tubes, textured surfaces, and small rolling objects. Added clipboards, paper, and markers to support recording results. Adjusted space to allow multiple children to test simultaneously.",weak:"Set up ramp area",
+   starters:["Added ","Removed ","Adjusted ","Restructured ","to support children who are "]},
+  {k:"outdoor",label:"Provocations and environmental changes, outdoor",pdf:"Outdoor",rows:5,min:12,materials:true,places:true,
+   hint:"How learning extends across environments and continues the same investigations.",
+   strong:"Children testing movement indoors began exploring larger scale movement outdoors, while others continued building structures across both spaces.",weak:"Outdoor play",
+   starters:["Added ","Moved ","to continue the work of children who "]},
+  {k:"brainstorm",label:"Curriculum brainstorm",rows:4,min:12,
+   hint:"Collaborative reflection and projection. Build the curriculum web below to show the directions visually.",seasons:true,
+   strong:"Consider ways to support both movement and structure investigations while allowing each to continue independently. Explore materials that support comparison and stability.",weak:"More ramp activities",
+   starters:["Consider ways to support ","Explore materials that ","Allow work to remain "]}
+ ],web:true},
+ individual:{name:"Individual Curriculum Plan",short:"Individual",who:"Your small group or an area of the classroom, from your own observations",fields:[
+  {k:"area",label:"Area exploration",rows:2,min:7,
+   hint:"Where children's thinking is developing and being revisited. A full phrase, not a topic or theme.",
+   strong:"Children are repeatedly testing how objects move down ramps using different materials.",weak:"Ramps. Transportation theme.",
+   starters:["Children are repeatedly ","A small group keeps returning to "]},
+  {k:"dates",label:"Anticipated dates",rows:2,min:5,
+   hint:"The timeframe, showing continuity and revisiting over time.",
+   strong:"Continuing from last week's exploration, extending based on ongoing engagement.",weak:"March 3 to 7 activity",
+   starters:["Continuing from last week's exploration, ","Extending based on ongoing engagement","New thread, first week of observation","Revisiting from earlier this year, "]},
+  {k:"observation",label:"Observation rationale",rows:6,min:18,
+   hint:"What children are doing, saying, and expressing. What ideas, questions, or theories are emerging. Why these moments are significant.",
+   strong:"A group of children spent extended time adjusting ramp height and predicting which setup would be faster. This has continued over multiple days and is becoming more intentional.",weak:"Children played with ramps",
+   starters:["Children were ","One child said, \"","They seem to be wondering ","This matters because ","This has continued over "]},
+  {k:"intent",label:"Intent",rows:3,min:10,
+   hint:"How you will support deeper investigation, and what opportunities children will have to revisit and test ideas.",
+   strong:"To support children in testing their theories about speed by offering varied materials and opportunities for comparison.",weak:"To do a ramp activity",
+   starters:["To support children in ","by offering ","so they can revisit and test "]},
+  {k:"materials",label:"Possible activities and materials",rows:4,min:10,materials:true,docplan:true,
+   hint:"Specific, intentional, varied materials offered as provocations and languages for thinking. Several ways to explore and represent.",
+   strong:"Introduce different surfaces, longer boards, and tools for comparison to support testing and prediction.",weak:"Ramp activity, cars, blocks",
+   starters:["Introduce ","Offer ","to support testing and "]},
+  {k:"questions",label:"Questions and languages",rows:3,min:6,languages:true,
+   hint:"Open questions a child cannot answer with yes or no, and how children might represent their thinking. Process over product.",
+   strong:"What do you notice? How did you figure that out? After meeting time, invite children to map where they think the tunnels go, with clay and charcoal within reach.",weak:"Do you like it?",
+   starters:["What do you notice about ","How did you figure that out?","Tell me about this.","What happens if ","What would you try next?","Invite children to map ","Invite a quick sketch of ","Revisit the drawings from "]},
+  {k:"remarks",label:"Final remarks",rows:4,min:12,after:true,
+   hint:"Fill in at the end of the week. How children's thinking changed, what was confirmed, challenged, or expanded, and what new questions emerged.",
+   strong:"Children began predicting outcomes before testing and used language such as faster and slower. Interest is shifting toward comparing results.",weak:"Children enjoyed the activity",
+   starters:["Children began ","This confirmed ","This challenged ","Interest is shifting toward ","A new question emerged "]}
+ ]},
+ smallgroup:{name:"Small Group Plan",short:"Small group",who:"Earlier form. New small group planning uses the Individual Curriculum Plan",fields:[
+  {k:"thread",label:"The thread we are following",rows:3,min:8,
+   hint:"A question the children keep returning to across several sittings. Write it from their side.",
+   strong:"Several children keep asking where the rabbit goes at night and have started drawing tunnels under the yard.",weak:"Rabbits",
+   starters:["The children keep returning to ","They are wondering ","Across several sittings, "]},
+  {k:"intention",label:"My intention",rows:3,min:8,
+   hint:"What you are watching for, a question you are holding about the group or a particular child. Held loosely as a starting point for observation.",
+   strong:"I am watching for how each child represents what is underground, and who reaches for drawing versus building to explain it.",weak:"Teach about rabbits",
+   starters:["I am watching for ","I am curious whether ","I want to notice who "]},
+  {k:"questions",label:"Guiding questions",rows:3,min:6,
+   hint:"Open questions a child cannot answer with yes or no. Process over product.",
+   strong:"What do you notice? How did you figure that out? Tell me about this part of your map.",weak:"Do you like rabbits?",
+   starters:["What do you notice about ","How did you figure that out?","Tell me about this.","How did you make it?","Is there a story that goes with it?","Show me a part you like.","What happens if ","What would you try next?"]},
+  {k:"graphic",label:"Graphic languages invitation",rows:3,min:6,
+   hint:"How children will represent what the group just discussed, a quick sketch, a map, an arrangement of loose parts, and when you will revisit it.",
+   strong:"After meeting time, invite children to map where they think the tunnels go. Revisit the maps on Thursday next to the burrow.",weak:"Drawing time",
+   starters:["Invite children to map ","Invite a quick sketch of ","Revisit the drawings from "]},
+  {k:"materials",label:"Materials",rows:3,min:6,materials:true,
+   hint:"Mark-making within reach wherever the group meets, plus materials that invite the group deeper into the thread.",
+   strong:"Clipboards, pencils and charcoal, a basket of sticks and soil, magnifiers, and last week's tunnel drawings in sheet protectors.",weak:"Art supplies",
+   starters:["Clipboards and ","Last week's drawings of "]},
+  {k:"reflection",label:"After the week",rows:4,min:10,after:true,
+   hint:"Optional, fill in later. What repeated across sittings, what carried emotional weight, and which language each child reached for first.",
+   strong:"The tunnel idea repeated every day. Three children answered in drawing first, two built with sticks. Next, offer clay to build underground spaces.",weak:"Good week",
+   starters:["What repeated was ","Children reached for ","Next, "]}
+ ],small:true}
+};
+
+/* ---------- State ---------- */
+const $=s=>document.querySelector(s);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let plans=new Map(), db=null, sample=null, downloads=null;
+let week=mondayOf(new Date()), roomFilter=LS.get("fps.room","All"), currentId=null, dirty=false, saveTimer=null, showExample={};
+const undo={};
+let view=LS.get("fps.view","plans"), threads=new Map(), scans=new Map(), tRoom=LS.get("fps.troom","All"), tRange=LS.get("fps.trange","8"), tSearch="", scanBusy=false, storyBusy={};
+
+function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return iso(x)}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function parseIso(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function addDays(s,n){const d=parseIso(s);d.setDate(d.getDate()+n);return iso(d)}
+function fmtDate(s){if(!s)return"";return parseIso(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+function me(){return $("#me").value.trim()}
+function isDirector(){return window.FP_HOSTED?!!(window.FP_DIRECTOR&&window.FP_DIRECTOR()):true}
+function blankWeb(){return{focus:"",branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}],connections:[],languages:[],questions:"",environment:""}}
+
+function newPlan(type,extra={}){
+  const p={id:uid(),type,weekOf:week,classroom:roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""),educator:me(),group:"",setting:[],session:"Morning",languages:[],docplan:[],
+    fields:{},status:"draft",feedback:"",prevId:"",createdAt:Date.now(),updatedAt:Date.now()};
+  if(type==="classroom")p.web=blankWeb();
+  if(type==="smallgroup"){const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===me().toLowerCase());if(g){p.group=g.name;p.classroom=g.room}}
+  if(type==="individual"){const g=me()&&GROUPS.find(g=>(g.educator||"").toLowerCase()===me().toLowerCase());p.focus=g?"smallgroup":"area";p.groups=g?[g.name]:[];p.where="";if(g&&!p.classroom)p.classroom=g.room}
+  return Object.assign(p,extra);
+}
+
+/* ---------- Storage, shared when available ---------- */
+function setConn(t){$("#conn").textContent=t}
+async function boot(){
+  $("#me").value=LS.get("fps.me","")||(window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"");
+  PDEF=PROGRAM_DEFAULTS();
+  {const pr=LS.get("fps.program",null);if(pr)applyProgram(pr)}
+  {const r=LS.get("fps.roster",null);if(Array.isArray(r)&&r.length)roster=r}
+  fillEducatorList();renderRoster();fillPlaceList();
+  for(const p of LS.get("fps.local",[]))plans.set(p.id,p);
+  for(const t of LS.get("fps.threads",[]))threads.set(t.id,t);
+  for(const c of LS.get("fps.scans",[]))scans.set(c.room,c);
+  renderAll();
+  if(!window.claude||!window.claude.use){setConn("Saving on this device");return}
+  const [d,s,dl]=await Promise.all([claude.use("db").catch(()=>null),claude.use("sample").catch(()=>null),claude.use("downloads").catch(()=>null)]);
+  sample=s;downloads=dl;
+  if(window.FP_HOSTED&&!$("#me").value&&window.FP_NAME){$("#me").value=window.FP_NAME();LS.set("fps.me",$("#me").value)}
+  {const pb=document.querySelector('[data-view="settings"]');if(pb)pb.closest(".panel").hidden=!isDirector()}
+  if(sample){try{const lim=await sample.limits();imgLimit=lim?.images?.maxCount||0}catch(e){imgLimit=0}}
+  if(d){
+    db=d;setConn(window.FP_HOSTED?"Saved to the school's records":"Shared with your team");
+    plans=new Map();
+    db.collection("plans").onSnapshot(snap=>{
+      const next=new Map();serverIds=new Set(snap.docs.map(d=>d.id));
+      snap.docs.forEach(doc=>{const v=doc.data();if(!v||deletedIds.has(doc.id))return;const loc=plans.get(doc.id);
+        next.set(doc.id,(loc&&(pendingSaves.has(doc.id)||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});
+      for(const [id,loc] of plans)if(!next.has(id)&&!deletedIds.has(id)&&id!=="example"&&(id===currentId||pendingSaves.has(id)||Date.now()-(loc.updatedAt||0)<30000))next.set(id,loc);
+      const before=currentId&&plans.get(currentId),after=currentId&&next.get(currentId);
+      const remoteChangedCurrent=!!(before&&after&&after!==before&&(after.updatedAt||0)>(before.updatedAt||0));
+      plans=next;renderList();if(view==="all"&&$("#alist"))refreshAll();
+      if(remoteChangedCurrent&&!document.activeElement?.closest?.("#main"))renderMain();
+    },()=>setConn("Offline. Changes stay on this device"));
+    db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
+    db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name);renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
+    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if(view==="threads"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(view==="threads"&&!scanBusy&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+  }else setConn("Saving on this device");
+  renderAll();
+}
+const pendingSaves=new Set(),deletedIds=new Set();let serverIds=new Set();
+function isEmptyPlan(p){
+  if(Object.values(p.fields||{}).some(v=>String(v||"").trim()))return false;
+  const w=p.web;if(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>(b.name||"").trim()||(b.materials||"").trim())||String(w.questions||"").trim()||String(w.environment||"").trim()))return false;
+  if(String(p.feedback||"").trim()||String(p.familyUpdate||"").trim()||p.importedFrom)return false;
+  return true;
+}
+function pruneEmpty(){for(const [id,p] of plans)if(id!==currentId&&id!=="example"&&isEmptyPlan(p)&&!serverIds.has(id)&&!pendingSaves.has(id))plans.delete(id)}
+function persist(p){
+  p.updatedAt=Math.max(Date.now(),(p.updatedAt||0)+1);plans.set(p.id,p);
+  if(isEmptyPlan(p)&&!serverIds.has(p.id)){setConn("Saves once you write something");return}
+  pendingSaves.add(p.id);dirty=true;
+  setConn("Saving");
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(flushSaves,700);
+}
+async function flushSaves(){
+  saveTimer=null;const ids=[...pendingSaves];
+  if(!db){LS.set("fps.local",[...plans.values()].filter(x=>x.id!=="example"&&!isEmptyPlan(x)));ids.forEach(id=>pendingSaves.delete(id));dirty=false;setConn("Saved on this device");return}
+  let ok=true;
+  for(const id of ids){const p=plans.get(id);if(!p){pendingSaves.delete(id);continue}const stamp=p.updatedAt;
+    try{await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)));if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id)}catch(e){ok=false}}
+  dirty=pendingSaves.size>0;
+  if(!ok){setConn("Not saved. Check your connection");clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,5000)}
+  else if(dirty){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,300)}
+  else setConn("Saved and shared");
+}
+async function removePlan(id){
+  deletedIds.add(id);pendingSaves.delete(id);plans.delete(id);
+  if(db){try{await db.doc("plans/"+id).delete()}catch(e){toast(e?.message||"Could not delete. Try again.")}}
+  else LS.set("fps.local",[...plans.values()]);
+  currentId=null;renderAll();
+}
+
+/* ---------- Sidebar ---------- */
+function renderAll(){renderNav();renderWeek();renderFilters();renderList();renderMain()}
+function renderNav(){document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.view===view))}
+function renderWeek(){$("#wklabel").textContent=fmtDate(week)}
+function renderFilters(){
+  $("#filters").innerHTML=["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===roomFilter}" data-room="${r}">${r}</button>`).join("");
+}
+function planTitle(p){
+  if(p.type==="classroom")return (p.classroom||"Classroom")+" team";
+  if(p.type==="smallgroup")return (p.group||"Small group")+(p.educator?" · "+p.educator:"");
+  const foc=(p.groups||[]).length?p.groups.join(" and "):(p.focus==="area"&&p.where?p.where:"");
+  return (p.educator||"Educator")+(foc?" · "+foc:(p.fields?.area?" · "+p.fields.area:""));
+}
+const STATUS={draft:"Draft",ready:"Ready for review",reviewed:"Reviewed"};
+const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
+function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
+function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(m&&mine.length?mine:all).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+function renderDue(){
+  const el=$("#due"),panel=$("#duepanel");if(!el)return;const {list,mineOnly,total}=dueList();
+  panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
+  const label=p=>p.type==="smallgroup"?(p.group||"Small group")+" group":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
+  el.innerHTML=`<div class="cnt">${mineOnly?"Your plans.":"All educators."} ${list.length>1?"These weeks have ended and the reflections are still empty.":"This week has ended and the reflection is still empty."}</div>`+
+    list.slice(0,6).map(p=>`<button class="item" data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span class="status" style="color:var(--clay);border-color:var(--clay)">Due</span></button>`).join("")+
+    (list.length>6?`<button class="linkbtn" data-view="all" data-astatus="due">See all ${list.length}</button>`:"")+(mineOnly&&total>list.length?`<div class="cnt">${total-list.length} more for other educators</div>`:"");
+}
+function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||p.classroom===roomFilter))}
+function renderList(){
+  pruneEmpty();renderDue();
+  const ps=weekPlans();
+  const order={classroom:0,smallgroup:1,individual:2};
+  let html="";
+  if(!ps.length)html=`<div class="empty">No plans for this week yet. Start one above, or carry last week's forward from inside a plan.</div>`;
+  const rooms=[...CLASSROOMS,""].filter(r=>roomFilter==="All"||r===roomFilter);
+  for(const r of rooms){
+    const rp=ps.filter(p=>(p.classroom||"")===r).sort((a,b)=>order[a.type]-order[b.type]||planTitle(a).localeCompare(planTitle(b)));
+    if(!rp.length)continue;
+    html+=`<div class="group-h">${r?esc(r):"No classroom chosen"}</div>`;
+    html+=rp.map(p=>`<button class="item" data-open="${p.id}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Ready":STATUS[p.status]}</span></button>`).join("");
+  }
+  $("#list").innerHTML=html;
+}
+
+/* ---------- Main editor ---------- */
+function renderMain(){
+  if(view==="threads"){renderThreads();return}
+  if(view==="import"){renderImport();return}
+  if(view==="all"){renderAllPlans();return}
+  if(view==="settings"){renderSettings();return}
+  const p=currentId&&plans.get(currentId);
+  if(!p){renderWelcome();return}
+  const F=FORMS[p.type];
+  const prev=p.prevId&&plans.get(p.prevId);
+  let h=`<div class="head">
+    <div class="head-row">
+      <div><span class="tag ${p.type}">${F.short}</span><h2 style="margin-top:6px">${F.name}</h2></div>
+      <div class="actions">
+        <button class="btn" id="dl">Download PDF</button>
+        <button class="btn ghost" id="dlw">Download Word</button>
+        <button class="btn ghost" id="carry">Carry forward to next week</button>
+      </div>
+    </div>
+    <div class="meta">
+      <label>Week of<input type="date" id="m-week" value="${p.weekOf}"></label>
+      <label>Classroom<select id="m-room"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${p.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      ${p.type!=="classroom"?educatorSelect(p):""}
+      ${p.type==="classroom"?teamPicker(p):""}
+      ${p.type==="smallgroup"?`<label>Small group<select id="m-group"><option value="">Choose</option>${GROUPS.filter(g=>!p.classroom||g.room===p.classroom).map(g=>`<option ${p.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>`:""}
+    </div>
+    <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
+    <div class="actions"><span class="muted" style="font-size:13px">Status</span>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}">${v}</button>`).join("")}</div>
+    </div>
+  </div>`;
+  if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
+  if(prev)h+=refCard(prev);
+  const th=p.threadId&&threads.get(p.threadId);if(th)h+=threadRef(th);
+  if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}${p.importDup?`<div class="nudge" style="justify-self:start">A plan like this already existed for this week. Delete one if it is a duplicate.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
+  if(sample)h+=`<section class="ai"><div class="lbl">Start from your notes</div>
+    <p>Paste or dictate your quick jottings from the week. Claude sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
+    <textarea id="notes" rows="4" placeholder="Ex. Tamsin and Mira spent all of free choice lining up acorns by size again, third day. Mira said the big ones are the grandmas..."></textarea>
+    <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></section>`;
+  if(p.type==="smallgroup")h+=smallGroupMeta(p);
+  if(p.type==="individual")h+=focusCard(p);
+  const fs=F.fields;
+  for(let i=0;i<fs.length;i++){
+    const f=fs[i];
+    if(f.pair){const g=fs.find(x=>x.k===f.pair);h+=`<div class="two">${fieldCard(p,f)}${fieldCard(p,g)}</div>`;i++;continue}
+    h+=fieldCard(p,f);
+  }
+  if(F.web)h+=webEditor(p);
+  if(p.type==="classroom"&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">A short note for this week's classroom newsletter, written from this plan in family-friendly language. Edit it, then copy it into Kaymbu.</div>
+    <textarea id="family" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
+    <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
+  h+=`<section class="review"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
+    <textarea id="feedback" rows="2" placeholder="Notes from review. Stays in the app and is left off the printed form.">${esc(p.feedback)}</textarea></section>
+    <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap">${isDirector()?`<button class="btn warn small" id="del">Delete this plan</button>`:""}</span></div>`;
+  $("#main").innerHTML=h;
+  $("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(F.web)drawWebPreview(p);
+}
+function refCard(prev){
+  const F=FORMS[prev.type];const keys={individual:["remarks","intent"],classroom:["brainstorm"],smallgroup:["reflection","thread"]}[prev.type];
+  const bits=keys.map(k=>{const f=F.fields.find(x=>x.k===k);const v=prev.fields?.[k];return v?`<div><span class="muted">${f.label}.</span> ${esc(v)}</div>`:""}).join("");
+  return `<section class="ref"><b>From the week of ${fmtDate(prev.weekOf)}</b>${bits||'<div class="muted">Last week\'s plan has no reflection yet.</div>'}<div><button class="linkbtn" data-open="${prev.id}">Open last week's plan</button></div></section>`;
+}
+function focusCard(p){
+  const sg=p.focus!=="area";const room=p.classroom;const gs=[...GROUPS.filter(g=>room&&g.room===room),...GROUPS.filter(g=>!room||g.room!==room)];const sel=p.groups||[];
+  return `<section class="card"><div class="lbl">Focus this week</div>
+    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button></div>
+    ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
+      <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
+      <label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>`
+    :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. block area, light table, art atelier"></label>`}
+  </section>`;
+}
+function smallGroupMeta(p){
+  return `<section class="card"><div class="lbl">Where</div>
+    <div class="hint">The setting can change with the intention but should stay consistent across the week.</div>
+    <div class="chiprow-label">Setting</div>
+    <div class="chips">${PLACES.map(x=>`<button class="chip ${(p.setting||[]).includes(x)?"on":""}" data-toggle="setting" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    <div class="chiprow-label">Languages to keep open this week</div>
+    <div class="chips">${LANGUAGES.map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    <div class="chiprow-label">Documentation plan</div>
+    <div class="chips">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+  </section>`;
+}
+function fieldCard(p,f){
+  if(p.type==="individual"&&f.k==="area"&&p.focus!=="area")f={...f,hint:"The thread your group is following, a question or idea the children keep returning to. A full phrase, not a topic or theme.",strong:"Several children keep asking where the rabbit goes at night and have started drawing tunnels under the yard.",starters:["The children keep returning to ","They are wondering ","Across several sittings, "]};
+  const v=p.fields[f.k]||"";
+  let chips=`<div class="chips">${f.starters.map(s=>`<button class="chip" data-insert="${esc(s)}" data-field="${f.k}">${esc(s.trim())}${/[ "]$/.test(s)?"…":""}</button>`).join("")}</div>`;
+  if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);chips+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
+  if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
+  if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}</span>${list.map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
+  if(f.seasons){const se=seasonOf(p.weekOf);chips+=`<details><summary class="chiprow-label" style="cursor:pointer">${se} concepts from the Family Handbook</summary><div class="hint" style="margin-top:6px">Concepts we hold loosely. Use one only where it meets what children are already doing.</div><div class="chips" style="margin-top:6px">${SEASONS[se].map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`}
+  if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${LANGUAGES.map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
+  if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
+  const ex=showExample[f.k]?`<div class="ex"><div><b>Strong.</b> ${esc(f.strong)}</div><div class="weak"><b>Weak.</b> ${esc(f.weak)}</div></div>`:"";
+  return `<section class="card" data-card="${f.k}">
+    <label class="lbl" for="f-${f.k}">${f.label}${f.after?' <span class="muted" style="font-size:13px;font-family:var(--body)">end of week</span>':""}</label>
+    <div class="hint">${f.hint}</div>
+    ${chips}
+    <textarea id="f-${f.k}" data-f="${f.k}" rows="${f.rows}">${esc(v)}</textarea>
+    ${suggestHtml(p,f)}
+    ${ex}
+    <div class="cardfoot"><span id="n-${f.k}">${nudgeHtml(f,v)}</span>
+      <span class="actions"><button class="linkbtn" data-ex="${f.k}">${showExample[f.k]?"Hide example":"See an example"}</button>
+      ${sample&&!suggest[p.id+f.k]?`<button class="btn small ghost" data-strengthen="${f.k}">Strengthen wording</button>`:""}
+      ${undo[p.id+f.k]!=null?`<button class="linkbtn" data-undo="${f.k}">Undo</button>`:""}</span></div>
+  </section>`;
+}
+function nudgeHtml(f,v){
+  const t=v.trim();if(!t)return"";
+  const low=t.toLowerCase();
+  for(const [w,msg] of WEAK)if(low.includes(w))return `<span class="nudge">${msg}</span>`;
+  const n=t.split(/\s+/).length;
+  if(n<f.min)return `<span class="nudge">Add a little more. ${f.hint.split(".")[0]}.</span>`;
+  return `<span class="nudge ok">Reads as children's thinking</span>`;
+}
+function autoGrow(t){t.style.height="auto";t.style.height=Math.min(t.scrollHeight+2,600)+"px"}
+
+/* Curriculum web editor */
+function webEditor(p){
+  const w=p.web;
+  const names=w.branches.map((b,i)=>b.name||"Branch "+(i+1));
+  return `<section class="card"><div class="lbl">Curriculum web</div>
+   <div class="hint">Visual and non-linear. Start from the thinking you observed, then add 3 to 6 directions it could go. Branches may connect or stay separate. Revisit and evolve it weekly.</div>
+   <div class="webwrap">
+    <div style="display:grid;gap:10px;min-width:0">
+      <label class="fld-label">Central focus, the emerging thinking<input type="text" id="w-focus" value="${esc(w.focus)}" placeholder="Ex. Movement, speed, and control"></label>
+      <div class="chiprow-label">Branches of investigation and their materials</div>
+      ${w.branches.map((b,i)=>`<div class="branch"><div style="display:grid;gap:6px"><input type="text" data-bname="${i}" value="${esc(b.name)}" placeholder="Ex. Ramp height and angle"><textarea data-bmat="${i}" rows="2" placeholder="Specific, varied materials. Ex. wood planks, cardboard tubes, textured fabric">${esc(b.materials)}</textarea></div><button class="iconbtn" data-bdel="${i}" aria-label="Remove branch">&times;</button></div>`).join("")}
+      ${w.branches.length<6?`<button class="btn small ghost" id="w-add" style="justify-self:start">Add a branch</button>`:""}
+      <div class="chiprow-label">Possible connections</div>
+      ${w.connections.map((c,i)=>`<div class="conn"><span>${esc(names[c[0]]||"")}</span><span class="muted">with</span><span>${esc(names[c[1]]||"")}</span><button class="linkbtn" data-cdel="${i}">Remove</button></div>`).join("")}
+      ${w.branches.length>1?`<div class="conn"><select id="c-a">${names.map((n,i)=>`<option value="${i}">${esc(n)}</option>`).join("")}</select><span class="muted">with</span><select id="c-b">${names.map((n,i)=>`<option value="${i}" ${i===1?"selected":""}>${esc(n)}</option>`).join("")}</select><button class="btn small ghost" id="c-add">Connect</button></div>`:""}
+    </div>
+    <div style="display:grid;gap:10px;min-width:0;align-content:start">
+      <div class="svgbox" id="webprev"></div>
+      <div class="chiprow-label">Languages of expression</div>
+      <div class="chips">${LANGUAGES.map(x=>`<button class="chip ${w.languages.includes(x)?"on":""}" data-wlang="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+      <label class="fld-label">Open questions, from children or observation<textarea id="w-q" rows="3" placeholder="What makes something go faster? How can we make it stay up?">${esc(w.questions)}</textarea></label>
+      <label class="fld-label">Notes for the environment<textarea id="w-env" rows="3" placeholder="Expand ramp area. Allow work to remain over multiple days.">${esc(w.environment)}</textarea></label>
+    </div>
+   </div></section>`;
+}
+function webLayout(n,cx,cy,rx,ry){const pts=[];for(let i=0;i<n;i++){const a=(-90+i*360/n)*Math.PI/180;pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return pts}
+function wrapWords(t,max){const words=String(t).split(/\s+/).filter(Boolean);const out=[];let line="";for(const w of words){if((line+" "+w).trim().length>max){if(line)out.push(line);line=w}else line=(line+" "+w).trim()}if(line)out.push(line);return out}
+function drawWebPreview(p){
+  const w=p.web,W=560,H=380,cx=W/2,cy=H/2;
+  const pts=webLayout(w.branches.length,cx,cy,195,130);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curriculum web preview">`;
+  pts.forEach(([x,y])=>s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--muted)" stroke-width="1.2"/>`);
+  w.connections.forEach(([a,b])=>{if(pts[a]&&pts[b]){const [x1,y1]=pts[a],[x2,y2]=pts[b];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="var(--marigold)" stroke-width="1.6" stroke-dasharray="5 4"/>`}});
+  const fl=wrapWords(w.focus||"Central focus",20).slice(0,3);
+  s+=`<ellipse cx="${cx}" cy="${cy}" rx="92" ry="44" fill="var(--moss-soft)" stroke="var(--moss)" stroke-width="1.5"/>`;
+  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*8+i*16+5}" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--moss)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
+  w.branches.forEach((b,i)=>{const [x,y]=pts[i];const nl=wrapWords(b.name||"Branch "+(i+1),22).slice(0,2);const ml=wrapWords(b.materials,28).slice(0,3);const h=14+nl.length*15+ml.length*13;
+    s+=`<rect x="${x-78}" y="${y-h/2}" width="156" height="${h}" rx="7" fill="var(--paper)" stroke="var(--line)"/>`;
+    nl.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+j*15}" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
+    ml.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+nl.length*15+j*13}" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
+  });
+  s+=`</svg>`;$("#webprev").innerHTML=s;
+}
+
+function rosterFor(room){const a=roster.filter(r=>room&&r.room===room).map(r=>r.name),b=roster.filter(r=>!room||r.room!==room).map(r=>r.name);return [...new Set([...a,...b])]}
+function educatorSelect(p){
+  const names=rosterFor(p.classroom);const cur=p.educator||"";
+  return `<label>Educator<select id="m-edsel"><option value="">Choose</option>${names.map(n=>`<option ${n===cur?"selected":""}>${esc(n)}</option>`).join("")}${cur&&!names.includes(cur)?`<option selected>${esc(cur)}</option>`:""}<option value="__add">Add a new name</option></select></label>`;
+}
+function teamList(p){return String(p.educator||"").split(",").map(x=>x.trim()).filter(Boolean)}
+function teamPicker(p){
+  const team=teamList(p);const names=rosterFor(p.classroom);const extra=team.filter(n=>!names.includes(n));
+  const inRoom=roster.filter(r=>r.room===p.classroom).map(r=>r.name);
+  return `<div class="fld-label" style="grid-column:1/-1">Educators on the team<div class="chips" style="margin-top:2px">${[...new Set([...inRoom,...extra,...team])].map(n=>`<button class="chip ${team.includes(n)?"on":""}" data-team="${esc(n)}">${esc(n)}</button>`).join("")}
+    <details style="display:inline-block"><summary class="chip" style="list-style:none;display:inline-block">More names</summary><div class="chips" style="margin-top:6px">${names.filter(n=>!inRoom.includes(n)&&!team.includes(n)).map(n=>`<button class="chip" data-team="${esc(n)}">${esc(n)}</button>`).join("")}</div></details>
+    <button class="chip" id="m-addteam">Add a new name</button></div></div>`;
+}
+function fillEducatorList(){const dl=$("#educators");if(dl)dl.innerHTML=rosterNames().map(n=>`<option value="${esc(n)}">`).join("")}
+function renderRoster(){
+  const el=$("#roster");if(!el)return;
+  const groups=[...CLASSROOMS,""].map(r=>({r,names:roster.map((x,i)=>({...x,i})).filter(x=>(x.room||"")===r)})).filter(g=>g.names.length);
+  el.innerHTML=groups.map(g=>`<div class="cnt">${g.r||"Specialty and floating"}</div><div class="chips">${g.names.map(x=>`<span class="rname">${esc(x.name)}<button data-rdel="${x.i}" aria-label="Remove ${esc(x.name)}">&times;</button></span>`).join("")}</div>`).join("")+
+   `<div style="display:grid;gap:6px;margin-top:6px"><input type="text" id="r-name" placeholder="Add an educator's name"><div style="display:flex;gap:6px"><select id="r-room" style="flex:1"><option value="">Specialty or floating</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="r-add">Add</button></div></div>`;
+}
+function addToRoster(name,room){name=name.trim();if(!name)return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
+function saveRoster(){LS.set("fps.roster",roster);renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.rdel!=null){roster.splice(+t.dataset.rdel,1);saveRoster();return}
+  if(t.id==="r-add"){const n=$("#r-name").value;if(!n.trim()){toast("Type a name first.");return}addToRoster(n,$("#r-room").value);toast("Added to the educator list.");return}
+  const p=currentId&&plans.get(currentId);if(!p||view!=="plans")return;
+  if(t.dataset.team){const team=teamList(p);const n=t.dataset.team;const i=team.indexOf(n);i>=0?team.splice(i,1):team.push(n);p.educator=team.join(", ");persist(p);renderList();t.classList.toggle("on",i<0);return}
+  if(t.id==="m-addteam"){$("#m-addrow").hidden=false;$("#m-newname").focus();return}
+  if(t.id==="m-addcancel"){$("#m-addrow").hidden=true;const sel=$("#m-edsel");if(sel)sel.value=p.educator||"";return}
+  if(t.id==="m-addname"){const n=$("#m-newname").value.trim();if(!n){toast("Type a name first.");return}addToRoster(n,p.classroom);
+    if(p.type==="classroom"){const team=teamList(p);if(!team.includes(n))team.push(n);p.educator=team.join(", ")}else p.educator=n;
+    persist(p);renderList();renderMain();toast("Added to the educator list for everyone.");return}
+});
+document.addEventListener("change",e=>{const t=e.target;if(t.id!=="m-edsel")return;const p=currentId&&plans.get(currentId);if(!p)return;
+  if(t.value==="__add"){$("#m-addrow").hidden=false;$("#m-newname").focus();return}
+  p.educator=t.value;persist(p);renderList()});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="m-newname"){e.preventDefault();$("#m-addname").click()}if(e.key==="Enter"&&e.target.id==="r-name"){e.preventDefault();$("#r-add").click()}});
+function renderWelcome(){
+  $("#main").innerHTML=`<section class="welcome">
+    <div><span class="eyebrow">Week of ${fmtDate(week)}</span><h2 style="font-size:32px;margin-top:4px">Plan from what children are thinking</h2>
+    <p class="muted" style="max-width:62ch;margin:.4em 0 0">Each form follows the cycle in our handbook. Informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, then back to observation. Tap a sentence starter or a material to add it, check the example for each section, and download a printable PDF when you are done.</p></div>
+    <div class="steps">
+      <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"Claude can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
+      <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, Fulton's outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
+      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team, and the director can mark them reviewed.</p></div>
+      <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
+    </div>
+    <div class="actions"><button class="btn" data-new="classroom">Start this week's Classroom Plan</button><button class="btn ghost" id="sample">Download a sample filled plan</button></div>
+  </section>`;
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("button,[data-open]");if(!t)return;
+  const p=currentId&&plans.get(currentId);
+  if(t.dataset.astatus)aStatus=t.dataset.astatus;
+  if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
+  if(await threadsClick(t))return;
+  if(await importClick(t))return;
+  if(t.dataset.new){view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+  if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}}else jumpTop();return}
+  if(t.dataset.jump&&!t.dataset.open){const ta=$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
+  if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();return}
+  if(t.id==="prevwk"||t.id==="nextwk"){week=addDays(week,t.id==="prevwk"?-7:7);currentId=null;renderAll();return}
+  if(t.id==="blanks"){makePdf(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.pdf");return}
+  if(t.id==="packet"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makePdf(ps,`Fulton plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.pdf`);return}
+  if(t.id==="packetw"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makeDocx(ps,`Fulton plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.docx`);return}
+  if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.docx");return}
+  if(t.id==="sample"){makePdf([EXAMPLE],"Fulton sample classroom plan.pdf");return}
+  if(!p)return;
+  if(t.id==="dl"){makePdf([p],fileName(p));return}
+  if(t.id==="dlw"){makeDocx([p],fileName(p).replace(/\.pdf$/,".docx"));return}
+  if(t.id==="carry"){carryForward(p);return}
+  if(t.id==="del"){$("#delwrap").innerHTML=`<span class="confirm">Delete this plan for everyone? <button class="btn warn small" id="del-yes">Delete</button><button class="linkbtn" id="del-no">Keep it</button></span>`;return}
+  if(t.id==="del-yes"){removePlan(p.id);toast("Plan deleted.");return}
+  if(t.id==="del-no"){$("#delwrap").innerHTML=`<button class="btn warn small" id="del">Delete this plan</button>`;return}
+  if(t.dataset.status){p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
+  if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
+  if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
+    if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
+  if(t.dataset.session){p.session=t.dataset.session;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
+  if(t.dataset.toggle){const arr=p[t.dataset.toggle]||(p[t.dataset.toggle]=[]);const v=t.dataset.val;const i=arr.indexOf(v);i>=0?arr.splice(i,1):arr.push(v);t.classList.toggle("on");persist(p);return}
+  if(t.dataset.insert!=null){insertText(t.dataset.field,t.dataset.insert,false);return}
+  if(t.dataset.mat){insertText(t.dataset.field,t.dataset.mat,true);return}
+  if(t.dataset.ex){showExample[t.dataset.ex]=!showExample[t.dataset.ex];rerenderCard(p,t.dataset.ex);return}
+  if(t.dataset.strengthen){strengthen(p,t.dataset.strengthen,t);return}
+  if(t.dataset.sgyes){const k=t.dataset.sgyes,key=p.id+k;const txt=($("#sgt-"+k)?.value||suggest[key]?.text||"").trim();if(txt){undo[key]=p.fields[k]||"";p.fields[k]=txt;delete suggest[key];persist(p);clearTimeout(saveTimer);flushSaves();rerenderCard(p,k);toast("Updated. Undo is under the section if you want your version back.")}return}
+  if(t.dataset.sgno){delete suggest[p.id+t.dataset.sgno];rerenderCard(p,t.dataset.sgno);return}
+  if(t.dataset.undo){const k=t.dataset.undo;p.fields[k]=undo[p.id+k];delete undo[p.id+k];persist(p);rerenderCard(p,k);return}
+  if(t.id==="draft"){draftFromNotes(p,t);return}
+  if(t.id==="famdraft"){familyUpdate(p,t);return}
+  if(t.id==="importok"){delete p.importedFrom;delete p.importNotes;delete p.importNoDate;delete p.importDup;persist(p);renderMain();return}
+  if(t.id==="famcopy"){copyText($("#family"));return}
+  if(p.web){
+    const w=p.web;
+    if(t.id==="w-add"){w.branches.push({name:"",materials:""});persist(p);renderMain();return}
+    if(t.dataset.bdel!=null){const i=+t.dataset.bdel;w.branches.splice(i,1);w.connections=w.connections.filter(c=>c[0]!==i&&c[1]!==i).map(c=>c.map(x=>x>i?x-1:x));persist(p);renderMain();return}
+    if(t.id==="c-add"){const a=+$("#c-a").value,b=+$("#c-b").value;if(a===b){toast("Pick two different branches.");return}if(!w.connections.some(c=>(c[0]===a&&c[1]===b)||(c[0]===b&&c[1]===a)))w.connections.push([a,b]);persist(p);renderMain();return}
+    if(t.dataset.cdel!=null){w.connections.splice(+t.dataset.cdel,1);persist(p);renderMain();return}
+    if(t.dataset.wlang){const v=t.dataset.wlang;const i=w.languages.indexOf(v);i>=0?w.languages.splice(i,1):w.languages.push(v);t.classList.toggle("on");persist(p);return}
+  }
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="me"){LS.set("fps.me",t.value);renderDue();return}
+  const p=currentId&&plans.get(currentId);if(!p)return;
+  if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
+  if(t.id==="feedback"){p.feedback=t.value;autoGrow(t);persist(p);return}
+  if(t.id==="f-where"){p.where=t.value;persist(p);renderList();return}
+  if(t.id==="family"){p.familyUpdate=t.value;autoGrow(t);persist(p);return}
+  if(t.id==="m-ed"){p.educator=t.value;persist(p);renderList();return}
+  if(p.web){const w=p.web;
+    if(t.id==="w-focus")w.focus=t.value;else if(t.dataset.bname!=null)w.branches[+t.dataset.bname].name=t.value;else if(t.dataset.bmat!=null){w.branches[+t.dataset.bmat].materials=t.value;autoGrow(t)}else if(t.id==="w-q"){w.questions=t.value;autoGrow(t)}else if(t.id==="w-env"){w.environment=t.value;autoGrow(t)}else return;
+    persist(p);drawWebPreview(p)}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;const p=currentId&&plans.get(currentId);if(!p)return;
+  if(t.id==="m-week"&&t.value){p.weekOf=mondayOf(parseIso(t.value));delete p.importNoDate;week=p.weekOf;persist(p);renderAll();return}
+  if(t.id==="m-room"){p.classroom=t.value;LS.set("fps.myroom",t.value);if(p.group&&!GROUPS.some(g=>g.name===p.group&&g.room===t.value))p.group="";persist(p);renderList();renderMain();return}
+  if(t.id==="m-group"){p.group=t.value;const g=GROUPS.find(g=>g.name===t.value);if(g&&!p.educator){p.educator=g.educator}persist(p);renderList();renderMain();return}
+});
+function insertText(k,text,isMaterial){
+  const ta=$("#f-"+k);if(!ta)return;
+  const p=plans.get(currentId);
+  let start=ta.selectionStart??ta.value.length,end=ta.selectionEnd??ta.value.length;
+  if(document.activeElement!==ta){start=end=ta.value.length}
+  const before=ta.value.slice(0,start),after=ta.value.slice(end);
+  let ins=text;
+  if(isMaterial){const tail=before.trimEnd();ins=(tail&&!/[,(]$/.test(tail)&&!/\s$/.test(before)?", ":(tail&&/[^\s,(]$/.test(tail)?", ":""))+text}
+  else if(before&&!/\s$/.test(before))ins=(/[.?!"]$/.test(before)?" ":" ")+text;
+  ta.value=before+ins+after;const pos=(before+ins).length;
+  ta.focus();ta.setSelectionRange(pos,pos);
+  ta.dispatchEvent(new Event("input",{bubbles:true}));
+}
+function rerenderCard(p,k){
+  const F=FORMS[p.type];const f=F.fields.find(x=>x.k===k);const card=document.querySelector(`[data-card="${k}"]`);if(!card)return;
+  const tmp=document.createElement("div");tmp.innerHTML=fieldCard(p,f);card.replaceWith(tmp.firstElementChild);autoGrow($("#f-"+k));
+}
+function jumpTop(){if(innerWidth<900)$("#main").scrollIntoView({block:"start"});else window.scrollTo({top:0})}
+function fileName(p){return `${FORMS[p.type].name} ${p.type==="smallgroup"?(p.group||""):p.type==="individual"?(p.educator||""):(p.classroom||"")} ${p.weekOf}.pdf`.replace(/\s+/g," ")}
+function carryForward(p){
+  const nw=addDays(p.weekOf,7);
+  const ak=AFTER_KEY[p.type];if(ak&&!String(p.fields?.[ak]||"").trim())toast("Remember to write this week's reflection too. It is flagged until it is done.");
+  const exists=[...plans.values()].find(x=>x.prevId===p.id);
+  if(exists){currentId=exists.id;week=exists.weekOf;renderAll();toast("Next week's plan already exists. Opened it.");return}
+  const np=newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
+  if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`}
+  if(p.type==="smallgroup"){np.fields.thread=p.fields.thread||""}
+  if(p.type==="classroom"){np.web=JSON.parse(JSON.stringify(p.web||blankWeb()))}
+  plans.set(np.id,np);persist(np);currentId=np.id;week=nw;renderAll();jumpTop();
+  toast("Next week's plan is ready. Last week's reflection is shown at the top.");
+}
+
+/* ---------- Claude assist ---------- */
+const STYLE=PROGRAM+" Write in plain, warm, professional language an early childhood educator would use. Refer to adults as educators, never teachers. Never use em dashes. Never use colons except in clock times. Never use analogies or 'not X but Y' framing. Never mention DRDP measures or domains. Do not use theme language, activity-based language, or evaluative words like enjoyed or had fun.";
+function planContext(p){const F=FORMS[p.type];return F.fields.filter(f=>p.fields[f.k]).map(f=>`${f.label}. ${p.fields[f.k]}`).join("\n")}
+const suggest={};
+function suggestHtml(p,f){
+  const sg=suggest[p.id+f.k];if(!sg)return"";
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is rewriting this section</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">Strengthen did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-strengthen="${f.k}">Try again</button><button class="linkbtn" data-sgno="${f.k}">Close</button></div></div>`;
+  return `<div class="sugg"><b>Suggested wording</b><textarea id="sgt-${f.k}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" data-strengthen="${f.k}">Try another version</button></div></div>`;
+}
+async function strengthen(p,k,btn){
+  const f=FORMS[p.type].fields.find(x=>x.k===k);
+  const ta=$("#f-"+k);const cur=((ta&&ta.value)||p.fields[k]||"").trim();
+  if(!cur){toast("Write a few words first, then strengthen them.");return}
+  if(ta&&ta.value!==p.fields[k]){p.fields[k]=ta.value;persist(p)}
+  const key=p.id+k;suggest[key]={status:"working",text:""};rerenderCard(p,k);
+  const prompt=`You are helping an educator at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, complete the "${f.label}" section of a ${FORMS[p.type].name}.
+The program's standard for this section. ${f.hint}
+Strong example. ${f.strong}
+Weak example. ${f.weak}
+Program expectations. Plans document children's thinking, not teacher-directed activities. They are grounded in observation and interpretation and follow the cycle of observation, provocation, and reflection. Keep what children did separate from what the educator thinks it means.
+Rewrite the educator's entry so it meets the standard. Keep every fact, name, quote, and material from the entry. You may use facts from the other sections of this plan below. Add no new facts, children, quotes, or materials. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
+Return only the rewritten text, with no preface.
+
+Other sections of this plan.
+${planContext(p)||"(none yet)"}
+
+Educator's entry.
+${cur}`;
+  let out="",code="";
+  for(let attempt=0;attempt<2&&!out;attempt++){
+    try{const r=await sample(prompt,{modelTier:attempt?"quick":"default",cache:false,onText:u=>{const el=$("#sg-"+k);if(el)el.textContent=u.text;if(suggest[key])suggest[key].text=u.text}});out=(r.text||"").trim();code=""}
+    catch(err){code=err?.code||"unknown";console.warn("Strengthen failed",err);if(code!=="upstream_error"&&code!=="empty_completion"&&code!=="invalid_request")break}
+  }
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\u2014/g,", ").trim();
+  const P=plans.get(p.id)||p;
+  suggest[key]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
+  if(currentId===P.id)rerenderCard(P,k);
+}
+function assistError(code,tail){
+  const m={rate_limited:"Claude is busy right now. Wait a minute and try again.",not_granted:"Claude assist was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Claude assist is turned off for this account or organization.",session_expired:"Your Claude session expired. Reload the page and try again.",refused:"Claude declined this one. Try rewording the entry.",empty_completion:"Claude returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The Planning Studio server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"Claude's answer came back garbled. Try again."};
+  return (m[code]||`That did not work (${code}). Try again in a moment.`)+(tail?" "+tail:"");
+}
+async function draftFromNotes(p,btn){
+  const notes=$("#notes").value.trim();if(!notes){toast("Add your notes first.");return}
+  const F=FORMS[p.type];const empty=F.fields.filter(f=>!(p.fields[f.k]||"").trim());
+  const wantWeb=p.type==="classroom"&&!p.web.focus&&!p.web.branches.some(b=>b.name);
+  if(!empty.length&&!wantWeb){toast("Every section already has text. Use Strengthen wording on any section instead.");return}
+  btn.disabled=true;$("#draftstate").textContent="Reading your notes";
+  const spec=empty.map(f=>`"${f.k}" (${f.label}). ${f.hint} Strong example. ${f.strong}`).join("\n");
+  const webSpec=wantWeb?`\n"web" an object for the curriculum web with keys "focus" (the core emerging thinking, a short phrase, not a topic), "branches" (array of 3 to 6 objects with "name" and "materials", materials only if the notes name them, otherwise an empty string), "languages" (array chosen only from this list ${JSON.stringify(LANGUAGES)}), "questions" (open questions from children or observation), "environment" (notes for how the space may change). Only include branches the notes support.`:"";
+  const prompt=`You are helping an educator at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, complete a ${F.name}. ${F.who}.
+Sort the educator's notes into the sections below. Use only what the notes say. Never invent observations, children, quotes, or materials. If the notes give nothing for a section, return an empty string for it. Sections marked as end-of-week reflection stay empty unless the notes clearly reflect back on the week. Plans document children's thinking, interpret why moments matter, and follow observation, provocation, reflection. ${STYLE}
+
+Return a JSON object with exactly these keys.
+${spec}${webSpec}
+
+Educator's notes.
+${notes}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"default",cache:false});
+    p=plans.get(p.id)||p;
+    let n=0;
+    for(const f of empty){const v=out?.[f.k];if(typeof v==="string"&&v.trim()){p.fields[f.k]=v.trim().replace(/—/g,", ");n++}}
+    if(wantWeb&&out?.web&&typeof out.web==="object"){const w=out.web;p.web.focus=String(w.focus||"");const br=Array.isArray(w.branches)?w.branches.slice(0,6).map(b=>({name:String(b?.name||""),materials:String(b?.materials||"")})).filter(b=>b.name):[];if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=(Array.isArray(w.languages)?w.languages:[]).filter(x=>LANGUAGES.includes(x));p.web.questions=String(w.questions||"");p.web.environment=String(w.environment||"");n++}
+    persist(p);renderMain();toast(n?`Filled ${n} section${n>1?"s":""}. Read each one and make it yours.`:"Your notes did not match any empty section.");
+  }catch(err){btn.disabled=false;$("#draftstate").textContent="";toast(assistError(err?.code||"unknown","Nothing was changed."))}
+}
+
+/* ---------- Printable PDF ---------- */
+const PW=612,PH=792,M=40,CW=PW-2*M,BOTTOM=PH-50;
+const C={ink:[34,51,42],moss:[47,90,67],muted:[93,110,99],line:[176,192,180],soft:[234,241,235],marigold:[196,122,6],paper:[255,255,255]};
+function clean(s){return String(s??"").replace(/—/g,", ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,"...").replace(/[^\x09\x0A\x0D\x20-\x7E -ÿ–•]/g,"")}
+const CYCLE=["Informal observation","Assumptions, outcomes, goals, biases","Provocation","Formal observation","Documentation","Reflection"];
+const CYCLE_TEXT=["OBSERVE","PROVOKE","DOCUMENT","REFLECT","EVOLVE"].join("  \u2022  ");
+let pageInfo={};
+const ACC={classroom:{c:[47,90,67],t:[234,242,236]},individual:{c:[43,98,124],t:[229,239,244]},smallgroup:{c:[168,104,8],t:[251,240,220]},story:{c:[122,72,52],t:[246,236,230]}};
+const PG={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB:10};
+function makePdf(list,filename){
+  if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});
+  const pageAcc={};pageInfo={};
+  list.forEach((p,i)=>{if(i>0)doc.addPage();drawPlan(doc,p,pageAcc)});
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
+    doc.setDrawColor(214,222,216);doc.setLineWidth(.6);doc.line(M,PH-38,PW-M,PH-38);
+    doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(.6);
+    doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
+    if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(110,124,115);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-15,{align:"center"})}}
+  saveFile(doc.output("blob"),filename);
+}
+async function saveFile(blob,filename){
+  if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
+  try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
+}
+function planBlocks(p){
+  const B=!!p.blank,f=p.fields||{};
+  const sec=(label,text,w=1)=>({t:"sec",label,text:text||"",w});
+  const cols=(cs,w=1)=>({t:"cols",cols:cs,w});
+  if(p.type==="story")return STORY.map(([k,l])=>sec(l,p.story?.[k]||""));
+  if(p.type==="classroom")return [sec("Observation",f.observation,1.25),sec("Intentions and questions for the week",f.intentions),sec("Meeting time questions, concepts and ideas",f.meeting),sec("Expressed interests of individual and small group",f.interests),
+    {t:"sub",text:"Provocations and environmental changes"},cols([{label:"Indoor",text:f.indoor},{label:"Outdoor",text:f.outdoor}],1.5),{t:"break"},
+    sec("Curriculum brainstorm",f.brainstorm,.8),{t:"web",web:p.web||blankWeb(),blank:B},
+    cols([{label:"Languages of expression",text:(p.web?.languages||[]).join("\n")},{label:"Open questions",text:p.web?.questions},{label:"Notes for the environment",text:p.web?.environment}],1)];
+  if(p.type==="individual"){
+    const focus=B?"Small group or classroom area":(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
+    const join=(a,label,list)=>[a||"",(list||[]).length?label+". "+list.join(", "):""].filter(Boolean).join("\n");
+    return [cols([{label:"Focus",text:focus,w:.5},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
+      sec("Possible activities and materials",join(f.materials,"Documentation",p.docplan),1.05),sec("Questions and languages",join(f.questions,"Languages to keep open",p.languages),.9),sec("Final remarks",f.remarks,1.15)];
+  }
+  return [sec("Where",(p.setting||[]).join(", "),.3),sec("The thread we are following",f.thread),sec("My intention",f.intention),sec("Guiding questions",f.questions),
+    cols([{label:"Languages to keep open",text:(p.languages||[]).join("\n")},{label:"Graphic languages invitation",text:f.graphic}],1),cols([{label:"Materials",text:f.materials},{label:"Documentation plan",text:(p.docplan||[]).join("\n")}],.9),sec("After the week",f.reflection,1.2)];
+}
+function wrap(doc,text,w){doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);const t=clean(text).trim();if(!t)return[];return t.split(/\n+/).flatMap(par=>doc.splitTextToSize(par,w))}
+let MINL=2;
+function natH(n,blank){return PG.strip+PG.padT+Math.max(n,MINL)*PG.lh+PG.padB-PG.lh*.35}
+function drawPlan(doc,p,pageAcc){
+  const A=ACC[p.type]||ACC.classroom;const blank=!!p.blank;MINL=p.type==="story"?1:2;
+  const pages=[];let page={items:[],top:PG.top1};const avail=()=>PG.bottom-page.top-page.items.reduce((s,it)=>s+it.h+PG.gap,0);
+  const flush=()=>{pages.push(page);page={items:[],top:PG.topN}};
+  const blocks=planBlocks(p);
+  for(let bi=0;bi<blocks.length;bi++){const b=blocks[bi];
+    if(b.t==="break"){flush();continue}
+    if(b.t==="sub"){if(avail()<24+90)flush();page.items.push({t:"sub",text:b.text,h:16,w:0});continue}
+    if(b.t==="web"){const h=318;if(avail()<h)flush();page.items.push({t:"web",web:b.web,blank:b.blank,h,w:0});continue}
+    if(b.t==="cols"){
+      const n=b.cols.length,gw=CW-PG.gap*(n-1);const ws=b.cols.map(c=>gw*(c.w||1/n));const ls=b.cols.map((c,i)=>wrap(doc,c.text,ws[i]-22));
+      const h=natH(Math.max(...ls.map(l=>l.length)),blank);
+      if(h>PG.bottom-PG.topN){b.cols.forEach(c=>blocks.splice(bi+1,0,{t:"sec",label:c.label,text:c.text,w:b.w}));continue}
+      if(h>avail())flush();
+      page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i]})),h,w:b.w});continue}
+    let lines=wrap(doc,b.text,CW-22),cont=false;
+    while(true){const h=natH(lines.length,blank);const a=avail();
+      if(h<=a){page.items.push({t:"sec",label:b.label,lines,h,w:b.w,cont});break}
+      const fit=Math.floor((a-PG.strip-PG.padT-PG.padB)/PG.lh)+1;
+      if(fit<3||lines.length<=fit){flush();continue}
+      page.items.push({t:"sec",label:b.label,lines:lines.slice(0,fit),h:a,w:0,cont});lines=lines.slice(fit);cont=true;flush();
+    }
+  }
+  pages.push(page);
+  pages.forEach((pg,pi)=>{
+    if(pi>0)doc.addPage();
+    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:pages.length};
+    const extra=PG.bottom-pg.top-pg.items.reduce((s,it)=>s+it.h,0)-PG.gap*Math.max(0,pg.items.length-1);
+    const wsum=pg.items.reduce((s,it)=>s+it.w,0);
+    if(extra>0&&wsum>0)pg.items.forEach(it=>{it.h+=extra*it.w/wsum});
+    if(pi===0)headerFull(doc,p,A);else headerCont(doc,p,A);
+    let y=pg.top;
+    for(const it of pg.items){
+      if(it.t==="sec")box(doc,M,y,CW,it.h,it.label,it.lines,A,it.cont);
+      else if(it.t==="cols"){let x=M;it.cols.forEach(c=>{box(doc,x,y,c.w,it.h,c.label,c.lines,A);x+=c.w+PG.gap})}
+      else if(it.t==="sub"){doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(34,51,42);doc.text(clean(it.text),M,y+11);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(M,y+15,M+28,y+15)}
+      else if(it.t==="web")webBox(doc,M,y,CW,it.h,it.web,it.blank,A);
+      y+=it.h+PG.gap;
+    }
+  });
+}
+function metaRows(p){
+  if(p.blank)return [["Week of",""],[p.type==="smallgroup"?"Group":"Classroom",""],[p.type==="classroom"?"Team":"Educator",""]];
+  if(p.type==="story")return [["Classroom",p.metaA||""],["Timeline",p.metaB||""]];
+  const r=[["Week of",fmtDate(p.weekOf)]];
+  if(p.type==="smallgroup")r.push(["Group",[p.group,p.classroom].filter(Boolean).join(", ")]);else r.push(["Classroom",p.classroom||""]);
+  r.push([p.type==="classroom"?"Team":"Educator",p.educator||""]);return r;
+}
+function headerFull(doc,p,A){
+  const F=FORMS[p.type]||{name:"",who:""};
+  doc.setFillColor(...A.c);doc.rect(M,30,22,3.2,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,46);doc.setCharSpace(0);
+  const title=clean(p.title||F.name);let ts=23;doc.setFontSize(ts);while(ts>15&&doc.getTextWidth(title)>CW-215){ts--;doc.setFontSize(ts)}
+  doc.setTextColor(28,42,34);const tl=doc.splitTextToSize(title,CW-215).slice(0,2);const tlh=ts*1.08;const ty0=tl.length>1?66:72;tl.forEach((l,i)=>doc.text(l,M,ty0+i*tlh));
+
+  const rows=metaRows(p);const mw=196,mx=PW-M-mw,my=30,mh=14+rows.length*17;
+  doc.setFillColor(...A.t);doc.roundedRect(mx,my,mw,mh,6,6,"F");
+  rows.forEach(([l,v],i)=>{const yy=my+19+i*17;doc.setFont("helvetica","bold");doc.setFontSize(6.6);doc.setTextColor(...A.c);doc.setCharSpace(.9);doc.text(l.toUpperCase(),mx+12,yy);doc.setCharSpace(0);
+    if(v){doc.setFont("helvetica","bold");let vs=9.4;doc.setFontSize(vs);while(vs>7&&doc.getTextWidth(clean(v))>mw-80){vs-=.2;doc.setFontSize(vs)}doc.setTextColor(28,42,34);const vv=doc.splitTextToSize(clean(v),mw-80)[0];doc.text(vv,mx+mw-12,yy,{align:"right"})}
+    else{doc.setDrawColor(...A.c);doc.setLineWidth(.5);doc.line(mx+76,yy+1.5,mx+mw-12,yy+1.5)}});
+  doc.setDrawColor(...A.c);doc.setLineWidth(1.4);doc.line(M,112,PW-M,112);
+}
+function headerCont(doc,p,A){
+  const F=FORMS[p.type]||{name:""};
+  doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,40);doc.setCharSpace(0);
+  doc.setFontSize(12.5);doc.setTextColor(28,42,34);doc.text(clean(p.title||F.name),M,57);
+  doc.setFont("helvetica","normal");doc.setFontSize(8.6);doc.setTextColor(96,110,101);
+  doc.text(clean(metaRows(p).map(r=>r[1]).filter(Boolean).join("  •  ")),PW-M,57,{align:"right"});
+  doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(M,64,PW-M,64);
+}
+function box(doc,x,y,w,h,label,lines,A,cont){
+  doc.setFillColor(...A.t);doc.roundedRect(x,y,w,PG.strip,5,5,"F");doc.rect(x,y+PG.strip-5,w,5,"F");
+  doc.setDrawColor(205,215,208);doc.setLineWidth(.7);doc.roundedRect(x,y,w,h,5,5,"S");
+  doc.setFont("helvetica","bold");doc.setFontSize(7.3);doc.setTextColor(...A.c);doc.setCharSpace(.8);
+  const lab=clean(label.toUpperCase()+(cont?"  (CONTINUED)":""));doc.text(doc.splitTextToSize(lab,w-20)[0],x+11,y+12.6);doc.setCharSpace(0);
+  doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);doc.setTextColor(34,48,40);
+  const y0=y+PG.strip+PG.padT;lines.forEach((l,i)=>doc.text(l,x+11,y0+i*PG.lh));
+  let ly=lines.length?y0+(lines.length-1)*PG.lh+PG.lh+6:y+PG.strip+PG.lh+8;
+  doc.setDrawColor(222,229,224);doc.setLineWidth(.5);doc.setLineDashPattern([.8,2.2],0);
+  for(;ly<y+h-9;ly+=18)doc.line(x+11,ly,x+w-11,ly);
+  doc.setLineDashPattern([],0);
+}
+function webBox(doc,x,y,w,h,web,blank,A){
+  doc.setFillColor(...A.t);doc.roundedRect(x,y,w,PG.strip,5,5,"F");doc.rect(x,y+PG.strip-5,w,5,"F");
+  doc.setDrawColor(205,215,208);doc.setLineWidth(.7);doc.roundedRect(x,y,w,h,5,5,"S");
+  doc.setFont("helvetica","bold");doc.setFontSize(7.3);doc.setTextColor(...A.c);doc.setCharSpace(.8);doc.text("CURRICULUM WEB",x+11,y+12.6);doc.setCharSpace(0);
+  const cx=x+w/2,cy=y+PG.strip+(h-PG.strip)/2;
+  const br=blank?Array.from({length:6},()=>({name:"",materials:""})):(web.branches||[]).filter(b=>b.name||b.materials);
+  const pts=webLayout(br.length,cx,cy,188,(h-PG.strip)/2-42);
+  doc.setDrawColor(150,165,155);doc.setLineWidth(.8);pts.forEach(([px,py])=>doc.line(cx,cy,px,py));
+  if(!blank&&(web.connections||[]).length){
+    const idx=(web.branches||[]).map((b,i)=>(b.name||b.materials)?i:-1).filter(i=>i>=0);
+    doc.setDrawColor(196,122,6);doc.setLineWidth(1.1);doc.setLineDashPattern([3,2.5],0);
+    web.connections.forEach(([a,b])=>{const ia=idx.indexOf(a),ib=idx.indexOf(b);if(ia<0||ib<0)return;const [x1,y1]=pts[ia],[x2,y2]=pts[ib];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;
+      const c1x=x1+(mx-x1)*2/3,c1y=y1+(my-y1)*2/3,c2x=x2+(mx-x2)*2/3,c2y=y2+(my-y2)*2/3;doc.lines([[c1x-x1,c1y-y1,c2x-x1,c2y-y1,x2-x1,y2-y1]],x1,y1,[1,1],"S")});
+    doc.setLineDashPattern([],0);doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(196,122,6);doc.text("Dashed lines show possible connections",x+w-11,y+12.6,{align:"right"})}
+  doc.setDrawColor(...A.c);doc.setFillColor(...A.t);doc.setLineWidth(1.2);doc.ellipse(cx,cy,94,40,"FD");
+  doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...A.c);
+  const fl=blank?["Central focus"]:doc.splitTextToSize(clean(web.focus||"Central focus"),160).slice(0,3);
+  fl.forEach((l,i)=>doc.text(l,cx,cy-(fl.length-1)*6.5+i*13+3.5,{align:"center"}));
+  br.forEach((b,i)=>{const [bx,by]=pts[i];const bw=150;
+    doc.setFont("helvetica","bold");doc.setFontSize(8.8);const nl=blank?[]:doc.splitTextToSize(clean(b.name),bw-16).slice(0,2);
+    doc.setFont("helvetica","normal");doc.setFontSize(7.8);const ml=blank?[]:doc.splitTextToSize(clean(b.materials),bw-16).slice(0,4);
+    const bh=blank?56:Math.max(32,14+nl.length*11.5+ml.length*10+4);
+    doc.setDrawColor(205,215,208);doc.setFillColor(255,255,255);doc.setLineWidth(.8);doc.roundedRect(bx-bw/2,by-bh/2,bw,bh,5,5,"FD");
+    doc.setFillColor(...A.c);doc.rect(bx-bw/2+10,by-bh/2,24,2.4,"F");
+    let ty=by-bh/2+15;doc.setFont("helvetica","bold");doc.setFontSize(8.8);doc.setTextColor(28,42,34);nl.forEach(l=>{doc.text(l,bx,ty,{align:"center"});ty+=11.5});
+    doc.setFont("helvetica","normal");doc.setFontSize(7.8);doc.setTextColor(96,110,101);ml.forEach(l=>{doc.text(l,bx,ty,{align:"center"});ty+=10});
+    if(blank){doc.setFontSize(7);doc.setTextColor(150,160,154);doc.text("Branch and materials",bx,by+3,{align:"center"})}
+  });
+}
+
+/* ---------- Word download ---------- */
+const hex=a=>a.map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
+function webSvgString(web,blank,A){
+  const W=900,H=560,cx=W/2,cy=H/2;const ink="#1C2A22",muted="#606E65",line="#CDD7D0",acc="#"+hex(A.c),tint="#"+hex(A.t);
+  const br=blank?Array.from({length:6},()=>({name:"",materials:""})):(web.branches||[]).filter(b=>b.name||b.materials);
+  const pts=webLayout(br.length,cx,cy,300,190);
+  const e=t=>esc(clean(t));
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="#ffffff"/>`;
+  pts.forEach(([x,y])=>s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#96A59B" stroke-width="1.6"/>`);
+  if(!blank){const idx=(web.branches||[]).map((b,i)=>(b.name||b.materials)?i:-1).filter(i=>i>=0);
+    (web.connections||[]).forEach(([a,b])=>{const ia=idx.indexOf(a),ib=idx.indexOf(b);if(ia<0||ib<0)return;const [x1,y1]=pts[ia],[x2,y2]=pts[ib];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="#C47A06" stroke-width="2.2" stroke-dasharray="7 5"/>`})}
+  s+=`<ellipse cx="${cx}" cy="${cy}" rx="150" ry="64" fill="${tint}" stroke="${acc}" stroke-width="2.4"/>`;
+  const fl=blank?["Central focus"]:wrapWords(web.focus||"Central focus",22).slice(0,3);
+  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*11+i*22+7}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="${acc}">${e(l)}</text>`);
+  br.forEach((b,i)=>{const [x,y]=pts[i];const nl=blank?[]:wrapWords(b.name,24).slice(0,2);const ml=blank?[]:wrapWords(b.materials,30).slice(0,4);const bw=236,bh=blank?84:Math.max(52,22+nl.length*20+ml.length*17+6);
+    s+=`<rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="8" fill="#ffffff" stroke="${line}" stroke-width="1.6"/><rect x="${x-bw/2+14}" y="${y-bh/2}" width="36" height="4" fill="${acc}"/>`;
+    let ty=y-bh/2+26;nl.forEach(l=>{s+=`<text x="${x}" y="${ty}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="${ink}">${e(l)}</text>`;ty+=20});
+    ml.forEach(l=>{s+=`<text x="${x}" y="${ty}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="${muted}">${e(l)}</text>`;ty+=17});
+    if(blank)s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#9AA59E">Branch and materials</text>`});
+  return s+`</svg>`;
+}
+function svgToPng(svg){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
+function planPageCount(p){try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});drawPlan(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
+async function makeDocx(list,filename){
+  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
+  toast("Preparing the Word file");
+  const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,HeightRule,AlignmentType,ImageRun,Footer,PageNumber,PageBreak}=D;
+  const bd=c=>({style:BorderStyle.SINGLE,size:6,color:c});
+  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"};
+  const sections=[];
+  for(const p of list){
+    const A=ACC[p.type]||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
+    const ch=[];
+    ch.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:15,color:ac,characterSpacing:30,font:"Helvetica"})]}));
+    ch.push(new Paragraph({spacing:{after:120},children:[new TextRun({text:clean(p.title||F.name),bold:true,size:40,color:"1C2A22",font:"Helvetica"})]}));
+    const rows=metaRows(p);
+    ch.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:rows.map(([l,v])=>new TableCell({shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},margins:{top:80,bottom:80,left:140,right:140},borders:{top:none,bottom:none,left:none,right:{style:BorderStyle.SINGLE,size:12,color:"FFFFFF"}},
+      children:[new Paragraph({children:[new TextRun({text:l.toUpperCase(),bold:true,size:13,color:ac,characterSpacing:16,font:"Helvetica"})]}),new Paragraph({children:[new TextRun({text:v?clean(v):" ",bold:true,size:20,color:"1C2A22",font:"Helvetica"})]})]}))})]}));
+    ch.push(new Paragraph({spacing:{after:160},border:{bottom:{style:BorderStyle.SINGLE,size:12,color:ac,space:4}},children:[]}));
+    const textParas=t=>{const parts=clean(t||"").split(/\n+/).map(x=>x.trim()).filter(Boolean);return parts.length?parts.map(x=>new Paragraph({spacing:{after:60},children:[new TextRun({text:x,size:20,font:"Helvetica",color:"22302A"})]})):[new Paragraph({children:[new TextRun({text:" ",size:20})]})]};
+    const labelPara=l=>new Paragraph({children:[new TextRun({text:clean(l).toUpperCase(),bold:true,size:14,color:ac,characterSpacing:16,font:"Helvetica"})]});
+    const cellB={top:bd("CDD7D0"),bottom:bd("CDD7D0"),left:bd("CDD7D0"),right:bd("CDD7D0")};
+    const boxTable=(cols,w,hgt)=>new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[
+      new TableRow({children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:cellB,margins:{top:70,bottom:70,left:140,right:140},children:[labelPara(c.label)]}))}),
+      new TableRow({height:{value:hgt||700,rule:HeightRule.ATLEAST},children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},borders:cellB,margins:{top:100,bottom:100,left:140,right:140},children:textParas(c.text)}))})]});
+    const gap=()=>new Paragraph({spacing:{after:0},children:[new TextRun({text:"",size:8})]});
+    const blocks=planBlocks(p);
+    // size each text row so the boxes fill each page, the same way the PDF does
+    const estLines=(t,frac)=>{const per=Math.max(20,Math.floor(96*frac));return clean(t||"").split(/\n+/).reduce((n,x)=>n+Math.max(1,Math.ceil(x.length/per)),0)};
+    {let pageNo=0,group=[];const flushG=()=>{const avail=pageNo===0?11000:12800;let fixed=0,sumW=0;
+        group.forEach(b=>{if(b.t==="sub")fixed+=420;else if(b.t==="web")fixed+=6300;else{fixed+=520;const nat=Math.max(2,...(b.t==="cols"?b.cols.map(c=>estLines(c.text,c.w||1/b.cols.length)):[estLines(b.text,1)]))*290+200;b._nat=nat;fixed+=nat;sumW+=b.w||0}});
+        const extra=Math.max(0,avail-fixed);group.forEach(b=>{if(b._nat!=null)b._h=Math.round(b._nat+(sumW?extra*(b.w||0)/sumW:0))});group=[];pageNo++};
+      blocks.forEach(b=>{if(b.t==="break")flushG();else group.push(b)});flushG()}
+    for(const b of blocks){
+      if(b.t==="break"){ch.push(new Paragraph({children:[new PageBreak()]}));continue}
+      if(b.t==="sub"){ch.push(new Paragraph({spacing:{before:80,after:60},children:[new TextRun({text:clean(b.text),bold:true,size:22,color:"1C2A22",font:"Helvetica"})]}));continue}
+      if(b.t==="web"){ch.push(labelPara("Curriculum web"));try{const png=await svgToPng(webSvgString(b.web,b.blank,A));ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:120},children:[new ImageRun({data:png,transformation:{width:620,height:386}})]}))}catch(e){ch.push(...textParas([b.web.focus,...(b.web.branches||[]).map(x=>[x.name,x.materials].filter(Boolean).join(". "))].join("\n")))}continue}
+      if(b.t==="sec"){ch.push(boxTable([{label:b.label,text:b.text,w:1}],b.w,b._h));ch.push(gap());continue}
+      if(b.t==="cols"){ch.push(boxTable(b.cols,b.w,b._h));ch.push(gap())}
+    }
+    const multi=planPageCount(p)>1;
+    const footKids=[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:"D6DED8",space:6}},children:[new TextRun({text:CYCLE_TEXT,bold:true,size:12,color:ac,characterSpacing:8,font:"Helvetica"})]})];
+    if(multi)footKids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({children:["Page ",PageNumber.CURRENT," of ",list.length===1?PageNumber.TOTAL_PAGES:PageNumber.TOTAL_PAGES_IN_SECTION],size:14,color:"6E7C73",font:"Helvetica"})]}));
+    sections.push({properties:{page:{size:{width:12240,height:15840},margin:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:footKids})},children:ch});
+  }
+  const docx=new Document({creator:"Fulton Planning Studio",title:filename.replace(/\.docx$/,""),sections});
+  const blob=await Packer.toBlob(docx);
+  saveFile(blob,filename);
+}
+
+/* A filled example built from the strong examples in the Teacher Policies & Procedures */
+const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classroom:"Example",educator:"Sample from the Teacher Policies",status:"draft",setting:[],languages:[],docplan:[],
+ fields:Object.fromEntries(FORMS.classroom.fields.map(f=>[f.k,f.strong])),
+ web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, markers"}],
+ connections:[[0,2],[3,4]],languages:["Drawing and mark-making","Building and construction","Movement and body","Dialogue and words","Recording and comparing"],questions:"What makes something go faster? How can we make it stay up? What happens if we change this? How do we work together?",environment:"Expand ramp area. Create space for ongoing structures. Add materials for comparison. Allow work to remain over multiple days."}};
+
+/* ---------- Threads and overview ---------- */
+const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
+const TSTATUS={emerging:"Emerging",growing:"Growing",deepening:"Deepening",resting:"Resting",closed:"Closed"};
+const STOP=new Set("a an and are as at be been being but by can could did do does each for from had has have he her his how i if in into is it its just like many may me more most my new no not of on one or other our out over own same she so some such than that the their them then there these they this those through to too under up very was we were what when where which while who why will with would you your about after again also all any around because before both down during few further here him himself itself let made make makes making might much must nor off once only ourselves she should since still themselves until upon us use used using week weeks children child childrens group groups educator educators teacher teachers plan plans classroom small others another several began begin continue continued continuing day days time times support supporting supports offer offering offered added adding explore exploring explored exploration ideas idea thinking materials material work working provide providing allow allowing invite inviting different ways way across each things thing seem seems kept keep back during now next last first second third two three morning afternoon".split(" "));
+let GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")).concat(["glory"]));
+function schoolYearStart(){const t=new Date();const y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1;return mondayOf(new Date(y,7,1))}
+function rangeStart(){const cur=mondayOf(new Date());if(tRange==="4")return addDays(cur,-21);if(tRange==="8")return addDays(cur,-49);if(tRange==="year")return schoolYearStart();return "0000-00-00"}
+function rangePlans(){const s=rangeStart();return [...plans.values()].filter(p=>p.id!=="example"&&p.weekOf>=s&&(tRoom==="All"||p.classroom===tRoom))}
+function rangeWeeks(ps){const cur=mondayOf(new Date());let s=rangeStart();if(s==="0000-00-00"){s=ps.reduce((m,p)=>p.weekOf<m?p.weekOf:m,cur)}const last=ps.reduce((m,p)=>p.weekOf>m?p.weekOf:m,cur);const out=[];for(let w=s;w<=last&&out.length<60;w=addDays(w,7))out.push(w);return out}
+function planText(p){const parts=Object.values(p.fields||{});if(p.web){parts.push(p.web.focus||"");(p.web.branches||[]).forEach(b=>parts.push(b.name||"",b.materials||""));parts.push(p.web.questions||"",p.web.environment||"")}return parts.filter(Boolean).join(" \n ")}
+function thinkingText(p){const f=p.fields||{};const ks={classroom:["observation","interests","intentions","brainstorm"],individual:["area","observation","remarks"],smallgroup:["thread","intention","reflection"]}[p.type]||[];let t=ks.map(k=>f[k]||"").join(" ");if(p.web)t+=" "+(p.web.focus||"")+" "+(p.web.branches||[]).map(b=>b.name).join(" ");return t}
+function recurring(ps){
+  const terms=new Map();
+  for(const p of ps){
+    const words=thinkingText(p).toLowerCase().replace(/[.;,!?:()\n]+/g," | ").replace(/[^a-z'| ]+/g," ").split(/\s+/).map(w=>w.replace(/^'+|'+$/g,"").replace(/'s$/,"")).filter(Boolean);
+    const seen=new Set();
+    for(let i=0;i<words.length;i++){
+      const w=words[i];if(w==="|"||w.length<4||STOP.has(w)||GNAMES.has(w))continue;seen.add(w);
+      const n=words[i+1];if(n&&n!=="|"&&n.length>=4&&!STOP.has(n)&&!GNAMES.has(n))seen.add(w+" "+n);
+    }
+    for(const k of seen){if(!terms.has(k))terms.set(k,{weeks:new Set(),plans:0});const e=terms.get(k);e.weeks.add(p.weekOf);e.plans++}
+  }
+  let arr=[...terms.entries()].map(([k,v])=>({k,weeks:v.weeks.size,plans:v.plans})).filter(x=>x.plans>=2);
+  arr.sort((a,b)=>b.weeks-a.weeks||b.plans-a.plans||(b.k.includes(" ")-a.k.includes(" ")));
+  const out=[];for(const x of arr){if(out.some(o=>o.k.includes(x.k)&&o.plans===x.plans))continue;out.push(x);if(out.length>=24)break}
+  return out;
+}
+function snippet(text,q){const i=text.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(text.slice(0,140));const a=Math.max(0,i-70),b=Math.min(text.length,i+q.length+90);return (a?"…":"")+esc(text.slice(a,i))+"<mark>"+esc(text.slice(i,i+q.length))+"</mark>"+esc(text.slice(i+q.length,b))+(b<text.length?"…":"")}
+
+function renderThreads(){
+  const ps=rangePlans();const weeks=rangeWeeks(ps);
+  const rooms=tRoom==="All"?CLASSROOMS:[tRoom];
+  const waiting=ps.filter(p=>p.status==="ready").length;
+  const withTeam=new Set(ps.filter(p=>p.type==="classroom").map(p=>p.weekOf+p.classroom)).size;
+  const tracked=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  const scan=scans.get(tRoom);
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
+    <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following.</div></div></div>
+    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===tRoom}" data-troom="${r}">${r}</button>`).join("")}</div>
+    <select id="trange" style="width:auto">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
+  <div class="stats">
+    <div class="stat"><b>${ps.length}</b><span>plans saved in this range</span></div>
+    <div class="stat"><b>${withTeam}</b><span>classroom team plans</span></div>
+    <div class="stat"><b>${waiting}</b><span>waiting for director review</span></div>
+    <div class="stat"><b>${tracked.filter(t=>t.status!=="closed").length}</b><span>threads being followed</span></div>
+  </div>`;
+
+  // Threads
+  h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
+    ${sample?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. Claude reads the saved plans in this range, finds the threads, and points to the plans they came from. Track the ones worth following and they stay here for the whole team.</div>`;
+  if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
+  if(scan&&scan.threads?.length){
+    const fresh=scan.threads.filter(x=>!x.trackedId||!threads.has(x.trackedId));
+    h+=`<div class="chiprow-label">Found by Claude, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
+    if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
+    if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x))).join("")}</div>`;
+    else h+=`<div class="empty">Every thread from the last search is already being followed.</div>`;
+  }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?"No threads found yet. Press Find threads with Claude.":"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
+  h+=`</section>`;
+
+  // Planning grid
+  const wks=[...weeks].reverse();
+  h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Ready for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
+   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r}</th>`).join("")}</tr></thead><tbody>
+   ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${rooms.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&p.classroom===r);const team=rp.find(p=>p.type==="classroom");const ni=rp.filter(p=>p.type==="individual").length,ns=rp.filter(p=>p.type==="smallgroup").length;
+     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r} plans for week of ${fmtDate(w)}">${team?`<span class="dot ${team.status}"></span><span class="cnt">Team</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`}<span class="cnt">· ${ni} individual · ${ns} small group</span></button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${rooms.length+1}" class="muted">No weeks in this range.</td></tr>`}
+   </tbody></table></div></section>`;
+
+  // Recurring ideas
+  const rec=recurring(ps);
+  h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Recurring ideas</h2><span class="cnt">Words and phrases that show up in observations, interests, and threads, with the number of weeks each appears</span></div>
+    ${rec.length?`<div class="terms">${rec.map(x=>`<button class="term" data-term="${esc(x.k)}">${esc(x.k)}<small>${x.weeks} wk</small></button>`).join("")}</div>`:`<div class="empty">Recurring ideas appear once a few plans mention the same things.</div>`}</section>`;
+
+  // Search
+  h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Search all plans</h2></div>
+    <input type="text" id="tsearch" placeholder="Search every saved plan. Ex. shadows, Tamsin, tunnels, clay" value="${esc(tSearch)}">
+    <div id="tresults" style="display:grid;gap:6px"></div></section>`;
+  $("#main").innerHTML=h;
+  $("#main").querySelectorAll("textarea").forEach(autoGrow);
+  renderSearch();
+}
+function renderSearch(){
+  const el=$("#tresults");if(!el)return;const q=tSearch.trim();
+  if(q.length<2){el.innerHTML="";return}
+  const hits=[...plans.values()].filter(p=>p.id!=="example"&&(tRoom==="All"||p.classroom===tRoom)).map(p=>({p,t:planText(p)})).filter(x=>x.t.toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.p.weekOf.localeCompare(a.p.weekOf)).slice(0,40);
+  el.innerHTML=hits.length?`<span class="cnt">${hits.length}${hits.length===40?"+":""} plans mention “${esc(q)}”</span>`+hits.map(({p,t})=>`<button class="result" data-open="${p.id}"><span><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b> <span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span style="font-size:13.5px">${snippet(t.replace(/\s*\n\s*/g," "),q)}</span></button>`).join(""):`<div class="empty">No plans mention “${esc(q)}”.</div>`;
+}
+function threadCard(t,isTracked,weeks,scanIdx){
+  const on=new Set(t.weeks||[]);
+  const ev=(t.evidence||[]).slice(-4);
+  let h=`<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
+  if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
+  h+=`<div class="cnt">${[t.classroom,(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}${(t.weeks||[]).length?` · seen in ${(t.weeks||[]).length} week${t.weeks.length>1?"s":""}, ${fmtDate([...t.weeks].sort()[0])} to ${fmtDate([...t.weeks].sort().slice(-1)[0])}`:""}</div>`;
+  if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
+  if(ev.length)h+=`<div class="evid">${ev.map(e=>`<div>“${esc(e.text)}” ${plans.has(e.planId)?`<button class="linkbtn" data-open="${e.planId}">${fmtDate(e.week)}</button>`:`<span class="cnt">${fmtDate(e.week)}</span>`}</div>`).join("")}</div>`;
+  if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
+  if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
+  if(isTracked){
+    h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
+      <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
+      <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
+      ${sample?`<button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button>`:""}
+      ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button>`:""}
+      <span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${t.id}">Stop following</button>`:""}</span></div>`;
+    if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
+  }else h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button></div>`;
+  return h+`</article>`;
+}
+function threadRef(t){return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}${(t.evidence||[]).slice(-3).map(e=>`<div class="muted">“${esc(e.text)}” ${fmtDate(e.week)}</div>`).join("")}</section>`}
+
+function saveThread(t){t.updatedAt=Date.now();threads.set(t.id,t);
+  if(db)db.doc("threads/"+t.id).set(JSON.parse(JSON.stringify(t))).catch(()=>toast("Could not save the thread. Check your connection."));
+  else LS.set("fps.threads",[...threads.values()])}
+function saveScan(c){scans.set(c.room,c);
+  if(db)db.doc("scans/"+c.room).set(JSON.parse(JSON.stringify(c))).catch(()=>{});
+  else LS.set("fps.scans",[...scans.values()])}
+const tTimers={};
+function saveThreadSoon(t){threads.set(t.id,t);clearTimeout(tTimers[t.id]);tTimers[t.id]=setTimeout(()=>saveThread(t),700)}
+
+async function threadsClick(t){
+  if(t.dataset.troom){tRoom=t.dataset.troom;LS.set("fps.troom",tRoom);renderMain();return true}
+  if(t.dataset.cell){const [w,r]=t.dataset.cell.split("|");week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
+  if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
+  if(t.id==="scan"){findThreads();return true}
+  if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
+    const nt={id:uid(),name:x.name,question:x.question||"",classroom:x.classroom||(tRoom!=="All"?tRoom:""),groups:x.groups||[],status:x.status||"emerging",weeks:[...(x.weeks||[])].sort(),lastWeek:[...(x.weeks||[])].sort().slice(-1)[0]||"",evidence:x.evidence||[],languages:x.languages||[],next:x.next||[],notes:"",createdAt:Date.now()};
+    saveThread(nt);x.trackedId=nt.id;saveScan(scan);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
+  if(t.dataset.tdel){$("#tdel-"+t.dataset.tdel).innerHTML=`<span class="confirm">Stop following for everyone? <button class="btn warn small" data-tdelyes="${t.dataset.tdel}">Stop</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
+  if(t.dataset.tdelno){renderMain();return true}
+  if(t.dataset.tdelyes){const id=t.dataset.tdelyes;threads.delete(id);if(db)db.doc("threads/"+id).delete().catch(()=>{});else LS.set("fps.threads",[...threads.values()]);renderMain();return true}
+  if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
+    const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
+    plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
+  if(t.dataset.tstory){writeStory(threads.get(t.dataset.tstory));return true}
+  if(t.dataset.tstorypdf){const th=threads.get(t.dataset.tstorypdf);const ws=[...(th.weeks||[])].sort();
+    makePdf([{type:"story",title:"Project Story, "+th.name,metaA:[th.classroom&&th.classroom+" classroom",(th.groups||[]).join(", ")].filter(Boolean).join(", "),metaB:ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:"",story:th.story,fields:{}}],`Project story ${th.name}.pdf`);return true}
+  return false;
+}
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="tsearch"){tSearch=t.value;renderSearch();return}
+  if(t.dataset.tnotes){const th=threads.get(t.dataset.tnotes);if(th){th.notes=t.value;autoGrow(t);saveThreadSoon(th)}return}
+  if(t.dataset.tstoryf){const [id,k]=t.dataset.tstoryf.split("|");const th=threads.get(id);if(th&&th.story){th.story[k]=t.value;autoGrow(t);saveThreadSoon(th)}return}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="trange"){tRange=t.value;LS.set("fps.trange",tRange);renderMain();return}
+  if(t.dataset.tstatus){const th=threads.get(t.dataset.tstatus);if(th){th.status=t.value;saveThread(th);renderMain()}}
+});
+
+function digest(ps){
+  const keys={classroom:["observation","intentions","interests","indoor","outdoor","brainstorm"],individual:["area","observation","intent","questions","remarks"],smallgroup:["thread","intention","questions","reflection"]};
+  return ps.sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="smallgroup"?(p.group||"")+" group":p.type==="individual"?(p.educator||""):"team",text:{}};
+    (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,450)});
+    if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...p.web.branches.map(b=>b.name)].filter(Boolean).join("; ");
+    return o}).filter(o=>Object.keys(o.text).length);
+}
+function capDigest(d,max){const out=[];let n=0;for(const x of d){const l=JSON.stringify(x).length+1;if(n+l>max)break;out.push(x);n+=l}return out}
+async function findThreads(){
+  const ps=rangePlans();const full=digest(ps);const d=capDigest(full,170000);if(!d.length){toast("Save a few plans with observations first.");return}
+  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one classroom to include older ones.`);
+  scanBusy=true;renderMain();
+  const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
+  const tracked=[...threads.values()].filter(t=>t.status!=="closed"&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question}));
+  const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classrooms":"the "+tRoom+" classroom"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
+Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, and Small Group plans, and notice when different educators or groups describe the same thread.
+Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, strongest first. Each evidence item must use a planId from the list and copy exact words from that plan.
+Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id.
+${STYLE}
+Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 30 words}], "languages": [only from ${JSON.stringify(LANGUAGES)}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": ""}]}
+
+Plans, one JSON object per line.
+${d.map(x=>JSON.stringify(x)).join("\n")}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false});
+    const clean2=v=>String(v||"").replace(/—/g,", ");
+    const ths=(Array.isArray(out?.threads)?out.threads:[]).slice(0,8).map(x=>{
+      const ev=(Array.isArray(x.evidence)?x.evidence:[]).filter(e=>e&&ids.has(e.planId)).map(e=>({planId:e.planId,week:byId.get(e.planId).week,text:clean2(e.text).slice(0,240)}));
+      const wk=[...new Set([...(Array.isArray(x.weeks)?x.weeks:[]).filter(w=>d.some(p=>p.week===w)),...ev.map(e=>e.week)])].sort();
+      return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:(Array.isArray(x.languages)?x.languages:[]).filter(l=>LANGUAGES.includes(l)),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:""};
+    }).filter(x=>x.evidence.length);
+    // update followed threads with new evidence
+    for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
+      const add=x.evidence.filter(e=>!have.has(e.planId+e.text));th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
+      th.next=x.next.length?x.next:th.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
+    saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths});
+    toast(ths.length?`Found ${ths.length} thread${ths.length>1?"s":""}.`:"No threads with enough evidence yet.");
+  }catch(err){toast(assistError(err?.code||"unknown"))}
+  scanBusy=false;renderMain();
+}
+async function writeStory(th){
+  if(!th)return;storyBusy[th.id]=true;renderMain();
+  const src=(th.evidence||[]).map(e=>plans.get(e.planId)).filter(Boolean);
+  const uniq=[...new Map(src.map(p=>[p.id,p])).values()].sort((a,b)=>a.weekOf.localeCompare(b.weekOf));
+  const d=digest(uniq).reverse();
+  const prompt=`Write a project story for Fulton Community School & Farm educators to share at a family evening or with colleagues, following the school's project presentation timeline. The project grew from this thread.
+Thread ${JSON.stringify({name:th.name,question:th.question,classroom:th.classroom,groups:th.groups,weeks:th.weeks,evidence:th.evidence,team_notes:th.notes||""})}
+Use only what the plans, evidence, and team notes say. Never invent quotes, children, or events. When the plans give nothing for a section, write one short sentence naming what educators could add there, beginning with "Add". Write 2 to 4 sentences per section. ${STYLE}
+Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
+
+Plans, oldest first.
+${d.map(x=>JSON.stringify(x)).join("\n")}`;
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const st={};STORY.forEach(([k])=>st[k]=String(out?.[k]||"").replace(/—/g,", "));th.story=st;saveThread(th);toast("Project story written. Open it below the thread to edit.")}
+  catch(err){toast(assistError(err?.code||"unknown"))}
+  delete storyBusy[th.id];renderMain();
+}
+async function familyUpdate(p,btn){
+  if(!planContext(p)){toast("Fill in some of the plan first.");return}
+  btn.disabled=true;btn.textContent="Writing";
+  const prompt=`Write a short weekly classroom newsletter note for families of the ${p.classroom||""} classroom at Fulton Community School & Farm, to post in Kaymbu. Base it only on this week's Classroom Curriculum Plan below. 120 to 200 words. Warm and specific, in family-friendly language. Describe what children are wondering and investigating and how the environment is changing to support it. End with one open question families could ask their child at home, in the spirit of "Tell me about this" rather than "What is it". Do not name individual children. Do not invent anything the plan does not say. ${STYLE}
+Return only the note.
+
+${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+p.web.branches.map(b=>b.name).filter(Boolean).join(", "):""}`;
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});p=plans.get(p.id)||p;p.familyUpdate=(r.text||"").trim().replace(/—/g,", ");persist(p);const ta=$("#family");if(ta){ta.value=p.familyUpdate;autoGrow(ta)}}
+  catch(err){toast(assistError(err?.code||"unknown"))}
+  btn.disabled=false;btn.textContent="Draft family update";
+}
+async function copyText(ta){if(!ta||!ta.value.trim()){toast("Nothing to copy yet.");return}
+  try{await navigator.clipboard.writeText(ta.value);toast("Copied. Paste it into Kaymbu.")}catch(e){ta.focus();ta.select();toast("Selected. Press Copy on your device.")}}
+
+/* ---------- Upload a plan or photo, single or batch ---------- */
+let imgLimit=0, uploads=[], importType="auto", importTarget="", importInto="new", importMode="one", importPaste="", nextGrp=1, jobs=[], queueRunning=false, importSort=LS.get("fps.isort",true);
+function loadScript(src,globalName){return new Promise((res,rej)=>{if(window[globalName])return res(window[globalName]);const sc=document.createElement("script");sc.src=src;sc.onload=()=>window[globalName]?res(window[globalName]):rej(new Error("load"));sc.onerror=()=>rej(new Error("load"));document.head.appendChild(sc)})}
+async function pdfLib(){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js","pdfjsWorker");return loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","pdfjsLib")}
+function canvasBlob(c){return new Promise(r=>c.toBlob(b=>r(b),"image/jpeg",.9))}
+async function shrinkImage(file){
+  try{const bmp=await createImageBitmap(file,{imageOrientation:"from-image"});const sc=Math.min(1,2200/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);return await canvasBlob(c)}
+  catch(e){return file}
+}
+let reading=0;
+async function addFiles(files){
+  reading+=files.length;renderImport();
+  for(const f of files){
+    const name=f.name||"Photo";const ext=(name.split(".").pop()||"").toLowerCase();const grp=nextGrp++;
+    try{
+      if(f.type.startsWith("image/")||["jpg","jpeg","png","webp","gif","heic"].includes(ext)){const b=await shrinkImage(f);uploads.push({kind:"image",name,file:name,grp,blob:b,url:URL.createObjectURL(b)})}
+      else if(ext==="pdf"||f.type==="application/pdf"){
+        const lib=await pdfLib();const pdf=await lib.getDocument({data:await f.arrayBuffer()}).promise;
+        const pages=Math.min(pdf.numPages,200);if(pdf.numPages>200)toast(`${name} has ${pdf.numPages} pages. The first 200 are added.`);
+        for(let i=1;i<=pages;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();const pageText=tc.items.map(x=>x.str).join(" ").trim();
+          const vp0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.5,1800/Math.max(vp0.width,vp0.height))});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;const b=await canvasBlob(c);uploads.push({kind:"image",name:`${name}, page ${i}`,file:name,grp,blob:b,url:URL.createObjectURL(b),pageText});if(view==="import"&&i%5===0)renderImport()}
+      }
+      else if(ext==="docx"){const mm=await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js","mammoth");const r=await mm.extractRawText({arrayBuffer:await f.arrayBuffer()});uploads.push({kind:"text",name,file:name,grp,text:r.value.trim()})}
+      else if(["txt","md"].includes(ext)||f.type.startsWith("text/")){uploads.push({kind:"text",name,file:name,grp,text:(await f.text()).trim()})}
+      else toast(`${name} is not a photo, PDF, Word, or text file.`);
+    }catch(e){toast(`Could not read ${name}. Try a photo of it instead.`)}
+    reading--;if(view==="import")renderImport();
+  }
+}
+function groupsOf(items){const order=[];const m=new Map();items.forEach(u=>{if(!m.has(u.grp)){m.set(u.grp,[]);order.push(u.grp)}m.get(u.grp).push(u)});return order.map(g=>m.get(g))}
+function jobLine(j){
+  const st={waiting:'<span class="status">Waiting</span>',working:'<span class="status ready">Transcribing</span>',done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
+  const made=j.planIds.map(id=>plans.get(id)).filter(Boolean);
+  return `<div class="result" style="cursor:default"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${st} <b>${esc(j.name)}</b></span>
+    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${p.id}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.importDup?'<span class="nudge">A similar plan already existed</span>':""}</span>`).join("")}
+    ${j.kind==="sort"&&j.progress?`<span class="cnt">${esc(j.progress)}</span>`:""}
+    ${j.status==="failed"?`<span class="cnt">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${j.id}">Try again</button>`:""}</div>`;
+}
+function renderImport(){
+  const target=importTarget&&plans.get(importTarget);
+  const batch=importMode==="batch";
+  const groups=groupsOf(uploads);
+  const tooBig=imgLimit?groups.filter(g=>g.filter(u=>u.kind==="image").length>imgLimit):[];
+  const oneTooBig=!batch&&imgLimit&&uploads.filter(u=>u.kind==="image").length>imgLimit;
+  let h=`<div class="head"><div><span class="eyebrow">Bring plans into the app</span><h2 style="margin-top:4px">Upload a plan or photo</h2>
+    <div class="sub">Snap photos of handwritten plans, or upload PDF and Word files. Claude transcribes the writing word for word into the right sections. You check it, then it saves and prints like any other plan.</div></div></div>`;
+  if(!sample)h+=`<div class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">Transcription needs Claude assist</b><div>Open this page in the Claude app or claude.ai and allow Claude assist when asked.</div></div>`;
+  h+=`<section class="card"><div class="lbl">How many plans?</div>
+    <div class="seg" role="group" aria-label="Upload mode"><button data-imode="one" aria-pressed="${!batch}">One plan</button><button data-imode="batch" aria-pressed="${batch}">Batch, many plans</button></div>
+    <div class="hint">${batch?"For a whole-school scan, upload the scanned PDF from the copier, or a stack of photos, in any mix of classrooms and forms. Word files holding several weeks are split into separate plans too.":"Every file and photo you add is treated as pages of a single plan."}</div>
+    ${batch?`<label class="radio"><input type="checkbox" id="isort" ${importSort?"checked":""}> <span><b>Let Claude sort the pages into plans.</b> Claude looks at every page, finds where each plan starts, and files it under the right form, classroom, group, educator, and week. Turn this off to group pages yourself.</span></label>${!importSort?`<span class="nudge" style="justify-self:start">Sorting is off. Each file is read as one plan, and any plan longer than ${imgLimit||4} pages is sorted automatically.</span>`:""}`:""}</section>`;
+  h+=`<section class="card"><div class="lbl">Add ${batch?"the plans":"the plan"}</div>
+    <label class="drop" id="drop" for="upfile"><b>Tap to take a photo or choose files</b><span class="muted" style="font-size:13.5px">Photos, PDF, Word (.docx), or text. ${batch?"Select as many as you like.":"Several pages are fine"+(imgLimit?`, up to ${imgLimit} images.`:".")} You can also drop files here.</span></label>
+    <input type="file" id="upfile" multiple accept="image/*,.pdf,.docx,.txt" hidden>
+    ${reading?`<span class="cnt">Reading ${reading} file${reading>1?"s":""}</span>`:""}`;
+  if(uploads.length){
+    if(batch&&importSort){const imgs=uploads.filter(u=>u.kind==="image");const files=new Set(uploads.map(u=>u.file)).size;
+      h+=`<div class="cnt">${imgs.length} page${imgs.length===1?"":"s"} from ${files} file${files===1?"":"s"}${uploads.length>imgs.length?`, plus ${uploads.length-imgs.length} typed document${uploads.length-imgs.length===1?"":"s"}`:""}</div><div class="thumbs" style="max-height:420px;overflow:auto">${uploads.map(u=>thumb(u,false)).join("")}</div>`}
+    else if(batch){h+=groups.map((g,gi)=>`<div style="display:grid;gap:6px"><div class="chiprow-label">Plan ${gi+1} of ${groups.length}${imgLimit&&g.filter(u=>u.kind==="image").length>imgLimit?` <span class="nudge">${g.filter(u=>u.kind==="image").length} pages. These will be sorted into plans automatically so every page is read</span>`:""}</div><div class="thumbs">${g.map(u=>thumb(u,true)).join("")}</div></div>`).join("")}
+    else h+=`<div class="thumbs">${uploads.map(u=>thumb(u,false)).join("")}</div>`;
+  }
+  if(oneTooBig)h+=`<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${uploads.filter(u=>u.kind==="image").length} pages is more than one plan</b><div>Claude reads ${imgLimit} pages per plan. For a scan of several plans, switch to Batch with sorting and every page will be read and split into plans.</div><div><button class="btn small" id="sorton">Switch to Batch with sorting</button></div></div>`;
+  if(!batch)h+=`<details ${importPaste?"open":""}><summary class="chiprow-label" style="cursor:pointer">Or paste typed text</summary><textarea id="uppaste" rows="4" style="margin-top:6px" placeholder="Paste the text of a plan from an email or document">${esc(importPaste)}</textarea></details>`;
+  h+=`</section>
+  <section class="card"><div class="lbl">Which form ${batch?"are they":"is it"}?</div>
+    <div class="seg" role="group" aria-label="Form type">${[["auto","Let Claude tell"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Older Small Group form"]].map(([k,l])=>`<button data-itype="${k}" aria-pressed="${importType===k}">${l}</button>`).join("")}</div>
+    <div class="hint">${batch?"Let Claude tell works best for a mixed batch. ":""}Older or differently laid out forms work too. Writing that fits no section is kept in a note at the top of the plan.</div>
+    ${target&&!batch?`<div class="chiprow-label" style="margin-top:6px">Where should it go?</div>
+      <label class="radio"><input type="radio" name="into" value="new" ${importInto==="new"?"checked":""}> A new plan</label>
+      <label class="radio"><input type="radio" name="into" value="open" ${importInto==="open"?"checked":""}> The ${esc(FORMS[target.type].name)} I had open, ${esc(planTitle(target))}, week of ${fmtDate(target.weekOf)}. Fills empty sections only.</label>`:""}
+  </section>
+  <div class="actions"><button class="btn" id="transcribe" ${!sample||reading||oneTooBig||(!uploads.length&&!importPaste.trim())?"disabled":""}>${batch?(importSort?"Sort and transcribe":`Transcribe ${groups.length||""} plan${groups.length===1?"":"s"}`):"Transcribe into the app"}</button><button class="btn ghost" id="upcancel">${jobs.length?"Back to plans":"Cancel"}</button></div>`;
+  if(jobs.length){const done=jobs.filter(j=>j.status==="done").length,failed=jobs.filter(j=>j.status==="failed").length;
+    h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Transcribed plans</h2><span class="cnt">${done} of ${jobs.length} done${failed?`, ${failed} did not work`:""}${queueRunning?". You can keep working, this continues in the background":""}</span></div>
+    ${schoolSummary()}${jobs.map(jobLine).join("")}${!queueRunning?`<div class="actions"><button class="linkbtn" id="clearjobs">Clear this list</button></div>`:""}</section>`}
+  $("#main").innerHTML=h;
+}
+function thumb(u,batch){
+  const i=uploads.indexOf(u);const prev=uploads[i-1];
+  const firstOfFile=!prev||prev.file!==u.file;
+  const joined=prev&&prev.grp===u.grp;
+  return `<div class="thumb">${u.kind==="image"?`<img src="${u.url}" alt="${esc(u.name)}">`:`<div class="doc">Text</div>`}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.name)}</span><button data-uprm="${i}" aria-label="Remove ${esc(u.name)}">&times;</button>
+    ${batch&&i>0&&firstOfFile?`<label style="display:flex;gap:4px;align-items:center;font-size:11.5px"><input type="checkbox" data-join="${i}" ${joined?"checked":""}> Same plan as above</label>`:""}</div>`;
+}
+async function importClick(t){
+  if(t.id==="importbtn"){importTarget=view==="plans"&&currentId&&currentId!=="example"?currentId:"";importInto="new";view="import";renderNav();renderMain();jumpTop();return true}
+  if(view!=="import")return false;
+  if(t.dataset.uprm!=null){const u=uploads[+t.dataset.uprm];uploads=uploads.filter(x=>x!==u);if(u?.url)URL.revokeObjectURL(u.url);renderImport();return true}
+  if(t.dataset.itype){importType=t.dataset.itype;renderImport();return true}
+  if(t.dataset.imode){importMode=t.dataset.imode;renderImport();return true}
+  if(t.id==="sorton"){importMode="batch";importSort=true;LS.set("fps.isort",true);renderImport();return true}
+  if(t.dataset.retry){const j=jobs.find(x=>x.id===t.dataset.retry);if(j){j.status="waiting";j.error="";runQueue()}renderImport();return true}
+  if(t.id==="clearjobs"){jobs=[];renderImport();return true}
+  if(t.id==="upcancel"){if(!queueRunning)clearUploads();view="plans";renderNav();renderMain();return true}
+  if(t.id==="transcribe"){startTranscribe();return true}
+  return false;
+}
+function clearUploads(){uploads.forEach(u=>u.url&&URL.revokeObjectURL(u.url));uploads=[];importPaste=""}
+document.addEventListener("change",e=>{const t=e.target;
+  if(t.id==="upfile"&&t.files?.length){addFiles([...t.files]);t.value="";return}
+  if(t.name==="into"){importInto=t.value;return}
+  if(t.id==="isort"){importSort=t.checked;LS.set("fps.isort",importSort);renderImport();return}
+  if(t.dataset.join!=null){const i=+t.dataset.join;const u=uploads[i];const file=u.file;const oldGrp=u.grp;const newGrp=t.checked?uploads[i-1].grp:nextGrp++;uploads.forEach(x=>{if(x.file===file&&x.grp===oldGrp)x.grp=newGrp});renderImport()}
+});
+document.addEventListener("input",e=>{if(e.target.id==="uppaste"){importPaste=e.target.value;const b=$("#transcribe");if(b)b.disabled=!sample||reading||(!uploads.length&&!importPaste.trim())}});
+["dragover","dragleave","drop"].forEach(ev=>document.addEventListener(ev,e=>{const d=e.target.closest?.("#drop");if(!d)return;e.preventDefault();d.classList.toggle("over",ev==="dragover");if(ev==="drop"&&e.dataTransfer?.files?.length)addFiles([...e.dataTransfer.files])}));
+
+function startTranscribe(){
+  const batch=importMode==="batch";
+  const target=!batch&&importInto==="open"&&importTarget&&plans.get(importTarget);
+  if(batch&&importSort){
+    const imgs=uploads.filter(u=>u.kind==="image");const docs=uploads.filter(u=>u.kind==="text");
+    if(imgs.length)jobs.push({id:uid(),kind:"sort",items:imgs,name:`Sorting ${imgs.length} scanned page${imgs.length===1?"":"s"}`,status:"waiting",planIds:[],error:"",progress:""});
+    docs.forEach(u=>jobs.push({id:uid(),items:[u],name:u.file,status:"waiting",planIds:[],error:"",type:importType,targetId:"",batch:true}));
+    uploads=[];renderImport();runQueue();return;
+  }
+  let groups=batch?groupsOf(uploads):[uploads.slice()];
+  if(!batch&&importPaste.trim())groups[0].push({kind:"text",name:"Pasted text",file:"pasted text",text:importPaste.trim()});
+  groups=groups.filter(g=>g.length);
+  if(!groups.length)return;
+  const lim=imgLimit||4;
+  if(batch){const big=groups.filter(g=>g.filter(u=>u.kind==="image").length>lim);
+    big.forEach(g=>{const imgs=g.filter(u=>u.kind==="image");jobs.push({id:uid(),kind:"sort",items:imgs,name:`Sorting ${imgs.length} pages of ${[...new Set(imgs.map(u=>u.file))].join(", ")}`,status:"waiting",planIds:[],error:"",progress:""})});
+    groups=groups.filter(g=>!big.includes(g))}
+  for(const g of groups){const files=[...new Set(g.map(u=>u.file))];jobs.push({id:uid(),items:g,name:files.join(", "),status:"waiting",planIds:[],error:"",type:importType,targetId:target?target.id:"",batch})}
+  uploads=[];importPaste="";
+  if(!batch&&groups.length===1)jobs[jobs.length-1].openWhenDone=true;
+  renderImport();runQueue();
+}
+async function runQueue(){
+  if(queueRunning)return;queueRunning=true;
+  while(true){
+    const j=jobs.find(x=>x.status==="waiting");if(!j)break;
+    j.status="working";if(view==="import")renderImport();
+    try{if(j.kind==="sort")await sortJob(j);else await transcribeJob(j);j.status="done";if(j.openWhenDone&&j.planIds[0]){currentId=j.planIds[0];week=plans.get(currentId).weekOf;view="plans";renderAll();jumpTop();toast("Transcribed. Check each section against the original.")}}
+    catch(err){j.status="failed";j.error=err?.code==="image_rejected"?"An image could not be read. Try a clearer photo.":err?.code==="images_unavailable"?"Photos cannot be sent from this view. Try the Claude app or claude.ai.":err?.code==="rate_limited"?"Claude is busy. Try again in a minute.":err?.code==="not_granted"?"Claude assist was not allowed for this page.":"Transcription did not work. Try again, or try a clearer photo.";
+      if(err?.code==="rate_limited"||err?.code==="not_granted"){jobs.filter(x=>x.status==="waiting").forEach(x=>{x.status="failed";x.error=j.error})}}
+    if(view==="import")renderImport();else renderList();
+  }
+  queueRunning=false;
+  const done=jobs.filter(j=>j.status==="done").length;
+  if(view==="import")renderImport();
+  if(jobs.length>1)toast(`Batch finished. ${done} of ${jobs.length} transcribed.`);
+  jobs.forEach(j=>{if(j.status==="done"){j.items.forEach(u=>u.url&&URL.revokeObjectURL(u.url));j.items=[]}});
+}
+async function transcribeJob(j){
+  const target=j.targetId&&plans.get(j.targetId);
+  const type=target?target.type:j.type;
+  const types=type==="auto"?Object.keys(FORMS):[type];
+  const spec=types.map(tp=>`For a ${FORMS[tp].name} ("${tp}"), the "fields" keys are ${FORMS[tp].fields.map(f=>`"${f.k}" (${f.label})`).join(", ")}.${tp==="classroom"?` Indoor and outdoor are the two halves of "Provocations and environmental changes".`:""}`).join("\n");
+  const texts=j.items.filter(u=>u.kind==="text").map(u=>`--- ${u.name} ---\n${u.text.slice(0,60000)}`);
+  const pt=j.items.filter(u=>u.kind==="image"&&(u.pageText||"").length>40).map((u,i)=>`--- Typed text found on ${u.name} ---\n${u.pageText.slice(0,8000)}`);if(pt.length)texts.push("The pages also carry this typed text, use it to check your reading of the images.",...pt);
+  const imgs=j.items.filter(u=>u.kind==="image").slice(0,imgLimit||5).map(u=>u.blob);
+  const multi=j.batch&&!target;
+  const prompt=`${imgs.length?`The ${imgs.length} attached image${imgs.length>1?"s are pages":" is a page"} of curriculum planning paperwork from Fulton Community School & Farm, a Reggio-inspired preschool, most likely filled in by hand.`:"Below is the text of curriculum planning paperwork from Fulton Community School & Farm, a Reggio-inspired preschool."}
+Transcribe what the educator wrote, word for word, into the matching sections. Rules. Keep the educator's own words and order. Do not rewrite, summarize, improve, or add anything. Fix only obvious misspellings. Write [unclear] for any word you cannot read. Leave out the printed form labels and instructions. Turn arrows and bullet marks into plain sentences or comma lists without changing the words. If writing fits no section, put it in "notes". Leave a section as an empty string when nothing is written there.
+${multi?"This may hold one plan or several plans, for example different weeks or different forms one after another. Return one entry per plan, in the order they appear.":"Treat everything as one single plan."}
+${type==="auto"?"Decide which of the three forms each plan is.":`${multi?"They are":"This is"} the ${FORMS[type].name}.`}
+${spec}
+Classrooms are West, North, and South. Handwriting often makes these look like other words, so a word in the classroom or name spot that resembles West, North, or South (for example Seth or Sout for South, Nort for North, Wes or Vest for West) is the classroom, not a person. Known educators include ${rosterNames().join(", ")}, though others may appear. Small groups are ${GROUPS.map(g=>g.name).join(", ")}. If only a date range or a single day is written, give the Monday of that week. When no year is written, use the current school year, which runs from August ${schoolYearStart().slice(0,4)} to July ${+schoolYearStart().slice(0,4)+1}, so August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.
+Return JSON {"plans":[{"type": ${types.map(x=>`"${x}"`).join(" or ")}, "weekOf": the week's date as yyyy-mm-dd or "", "classroom": "West" or "North" or "South" or "", "educator": names written on the form or "", "group": small group name or "", "fields": {section key: transcribed text}, "web": for a Classroom plan's curriculum web drawing {"focus": the center, "branches": [{"name","materials"}], "languages": [], "questions": "", "environment": ""} or null, "setting": [places written on a Small Group plan], "notes": writing that fits no section, "confidence": "high" or "medium" or "low"}]}
+${texts.length?"\n"+texts.join("\n\n"):""}`;
+  const out=await sample.json(prompt,imgs.length?{images:imgs,modelTier:"complex",cache:false}:{modelTier:"complex",cache:false});
+  let list=Array.isArray(out?.plans)?out.plans:(out&&out.fields?[out]:[]);
+  if(!multi)list=list.slice(0,1);
+  list=list.slice(0,30);
+  if(!list.length)throw {code:"empty"};
+  for(const o of list){const p=applyTranscript(o,target,type,j);j.planIds.push(p.id)}
+}
+function applyTranscript(out,target,type,j){
+  const str=v=>typeof v==="string"?v.trim():"";
+  if(out&&(out.type==="smallgroup"||(!FORMS[out.type]&&type==="smallgroup"))&&!(target&&target.type==="smallgroup")){
+    const f=out.fields||{};const g=GROUPS.find(g=>g.name.toLowerCase()===str(out.group).toLowerCase()||g.name.toLowerCase()===str(j.meta?.group).toLowerCase());
+    out={...out,type:"individual",__group:g?g.name:"",fields:{area:str(f.thread),intent:str(f.intention),materials:str(f.materials),questions:[str(f.questions),str(f.graphic)].filter(Boolean).join("\n"),remarks:str(f.reflection),observation:str(f.observation),dates:str(f.dates)}};
+    if(type==="smallgroup")type="individual";
+  }
+  const tp=target?target.type:(FORMS[out?.type]?out.type:(type!=="auto"?type:"individual"));
+  const F=FORMS[tp];
+  let p=target;
+  if(!p){
+    const meta=j.meta||{};
+    let wk=week,noDate=true;const w=str(out?.weekOf)||str(meta.weekOf);if(/^\d{4}-\d{2}-\d{2}$/.test(w)){try{wk=mondayOf(parseIso(w));noDate=false}catch(e){}}
+    p=newPlan(tp,{weekOf:wk});
+    p.classroom=CLASSROOMS.includes(out?.classroom)?out.classroom:(CLASSROOMS.includes(meta.classroom)?meta.classroom:"");
+    p.educator=str(out?.educator)||str(meta.educator)||(tp==="classroom"?"":p.educator);
+    if(tp==="smallgroup"){const gn=(str(out?.group)||str(meta.group)).toLowerCase();const g=GROUPS.find(g=>g.name.toLowerCase()===gn);p.group=g?g.name:"";if(g&&!p.classroom)p.classroom=g.room;if(g&&!str(out?.educator)&&!str(meta.educator))p.educator=g.educator}
+    if(noDate)p.importNoDate=true;
+    const dup=[...plans.values()].some(x=>x.id!==p.id&&x.type===p.type&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&(tp==="classroom"||(tp==="smallgroup"?x.group===p.group:x.educator===p.educator))&&!x.importedFrom);
+    if(dup&&!noDate)p.importDup=true;
+  }
+  for(const f of F.fields){const v=str(out?.fields?.[f.k]);if(v&&!(p.fields[f.k]||"").trim())p.fields[f.k]=v}
+  if(tp==="classroom"&&out?.web&&typeof out.web==="object"){const w=out.web;const empty=!p.web.focus&&!p.web.branches.some(b=>b.name);
+    if(empty){const br=(Array.isArray(w.branches)?w.branches:[]).slice(0,6).map(b=>({name:str(b?.name),materials:str(b?.materials)})).filter(b=>b.name||b.materials);
+      if(str(w.focus)||br.length){p.web.focus=str(w.focus);if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=(Array.isArray(w.languages)?w.languages:[]).filter(l=>LANGUAGES.includes(l));p.web.questions=str(w.questions);p.web.environment=str(w.environment)}}}
+  if(tp==="individual"&&out?.__group&&!target){p.focus="smallgroup";p.groups=[out.__group];const g=GROUPS.find(x=>x.name===out.__group);if(g){if(!p.classroom)p.classroom=g.room;if(!str(out.educator)&&!str(j.meta?.educator)&&g.educator)p.educator=g.educator}if(Array.isArray(out.setting)&&out.setting.length&&!p.where)p.where=out.setting.join(", ")}
+  else if(tp==="individual"&&!target){p.focus="area";p.groups=[]}
+  if(tp==="smallgroup"&&Array.isArray(out?.setting)){const add=out.setting.map(x=>PLACES.find(P=>P.toLowerCase()===String(x).toLowerCase())).filter(Boolean);p.setting=[...new Set([...(p.setting||[]),...add])]}
+  p.importedFrom=j.name+(out?.confidence==="low"?". The writing was hard to read, so check closely":"");
+  const notes=str(out?.notes);if(notes)p.importNotes=(p.importNotes?p.importNotes+" ":"")+notes;
+  plans.set(p.id,p);persist(p);
+  return p;
+}
+
+async function sortJob(j){
+  const pages=j.items;const chunk=Math.max(1,imgLimit||5);const cls=[];let prev=null;
+  for(let start=0;start<pages.length;start+=chunk){
+    const set=pages.slice(start,start+chunk);
+    j.progress=`Sorting pages ${start+1} to ${start+set.length} of ${pages.length}`;if(view==="import")renderImport();
+    const typed=set.map((u,i)=>(u.pageText||"").length>40?`Page ${start+i+1} typed text. ${u.pageText.slice(0,1500)}`:"").filter(Boolean);
+    const prompt=`The ${set.length} attached images are pages ${start+1} to ${start+set.length}, in order, of a scanned stack of curriculum planning forms from every classroom at Fulton Community School & Farm, a Reggio-inspired preschool. Your only job here is to sort the pages, not transcribe them.
+The three forms.
+Classroom Curriculum Plan ("classroom"). Page one has Week of, Classroom, Observation, Intentions and questions for the week, Meeting time questions, Expressed interests of individual and small group, Provocations and environmental changes split Indoor and Outdoor. Page two has Curriculum Brainstorm and usually a hand-drawn curriculum web.
+Individual Curriculum Plan ("individual"). Area Exploration, Anticipated dates, Observation Rationale, Intent, Possible activities and materials, Final remarks.
+Small Group Plan ("smallgroup"). The thread, intention, guiding questions, languages, graphic languages invitation, materials, documentation plan, a flower group name.
+Older or homemade versions may look different, so judge by the headings and content.
+Classrooms are West, North, and South. A handwritten word that resembles one of these (for example Seth for South) is the classroom, not an educator. Known educators include ${rosterNames().join(", ")}. Small groups are ${GROUPS.map(g=>`${g.name} (${g.room})`).join(", ")}.
+The page just before this set was ${prev?JSON.stringify(prev):"none, this is the start of the stack"}.
+For each page decide whether it begins a new plan or continues the plan on the page before it, such as page two of a Classroom plan or the back of a sheet. Mark blank pages and cover sheets as "blank", and anything that is not a planning form as "other".
+${typed.length?"Some pages also carry typed text.\n"+typed.join("\n"):""}
+Return JSON {"pages":[{"n": page number, "form": "classroom" or "individual" or "smallgroup" or "blank" or "other", "newPlan": true or false, "classroom": "West" or "North" or "South" or "", "group": flower group name or "", "educator": name written or "", "weekOf": the week's Monday as yyyy-mm-dd or ""}]}. When no year is written, August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.`;
+    const out=await sample.json(prompt,{images:set.map(u=>u.blob),modelTier:"default",cache:false});
+    const arr=Array.isArray(out?.pages)?out.pages:[];
+    set.forEach((u,i)=>{const n=start+i+1;const c=arr.find(x=>+x?.n===n)||arr[i]||{};const rec={n,form:["classroom","individual","smallgroup","blank","other"].includes(c.form)?c.form:"",newPlan:c.newPlan!==false,classroom:CLASSROOMS.includes(c.classroom)?c.classroom:"",group:GROUPS.some(g=>g.name===c.group)?c.group:"",educator:typeof c.educator==="string"?c.educator:"",weekOf:typeof c.weekOf==="string"?c.weekOf:""};cls.push({u,c:rec});prev=rec});
+  }
+  const groups=[];let cur=null,skipped=0;
+  for(const {u,c} of cls){
+    if(c.form==="blank"||c.form==="other"){skipped++;cur=c.form==="blank"?cur:null;continue}
+    const fresh=!cur||c.newPlan||(c.form&&cur.form&&c.form!==cur.form)||cur.items.length>=chunk;
+    if(fresh){cur={items:[],form:c.form,classroom:c.classroom,group:c.group,educator:c.educator,weekOf:c.weekOf,first:c.n,last:c.n};groups.push(cur)}
+    cur.items.push(u);cur.last=c.n;cur.form=cur.form||c.form;cur.classroom=cur.classroom||c.classroom;cur.group=cur.group||c.group;cur.educator=cur.educator||c.educator;cur.weekOf=cur.weekOf||c.weekOf;
+  }
+  const at=jobs.indexOf(j)+1;
+  const made=groups.map(g=>{const who=g.form==="smallgroup"?(g.group?g.group+" group":""):g.form==="individual"?g.educator:"";
+    return {id:uid(),items:g.items,name:[g.form?FORMS[g.form].name:"Plan",g.classroom,who].filter(Boolean).join(", ")+`, page${g.first===g.last?" "+g.first:"s "+g.first+" to "+g.last}`,status:"waiting",planIds:[],error:"",type:g.form||importType,targetId:"",batch:false,meta:{classroom:g.classroom,group:g.group,educator:g.educator,weekOf:g.weekOf}}});
+  jobs.splice(at,0,...made);
+  j.progress=`Found ${groups.length} plan${groups.length===1?"":"s"} in ${pages.length} pages${skipped?`. Set aside ${skipped} blank or non-plan page${skipped===1?"":"s"}`:""}.`;
+  j.name=`Sorted ${pages.length} scanned page${pages.length===1?"":"s"}`;
+}
+function schoolSummary(){
+  const ps=jobs.flatMap(j=>j.planIds).map(id=>plans.get(id)).filter(Boolean);if(ps.length<2)return"";
+  const rooms=[...CLASSROOMS,""].map(r=>{const rp=ps.filter(p=>(p.classroom||"")===r);if(!rp.length)return"";const c=k=>rp.filter(p=>p.type===k).length;
+    return `<div class="stat"><b>${rp.length}</b><span>${r?esc(r):"Classroom not found"}. ${c("classroom")} team, ${c("individual")} individual, ${c("smallgroup")} small group</span></div>`}).join("");
+  const nodate=ps.filter(p=>p.importNoDate).length;
+  return `<div class="stats">${rooms}</div>${nodate?`<span class="nudge" style="justify-self:start">${nodate} plan${nodate>1?"s have":" has"} no week written. They are filed under the week of ${fmtDate(week)} until you set the date.</span>`:""}`;
+}
+
+/* ---------- All plans ---------- */
+let aRoom="All",aType="all",aStatus="all",aQ="";
+function allFiltered(){
+  const q=aQ.trim().toLowerCase();
+  return [...plans.values()].filter(p=>p.id!=="example"&&(aRoom==="All"||(aRoom==="none"?!p.classroom:p.classroom===aRoom))&&(aType==="all"||p.type===aType)&&
+    (aStatus==="all"||(aStatus==="due"?needsRemarks(p):aStatus==="done"?p.status==="ready"||p.status==="reviewed":p.status===aStatus))&&
+    (!q||[planTitle(p),p.educator,p.group,p.classroom,planText(p)].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>b.weekOf.localeCompare(a.weekOf)||(a.classroom||"~").localeCompare(b.classroom||"~")||a.type.localeCompare(b.type));
+}
+function filledCount(p){const F=FORMS[p.type];return F.fields.filter(f=>(p.fields?.[f.k]||"").trim()).length+"/"+F.fields.length}
+function renderAllPlans(){
+  const ps=allFiltered();const all=[...plans.values()].filter(p=>p.id!=="example");
+  const c=k=>all.filter(p=>k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k).length;
+  let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
+    <div class="sub">Every plan from every week and classroom. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
+    <div class="stats"><div class="stat"><b>${all.length}</b><span>plans saved</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review</span></div><div class="stat"><b>${c("draft")}</b><span>still in draft</span></div></div>
+    <section class="card" style="gap:10px">
+      <div class="filters" style="margin:0">${[["All","All classrooms"],["West","West"],["North","North"],["South","South"],["none","No classroom"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
+      <div class="actions">
+        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
+        <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
+      </div>
+      <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${ps.length} plan${ps.length===1?"":"s"} shown</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
+    </section><div id="alist" style="display:grid;gap:14px">${allListHtml(ps)}</div>`;
+  $("#main").innerHTML=h;
+}
+function allListHtml(ps){
+  if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
+  const weeks=[...new Set(ps.map(p=>p.weekOf))];
+  return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${wp.length} plan${wp.length===1?"":"s"}</div>
+    <div class="tablewrap"><table class="grid2" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${filledCount(p)}</td><td><span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span></td></tr>`).join("")}
+    </tbody></table></div></section>`}).join("");
+}
+function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=`${ps.length} plan${ps.length===1?"":"s"} shown`;$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="all")return;
+  if(t.dataset.aroom){aRoom=t.dataset.aroom;renderAllPlans()}
+  if(t.id==="adlw"){const ps=allFiltered();if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.docx`);return}
+  if(t.id==="adl"){const ps=allFiltered();if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.pdf`)}});
+document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
+document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.target.value;refreshAll()}});
+
+/* ---------- Program settings ---------- */
+function applyProgram(v){
+  if(Array.isArray(v.groups))GROUPS=v.groups.filter(g=>g&&g.name).map(g=>({name:String(g.name),room:g.room||"",educator:g.educator||""}));
+  if(Array.isArray(v.places))PLACES=v.places.filter(Boolean);
+  if(v.materials&&typeof v.materials==="object")MATERIALS=v.materials;
+  if(v.seasons&&typeof v.seasons==="object")SEASONS=Object.assign({Fall:[],Winter:[],Spring:[]},v.seasons);
+  GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
+  fillPlaceList();
+}
+function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("")}
+let progTimer=null;
+function saveProgram(){
+  const v={groups:GROUPS,places:PLACES,materials:MATERIALS,seasons:SEASONS,updatedAt:Date.now()};
+  LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
+  clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
+}
+function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
+function renderSettings(){
+  if(!isDirector()){$("#main").innerHTML=`<div class="empty">Program settings are managed by the director.</div>`;return}
+  const names=rosterNames();
+  let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
+    <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
+  <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's classroom and lead educator. An educator can lead more than one group.</div>
+    <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Classroom</th><th>Educator</th><th></th></tr></thead><tbody>
+    ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
+      <td><select data-ged="${i}"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
+  <section class="card"><div class="lbl">Educators</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
+  <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places for small groups and classroom areas.</div>
+    <div class="chips">${chipList(PLACES,"data-pdel")}</div>
+    <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button></div></section>
+  <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
+    ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
+      <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>
+      <div class="actions"><input type="text" data-madd-in="${esc(cat)}" placeholder="Add to ${esc(cat)}" style="width:200px"><button class="btn small ghost" data-madd="${esc(cat)}">Add</button></div></div>`).join("")}
+    <div class="actions" style="border-top:1px solid var(--line);padding-top:8px"><input type="text" id="mc-new" placeholder="New material group" style="width:200px"><button class="btn small" id="mc-add">Add group</button></div></section>
+  <section class="card"><div class="lbl">Seasonal concepts</div><div class="hint">Offered loosely in the Curriculum brainstorm for the current season.</div>
+    ${["Fall","Winter","Spring"].map(se=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><b>${se}</b><div class="chips">${(SEASONS[se]||[]).map((c,i)=>`<span class="rname">${esc(c)}<button data-sdel="${se}|${i}" aria-label="Remove ${esc(c)}">&times;</button></span>`).join("")}</div>
+      <div class="actions"><input type="text" data-sadd-in="${se}" placeholder="Add a ${se.toLowerCase()} concept" style="width:220px"><button class="btn small ghost" data-sadd="${se}">Add</button></div></div>`).join("")}</section>
+  <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
+  $("#main").innerHTML=h;renderRoster();
+}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings")return;
+  const val=sel=>{const el=document.querySelector(sel);const v=(el?.value||"").trim();return v};
+  if(t.id==="g-add"){const n=val("#g-new");if(!n){toast("Type a group name first.");return}if(GROUPS.some(g=>g.name.toLowerCase()===n.toLowerCase())){toast("That group already exists.");return}GROUPS.push({name:n,room:"",educator:""});saveProgram();renderSettings();return}
+  if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
+  if(t.id==="p-add"){const n=val("#p-new");if(n&&!PLACES.includes(n)){PLACES.push(n);saveProgram()}renderSettings();return}
+  if(t.dataset.pdel!=null){PLACES.splice(+t.dataset.pdel,1);saveProgram();renderSettings();return}
+  if(t.dataset.mdel){const [c,i]=t.dataset.mdel.split("|");MATERIALS[c].splice(+i,1);saveProgram();renderSettings();return}
+  if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
+  if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
+  if(t.id==="mc-add"){const n=val("#mc-new");if(n&&!MATERIALS[n]){MATERIALS[n]=[];saveProgram()}renderSettings();return}
+  if(t.dataset.sdel){const [se,i]=t.dataset.sdel.split("|");SEASONS[se].splice(+i,1);saveProgram();renderSettings();return}
+  if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
+  if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
+  if(t.id==="prog-reset-no"){renderSettings();return}
+  if(t.id==="prog-reset-yes"){applyProgram(JSON.parse(JSON.stringify(PDEF)));saveProgram();renderSettings();toast("Original lists restored.");return}
+});
+document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;
+  if(t.dataset.gname!=null){const n=t.value.trim();if(n){GROUPS[+t.dataset.gname].name=n;saveProgram()}return}
+  if(t.dataset.groom!=null){GROUPS[+t.dataset.groom].room=t.value;saveProgram();return}
+  if(t.dataset.ged!=null){GROUPS[+t.dataset.ged].educator=t.value;saveProgram();return}
+});
+document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")return;const t=e.target;
+  const map={"g-new":"#g-add","p-new":"#p-add","mc-new":"#mc-add"};
+  if(map[t.id]){e.preventDefault();$(map[t.id]).click()}
+  if(t.dataset.maddIn!=null){e.preventDefault();document.querySelector(`[data-madd="${CSS.escape(t.dataset.maddIn)}"]`).click()}
+  if(t.dataset.saddIn!=null){e.preventDefault();document.querySelector(`[data-sadd="${t.dataset.saddIn}"]`).click()}
+});
+
+$("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
+boot();
+</script>
+
+</body>
+</html>
