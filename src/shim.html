@@ -50,7 +50,8 @@
     if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
-    if(!r.ok) throw {status:r.status, message:j.error||("The server answered "+r.status+".")};
+    if(r.status===413) throw {code:"too_big", status:413, message:j.error};
+    if(!r.ok) throw {code:r.status>=500?"server_error":"bad_request", status:r.status, message:j.error||("The server answered "+r.status+".")};
     return j;
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
@@ -86,6 +87,8 @@
     }
     gateMsg("The server did not wake up. Try again in a minute.",true); return false;
   }
+  // used by the app to wake the server quietly before retrying a Claude request
+  window.FP_WAKE=async function(){ const t0=Date.now(); while(Date.now()-t0<120000){ try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; } }catch(e){} await new Promise(r=>setTimeout(r,4000)); } return false; };
   function showGate(){
     const g=document.getElementById("gate"); g.hidden=false;
     const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code");
@@ -142,7 +145,7 @@
   async function ask(input, opts={}){
     if(opts.signal?.aborted) throw {code:"cancelled"};
     const content=[]; const imgs=opts.images? (Array.isArray(opts.images)?opts.images:[...(opts.images.length!=null&&!(opts.images instanceof Blob)?opts.images:[opts.images])]) : [];
-    for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b)}});
+    for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b, opts.maxSide||1800)}});
     const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
     content.push({type:"text",text});
     const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex"}, opts.signal);

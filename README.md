@@ -20,14 +20,15 @@ This repository holds code only. It never holds plans, children's names, or keys
 | `ANTHROPIC_API_KEY` | The same key TREE uses |
 | `RECORDS_REPO` | Optional. Defaults to `renee-creator/fulton-planning-records` |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to use the server |
+| `READS_PER_HOUR`, `CAREFUL_PER_HOUR` | Optional. Hourly Claude request limits, 800 and 400 by default, sized for a whole-school scan |
 
 ## Who can do what
 
-Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Only the director can change Program settings and delete plans or followed threads. The server enforces this, not just the page.
+Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Any educator can stop following a thread, which moves it to No longer following, and anyone can follow it again. Only the director can change Program settings, delete plans, and remove a thread permanently. The server enforces this, not just the page.
 
 ## Claude assist
 
-Drafting from notes, Strengthen wording, family updates and transcribing everyday plans use Claude Haiku. Finding threads, project stories and transcribing handwritten scans use Claude Sonnet. Plans are sent to Anthropic only to answer each request, and Anthropic does not use them to train its AI.
+Drafting from notes, Strengthen wording, family updates and transcribing everyday plans use Claude Haiku. Sorting scanned pages, finding threads, project stories and transcribing handwritten scans use Claude Sonnet. Every Claude request the server turns away is written to the Render log with the reason. Plans are sent to Anthropic only to answer each request, and Anthropic does not use them to train its AI.
 
 ## Editing the page
 
