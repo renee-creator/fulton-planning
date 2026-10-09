@@ -557,7 +557,7 @@ function renderMain(){
     h+=fieldCard(p,f);
   }
   if(F.web)h+=webEditor(p);
-  if(p.type==="classroom"&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">A short note for this week's classroom newsletter, written from this plan in family-friendly language. Edit it, then copy it into Kaymbu.</div>
+  if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's classroom newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
   h+=`<section class="review"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
@@ -1338,7 +1338,8 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
 async function familyUpdate(p,btn){
   if(!planContext(p)){toast("Fill in some of the plan first.");return}
   btn.disabled=true;btn.textContent="Writing";
-  const prompt=`Write a short weekly classroom newsletter note for families of the ${p.classroom||""} classroom at Fulton Community School & Farm, to post in Kaymbu. Base it only on this week's Classroom Curriculum Plan below. 120 to 200 words. Warm and specific, in family-friendly language. Describe what children are wondering and investigating and how the environment is changing to support it. End with one open question families could ask their child at home, in the spirit of "Tell me about this" rather than "What is it". Do not name individual children. Do not invent anything the plan does not say. ${STYLE}
+  const who=p.type==="individual"?((p.groups||[]).length?`families of the ${p.groups.join(" and ")} small group${p.groups.length>1?"s":""} in the ${p.classroom||""} classroom`:`families of the ${p.classroom||""} classroom, about the investigation${p.where?" in the "+p.where:""} an educator is following`):`families of the ${p.classroom||""} classroom`;
+  const prompt=`Write a short weekly note for ${who} at Fulton Community School & Farm, to post in Kaymbu. Base it only on this week's ${FORMS[p.type].name} below. 120 to 200 words. Warm and specific, in family-friendly language. Describe what children are wondering and investigating and how the environment is changing to support it. End with one open question families could ask their child at home, in the spirit of "Tell me about this" rather than "What is it". Do not name individual children. Do not invent anything the plan does not say. ${STYLE}
 Return only the note.
 
 ${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+p.web.branches.map(b=>b.name).filter(Boolean).join(", "):""}`;
