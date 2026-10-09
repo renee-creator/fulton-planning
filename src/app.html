@@ -154,7 +154,13 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .tl{display:flex;gap:3px;flex-wrap:wrap;align-items:center}
 .tl i{width:12px;height:12px;border-radius:3px;background:var(--bg);border:1px solid var(--line);display:inline-block}
 .tl i.on{background:var(--moss);border-color:var(--moss)}
-.evid{font-size:13.5px;display:grid;gap:4px;border-left:3px solid var(--line);padding-left:10px}
+.evid{font-size:13.5px;display:grid;gap:8px;border-left:3px solid var(--line);padding-left:10px}
+.evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.evid .src button{font-size:12px}
+.origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
+.origin b{font-weight:600;margin-right:4px}
+.stopped{display:grid;gap:10px;margin-top:8px}
+.stopped .thread{background:transparent}
 .st-emerging{border-color:var(--sky);color:var(--sky)}
 .st-growing{border-color:var(--marigold);color:var(--marigold)}
 .st-deepening{border-color:var(--moss);color:var(--moss)}
@@ -176,6 +182,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .thumb img{width:100%;height:120px;object-fit:cover;border-radius:4px;background:var(--bg)}
 .thumb .doc{height:120px;display:grid;place-items:center;background:var(--bg);border-radius:4px;color:var(--muted);font-weight:600}
 .thumb button{position:absolute;top:2px;right:2px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--paper);cursor:pointer}
+.thumb button.thumbact{position:static;width:auto;height:auto;border-radius:6px;padding:5px 6px;font-size:12px;font-weight:600;color:var(--ink)}
 .sugg{border:1px solid color-mix(in srgb,var(--marigold) 45%,transparent);background:var(--marigold-soft);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
 .sugg b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--marigold)}
 .sugg .err{color:var(--clay)}
@@ -1162,7 +1169,11 @@ function renderThreads(){
   const rooms=tRoom==="All"?CLASSROOMS:[tRoom];
   const waiting=ps.filter(p=>p.status==="ready").length;
   const withTeam=new Set(ps.filter(p=>p.type==="classroom").map(p=>p.weekOf+p.classroom)).size;
-  const tracked=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  const inRoom=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom);
+  const tracked=inRoom.filter(t=>!t.unfollowed).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  const yStart=parseIso(schoolYearStart()).getTime();
+  const stopped=inRoom.filter(t=>t.unfollowed).sort((a,b)=>(b.unfollowed.at||0)-(a.unfollowed.at||0));
+  const stoppedNow=stopped.filter(t=>(t.unfollowed.at||0)>=yStart),stoppedOld=stopped.filter(t=>(t.unfollowed.at||0)<yStart);
   const scan=scans.get(tRoom);
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
     <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following.</div></div></div>
@@ -1180,12 +1191,16 @@ function renderThreads(){
     ${sample?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</div>
     <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. Claude reads the saved plans in this range, finds the threads, and points to the plans they came from. Track the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
+  if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
+  if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(scan&&scan.threads?.length){
-    const fresh=scan.threads.filter(x=>!x.trackedId||!threads.has(x.trackedId));
+    const open=x=>!x.trackedId||!threads.has(x.trackedId);
+    const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
     h+=`<div class="chiprow-label">Found by Claude, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
-    if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x))).join("")}</div>`;
-    else h+=`<div class="empty">Every thread from the last search is already being followed.</div>`;
+    if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
+    else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
+    if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
   }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?"No threads found yet. Press Find threads with Claude.":"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
   h+=`</section>`;
 
@@ -1216,14 +1231,69 @@ function renderSearch(){
   const hits=[...plans.values()].filter(p=>p.id!=="example"&&(tRoom==="All"||p.classroom===tRoom)).map(p=>({p,t:planText(p)})).filter(x=>x.t.toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.p.weekOf.localeCompare(a.p.weekOf)).slice(0,40);
   el.innerHTML=hits.length?`<span class="cnt">${hits.length}${hits.length===40?"+":""} plans mention “${esc(q)}”</span>`+hits.map(({p,t})=>`<button class="result" data-open="${p.id}"><span><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b> <span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span style="font-size:13.5px">${snippet(t.replace(/\s*\n\s*/g," "),q)}</span></button>`).join(""):`<div class="empty">No plans mention “${esc(q)}”.</div>`;
 }
-function threadCard(t,isTracked,weeks,scanIdx){
+let tShowDismissed=false,tOpenStopped=false;
+function whoAmI(){return me()||(window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"")||"An educator"}
+function shortDate(ms){return ms?new Date(ms).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):""}
+const RANGE_LABEL={"4":"the last 4 weeks",8:"the last 8 weeks",year:"this school year",all:"all saved plans"};
+function planWho(p){
+  if(p.type==="classroom")return "Classroom team";
+  if(p.type==="smallgroup")return [p.group&&p.group+" group",p.educator].filter(Boolean).join(", ");
+  const g=p.focus==="smallgroup"&&(p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"";
+  return [p.educator,g||(p.where?p.where:"")].filter(Boolean).join(", ");
+}
+const normQ=x=>String(x||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+// find which section of the plan a quote came from, so every quote says exactly where it lives
+function sectionOf(p,text){
+  const q=normQ(text);if(!q)return"";const head=q.split(" ").slice(0,6).join(" ");
+  const parts=FORMS[p.type].fields.map(f=>[f.label,normQ(p.fields?.[f.k])]);
+  if(p.web)parts.push(["Curriculum web",normQ([p.web.focus,...(p.web.branches||[]).map(b=>b.name+" "+b.materials),p.web.questions,p.web.environment].join(" "))]);
+  for(const [l,t] of parts)if(t&&t.includes(q))return l;
+  for(const [l,t] of parts)if(t&&head.length>8&&t.includes(head))return l;
+  return"";
+}
+function evSource(e){
+  const p=plans.get(e.planId);
+  if(!p)return `<span class="src">Week of ${fmtDate(e.week)}. This plan has since been deleted</span>`;
+  const bits=[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",sectionOf(p,e.text)].filter(Boolean);
+  return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${bits.map(esc).join(" · ")}</span>`;
+}
+function originHtml(t,isTracked){
+  const ev=[...(t.evidence||[])].sort((a,b)=>(a.week||"").localeCompare(b.week||""));
+  const rows=[];
+  const first=ev[0];
+  if(first){const p=plans.get(first.planId);
+    let inPlan="";
+    if(p){const room=p.classroom?" in the "+esc(p.classroom)+" classroom":"";
+      if(p.type==="classroom")inPlan=`, in the classroom team's Classroom Curriculum Plan${room}`;
+      else{const g=p.type==="smallgroup"?p.group:(p.focus==="smallgroup"?(p.groups||[]).join(" and "):"");
+        inPlan=`, in ${p.educator?esc(p.educator)+"'s":"an"} ${esc(FORMS[p.type].name)}${g?" for the "+esc(g)+" group":p.where?" about the "+esc(p.where):""}${room}`}}
+    rows.push(`<div><b>Started</b>the week of ${fmtDate(first.week)}${inPlan}</div>`)}
+  const ps=[...new Map(ev.map(e=>[e.planId,plans.get(e.planId)]).filter(([,p])=>p)).values()];
+  if(ps.length){const ct=k=>ps.filter(p=>p.type===k).length;
+    const types=[["classroom","Classroom team"],["individual","Individual"],["smallgroup","Small Group"]].map(([k,l])=>ct(k)?`${ct(k)} ${l}`:"").filter(Boolean).join(", ");
+    const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];
+    const people=[...new Set(ps.flatMap(p=>p.type==="classroom"?[]:[p.educator,...(p.focus==="smallgroup"?(p.groups||[]).map(g=>g+" group"):[]),p.group&&p.group+" group"]).filter(Boolean))];
+    const wks=new Set(ps.map(p=>p.weekOf)).size;
+    rows.push(`<div><b>Seen in</b>${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classrooms":" classroom"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
+  if(isTracked){
+    const how=t.origin?`after Claude found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" classroom":" across all classrooms"}`:"";
+    rows.push(`<div><b>Followed</b>${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
+  }
+  return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
+}
+function evidenceHtml(t){
+  const all=[...(t.evidence||[])].sort((a,b)=>(b.week||"").localeCompare(a.week||""));if(!all.length)return"";
+  const line=e=>`<div>“${esc(e.text)}”${evSource(e)}</div>`;
+  return `<div class="evid">${all.slice(0,4).map(line).join("")}</div>${all.length>4?`<details><summary class="chiprow-label" style="cursor:pointer">Show ${all.length-4} earlier quote${all.length-4>1?"s":""}</summary><div class="evid" style="margin-top:8px">${all.slice(4).map(line).join("")}</div></details>`:""}`;
+}
+function threadCard(t,isTracked,weeks,scanIdx,scan){
   const on=new Set(t.weeks||[]);
-  const ev=(t.evidence||[]).slice(-4);
   let h=`<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
   if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
-  h+=`<div class="cnt">${[t.classroom,(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}${(t.weeks||[]).length?` · seen in ${(t.weeks||[]).length} week${t.weeks.length>1?"s":""}, ${fmtDate([...t.weeks].sort()[0])} to ${fmtDate([...t.weeks].sort().slice(-1)[0])}`:""}</div>`;
+  h+=originHtml(t,isTracked);
+  if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" classroom",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
-  if(ev.length)h+=`<div class="evid">${ev.map(e=>`<div>“${esc(e.text)}” ${plans.has(e.planId)?`<button class="linkbtn" data-open="${e.planId}">${fmtDate(e.week)}</button>`:`<span class="cnt">${fmtDate(e.week)}</span>`}</div>`).join("")}</div>`;
+  h+=evidenceHtml(t);
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
@@ -1232,10 +1302,21 @@ function threadCard(t,isTracked,weeks,scanIdx){
       <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
       ${sample?`<button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button>`:""}
       ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button>`:""}
-      <span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${t.id}">Stop following</button>`:""}</span></div>`;
+      <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span></div>`;
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
-  }else h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button></div>`;
+  }else{
+    const was=t.trackedId&&threads.get(t.trackedId);
+    if(was&&was.unfollowed)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
+    else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
+    else h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`;
+  }
   return h+`</article>`;
+}
+function stoppedCard(t){
+  return `<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="cnt">Stopped by ${esc(t.unfollowed.by||"an educator")} on ${shortDate(t.unfollowed.at)}</span></div>
+    ${t.question?`<div class="q">${esc(t.question)}</div>`:""}${originHtml(t,true)}
+    <details><summary class="chiprow-label" style="cursor:pointer">Quotes and notes</summary><div style="display:grid;gap:8px;margin-top:8px">${evidenceHtml(t)}${t.notes?`<div class="muted" style="font-size:13.5px">${esc(t.notes)}</div>`:""}</div></details>
+    <div class="actions"><button class="btn small" data-trefollow="${t.id}">Follow again</button><span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${t.id}">Remove permanently</button>`:""}</span></div></article>`;
 }
 function threadRef(t){return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}${(t.evidence||[]).slice(-3).map(e=>`<div class="muted">“${esc(e.text)}” ${fmtDate(e.week)}</div>`).join("")}</section>`}
 
@@ -1254,9 +1335,15 @@ async function threadsClick(t){
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
   if(t.id==="scan"){findThreads();return true}
   if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
-    const nt={id:uid(),name:x.name,question:x.question||"",classroom:x.classroom||(tRoom!=="All"?tRoom:""),groups:x.groups||[],status:x.status||"emerging",weeks:[...(x.weeks||[])].sort(),lastWeek:[...(x.weeks||[])].sort().slice(-1)[0]||"",evidence:x.evidence||[],languages:x.languages||[],next:x.next||[],notes:"",createdAt:Date.now()};
+    const nt={id:uid(),name:x.name,question:x.question||"",classroom:x.classroom||(tRoom!=="All"?tRoom:""),groups:x.groups||[],status:x.status||"emerging",weeks:[...(x.weeks||[])].sort(),lastWeek:[...(x.weeks||[])].sort().slice(-1)[0]||"",evidence:x.evidence||[],languages:x.languages||[],next:x.next||[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:scan.room,range:scan.range,at:scan.createdAt}};
     saveThread(nt);x.trackedId=nt.id;saveScan(scan);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
-  if(t.dataset.tdel){$("#tdel-"+t.dataset.tdel).innerHTML=`<span class="confirm">Stop following for everyone? <button class="btn warn small" data-tdelyes="${t.dataset.tdel}">Stop</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
+  if(t.dataset.tstop){$("#tstop-"+t.dataset.tstop).innerHTML=`<span class="confirm">Stop following for the whole team? It moves to No longer following, where anyone can follow it again. <button class="btn warn small" data-tstopyes="${t.dataset.tstop}">Stop following</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
+  if(t.dataset.tstopyes){const th=threads.get(t.dataset.tstopyes);if(th){th.unfollowed={by:whoAmI(),at:Date.now()};saveThread(th);tOpenStopped=true;toast("Stopped following. Find it under No longer following.")}renderMain();return true}
+  if(t.dataset.trefollow){const th=threads.get(t.dataset.trefollow);if(th){delete th.unfollowed;th.refollowed={by:whoAmI(),at:Date.now()};saveThread(th);toast("Following this thread again.")}renderMain();return true}
+  if(t.dataset.tdis!=null||t.dataset.tundis!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+(t.dataset.tdis??t.dataset.tundis)];if(!x)return true;
+    if(t.dataset.tdis!=null)x.dismissed={by:whoAmI(),at:Date.now()};else delete x.dismissed;saveScan(scan);renderMain();return true}
+  if(t.dataset.tshowdis){tShowDismissed=!tShowDismissed;renderMain();return true}
+  if(t.dataset.tdel){$("#tdel-"+t.dataset.tdel).innerHTML=`<span class="confirm">Remove this thread and its quotes and notes for everyone? This cannot be undone. The plans themselves stay. <button class="btn warn small" data-tdelyes="${t.dataset.tdel}">Remove</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
   if(t.dataset.tdelno){renderMain();return true}
   if(t.dataset.tdelyes){const id=t.dataset.tdelyes;threads.delete(id);if(db)db.doc("threads/"+id).delete().catch(()=>{});else LS.set("fps.threads",[...threads.values()]);renderMain();return true}
   if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
@@ -1381,12 +1468,20 @@ async function addFiles(files){
 }
 function groupsOf(items){const order=[];const m=new Map();items.forEach(u=>{if(!m.has(u.grp)){m.set(u.grp,[]);order.push(u.grp)}m.get(u.grp).push(u)});return order.map(g=>m.get(g))}
 function jobLine(j){
-  const st={waiting:'<span class="status">Waiting</span>',working:'<span class="status ready">Transcribing</span>',done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
+  const st={waiting:'<span class="status">Waiting</span>',working:`<span class="status ready">${j.kind==="sort"?"Sorting":"Transcribing"}</span>`,done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
   const made=j.planIds.map(id=>plans.get(id)).filter(Boolean);
   return `<div class="result" style="cursor:default"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${st} <b>${esc(j.name)}</b></span>
     ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${p.id}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.importDup?'<span class="nudge">A similar plan already existed</span>':""}</span>`).join("")}
     ${j.kind==="sort"&&j.progress?`<span class="cnt">${esc(j.progress)}</span>`:""}
-    ${j.status==="failed"?`<span class="cnt">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${j.id}">Try again</button>`:""}</div>`;
+    ${j.note&&j.status==="working"?`<span class="cnt">${esc(j.note)}</span>`:""}
+    ${j.status==="failed"?`<span class="cnt" style="color:var(--clay)">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${j.id}">${j.kind==="sort"&&j.next?"Try again from page "+(j.next+1):"Try again"}</button>`:""}
+    ${(j.aside||[]).length?asideHtml(j):""}</div>`;
+}
+function asideHtml(j){
+  const why={blank:"Looked blank",other:"Did not look like a planning form"};
+  return `<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${j.aside.length} page${j.aside.length===1?" was":"s were"} set aside and not transcribed</b><div>Claude judged ${j.aside.length===1?"this page":"these pages"} blank or not a plan. If ${j.aside.length===1?"it holds":"any hold"} planning writing, transcribe ${j.aside.length===1?"it":"them"} here.</div>
+    <div class="thumbs">${j.aside.map((a,i)=>`<div class="thumb">${a.u.url?`<a href="${a.u.url}" target="_blank" rel="noopener" title="Open page ${a.n} full size"><img src="${a.u.url}" alt="Page ${a.n}"></a>`:`<div class="doc">Page</div>`}<span>Page ${a.n}. ${why[a.form]||""}</span><button class="thumbact" data-aside="${j.id}|${i}">Transcribe this page</button></div>`).join("")}</div>
+    ${j.aside.length>1?`<div><button class="btn small" data-asideall="${j.id}">Transcribe all ${j.aside.length} as one plan each</button></div>`:""}</div>`;
 }
 function renderImport(){
   const target=importTarget&&plans.get(importTarget);
@@ -1423,7 +1518,7 @@ function renderImport(){
   </section>
   <div class="actions"><button class="btn" id="transcribe" ${!sample||reading||oneTooBig||(!uploads.length&&!importPaste.trim())?"disabled":""}>${batch?(importSort?"Sort and transcribe":`Transcribe ${groups.length||""} plan${groups.length===1?"":"s"}`):"Transcribe into the app"}</button><button class="btn ghost" id="upcancel">${jobs.length?"Back to plans":"Cancel"}</button></div>`;
   if(jobs.length){const done=jobs.filter(j=>j.status==="done").length,failed=jobs.filter(j=>j.status==="failed").length;
-    h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Transcribed plans</h2><span class="cnt">${done} of ${jobs.length} done${failed?`, ${failed} did not work`:""}${queueRunning?". You can keep working, this continues in the background":""}</span></div>
+    h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Transcribed plans</h2><span class="cnt">${done} of ${jobs.length} done${failed?`, ${failed} did not work`:""}${lockWait?". Waiting for a batch running in another tab or window to finish first":queueRunning?". You can keep working, this continues in the background":""}</span></div>
     ${schoolSummary()}${jobs.map(jobLine).join("")}${!queueRunning?`<div class="actions"><button class="linkbtn" id="clearjobs">Clear this list</button></div>`:""}</section>`}
   $("#main").innerHTML=h;
 }
@@ -1442,6 +1537,10 @@ async function importClick(t){
   if(t.dataset.imode){importMode=t.dataset.imode;renderImport();return true}
   if(t.id==="sorton"){importMode="batch";importSort=true;LS.set("fps.isort",true);renderImport();return true}
   if(t.dataset.retry){const j=jobs.find(x=>x.id===t.dataset.retry);if(j){j.status="waiting";j.error="";runQueue()}renderImport();return true}
+  if(t.dataset.aside||t.dataset.asideall){const [id,ix]=(t.dataset.aside||t.dataset.asideall+"|all").split("|");const j=jobs.find(x=>x.id===id);if(!j)return true;
+    const pick=ix==="all"?j.aside.slice():[j.aside[+ix]];j.aside=j.aside.filter(a=>!pick.includes(a));
+    const at=jobs.indexOf(j)+1;jobs.splice(at,0,...pick.map(a=>({id:uid(),items:[a.u],name:`Page ${a.n}, set aside during sorting`,status:"waiting",planIds:[],error:"",type:importType,targetId:"",batch:false,meta:{}})));
+    renderImport();runQueue();return true}
   if(t.id==="clearjobs"){jobs=[];renderImport();return true}
   if(t.id==="upcancel"){if(!queueRunning)clearUploads();view="plans";renderNav();renderMain();return true}
   if(t.id==="transcribe"){startTranscribe();return true}
@@ -1479,21 +1578,54 @@ function startTranscribe(){
   if(!batch&&groups.length===1)jobs[jobs.length-1].openWhenDone=true;
   renderImport();runQueue();
 }
+let lockWait=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function queueRender(){if(view==="import")renderImport()}
+function readError(err){
+  const c=err?.code;
+  const m={image_rejected:"A page image could not be prepared. Try a clearer photo or scan.",images_unavailable:"Photos cannot be sent from this view. Try the Claude app or claude.ai.",not_granted:"Claude assist was not allowed for this page.",session_expired:"You were signed out. Sign in again, then press Try again.",not_allowed:"The server would not allow this request.",
+    too_big:"These pages are too large to send. Press Try again and they will be sent smaller.",unavailable:"The server could not be reached, even after waking it. Check the internet connection, then press Try again.",
+    invalid_json:"Claude's answer came back garbled several times. Press Try again.",empty:"Claude found no plan writing on these pages. Check them, then press Try again."};
+  if(m[c])return m[c];
+  if(err?.message)return String(err.message);
+  return `Something went wrong (${c||"unknown"}). Press Try again.`;
+}
+// every Claude reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
+async function askRead(prompt,opts,j){
+  const waits=[8000,25000,60000];
+  for(let a=0;;a++){
+    try{const out=await sample.json(prompt,opts);if(j){j.note="";queueRender()}return out}
+    catch(err){
+      const c=err?.code;
+      if(!["rate_limited","unavailable","server_error","invalid_json"].includes(c)||a>=waits.length)throw err;
+      if(j){j.note=c==="unavailable"?"The server is waking up. Trying again":c==="rate_limited"?"Claude is busy. Trying again shortly":"Trying again";queueRender()}
+      if(c==="unavailable"&&window.FP_WAKE)await window.FP_WAKE();else await sleep(waits[a]);
+    }
+  }
+}
 async function runQueue(){
   if(queueRunning)return;queueRunning=true;
-  while(true){
-    const j=jobs.find(x=>x.status==="waiting");if(!j)break;
-    j.status="working";if(view==="import")renderImport();
-    try{if(j.kind==="sort")await sortJob(j);else await transcribeJob(j);j.status="done";if(j.openWhenDone&&j.planIds[0]){currentId=j.planIds[0];week=plans.get(currentId).weekOf;view="plans";renderAll();jumpTop();toast("Transcribed. Check each section against the original.")}}
-    catch(err){j.status="failed";j.error=err?.code==="image_rejected"?"An image could not be read. Try a clearer photo.":err?.code==="images_unavailable"?"Photos cannot be sent from this view. Try the Claude app or claude.ai.":err?.code==="rate_limited"?"Claude is busy. Try again in a minute.":err?.code==="not_granted"?"Claude assist was not allowed for this page.":"Transcription did not work. Try again, or try a clearer photo.";
-      if(err?.code==="rate_limited"||err?.code==="not_granted"){jobs.filter(x=>x.status==="waiting").forEach(x=>{x.status="failed";x.error=j.error})}}
-    if(view==="import")renderImport();else renderList();
-  }
-  queueRunning=false;
+  const work=async()=>{
+    while(true){
+      const j=jobs.find(x=>x.status==="waiting");if(!j)break;
+      j.status="working";j.note="";queueRender();
+      try{if(j.kind==="sort")await sortJob(j);else await transcribeJob(j);j.status="done";if(j.openWhenDone&&j.planIds[0]){currentId=j.planIds[0];week=plans.get(currentId).weekOf;view="plans";renderAll();jumpTop();toast("Transcribed. Check each section against the original.")}}
+      catch(err){j.status="failed";j.note="";j.error=readError(err);
+        if(err?.code==="not_granted"||err?.code==="session_expired"){jobs.filter(x=>x.status==="waiting").forEach(x=>{x.status="failed";x.error=j.error})}}
+      if(view==="import")renderImport();else renderList();
+    }
+  };
+  try{
+    if(navigator.locks?.request){let got=false;const t=setTimeout(()=>{if(!got){lockWait=true;queueRender()}},400);
+      await navigator.locks.request("fp-claude-reading",async()=>{got=true;clearTimeout(t);lockWait=false;queueRender();await work()})}
+    else await work();
+  }catch(e){}
+  queueRunning=false;lockWait=false;
   const done=jobs.filter(j=>j.status==="done").length;
-  if(view==="import")renderImport();
+  queueRender();
   if(jobs.length>1)toast(`Batch finished. ${done} of ${jobs.length} transcribed.`);
-  jobs.forEach(j=>{if(j.status==="done"){j.items.forEach(u=>u.url&&URL.revokeObjectURL(u.url));j.items=[]}});
+  const keep=new Set(jobs.flatMap(j=>(j.aside||[]).map(a=>a.u)));
+  jobs.forEach(j=>{if(j.status==="done"){j.items.forEach(u=>!keep.has(u)&&u.url&&URL.revokeObjectURL(u.url));j.items=[]}});
 }
 async function transcribeJob(j){
   const target=j.targetId&&plans.get(j.targetId);
@@ -1512,7 +1644,9 @@ ${spec}
 Classrooms are West, North, and South. Handwriting often makes these look like other words, so a word in the classroom or name spot that resembles West, North, or South (for example Seth or Sout for South, Nort for North, Wes or Vest for West) is the classroom, not a person. Known educators include ${rosterNames().join(", ")}, though others may appear. Small groups are ${GROUPS.map(g=>g.name).join(", ")}. If only a date range or a single day is written, give the Monday of that week. When no year is written, use the current school year, which runs from August ${schoolYearStart().slice(0,4)} to July ${+schoolYearStart().slice(0,4)+1}, so August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.
 Return JSON {"plans":[{"type": ${types.map(x=>`"${x}"`).join(" or ")}, "weekOf": the week's date as yyyy-mm-dd or "", "classroom": "West" or "North" or "South" or "", "educator": names written on the form or "", "group": small group name or "", "fields": {section key: transcribed text}, "web": for a Classroom plan's curriculum web drawing {"focus": the center, "branches": [{"name","materials"}], "languages": [], "questions": "", "environment": ""} or null, "setting": [places written on a Small Group plan], "notes": writing that fits no section, "confidence": "high" or "medium" or "low"}]}
 ${texts.length?"\n"+texts.join("\n\n"):""}`;
-  const out=await sample.json(prompt,imgs.length?{images:imgs,modelTier:"complex",cache:false}:{modelTier:"complex",cache:false});
+  let out;
+  try{out=await askRead(prompt,imgs.length?{images:imgs,modelTier:"complex",cache:false}:{modelTier:"complex",cache:false},j)}
+  catch(err){if(err?.code!=="too_big"||!imgs.length)throw err;j.note="Sending smaller page images";queueRender();out=await askRead(prompt,{images:imgs,modelTier:"complex",cache:false,maxSide:1300},j)}
   let list=Array.isArray(out?.plans)?out.plans:(out&&out.fields?[out]:[]);
   if(!multi)list=list.slice(0,1);
   list=list.slice(0,30);
@@ -1554,30 +1688,37 @@ function applyTranscript(out,target,type,j){
 }
 
 async function sortJob(j){
-  const pages=j.items;const chunk=Math.max(1,imgLimit||5);const cls=[];let prev=null;
-  for(let start=0;start<pages.length;start+=chunk){
-    const set=pages.slice(start,start+chunk);
-    j.progress=`Sorting pages ${start+1} to ${start+set.length} of ${pages.length}`;if(view==="import")renderImport();
+  // progress is kept on the job, so Try again carries on from the pages not yet sorted
+  const pages=j.items;const maxPages=Math.max(1,imgLimit||5);
+  if(!j.cls){j.cls=[];j.next=0;j.prev=null;j.chunk=Math.min(4,maxPages)}
+  const cls=j.cls;
+  while(j.next<pages.length){
+    const start=j.next;const set=pages.slice(start,start+j.chunk);
+    j.progress=`Sorting pages ${start+1} to ${start+set.length} of ${pages.length}`;queueRender();
     const typed=set.map((u,i)=>(u.pageText||"").length>40?`Page ${start+i+1} typed text. ${u.pageText.slice(0,1500)}`:"").filter(Boolean);
     const prompt=`The ${set.length} attached images are pages ${start+1} to ${start+set.length}, in order, of a scanned stack of curriculum planning forms from every classroom at Fulton Community School & Farm, a Reggio-inspired preschool. Your only job here is to sort the pages, not transcribe them.
 The three forms.
 Classroom Curriculum Plan ("classroom"). Page one has Week of, Classroom, Observation, Intentions and questions for the week, Meeting time questions, Expressed interests of individual and small group, Provocations and environmental changes split Indoor and Outdoor. Page two has Curriculum Brainstorm and usually a hand-drawn curriculum web.
 Individual Curriculum Plan ("individual"). Area Exploration, Anticipated dates, Observation Rationale, Intent, Possible activities and materials, Final remarks.
 Small Group Plan ("smallgroup"). The thread, intention, guiding questions, languages, graphic languages invitation, materials, documentation plan, a flower group name.
-Older or homemade versions may look different, so judge by the headings and content.
+Older, typed, or homemade versions may look different, so judge by the headings and content. Any page with writing about children, observations, intentions, materials, or plans for the week is a planning page, even when the layout is unfamiliar. Pick the closest form.
+Use "blank" only for a page with no writing at all. Use "other" only for a page that is clearly not about curriculum planning, such as a menu or a sign-in sheet. When unsure, treat the page as part of a plan.
 Classrooms are West, North, and South. A handwritten word that resembles one of these (for example Seth for South) is the classroom, not an educator. Known educators include ${rosterNames().join(", ")}. Small groups are ${GROUPS.map(g=>`${g.name} (${g.room})`).join(", ")}.
-The page just before this set was ${prev?JSON.stringify(prev):"none, this is the start of the stack"}.
-For each page decide whether it begins a new plan or continues the plan on the page before it, such as page two of a Classroom plan or the back of a sheet. Mark blank pages and cover sheets as "blank", and anything that is not a planning form as "other".
+The page just before this set was ${j.prev?JSON.stringify(j.prev):"none, this is the start of the stack"}.
+For each page decide whether it begins a new plan or continues the plan on the page before it, such as page two of a Classroom plan or the back of a sheet.
 ${typed.length?"Some pages also carry typed text.\n"+typed.join("\n"):""}
 Return JSON {"pages":[{"n": page number, "form": "classroom" or "individual" or "smallgroup" or "blank" or "other", "newPlan": true or false, "classroom": "West" or "North" or "South" or "", "group": flower group name or "", "educator": name written or "", "weekOf": the week's Monday as yyyy-mm-dd or ""}]}. When no year is written, August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.`;
-    const out=await sample.json(prompt,{images:set.map(u=>u.blob),modelTier:"default",cache:false});
+    let out;
+    try{out=await askRead(prompt,{images:set.map(u=>u.blob),modelTier:"complex",cache:false,maxSide:1400},j)}
+    catch(err){if(err?.code==="too_big"&&j.chunk>1){j.chunk=Math.max(1,Math.floor(j.chunk/2));continue}throw err}
     const arr=Array.isArray(out?.pages)?out.pages:[];
-    set.forEach((u,i)=>{const n=start+i+1;const c=arr.find(x=>+x?.n===n)||arr[i]||{};const rec={n,form:["classroom","individual","smallgroup","blank","other"].includes(c.form)?c.form:"",newPlan:c.newPlan!==false,classroom:CLASSROOMS.includes(c.classroom)?c.classroom:"",group:GROUPS.some(g=>g.name===c.group)?c.group:"",educator:typeof c.educator==="string"?c.educator:"",weekOf:typeof c.weekOf==="string"?c.weekOf:""};cls.push({u,c:rec});prev=rec});
+    set.forEach((u,i)=>{const n=start+i+1;const c=arr.find(x=>+x?.n===n)||arr[i]||{};const rec={n,form:["classroom","individual","smallgroup","blank","other"].includes(c.form)?c.form:"",newPlan:c.newPlan!==false,classroom:CLASSROOMS.includes(c.classroom)?c.classroom:"",group:GROUPS.some(g=>g.name===c.group)?c.group:"",educator:typeof c.educator==="string"?c.educator:"",weekOf:typeof c.weekOf==="string"?c.weekOf:""};cls.push({u,c:rec});j.prev=rec});
+    j.next=start+set.length;
   }
-  const groups=[];let cur=null,skipped=0;
+  const groups=[];let cur=null;j.aside=[];
   for(const {u,c} of cls){
-    if(c.form==="blank"||c.form==="other"){skipped++;cur=c.form==="blank"?cur:null;continue}
-    const fresh=!cur||c.newPlan||(c.form&&cur.form&&c.form!==cur.form)||cur.items.length>=chunk;
+    if(c.form==="blank"||c.form==="other"){j.aside.push({u,n:c.n,form:c.form});cur=c.form==="blank"?cur:null;continue}
+    const fresh=!cur||c.newPlan||(c.form&&cur.form&&c.form!==cur.form)||cur.items.length>=maxPages;
     if(fresh){cur={items:[],form:c.form,classroom:c.classroom,group:c.group,educator:c.educator,weekOf:c.weekOf,first:c.n,last:c.n};groups.push(cur)}
     cur.items.push(u);cur.last=c.n;cur.form=cur.form||c.form;cur.classroom=cur.classroom||c.classroom;cur.group=cur.group||c.group;cur.educator=cur.educator||c.educator;cur.weekOf=cur.weekOf||c.weekOf;
   }
@@ -1585,8 +1726,9 @@ Return JSON {"pages":[{"n": page number, "form": "classroom" or "individual" or 
   const made=groups.map(g=>{const who=g.form==="smallgroup"?(g.group?g.group+" group":""):g.form==="individual"?g.educator:"";
     return {id:uid(),items:g.items,name:[g.form?FORMS[g.form].name:"Plan",g.classroom,who].filter(Boolean).join(", ")+`, page${g.first===g.last?" "+g.first:"s "+g.first+" to "+g.last}`,status:"waiting",planIds:[],error:"",type:g.form||importType,targetId:"",batch:false,meta:{classroom:g.classroom,group:g.group,educator:g.educator,weekOf:g.weekOf}}});
   jobs.splice(at,0,...made);
-  j.progress=`Found ${groups.length} plan${groups.length===1?"":"s"} in ${pages.length} pages${skipped?`. Set aside ${skipped} blank or non-plan page${skipped===1?"":"s"}`:""}.`;
+  j.progress=`Found ${groups.length} plan${groups.length===1?"":"s"} in ${pages.length} pages.`;
   j.name=`Sorted ${pages.length} scanned page${pages.length===1?"":"s"}`;
+  j.cls=null;
 }
 function schoolSummary(){
   const ps=jobs.flatMap(j=>j.planIds).map(id=>plans.get(id)).filter(Boolean);if(ps.length<2)return"";

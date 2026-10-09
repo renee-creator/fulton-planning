@@ -21,6 +21,9 @@ const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 30 * 1024 * 1024;
 const FLUSH_DELAY_MS = Number(process.env.FLUSH_DELAY_MS) || 15000;   // typing is gathered into one GitHub save
 const UPSTREAM_TIMEOUT_MS = 180000;
+const READS_PER_HOUR = Number(process.env.READS_PER_HOUR) || 800;      // whole-school scans send one request per plan
+const CAREFUL_PER_HOUR = Number(process.env.CAREFUL_PER_HOUR) || 400;
+const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
@@ -317,7 +320,7 @@ async function handle(req, res) {
 
   let body;
   try { body = await readBody(req); }
-  catch (e) { err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
+  catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   if (path === '/login') {
     const ip = who(req);
@@ -376,23 +379,25 @@ async function handle(req, res) {
     json(req, res, 200, { id, sizeBytes: buf.length }); return;
   }
   if (path === '/api/read') {
-    if (!anthropicKey()) { err(req, res, 503, 'Claude assist is not set up. Add the Anthropic key on Render.'); return; }
-    const now = Date.now(); readTimes = readTimes.filter(t => t.at > now - 36e5);
-    if (readTimes.length >= 400 || (body.careful && readTimes.filter(t => t.careful).length >= 80)) { err(req, res, 429, 'Claude has been asked many times in the last hour. Wait a little and try again.'); return; }
-    if (readsRunning >= 6) { err(req, res, 429, 'Claude is working on several requests right now. Try again in a moment.'); return; }
-    readTimes.push({ at: now, careful: !!body.careful }); readsRunning++;
+    const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
+    if (!anthropicKey()) { refuse(503, 'Claude assist is not set up. Add the Anthropic key on Render.', 'no key'); return; }
     const content = body.content;
-    if (!Array.isArray(content) || !content.length || content.length > 12) { err(req, res, 400, 'Nothing to read'); return; }
+    if (!Array.isArray(content) || !content.length || content.length > 12) { refuse(400, 'Nothing to read', 'empty or too many parts'); return; }
     const okBlock = b => b && ((b.type === 'text' && typeof b.text === 'string') || (b.type === 'image' && b.source && b.source.type === 'base64' && /^image\/(jpeg|png|webp|gif)$/.test(b.source.media_type)));
-    if (!content.every(okBlock)) { err(req, res, 400, 'That upload could not be sent to Claude.'); return; }
+    if (!content.every(okBlock)) { refuse(400, 'That upload could not be sent to Claude.', 'unreadable part'); return; }
+    const now = Date.now(); readTimes = readTimes.filter(t => t.at > now - 36e5);
+    if (readTimes.length >= READS_PER_HOUR || (body.careful && readTimes.filter(t => t.careful).length >= CAREFUL_PER_HOUR)) { refuse(429, 'Claude has been asked many times in the last hour. Wait a little and try again.', 'hourly limit'); return; }
+    if (readsRunning >= READS_AT_ONCE) { refuse(429, 'Claude is working on several requests right now. Try again in a moment.', readsRunning + ' already running'); return; }
+    readTimes.push({ at: now, careful: !!body.careful }); readsRunning++;
+    const kb = Math.round(JSON.stringify(content).length / 1024);
     try {
       const r = await askClaude(content, !!body.careful);
-      if (r.status !== 200) { log('Claude answered', r.status, r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
+      if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      log('Claude request for', me.name, msg.model, msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '');
+      log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '');
       json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens' });
-    } catch (e) { err(req, res, 502, 'Could not reach Claude. ' + e.message); }
+    } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'Could not reach Claude. ' + e.message); }
     finally { readsRunning--; }
     return;
   }
