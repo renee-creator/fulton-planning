@@ -612,6 +612,7 @@ async function boot(){
       const before=currentId&&plans.get(currentId),after=currentId&&next.get(currentId);
       const remoteChangedCurrent=!!(before&&after&&after!==before&&(after.updatedAt||0)>(before.updatedAt||0));
       plans=next;renderList();if(view==="all"&&$("#alist"))refreshAll();
+      if(!dupSweepDone&&snap.docs.length){dupSweepDone=true;setTimeout(sweepDuplicates,1500)}
       if(remoteChangedCurrent&&!document.activeElement?.closest?.("#main"))renderMain();
     },()=>setConn("Offline. Changes stay on this device"));
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
@@ -1362,6 +1363,7 @@ function snippet(text,q){const i=text.toLowerCase().indexOf(q.toLowerCase());if(
 function renderThreads(){
   const ps=rangePlans();const weeks=rangeWeeks(ps);
   const rooms=tRoom==="All"?CLASSROOMS:[tRoom];
+  const cols=tRoom==="All"&&ps.some(p=>!p.classroom)?[...rooms,""]:rooms;
   const waiting=ps.filter(p=>p.status==="ready").length;
   const withTeam=new Set(ps.filter(p=>p.type==="classroom").map(p=>p.weekOf+p.classroom)).size;
   const inRoom=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom);
@@ -1402,9 +1404,9 @@ function renderThreads(){
   // Planning grid
   const wks=[...weeks].reverse();
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Ready for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
-   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r}</th>`).join("")}</tr></thead><tbody>
-   ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${rooms.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&p.classroom===r);const team=rp.find(p=>p.type==="classroom");const ni=rp.filter(p=>p.type==="individual").length,ns=rp.filter(p=>p.type==="smallgroup").length;
-     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r} plans for week of ${fmtDate(w)}">${team?`<span class="dot ${team.status}"></span><span class="cnt">Team</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`}<span class="cnt">· ${ni} individual · ${ns} small group</span></button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${rooms.length+1}" class="muted">No weeks in this range.</td></tr>`}
+   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No classroom set"}</th>`).join("")}</tr></thead><tbody>
+   ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
+     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}<span class="cnt">${r||teams.length?"· ":""}${ni} individual · ${ns} small group</span>${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
    </tbody></table></div></section>`;
 
   // Recurring ideas
@@ -1526,7 +1528,7 @@ function saveThreadSoon(t){threads.set(t.id,t);clearTimeout(tTimers[t.id]);tTime
 
 async function threadsClick(t){
   if(t.dataset.troom){tRoom=t.dataset.troom;LS.set("fps.troom",tRoom);renderMain();return true}
-  if(t.dataset.cell){const [w,r]=t.dataset.cell.split("|");week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
+  if(t.dataset.cell){const [w,r0]=t.dataset.cell.split("|");const r=r0||"All";week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
   if(t.id==="scan"){if(isDirector())findThreads();return true}
   if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
@@ -1854,12 +1856,21 @@ const wordSet=t=>new Set(normQ(t).split(" ").filter(w=>w.length>2));
 // a duplicate is the same form, week, classroom and educator or group, or nearly the same writing in any plan, including other uploads
 function findDup(p){
   const mine=wordSet(planText(p));
-  const sameSlot=x=>!p.importNoDate&&x.type===p.type&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&(p.type==="classroom"||(p.type==="smallgroup"?x.group===p.group:(x.educator||"").toLowerCase()===(p.educator||"").toLowerCase()&&(x.groups||[]).join()===(p.groups||[]).join()));
+  // one team plan per classroom per week; individual plans only match on nearly identical writing, since an educator may write several in a week
+  const sameSlot=x=>!p.importNoDate&&p.type==="classroom"&&x.type==="classroom"&&x.weekOf===p.weekOf&&!!p.classroom&&x.classroom===p.classroom;
   const sameText=x=>{if(mine.size<12)return false;const o=wordSet(planText(x));if(o.size<12)return false;let n=0;for(const w of mine)if(o.has(w))n++;return n/Math.max(mine.size,o.size)>=.85};
   let best=null;
   for(const x of plans.values()){if(x.id===p.id||x.id==="example"||x.id===p.notDupOf||x.dupOf===p.id)continue;if(sameText(x))return x;if(!best&&sameSlot(x))best=x}
   return best;
 }
+let dupSweepDone=false;
+// the director's page checks saved plans once per visit, so duplicates from before the upload check get flagged too
+function sweepDuplicates(){
+  if(!isDirector())return;let n=0;
+  for(const p of [...plans.values()]){if(p.id==="example"||(p.dupOf&&plans.has(p.dupOf)))continue;const d=findDup(p);if(d&&!(d.dupOf===p.id)){p.dupOf=d.id;persist(p);n++}}
+  if(n){toast(`${n} saved plan${n>1?"s look like duplicates":" looks like a duplicate"}. Find them in All plans.`);renderList();if(view==="threads")renderMain()}
+}
+function isGroupPlan(p){return p.type==="smallgroup"||(p.type==="individual"&&(p.focus==="smallgroup"||(p.groups||[]).length>0))}
 function dupHtml(p){
   const o=p.dupOf&&plans.get(p.dupOf);
   if(!o)return"";
@@ -1957,7 +1968,7 @@ let aRoom="All",aType="all",aStatus="all",aQ="";
 function allFiltered(){
   const q=aQ.trim().toLowerCase();
   return [...plans.values()].filter(p=>p.id!=="example"&&(aRoom==="All"||(aRoom==="none"?!p.classroom:p.classroom===aRoom))&&(aType==="all"||p.type===aType)&&
-    (aStatus==="all"||(aStatus==="due"?needsRemarks(p):aStatus==="done"?p.status==="ready"||p.status==="reviewed":p.status===aStatus))&&
+    (aStatus==="all"||(aStatus==="dup"?!!(p.dupOf&&plans.has(p.dupOf)):aStatus==="due"?needsRemarks(p):aStatus==="done"?p.status==="ready"||p.status==="reviewed":p.status===aStatus))&&
     (!q||[planTitle(p),p.educator,p.group,p.classroom,planText(p)].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>b.weekOf.localeCompare(a.weekOf)||(a.classroom||"~").localeCompare(b.classroom||"~")||a.type.localeCompare(b.type));
 }
@@ -1972,7 +1983,7 @@ function renderAllPlans(){
       <div class="filters" style="margin:0">${[["All","All classrooms"],["West","West"],["North","North"],["South","South"],["none","No classroom"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
         <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
-        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>
       <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${ps.length} plan${ps.length===1?"":"s"} shown</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
