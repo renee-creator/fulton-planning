@@ -260,13 +260,13 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
       <section class="panel">
         <h3>Program</h3>
         <button class="btn small ghost" data-view="settings">Program settings</button>
-        <div class="cnt" style="margin-top:6px">Small groups, educators, spaces, materials, and seasonal concepts</div>
+        <div class="cnt" style="margin-top:6px">Small groups, educators, spaces, classroom areas, languages, materials, and seasonal concepts</div>
       </section>
     </aside>
     <main class="main" id="main"></main>
   </div>
 </div>
-<datalist id="educators"></datalist><datalist id="placelist"></datalist>
+<datalist id="educators"></datalist><datalist id="placelist"></datalist><datalist id="arealist"></datalist>
 <div class="toast" id="toast" hidden></div>
 
 <style>
@@ -444,7 +444,8 @@ const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educ
 let roster=DEFAULT_ROSTER.slice();
 function rosterNames(){return roster.map(r=>r.name)}
 let PLACES=["Library","Classroom","Art atelier","Nature atelier","Culinary atelier","Indoor piazza","Outdoor piazza","North yard","Rabbit yard","Garden","Tire swing yard","Tire swing studio","Log yard","Log studio","Long yard","Goat yard"];
-const LANGUAGES=["Dialogue and words","Drawing and mark-making","Mapping","Clay and sculpture","Building and construction","Movement and body","Dramatic play","Music and sound","Light and shadow","Loose parts arrangement","Painting","Emergent writing","Recording and comparing"];
+let AREAS=["Writing center","Block area","Dramatic play","Art","Reading area","Cozy corner","Science and discovery","Sensory table","Math and manipulatives","Music and movement","Light table","Loose parts","Meeting area"];
+let LANGUAGES=["Dialogue and words","Drawing and mark-making","Mapping","Clay and sculpture","Building and construction","Movement and body","Dramatic play","Music and sound","Light and shadow","Loose parts arrangement","Painting","Emergent writing","Recording and comparing"];
 let MATERIALS={
   "Natural":["pinecones","seed pods","river stones","sticks","bark","leaves","shells","sand","soil","water","garden flowers"],
   "Loose parts":["wood rounds","cardboard tubes","spools","rings","corks","fabric scraps","baskets","small rolling objects"],
@@ -458,7 +459,16 @@ let MATERIALS={
   "Outdoor challenge":["milk crates","giant spools","climbing challenges","native forageable plants"],
   "Recording":["camera","children's journals","documentation panel","sticky notes"]};
 let SEASONS={Fall:["The self","Family","Safety","Relationships","How do we treat others?","How do we treat materials?","Harvest","Colors","Light and shadows","Ocean life"],Winter:["Family","Music","Human body","Rain","Weather","Drama","Puppets","Community","Caring for others"],Spring:["Growth","Planting","Water","Animals","Insects","Outdoors","Transportation","Sun","Wind","Conservation","Plant sale","Famous artist"]};
-const PROGRAM_DEFAULTS=()=>JSON.parse(JSON.stringify({groups:GROUPS,places:PLACES,materials:MATERIALS,seasons:SEASONS}));
+const PROGRAM_DEFAULTS=()=>JSON.parse(JSON.stringify({groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS}));
+// the program's languages plus any an educator has added on a plan, so a language added once is offered to everyone afterward
+function langList(extra){
+  const seen=new Map();const add=x=>{const v=String(x||"").trim();if(v&&!seen.has(v.toLowerCase()))seen.set(v.toLowerCase(),v)};
+  LANGUAGES.forEach(add);
+  for(const p of plans.values()){(p.languages||[]).forEach(add);(p.web?.languages||[]).forEach(add)}
+  (extra||[]).forEach(add);return [...seen.values()];
+}
+function langPick(arr){const all=langList();const m=new Map(all.map(x=>[x.toLowerCase(),x]));return (Array.isArray(arr)?arr:[]).map(x=>m.get(String(x||"").trim().toLowerCase())).filter(Boolean)}
+function langAddRow(where){return `<div class="actions" style="gap:6px"><input type="text" id="lang-new-${where}" placeholder="Add another language" style="width:240px"><button class="btn small ghost" data-langadd="${where}">Add</button></div>`}
 let PDEF=null;
 function seasonOf(wk){const m=parseIso(wk).getMonth();return m>=8&&m<=10?"Fall":(m===11||m<=1)?"Winter":"Spring"}
 const PROGRAM="Fulton Community School & Farm (Child Family Community, Inc.) is a Reggio-inspired, nature-based early childhood program in Santa Rosa, California, with a garden, farm animals, and art, nature, library, and culinary ateliers. Its mission is to respect and honor the whole child and support children as citizens of the world who follow their imagination into deep discovery. Guiding principles are social constructivism, the image of the child as competent and capable, the educator as researcher and partner, relationships, environment as the third teacher, family involvement, collaboration, documentation, and projects that last days to months. The curriculum is emergent, child-directed and educator-guided, following the cycle of informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, which leads back to informal observation. At its center are visible purposeful learning, emergent curriculum, project work, and community. Classrooms are mixed-age. Risky play is valued, as safe as necessary rather than as safe as possible. The school does not celebrate holidays and instead discusses the values behind them. Families receive weekly classroom newsletters and Friday picture digests through Kaymbu.";
@@ -813,7 +823,7 @@ async function draftInterests(p){
   const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} classroom, week of ${fmtDate(p.weekOf)}.
 The program's standard for this section. ${f.hint}
 Strong example. ${f.strong}
-Write it from the educators' Individual and small group plans for this week below. Name each thread children are following and which educator or group is following it, then connect the threads to the classroom community and to each other where they truly meet. Use only what the plans say. Never invent children, quotes, events, or materials. ${cur?"Keep everything the team already wrote and weave it in.":""} ${STYLE}
+Write it from the educators' Individual and small group plans for this week below. Keep it short, 3 to 5 sentences and under 100 words in all. Give one sentence per thread naming the educator or group and what children are wondering, then one sentence on how the threads meet each other or the classroom community. Leave out individual children's names, quotes, and lists of materials, since those live in the Individual plans. Use only what the plans say. Never invent children, quotes, events, or materials. ${cur?"Keep everything the team already wrote and weave it in.":""} ${STYLE}
 Return only the section text, with no preface.
 
 ${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
@@ -834,7 +844,8 @@ function focusCard(p){
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
       <label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>`
-    :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. block area, light table, art atelier"></label>`}
+    :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="arealist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
+      <div class="chips">${AREAS.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-area="${esc(x)}">${esc(x)}</button>`).join("")}</div>`}
   </section>`;
 }
 function smallGroupMeta(p){
@@ -843,7 +854,7 @@ function smallGroupMeta(p){
     <div class="chiprow-label">Setting</div>
     <div class="chips">${PLACES.map(x=>`<button class="chip ${(p.setting||[]).includes(x)?"on":""}" data-toggle="setting" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
     <div class="chiprow-label">Languages to keep open this week</div>
-    <div class="chips">${LANGUAGES.map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    <div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}
     <div class="chiprow-label">Documentation plan</div>
     <div class="chips">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
   </section>`;
@@ -856,7 +867,7 @@ function fieldCard(p,f){
   if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
   if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}</span>${list.map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
   if(f.seasons){const se=seasonOf(p.weekOf);chips+=`<details><summary class="chiprow-label" style="cursor:pointer">${se} concepts from the Family Handbook</summary><div class="hint" style="margin-top:6px">Concepts we hold loosely. Use one only where it meets what children are already doing.</div><div class="chips" style="margin-top:6px">${SEASONS[se].map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`}
-  if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${LANGUAGES.map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
+  if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}`;
   if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
   const ex=showExample[f.k]?`<div class="ex"><div><b>Strong.</b> ${esc(f.strong)}</div><div class="weak"><b>Weak.</b> ${esc(f.weak)}</div></div>`:"";
   return `<section class="card" data-card="${f.k}">
@@ -905,7 +916,7 @@ function webEditor(p){
     <div style="display:grid;gap:10px;min-width:0;align-content:start">
       <div class="svgbox" id="webprev"></div>
       <div class="chiprow-label">Languages of expression</div>
-      <div class="chips">${LANGUAGES.map(x=>`<button class="chip ${w.languages.includes(x)?"on":""}" data-wlang="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+      <div class="chips">${langList(w.languages).map(x=>`<button class="chip ${w.languages.includes(x)?"on":""}" data-wlang="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("web")}
       <label class="fld-label">Open questions, from children or observation<textarea id="w-q" rows="3" placeholder="What makes something go faster? How can we make it stay up?">${esc(w.questions)}</textarea></label>
       <label class="fld-label">Notes for the environment<textarea id="w-env" rows="3" placeholder="Expand ramp area. Allow work to remain over multiple days.">${esc(w.environment)}</textarea></label>
     </div>
@@ -941,7 +952,7 @@ async function webAssist(p){
   const prev=p.prevId&&plans.get(p.prevId);
   const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, build the curriculum web for their Classroom Curriculum Plan.
 Base the web only on what this plan says below. Never invent observations, children, quotes, or events.
-The central focus names the emerging thinking children are holding, as a short phrase, never a topic or theme. Give 3 to 6 branches, each a direction the investigation could take that grows from something in the plan. For each branch list specific, varied, open-ended materials. Use materials the plan names where it names them. Where it names none for a branch, suggest 2 to 4 natural or open-ended materials that fit. Add connections only where two branches truly share an idea. Choose languages of expression only from ${JSON.stringify(LANGUAGES)}. Open questions come from the children or the observation. Environment notes say how the space may change.
+The central focus names the emerging thinking children are holding, as a short phrase, never a topic or theme. Give 3 to 6 branches, each a direction the investigation could take that grows from something in the plan. For each branch list specific, varied, open-ended materials. Use materials the plan names where it names them. Where it names none for a branch, suggest 2 to 4 natural or open-ended materials that fit. Add connections only where two branches truly share an idea. Choose languages of expression only from ${JSON.stringify(langList())}. Open questions come from the children or the observation. Environment notes say how the space may change.
 ${filled?`The team already has this web ${cur}. Suggest how it could evolve from what the plan now says. Keep branches the plan still supports, change or drop ones it no longer supports, and add new ones the plan points to.`:""}${prev&&webHasContent(prev.web)?` Last week's web had the focus "${prev.web.focus}".`:""}${teamSources(p).length?` The educators' Individual and small group plans for this week are below too. A group's investigation can become a branch or a connection where it meets the classroom's thinking.`:""}
 ${STYLE}
 Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
@@ -954,7 +965,7 @@ ${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.
     const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:c(b?.name),materials:c(b?.materials)})).filter(b=>b.name).slice(0,6);
     if(!c(out?.focus)&&!br.length)throw {code:"empty_completion"};
     const conn=(Array.isArray(out?.connections)?out.connections:[]).filter(x=>Array.isArray(x)&&x.length===2).map(x=>[+x[0],+x[1]]).filter(([a,b])=>a!==b&&a>=0&&b>=0&&a<br.length&&b<br.length);
-    webSug[p.id]={status:"ready",why:c(out?.why),web:{focus:c(out?.focus),branches:br,connections:conn,languages:(Array.isArray(out?.languages)?out.languages:[]).filter(x=>LANGUAGES.includes(x)),questions:c(out?.questions),environment:c(out?.environment)}};
+    webSug[p.id]={status:"ready",why:c(out?.why),web:{focus:c(out?.focus),branches:br,connections:conn,languages:langPick(out?.languages),questions:c(out?.questions),environment:c(out?.environment)}};
   }catch(err){webSug[p.id]={status:"error",error:assistError(err?.code||"unknown","Your web is unchanged.")}}
   if(currentId===p.id)renderMain();
 }
@@ -1061,6 +1072,9 @@ document.addEventListener("click",async e=>{
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
     if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
   if(t.dataset.session){p.session=t.dataset.session;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
+  if(t.dataset.area){p.where=(p.where||"").toLowerCase()===t.dataset.area.toLowerCase()?"":t.dataset.area;persist(p);renderList();renderMain();return}
+  if(t.dataset.langadd){const where=t.dataset.langadd;const n=($("#lang-new-"+where)?.value||"").trim();if(!n){toast("Type the language first.");return}
+    const name=langList([n]).find(x=>x.toLowerCase()===n.toLowerCase());const arr=where==="web"?p.web.languages:(p.languages||(p.languages=[]));if(!arr.some(x=>x.toLowerCase()===name.toLowerCase()))arr.push(name);persist(p);renderMain();return}
   if(t.dataset.toggle){const arr=p[t.dataset.toggle]||(p[t.dataset.toggle]=[]);const v=t.dataset.val;const i=arr.indexOf(v);i>=0?arr.splice(i,1):arr.push(v);t.classList.toggle("on");persist(p);return}
   if(t.dataset.insert!=null){insertText(t.dataset.field,t.dataset.insert,false);return}
   if(t.dataset.mat){insertText(t.dataset.field,t.dataset.mat,true);return}
@@ -1210,7 +1224,7 @@ async function draftFromNotes(p,btn){
   if(!empty.length&&!wantWeb){toast("Every section already has text. Use Strengthen wording on any section instead.");return}
   btn.disabled=true;$("#draftstate").textContent="Reading your notes";
   const spec=empty.map(f=>`"${f.k}" (${f.label}). ${f.hint} Strong example. ${f.strong}`).join("\n");
-  const webSpec=wantWeb?`\n"web" an object for the curriculum web with keys "focus" (the core emerging thinking, a short phrase, not a topic), "branches" (array of 3 to 6 objects with "name" and "materials", materials only if the notes name them, otherwise an empty string), "languages" (array chosen only from this list ${JSON.stringify(LANGUAGES)}), "questions" (open questions from children or observation), "environment" (notes for how the space may change). Only include branches the notes support.`:"";
+  const webSpec=wantWeb?`\n"web" an object for the curriculum web with keys "focus" (the core emerging thinking, a short phrase, not a topic), "branches" (array of 3 to 6 objects with "name" and "materials", materials only if the notes name them, otherwise an empty string), "languages" (array chosen only from this list ${JSON.stringify(langList())}), "questions" (open questions from children or observation), "environment" (notes for how the space may change). Only include branches the notes support.`:"";
   const prompt=`You are helping an educator at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, complete a ${F.name}. ${F.who}.
 Sort the educator's notes into the sections below. Use only what the notes say. Never invent observations, children, quotes, or materials. If the notes give nothing for a section, return an empty string for it. Sections marked as end-of-week reflection stay empty unless the notes clearly reflect back on the week. Plans document children's thinking, interpret why moments matter, and follow observation, provocation, reflection. ${STYLE}
 
@@ -1224,7 +1238,7 @@ ${notes}`;
     p=plans.get(p.id)||p;
     let n=0;
     for(const f of empty){const v=out?.[f.k];if(typeof v==="string"&&v.trim()){p.fields[f.k]=v.trim().replace(/—/g,", ");n++}}
-    if(wantWeb&&out?.web&&typeof out.web==="object"){const w=out.web;p.web.focus=String(w.focus||"");const br=Array.isArray(w.branches)?w.branches.slice(0,6).map(b=>({name:String(b?.name||""),materials:String(b?.materials||"")})).filter(b=>b.name):[];if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=(Array.isArray(w.languages)?w.languages:[]).filter(x=>LANGUAGES.includes(x));p.web.questions=String(w.questions||"");p.web.environment=String(w.environment||"");n++}
+    if(wantWeb&&out?.web&&typeof out.web==="object"){const w=out.web;p.web.focus=String(w.focus||"");const br=Array.isArray(w.branches)?w.branches.slice(0,6).map(b=>({name:String(b?.name||""),materials:String(b?.materials||"")})).filter(b=>b.name):[];if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=langPick(w.languages);p.web.questions=String(w.questions||"");p.web.environment=String(w.environment||"");n++}
     persist(p);renderMain();toast(n?`Filled ${n} section${n>1?"s":""}. Read each one and make it yours.`:"Your notes did not match any empty section.");
   }catch(err){btn.disabled=false;$("#draftstate").textContent="";toast(assistError(err?.code||"unknown","Nothing was changed."))}
 }
@@ -1717,7 +1731,7 @@ Find the threads. A thread is a question or idea children keep returning to acro
 Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, strongest first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id.
 ${STYLE}
-Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(LANGUAGES)}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": ""}]}
+Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": ""}]}
 
 Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
@@ -1727,7 +1741,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     const ths=(Array.isArray(out?.threads)?out.threads:[]).slice(0,8).map(x=>{
       const ev=(Array.isArray(x.evidence)?x.evidence:[]).filter(e=>e&&ids.has(e.planId)).map(e=>({planId:e.planId,week:byId.get(e.planId).week,text:clean2(e.text).slice(0,240)}));
       const wk=[...new Set([...(Array.isArray(x.weeks)?x.weeks:[]).filter(w=>d.some(p=>p.week===w)),...ev.map(e=>e.week)])].sort();
-      return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:(Array.isArray(x.languages)?x.languages:[]).filter(l=>LANGUAGES.includes(l)),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:""};
+      return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:langPick(x.languages),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:""};
     }).filter(x=>x.evidence.length);
     // update followed threads with new evidence
     for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
@@ -2034,7 +2048,7 @@ function applyTranscript(out,target,type,j){
   for(const f of F.fields){const v=str(out?.fields?.[f.k]);if(v&&!(p.fields[f.k]||"").trim())p.fields[f.k]=v}
   if(tp==="classroom"&&out?.web&&typeof out.web==="object"){const w=out.web;const empty=!p.web.focus&&!p.web.branches.some(b=>b.name);
     if(empty){const br=(Array.isArray(w.branches)?w.branches:[]).slice(0,6).map(b=>({name:str(b?.name),materials:str(b?.materials)})).filter(b=>b.name||b.materials);
-      if(str(w.focus)||br.length){p.web.focus=str(w.focus);if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=(Array.isArray(w.languages)?w.languages:[]).filter(l=>LANGUAGES.includes(l));p.web.questions=str(w.questions);p.web.environment=str(w.environment)}}}
+      if(str(w.focus)||br.length){p.web.focus=str(w.focus);if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=langPick(w.languages);p.web.questions=str(w.questions);p.web.environment=str(w.environment)}}}
   if(tp==="individual"&&out?.__group&&!target){p.focus="smallgroup";p.groups=[out.__group];const g=GROUPS.find(x=>x.name===out.__group);if(g){if(!p.classroom)p.classroom=g.room;if(!str(out.educator)&&!str(j.meta?.educator)&&g.educator)p.educator=g.educator}if(Array.isArray(out.setting)&&out.setting.length&&!p.where)p.where=out.setting.join(", ")}
   else if(tp==="individual"&&!target){p.focus="area";p.groups=[]}
   if(tp==="smallgroup"&&Array.isArray(out?.setting)){const add=out.setting.map(x=>PLACES.find(P=>P.toLowerCase()===String(x).toLowerCase())).filter(Boolean);p.setting=[...new Set([...(p.setting||[]),...add])]}
@@ -2143,15 +2157,17 @@ document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.
 function applyProgram(v){
   if(Array.isArray(v.groups))GROUPS=v.groups.filter(g=>g&&g.name).map(g=>({name:String(g.name),room:g.room||"",educator:g.educator||""}));
   if(Array.isArray(v.places))PLACES=v.places.filter(Boolean);
+  if(Array.isArray(v.areas))AREAS=v.areas.filter(Boolean);
+  if(Array.isArray(v.languages)&&v.languages.length)LANGUAGES=v.languages.filter(Boolean);
   if(v.materials&&typeof v.materials==="object")MATERIALS=v.materials;
   if(v.seasons&&typeof v.seasons==="object")SEASONS=Object.assign({Fall:[],Winter:[],Spring:[]},v.seasons);
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
 }
-function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("")}
+function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
 let progTimer=null;
 function saveProgram(){
-  const v={groups:GROUPS,places:PLACES,materials:MATERIALS,seasons:SEASONS,updatedAt:Date.now()};
+  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,updatedAt:Date.now()};
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
@@ -2168,9 +2184,15 @@ function renderSettings(){
     </tbody></table></div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
   <section class="card"><div class="lbl">Educators</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
-  <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places for small groups and classroom areas.</div>
+  <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places where small groups meet, indoors and outdoors.</div>
     <div class="chips">${chipList(PLACES,"data-pdel")}</div>
     <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button></div></section>
+  <section class="card"><div class="lbl">Classroom areas</div><div class="hint">Offered on the Individual plan when the focus is a classroom area.</div>
+    <div class="chips">${chipList(AREAS,"data-adel")}</div>
+    <div class="actions"><input type="text" id="a-new" placeholder="Add a classroom area" style="width:220px"><button class="btn small" id="a-add">Add</button></div></section>
+  <section class="card"><div class="lbl">Languages of expression</div><div class="hint">Offered on every plan and the curriculum web. Educators can add others on any plan, and those are offered to everyone afterward.</div>
+    <div class="chips">${chipList(LANGUAGES,"data-ldel")}</div>
+    <div class="actions"><input type="text" id="l-new" placeholder="Add a language of expression" style="width:240px"><button class="btn small" id="l-add">Add</button></div></section>
   <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
     ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
       <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>
@@ -2188,6 +2210,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
   if(t.id==="p-add"){const n=val("#p-new");if(n&&!PLACES.includes(n)){PLACES.push(n);saveProgram()}renderSettings();return}
   if(t.dataset.pdel!=null){PLACES.splice(+t.dataset.pdel,1);saveProgram();renderSettings();return}
+  if(t.id==="a-add"){const n=val("#a-new");if(n&&!AREAS.some(x=>x.toLowerCase()===n.toLowerCase())){AREAS.push(n);saveProgram()}renderSettings();return}
+  if(t.dataset.adel!=null){AREAS.splice(+t.dataset.adel,1);saveProgram();renderSettings();return}
+  if(t.id==="l-add"){const n=val("#l-new");if(n&&!LANGUAGES.some(x=>x.toLowerCase()===n.toLowerCase())){LANGUAGES.push(n);saveProgram()}renderSettings();return}
+  if(t.dataset.ldel!=null){LANGUAGES.splice(+t.dataset.ldel,1);saveProgram();renderSettings();return}
   if(t.dataset.mdel){const [c,i]=t.dataset.mdel.split("|");MATERIALS[c].splice(+i,1);saveProgram();renderSettings();return}
   if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
   if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
