@@ -68,6 +68,14 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
+.nav{flex-wrap:wrap;border-radius:20px}
+@media (max-width:520px){.navx{display:none}.nav button{padding:6px 11px}}
+.pcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px;align-items:start}
+.pcol{display:grid;gap:10px;min-width:0}
+.pthread{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;font-size:14px;background:var(--bg);min-width:0}
+.pdir{display:grid;gap:5px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
+.proom{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.proom:first-of-type{border-top:none;padding-top:0}
 .tlink{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13.5px;color:var(--muted)}
 .tlink select{width:auto;max-width:100%;flex:1 1 220px}
 .linkbtn{background:none;border:none;padding:0;color:var(--moss);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13.5px}
@@ -200,7 +208,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
-    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads and overview</button></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="projects">Projects</button><button data-view="threads">Threads<span class="navx"> and overview</span></button></div>
     <div class="spacer"></div>
     <div class="who">
       <label for="me">Educator</label>
@@ -429,6 +437,7 @@ async function boot(){
   for(const p of LS.get("fps.local",[]))plans.set(p.id,p);
   for(const t of LS.get("fps.threads",[]))threads.set(t.id,t);
   for(const c of LS.get("fps.scans",[]))scans.set(c.room,c);
+  for(const x of LS.get("fps.projects",[]))projects.set(x.id,x);
   renderAll();
   if(!window.claude||!window.claude.use){setConn("Saving on this device");return}
   const [d,s,dl]=await Promise.all([claude.use("db").catch(()=>null),claude.use("sample").catch(()=>null),claude.use("downloads").catch(()=>null)]);
@@ -453,6 +462,7 @@ async function boot(){
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name);renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(view==="threads"&&!scanBusy&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
@@ -577,6 +587,7 @@ function renderList(){
 /* ---------- Main editor ---------- */
 function renderMain(){
   if(view==="threads"){renderThreads();return}
+  if(view==="projects"){renderProjects();return}
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
@@ -826,12 +837,12 @@ ${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.
 }
 function webLayout(n,cx,cy,rx,ry){const pts=[];for(let i=0;i<n;i++){const a=(-90+i*360/n)*Math.PI/180;pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return pts}
 function wrapWords(t,max){const words=String(t).split(/\s+/).filter(Boolean);const out=[];let line="";for(const w of words){if((line+" "+w).trim().length>max){if(line)out.push(line);line=w}else line=(line+" "+w).trim()}if(line)out.push(line);return out}
-function drawWebPreview(p){
-  const w=p.web,W=560,H=380,cx=W/2,cy=H/2;
+function webPreviewSvg(w){
+  const W=560,H=380,cx=W/2,cy=H/2;
   const pts=webLayout(w.branches.length,cx,cy,195,130);
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curriculum web preview">`;
   pts.forEach(([x,y])=>s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--muted)" stroke-width="1.2"/>`);
-  w.connections.forEach(([a,b])=>{if(pts[a]&&pts[b]){const [x1,y1]=pts[a],[x2,y2]=pts[b];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="var(--marigold)" stroke-width="1.6" stroke-dasharray="5 4"/>`}});
+  (w.connections||[]).forEach(([a,b])=>{if(pts[a]&&pts[b]){const [x1,y1]=pts[a],[x2,y2]=pts[b];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="var(--marigold)" stroke-width="1.6" stroke-dasharray="5 4"/>`}});
   const fl=wrapWords(w.focus||"Central focus",20).slice(0,3);
   s+=`<ellipse cx="${cx}" cy="${cy}" rx="92" ry="44" fill="var(--moss-soft)" stroke="var(--moss)" stroke-width="1.5"/>`;
   fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*8+i*16+5}" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--moss)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
@@ -840,8 +851,9 @@ function drawWebPreview(p){
     nl.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+j*15}" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
     ml.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+nl.length*15+j*13}" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
   });
-  s+=`</svg>`;$("#webprev").innerHTML=s;
+  return s+`</svg>`;
 }
+function drawWebPreview(p){$("#webprev").innerHTML=webPreviewSvg(p.web)}
 
 function rosterFor(room){const a=roster.filter(r=>room&&r.room===room).map(r=>r.name),b=roster.filter(r=>!room||r.room!==room).map(r=>r.name);return [...new Set([...a,...b])]}
 function educatorSelect(p){
@@ -902,6 +914,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
   if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
   if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
+  if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
   if(t.dataset.new){view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
@@ -1343,6 +1356,235 @@ const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classro
  web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, markers"}],
  connections:[[0,2],[3,4]],languages:["Drawing and mark-making","Building and construction","Movement and body","Dialogue and words","Recording and comparing"],questions:"What makes something go faster? How can we make it stay up? What happens if we change this? How do we work together?",environment:"Expand ramp area. Create space for ongoing structures. Add materials for comparison. Allow work to remain over multiple days."}};
 
+/* ---------- Projects ----------
+   A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
+   and it can also begin school-wide. It holds hypotheses about where the inquiry could go, never steps or an end date.
+   People start projects and add threads to them. Claude only points out what looks related. */
+let projects=new Map(), projId=LS.get("fps.proj",""), projForm=null, projBusy={};
+const PSTATUS={active:"Active",resting:"Resting",closed:"Closed"};
+const PJOIN={children:"Children's initiative",educator:"An educator's proposal",event:"An event"};
+function saveProject(x){x.updatedAt=Date.now();projects.set(x.id,x);
+  if(db)db.doc("projects/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the project. Check your connection."));
+  else LS.set("fps.projects",[...projects.values()])}
+const pTimers={};
+function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
+function projectOfThread(tid){for(const x of projects.values())if((x.threads||[]).some(l=>l.id===tid))return x;return null}
+function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
+function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+function projPlans(x){const m=new Map();for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=plans.get(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}return [...m.values()]}
+function projWeeks(x){
+  const s=new Set();for(const {t} of projThreads(x))(t.weeks||[]).forEach(w=>s.add(w));projPlans(x).forEach(p=>s.add(p.weekOf));
+  const ws=[...s].filter(Boolean).sort();if(!ws.length)return[];const out=[];for(let w=ws[0];w<=ws[ws.length-1]&&out.length<60;w=addDays(w,7))out.push(w);return out;
+}
+function projWeb(x){return {focus:x.question||x.name||"",branches:((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim()||(b.materials||"").trim()),connections:[]}}
+function roomsText(x){const r=projRooms(x);return r.length?r.join(", "):"School-wide"}
+function openProject(id){projId=id||"";LS.set("fps.proj",projId);projForm=null;view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
+
+function projectStartForm(){
+  const f=projForm,t=f.threadId&&threads.get(f.threadId);
+  return `<section class="card" id="pform"><div class="lbl">${t?"Start a project from the thread "+esc(t.name):"Start a school-wide project"}</div>
+    <div class="hint">${t?"A project begins when the team decides this thread deserves following further. Record that decision here.":"A school-wide project has no home classroom. Each classroom that takes part joins it, and followed threads can be added as they appear."}</div>
+    <label class="fld-label">Project name<input type="text" id="pf-name" value="${esc(f.name)}" placeholder="A few words from the children's side"></label>
+    <label class="fld-label">Central question<input type="text" id="pf-question" value="${esc(f.question)}" placeholder="The question underneath what children keep returning to"></label>
+    ${t?`<label class="fld-label">Home classroom<select id="pf-home">${CLASSROOMS.map(r=>`<option value="${r}" ${f.home===r?"selected":""}>${r}</option>`).join("")}<option value="" ${!f.home?"selected":""}>School-wide, no home classroom</option></select></label>`:""}
+    <label class="fld-label">Who decided<input type="text" id="pf-who" value="${esc(f.who)}" placeholder="Ex. The West team at Monday planning"></label>
+    <label class="fld-label">Why we are following this as a project<textarea id="pf-why" rows="3" placeholder="What the documentation showed, and what the team hopes to understand">${esc(f.why)}</textarea></label>
+    <div id="pf-msg"></div>
+    <div class="actions"><button class="btn" id="pf-go">Start the project</button><button class="linkbtn" id="pf-cancel">Cancel</button></div></section>`;
+}
+function projectCard(x){
+  const ths=projThreads(x),ws=projWeeks(x);
+  return `<article class="thread"><div class="secthead"><h3>${esc(x.name)}</h3><span class="status st-${x.status==="active"?"growing":x.status==="resting"?"resting":"closed"}">${PSTATUS[x.status]||"Active"}</span></div>
+    ${x.question?`<div class="q">${esc(x.question)}</div>`:""}
+    <div class="cnt">${[x.home?x.home+" classroom":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
+    <div class="actions"><button class="btn small" data-popen="${x.id}">Open project</button></div></article>`;
+}
+function renderProjects(){
+  const x=projId&&projects.get(projId);
+  if(x&&!projForm){renderProject(x);return}
+  const all=[...projects.values()].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const live=all.filter(p=>p.status!=="closed"),closed=all.filter(p=>p.status==="closed");
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classrooms</span><h2 style="margin-top:4px">Projects</h2>
+    <div class="sub">A project grows from a thread the team decides to follow further. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
+  if(projForm)h+=projectStartForm();
+  else h+=`<div class="actions"><button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
+  if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
+  else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
+  if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(projForm){const el=$("#pf-name");if(el&&!projForm.shown){projForm.shown=true;el.focus()}}
+}
+function projThreadCard(x,l,t,ws){
+  const on=new Set(t.weeks||[]);threadLinkedPlans(t).forEach(p=>on.add(p.weekOf));
+  const last=[...(t.evidence||[])].sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
+  return `<div class="pthread"><div class="secthead"><b>${esc(t.name)}</b><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>
+    ${t.question?`<div class="muted">${esc(t.question)}</div>`:""}
+    ${(t.groups||[]).length?`<div class="cnt">${esc(t.groups.join(", "))}</div>`:""}
+    ${ws.length?`<div class="tl" aria-label="Weeks this thread appears">${ws.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`:""}
+    ${last?`<div class="evid"><div>“${esc(last.text)}”${evSource(last)}</div></div>`:""}
+    <div class="cnt">Joined the project the week of ${fmtDate(l.week||mondayOf(new Date(l.at||Date.now())))}${l.by?" · added by "+esc(l.by):""}${t.unfollowed?" · no longer followed":""}</div>
+    <div class="actions"><button class="linkbtn" data-tsee="${t.id}">See the thread</button><button class="linkbtn" data-ptrm="${t.id}">Take out of the project</button></div></div>`;
+}
+function renderProject(x){
+  const ths=projThreads(x),ws=projWeeks(x),rooms=projRooms(x);
+  const groupsAvail=GROUPS.filter(g=>!rooms.length||rooms.includes(g.room));
+  const free=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).sort((a,b)=>(rooms.includes(b.classroom)-rooms.includes(a.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  const dt=x.decision&&x.decision.threadId&&threads.get(x.decision.threadId);
+  const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
+  let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0"><button class="linkbtn" data-pback="1">All projects</button>
+      <div style="margin-top:6px"><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
+      <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
+    <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
+    <label class="fld-label">Central question<input type="text" data-pf="question" value="${esc(x.question||"")}" placeholder="The question underneath what children keep returning to"></label>
+    <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
+  if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea></section>`;
+
+  h+=`<section class="card"><div class="lbl">How we decided to follow it</div>
+    ${dt?`<div class="muted" style="font-size:13.5px">It grew from the thread <button class="linkbtn" data-tsee="${dt.id}">${esc(dt.name)}</button>.</div>`:""}
+    <label class="fld-label">Who decided<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label>
+    <label class="fld-label">Why<textarea data-pd="why" rows="2">${esc(x.decision?.why||"")}</textarea></label></section>`;
+
+  h+=`<section class="card"><div class="lbl">Classrooms</div>
+    <div class="hint">${x.home?"The project belongs to its home classroom. Other classrooms can join, each by its own path.":"This is a school-wide project with no home classroom. Each classroom that takes part joins it."}</div>
+    ${(x.classrooms||[]).map(c=>{const isHome=c.room===x.home;const used=ths.some(o=>o.t.classroom===c.room);
+      return `<div class="proom"><div class="actions"><b>${esc(c.room)}</b>${isHome?`<span class="tag classroom">Home</span>`:""}
+        <label class="cnt">${isHome?"Began":"Joined"} the week of <input type="date" data-pcw="${c.room}" value="${esc(c.week||"")}" style="width:auto"></label>
+        ${isHome?"":`<label class="cnt">How it joined <select data-pch="${c.room}" style="width:auto"><option value="">Choose</option>${Object.entries(PJOIN).map(([k,v])=>`<option value="${k}" ${c.how===k?"selected":""}>${v}</option>`).join("")}</select></label>`}
+        ${!isHome&&!used?`<button class="linkbtn" data-pcrm="${c.room}">Remove</button>`:""}</div>
+        <input type="text" data-pcn="${c.room}" value="${esc(c.note||"")}" placeholder="${isHome?"What began it here":"What brought this classroom in"}"></div>`}).join("")}
+    ${CLASSROOMS.filter(r=>!rooms.includes(r)).length?`<label class="tlink">Add a classroom<select data-pcadd="1"><option value="">Choose a classroom</option>${CLASSROOMS.filter(r=>!rooms.includes(r)).map(r=>`<option>${r}</option>`).join("")}</select></label>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">Small groups carrying the project</div>
+    <div class="hint">A few children do the close work, and it returns to the wider class.</div>
+    <div class="chips">${groupsAvail.map(g=>`<button class="chip ${(x.groups||[]).includes(g.name)?"on":""}" data-pg="${esc(g.name)}">${esc(g.name)}${rooms.length!==1?" · "+esc(g.room):""}</button>`).join("")}</div>
+    <label class="fld-label">How the work returns to the whole class<textarea data-pf="returns" rows="2" placeholder="Ex. The group shares its drawings at meeting time and the class adds questions">${esc(x.returns||"")}</textarea></label></section>`;
+
+  const br=(x.web&&x.web.branches)||[];
+  h+=`<section class="card"><div class="lbl">Possible directions</div>
+    <div class="hint">Hypotheses about where the inquiry could go. Add, change, or drop them as documentation comes in.</div>
+    <div class="webwrap"><div style="display:grid;gap:8px">
+      ${br.map((b,i)=>`<div class="pdir"><div class="actions" style="justify-content:space-between"><span class="cnt">Direction ${i+1}</span><button class="linkbtn" data-pwrm="${i}">Remove</button></div>
+        <input type="text" data-pwb="${i}|name" value="${esc(b.name||"")}" placeholder="A direction the inquiry could take">
+        <input type="text" data-pwb="${i}|materials" value="${esc(b.materials||"")}" placeholder="Materials, places, or people"></div>`).join("")}
+      ${br.length<8?`<div class="actions"><button class="btn small ghost" data-pwadd="1">Add a direction</button></div>`:""}</div>
+      <div id="pwebprev">${webPreviewSvg(projWeb(x))}</div></div></section>`;
+
+  h+=`<section class="card"><div class="lbl">Threads in this project</div>
+    <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each classroom's path is shown beside the others.":""}</div>
+    ${ths.length?`<div class="pcols">${cols.map(r=>{const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
+      return `<div class="pcol"><div class="chiprow-label">${r?esc(r)+" classroom":"No classroom set"}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+esc(PJOIN[c.how].toLowerCase()):""}</div>
+        ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this classroom yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
+    ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">People beyond the classrooms</div>
+    <textarea data-pf="people" rows="2" placeholder="Families, community members, or the people receiving the children's letters">${esc(x.people||"")}</textarea></section>
+    <section class="card"><div class="lbl">Team notes</div><textarea data-pf="notes" rows="2">${esc(x.notes||"")}</textarea></section>`;
+
+  const stories=[...(x.stories||[])].sort((a,b)=>(b.at||0)-(a.at||0));
+  h+=`<section class="card"><div class="lbl">Project stories</div>
+    <div class="hint">Written from every thread in the project, for family evenings and colleagues. Each story is kept with its date. Writing a new one never replaces an earlier one.</div>
+    <div class="actions"><input type="text" id="pstory-label" placeholder="What is this story for. Ex. Family evening in November" style="flex:1 1 240px;width:auto">
+      ${sample?`<button class="btn small" id="pstory-go" ${projBusy[x.id]||!ths.length?"disabled":""}>${projBusy[x.id]?"Writing":"Write a project story"}</button>`:""}
+      <button class="btn small ghost" id="pstory-blank">Start a blank story</button></div>
+    ${stories.map(s=>`<details ${s.id===projOpenStory?"open":""}><summary class="chiprow-label" style="cursor:pointer">${esc(s.label||"Project story")}, ${shortDate(s.at)}${s.by?", "+esc(s.by):""}</summary>
+      <div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-psf="${s.id}|${k}" rows="2">${esc(s.fields?.[k]||"")}</textarea></label>`).join("")}
+      <div class="actions"><button class="btn small" data-pspdf="${s.id}">Story PDF</button><span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${s.id}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
+  if(isDirector())h+=`<div class="actions"><span id="pdel"><button class="linkbtn" data-pdel="1">Remove this project</button></span></div>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+}
+let projOpenStory="";
+function startProject(){
+  const f=projForm;if(!f)return;const g=id=>($("#"+id)?.value||"").trim();
+  const name=g("pf-name"),question=g("pf-question"),who=g("pf-who"),why=g("pf-why");const t=f.threadId&&threads.get(f.threadId);
+  const home=t?($("#pf-home")?.value||""):"";
+  const miss=[!name&&"a project name",!who&&"who decided",!why&&"why the team is following it"].filter(Boolean);
+  if(miss.length){Object.assign(f,{name,question,who,why,home});$("#pf-msg").innerHTML=`<span class="nudge">Add ${esc(miss.join(", "))} first.</span>`;return}
+  if(t&&projectOfThread(t.id)){toast("That thread is already part of a project.");projForm=null;renderMain();return}
+  const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
+  const firstWeek=t?([...(t.weeks||[])].sort()[0]||wk):wk;
+  const x={id:uid(),name,question,home,classrooms:home?[{room:home,how:"start",week:firstWeek,by,at:now,note:""}]:[],threads:t?[{id:t.id,by,at:now,week:wk}]:[],
+    decision:{who,why,by,at:now,threadId:t?t.id:""},groups:t?[...(t.groups||[])]:[],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
+  // a thread followed in another classroom than the home brings its classroom in
+  if(t&&t.classroom&&t.classroom!==home)x.classrooms.push({room:t.classroom,how:"",week:wk,by,at:now,note:""});
+  saveProject(x);projForm=null;openProject(x.id);toast("Project started.");
+}
+function addThreadToProject(x,t){
+  if(!x||!t)return;if(projectOfThread(t.id)){toast("That thread is already part of a project.");return}
+  const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
+  x.threads=[...(x.threads||[]),{id:t.id,by,at:now,week:wk}];
+  let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
+  saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} classroom has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
+}
+function projectStoryPdf(x,s){
+  const ws=projWeeks(x);
+  makePdf([{type:"story",title:"Project Story, "+x.name,metaA:[roomsText(x),(x.groups||[]).join(", ")].filter(Boolean).join(", "),metaB:ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:"",story:s.fields||{},fields:{}}],`Project story ${x.name}${s.label?" "+s.label:""}.pdf`.replace(/[\\/:*?"<>|]+/g," "));
+}
+async function writeProjectStory(x,label){
+  if(!x||projBusy[x.id])return;projBusy[x.id]=true;renderMain();
+  const ths=projThreads(x).map(o=>o.t);
+  const d=capDigest(digest(projPlans(x)),150000).reverse();
+  const info={name:x.name,central_question:x.question||"",status:PSTATUS[x.status]||"Active",home_classroom:x.home||"none, school-wide",
+    classrooms:(x.classrooms||[]).map(c=>({classroom:c.room,week:c.week||"",how_it_joined:c.room===x.home?"where the project began":(PJOIN[c.how]||""),note:c.note||""})),
+    small_groups:x.groups||[],how_the_work_returns_to_the_class:x.returns||"",how_we_decided:{who:x.decision?.who||"",why:x.decision?.why||""},
+    possible_directions:((x.web&&x.web.branches)||[]).filter(b=>b.name||b.materials).map(b=>[b.name,b.materials].filter(Boolean).join(". ")),people_beyond_the_classrooms:x.people||"",team_notes:x.notes||"",summary_of_closure:x.status==="closed"?(x.closure||""):""};
+  const prompt=`Write a project story for Fulton Community School & Farm educators to share at a family evening or with colleagues, following the school's project presentation timeline.${label?` This story is for ${label}.`:""}
+Project ${JSON.stringify(info)}
+Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question,classroom:t.classroom,groups:t.groups,weeks:t.weeks,evidence:t.evidence,team_notes:t.notes||""})))}
+Use only what the project, threads, plans, evidence, and notes say. Never invent quotes, children, or events. When more than one classroom takes part, keep each classroom's path distinct and say where they met. Treat possible directions as the educators' hypotheses, never as steps that were completed. When the material gives nothing for a section, write one short sentence naming what educators could add there, beginning with "Add". Write 2 to 4 sentences per section. ${STYLE}
+Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
+
+Plans, oldest first.
+${d.map(o=>JSON.stringify(o)).join("\n")}`;
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const fields={};STORY.forEach(([k])=>fields[k]=String(out?.[k]||"").replace(/—/g,", "));
+    const cur=projects.get(x.id)||x;const s={id:uid(),label:label||"",at:Date.now(),by:whoAmI(),fields};cur.stories=[...(cur.stories||[]),s];projOpenStory=s.id;saveProject(cur);toast("Project story written. It is kept below with today's date.")}
+  catch(err){toast(assistError(err?.code||"unknown"))}
+  delete projBusy[x.id];renderMain();
+}
+async function projectsClick(t){
+  if(t.dataset.popen){openProject(t.dataset.popen);return true}
+  if(t.dataset.pback){openProject("");return true}
+  if(t.dataset.pstart){const th=threads.get(t.dataset.pstart);if(!th)return true;const ex=projectOfThread(th.id);if(ex){openProject(ex.id);return true}
+    projForm={threadId:th.id,name:th.name||"",question:th.question||"",home:th.classroom||"",who:"",why:""};projId="";view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop();return true}
+  if(t.id==="pstart-school"){projForm={threadId:"",name:"",question:"",home:"",who:"",why:""};renderMain();return true}
+  if(t.id==="pf-cancel"){projForm=null;renderMain();return true}
+  if(t.id==="pf-go"){startProject();return true}
+  if(view!=="projects")return false;
+  const x=projId&&projects.get(projId);if(!x)return false;
+  if(t.dataset.pg){const g=t.dataset.pg;x.groups=(x.groups||[]).includes(g)?x.groups.filter(v=>v!==g):[...(x.groups||[]),g];saveProject(x);renderMain();return true}
+  if(t.dataset.pwadd){x.web=x.web||{branches:[]};x.web.branches=[...(x.web.branches||[]),{name:"",materials:""}];saveProject(x);renderMain();const ins=document.querySelectorAll('[data-pwb$="|name"]');ins[ins.length-1]?.focus();return true}
+  if(t.dataset.pwrm!=null){x.web.branches=(x.web.branches||[]).filter((b,i)=>i!==+t.dataset.pwrm);saveProject(x);renderMain();return true}
+  if(t.dataset.ptrm){x.threads=(x.threads||[]).filter(l=>l.id!==t.dataset.ptrm);saveProject(x);renderMain();toast("Taken out of the project. The thread and its plans are unchanged.");return true}
+  if(t.dataset.pcrm){x.classrooms=(x.classrooms||[]).filter(c=>c.room!==t.dataset.pcrm);saveProject(x);renderMain();return true}
+  if(t.id==="pstory-go"){writeProjectStory(x,($("#pstory-label")?.value||"").trim());return true}
+  if(t.id==="pstory-blank"){const s={id:uid(),label:($("#pstory-label")?.value||"").trim(),at:Date.now(),by:whoAmI(),fields:{}};x.stories=[...(x.stories||[]),s];projOpenStory=s.id;saveProject(x);renderMain();return true}
+  if(t.dataset.pspdf){const s=(x.stories||[]).find(s=>s.id===t.dataset.pspdf);if(s)projectStoryPdf(x,s);return true}
+  if(t.dataset.psrm){$("#psrm-"+t.dataset.psrm).innerHTML=`<span class="confirm">Remove this story for everyone? <button class="btn warn small" data-psrmyes="${t.dataset.psrm}">Remove story</button><button class="linkbtn" data-pkeep="1">Keep it</button></span>`;return true}
+  if(t.dataset.psrmyes){x.stories=(x.stories||[]).filter(s=>s.id!==t.dataset.psrmyes);saveProject(x);renderMain();toast("Story removed.");return true}
+  if(t.dataset.pkeep){renderMain();return true}
+  if(t.dataset.pdel){if(!isDirector())return true;$("#pdel").innerHTML=`<span class="confirm">Remove this project for everyone? Its threads and plans stay. <button class="btn warn small" data-pdelyes="1">Remove project</button><button class="linkbtn" data-pkeep="1">Keep it</button></span>`;return true}
+  if(t.dataset.pdelyes){if(!isDirector())return true;const id=x.id;projects.delete(id);if(db)db.doc("projects/"+id).delete().catch(()=>toast("Could not remove the project. Check your connection."));else LS.set("fps.projects",[...projects.values()]);openProject("");toast("Project removed. Its threads and plans are unchanged.");return true}
+  return false;
+}
+document.addEventListener("input",e=>{
+  const t=e.target;if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
+  if(t.dataset.pf){x[t.dataset.pf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);if(t.dataset.pf==="question"||t.dataset.pf==="name"){const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x))}saveProjectSoon(x);return}
+  if(t.dataset.pd){x.decision=x.decision||{};x.decision[t.dataset.pd]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x);return}
+  if(t.dataset.pcn){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcn);if(c){c.note=t.value;saveProjectSoon(x)}return}
+  if(t.dataset.pwb){const [i,k]=t.dataset.pwb.split("|");const b=x.web?.branches?.[+i];if(b){b[k]=t.value;const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x));saveProjectSoon(x)}return}
+  if(t.dataset.psf){const [sid,k]=t.dataset.psf.split("|");const s=(x.stories||[]).find(s=>s.id===sid);if(s){s.fields=s.fields||{};s.fields[k]=t.value;autoGrow(t);saveProjectSoon(x)}return}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  // on a thread card, add the thread to a project
+  if(t.dataset.padd){const x=projects.get(t.value),th=threads.get(t.dataset.padd);if(x&&th)addThreadToProject(x,th);return}
+  if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
+  if(t.dataset.pstatus){x.status=t.value;saveProject(x);renderMain();return}
+  if(t.dataset.pch){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pch);if(c){c.how=t.value;saveProject(x);renderMain()}return}
+  if(t.dataset.pcw){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcw);if(c&&t.value){c.week=mondayOf(parseIso(t.value));saveProject(x);renderMain()}return}
+  if(t.dataset.pcadd){if(t.value&&!projRooms(x).includes(t.value)){x.classrooms=[...(x.classrooms||[]),{room:t.value,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""}];saveProject(x);renderMain()}return}
+  if(t.dataset.ptadd){const th=threads.get(t.value);if(th)addThreadToProject(x,th);return}
+});
+
 /* ---------- Threads and overview ---------- */
 const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
 const TSTATUS={emerging:"Emerging",growing:"Growing",deepening:"Deepening",resting:"Resting",closed:"Closed"};
@@ -1508,10 +1750,13 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
+    const pr=projectOfThread(t.id);const openProjects=[...projects.values()].filter(x=>x.status!=="closed");
+    if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
       <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
-      ${sample?`<button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button>`:""}
+      ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
+      ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button><span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span></div>`;
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
@@ -1519,7 +1764,9 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     const was=t.trackedId&&threads.get(t.trackedId);
     if(was&&was.unfollowed)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
     else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
-    else h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`;
+    else{const rp=t.relatedProject&&projects.get(t.relatedProject);
+      if(rp)h+=`<span class="nudge" style="justify-self:start">Claude noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
+      h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`}
   }
   return h+`</article>`;
 }
@@ -1546,7 +1793,7 @@ function threadLinkedPlans(t){
   const ev=new Set((t.evidence||[]).map(e=>e.planId));
   return [...plans.values()].filter(p=>p.id!=="example"&&!ev.has(p.id)&&!(p.threadOff||[]).includes(t.id)&&(p.threadId===t.id||(p.threadLinks||[]).some(l=>l.id===t.id))).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
 }
-function threadsLine(p){return planThreads(p).map(c=>c.t.name).filter(Boolean).join("  \u2022  ")}
+function threadsLine(p){return planThreads(p).map(c=>{const pr=projectOfThread(c.t.id);return c.t.name?c.t.name+(pr&&pr.name?" (project "+pr.name+")":""):""}).filter(Boolean).join("  \u2022  ")}
 function threadsNoteHtml(p){
   if(!p||p.id==="example")return"";
   const cs=planThreads(p);const on=new Set(cs.map(c=>c.t.id));
@@ -1555,6 +1802,7 @@ function threadsNoteHtml(p){
     const why=how==="started"?"This plan was started from the thread.":how==="quoted"?"The thread quotes this plan.":link.carried?"Carried forward from last week's plan.":`Connected by ${esc(link.by||"an educator")}${link.at?" on "+shortDate(link.at):""}.`;
     const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} classroom.`:"";
     return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}
+      ${(pr=>pr?`<div>Part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button></div>`:"")(projectOfThread(t.id))}
       ${(t.evidence||[]).filter(e=>e.planId!==p.id).slice(cs.length>1?-1:-3).map(e=>`<div class="muted">\u201c${esc(e.text)}\u201d ${fmtDate(e.week)}</div>`).join("")}
       <div class="muted">${why}${elsewhere}</div>
       <div class="actions"><button class="linkbtn" data-tsee="${t.id}">See the thread</button><button class="linkbtn" data-tunlink="${t.id}">Disconnect from this plan</button></div></section>`}).join("");
@@ -1606,7 +1854,9 @@ async function threadsClick(t){
   if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
     const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
     plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
-  if(t.dataset.tstory){writeStory(threads.get(t.dataset.tstory));return true}
+  if(t.dataset.tstory){const th=threads.get(t.dataset.tstory);
+    if(th&&th.story&&!t.dataset.yes){const el=$("#tsrw-"+th.id);if(el){el.innerHTML=`<span class="confirm">Replace the current story? Download its PDF first to keep it. <button class="btn warn small" data-tstory="${th.id}" data-yes="1">Replace it</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}}
+    writeStory(th);return true}
   if(t.dataset.tstorypdf){const th=threads.get(t.dataset.tstorypdf);const ws=[...(th.weeks||[])].sort();
     makePdf([{type:"story",title:"Project Story, "+th.name,metaA:[th.classroom&&th.classroom+" classroom",(th.groups||[]).join(", ")].filter(Boolean).join(", "),metaB:ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:"",story:th.story,fields:{}}],`Project story ${th.name}.pdf`);return true}
   return false;
@@ -1642,8 +1892,9 @@ async function findThreads(){
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, and Small Group plans, and notice when different educators or groups describe the same thread.
 Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, strongest first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
+Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,question:x.question||"",threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
 ${STYLE}
-Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": ""}]}
+Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": "", "relatedProject": ""}]}
 
 Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
@@ -1653,7 +1904,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     const ths=(Array.isArray(out?.threads)?out.threads:[]).slice(0,8).map(x=>{
       const ev=(Array.isArray(x.evidence)?x.evidence:[]).filter(e=>e&&ids.has(e.planId)).map(e=>({planId:e.planId,week:byId.get(e.planId).week,text:clean2(e.text).slice(0,240)}));
       const wk=[...new Set([...(Array.isArray(x.weeks)?x.weeks:[]).filter(w=>d.some(p=>p.week===w)),...ev.map(e=>e.week)])].sort();
-      return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:langPick(x.languages),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:""};
+      return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:langPick(x.languages),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:"",relatedProject:projects.has(x.relatedProject)?x.relatedProject:""};
     }).filter(x=>x.evidence.length);
     // update followed threads with new evidence
     for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));

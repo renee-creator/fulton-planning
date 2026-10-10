@@ -27,7 +27,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
@@ -115,7 +115,7 @@ function gh(method, path, body) {
     req.end(data || undefined);
   });
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';
 const SAVE_WAIT = 'Changes are taking longer than usual to reach GitHub. They are kept on the server and saving keeps trying, so keep working, and avoid closing the app for a few minutes.';
@@ -139,7 +139,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       const o = f.path.match(/^originals\/([^/]+)$/);
       if (o) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
@@ -156,7 +156,7 @@ async function doLoad() {
     };
     await Promise.all(Array.from({ length: 8 }, worker));
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
-    log(`Loaded ${store.recs.plans.size} plans, ${store.recs.threads.size} threads, ${store.recs.settings.size} settings`);
+    log(`Loaded ${store.recs.plans.size} plans, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
 
@@ -351,7 +351,7 @@ async function handle(req, res) {
     const { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
-    if (((kind === 'settings' && id !== 'educators') || (kind === 'threads' && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    if (((kind === 'settings' && id !== 'educators') || ((kind === 'threads' || kind === 'projects') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if (kind === 'plans' && op === 'delete') log('Plan deleted by', me.name, id);
     const map = store.recs[kind]; const cur = map.get(id);
     // director feedback on a plan is written only by the director; an educator's save keeps whatever the director last wrote
