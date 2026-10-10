@@ -1,12 +1,12 @@
 # Fulton Planning Studio
 
-Weekly curriculum planning for Fulton Community School & Farm. Educators complete the Classroom and Individual Curriculum Plans, upload paper plans to have them transcribed, follow threads across weeks, and download printable PDF or Word forms.
+Weekly curriculum planning for Fulton Community School & Farm. Educators complete the Classroom and Individual Curriculum Plans, upload paper plans to have them transcribed, follow threads across weeks, and download printable PDF or Word forms. Threads the team decides to follow further become projects, which belong to a classroom, can be joined by other classrooms, and can also begin school-wide.
 
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
 - **Server** `server.js`, running on Render at https://fulton-planning.onrender.com. Open that address in a browser to see a status page.
-- **Plans** are kept as files in the private repository `fulton-planning-records`. Every change is saved there with the educator's name, so earlier versions can always be recovered from GitHub's history.
+- **Plans**, followed threads and projects are kept as files in the private repository `fulton-planning-records`. Every change is saved there with the educator's name, so earlier versions can always be recovered from GitHub's history.
 
 This repository holds code only. It never holds plans, children's names, or keys.
 
@@ -24,7 +24,7 @@ This repository holds code only. It never holds plans, children's names, or keys
 
 ## Who can do what
 
-Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Any educator can stop following a thread, which moves it to No longer following, and anyone can follow it again. Any educator can connect a plan to a thread the school is following, or disconnect it. A connected plan shows a Following the thread note at the top, and the thread's name prints on the PDF and Word form. A plan is also connected when it was started from the thread or when the thread quotes it. Any educator can delete a plan. The page asks twice before it does, and every deletion is written to the Render log with the educator's name. Only the director writes Director feedback on a plan. Educators see it read-only, are told in the sidebar when a note is waiting, and can reply under it. Only the director can run Find threads with Claude, change Program settings, and remove a thread permanently. The server enforces this, not just the page.
+Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Any educator can stop following a thread, which moves it to No longer following, and anyone can follow it again. Any educator can connect a plan to a thread the school is following, or disconnect it. A connected plan shows a Following the thread note at the top, and the thread's name prints on the PDF and Word form. A plan is also connected when it was started from the thread or when the thread quotes it. Any educator can delete a plan. The page asks twice before it does, and every deletion is written to the Render log with the educator's name. Any educator can start a project from a followed thread, start a school-wide project, add threads and classrooms to a project, write its stories, and close it. Starting a project records who decided and why. A project holds possible directions as hypotheses and has no end date or steps to complete. Claude never starts a project or adds a thread to one. It only points out a new thread that may be related. Only the director writes Director feedback on a plan. Educators see it read-only, are told in the sidebar when a note is waiting, and can reply under it. Only the director can run Find threads with Claude, change Program settings, remove a thread permanently, and remove a project. The server enforces this, not just the page.
 
 ## Claude assist
 
