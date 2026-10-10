@@ -1623,9 +1623,12 @@ function projWeeks(x){
 // what a project adds to a thread: the experience behind it, the team's reading of what lies underneath, and the educators' intent
 function projUnder(x){return String(x.underneath||"")}
 function projIntent(x){return x.intent!=null?String(x.intent):String(x.decision?.why||"")}   // earlier projects kept the intent as Why
+// the first sentence, so the centre of the web carries a whole thought
+function firstSentence(v,n){const t=String(v||"").trim().split(/\n/)[0];const m=t.match(/^[^.!?]*[.!?]/);const s1=(m?m[0]:t).trim();
+  return s1.length>n?firstLine(s1,n):s1}
 function firstLine(v,n){const t=String(v||"").trim().split(/\n/)[0];return t.length>n?t.slice(0,n-3).trim()+"...":t}
 function projEarlier(x,key){return [...((x.earlier&&x.earlier[key])||[])].sort((a,b)=>(b.at||0)-(a.at||0))}
-function projWeb(x){return {focus:firstLine(projUnder(x),90)||x.name||"",branches:((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim()||(b.materials||"").trim()),connections:[]}}
+function projWeb(x){return {focus:firstSentence(projUnder(x),150)||x.name||"",branches:((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim()||(b.materials||"").trim()),connections:[]}}
 function roomsText(x){const r=projRooms(x);return r.length?r.join(", "):"School-wide"}
 function openProject(id){projId=id||"";LS.set("fps.proj",projId);projForm=null;view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
 
@@ -1837,7 +1840,9 @@ async function projWebAssist(x){
   const info={name:x.name,the_experience_it_grew_from:x.experience||"",what_may_lie_underneath:projUnder(x),educators_intent:projIntent(x),classrooms:projRooms(x),small_groups:x.groups||[],how_the_work_returns_to_the_class:x.returns||"",people_beyond_the_classrooms:x.people||""};
   const prompt=`You are helping the educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, think about the possible directions of a project.
 Base the directions only on what the project and its threads say below. Never invent observations, children, quotes, or events.
-A direction is a hypothesis about where the inquiry could go, written as a short phrase. It is never a topic, a theme, an activity, or a step to complete. Give 3 to 6 directions, each growing from something the project or a thread says. For each direction list materials, places, or people. Use the ones the project and its threads name where they name them. Where none are named for a direction, suggest 2 to 4 natural or open-ended materials that fit. The educators' reading of what may lie underneath is theirs. Do not restate it or rewrite it.
+A direction is a strand the inquiry could follow. Give 3 to 6 of them, each growing from something the project or a thread says.
+"name" is a short phrase of 2 to 6 words that names the strand, under 40 characters, with no full stop. It reads like a label on a wall. It is never a topic, a theme, an activity, or a step to complete, and it is never written as a sentence or as a hypothesis. Write "Coming back after a mistake" or "The jobs nobody chose", never "A child who makes a mistake may find their way back" or "Shared jobs may become the way the room runs". The hypothesis belongs in what may lie underneath, which the educators have already written.
+"materials" is a short list of materials, places or people, 3 to 9 words, with no full stop. Use the ones the project and its threads name where they name them. Where none are named for a direction, suggest 2 to 4 natural or open-ended materials that fit. The educators' reading of what may lie underneath is theirs. Do not restate it or rewrite it.
 ${cur.length?`The team already holds these directions ${JSON.stringify(cur.map(b=>({name:b.name,materials:b.materials||""})))}. Suggest how they could evolve from what the project now says. Keep the ones it still supports, change or drop the ones it no longer supports, and add new ones it points to.`:""}
 ${STYLE}
 Return JSON {"branches": [{"name": "", "materials": ""}], "why": one sentence naming which parts of the project the directions grew from}
@@ -1847,7 +1852,9 @@ Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.ques
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
     const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
-    const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:c(b?.name),materials:c(b?.materials)})).filter(b=>b.name).slice(0,6);
+    // a label on a wall, so a trailing full stop and an over-long name are trimmed back
+    const lab=(v,n)=>{let t=c(v).replace(/\s*[.;]+$/,"");if(t.length>n){const cut=t.slice(0,n);const sp=cut.lastIndexOf(" ");t=(sp>n*.5?cut.slice(0,sp):cut).replace(/[\s,]+$/,"")}return t};
+    const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:lab(b?.name,44),materials:lab(b?.materials,64)})).filter(b=>b.name).slice(0,6);
     if(!br.length)throw {code:"empty_completion"};
     projSug[x.id]={status:"ready",why:c(out?.why),branches:br};
   }catch(err){projSug[x.id]={status:"error",error:assistError(err?.code||"unknown","Your directions are unchanged.")}}
@@ -2402,7 +2409,13 @@ function displayHeadCont(doc,p,A){
 }
 // where the directions sit around the centre. An even number sits toward the corners, so the middle row stays clear.
 function webSpots(n,cx,cy,rx,ry){const off=n%2===0?180/n:0,pw=v=>Math.sign(v)*Math.pow(Math.abs(v),.6);return Array.from({length:n},(_,i)=>{const a=(-90+off+i*360/n)*Math.PI/180;return [cx+rx*pw(Math.cos(a)),cy+ry*pw(Math.sin(a))]})}
-const webHeight=n=>n<=4?[240,228]:n<=6?[276,252]:[304,290];
+const webHeight=n=>n<=4?[252,238]:n<=6?[300,276]:[332,312];
+// set text smaller until it fits the lines allowed, so nothing is silently cut off the end
+function fitLines(doc,text,kind,from,to,width,max){
+  let fs=from,ls;for(;;){pfont(doc,kind,fs);ls=doc.splitTextToSize(clean(text||""),width);if(ls.length<=max||fs<=to)break;fs-=.25}
+  if(ls.length>max){ls=ls.slice(0,max);ls[max-1]=ls[max-1].replace(/[\s,.;]+$/,"")+"\u2026"}
+  return {fs,ls};
+}
 function displayWeb(doc,x,y,w,h,web,A){
   const cx=x+w/2,cy=y+h/2;const br=(web.branches||[]).filter(b=>b.name||b.materials);
   // when the page is short of room the whole web is drawn a little smaller, so it stays with the text it belongs to
@@ -2417,18 +2430,16 @@ function displayWeb(doc,x,y,w,h,web,A){
       const c1x=x1+(mx-x1)*2/3,c1y=y1+(my-y1)*2/3,c2x=x2+(mx-x2)*2/3,c2y=y2+(my-y2)*2/3;doc.lines([[c1x-x1,c1y-y1,c2x-x1,c2y-y1,x2-x1,y2-y1]],x1,y1,[1,1],"S")});
     doc.setLineDashPattern([],0)}
   // the centre holds the reading the directions grow from
-  let fs=12*k,fl;for(;;){pfont(doc,"bs",fs);fl=doc.splitTextToSize(clean(web.focus||""),rw-24);if(fl.length<=3||fs<=9.5*k)break;fs-=.5}
-  fl=fl.slice(0,4);const flh=fs*1.24;const rh=Math.max(52*k,fl.length*flh+22*k),rr=Math.min(26,rh/2);
+  const F=fitLines(doc,web.focus,"bs",12*k,8*k,rw-24,5);const fs=F.fs,fl=F.ls;
+  const flh=fs*1.24;const rh=Math.max(52*k,fl.length*flh+22*k),rr=Math.min(26,rh/2);
   doc.setFillColor(...A.c);doc.roundedRect(cx-rw/2,cy-rh/2,rw,rh,rr,rr,"F");
   doc.setTextColor(255,255,255);fl.forEach((l,i)=>doc.text(l,cx,cy-(fl.length-1)*flh/2+i*flh+fs*.34,{align:"center"}));
-  const nf=10.5*k,mf=9*k;
   br.forEach((b,i)=>{const [bx,by]=pts[i];
-    pfont(doc,"fs",nf);const nl=doc.splitTextToSize(clean(b.name||""),bw-20).slice(0,2);
-    pfont(doc,"fr",mf);const ml=doc.splitTextToSize(clean(b.materials||""),bw-20).slice(0,3);
-    const bh=20*k+nl.length*nf*1.29+ml.length*mf*1.28;
+    const N=fitLines(doc,b.name,"fs",10.5*k,7.6*k,bw-18,3),M=fitLines(doc,b.materials,"fr",9*k,7*k,bw-18,4);
+    const bh=18*k+N.ls.length*N.fs*1.29+M.ls.length*M.fs*1.28;
     doc.setFillColor(...A.t);doc.roundedRect(bx-bw/2,by-bh/2,bw,bh,9*k,9*k,"F");
-    let ty=by-bh/2+10*k;pfont(doc,"fs",nf);doc.setTextColor(...D_INK);nl.forEach(l=>{doc.text(l,bx,ty+nf*.95,{align:"center"});ty+=nf*1.29});
-    pfont(doc,"fr",mf);doc.setTextColor(...D_MUTED);ml.forEach(l=>{doc.text(l,bx,ty+mf,{align:"center"});ty+=mf*1.28})});
+    let ty=by-bh/2+9*k;pfont(doc,"fs",N.fs);doc.setTextColor(...D_INK);N.ls.forEach(l=>{doc.text(l,bx,ty+N.fs*.95,{align:"center"});ty+=N.fs*1.29});
+    pfont(doc,"fr",M.fs);doc.setTextColor(...D_MUTED);M.ls.forEach(l=>{doc.text(l,bx,ty+M.fs,{align:"center"});ty+=M.fs*1.28})});
 }
 function displayAtoms(doc,p,A,s){
   const atoms=[];const {m,lc,cx,cw,w}=DG;
@@ -2573,14 +2584,16 @@ async function webPng(web,A){
     g.strokeStyle="rgb(196,122,6)";g.lineWidth=1.1;g.setLineDash([3,2.5]);
     web.connections.forEach(([a,b])=>{const ia=idx.indexOf(a),ib=idx.indexOf(b);if(ia<0||ib<0)return;const [x1,y1]=pts[ia],[x2,y2]=pts[ib];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;g.beginPath();g.moveTo(x1,y1);g.quadraticCurveTo(mx,my,x2,y2);g.stroke()});
     g.setLineDash([])}
-  let fs=12,fl;for(;;){font("bs",fs);fl=wrapC(web.focus||"",rw-24);if(fl.length<=3||fs<=9.5)break;fs-=.5}
-  fl=fl.slice(0,4);const flh=fs*1.24,rh=Math.max(52,fl.length*flh+22);
+  const fitC=(t,kind,from,to,width,max)=>{let f=from,ls;for(;;){font(kind,f);ls=wrapC(t,width);if(ls.length<=max||f<=to)break;f-=.25}
+    if(ls.length>max){ls=ls.slice(0,max);ls[max-1]=ls[max-1].replace(/[\s,.;]+$/,"")+"\u2026"}return {fs:f,ls}};
+  const C=fitC(web.focus||"","bs",12,8,rw-24,5);const fs=C.fs,fl=C.ls;const flh=fs*1.24,rh=Math.max(52,fl.length*flh+22);
   g.fillStyle=rgb(A.c);rr(cx-rw/2,cy-rh/2,rw,rh,Math.min(26,rh/2));
   g.fillStyle="#ffffff";g.textAlign="center";fl.forEach((l,i)=>g.fillText(l,cx,cy-(fl.length-1)*flh/2+i*flh+fs*.34));
-  br.forEach((b,i)=>{const [bx,by]=pts[i];font("fs",10.5);const nl=wrapC(b.name||"",bw-20).slice(0,2);font("fr",9);const ml=wrapC(b.materials||"",bw-20).slice(0,3);
-    const bh=20+nl.length*13.5+ml.length*11.5;g.fillStyle=rgb(A.t);rr(bx-bw/2,by-bh/2,bw,bh,9);
-    let ty=by-bh/2+10;font("fs",10.5);g.fillStyle=rgb(D_INK);nl.forEach(l=>{g.fillText(l,bx,ty+10);ty+=13.5});
-    font("fr",9);g.fillStyle=rgb(D_MUTED);ml.forEach(l=>{g.fillText(l,bx,ty+9);ty+=11.5})});
+  br.forEach((b,i)=>{const [bx,by]=pts[i];
+    const N=fitC(b.name||"","fs",10.5,7.6,bw-18,3),M=fitC(b.materials||"","fr",9,7,bw-18,4);
+    const bh=18+N.ls.length*N.fs*1.29+M.ls.length*M.fs*1.28;g.fillStyle=rgb(A.t);rr(bx-bw/2,by-bh/2,bw,bh,9);
+    let ty=by-bh/2+9;font("fs",N.fs);g.fillStyle=rgb(D_INK);N.ls.forEach(l=>{g.fillText(l,bx,ty+N.fs*.95);ty+=N.fs*1.29});
+    font("fr",M.fs);g.fillStyle=rgb(D_MUTED);M.ls.forEach(l=>{g.fillText(l,bx,ty+M.fs);ty+=M.fs*1.28})});
   const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("png")),"image/png"));
   return {data:await blob.arrayBuffer(),w:W,h:H};
 }
