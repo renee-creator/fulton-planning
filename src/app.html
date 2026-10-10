@@ -207,6 +207,9 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .due{display:grid;gap:4px}
 .due .item{grid-template-columns:minmax(0,1fr) auto}
 .roster{display:grid;gap:6px}
+.nwlist{display:grid;gap:10px;margin-top:8px}
+.nwrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:8px 10px;background:var(--paper);border:1px solid var(--line);border-radius:8px;font-size:14.5px}
+@media(max-width:620px){.nwrow{grid-template-columns:1fr}.nwrow .actions{justify-self:start!important}}
 .wordcheck{display:grid;gap:3px;max-height:360px;overflow:auto;margin-top:6px;padding-right:4px}
 .wordrow{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:baseline;font-size:13.5px;padding:2px 0;border-bottom:1px solid var(--line)}
 .wordrow b{min-width:7em;font-size:14px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
@@ -247,6 +250,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
         <div class="newbtns">
           <button class="newbtn" data-new="classroom"><b>Classroom Curriculum Plan</b><span>Together as a team, weekly, with the curriculum web</span></button>
           <button class="newbtn" data-new="individual"><b>Individual Curriculum Plan</b><span>Your small group or an area of the classroom</span></button>
+          <button class="newbtn" id="newnotice"><b>Notice and Wonder</b><span>A moment worth keeping, written now, used whenever it matters</span></button>
           <button class="newbtn" id="importbtn" style="border-style:dashed"><b>Upload a plan or photo</b><span>Transcribe a paper, PDF, or Word plan into the app</span></button>
         </div>
       </section>
@@ -408,7 +412,10 @@ const FORMS={
    hint:"Optional, fill in later. What repeated across sittings, what carried emotional weight, and which language each child reached for first.",
    strong:"The tunnel idea repeated every day. Three children answered in drawing first, two built with sticks. Next, offer clay to build underground spaces.",weak:"Good week",
    starters:["What repeated was ","Children reached for ","Next, "]}
- ],small:true}
+ ],small:true},
+ notice:{name:"Notice and Wonder",short:"Notice",who:"Written in the moment by one educator",fields:[
+  {k:"noticed",label:"What I noticed",rows:4,hint:"What happened, and what children did or said.",strong:"Three children reminded each other to use kinder words when they heard one.",weak:"They were kind today."},
+  {k:"wonder",label:"What I wonder",rows:2,hint:"What the moment makes you ask.",strong:"I wonder whether they would hold each other to an agreement they wrote themselves.",weak:"I wonder if they will be kind tomorrow."}]}
 };
 
 /* ---------- State ---------- */
@@ -461,6 +468,7 @@ async function boot(){
   for(const t of LS.get("fps.threads",[]))threads.set(t.id,t);
   for(const c of LS.get("fps.scans",[]))scans.set(c.room,c);
   for(const x of LS.get("fps.projects",[]))projects.set(x.id,x);
+  for(const n of LS.get("fps.notices",[]))notices.set(n.id,n);
   renderAll();renderWho();
   if(!window.claude||!window.claude.use){setConn("Saving on this device");return}
   const [d,s,dl]=await Promise.all([claude.use("db").catch(()=>null),claude.use("sample").catch(()=>null),claude.use("downloads").catch(()=>null)]);
@@ -487,6 +495,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
@@ -544,6 +553,7 @@ function renderFilters(){
   $("#filters").innerHTML=["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===roomFilter}" data-room="${r}">${r}</button>`).join("");
 }
 function planTitle(p){
+  if(p.type==="notice")return firstLine(String(p.fields?.noticed||"").trim(),72)||"A moment";
   if(p.type==="classroom")return (p.classroom||"Classroom")+" team";
   if(p.type==="smallgroup")return (p.group||"Small group")+(p.educator?" · "+p.educator:"");
   const foc=(p.groups||[]).length?p.groups.join(" and "):(p.focus==="area"&&p.where?p.where:"");
@@ -616,6 +626,7 @@ function renderMain(){
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
+  if(noticeForm){renderNoticeForm();return}
   const p=currentId&&plans.get(currentId);
   if(!p){renderWelcome();return}
   const F=FORMS[p.type];
@@ -644,7 +655,7 @@ function renderMain(){
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
-  h+=threadsNoteHtml(p);
+  h+=noticeNoteHtml(p)+threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
   h+=dupHtml(p);
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
@@ -943,11 +954,13 @@ document.addEventListener("click",async e=>{
   if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
   if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
   if(t.dataset.print){printsClick(t);return}
+  if(noticesClick(t))return;
   if(lensClick(t))return;
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
   if(t.dataset.new){if(needName())return;view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+  if(t.dataset.open&&notices.has(t.dataset.open)){const n=notices.get(t.dataset.open);noticeForm=null;view="plans";LS.set("fps.view",view);currentId=null;nRoom=n.classroom||"All";renderNav();noticeForm=Object.assign({},n);renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
   if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();return}
@@ -1418,6 +1431,97 @@ const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classro
  web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, markers"}],
  connections:[[0,2],[3,4]],languages:["Drawing and mark-making","Building and construction","Movement and body","Dialogue and words","Recording and comparing"],questions:"What makes something go faster? How can we make it stay up? What happens if we change this? How do we work together?",environment:"Expand ramp area. Create space for ongoing structures. Add materials for comparison. Allow work to remain over multiple days."}};
 
+/* ---------- Notice and Wonder ----------
+   The school's observational frame. A moment is written in a minute, from wherever an educator is standing, and it is
+   never filed against a week. It sits in a pool with a date on it. Threads, the lens and projects draw from that pool
+   whenever they come round to it, which may be months later. Nothing expires and nobody approves it. */
+let notices=new Map(), noticeForm=null, nRoom=LS.get("fps.nroom","All");
+const nTimers={};
+function newNotice(){return {id:"n"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),noticed:"",wonder:"",classroom:LS.get("fps.myroom","")||(roomFilter!=="All"?roomFilter:""),by:whoAmI(),at:Date.now(),week:mondayOf(new Date()),projectId:"",threadId:""}}
+function saveNotice(n){n.updatedAt=Date.now();notices.set(n.id,n);
+  if(db)db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n))).catch(()=>toast("Could not save. Check your connection."));
+  else LS.set("fps.notices",[...notices.values()]);}
+function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
+function removeNotice(id){notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.notices",[...notices.values()])}
+// a notice is read by the same machinery that reads plans, so it is evidence in the same way
+function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||"",educator:n.by||"",group:"",setting:[],languages:[],docplan:[],groups:[],status:"ready",
+  fields:{noticed:n.noticed||"",wonder:n.wonder||""},createdAt:n.at,updatedAt:n.updatedAt||n.at,notice:n}:null}
+const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
+// anything the app can quote, whether it was a plan or a moment
+function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
+function noticesFor(room,since){return [...notices.values()].filter(n=>(!room||room==="All"||n.classroom===room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
+function noticeText(n){return [n.noticed,n.wonder].filter(x=>String(x||"").trim()).join(" ")}
+function renderNoticeForm(){
+  const n=noticeForm;
+  const open=[...projects.values()].filter(x=>x.status!=="closed");
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
+  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
+    <div class="sub" style="max-width:72ch">A moment worth keeping, written now. It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></div></div>
+  <section class="card">
+    <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="4" placeholder="What happened, and what children did or said">${esc(n.noticed)}</textarea></label>
+    <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
+    <div class="actions">
+      <label class="cnt">Classroom <select id="nf-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
+      ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
+      ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
+    </div>
+    <div class="hint">A project or thread is optional. One can claim this moment later, whenever it grows.</div>
+    <div class="actions"><button class="btn" id="nf-save">Keep this moment</button><button class="linkbtn" id="nf-cancel">Cancel</button></div>
+  </section>
+  ${noticeBrowseHtml()}`;
+}
+function noticeBrowseHtml(){
+  const all=noticesFor(nRoom==="All"?"":nRoom,0);
+  const rooms=["All",...CLASSROOMS];
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Moments kept</h3><span class="cnt">${all.length} in the record</span></div>
+    <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}</div>
+    ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No moments kept for this view yet.</div>`}</section>`;
+}
+function noticeCard(n){
+  const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}</div>
+    <div style="font-size:15.5px;margin-top:4px">${esc(n.noticed)}</div>
+    ${has(n.wonder)?`<div class="muted" style="margin-top:4px">I wonder. ${esc(n.wonder)}</div>`:""}
+    ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
+    <div class="actions"><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+}
+function noticeListHtml(list,title){
+  if(!list.length)return"";
+  return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
+}
+function noticesClick(t){
+  if(t.id==="newnotice"){noticeForm=newNotice();view="plans";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
+  if(t.dataset.nroom&&noticeForm){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
+  if(t.id==="nf-cancel"){noticeForm=null;renderAll();return true}
+  if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
+    if(!n.noticed){toast("Write what you noticed first.");return true}
+    if(!me()){needName();return true}
+    n.by=whoAmI();n.at=Date.now();n.week=mondayOf(new Date());saveNotice(n);noticeForm=null;renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
+  if(t.dataset.nwopen){nwOpen=t.dataset.nwopen;renderMain();return true}
+  if(t.dataset.nwshut){nwOpen="";renderMain();return true}
+  if(t.dataset.nwuse||t.dataset.nwskip){
+    const [pid,nid]=(t.dataset.nwuse||t.dataset.nwskip).split("|");
+    const p=plans.get(pid),n=notices.get(nid);if(!p)return true;
+    if(t.dataset.nwuse&&n){const k=NOTICE_TARGET[p.type];
+      if(k){const cur=String(p.fields[k]||"").trim();p.fields[k]=(cur?cur+"\n":"")+noticeText(n)}}
+    p.noticeUsed=[...new Set([...(p.noticeUsed||[]),nid])];persist(p);
+    // once there is nothing left to read, the offer folds itself away
+    const left=new Set(p.noticeUsed);if(!noticesFor(p.classroom,0).some(x=>!left.has(x.id)))nwOpen="";
+    renderMain();
+    toast(t.dataset.nwuse?"Added. Edit it into the team's words.":"Left out of this plan. It stays in the record.");return true}
+  if(t.dataset.nwdel){$("#nwd-"+t.dataset.nwdel).innerHTML=`<span class="confirm">Remove this moment for everyone? <button class="btn warn small" data-nwdelyes="${t.dataset.nwdel}">Remove</button><button class="linkbtn" data-nwkeep="1">Keep it</button></span>`;return true}
+  if(t.dataset.nwkeep){renderMain();return true}
+  if(t.dataset.nwdelyes){removeNotice(t.dataset.nwdelyes);renderMain();toast("Removed.");return true}
+  return false;
+}
+document.addEventListener("input",e=>{const t=e.target;if(!noticeForm)return;
+  if(t.id==="nf-noticed"){noticeForm.noticed=t.value;autoGrow(t)}
+  else if(t.id==="nf-wonder"){noticeForm.wonder=t.value;autoGrow(t)}});
+document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
+  if(t.id==="nf-room")noticeForm.classroom=t.value;
+  else if(t.id==="nf-proj")noticeForm.projectId=t.value;
+  else if(t.id==="nf-thread")noticeForm.threadId=t.value;});
+
 /* ---------- Projects ----------
    A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
    and it can also begin school-wide. It holds hypotheses about where the inquiry could go, never steps or an end date.
@@ -1433,8 +1537,34 @@ const pTimers={};
 function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
 function projectOfThread(tid){for(const x of projects.values())if((x.threads||[]).some(l=>l.id===tid))return x;return null}
 function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
+// Moments kept for this classroom, ready to drop into the plan without being written again.
+// They are never filed against a week, so this is every moment for the room, newest first.
+const NOTICE_TARGET={classroom:"observation",individual:"observation",smallgroup:"reflection"};
+let nwOpen="";
+function noticeNoteHtml(p){
+  if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return"";
+  const used=new Set(p.noticeUsed||[]);
+  const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id));
+  if(!ns.length)return"";
+  const k=NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
+  const head=`<b style="color:var(--sky)">${ns.length} Notice and Wonder from ${esc(p.classroom||"no classroom")}</b>
+    <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
+  if(nwOpen!==p.id)return `<section class="ref" style="background:var(--sky-soft)">${head}
+    <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
+  const one=n=>`<div class="nwrow"><div style="min-width:0">
+      <div>${esc(n.noticed)}</div>
+      ${has(n.wonder)?`<div class="muted" style="font-size:13.5px">I wonder. ${esc(n.wonder)}</div>`:""}
+      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}</span></div>
+    <div class="actions" style="justify-self:end">${f?`<button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button>`:""}<button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div></div>`;
+  return `<section class="ref" style="background:var(--sky-soft)">${head}
+    <div class="nwlist">${ns.slice(0,12).map(one).join("")}</div>
+    ${ns.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}
+    <div class="actions"><button class="linkbtn" data-nwshut="1">Close these</button></div></section>`;
+}
+const projNotices=x=>[...notices.values()].filter(n=>n.projectId===x.id).sort((a,b)=>(b.at||0)-(a.at||0));
+const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
-function projPlans(x){const m=new Map();for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=plans.get(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}return [...m.values()]}
+function projPlans(x){const m=new Map();for(const n of projNotices(x))m.set(n.id,noticeAsPlan(n));for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=rec(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}return [...m.values()]}
 function projWeeks(x){
   const s=new Set();for(const {t} of projThreads(x))(t.weeks||[]).forEach(w=>s.add(w));projPlans(x).forEach(p=>s.add(p.weekOf));
   const ws=[...s].filter(Boolean).sort();if(!ws.length)return[];const out=[];for(let w=ws[0];w<=ws[ws.length-1]&&out.length<60;w=addDays(w,7))out.push(w);return out;
@@ -1555,6 +1685,9 @@ function renderProject(x){
       ${br.length<8?`<div class="actions"><button class="btn small ghost" data-pwadd="1">Add a direction</button></div>`:""}</div>
       <div id="pwebprev">${webPreviewSvg(projWeb(x))}</div></div></section>`;
 
+  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Notice and Wonder</div>
+    <div class="hint">Moments educators kept for this project, in the order they happened.</div>
+    <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
     <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each classroom's path is shown beside the others.":""}</div>
     ${ths.length?`<div class="pcols">${cols.map(r=>{const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
@@ -1781,7 +1914,7 @@ function lensKey(room){return "lens-"+lensId+"-"+room}
 // readings made before the school held more than one lens belong to the first lens
 function lensScan(room){return scans.get(lensKey(room))||(LENSES[0]&&lensId===LENSES[0].id?scans.get("lens-"+room):null)}
 function lensRangeStart(){const cur=mondayOf(new Date());if(lRange==="4")return addDays(cur,-21);if(lRange==="8")return addDays(cur,-49);if(lRange==="year")return schoolYearStart();return "0000-00-00"}
-function lensPlans(){const s=lensRangeStart();return [...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||p.classroom===lRoom))}
+function lensPlans(){const s=lensRangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&LENS_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||p.classroom===lRoom))}
 // a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing)
 function lensRegex(){
   const parts=LENS.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
@@ -1790,7 +1923,7 @@ function lensRegex(){
 }
 function lensMarked(p){const set=new Set(LENS.languages.map(x=>x.toLowerCase()));return [...new Set([...(p.languages||[]),...((p.web&&p.web.languages)||[])].filter(x=>set.has(String(x).toLowerCase())))]}
 // the sections that record what children did and said, as against what educators mean to offer
-const OBSERVED_KEYS=new Set(["observation","interests","meeting","area","remarks","reflection","thread"]);
+const OBSERVED_KEYS=new Set(["observation","interests","meeting","area","remarks","reflection","thread","noticed"]);
 function lensPlanParts(p){
   const parts=FORMS[p.type].fields.map(f=>[f.label,String(p.fields?.[f.k]||""),f.k]);
   if(p.web)parts.push(["Curriculum web",[p.web.focus,...(p.web.branches||[]).map(b=>[b.name,b.materials].filter(Boolean).join(", ")),p.web.questions,p.web.environment].filter(Boolean).join(". "),"web"]);
@@ -1833,7 +1966,7 @@ function lensLinks(p){
   return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${c.t.id}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
 }
 function lensMomentHtml(m){
-  const p=plans.get(m.planId);if(!p)return"";const mk=lensMarked(p);
+  const p=rec(m.planId);if(!p)return"";const mk=lensMarked(p);
   return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}
     ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
 }
@@ -1886,7 +2019,7 @@ function renderLens(){
   // projects and threads
   const count=list=>{const ids=new Set(list.map(p=>p.id));return moments.filter(m=>ids.has(m.planId)).length};
   const prs=[...projects.values()].map(x=>({x,n:count(projPlans(x))})).filter(o=>o.n);
-  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).map(t=>({t,n:count([...(t.evidence||[]).map(e=>plans.get(e.planId)).filter(Boolean),...threadLinkedPlans(t)])})).filter(o=>o.n);
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).map(t=>({t,n:count([...(t.evidence||[]).map(e=>rec(e.planId)).filter(Boolean),...threadLinkedPlans(t)])})).filter(o=>o.n);
   if(prs.length||ths.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>In projects and threads</h2></div>
     <div class="evid">${prs.map(o=>`<div><button class="linkbtn" data-popen="${o.x.id}">${esc(o.x.name)}</button> <span class="cnt">project · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}
     ${ths.map(o=>`<div><button class="linkbtn" data-tsee="${o.t.id}">${esc(o.t.name)}</button> <span class="cnt">thread${o.t.classroom?" · "+esc(o.t.classroom):""} · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}</div></section>`;
@@ -1899,7 +2032,7 @@ function renderLens(){
     h+=`<div class="chiprow-label">Read by Claude, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     const qs=scan.questionsAsked||LENS.questions;
-    h+=`<div class="lmoments">${scan.moments.map(m=>{const p=plans.get(m.planId);
+    h+=`<div class="lmoments">${scan.moments.map(m=>{const p=rec(m.planId);
       return `<div class="lmoment"><div>“${esc(m.quote)}”</div>${p?lensSrc(p,sectionOf(p,m.quote)):`<span class="src">This plan has since been deleted</span>`}
         ${m.language?`<div class="chips"><span class="chip on" style="cursor:default">${esc(m.language)}</span></div>`:""}
         <dl class="lans">${qs.map((q,i)=>`<dt>${esc(q)}</dt><dd>${(m.answers||[])[i]?esc(m.answers[i]):`<span class="muted">Not recorded in the plan</span>`}</dd>`).join("")}</dl></div>`}).join("")}</div>`;
@@ -2097,11 +2230,11 @@ const SECT_SHORT={"Intentions and questions for the week":"intentions","Meeting 
 const sectName=l=>SECT_SHORT[l]||String(l||"").toLowerCase();
 const has=v=>String(v||"").trim().length>0;
 function threadDoc(t){
-  const ev=[...(t.evidence||[])].filter(e=>plans.get(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
+  const ev=[...(t.evidence||[])].filter(e=>rec(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
   const pr=projectOfThread(t.id);const blocks=[];
   if(has(t.question))blocks.push(dLead("The question we are following",t.question));
   const qs=pickSpread(ev,4);
-  if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>{const pl=plans.get(e.planId);blocks.push(dQuote(e.text,whoLine(pl),shortWeek(e.week||pl.weekOf)))})}
+  if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>{const pl=rec(e.planId);blocks.push(dQuote(e.text,whoLine(pl),shortWeek(e.week||pl.weekOf)))})}
   if((t.languages||[]).length)blocks.push(dTags("Languages children are using",t.languages));
   if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.slice(0,4)));
   if(has(t.notes))blocks.push(dText("Team notes",t.notes));
@@ -2133,8 +2266,10 @@ function projectDoc(x,long){
     for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
       const where=[c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
       blocks.push(dItem(t.name,t.question||"",where?where[0].toUpperCase()+where.slice(1):"",[t.classroom?t.classroom+" classroom":"All classrooms"]));
-      const last=[...(t.evidence||[])].filter(e=>plans.get(e.planId)).sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
-      if(last)blocks.push(dQuote(last.text,byLine(plans.get(last.planId))))}}
+      const last=[...(t.evidence||[])].filter(e=>rec(e.planId)).sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
+      if(last)blocks.push(dQuote(last.text,byLine(rec(last.planId))))}}
+  if(long){const ns=projNotices(x);if(ns.length){blocks.push(dSub("Notice and Wonder"));
+    ns.slice(0,8).forEach(n=>blocks.push(dQuote(n.noticed,[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", "),shortDate(n.at))))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
   if(has(x.people))blocks.push(dText("People beyond the classrooms",x.people));
@@ -2156,7 +2291,7 @@ function lensDocs(long,cap){
   const shown=[];const perWeek={};
   for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=perMax&&shown.length<total)shown.push(m)}
   if(shown.length){blocks.push(dSub(`Moments in educators' words${lLang?", "+lLang:""}`));
-    for(const m of shown){const p=plans.get(m.planId);const cs=p?planThreads(p):[];
+    for(const m of shown){const p=rec(m.planId);const cs=p&&!p.notice?planThreads(p):[];
       // the part of the plan a moment came from, so a reader can tell an observation from a provocation being planned
       blocks.push(dQuote(m.text,[whoLine(p),sectName(m.section),long&&cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))))}
     if(moments.length>shown.length)blocks.push({t:"text",label:"",quiet:true,text:`${moments.length-shown.length} more moment${moments.length-shown.length>1?"s are":" is"} on the Lens page.`})}
@@ -2167,7 +2302,7 @@ function lensDocs(long,cap){
   const scan=lensScan(lRoom);
   if(scan&&(scan.moments||[]).length){const qs=scan.questionsAsked||LENS.questions;const b=[];
     if(has(scan.summary))b.push(dLead("Across these weeks",scan.summary));
-    scan.moments.forEach(m=>{const p=plans.get(m.planId);
+    scan.moments.forEach(m=>{const p=rec(m.planId);
       b.push(dQuote(m.quote,byLine(p),m.language||""));
       qs.forEach((q,k)=>{const a=(m.answers||[])[k];if(has(a))b.push({t:"qa",q,a})});
       b.push({t:"rule"})});
@@ -2511,10 +2646,10 @@ const STOP=new Set("a an and are as at be been being but by can could did do doe
 let GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")).concat(["glory"]));
 function schoolYearStart(){const t=new Date();const y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1;return mondayOf(new Date(y,7,1))}
 function rangeStart(){const cur=mondayOf(new Date());if(tRange==="4")return addDays(cur,-21);if(tRange==="8")return addDays(cur,-49);if(tRange==="year")return schoolYearStart();return "0000-00-00"}
-function rangePlans(){const s=rangeStart();return [...plans.values()].filter(p=>p.id!=="example"&&p.weekOf>=s&&(tRoom==="All"||p.classroom===tRoom))}
+function rangePlans(){const s=rangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&p.weekOf>=s&&(tRoom==="All"||p.classroom===tRoom))}
 function rangeWeeks(ps){const cur=mondayOf(new Date());let s=rangeStart();if(s==="0000-00-00"){s=ps.reduce((m,p)=>p.weekOf<m?p.weekOf:m,cur)}const last=ps.reduce((m,p)=>p.weekOf>m?p.weekOf:m,cur);const out=[];for(let w=s;w<=last&&out.length<60;w=addDays(w,7))out.push(w);return out}
 function planText(p){const parts=Object.values(p.fields||{});if(p.web){parts.push(p.web.focus||"");(p.web.branches||[]).forEach(b=>parts.push(b.name||"",b.materials||""));parts.push(p.web.questions||"",p.web.environment||"")}return parts.filter(Boolean).join(" \n ")}
-function thinkingText(p){const f=p.fields||{};const ks={classroom:["observation","interests","intentions","brainstorm"],individual:["area","observation","remarks"],smallgroup:["thread","intention","reflection"]}[p.type]||[];let t=ks.map(k=>f[k]||"").join(" ");if(p.web)t+=" "+(p.web.focus||"")+" "+(p.web.branches||[]).map(b=>b.name).join(" ");return t}
+function thinkingText(p){const f=p.fields||{};const ks={classroom:["observation","interests","intentions","brainstorm"],individual:["area","observation","remarks"],smallgroup:["thread","intention","reflection"],notice:["noticed","wonder"]}[p.type]||[];let t=ks.map(k=>f[k]||"").join(" ");if(p.web)t+=" "+(p.web.focus||"")+" "+(p.web.branches||[]).map(b=>b.name).join(" ");return t}
 function recurring(ps){
   const terms=new Map();
   for(const p of ps){
@@ -2622,7 +2757,7 @@ function sectionOf(p,text){
   return"";
 }
 function evSource(e){
-  const p=plans.get(e.planId);
+  const p=rec(e.planId);
   if(!p)return `<span class="src">Week of ${fmtDate(e.week)}. This plan has since been deleted</span>`;
   const bits=[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",sectionOf(p,e.text)].filter(Boolean);
   return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${bits.map(esc).join(" · ")}</span>`;
@@ -2631,14 +2766,14 @@ function originHtml(t,isTracked){
   const ev=[...(t.evidence||[])].sort((a,b)=>(a.week||"").localeCompare(b.week||""));
   const rows=[];
   const first=ev[0];
-  if(first){const p=plans.get(first.planId);
+  if(first){const p=rec(first.planId);
     let inPlan="";
     if(p){const room=p.classroom?" in the "+esc(p.classroom)+" classroom":"";
       if(p.type==="classroom")inPlan=`, in the classroom team's Classroom Curriculum Plan${room}`;
       else{const g=p.type==="smallgroup"?p.group:(p.focus==="smallgroup"?(p.groups||[]).join(" and "):"");
         inPlan=`, in ${p.educator?esc(p.educator)+"'s":"an"} ${esc(FORMS[p.type].name)}${g?" for the "+esc(g)+" group":p.where?" about the "+esc(p.where):""}${room}`}}
     rows.push(`<div><b>Started</b>the week of ${fmtDate(first.week)}${inPlan}</div>`)}
-  const ps=[...new Map(ev.map(e=>[e.planId,plans.get(e.planId)]).filter(([,p])=>p)).values()];
+  const ps=[...new Map(ev.map(e=>[e.planId,rec(e.planId)]).filter(([,p])=>p)).values()];
   if(ps.length){const ct=k=>ps.filter(p=>p.type===k).length;
     const types=[["classroom","Classroom team"],["individual","Individual"],["smallgroup","Small Group"]].map(([k,l])=>ct(k)?`${ct(k)} ${l}`:"").filter(Boolean).join(", ");
     const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];
@@ -2679,6 +2814,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
+    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} Notice and Wonder moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
@@ -2699,6 +2835,8 @@ function stoppedCard(t){
 /* ---------- Plans connected to followed threads ---------- */
 // a plan is connected to a followed thread when it was started from it, when the thread quotes it, or when an educator connected it by hand
 const PLAN_TYPES=["classroom","individual","smallgroup"];
+// a Notice and Wonder is read by the lens and by Find threads, and it is never counted as a plan
+const LENS_TYPES=[...PLAN_TYPES,"notice"];
 function planThreads(p){
   if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return[];
   const off=new Set(p.threadOff||[]),out=[],seen=new Set();
@@ -2823,8 +2961,8 @@ document.addEventListener("change",e=>{
 });
 
 function digest(ps){
-  const keys={classroom:["observation","intentions","interests","indoor","outdoor","brainstorm"],individual:["area","observation","intent","questions","remarks"],smallgroup:["thread","intention","questions","reflection"]};
-  return ps.sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="smallgroup"?(p.group||"")+" group":p.type==="individual"?(p.educator||""):"team",text:{}};
+  const keys={classroom:["observation","intentions","interests","indoor","outdoor","brainstorm"],individual:["area","observation","intent","questions","remarks"],smallgroup:["thread","intention","questions","reflection"],notice:["noticed","wonder"]};
+  return ps.sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":(p.educator||""),text:{}};
     (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,450)});
     if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...p.web.branches.map(b=>b.name)].filter(Boolean).join("; ");
     const fol=planThreads(p).filter(c=>c.how!=="quoted").map(c=>c.t.id);if(fol.length)o.follows=fol;
@@ -2838,8 +2976,8 @@ async function findThreads(){
   const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
   const tracked=[...threads.values()].filter(t=>t.status!=="closed"&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question}));
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classrooms":"the "+tRoom+" classroom"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
-Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, and Small Group plans, and notice when different educators or groups describe the same thread.
-Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
+Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and Notice and Wonder entries, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
+Rules. Use only what the plans and entries say. Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single Notice and Wonder, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
 Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,what_may_lie_underneath:firstLine(projUnder(x),240),threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
 ${STYLE}
@@ -2866,7 +3004,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
 }
 async function writeStory(th){
   if(!th)return;storyBusy[th.id]=true;renderMain();
-  const src=[...(th.evidence||[]).map(e=>plans.get(e.planId)),...threadLinkedPlans(th)].filter(Boolean);
+  const src=[...(th.evidence||[]).map(e=>rec(e.planId)),...threadLinkedPlans(th),...threadNotices(th).map(noticeAsPlan)].filter(Boolean);
   const uniq=[...new Map(src.map(p=>[p.id,p])).values()].sort((a,b)=>a.weekOf.localeCompare(b.weekOf));
   const d=digest(uniq).reverse();
   const prompt=`Write a project story for Fulton Community School & Farm educators to share at a family evening or with colleagues, following the school's project presentation timeline. The project grew from this thread.
@@ -3228,42 +3366,44 @@ function schoolSummary(){
 let aRoom="All",aType="all",aStatus="all",aQ="";
 function allFiltered(){
   const q=aQ.trim().toLowerCase();
-  return [...plans.values()].filter(p=>p.id!=="example"&&(aRoom==="All"||(aRoom==="none"?!p.classroom:p.classroom===aRoom))&&(aType==="all"||p.type===aType)&&
-    (aStatus==="all"||(aStatus==="dup"?!!(p.dupOf&&plans.has(p.dupOf)):aStatus==="due"?needsRemarks(p):aStatus==="done"?p.status==="ready"||p.status==="reviewed":p.status===aStatus))&&
+  return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&(aRoom==="All"||(aRoom==="none"?!p.classroom:p.classroom===aRoom))&&(aType==="all"||p.type===aType)&&
+    (p.type==="notice"?aStatus==="all":(aStatus==="all"||(aStatus==="dup"?!!(p.dupOf&&plans.has(p.dupOf)):aStatus==="due"?needsRemarks(p):aStatus==="done"?p.status==="ready"||p.status==="reviewed":p.status===aStatus)))&&
     (!q||[planTitle(p),p.educator,p.group,p.classroom,planText(p)].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>b.weekOf.localeCompare(a.weekOf)||(a.classroom||"~").localeCompare(b.classroom||"~")||a.type.localeCompare(b.type));
 }
 function filledCount(p){const F=FORMS[p.type];return F.fields.filter(f=>(p.fields?.[f.k]||"").trim()).length+"/"+F.fields.length}
 function renderAllPlans(){
   const ps=allFiltered();const all=[...plans.values()].filter(p=>p.id!=="example");
-  const c=k=>all.filter(p=>k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k).length;
+  const c=k=>all.filter(p=>p.type!=="notice"&&(k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k)).length;
   let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
     <div class="sub">Every plan from every week and classroom. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
-    <div class="stats"><div class="stat"><b>${all.length}</b><span>plans saved</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review</span></div><div class="stat"><b>${c("draft")}</b><span>still in draft</span></div></div>
+    <div class="stats"><div class="stat"><b>${all.filter(p=>p.type!=="notice").length}</b><span>plans saved</span></div><div class="stat"><b>${notices.size} </b><span>moments kept</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review</span></div><div class="stat"><b>${c("draft")}</b><span>still in draft</span></div></div>
     <section class="card" style="gap:10px">
       <div class="filters" style="margin:0">${[["All","All classrooms"],["West","West"],["North","North"],["South","South"],["none","No classroom"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
-        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Notice and Wonder"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>
-      <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${ps.length} plan${ps.length===1?"":"s"} shown</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
+      <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${countShown(ps)}</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
     </section><div id="alist" style="display:grid;gap:14px">${allListHtml(ps)}</div>`;
   $("#main").innerHTML=h;
 }
 function allListHtml(ps){
   if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
-  return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${wp.length} plan${wp.length===1?"":"s"}</div>
+  return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${countShown(wp).replace(" shown","")}</div>
     <div class="tablewrap"><table class="grid2" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
-    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${filledCount(p)}</td><td><span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span></td></tr>`).join("")}
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
-function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=`${ps.length} plan${ps.length===1?"":"s"} shown`;$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
+function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.length-n;
+  return [pl?`${pl} plan${pl===1?"":"s"}`:"",n?`${n} moment${n===1?"":"s"}`:""].filter(Boolean).join(" and ")+" shown"||"nothing shown"}
+function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=countShown(ps);$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="all")return;
   if(t.dataset.aroom){aRoom=t.dataset.aroom;renderAllPlans()}
-  if(t.id==="adlw"){const ps=allFiltered();if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.docx`);return}
-  if(t.id==="adl"){const ps=allFiltered();if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.pdf`)}});
+  if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.docx`);return}
+  if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.pdf`)}});
 document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
 document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.target.value;refreshAll()}});
 
