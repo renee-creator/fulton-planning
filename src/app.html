@@ -69,10 +69,18 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
 .nav{flex-wrap:wrap;border-radius:20px}
-@media (max-width:520px){.navx{display:none}.nav button{padding:6px 11px}}
+@media (max-width:520px){.navx{display:none}div.nav button{padding:6px 9px;font-size:13.5px}}
 .pcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px;align-items:start}
 .pcol{display:grid;gap:10px;min-width:0}
 .pthread{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;font-size:14px;background:var(--bg);min-width:0}
+.lq{margin:0;padding-left:20px;display:grid;gap:3px;font-size:15px}
+.lmoments{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px}
+.lmoment{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px;font-size:14px;min-width:0;align-content:start}
+.lmoment .src{display:block;font-size:12px;color:var(--muted)}
+.lmoment .src button{font-size:12px}
+.lans{margin:4px 0 0;display:grid;gap:2px;font-size:13.5px}
+.lans dt{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:6px}
+.lans dd{margin:0}
 .pdir{display:grid;gap:5px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
 .proom{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:10px}
 .proom:first-of-type{border-top:none;padding-top:0}
@@ -208,7 +216,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
-    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="projects">Projects</button><button data-view="threads">Threads<span class="navx"> and overview</span></button></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="projects">Projects</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="lens">Lens</button></div>
     <div class="spacer"></div>
     <div class="who">
       <label for="me">Educator</label>
@@ -463,7 +471,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name);renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(view==="threads"&&!scanBusy&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
 }
@@ -588,6 +596,7 @@ function renderList(){
 function renderMain(){
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
+  if(view==="lens"){renderLens();return}
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
@@ -914,6 +923,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
   if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
   if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
+  if(lensClick(t))return;
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
@@ -1583,6 +1593,191 @@ document.addEventListener("change",e=>{
   if(t.dataset.pcw){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcw);if(c&&t.value){c.week=mondayOf(parseIso(t.value));saveProject(x);renderMain()}return}
   if(t.dataset.pcadd){if(t.value&&!projRooms(x).includes(t.value)){x.classrooms=[...(x.classrooms||[]),{room:t.value,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""}];saveProject(x);renderMain()}return}
   if(t.dataset.ptadd){const th=threads.get(t.value);if(th)addThreadToProject(x,th);return}
+});
+
+/* ---------- The year's lens ----------
+   A lens is a way of reading the year's plans. This year it is Graphic Languages, in the wider sense used outside Italy
+   (drawing, marks, maps, paint, clay, wire, construction, arrangements), read with Reggio Emilia's values. The page gathers
+   moments in educators' own words and reads them for the thinking they carry. It never rates how a product looks.
+   The name, wording, languages, words, and questions live in Program settings, so another year can carry another lens. */
+const LENS_DEFAULT={name:"Graphic Languages",
+  description:"The many visible forms children give their thinking, such as drawing, marks, maps, paint, clay, wire, construction, and arrangements. We read each one for the thinking it carries, together with the words, tools, and materials that shaped it.",
+  languages:["Drawing and mark-making","Mapping","Painting","Clay and sculpture","Building and construction","Loose parts arrangement","Emergent writing","Recording and comparing"],
+  words:["draw","drew","drawn","sketch","mark","line","trace","map","paint","clay","wire","charcoal","chalk","pencil","pen","marker","crayon","ink","paper","collage","sculpt","sculpture","build","built","construct","construction","arrange","arrangement","symbol","sign","write","wrote","written","letter","print","stamp","represent","representation","diagram","blueprint","model"],
+  questions:["What idea was the child giving form to?","With what tool, material, and surface?","What words, story, or gesture came with it?","Did the child return to it, or rework it in another language?","How did educators respond?"]};
+function normLens(v){
+  const d=LENS_DEFAULT,list=(a,f)=>Array.isArray(a)?a.map(x=>String(x||"").trim()).filter(Boolean):f.slice();
+  return {name:String(v&&v.name||"").trim()||d.name,description:String(v&&v.description!=null?v.description:d.description),languages:list(v&&v.languages,d.languages),words:list(v&&v.words,d.words),questions:list(v&&v.questions,d.questions)};
+}
+let LENS=normLens(LENS_DEFAULT), lRoom=LS.get("fps.lroom","All"), lRange=LS.get("fps.lrange","year"), lLang="", lensBusy=false, lensShowAll=false;
+function lensRangeStart(){const cur=mondayOf(new Date());if(lRange==="4")return addDays(cur,-21);if(lRange==="8")return addDays(cur,-49);if(lRange==="year")return schoolYearStart();return "0000-00-00"}
+function lensPlans(){const s=lensRangeStart();return [...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||p.classroom===lRoom))}
+// a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing)
+function lensRegex(){
+  const parts=LENS.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
+    return `${w}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==w?`|${stem}(?:ing|ed)`:"")});
+  return parts.length?new RegExp("\\b(?:"+parts.join("|")+")\\b","gi"):null;
+}
+function lensMarked(p){const set=new Set(LENS.languages.map(x=>x.toLowerCase()));return [...new Set([...(p.languages||[]),...((p.web&&p.web.languages)||[])].filter(x=>set.has(String(x).toLowerCase())))]}
+function lensPlanParts(p){
+  const parts=FORMS[p.type].fields.map(f=>[f.label,String(p.fields?.[f.k]||"")]);
+  if(p.web)parts.push(["Curriculum web",[p.web.focus,...(p.web.branches||[]).map(b=>[b.name,b.materials].filter(Boolean).join(", ")),p.web.questions,p.web.environment].filter(Boolean).join(". ")]);
+  return parts.filter(([,t])=>t.trim());
+}
+// moments are sentences from the plans themselves, so everything shown is in the educator's own words
+function lensMoments(ps){
+  const re=lensRegex();const out=[];if(!re)return out;
+  for(const p of ps){const seen=new Set();
+    for(const [label,text] of lensPlanParts(p)){
+      for(const raw of (text.match(/[^.!?\n]+[.!?]*/g)||[])){const sent=raw.trim();if(sent.length<12)continue;re.lastIndex=0;
+        const hits=[...new Set((sent.match(re)||[]).map(x=>x.toLowerCase()))];if(!hits.length)continue;
+        const key=sent.toLowerCase();if(seen.has(key))continue;seen.add(key);
+        out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,text:sent.length>300?sent.slice(0,297)+"...":sent,hits});
+      }}}
+  return out.sort((a,b)=>b.week.localeCompare(a.week)||(a.room||"").localeCompare(b.room||""));
+}
+function lensSrc(p,section){return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",section].filter(Boolean).map(esc).join(" · ")}</span>`}
+function lensLinks(p){
+  const cs=planThreads(p);if(!cs.length)return"";
+  return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${c.t.id}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
+}
+function lensMomentHtml(m){
+  const p=plans.get(m.planId);if(!p)return"";const mk=lensMarked(p);
+  return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}
+    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
+}
+function renderLens(){
+  const ps=lensPlans();
+  let moments=lensMoments(ps);
+  const marked=ps.filter(p=>lensMarked(p).length);
+  if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
+  const withMoment=new Set(moments.map(m=>m.planId));
+  const silent=(lLang?marked.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===lLang.toLowerCase())):marked).filter(p=>!withMoment.has(p.id)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
+  const weeks=[...new Set(ps.map(p=>p.weekOf))].sort().reverse();
+  const rooms=lRoom==="All"?[...CLASSROOMS,...(ps.some(p=>!p.classroom)?[""]:[])]:[lRoom];
+  const scan=scans.get("lens-"+lRoom);
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">This year's lens</span><h2 style="margin-top:4px">${esc(LENS.name)}</h2>
+    <div class="sub" style="max-width:76ch">${esc(LENS.description)}</div></div></div>
+    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
+      <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
+      <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select></div></div>
+  <section class="card"><div class="lbl">How we read a moment</div>
+    <ol class="lq">${LENS.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>
+    <div class="hint">Read for the thinking. How a product looks is never rated.</div></section>
+  <div class="stats">
+    <div class="stat"><b>${moments.length}</b><span>moments in educators' words</span></div>
+    <div class="stat"><b>${marked.length}</b><span>plans marking a language of the lens</span></div>
+    <div class="stat"><b>${new Set(moments.map(m=>m.week)).size}</b><span>of ${weeks.length} weeks with a moment</span></div>
+    <div class="stat"><b>${new Set(moments.map(m=>m.room).filter(Boolean)).size}</b><span>classrooms with a moment</span></div>
+  </div>`;
+
+  // by classroom and week
+  if(weeks.length)h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>By classroom and week</h2><span class="cnt">Moments found, and plans marking a language of the lens</span></div>
+    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r||"No classroom set"}</th>`).join("")}</tr></thead><tbody>
+    ${weeks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;
+      return `<td>${n||k?`<span class="cnt"><b style="color:var(--moss);font-size:14px">${n}</b> moment${n===1?"":"s"}${k?` · ${k} marked`:""}</span>`:`<span class="cnt">None yet</span>`}</td>`}).join("")}</tr>`).join("")}
+    </tbody></table></div></section>`;
+
+  // moments
+  const cap=lensShowAll?moments.length:40;
+  h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Moments in educators' own words</h2><span class="cnt">Sentences from saved plans that name a mark, a tool, or a material of the lens</span></div>`;
+  if(!moments.length)h+=`<div class="empty">${ps.length?"No moments found in this range yet. They appear as plans describe what children drew, marked, mapped, built, or arranged.":"No plans saved in this range yet."}</div>`;
+  else{const shown=moments.slice(0,cap);
+    for(const w of [...new Set(shown.map(m=>m.week))]){const wm=shown.filter(m=>m.week===w);
+      h+=`<div class="chiprow-label">Week of ${fmtDate(w)}</div><div class="lmoments">${wm.map(lensMomentHtml).join("")}</div>`}
+    if(moments.length>cap)h+=`<div class="actions"><button class="linkbtn" data-lmore="1">Show all ${moments.length} moments</button></div>`}
+  h+=`</section>`;
+  if(silent.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Marked, with no moment described yet</h2></div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">These plans mark a language of the lens, and their writing does not yet say what children made or did with it. A sentence in Final remarks is enough.</div>
+    <div class="evid">${silent.slice(0,30).map(p=>`<div>${lensSrc(p,"")}<span class="cnt">${esc(lensMarked(p).join(", "))}</span></div>`).join("")}</div></section>`;
+
+  // projects and threads
+  const count=list=>{const ids=new Set(list.map(p=>p.id));return moments.filter(m=>ids.has(m.planId)).length};
+  const prs=[...projects.values()].map(x=>({x,n:count(projPlans(x))})).filter(o=>o.n);
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).map(t=>({t,n:count([...(t.evidence||[]).map(e=>plans.get(e.planId)).filter(Boolean),...threadLinkedPlans(t)])})).filter(o=>o.n);
+  if(prs.length||ths.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>In projects and threads</h2></div>
+    <div class="evid">${prs.map(o=>`<div><button class="linkbtn" data-popen="${o.x.id}">${esc(o.x.name)}</button> <span class="cnt">project · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}
+    ${ths.map(o=>`<div><button class="linkbtn" data-tsee="${o.t.id}">${esc(o.t.name)}</button> <span class="cnt">thread${o.t.classroom?" · "+esc(o.t.classroom):""} · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}</div></section>`;
+
+  // a closer reading
+  h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>A closer reading</h2>
+    ${sample&&isDirector()?`<button class="btn small" id="lensread" ${lensBusy||!ps.length?"disabled":""}>${lensBusy?"Reading plans":"Read through the lens with Claude"}</button>`:""}</div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">${isDirector()?"Claude reads the saved plans in this range and answers the questions above for the strongest moments, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask Claude to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
+  if(scan&&(scan.moments||[]).length){
+    h+=`<div class="chiprow-label">Read by Claude, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
+    if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
+    const qs=scan.questionsAsked||LENS.questions;
+    h+=`<div class="lmoments">${scan.moments.map(m=>{const p=plans.get(m.planId);
+      return `<div class="lmoment"><div>“${esc(m.quote)}”</div>${p?lensSrc(p,sectionOf(p,m.quote)):`<span class="src">This plan has since been deleted</span>`}
+        ${m.language?`<div class="chips"><span class="chip on" style="cursor:default">${esc(m.language)}</span></div>`:""}
+        <dl class="lans">${qs.map((q,i)=>`<dt>${esc(q)}</dt><dd>${(m.answers||[])[i]?esc(m.answers[i]):`<span class="muted">Not recorded in the plan</span>`}</dd>`).join("")}</dl></div>`}).join("")}</div>`;
+    if((scan.gaps||[]).length)h+=`<div class="card"><div class="lbl">What the plans do not yet say</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.gaps.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
+    if((scan.teamQuestions||[]).length)h+=`<div class="card"><div class="lbl">Questions for the team</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.teamQuestions.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
+  }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classrooms":"the "+esc(lRoom)+" classroom"}.</div>`;
+  h+=`</section>`;
+  $("#main").innerHTML=h;
+}
+function lensDigest(ps){
+  return [...ps].sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":planWho(p),text:{}};
+    for(const [label,text] of lensPlanParts(p))o.text[label]=text.trim().slice(0,520);
+    const mk=lensMarked(p);if(mk.length)o.languages_marked=mk;return o}).filter(o=>Object.keys(o.text).length);
+}
+async function lensRead(){
+  if(lensBusy||!sample||!isDirector())return;
+  const ps=lensPlans();const full=lensDigest(ps);const d=capDigest(full,170000);if(!d.length){toast("Save a few plans first.");return}
+  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one classroom to include older ones.`);
+  lensBusy=true;renderMain();
+  const ids=new Set(d.map(x=>x.id));const n=LENS.questions.length;const room=lRoom,range=lRange;
+  const prompt=`You are reading saved curriculum plans from ${room==="All"?"all classrooms":"the "+room+" classroom"} at Fulton Community School & Farm through this year's lens.
+The lens is ${LENS.name}. ${LENS.description}
+The languages in this lens are ${LENS.languages.join(", ")}.
+Find up to 14 moments where children gave visible form to their thinking in one of these languages. Choose across classrooms and weeks, and prefer moments where a child or group returned to a mark or reworked an idea in another language.
+For each moment answer the school's questions, in this order. ${LENS.questions.map((q,i)=>`${i+1}. ${q}`).join(" ")}
+Rules. Read for the thinking. Never rate, praise, or describe how a drawing or product looks, and never use words such as beautiful, detailed, neat, careful, or advanced. Use only what the plans say. Never invent children, quotes, tools, materials, or events. When a plan says nothing for a question, return an empty string for it, because an empty answer shows the team what has not yet been recorded. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Copy each quote exactly from the plan, under 30 words. Use a planId from the list. Return only the JSON, with no other text.
+${STYLE}
+Return JSON {"summary": two or three sentences on how children are using these languages to think in this range, "moments":[{"planId": id, "quote": exact words from that plan, "language": one of the lens languages, "answers": [${n} strings, one for each question in order]}], "gaps":[up to 4 short sentences naming what the plans rarely record, each phrased as something educators could notice next], "teamQuestions":[2 or 3 questions the team could take to its next meeting]}
+
+Plans, one JSON object per line.
+${d.map(x=>JSON.stringify(x)).join("\n")}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"lens"});
+    const c2=v=>String(v||"").replace(/—/g,", ").trim();const lmap=new Map(LENS.languages.map(l=>[l.toLowerCase(),l]));
+    const moments=(Array.isArray(out?.moments)?out.moments:[]).filter(m=>m&&ids.has(m.planId)&&c2(m.quote)).slice(0,14).map(m=>({planId:m.planId,quote:c2(m.quote).slice(0,300),language:lmap.get(String(m.language||"").trim().toLowerCase())||"",answers:Array.from({length:n},(_,i)=>c2((Array.isArray(m.answers)?m.answers:[])[i]).slice(0,500))}));
+    const strs=(a,k)=>(Array.isArray(a)?a:[]).map(c2).filter(Boolean).slice(0,k);
+    saveScan({room:"lens-"+room,kind:"lens",range,createdAt:Date.now(),by:whoAmI(),lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)});
+    toast(moments.length?`Read ${d.length} plans and found ${moments.length} moment${moments.length>1?"s":""}.`:"No moments with enough in the plans yet.");
+  }catch(err){toast(assistError(err?.code||"unknown"))}
+  lensBusy=false;renderMain();
+}
+function lensClick(t){
+  if(t.dataset.lroom){lRoom=t.dataset.lroom;LS.set("fps.lroom",lRoom);renderMain();return true}
+  if(t.dataset.lmore){lensShowAll=true;renderMain();return true}
+  if(t.id==="lensread"){lensRead();return true}
+  // the director's lens settings
+  if(t.dataset.lenslang!=null&&view==="settings"){const l=t.dataset.lenslang;const has=LENS.languages.some(x=>x.toLowerCase()===l.toLowerCase());LENS.languages=has?LENS.languages.filter(x=>x.toLowerCase()!==l.toLowerCase()):[...LENS.languages,l];saveProgram();renderSettings();return true}
+  if(t.id==="lens-reset"&&view==="settings"){LENS=normLens(LENS_DEFAULT);saveProgram();renderSettings();toast("The lens is back to Graphic Languages.");return true}
+  return false;
+}
+function lensSettingsHtml(){
+  return `<section class="card" id="lenscard"><div class="lbl">This year's lens</div><div class="hint">The lens the whole school reads its plans through this year. Change the wording here and the Lens page follows. Another year can carry another lens.</div>
+    <label class="fld-label">Name<input type="text" id="lens-name" value="${esc(LENS.name)}"></label>
+    <label class="fld-label">What it means here<textarea id="lens-desc" rows="3">${esc(LENS.description)}</textarea></label>
+    <div class="fld-label">Languages it covers<div class="chips">${langList(LENS.languages).map(l=>`<button class="chip ${LENS.languages.some(x=>x.toLowerCase()===l.toLowerCase())?"on":""}" data-lenslang="${esc(l)}">${esc(l)}</button>`).join("")}</div></div>
+    <label class="fld-label">How we read a moment, one question on each line<textarea id="lens-qs" rows="5">${esc(LENS.questions.join("\n"))}</textarea></label>
+    <label class="fld-label">Words that point to a moment, separated by commas<textarea id="lens-words" rows="3">${esc(LENS.words.join(", "))}</textarea></label>
+    <div class="actions"><button class="linkbtn" id="lens-reset">Return to the Graphic Languages lens</button></div></section>`;
+}
+document.addEventListener("input",e=>{
+  const t=e.target;if(view!=="settings"||!isDirector())return;
+  if(t.id==="lens-name"){LENS.name=t.value.trim()||LENS_DEFAULT.name;saveProgram();return}
+  if(t.id==="lens-desc"){LENS.description=t.value;saveProgram();return}
+  if(t.id==="lens-qs"){const q=t.value.split(/\n+/).map(x=>x.trim()).filter(Boolean);if(q.length){LENS.questions=q.slice(0,8);saveProgram()}return}
+  if(t.id==="lens-words"){const w=t.value.split(/[,\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);LENS.words=[...new Set(w)].slice(0,120);saveProgram();return}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;if(view!=="lens")return;
+  if(t.id==="lrange"){lRange=t.value;LS.set("fps.lrange",lRange);lensShowAll=false;renderMain();return}
+  if(t.id==="llang"){lLang=t.value;lensShowAll=false;renderMain();return}
 });
 
 /* ---------- Threads and overview ---------- */
@@ -2326,13 +2521,14 @@ function applyProgram(v){
   if(Array.isArray(v.languages)&&v.languages.length)LANGUAGES=v.languages.filter(Boolean);
   if(v.materials&&typeof v.materials==="object")MATERIALS=v.materials;
   if(v.seasons&&typeof v.seasons==="object")SEASONS=Object.assign({Fall:[],Winter:[],Spring:[]},v.seasons);
+  if(v.lens&&typeof v.lens==="object")LENS=normLens(v.lens);
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
 }
 function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
 let progTimer=null;
 function saveProgram(){
-  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,updatedAt:Date.now()};
+  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,updatedAt:Date.now()};
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
@@ -2342,6 +2538,7 @@ function renderSettings(){
   const names=rosterNames();
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
+  ${lensSettingsHtml()}
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's classroom and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Classroom</th><th>Educator</th><th></th></tr></thead><tbody>
     ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
