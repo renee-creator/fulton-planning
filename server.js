@@ -28,6 +28,7 @@ const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
 const KINDS = ['plans', 'threads', 'scans', 'settings'];
+const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
 /* ---------- helpers ---------- */
@@ -353,6 +354,12 @@ async function handle(req, res) {
     if (((kind === 'settings' && id !== 'educators') || (kind === 'threads' && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if (kind === 'plans' && op === 'delete') log('Plan deleted by', me.name, id);
     const map = store.recs[kind]; const cur = map.get(id);
+    // director feedback on a plan is written only by the director; an educator's save keeps whatever the director last wrote
+    if (kind === 'plans' && !isDirector(me.name)) {
+      const keep = d => { for (const k of DIRECTOR_FIELDS) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'feedback') d[k] = ''; else delete d[k]; } };
+      if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keep(body.data); }
+      if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of DIRECTOR_FIELDS) delete body.patch[k]; }
+    }
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }

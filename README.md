@@ -24,7 +24,7 @@ This repository holds code only. It never holds plans, children's names, or keys
 
 ## Who can do what
 
-Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Any educator can stop following a thread, which moves it to No longer following, and anyone can follow it again. Any educator can delete a plan. The page asks twice before it does, and every deletion is written to the Render log with the educator's name. Only the director can run Find threads with Claude, change Program settings, and remove a thread permanently. The server enforces this, not just the page.
+Every educator can write, edit, upload, and download plans, add educator names, and use Claude assist. Any educator can stop following a thread, which moves it to No longer following, and anyone can follow it again. Any educator can delete a plan. The page asks twice before it does, and every deletion is written to the Render log with the educator's name. Only the director writes Director feedback on a plan. Educators see it read-only, are told in the sidebar when a note is waiting, and can reply under it. Only the director can run Find threads with Claude, change Program settings, and remove a thread permanently. The server enforces this, not just the page.
 
 ## Claude assist
 
