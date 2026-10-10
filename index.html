@@ -1354,10 +1354,10 @@ function planBlocks(p){
     cols([{label:"Languages to keep open",text:(p.languages||[]).join("\n")},{label:"Graphic languages invitation",text:f.graphic}],1),cols([{label:"Materials",text:f.materials},{label:"Documentation plan",text:(p.docplan||[]).join("\n")}],.9),sec("After the week",f.reflection,1.2)];
 }
 function wrap(doc,text,w){doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);const t=clean(text).trim();if(!t)return[];return t.split(/\n+/).flatMap(par=>doc.splitTextToSize(par,w))}
-let MINL=2;
+let MINL=2,RULED=true;
 function natH(n,blank){return PG.strip+PG.padT+Math.max(n,MINL)*PG.lh+PG.padB-PG.lh*.35}
 function drawPlan(doc,p,pageAcc){
-  const A=ACC[p.acc||p.type]||ACC.classroom;const blank=!!p.blank;MINL=(p.type==="story"||p.blocks)?1:2;
+  const A=ACC[p.acc||p.type]||ACC.classroom;const blank=!!p.blank;MINL=(p.type==="story"||p.blocks)?1:2;RULED=!p.blocks;
   const pages=[];let page={items:[],top:PG.top1};const avail=()=>PG.bottom-page.top-page.items.reduce((s,it)=>s+it.h+PG.gap,0);
   const flush=()=>{pages.push(page);page={items:[],top:PG.topN}};
   const blocks=planBlocks(p);
@@ -1440,7 +1440,7 @@ function box(doc,x,y,w,h,label,lines,A,cont){
   const y0=y+PG.strip+PG.padT;lines.forEach((l,i)=>doc.text(l,x+11,y0+i*PG.lh));
   let ly=lines.length?y0+(lines.length-1)*PG.lh+PG.lh+6:y+PG.strip+PG.lh+8;
   doc.setDrawColor(222,229,224);doc.setLineWidth(.5);doc.setLineDashPattern([.8,2.2],0);
-  for(;ly<y+h-9;ly+=18)doc.line(x+11,ly,x+w-11,ly);
+  if(RULED)for(;ly<y+h-9;ly+=18)doc.line(x+11,ly,x+w-11,ly);
   doc.setLineDashPattern([],0);
 }
 function webBox(doc,x,y,w,h,web,blank,A){
@@ -1989,13 +1989,10 @@ document.addEventListener("change",e=>{
 
 /* ---------- Printable pages for threads, projects, and the lens ----------
    This work is meant to be printed, shared, discussed, and put on the wall. Each printout uses the same page design as the
-   plan forms and leaves ruled space where the team can write by hand. */
+   plan forms and shows only the work itself, with no blank or ruled space. */
 const RANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"All saved plans"};
-const pSec=(label,text,min)=>({t:"sec",label,text:text||"",w:0,min:min||0});
+const pSec=(label,text)=>({t:"sec",label,text:text||"",w:0});
 const pSub=text=>({t:"sub",text});
-// the closing box takes whatever is left of the page, so the team has room to write
-// It is left off when only a sliver of the page remains, so it never costs a sheet of paper by itself.
-const pNotes=()=>({t:"sec",label:"What we notice together",text:"",w:1,min:3,tail:true});
 const safeFile=n=>String(n).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim();
 function planLine(p,section){return [`Week of ${fmtDate(p.weekOf)}`,FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",section].filter(Boolean).join(", ")}
 function quoteLine(e){const p=plans.get(e.planId);return `"${e.text}"\n    ${p?planLine(p,sectionOf(p,e.text)):"Week of "+fmtDate(e.week)+", plan since deleted"}`}
@@ -2005,14 +2002,13 @@ function threadDoc(t){
   const ps=[...new Map([...ev.map(e=>plans.get(e.planId)).filter(Boolean),...linked].map(p=>[p.id,p])).values()];
   const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];const pr=projectOfThread(t.id);
   const seen=ps.length?`Seen in ${ps.length} plan${ps.length>1?"s":""} over ${new Set(ps.map(p=>p.weekOf)).size} week${new Set(ps.map(p=>p.weekOf)).size>1?"s":""}${rooms.length?", in the "+rooms.join(" and ")+" classroom"+(rooms.length>1?"s":""):""}.`:"";
-  const blocks=[pSec("The question the team is following",t.question,1)];
+  const blocks=[];if(t.question)blocks.push(pSec("The question the team is following",t.question));
   if(seen||t.followedBy)blocks.push(pSec("Where it is seen",[seen,t.followedBy?`Followed by ${t.followedBy} on ${shortDate(t.createdAt)}.`:"",pr?`Part of the project ${pr.name}.`:""].filter(Boolean).join("\n")));
   if(ev.length)blocks.push(pSec("In educators' own words",ev.map(quoteLine).join("\n")));
   if(linked.length)blocks.push(pSec("Plans connected by educators",linked.map(p=>planLine(p,"")).join("\n")));
   if((t.languages||[]).length)blocks.push(pSec("Languages children are using",t.languages.join(", ")));
   if((t.next||[]).length)blocks.push(pSec("Possible next provocations",t.next.map(n=>"- "+n).join("\n")));
-  blocks.push(Object.assign(pSec("Team notes",t.notes||"",4),{w:.6}));
-  blocks.push(pNotes());
+  if((t.notes||"").trim())blocks.push(pSec("Team notes",t.notes));
   return {type:"report",acc:"smallgroup",title:t.name,meta:[["Thread",TSTATUS[t.status]||"Emerging"],["Classroom",t.classroom||"All classrooms"],["Weeks",weeksSpan([...(t.weeks||[]),...linked.map(p=>p.weekOf)])]],blocks,fields:{}};
 }
 function threadsOverviewDoc(tracked,ps){
@@ -2020,7 +2016,6 @@ function threadsOverviewDoc(tracked,ps){
   const blocks=[pSec("Threads we are following",tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return `${t.name}. ${[t.classroom&&t.classroom+" classroom",TSTATUS[t.status]||"Emerging",weeksSpan(t.weeks),pr&&"project "+pr.name].filter(Boolean).join(", ")}${t.question?"\n    "+t.question:""}`}).join("\n"):"No threads are being followed in this view yet.")];
   if(scan&&scan.summary)blocks.push(pSec(`Claude's reading of these plans, ${shortDate(scan.createdAt)}`,scan.summary));
   if(rec.length)blocks.push(pSec("Recurring ideas, with the weeks each appears",rec.map(x=>`${x.k} (${x.weeks})`).join(",  ")));
-  blocks.push(pNotes());
   return {type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Plans read",RANGE_WORDS[tRange]||""],["Printed",shortDate(Date.now())]],blocks,fields:{}};
 }
 function threadsPdf(){
@@ -2032,24 +2027,25 @@ function projectDoc(x){
   const earlier=key=>projEarlier(x,key).map(r=>`Earlier, ${shortDate(r.at)}. ${r.text}`).join("\n");
   const withEarlier=(now,key)=>[now,earlier(key)].filter(Boolean).join("\n");
   const blocks=[];
-  if(x.status==="closed")blocks.push(pSec("Summary of closure",x.closure||"",2));
-  blocks.push(pSec("Where it came from",[dt?`It grew from the thread ${dt.name}.${dt.question?" The question the team is following there. "+dt.question:""}`:"",x.experience?`The experience it grew from. ${x.experience}`:""].filter(Boolean).join("\n"),2));
-  blocks.push(pSec("What may lie underneath",withEarlier(projUnder(x),"underneath"),2));
-  blocks.push(pSec("Our intent as educators",withEarlier(projIntent(x),"intent"),2));
-  blocks.push({t:"cols",w:0,cols:[{label:"Who decided to follow it as a project",text:x.decision?.who||"",w:.5},{label:"Small groups carrying the project",text:(x.groups||[]).join(", "),w:.5}]});
-  blocks.push(pSec("How the work returns to the whole class",x.returns||"",2));
+  if(x.status==="closed"&&(x.closure||"").trim())blocks.push(pSec("Summary of closure",x.closure));
+  const add=(label,text)=>{if(String(text||"").trim())blocks.push(pSec(label,text))};
+  add("Where it came from",[dt?`It grew from the thread ${dt.name}.${dt.question?" The question the team is following there. "+dt.question:""}`:"",x.experience?`The experience it grew from. ${x.experience}`:""].filter(Boolean).join("\n"));
+  add("What may lie underneath",withEarlier(projUnder(x),"underneath"));
+  add("Our intent as educators",withEarlier(projIntent(x),"intent"));
+  {const cs=[["Who decided to follow it as a project",x.decision?.who||""],["Small groups carrying the project",(x.groups||[]).join(", ")]].filter(c=>c[1].trim());
+    if(cs.length===2)blocks.push({t:"cols",w:0,cols:cs.map(c=>({label:c[0],text:c[1],w:.5}))});else if(cs.length)add(cs[0][0],cs[0][1])}
+  add("How the work returns to the whole class",x.returns);
   if(projWeb(x).branches.length)blocks.push({t:"web",web:Object.assign(projWeb(x),{label:"Possible directions, held as hypotheses"}),blank:false});
   blocks.push(pSub("Threads in this project"));
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
-  if(!ths.length)blocks.push(pSec("Threads","No threads have been added yet.",2));
+  if(!ths.length)blocks.push(pSec("Threads","No threads have been added yet."));
   for(const r of cols){const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
     const head=`${r?r+" classroom":"No classroom set"}${c&&r===x.home?", home":""}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+PJOIN[c.how].toLowerCase():""}`;
     const body=[c&&c.note?c.note:"",...mine.map(o=>{const t=o.t;const ev=[...(t.evidence||[])].sort((a,b)=>(b.week||"").localeCompare(a.week||"")).slice(0,3);
       return `${t.name}. ${[TSTATUS[t.status]||"Emerging",weeksSpan(t.weeks)].filter(Boolean).join(", ")}${t.question?"\n    "+t.question:""}${ev.length?"\n"+ev.map(quoteLine).join("\n"):""}`})].filter(Boolean).join("\n");
-    blocks.push(pSec(head,body||"No thread from this classroom yet.",2))}
+    blocks.push(pSec(head,body||"No thread from this classroom yet."))}
   if(x.people)blocks.push(pSec("People beyond the classrooms",x.people));
-  blocks.push(Object.assign(pSec("Team notes",x.notes||"",4),{w:.6}));
-  blocks.push(pNotes());
+  if((x.notes||"").trim())blocks.push(pSec("Team notes",x.notes));
   return {type:"report",acc:"classroom",title:x.name||"Project",meta:[["Project",PSTATUS[x.status]||"Active"],["Classrooms",roomsText(x)],["Weeks",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks,fields:{}};
 }
 function projectsPdf(list){
@@ -2068,24 +2064,22 @@ function lensDocs(){
     pSec("How we read a moment",LENS.questions.map((q,i)=>`${i+1}. ${q}`).join("\n")+"\nRead for the thinking. How a product looks is never rated.")];
   if(weeks.length)blocks.push(pSec("By classroom and week, moments found",weeks.map(w=>`Week of ${fmtDate(w)}.   `+rooms.map(r=>`${r||"No classroom"} ${moments.filter(m=>m.week===w&&m.room===r).length}`).join(",   ")).join("\n")));
   blocks.push(pSub("Moments in educators' own words"));
-  if(!moments.length)blocks.push(pSec("Moments","No moments found in this range yet.",2));
+  if(!moments.length)blocks.push(pSec("Moments","No moments found in this range yet."));
   for(const w of [...new Set(moments.map(m=>m.week))]){
     blocks.push(pSec(`Week of ${fmtDate(w)}`,moments.filter(m=>m.week===w).map(m=>{const p=plans.get(m.planId);const cs=p?planThreads(p):[];
       return `"${m.text}"\n    ${p?planLine(p,m.section):""}${cs.length?"\n    Thread "+cs.map(c=>{const pr=projectOfThread(c.t.id);return c.t.name+(pr?", in the project "+pr.name:"")}).join(". Thread "):""}`}).join("\n")))}
   if(silent.length)blocks.push(pSec("Marked, with no moment described yet",silent.slice(0,30).map(p=>`${planLine(p,"")}. ${lensMarked(p).join(", ")}`).join("\n")));
-  blocks.push(pNotes());
   const docs=[{type:"report",acc:"individual",title:LENS.name,meta,blocks,fields:{}}];
-  // the closer reading prints as its own pages, with ruled space wherever the plans were silent
+  // the closer reading prints as its own pages, and says plainly where the plans were silent
   const scan=scans.get("lens-"+lRoom);
   if(scan&&(scan.moments||[]).length){const qs=scan.questionsAsked||LENS.questions;const b=[];
     if(scan.summary)b.push(pSec("Summary",scan.summary));
     scan.moments.forEach((m,i)=>{const p=plans.get(m.planId);
       b.push(pSub(`Moment ${i+1}${m.language?", "+m.language:""}`));
       b.push(pSec("In the educator's words",`"${m.quote}"${p?"\n    "+planLine(p,sectionOf(p,m.quote)):""}`));
-      qs.forEach((q,k)=>{const a=(m.answers||[])[k]||"";b.push(pSec(a?q:q+"  (not recorded in the plan, write what you saw)",a,a?0:2))})});
+      qs.forEach((q,k)=>{b.push(pSec(q,(m.answers||[])[k]||"Not recorded in the plan"))})});
     if((scan.gaps||[]).length)b.push(pSec("What the plans do not yet say",scan.gaps.map(g=>"- "+g).join("\n")));
     if((scan.teamQuestions||[]).length)b.push(pSec("Questions for the team",scan.teamQuestions.map(g=>"- "+g).join("\n")));
-    b.push(pNotes());
     docs.push({type:"report",acc:"individual",title:`${scan.lensName||LENS.name}, a closer reading`,meta:[["Classrooms",lRoom==="All"?"All":lRoom],["Plans read",RANGE_WORDS[scan.range]||""],["Read by Claude",shortDate(scan.createdAt)]],blocks:b,fields:{}})}
   return docs;
 }
