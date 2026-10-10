@@ -1201,8 +1201,8 @@ function layoutPlan(doc,p,pageAcc,countOnly){
   const flush=()=>{pages.push(page);page={items:[],top:PG.topN}};
   const blocks=planBlocks(p);
   for(let bi=0;bi<blocks.length;bi++){const b=blocks[bi];
-    // a completed plan flows, so one long section does not push the rest onto a third sheet
-    if(b.t==="break"){if(!filled)flush();continue}
+    // the curriculum brainstorm and the web share the second sheet
+    if(b.t==="break"){flush();continue}
     if(b.t==="sub"){if(avail()<24+90)flush();page.items.push({t:"sub",text:b.text,h:16,w:0});continue}
     if(b.t==="web"){const h=318;if(avail()<h)flush();page.items.push({t:"web",web:b.web,blank:b.blank,h,w:0});continue}
     if(b.t==="cols"){
@@ -1995,13 +1995,13 @@ function storyDoc(title,fields,meta){
 }
 function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Classroom",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classrooms"],["Seen",weeksSpan(th.weeks)]])}
 function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classrooms",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
-function lensDocs(long){
+function lensDocs(long,cap){
   const ps=lensPlans();let moments=lensMoments(ps);
   if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
   const meta=[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
   const blocks=[dText("What it means here",LENS.description),dList("How we read a moment",LENS.questions,true),{t:"text",label:"",quiet:true,text:"Read for the thinking. How a product looks is never rated."}];
   // the summary carries the strongest few. The full set carries more, a few from each week, most recent first.
-  const perMax=long?6:3,total=long?24:5;
+  const perMax=long?6:3,total=long?24:(cap||5);
   const shown=[];const perWeek={};
   for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=perMax&&shown.length<total)shown.push(m)}
   if(shown.length){blocks.push(dSub(`Moments in educators' words${lLang?", "+lLang:""}`));
@@ -2161,12 +2161,16 @@ function displayAtoms(doc,p,A,s){
       keepShort(i0);side(i0,(b.side||[]).map((t,i)=>({text:t,quiet:i>0})));
       if(B[bi+1]&&B[bi+1].t==="quote"){gap(6)}}
     else if(b.t==="qa"){gap(7);const ql=wrap(b.q,"fs",9.8*s,cw);ql.forEach(l=>line(l,"fs",9.8*s,13.5*s,cx,D_MUTED,true));lines(wrap(b.a,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,D_INK)}
-    else if(b.t==="sub"){gap(18);sub=b.text;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:8*s,keep:true,gap:false,draw(){}})}
+    else if(b.t==="sub"){gap(18);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:8*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(14);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(10)}
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
     if(b.t!=="sub")mark(a0);
   }
   while(atoms.length&&atoms[atoms.length-1].gap)atoms.pop();
+  // how tall each heading's group is, so a group that would fit a sheet of its own is not split across two
+  let last=-1;
+  atoms.forEach((a,i)=>{if(a.isSub){if(last>=0)atoms[last].groupH=atoms.slice(last,i).reduce((n,x)=>n+(x.min||x.h),0);last=i}});
+  if(last>=0)atoms[last].groupH=atoms.slice(last).reduce((n,x)=>n+(x.min||x.h),0);
   return atoms;
 }
 function displayFlow(doc,p,A,s){
@@ -2178,7 +2182,8 @@ function displayFlow(doc,p,A,s){
       const hm=x=>x.min||x.h;
       let need=hm(a);for(let k=i;atoms[k]&&(atoms[k].keep||atoms[k].gap)&&atoms[k+1];k++)need+=hm(atoms[k+1]);
       const cap=Math.min(DG.bottom,(pages.length===1?top1:topN)+room);
-      if(y+need>cap&&pages[pages.length-1].length){
+      const whole=a.groupH&&y+a.groupH>cap&&topN+a.groupH<=DG.bottom;
+      if((y+need>cap||whole)&&pages[pages.length-1].length){
         pages.push([]);y=topN;
         if(a.subText){const hd=displayAtoms.head(a.subText+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}
         if(a.gap)continue;
@@ -2313,7 +2318,12 @@ async function displayDocx(ch,p,D,A){
   }
   flush();
 }
-function printsClick(t){
+// a summary is trimmed until it sits on one sheet, down to a floor where trimming stops earning its way
+async function onePage(make,from,to){
+  for(let n=from;n>to;n--){const d=make(n);let ok=false;try{ok=planPageCount(d[0])<=1}catch(e){ok=true}if(ok)return d}
+  return make(to);
+}
+async function printsClick(t){
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
   const out=(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
@@ -2322,7 +2332,9 @@ function printsClick(t){
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="threads"){out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
-  if(kind==="lens"){out(lensDocs(long),`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`);return true}
+  if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`;
+    if(long){out(lensDocs(true),name);return true}
+    await loadPrintFonts();out(await onePage(n=>lensDocs(false,n),5,3),name);return true}
   return false;
 }
 // the PDF button with its Word twin
