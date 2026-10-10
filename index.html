@@ -1107,7 +1107,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
   if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
   if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
-  if(printsClick(t))return;
+  if(t.dataset.print){printsClick(t);return}
   if(lensClick(t))return;
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
@@ -1319,7 +1319,10 @@ const CYCLE=["Informal observation","Assumptions, outcomes, goals, biases","Prov
 const CYCLE_TEXT=["OBSERVE","PROVOKE","DOCUMENT","REFLECT","EVOLVE"].join("  \u2022  ");
 let pageInfo={};
 const ACC={classroom:{c:[47,90,67],t:[234,242,236]},individual:{c:[43,98,124],t:[229,239,244]},smallgroup:{c:[168,104,8],t:[251,240,220]},story:{c:[122,72,52],t:[246,236,230]}};
-const PG={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB:10};
+const PG0={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB:10};
+const PG=Object.assign({},PG0);
+// a long plan is set a little smaller rather than spilling onto a third sheet
+function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=PG0.padB*z;PG.gap=PG0.gap*z;PG.strip=PG0.strip*Math.max(z,.92)}
 async function makePdf(list,filename){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
@@ -1361,13 +1364,26 @@ function planBlocks(p){
 function wrap(doc,text,w){doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);const t=clean(text).trim();if(!t)return[];return t.split(/\n+/).flatMap(par=>doc.splitTextToSize(par,w))}
 let MINL=2,RULED=true;
 function natH(n,blank){return PG.strip+PG.padT+Math.max(n,MINL)*PG.lh+PG.padB-PG.lh*.35}
+// A completed plan is a record, so nothing is dropped. It prints to the writing it holds, with no ruled lines
+// and no blank space stretched to fill a sheet. A section left empty prints as its heading alone, so the team
+// can see what was not filled in. A blank form keeps its rules and its room to write.
 function drawPlan(doc,p,pageAcc){
-  const A=ACC[p.acc||p.type]||ACC.classroom;const blank=!!p.blank;MINL=(p.type==="story"||p.blocks)?1:2;RULED=!p.blocks;
+  const filled=!p.blank&&!p.blocks&&p.type!=="story";
+  if(!filled){planScale(1);layoutPlan(doc,p,pageAcc);return}
+  for(const z of [1,.96,.92,.88,.84]){planScale(z);if(z===.84)break;
+    let n=2;try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});n=layoutPlan(t,p,{},true)}catch(e){}
+    if(n<=2)break}
+  layoutPlan(doc,p,pageAcc);planScale(1);
+}
+function layoutPlan(doc,p,pageAcc,countOnly){
+  const A=ACC[p.acc||p.type]||ACC.classroom;const blank=!!p.blank;const filled=!blank&&!p.blocks&&p.type!=="story";
+  MINL=(p.type==="story"||p.blocks)?1:filled?0:2;RULED=!p.blocks&&!filled;
   const pages=[];let page={items:[],top:PG.top1};const avail=()=>PG.bottom-page.top-page.items.reduce((s,it)=>s+it.h+PG.gap,0);
   const flush=()=>{pages.push(page);page={items:[],top:PG.topN}};
   const blocks=planBlocks(p);
   for(let bi=0;bi<blocks.length;bi++){const b=blocks[bi];
-    if(b.t==="break"){flush();continue}
+    // a completed plan flows, so one long section does not push the rest onto a third sheet
+    if(b.t==="break"){if(!filled)flush();continue}
     if(b.t==="sub"){if(avail()<24+90)flush();page.items.push({t:"sub",text:b.text,h:16,w:0});continue}
     if(b.t==="web"){const h=318;if(avail()<h)flush();page.items.push({t:"web",web:b.web,blank:b.blank,h,w:0});continue}
     if(b.t==="cols"){
@@ -1375,17 +1391,18 @@ function drawPlan(doc,p,pageAcc){
       const h=natH(Math.max(b.min||0,...ls.map(l=>l.length)),blank);
       if(h>PG.bottom-PG.topN){b.cols.forEach(c=>blocks.splice(bi+1,0,{t:"sec",label:c.label,text:c.text,w:b.w}));continue}
       if(h>avail())flush();
-      page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i]})),h,w:b.w});continue}
+      page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i]})),h,w:filled&&!ls.some(l=>l.length)?0:b.w});continue}
     let lines=wrap(doc,b.text,CW-22),cont=false;
     while(true){const h=natH(Math.max(lines.length,cont?0:(b.min||0)),blank);const a=avail();
       if(b.tail&&h>a&&page.items.length)break;
-      if(h<=a){page.items.push({t:"sec",label:b.label,lines,h,w:b.w,cont});break}
+      if(h<=a){page.items.push({t:"sec",label:b.label,lines,h,w:filled&&!lines.length?0:b.w,cont});break}
       const fit=Math.floor((a-PG.strip-PG.padT-PG.padB)/PG.lh)+1;
       if(fit<3||lines.length<=fit){flush();continue}
       page.items.push({t:"sec",label:b.label,lines:lines.slice(0,fit),h:a,w:0,cont});lines=lines.slice(fit);cont=true;flush();
     }
   }
   pages.push(page);
+  if(countOnly)return pages.length;
   pages.forEach((pg,pi)=>{
     if(pi>0)doc.addPage();
     pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:pages.length};
@@ -1402,6 +1419,7 @@ function drawPlan(doc,p,pageAcc){
       y+=it.h+PG.gap;
     }
   });
+  return pages.length;
 }
 function metaRows(p){
   if(p.blank)return [["Week of",""],[p.type==="smallgroup"?"Group":"Classroom",""],[p.type==="classroom"?"Team":"Educator",""]];
@@ -1549,7 +1567,8 @@ async function makeDocx(list,filename){
     if(multi)footKids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({children:["Page ",PageNumber.CURRENT," of ",list.length===1?PageNumber.TOTAL_PAGES:PageNumber.TOTAL_PAGES_IN_SECTION],size:14,color:"6E7C73",font:"Helvetica"})]}));
     // a display page has its own quiet footer and wider margins
     const dfont=PF.buf?PF.word.fr:"Arial";
-    const dFoot=[new Paragraph({border:{top:{style:BorderStyle.SINGLE,size:4,color:"D0D9D3",space:8}},tabStops:[{type:"right",position:10080}],children:[new TextRun({text:"Observe    Provoke    Document    Reflect    Evolve",size:16,color:"606E65",font:dfont}),...(multi?[new TextRun({children:list.length===1?["\tPage ",PageNumber.CURRENT," of ",PageNumber.TOTAL_PAGES]:["\tPage ",PageNumber.CURRENT],size:16,color:"606E65",font:dfont})]:[])]})];
+    const dFoot=[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:"D0D9D3",space:8}},children:[new TextRun({text:"Observe    Provoke    Document    Reflect    Evolve",size:16,color:"606E65",font:dfont})]})];
+    if(multi)dFoot.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:40},children:[new TextRun({children:list.length===1?["Page ",PageNumber.CURRENT," of ",PageNumber.TOTAL_PAGES]:["Page ",PageNumber.CURRENT],size:16,color:"606E65",font:dfont})]}));
     sections.push({properties:{page:{size:{width:12240,height:15840},margin:p.display?{top:960,bottom:840,left:1080,right:1080}:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:p.display?dFoot:footKids})},children:ch});
   }
   const wf=disp?wordFonts():[];
@@ -1623,7 +1642,7 @@ function renderProjects(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classrooms</span><h2 style="margin-top:4px">Projects</h2>
     <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
   if(projForm)h+=projectStartForm();
-  else h+=`<div class="actions">${all.length?`${printBtns("projects","","Download projects PDF")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
+  else h+=`<div class="actions">${all.length?`${printTwo("projects","")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
   if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
   else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
@@ -1649,7 +1668,7 @@ function renderProject(x){
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
   let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0"><button class="linkbtn" data-pback="1">All projects</button>
       <div style="margin-top:6px"><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
-      ${printBtns("project",x.id,"Project PDF")}
+      ${printTwo("project",x.id)}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
@@ -1959,7 +1978,7 @@ function renderLens(){
     <div class="sub" style="max-width:76ch">${esc(LENS.description)}</div></div></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
       <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
-      <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select>${printBtns("lens","","Download lens PDF")}</div></div>
+      <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select>${printTwo("lens","")}</div></div>
   <section class="card"><div class="lbl">How we read a moment</div>
     <ol class="lq">${LENS.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>
     <div class="hint">Read for the thinking. How a product looks is never rated.</div></section>
@@ -2104,6 +2123,8 @@ const dTags=(label,items)=>({t:"tags",label,items});
 const dList=(label,items,numbered)=>({t:"list",label,items,numbered:!!numbered});
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
 const dSub=text=>({t:"sub",text});
+const SECT_SHORT={"Intentions and questions for the week":"intentions","Meeting time questions, concepts and ideas":"meeting time","Expressed interests of individual and small group":"expressed interests","Provocations and environmental changes, indoor":"indoor provocations","Provocations and environmental changes, outdoor":"outdoor provocations","Possible activities and materials":"possible materials","Observation rationale":"observation","The thread we are following":"the thread"};
+const sectName=l=>SECT_SHORT[l]||String(l||"").toLowerCase();
 const has=v=>String(v||"").trim().length>0;
 function threadDoc(t){
   const ev=[...(t.evidence||[])].filter(e=>plans.get(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
@@ -2121,11 +2142,14 @@ function threadsOverviewDoc(tracked){
   const blocks=tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return dItem(t.name,t.question||"",pr?"Part of the project "+pr.name:"",[t.classroom?t.classroom+" classroom":"All classrooms",weeksSpan(t.weeks)])}):[dText("","No threads are being followed in this view yet.")];
   return {display:true,type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Printed",shortDate(Date.now())]],blocks};
 }
-function threadsDocs(){
+function threadsDocs(long){
   const tracked=[...threads.values()].filter(t=>!t.unfollowed&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
-  return [threadsOverviewDoc(tracked),...tracked.map(threadDoc)];
+  // the summary is the one sheet that lists them all. The full set adds a sheet for each thread.
+  // With one or two threads the list sheet would be mostly empty, so the threads speak for themselves.
+  if(tracked.length<3)return tracked.map(threadDoc);
+  return long?[threadsOverviewDoc(tracked),...tracked.map(threadDoc)]:[threadsOverviewDoc(tracked)];
 }
-function projectDoc(x){
+function projectDoc(x,long){
   const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const blocks=[];
   if(has(projUnder(x)))blocks.push(dLead("What may lie underneath",projUnder(x)));
   if(has(x.experience))blocks.push(dText("The experience it grew from",x.experience));
@@ -2134,6 +2158,7 @@ function projectDoc(x){
   if(earlier.length)blocks.push(dList("How our reading has changed",earlier.map(r=>`${shortDate(r.at)}. ${r.text}`)));
   if(x.status==="closed"&&has(x.closure))blocks.push(dText("Summary of closure",x.closure));
   if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)})}
+  if(!long)return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta:[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks};
   if(ths.length){blocks.push(dSub("Threads in this project"));
     for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
       const where=[c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
@@ -2151,19 +2176,23 @@ function storyDoc(title,fields,meta){
 }
 function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Classroom",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classrooms"],["Seen",weeksSpan(th.weeks)]])}
 function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classrooms",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
-function lensDocs(){
+function lensDocs(long){
   const ps=lensPlans();let moments=lensMoments(ps);
   if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
   const meta=[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
   const blocks=[dText("What it means here",LENS.description),dList("How we read a moment",LENS.questions,true),{t:"text",label:"",quiet:true,text:"Read for the thinking. How a product looks is never rated."}];
-  // a page shows a few moments from each week, most recent first. The rest stay on the Lens page.
+  // the summary carries the strongest few. The full set carries more, a few from each week, most recent first.
+  const perMax=long?6:3,total=long?24:5;
   const shown=[];const perWeek={};
-  for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=4&&shown.length<12)shown.push(m)}
+  for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=perMax&&shown.length<total)shown.push(m)}
   if(shown.length){blocks.push(dSub(`Moments in educators' words${lLang?", "+lLang:""}`));
     for(const m of shown){const p=plans.get(m.planId);const cs=p?planThreads(p):[];
-      blocks.push(dQuote(m.text,[whoLine(p),cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))))}}
+      // the part of the plan a moment came from, so a reader can tell an observation from a provocation being planned
+      blocks.push(dQuote(m.text,[whoLine(p),sectName(m.section),long&&cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))))}
+    if(moments.length>shown.length)blocks.push({t:"text",label:"",quiet:true,text:`${moments.length-shown.length} more moment${moments.length-shown.length>1?"s are":" is"} on the Lens page.`})}
   else blocks.push(dText("","No moments have been described in these weeks yet."));
   const docs=[{display:true,type:"report",acc:"individual",title:LENS.name,meta,blocks}];
+  if(!long)return docs;
   // the closer reading is its own page set. A question the plans did not answer is simply left off.
   const scan=scans.get("lens-"+lRoom);
   if(scan&&(scan.moments||[]).length){const qs=scan.questionsAsked||LENS.questions;const b=[];
@@ -2275,8 +2304,12 @@ function displayAtoms(doc,p,A,s){
     first.draw=y=>{d0(y);rows.forEach((r,i)=>{pfont(doc,r.k,r.fs);doc.setTextColor(...r.color);doc.text(r.l,right?m+lc:m,y+b0+i*Z.llh,right?{align:"right"}:undefined)})};
     const hh=atoms.slice(i0).reduce((n,a)=>n+a.h,0),need=rows.length*Z.llh+2;if(hh<need)push({h:need-hh,draw(){}})};
   const keepShort=i0=>{if(atoms.length-i0<=7)for(let k=i0;k<atoms.length-1;k++)atoms[k].keep=true};
-  const B=p.blocks||[];
-  for(let bi=0;bi<B.length;bi++){const b=B[bi];
+  const B=p.blocks||[];let sub="";
+  const mark=i0=>{for(let k=i0;k<atoms.length;k++)if(!atoms[k].subText)atoms[k].subText=sub};
+  // a heading that carries onto the next sheet is repeated there, so every sheet reads as a sheet
+  displayAtoms.head=(text,A2,s2)=>{const fs=17*s2,ls=(()=>{pfont(doc,"bs",fs);return doc.splitTextToSize(clean(text),DG.w)})();
+    return {h:ls.length*fs*1.3+10*s2,keep:true,draw(y){pfont(doc,"bs",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,DG.m,y+fs*.95+i*fs*1.3))}}};
+  for(let bi=0;bi<B.length;bi++){const b=B[bi];const a0=atoms.length;
     if(b.t==="lead"){const fs=leadSize(b.text)*Math.min(s,1.12),lh=fs*1.26,pad=20;const ls=wrap(b.text,"bm",fs,w-pad*2);const lab=has(b.label)?16:0;const h=pad*2+lab+ls.length*lh-4;
       push({h,draw(y){doc.setFillColor(...A.t);doc.roundedRect(m,y,w,h,12,12,"F");
         if(lab){pfont(doc,"fs",Z.label);doc.setTextColor(...AT);doc.text(clean(b.label),m+pad,y+pad+7)}
@@ -2309,32 +2342,48 @@ function displayAtoms(doc,p,A,s){
       keepShort(i0);side(i0,(b.side||[]).map((t,i)=>({text:t,quiet:i>0})));
       if(B[bi+1]&&B[bi+1].t==="quote"){gap(6)}}
     else if(b.t==="qa"){gap(7);const ql=wrap(b.q,"fs",9.8*s,cw);ql.forEach(l=>line(l,"fs",9.8*s,13.5*s,cx,D_MUTED,true));lines(wrap(b.a,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,D_INK)}
-    else if(b.t==="sub"){gap(18);wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:8*s,keep:true,gap:false,draw(){}})}
+    else if(b.t==="sub"){gap(18);sub=b.text;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:8*s,keep:true,gap:false,draw(){}})}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(14);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(10)}
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
+    if(b.t!=="sub")mark(a0);
   }
   while(atoms.length&&atoms[atoms.length-1].gap)atoms.pop();
   return atoms;
 }
 function displayFlow(doc,p,A,s){
   const atoms=displayAtoms(doc,p,A,s);const top1=displayHead(doc,p,A,true),topN=DG.top+40;
-  const pages=[[]];let y=top1;
-  for(let i=0;i<atoms.length;i++){const a=atoms[i];
-    // a heading, a side note, or the first lines of a quote never sit alone at the foot of a page
-    const hm=x=>x.min||x.h;
-    let need=hm(a);for(let k=i;atoms[k]&&(atoms[k].keep||atoms[k].gap)&&atoms[k+1];k++)need+=hm(atoms[k+1]);
-    if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
-    if(y+need>DG.bottom&&pages[pages.length-1].length){pages.push([]);y=topN;if(a.gap)continue}
-    if(a.gap&&!pages[pages.length-1].length)continue;
-    pages[pages.length-1].push({a,y});y+=a.h;
-  }
-  return {pages,end:y,top1,topN};
+  const run=room=>{
+    const pages=[[]];let y=top1;
+    for(let i=0;i<atoms.length;i++){const a=atoms[i];
+      // a heading, a side note, or the first lines of a quote never sit alone at the foot of a page
+      const hm=x=>x.min||x.h;
+      let need=hm(a);for(let k=i;atoms[k]&&(atoms[k].keep||atoms[k].gap)&&atoms[k+1];k++)need+=hm(atoms[k+1]);
+      const cap=Math.min(DG.bottom,(pages.length===1?top1:topN)+room);
+      if(y+need>cap&&pages[pages.length-1].length){
+        pages.push([]);y=topN;
+        if(a.subText){const hd=displayAtoms.head(a.subText+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}
+        if(a.gap)continue;
+      }
+      if(a.gap&&!pages[pages.length-1].length)continue;
+      if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
+      pages[pages.length-1].push({a,y});y+=a.h;
+    }
+    return {pages,end:y,top1,topN};
+  };
+  let F=run(1e9);
+  // with more than one sheet, the content is spread so the last sheet is not left half empty
+  if(F.pages.length>1){const usable=DG.bottom-topN;
+    for(let t=.95;t>=.55;t-=.05){const G=run(usable*t);
+      if(G.pages.length!==F.pages.length)break;
+      F=G;const last=G.pages[G.pages.length-1];
+      if(last.reduce((n,x)=>n+x.a.h,0)>usable*.5)break}}
+  return F;
 }
 // a short page is set larger so it fills the sheet, and a page that runs a few lines over is set a little smaller so it stays on one
 function displayFit(doc,p,A){
   let s=1,F=displayFlow(doc,p,A,1);
   if(F.pages.length===1){const room=DG.bottom-F.top1;for(const t of [1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
-  else if(F.pages.length===2&&F.end-F.topN<(DG.bottom-F.topN)*.3){for(const t of [.96,.92,.88]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
+  else if(F.pages.length===2){for(const t of [.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
   return {s,F};
 }
 function drawDisplay(doc,p,pageAcc){
@@ -2348,8 +2397,8 @@ function drawDisplay(doc,p,pageAcc){
 }
 function displayFoot(doc,A,pi){
   const {m,w}=DG;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,PH-42,m+w,PH-42);
-  pfont(doc,"fr",8);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m,PH-28);
-  if(pi&&pi.n>1)doc.text(`Page ${pi.i} of ${pi.n}`,m+w,PH-28,{align:"right"});
+  pfont(doc,"fr",8);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m+w/2,PH-28,{align:"center"});
+  if(pi&&pi.n>1)doc.text(`Page ${pi.i} of ${pi.n}`,m+w/2,PH-17,{align:"center"});
 }
 function drawAny(doc,p,pageAcc){(p.display?drawDisplay:drawPlan)(doc,p,pageAcc)}
 
@@ -2446,18 +2495,22 @@ async function displayDocx(ch,p,D,A){
   flush();
 }
 function printsClick(t){
-  const word=t.dataset.word==="1";const out=(docs,name)=>{if(!docs.length)return;if(word)makeDocx(docs,safeFile(name+".docx"));else makePdf(docs,safeFile(name+".pdf"))};
-  if(t.dataset.print==="threads"){out(threadsDocs(),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
-  if(t.dataset.print==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
-  if(t.dataset.print==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
-  if(t.dataset.print==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(projectDoc),`Fulton projects ${mondayOf(new Date())}`);return true}
-  if(t.dataset.print==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x)],`Project ${x.name}`);return true}
-  if(t.dataset.print==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
-  if(t.dataset.print==="lens"){out(lensDocs(),`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`);return true}
+  const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
+  const out=(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
+  if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
+  if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
+  if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
+  if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
+  if(kind==="threads"){out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
+  if(kind==="lens"){out(lensDocs(long),`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`);return true}
   return false;
 }
-// a PDF button with its Word twin
-function printBtns(kind,id,pdfLabel,primary){const d=`data-print="${kind}"${id?` data-id="${id}"`:""}`;return `<button class="btn small${primary?"":" ghost"}" ${d}>${pdfLabel}</button><button class="linkbtn" ${d} data-word="1" aria-label="${pdfLabel.replace(/PDF/,"Word")}">Word</button>`}
+// the PDF button with its Word twin
+function printBtns(kind,id,pdfLabel,primary,long){const d=`data-print="${kind}"${id?` data-id="${id}"`:""}${long?' data-long="1"':""}`;
+  return `<button class="btn small${primary?"":" ghost"}" ${d}>${pdfLabel}</button><button class="linkbtn" ${d} data-word="1" aria-label="${pdfLabel.replace(/PDF/,"Word")}">Word</button>`}
+// a summary that fits one sheet, and the full set
+function printTwo(kind,id,primary){return printBtns(kind,id,"Summary PDF",primary)+printBtns(kind,id,"Full PDF",false,true)}
 
 /* ---------- Threads and overview ---------- */
 const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
@@ -2513,7 +2566,7 @@ function renderThreads(){
 
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
-    <span class="actions">${printBtns("threads","","Download threads PDF")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</span></div>
+    <span class="actions">${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</span></div>
     <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"Claude reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks Claude to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
