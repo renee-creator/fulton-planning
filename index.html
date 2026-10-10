@@ -419,7 +419,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
     for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b, opts.maxSide||1800)}});
     const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
     content.push({type:"text",text});
-    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex"}, opts.signal);
+    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex", purpose:opts.purpose||""}, opts.signal);
     return j;
   }
   const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
@@ -1383,8 +1383,8 @@ function renderThreads(){
 
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
-    ${sample?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. Claude reads the saved plans in this range, finds the threads, and points to the plans they came from. Track the ones worth following and they stay here for the whole team.</div>`;
+    ${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"Claude reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks Claude to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
@@ -1396,7 +1396,7 @@ function renderThreads(){
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
     else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
-  }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?"No threads found yet. Press Find threads with Claude.":"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
+  }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?(isDirector()?"No threads found yet. Press Find threads with Claude.":"No threads found yet. The director's next thread search will show here."):"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
   h+=`</section>`;
 
   // Planning grid
@@ -1528,7 +1528,7 @@ async function threadsClick(t){
   if(t.dataset.troom){tRoom=t.dataset.troom;LS.set("fps.troom",tRoom);renderMain();return true}
   if(t.dataset.cell){const [w,r]=t.dataset.cell.split("|");week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
-  if(t.id==="scan"){findThreads();return true}
+  if(t.id==="scan"){if(isDirector())findThreads();return true}
   if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
     const nt={id:uid(),name:x.name,question:x.question||"",classroom:x.classroom||(tRoom!=="All"?tRoom:""),groups:x.groups||[],status:x.status||"emerging",weeks:[...(x.weeks||[])].sort(),lastWeek:[...(x.weeks||[])].sort().slice(-1)[0]||"",evidence:x.evidence||[],languages:x.languages||[],next:x.next||[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:scan.room,range:scan.range,at:scan.createdAt}};
     saveThread(nt);x.trackedId=nt.id;saveScan(scan);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
@@ -1587,7 +1587,7 @@ Return JSON {"summary": two or three sentences on the overall picture of childre
 Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   try{
-    const out=await sample.json(prompt,{modelTier:"complex",cache:false});
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"threads"});
     const clean2=v=>String(v||"").replace(/—/g,", ");
     const ths=(Array.isArray(out?.threads)?out.threads:[]).slice(0,8).map(x=>{
       const ev=(Array.isArray(x.evidence)?x.evidence:[]).filter(e=>e&&ids.has(e.planId)).map(e=>({planId:e.planId,week:byId.get(e.planId).week,text:clean2(e.text).slice(0,240)}));
