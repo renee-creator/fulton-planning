@@ -471,7 +471,17 @@ async function removePlan(id){
   deletedIds.add(id);pendingSaves.delete(id);plans.delete(id);
   if(db){try{await db.doc("plans/"+id).delete()}catch(e){toast(e?.message||"Could not delete. Try again.")}}
   else LS.set("fps.local",[...plans.values()]);
-  currentId=null;renderAll();
+  if(currentId===id)currentId=null;renderAll();
+}
+// deleting a plan asks twice, so nobody loses a plan with one stray tap
+function askDelete(wrap,id,restore){
+  const q=plans.get(id);if(!wrap||!q)return;
+  wrap.dataset.restore=restore;
+  wrap.innerHTML=`<span class="confirm">Delete ${id===currentId?"this plan":"the other plan"}? <button class="btn warn small" data-delask2="${id}">Yes, delete</button><button class="linkbtn" data-delkeep="1">Keep it</button></span>`;
+}
+function askDelete2(wrap,id){
+  const q=plans.get(id);if(!wrap||!q)return;
+  wrap.innerHTML=`<span class="confirm"><b>Are you sure?</b> ${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}, week of ${fmtDate(q.weekOf)} will be removed for everyone. <button class="btn warn small" data-delgo="${id}">Delete for good</button><button class="linkbtn" data-delkeep="1">Keep it</button></span>`;
 }
 
 /* ---------- Sidebar ---------- */
@@ -550,7 +560,8 @@ function renderMain(){
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
   const th=p.threadId&&threads.get(p.threadId);if(th)h+=threadRef(th);
-  if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}${p.importDup?`<div class="nudge" style="justify-self:start">A plan like this already existed for this week. Delete one if it is a duplicate.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
+  h+=dupHtml(p);
+  if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
   if(sample)h+=`<section class="ai"><div class="lbl">Start from your notes</div>
     <p>Paste or dictate your quick jottings from the week. Claude sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
     <textarea id="notes" rows="4" placeholder="Ex. Juniper and Esther spent all of free choice lining up acorns by size again, third day. Esther said the big ones are the grandmas..."></textarea>
@@ -569,7 +580,7 @@ function renderMain(){
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
   h+=`<section class="review"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
     <textarea id="feedback" rows="2" placeholder="Notes from review. Stays in the app and is left off the printed form.">${esc(p.feedback)}</textarea></section>
-    <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap">${isDirector()?`<button class="btn warn small" id="del">Delete this plan</button>`:""}</span></div>`;
+    <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
   $("#main").querySelectorAll("textarea").forEach(autoGrow);
   if(F.web)drawWebPreview(p);
@@ -751,9 +762,12 @@ document.addEventListener("click",async e=>{
   if(t.id==="dl"){makePdf([p],fileName(p));return}
   if(t.id==="dlw"){makeDocx([p],fileName(p).replace(/\.pdf$/,".docx"));return}
   if(t.id==="carry"){carryForward(p);return}
-  if(t.id==="del"){$("#delwrap").innerHTML=`<span class="confirm">Delete this plan for everyone? <button class="btn warn small" id="del-yes">Delete</button><button class="linkbtn" id="del-no">Keep it</button></span>`;return}
-  if(t.id==="del-yes"){removePlan(p.id);toast("Plan deleted.");return}
-  if(t.id==="del-no"){$("#delwrap").innerHTML=`<button class="btn warn small" id="del">Delete this plan</button>`;return}
+  if(t.id==="del"){askDelete($("#delwrap"),p.id,"del");return}
+  if(t.dataset.dupdel){askDelete($("#dupwrap"),t.dataset.dupdel,"dup");return}
+  if(t.dataset.delask2){askDelete2(t.closest("#delwrap,#dupwrap"),t.dataset.delask2);return}
+  if(t.dataset.delgo){const id=t.dataset.delgo;const keep=id!==p.id?p:null;if(keep){delete keep.dupOf;delete keep.importDup;persist(keep)}removePlan(id);toast("Plan deleted.");return}
+  if(t.dataset.delkeep){renderMain();return}
+  if(t.id==="dupok"){p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Marked as not a duplicate.");return}
   if(t.dataset.status){p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
   if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
@@ -769,7 +783,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.undo){const k=t.dataset.undo;p.fields[k]=undo[p.id+k];delete undo[p.id+k];persist(p);rerenderCard(p,k);return}
   if(t.id==="draft"){draftFromNotes(p,t);return}
   if(t.id==="famdraft"){familyUpdate(p,t);return}
-  if(t.id==="importok"){delete p.importedFrom;delete p.importNotes;delete p.importNoDate;delete p.importDup;persist(p);renderMain();return}
+  if(t.id==="importok"){delete p.importedFrom;delete p.importNotes;delete p.importNoDate;persist(p);renderMain();return}
   if(t.id==="famcopy"){copyText($("#family"));return}
   if(p.web){
     const w=p.web;
@@ -1301,7 +1315,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
       <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
       ${sample?`<button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button>`:""}
-      ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button>`:""}
+      ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button><span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span></div>`;
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
@@ -1342,6 +1356,8 @@ async function threadsClick(t){
   if(t.dataset.trefollow){const th=threads.get(t.dataset.trefollow);if(th){delete th.unfollowed;th.refollowed={by:whoAmI(),at:Date.now()};saveThread(th);toast("Following this thread again.")}renderMain();return true}
   if(t.dataset.tdis!=null||t.dataset.tundis!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+(t.dataset.tdis??t.dataset.tundis)];if(!x)return true;
     if(t.dataset.tdis!=null)x.dismissed={by:whoAmI(),at:Date.now()};else delete x.dismissed;saveScan(scan);renderMain();return true}
+  if(t.dataset.tstoryrm){$("#tsrm-"+t.dataset.tstoryrm).innerHTML=`<span class="confirm">Remove this project story for everyone? The thread and its quotes stay. <button class="btn warn small" data-tstoryrmyes="${t.dataset.tstoryrm}">Remove story</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}
+  if(t.dataset.tstoryrmyes){const th=threads.get(t.dataset.tstoryrmyes);if(th){delete th.story;saveThread(th);toast("Project story removed.")}renderMain();return true}
   if(t.dataset.tshowdis){tShowDismissed=!tShowDismissed;renderMain();return true}
   if(t.dataset.tdel){$("#tdel-"+t.dataset.tdel).innerHTML=`<span class="confirm">Remove this thread and its quotes and notes for everyone? This cannot be undone. The plans themselves stay. <button class="btn warn small" data-tdelyes="${t.dataset.tdel}">Remove</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
   if(t.dataset.tdelno){renderMain();return true}
@@ -1471,7 +1487,7 @@ function jobLine(j){
   const st={waiting:'<span class="status">Waiting</span>',working:`<span class="status ready">${j.kind==="sort"?"Sorting":"Transcribing"}</span>`,done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
   const made=j.planIds.map(id=>plans.get(id)).filter(Boolean);
   return `<div class="result" style="cursor:default"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${st} <b>${esc(j.name)}</b></span>
-    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${p.id}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.importDup?'<span class="nudge">A similar plan already existed</span>':""}</span>`).join("")}
+    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${p.id}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.dupOf&&plans.has(p.dupOf)?'<span class="nudge">May be a duplicate. Open it to choose which to keep</span>':""}</span>`).join("")}
     ${j.kind==="sort"&&j.progress?`<span class="cnt">${esc(j.progress)}</span>`:""}
     ${j.note&&j.status==="working"?`<span class="cnt">${esc(j.note)}</span>`:""}
     ${j.status==="failed"?`<span class="cnt" style="color:var(--clay)">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${j.id}">${j.kind==="sort"&&j.next?"Try again from page "+(j.next+1):"Try again"}</button>`:""}
@@ -1653,6 +1669,24 @@ ${texts.length?"\n"+texts.join("\n\n"):""}`;
   if(!list.length)throw {code:"empty"};
   for(const o of list){const p=applyTranscript(o,target,type,j);j.planIds.push(p.id)}
 }
+const wordSet=t=>new Set(normQ(t).split(" ").filter(w=>w.length>2));
+// a duplicate is the same form, week, classroom and educator or group, or nearly the same writing in any plan, including other uploads
+function findDup(p){
+  const mine=wordSet(planText(p));
+  const sameSlot=x=>!p.importNoDate&&x.type===p.type&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&(p.type==="classroom"||(p.type==="smallgroup"?x.group===p.group:(x.educator||"").toLowerCase()===(p.educator||"").toLowerCase()&&(x.groups||[]).join()===(p.groups||[]).join()));
+  const sameText=x=>{if(mine.size<12)return false;const o=wordSet(planText(x));if(o.size<12)return false;let n=0;for(const w of mine)if(o.has(w))n++;return n/Math.max(mine.size,o.size)>=.85};
+  let best=null;
+  for(const x of plans.values()){if(x.id===p.id||x.id==="example"||x.id===p.notDupOf||x.dupOf===p.id)continue;if(sameText(x))return x;if(!best&&sameSlot(x))best=x}
+  return best;
+}
+function dupHtml(p){
+  const o=p.dupOf&&plans.get(p.dupOf);
+  if(!o)return"";
+  const card=(q,label)=>`<div style="display:grid;gap:3px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;min-width:0"><b>${label}</b><span>${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}</span><span class="cnt">Week of ${fmtDate(q.weekOf)}${q.classroom?", "+esc(q.classroom):""}. ${filledCount(q)} sections filled${q.importedFrom?". Uploaded":""}${q.updatedByName?" by "+esc(q.updatedByName):""}</span><span class="muted" style="overflow-wrap:anywhere">${esc(planText(q).replace(/\s+/g," ").slice(0,140))}${planText(q).length>140?"…":""}</span>${q.id!==p.id?`<button class="linkbtn" style="justify-self:start" data-open="${q.id}">Open it</button>`:""}</div>`;
+  return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">This may be a duplicate</b><div>Another plan looks the same. Keep one and delete the other, or mark this as not a duplicate.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">${card(p,"This plan")}${card(o,"The other plan")}</div>
+    <div class="actions" id="dupwrap"><button class="btn small" data-dupdel="${o.id}">Keep this one, delete the other</button><button class="btn small ghost" data-dupdel="${p.id}">Keep the other, delete this one</button><button class="linkbtn" id="dupok">This is not a duplicate</button></div></section>`;
+}
 function applyTranscript(out,target,type,j){
   const str=v=>typeof v==="string"?v.trim():"";
   if(out&&(out.type==="smallgroup"||(!FORMS[out.type]&&type==="smallgroup"))&&!(target&&target.type==="smallgroup")){
@@ -1671,8 +1705,6 @@ function applyTranscript(out,target,type,j){
     p.educator=str(out?.educator)||str(meta.educator)||(tp==="classroom"?"":p.educator);
     if(tp==="smallgroup"){const gn=(str(out?.group)||str(meta.group)).toLowerCase();const g=GROUPS.find(g=>g.name.toLowerCase()===gn);p.group=g?g.name:"";if(g&&!p.classroom)p.classroom=g.room;if(g&&!str(out?.educator)&&!str(meta.educator))p.educator=g.educator}
     if(noDate)p.importNoDate=true;
-    const dup=[...plans.values()].some(x=>x.id!==p.id&&x.type===p.type&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&(tp==="classroom"||(tp==="smallgroup"?x.group===p.group:x.educator===p.educator))&&!x.importedFrom);
-    if(dup&&!noDate)p.importDup=true;
   }
   for(const f of F.fields){const v=str(out?.fields?.[f.k]);if(v&&!(p.fields[f.k]||"").trim())p.fields[f.k]=v}
   if(tp==="classroom"&&out?.web&&typeof out.web==="object"){const w=out.web;const empty=!p.web.focus&&!p.web.branches.some(b=>b.name);
@@ -1682,6 +1714,7 @@ function applyTranscript(out,target,type,j){
   else if(tp==="individual"&&!target){p.focus="area";p.groups=[]}
   if(tp==="smallgroup"&&Array.isArray(out?.setting)){const add=out.setting.map(x=>PLACES.find(P=>P.toLowerCase()===String(x).toLowerCase())).filter(Boolean);p.setting=[...new Set([...(p.setting||[]),...add])]}
   p.importedFrom=j.name+(out?.confidence==="low"?". The writing was hard to read, so check closely":"");
+  if(!target){const d=findDup(p);if(d){p.dupOf=d.id;p.importDup=true}}
   const notes=str(out?.notes);if(notes)p.importNotes=(p.importNotes?p.importNotes+" ":"")+notes;
   plans.set(p.id,p);persist(p);
   return p;
@@ -1770,7 +1803,7 @@ function allListHtml(ps){
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
   return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${wp.length} plan${wp.length===1?"":"s"}</div>
     <div class="tablewrap"><table class="grid2" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
-    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${filledCount(p)}</td><td><span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span></td></tr>`).join("")}
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${filledCount(p)}</td><td><span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span></td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
 function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=`${ps.length} plan${ps.length===1?"":"s"} shown`;$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
