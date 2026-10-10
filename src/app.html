@@ -655,6 +655,7 @@ function webEditor(p){
   const names=w.branches.map((b,i)=>b.name||"Branch "+(i+1));
   return `<section class="card"><div class="lbl">Curriculum web</div>
    <div class="hint">Visual and non-linear. Start from the thinking you observed, then add 3 to 6 directions it could go. Branches may connect or stay separate. Revisit and evolve it weekly.</div>
+   ${webSuggestHtml(p)}
    <div class="webwrap">
     <div style="display:grid;gap:10px;min-width:0">
       <label class="fld-label">Central focus, the emerging thinking<input type="text" id="w-focus" value="${esc(w.focus)}" placeholder="Ex. Movement, speed, and control"></label>
@@ -673,6 +674,53 @@ function webEditor(p){
       <label class="fld-label">Notes for the environment<textarea id="w-env" rows="3" placeholder="Expand ramp area. Allow work to remain over multiple days.">${esc(w.environment)}</textarea></label>
     </div>
    </div></section>`;
+}
+const webSug={};
+function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
+function webSuggestHtml(p){
+  if(!sample)return"";
+  const sg=webSug[p.id];
+  const filled=webHasContent(p.web);
+  if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">Claude reads what this plan already says. You see the draft before anything changes.</span></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, and brainstorm.</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">The web draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="w-assist">Try again</button><button class="linkbtn" id="w-sgno">Close</button></div></div>`;
+  const d=sg.web;
+  return `<div class="sugg"><b>Suggested web</b>
+    <div><span class="muted">Central focus.</span> ${esc(d.focus)}</div>
+    <ul style="margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px">${d.branches.map(b=>`<li><span style="font-weight:600">${esc(b.name)}</span>${b.materials?`<span class="muted">. ${esc(b.materials)}</span>`:""}</li>`).join("")}</ul>
+    ${d.connections.length?`<div><span class="muted">Connections.</span> ${d.connections.map(([a,b])=>esc(d.branches[a].name)+" with "+esc(d.branches[b].name)).join(", ")}</div>`:""}
+    ${d.languages.length?`<div><span class="muted">Languages.</span> ${d.languages.map(esc).join(", ")}</div>`:""}
+    ${d.questions?`<div><span class="muted">Open questions.</span> ${esc(d.questions)}</div>`:""}
+    ${d.environment?`<div><span class="muted">Environment.</span> ${esc(d.environment)}</div>`:""}
+    ${sg.why?`<div class="cnt">${esc(sg.why)}</div>`:""}
+    <div class="cnt">${filled?"Use this replaces the web below. Your current web stays until you choose.":"Edit any part after you use it."}</div>
+    <div class="actions"><button class="btn small" id="w-sgyes">Use this</button><button class="btn small ghost" id="w-sgno">Keep mine</button><button class="linkbtn" id="w-assist">Try another version</button></div></div>`;
+}
+async function webAssist(p){
+  const ctx=planContext(p);
+  if(!ctx){toast("Write some of the plan first, such as the observation or brainstorm.");return}
+  webSug[p.id]={status:"working"};renderMain();
+  const filled=webHasContent(p.web);
+  const cur=filled?JSON.stringify({focus:p.web.focus,branches:p.web.branches.filter(b=>b.name).map(b=>({name:b.name,materials:b.materials}))}):"";
+  const prev=p.prevId&&plans.get(p.prevId);
+  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, build the curriculum web for their Classroom Curriculum Plan.
+Base the web only on what this plan says below. Never invent observations, children, quotes, or events.
+The central focus names the emerging thinking children are holding, as a short phrase, never a topic or theme. Give 3 to 6 branches, each a direction the investigation could take that grows from something in the plan. For each branch list specific, varied, open-ended materials. Use materials the plan names where it names them. Where it names none for a branch, suggest 2 to 4 natural or open-ended materials that fit. Add connections only where two branches truly share an idea. Choose languages of expression only from ${JSON.stringify(LANGUAGES)}. Open questions come from the children or the observation. Environment notes say how the space may change.
+${filled?`The team already has this web ${cur}. Suggest how it could evolve from what the plan now says. Keep branches the plan still supports, change or drop ones it no longer supports, and add new ones the plan points to.`:""}${prev&&webHasContent(prev.web)?` Last week's web had the focus "${prev.web.focus}".`:""}
+${STYLE}
+Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
+
+${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" classroom":""}.
+${ctx}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false});
+    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:c(b?.name),materials:c(b?.materials)})).filter(b=>b.name).slice(0,6);
+    if(!c(out?.focus)&&!br.length)throw {code:"empty_completion"};
+    const conn=(Array.isArray(out?.connections)?out.connections:[]).filter(x=>Array.isArray(x)&&x.length===2).map(x=>[+x[0],+x[1]]).filter(([a,b])=>a!==b&&a>=0&&b>=0&&a<br.length&&b<br.length);
+    webSug[p.id]={status:"ready",why:c(out?.why),web:{focus:c(out?.focus),branches:br,connections:conn,languages:(Array.isArray(out?.languages)?out.languages:[]).filter(x=>LANGUAGES.includes(x)),questions:c(out?.questions),environment:c(out?.environment)}};
+  }catch(err){webSug[p.id]={status:"error",error:assistError(err?.code||"unknown","Your web is unchanged.")}}
+  if(currentId===p.id)renderMain();
 }
 function webLayout(n,cx,cy,rx,ry){const pts=[];for(let i=0;i<n;i++){const a=(-90+i*360/n)*Math.PI/180;pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return pts}
 function wrapWords(t,max){const words=String(t).split(/\s+/).filter(Boolean);const out=[];let line="";for(const w of words){if((line+" "+w).trim().length>max){if(line)out.push(line);line=w}else line=(line+" "+w).trim()}if(line)out.push(line);return out}
@@ -791,6 +839,9 @@ document.addEventListener("click",async e=>{
   if(t.id==="famcopy"){copyText($("#family"));return}
   if(p.web){
     const w=p.web;
+    if(t.id==="w-assist"){webAssist(p);return}
+    if(t.id==="w-sgno"){delete webSug[p.id];renderMain();return}
+    if(t.id==="w-sgyes"){const d=webSug[p.id]?.web;if(d){p.web={...p.web,...JSON.parse(JSON.stringify(d))};persist(p);delete webSug[p.id];renderMain();toast("Web updated. Edit any part below.")}return}
     if(t.id==="w-add"){w.branches.push({name:"",materials:""});persist(p);renderMain();return}
     if(t.dataset.bdel!=null){const i=+t.dataset.bdel;w.branches.splice(i,1);w.connections=w.connections.filter(c=>c[0]!==i&&c[1]!==i).map(c=>c.map(x=>x>i?x-1:x));persist(p);renderMain();return}
     if(t.id==="c-add"){const a=+$("#c-a").value,b=+$("#c-b").value;if(a===b){toast("Pick two different branches.");return}if(!w.connections.some(c=>(c[0]===a&&c[1]===b)||(c[0]===b&&c[1]===a)))w.connections.push([a,b]);persist(p);renderMain();return}
