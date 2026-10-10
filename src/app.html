@@ -207,6 +207,11 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .due{display:grid;gap:4px}
 .due .item{grid-template-columns:minmax(0,1fr) auto}
 .roster{display:grid;gap:6px}
+.wordcheck{display:grid;gap:3px;max-height:360px;overflow:auto;margin-top:6px;padding-right:4px}
+.wordrow{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:baseline;font-size:13.5px;padding:2px 0;border-bottom:1px solid var(--line)}
+.wordrow b{min-width:7em;font-size:14px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
+.wordrow b.muted{color:var(--muted);font-weight:500}
+.wordrow .linkbtn{font-size:15px;line-height:1;padding:0 2px;color:var(--muted)}
 .rname{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;background:var(--bg)}
 .rname button{border:none;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
 .radio{display:flex;gap:8px;align-items:flex-start;font-size:14px}
@@ -1777,10 +1782,31 @@ function lensRegex(){
   return parts.length?new RegExp("\\b(?:"+parts.join("|")+")\\b","gi"):null;
 }
 function lensMarked(p){const set=new Set(LENS.languages.map(x=>x.toLowerCase()));return [...new Set([...(p.languages||[]),...((p.web&&p.web.languages)||[])].filter(x=>set.has(String(x).toLowerCase())))]}
+// the sections that record what children did and said, as against what educators mean to offer
+const OBSERVED_KEYS=new Set(["observation","interests","meeting","area","remarks","reflection","thread"]);
 function lensPlanParts(p){
-  const parts=FORMS[p.type].fields.map(f=>[f.label,String(p.fields?.[f.k]||"")]);
-  if(p.web)parts.push(["Curriculum web",[p.web.focus,...(p.web.branches||[]).map(b=>[b.name,b.materials].filter(Boolean).join(", ")),p.web.questions,p.web.environment].filter(Boolean).join(". ")]);
+  const parts=FORMS[p.type].fields.map(f=>[f.label,String(p.fields?.[f.k]||""),f.k]);
+  if(p.web)parts.push(["Curriculum web",[p.web.focus,...(p.web.branches||[]).map(b=>[b.name,b.materials].filter(Boolean).join(", ")),p.web.questions,p.web.environment].filter(Boolean).join(". "),"web"]);
   return parts.filter(([,t])=>t.trim());
+}
+// one word, with the endings lensRegex allows
+function wordRegex(w){
+  const c=String(w||"").toLowerCase().replace(/[^a-z' -]/g,"");if(c.length<2)return null;
+  const last=c.slice(-1),stem=c.endsWith("e")?c.slice(0,-1):c;
+  return new RegExp("\\b(?:"+`${c}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==c?`|${stem}(?:ing|ed)`:"")+")\\b","i");
+}
+// What each word of a lens would actually find in the school's own plans, and in which parts of them.
+// This is counting, not Claude. It lets the team keep the words that find children's work and drop the rest.
+function lensWordCheck(L){
+  const ps=[...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type));
+  const rows=(L.words||[]).map(w=>({w,n:0,obs:0,by:{},stem:String(w).toLowerCase().replace(/[^a-z' -]/g,"").replace(/e$/,"")}));
+  const res=rows.map(r=>({r,re:wordRegex(r.w)})).filter(x=>x.re&&x.r.stem.length>1);
+  let sentences=0;
+  for(const p of ps)for(const [label,text,key] of lensPlanParts(p)){
+    for(const raw of (text.match(/[^.!?\n]+[.!?]*/g)||[])){const sent=raw.trim();if(sent.length<12)continue;sentences++;const low=sent.toLowerCase();
+      for(const {r,re} of res){if(low.indexOf(r.stem)<0)continue;if(!re.test(sent))continue;r.n++;r.by[label]=(r.by[label]||0)+1;if(OBSERVED_KEYS.has(key))r.obs++}}}
+  rows.sort((a,b)=>b.n-a.n||a.w.localeCompare(b.w));
+  return {rows,plans:ps.length,sentences};
 }
 // moments are sentences from the plans themselves, so everything shown is in the educator's own words
 function lensMoments(ps){
@@ -1916,6 +1942,18 @@ function lensClick(t){
   // the director's lens settings
   if(t.dataset.lenslang!=null&&view==="settings"){const L=LENSES.find(x=>x.id===t.dataset.lensfor)||LENS;const l=t.dataset.lenslang;const on=L.languages.some(x=>x.toLowerCase()===l.toLowerCase());L.languages=on?L.languages.filter(x=>x.toLowerCase()!==l.toLowerCase()):[...L.languages,l];saveProgram();renderSettings();return true}
   if(view!=="settings"||!isDirector())return false;
+  if(t.dataset.lensdraft){const L=LENSES.find(x=>x.id===t.dataset.lensdraft);if(L)lensDraft(L);return true}
+  if(t.dataset.lenssgno){delete lensSug[t.dataset.lenssgno];renderSettings();return true}
+  if(t.dataset.lenssgyes){const L=LENSES.find(x=>x.id===t.dataset.lenssgyes),sg=lensSug[L&&L.id];
+    if(L&&sg&&sg.status==="ready"){if(sg.description)L.description=sg.description;if(sg.questions.length)L.questions=sg.questions.slice(0,8);if(sg.languages.length)L.languages=sg.languages;if(sg.words.length)L.words=sg.words;
+      delete lensSug[L.id];delete lensWords[L.id];saveProgram();renderSettings();toast("The lens is written. Check the words against the plans next.")}return true}
+  if(t.dataset.lensw){const L=LENSES.find(x=>x.id===t.dataset.lensw);if(L){lensWords[L.id]=lensWordCheck(L);renderSettings()}return true}
+  if(t.dataset.lenswno){delete lensWords[t.dataset.lenswno];renderSettings();return true}
+  if(t.dataset.lenswrm){const [id,w]=t.dataset.lenswrm.split("|");const L=LENSES.find(x=>x.id===id);
+    if(L){L.words=L.words.filter(x=>x!==w);lensWords[id]=lensWordCheck(L);saveProgram();renderSettings()}return true}
+  if(t.dataset.lenswclean){const L=LENSES.find(x=>x.id===t.dataset.lenswclean);const r=lensWords[L&&L.id];
+    if(L&&r){const keep=new Set(r.rows.filter(x=>x.n).map(x=>x.w));const n=L.words.length;L.words=L.words.filter(w=>keep.has(w));
+      lensWords[L.id]=lensWordCheck(L);saveProgram();renderSettings();toast(`${n-L.words.length} word${n-L.words.length===1?"":"s"} removed.`)}return true}
   if(t.id==="lens-add"){const l=normLens(BLANK_LENS);LENSES=[...LENSES,l];setLens(l.id);saveProgram();renderSettings();setTimeout(()=>{const el=document.querySelector(`[data-lf="${l.id}|name"]`);if(el){el.scrollIntoView({block:"center"});el.select()}},40);return true}
   if(t.dataset.lensdup){const o=LENSES.find(x=>x.id===t.dataset.lensdup);if(o){const l=normLens(Object.assign({},o,{id:"",name:o.name+" copy",year:false}));LENSES=[...LENSES,l];setLens(l.id);saveProgram();renderSettings();setTimeout(()=>{const el=document.querySelector(`[data-lf="${l.id}|name"]`);if(el){el.scrollIntoView({block:"center"});el.select()}},40)}return true}
   if(t.dataset.lensyear){LENSES.forEach(l=>l.year=l.id===t.dataset.lensyear);saveProgram();renderSettings();toast("Marked as this year's lens.");return true}
@@ -1932,6 +1970,61 @@ function lensClick(t){
   if(t.id==="lens-reset"){const i=LENSES.indexOf(LENS);if(i>=0){LENSES[i]=normLens(Object.assign({id:LENS.id,year:LENS.year},LENS_DEFAULT));setLens(LENS.id)}saveProgram();renderSettings();toast("That lens is back to Graphic Languages.");return true}
   return false;
 }
+const lensSug={},lensWords={};
+// Claude proposes a lens from its name. Nothing is saved until an educator chooses it.
+async function lensDraft(L){
+  if(!L.name.trim()||L.name==="New lens"){toast("Give the lens a name first.");return}
+  lensSug[L.id]={status:"working"};renderSettings();
+  const others=LENSES.filter(x=>x.id!==L.id).map(x=>({name:x.name,words:x.words.slice(0,40)}));
+  const prompt=`You are helping the director of Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, set up a lens.
+A lens is a way of reading a year of the school's own curriculum plans. It is not a topic and not a theme. It names something educators want to look for across the documentation, and it carries words that find it in the plans educators write.
+The lens is called "${L.name}".${has(L.description)?` The director has written this about what it means here. ${L.description}`:""}
+Give four things.
+"description" what the lens means at this school, 2 to 4 sentences, written as educators would say it to one another.
+"questions" 4 to 6 questions for reading one moment through this lens, each answerable from what a plan records. Never phrased in a child's voice.
+"languages" the languages of expression this lens covers, chosen only from this list and copied exactly ${JSON.stringify(langList())}. Choose none if none fit.
+"words" 30 to 60 single words that would appear in an educator's own writing about this. Give the plain root of each word, since endings are matched already, so give draw rather than drawing. Prefer words educators use when describing what children did and said. Avoid words so common they would catch any sentence, such as children, work, time, or day.
+${others.length?`The school already holds these lenses. Avoid words that would pull the same sentences into both. ${JSON.stringify(others)}`:""}
+${STYLE}
+Return JSON {"description":"","questions":[],"languages":[],"words":[]}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false});
+    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const list=(a,n)=>(Array.isArray(a)?a:[]).map(c).filter(Boolean).slice(0,n);
+    const w=[...new Set(list(out?.words,70).map(x=>x.toLowerCase().replace(/[^a-z' -]/g,"")).filter(x=>x.length>1))].slice(0,60);
+    if(!w.length&&!c(out?.description))throw {code:"empty_completion"};
+    lensSug[L.id]={status:"ready",description:c(out?.description),questions:list(out?.questions,8),languages:langPick(out?.languages),words:w};
+  }catch(err){lensSug[L.id]={status:"error",error:assistError(err?.code||"unknown","The lens is unchanged.")}}
+  if(view==="settings")renderSettings();
+}
+function lensDraftHtml(L){
+  if(!sample)return"";const sg=lensSug[L.id];
+  if(!sg)return "";
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is drafting the lens</b><div class="muted">Working from the name and what you have written.</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">The draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-lensdraft="${esc(L.id)}">Try again</button><button class="linkbtn" data-lenssgno="${esc(L.id)}">Close</button></div></div>`;
+  return `<div class="sugg"><b>Suggested lens</b>
+    ${sg.description?`<div><span class="muted">What it means here.</span> ${esc(sg.description)}</div>`:""}
+    ${sg.questions.length?`<div><span class="muted">How we read a moment.</span><ol style="margin:4px 0 0;padding-left:18px;font-size:14px">${sg.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol></div>`:""}
+    ${sg.languages.length?`<div><span class="muted">Languages.</span> ${sg.languages.map(esc).join(", ")}</div>`:""}
+    ${sg.words.length?`<div><span class="muted">${sg.words.length} words.</span> ${esc(sg.words.join(", "))}</div>`:""}
+    <div class="cnt">Use this replaces what is written above. Check the words against the plans afterwards and drop the ones that find nothing useful.</div>
+    <div class="actions"><button class="btn small" data-lenssgyes="${esc(L.id)}">Use this</button><button class="btn small ghost" data-lenssgno="${esc(L.id)}">Keep mine</button><button class="linkbtn" data-lensdraft="${esc(L.id)}">Try another version</button></div></div>`;
+}
+function lensWordsHtml(L){
+  const r=lensWords[L.id];if(!r)return"";
+  if(!r.rows.length)return `<div class="sugg"><b>No words to check yet</b><div class="actions"><button class="linkbtn" data-lenswno="${esc(L.id)}">Close</button></div></div>`;
+  const dead=r.rows.filter(x=>!x.n);
+  const row=x=>{const top=Object.entries(x.by).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([l,n])=>`${n} ${l.toLowerCase()}`).join(", ");
+    const planned=x.n>2&&x.obs/x.n<.34;
+    return `<div class="wordrow"><button class="linkbtn" data-lenswrm="${esc(L.id)}|${esc(x.w)}" title="Remove this word" aria-label="Remove ${esc(x.w)}">&times;</button>
+      <b${x.n?"":' class="muted"'}>${esc(x.w)}</b>
+      <span class="cnt">${x.n?`${x.n} sentence${x.n>1?"s":""}`:"finds nothing"}${top?" \u00b7 "+esc(top):""}</span>
+      ${planned?`<span class="nudge">mostly where educators plan, not where they describe</span>`:""}</div>`};
+  return `<div class="sugg"><b>What these words find</b>
+    <div class="cnt">Across ${r.plans} saved plan${r.plans===1?"":"s"}. A word is counted once for each sentence it appears in.</div>
+    <div class="wordcheck">${r.rows.map(row).join("")}</div>
+    <div class="actions">${dead.length?`<button class="btn small ghost" data-lenswclean="${esc(L.id)}">Remove the ${dead.length} that find nothing</button>`:""}<button class="linkbtn" data-lenswno="${esc(L.id)}">Close</button></div></div>`;
+}
 function lensSettingsHtml(){
   const one=l=>{const n=[...scans.keys()].filter(k=>k.indexOf("lens-"+l.id+"-")===0).length+(l.id===(LENSES[0]||{}).id?[...scans.keys()].filter(k=>/^lens-(All|[A-Za-z ]+)$/.test(k)).length:0);
     return `<section class="card"><div class="secthead"><h3 style="font-size:17px">${esc(l.name)}</h3>${l.year?`<span class="tag classroom">This year's</span>`:""}</div>
@@ -1941,7 +2034,10 @@ function lensSettingsHtml(){
     <label class="fld-label">How we read a moment, one question on each line<textarea data-lf="${esc(l.id)}|questions" rows="5">${esc(l.questions.join("\n"))}</textarea></label>
     <label class="fld-label">Words that point to a moment, separated by commas<textarea data-lf="${esc(l.id)}|words" rows="3">${esc(l.words.join(", "))}</textarea></label>
     ${l.words.length?"":`<div class="hint" style="color:var(--clay)">Without words, this lens finds no moments in the plans. Add the words educators would use.</div>`}
-    <div class="actions">${l.year?"":`<button class="btn small ghost" data-lensyear="${esc(l.id)}">Make this year's lens</button>`}
+    ${lensWordsHtml(l)}${lensDraftHtml(l)}
+    <div class="actions">${sample&&!lensSug[l.id]?`<button class="btn small ghost" data-lensdraft="${esc(l.id)}">Draft this lens with Claude</button>`:""}
+      ${lensWords[l.id]?"":`<button class="btn small ghost" data-lensw="${esc(l.id)}">Check the words</button>`}
+      ${l.year?"":`<button class="btn small ghost" data-lensyear="${esc(l.id)}">Make this year's lens</button>`}
       <button class="btn small ghost" data-lensdup="${esc(l.id)}">Duplicate</button>
       ${l.id===LENS_DEFAULT_ID?`<button class="linkbtn" id="lens-reset">Return it to Graphic Languages</button>`:""}
       <span id="lensdel-${esc(l.id)}">${LENSES.length>1?`<button class="linkbtn" data-lensdel="${esc(l.id)}">Remove this lens</button>`:""}</span>
