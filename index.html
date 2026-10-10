@@ -632,6 +632,7 @@ function isEmptyPlan(p){
 function pruneEmpty(){for(const [id,p] of plans)if(id!==currentId&&id!=="example"&&isEmptyPlan(p)&&!serverIds.has(id)&&!pendingSaves.has(id))plans.delete(id)}
 function persist(p){
   p.updatedAt=Math.max(Date.now(),(p.updatedAt||0)+1);plans.set(p.id,p);
+  if(p.type==="individual")flowRemarks(p);
   if(isEmptyPlan(p)&&!serverIds.has(p.id)){setConn("Saves once you write something");return}
   pendingSaves.add(p.id);dirty=true;
   setConn("Saving");
@@ -807,6 +808,7 @@ function fieldCard(p,f){
   return `<section class="card" data-card="${f.k}">
     <label class="lbl" for="f-${f.k}">${f.label}${f.after?' <span class="muted" style="font-size:13px;font-family:var(--body)">end of week</span>':""}</label>
     <div class="hint">${f.hint}</div>
+    ${p.type==="individual"&&f.k==="observation"&&p.obsFrom&&v===p.obsFrom?`<span class="nudge" style="justify-self:start">Started from last week's Final remarks, the reflection that prompted continuing. Edit it into this week's rationale, or use Strengthen wording.</span>`:""}
     ${chips}
     <textarea id="f-${f.k}" data-f="${f.k}" rows="${f.rows}">${esc(v)}</textarea>
     ${suggestHtml(p,f)}
@@ -1014,14 +1016,29 @@ function rerenderCard(p,k){
 }
 function jumpTop(){if(innerWidth<900)$("#main").scrollIntoView({block:"start"});else window.scrollTo({top:0})}
 function fileName(p){return `${FORMS[p.type].name} ${p.type==="smallgroup"?(p.group||""):p.type==="individual"?(p.educator||""):(p.classroom||"")} ${p.weekOf}.pdf`.replace(/\s+/g," ")}
+// when final remarks are written after the plan was carried forward, they still reach next week's observation rationale, unless the educator has already written their own
+function flowRemarks(p){
+  const fr=String(p.fields?.remarks||"").trim();
+  for(const x of plans.values()){
+    if(x.prevId!==p.id||x.type!=="individual")continue;
+    const cur=String(x.fields.observation||"");
+    if(cur===fr)continue;
+    if(cur.trim()&&cur!==x.obsFrom)continue;
+    x.fields.observation=fr;x.obsFrom=fr;x.updatedAt=Math.max(Date.now(),(x.updatedAt||0)+1);
+    pendingSaves.add(x.id);dirty=true;
+  }
+}
 function carryForward(p){
   const nw=addDays(p.weekOf,7);
   const ak=AFTER_KEY[p.type];if(ak&&!String(p.fields?.[ak]||"").trim())toast("Remember to write this week's reflection too. It is flagged until it is done.");
   const exists=[...plans.values()].find(x=>x.prevId===p.id);
   if(exists){currentId=exists.id;week=exists.weekOf;renderAll();toast("Next week's plan already exists. Opened it.");return}
   const np=newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
-  if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`}
+  if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`;
+    // last week's final remarks are what prompted continuing, so they open this week's observation rationale
+    const fr=String(p.fields.remarks||"").trim();if(fr){np.fields.observation=fr;np.obsFrom=fr}}
   if(p.type==="smallgroup"){np.fields.thread=p.fields.thread||""}
+  if(p.threadId)np.threadId=p.threadId;
   if(p.type==="classroom"){np.web=JSON.parse(JSON.stringify(p.web||blankWeb()))}
   plans.set(np.id,np);persist(np);currentId=np.id;week=nw;renderAll();jumpTop();
   toast("Next week's plan is ready. Last week's reflection is shown at the top.");
