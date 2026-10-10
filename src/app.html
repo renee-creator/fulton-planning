@@ -40,6 +40,20 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 @media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
 .side{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px)}
 @media (max-width:900px){.side{position:static}}
+/* On a phone the one column runs Week of, Start a plan, the page, then the rest of the side panels.
+   The aside stops being a box of its own so its panels can take their own place in the order. */
+@media (max-width:900px){
+  .grid{display:flex;flex-direction:column;gap:14px}
+  .side{display:contents}
+  .side>.panel{order:4}
+  .side>.panel:nth-child(1){order:1}
+  .side>.panel:nth-child(2){order:2}
+  .main{order:3}
+  #waitbar:not([hidden]){display:flex}
+}
+#waitbar{display:none;align-items:baseline;gap:2px 8px;flex-wrap:wrap;order:0;background:var(--moss-soft);border:1px solid var(--moss);border-radius:var(--r);padding:8px 12px;font-size:14px;line-height:1.35}
+#waitbar b{font-family:var(--display)}
+#waitbar button{background:none;border:0;padding:0;color:var(--moss);font-weight:600;text-decoration:underline;cursor:pointer}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .panel h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:var(--body);font-weight:600;margin-bottom:10px}
 .weeknav{display:flex;align-items:center;gap:6px}
@@ -225,7 +239,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
-    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="moments">Moments</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button><button data-view="moments">Moments</button></div>
     <div class="spacer"></div>
     <div class="who">
       <label for="me">Educator</label>
@@ -236,6 +250,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
   </header>
 
   <div class="grid">
+    <div id="waitbar" hidden></div>
     <aside class="side">
       <section class="panel">
         <h3>Week of</h3>
@@ -569,10 +584,23 @@ const myName=()=>{const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";r
 const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
 const replyNew=p=>!!(p.feedbackReply&&String(p.feedbackReply.text||"").trim()&&(p.feedbackReply.at||0)>(p.replySeenAt||0));
 function isMine(p,m){m=(m||"").toLowerCase();if(!m)return true;return (p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)}
+/* On a phone the panels that go looking for an educator now sit under the page, so a single line at the top
+   says something is waiting and takes them to it. On a wider screen the panels are in view and the line never shows. */
+let waitFb=0, waitDue=0;
+function renderWait(){
+  const bar=$("#waitbar");if(!bar)return;
+  if(!waitFb&&!waitDue){bar.hidden=true;bar.innerHTML="";return}
+  const dir=isDirector(),parts=[];
+  if(waitFb)parts.push(dir?`${waitFb} repl${waitFb>1?"ies":"y"} to your feedback`:`${waitFb} note${waitFb>1?"s":""} from the director`);
+  if(waitDue)parts.push(`${waitDue} final remark${waitDue>1?"s":""} still to write`);
+  bar.innerHTML=`<span><b>Waiting for you.</b> ${parts.join(" and ")}.</span><button data-waitgo="${waitFb?"fbpanel":"duepanel"}">Take me there</button>`;
+  bar.hidden=false;
+}
 function renderFeedbackPanel(){
   const el=$("#fblist"),panel=$("#fbpanel");if(!el)return;
   const dir=isDirector();const m=me();
   const list=[...plans.values()].filter(p=>p.id!=="example"&&(dir?replyNew(p):fbNew(p)&&isMine(p,m))).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
+  waitFb=list.length;renderWait();
   panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
   $("#fbtitle").textContent=dir?"Replies to your feedback":"Feedback from the director";
   const label=p=>p.type==="classroom"?(p.classroom||"Classroom")+" team":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
@@ -596,6 +624,7 @@ function markFeedbackSeen(p){
 }
 function renderDue(){
   const el=$("#due"),panel=$("#duepanel");if(!el)return;const {list,mineOnly,total}=dueList();
+  waitDue=list.length;renderWait();
   panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
   const label=p=>p.type==="smallgroup"?(p.group||"Small group")+" group":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
   el.innerHTML=`<div class="cnt">${mineOnly?"Your plans.":"All educators."} ${list.length>1?"These weeks have ended and the reflections are still empty.":"This week has ended and the reflection is still empty."}</div>`+
@@ -952,6 +981,7 @@ document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[data-open]");if(!t)return;
   const p=currentId&&plans.get(currentId);
   if(t.dataset.astatus)aStatus=t.dataset.astatus;
+  if(t.dataset.waitgo){const el=document.getElementById(t.dataset.waitgo);if(el&&!el.hidden)el.scrollIntoView({block:"start",behavior:"smooth"});return}
   if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
   if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
   if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
