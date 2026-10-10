@@ -563,6 +563,7 @@ function renderMain(){
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
   const th=p.threadId&&threads.get(p.threadId);if(th)h+=threadRef(th);
+  if(p.type==="classroom")h+=teamSourcesHtml(p);
   h+=dupHtml(p);
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
   if(sample)h+=`<section class="ai"><div class="lbl">Start from your notes</div>
@@ -587,6 +588,58 @@ function renderMain(){
   $("#main").innerHTML=h;
   $("#main").querySelectorAll("textarea").forEach(autoGrow);
   if(F.web)drawWebPreview(p);
+}
+/* Individual and small group plans flow into the Classroom plan. Educators write their Individual plans on Monday, then the team writes the Classroom plan with them in view. */
+const eduKey=x=>String(x||"").trim().toLowerCase();
+function teamSources(p){
+  if(!p.classroom)return [];
+  return [...plans.values()].filter(x=>x.id!=="example"&&(x.type==="individual"||x.type==="smallgroup")&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&!isEmptyPlan(x)&&!(x.dupOf&&plans.has(x.dupOf)))
+    .sort((a,b)=>(a.educator||"").localeCompare(b.educator||""));
+}
+// who wrote an Individual plan in this classroom last week, so the team can see who is still to come; it never holds the Classroom plan back
+function teamReadiness(p,src){
+  const last=addDays(p.weekOf,-7);const names=new Map();
+  for(const x of plans.values())if(x.id!=="example"&&(x.type==="individual"||x.type==="smallgroup")&&x.weekOf===last&&x.classroom===p.classroom&&eduKey(x.educator)&&!isEmptyPlan(x))names.set(eduKey(x.educator),x.educator.trim());
+  const have=new Set(src.map(x=>eduKey(x.educator)).filter(Boolean));
+  for(const x of src)if(eduKey(x.educator))names.set(eduKey(x.educator),x.educator.trim());
+  const missing=[...names.keys()].filter(k=>!have.has(k)).map(k=>names.get(k));
+  return {expected:names.size,written:[...names.keys()].filter(k=>have.has(k)).length,missing};
+}
+function teamSourceText(src){
+  return src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and ")):"";
+    const f=x.fields||{};const parts=x.type==="smallgroup"?[["Thread",f.thread],["Intention",f.intention]]:[["Area exploration",f.area],["Observation rationale",f.observation],["Intent",f.intent],["Possible activities and materials",f.materials]];
+    return `${x.educator||"An educator"}${g?", "+g+" group":x.where?", "+x.where:""}. `+parts.filter(([,v])=>String(v||"").trim()).map(([l,v])=>`${l}. ${String(v).trim().slice(0,700)}`).join(" ");}).join("\n");
+}
+function teamSourcesHtml(p){
+  if(!p.classroom)return `<section class="ref"><b>This week's Individual plans</b><div class="muted">Choose the classroom above to see this week's Individual and small group plans here.</div></section>`;
+  const src=teamSources(p);const r=teamReadiness(p,src);
+  const line=r.expected?`${r.written} of ${r.expected} Individual plans for this week are written.${r.missing.length?` Still to come, ${r.missing.map(esc).join(", ")}. The team can plan without them and add their thinking later.`:""}`:`${src.length} Individual plan${src.length===1?"":"s"} written for this week.`;
+  const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?esc(t.slice(0,n))+"…":esc(t)};
+  return `<details class="ref" ${src.length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans, ${esc(p.classroom)} classroom</b></summary>
+    <div style="margin-top:6px">${line}</div>
+    ${src.length?`<div style="display:grid;gap:8px;margin-top:8px">${src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");const f=x.fields||{};
+      return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${x.id}">Open</button></span>
+        ${(f.area||f.thread)?`<span><span class="muted">${x.type==="smallgroup"?"Thread":"Area exploration"}.</span> ${cut(f.area||f.thread,200)}</span>`:""}
+        ${f.observation?`<span><span class="muted">Observation rationale.</span> ${cut(f.observation,260)}</span>`:""}
+        ${(f.intent||f.intention)?`<span><span class="muted">Intent.</span> ${cut(f.intent||f.intention,180)}</span>`:""}</div>`}).join("")}</div>`:`<div class="muted" style="margin-top:4px">None written yet for this week.</div>`}
+  </details>`;
+}
+async function draftInterests(p){
+  const src=teamSources(p);if(!src.length){toast("No Individual plans are written for this classroom and week yet.");return}
+  const f=FORMS.classroom.fields.find(x=>x.k==="interests");const key=p.id+"interests";
+  suggest[key]={status:"working",text:"",from:"ind"};rerenderCard(p,"interests");
+  const cur=String(p.fields.interests||"").trim();
+  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} classroom, week of ${fmtDate(p.weekOf)}.
+The program's standard for this section. ${f.hint}
+Strong example. ${f.strong}
+Write it from the educators' Individual and small group plans for this week below. Name each thread children are following and which educator or group is following it, then connect the threads to the classroom community and to each other where they truly meet. Use only what the plans say. Never invent children, quotes, events, or materials. ${cur?"Keep everything the team already wrote and weave it in.":""} ${STYLE}
+Return only the section text, with no preface.
+
+${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
+${teamSourceText(src)}`;
+  try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\u2014/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
+  catch(err){suggest[key]={status:"error",error:assistError(err?.code||"unknown","Your text is unchanged."),from:"ind"}}
+  if(currentId===p.id)rerenderCard(p,"interests");
 }
 function refCard(prev){
   const F=FORMS[prev.type];const keys={individual:["remarks","intent"],classroom:["brainstorm"],smallgroup:["reflection","thread"]}[prev.type];
@@ -635,6 +688,7 @@ function fieldCard(p,f){
     ${ex}
     <div class="cardfoot"><span id="n-${f.k}">${nudgeHtml(f,v)}</span>
       <span class="actions"><button class="linkbtn" data-ex="${f.k}">${showExample[f.k]?"Hide example":"See an example"}</button>
+      ${sample&&!suggest[p.id+f.k]&&p.type==="classroom"&&f.k==="interests"&&teamSources(p).length?`<button class="btn small ghost" data-inddraft="1">Draft from this week's Individual plans</button>`:""}
       ${sample&&!suggest[p.id+f.k]?`<button class="btn small ghost" data-strengthen="${f.k}">Strengthen wording</button>`:""}
       ${undo[p.id+f.k]!=null?`<button class="linkbtn" data-undo="${f.k}">Undo</button>`:""}</span></div>
   </section>`;
@@ -682,7 +736,7 @@ function webSuggestHtml(p){
   const sg=webSug[p.id];
   const filled=webHasContent(p.web);
   if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">Claude reads what this plan already says. You see the draft before anything changes.</span></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, and brainstorm.</div></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, brainstorm${teamSources(p).length?", and this week's Individual plans":""}.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The web draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="w-assist">Try again</button><button class="linkbtn" id="w-sgno">Close</button></div></div>`;
   const d=sg.web;
   return `<div class="sugg"><b>Suggested web</b>
@@ -698,7 +752,7 @@ function webSuggestHtml(p){
 }
 async function webAssist(p){
   const ctx=planContext(p);
-  if(!ctx){toast("Write some of the plan first, such as the observation or brainstorm.");return}
+  if(!ctx&&!teamSources(p).length){toast("Write some of the plan first, such as the observation or brainstorm.");return}
   webSug[p.id]={status:"working"};renderMain();
   const filled=webHasContent(p.web);
   const cur=filled?JSON.stringify({focus:p.web.focus,branches:p.web.branches.filter(b=>b.name).map(b=>({name:b.name,materials:b.materials}))}):"";
@@ -706,12 +760,12 @@ async function webAssist(p){
   const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, build the curriculum web for their Classroom Curriculum Plan.
 Base the web only on what this plan says below. Never invent observations, children, quotes, or events.
 The central focus names the emerging thinking children are holding, as a short phrase, never a topic or theme. Give 3 to 6 branches, each a direction the investigation could take that grows from something in the plan. For each branch list specific, varied, open-ended materials. Use materials the plan names where it names them. Where it names none for a branch, suggest 2 to 4 natural or open-ended materials that fit. Add connections only where two branches truly share an idea. Choose languages of expression only from ${JSON.stringify(LANGUAGES)}. Open questions come from the children or the observation. Environment notes say how the space may change.
-${filled?`The team already has this web ${cur}. Suggest how it could evolve from what the plan now says. Keep branches the plan still supports, change or drop ones it no longer supports, and add new ones the plan points to.`:""}${prev&&webHasContent(prev.web)?` Last week's web had the focus "${prev.web.focus}".`:""}
+${filled?`The team already has this web ${cur}. Suggest how it could evolve from what the plan now says. Keep branches the plan still supports, change or drop ones it no longer supports, and add new ones the plan points to.`:""}${prev&&webHasContent(prev.web)?` Last week's web had the focus "${prev.web.focus}".`:""}${teamSources(p).length?` The educators' Individual and small group plans for this week are below too. A group's investigation can become a branch or a connection where it meets the classroom's thinking.`:""}
 ${STYLE}
 Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
 
 ${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" classroom":""}.
-${ctx}`;
+${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
     const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
@@ -830,6 +884,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.mat){insertText(t.dataset.field,t.dataset.mat,true);return}
   if(t.dataset.ex){showExample[t.dataset.ex]=!showExample[t.dataset.ex];rerenderCard(p,t.dataset.ex);return}
   if(t.dataset.strengthen){strengthen(p,t.dataset.strengthen,t);return}
+  if(t.dataset.inddraft){draftInterests(p);return}
   if(t.dataset.sgyes){const k=t.dataset.sgyes,key=p.id+k;const txt=($("#sgt-"+k)?.value||suggest[key]?.text||"").trim();if(txt){undo[key]=p.fields[k]||"";p.fields[k]=txt;delete suggest[key];persist(p);clearTimeout(saveTimer);flushSaves();rerenderCard(p,k);toast("Updated. Undo is under the section if you want your version back.")}return}
   if(t.dataset.sgno){delete suggest[p.id+t.dataset.sgno];rerenderCard(p,t.dataset.sgno);return}
   if(t.dataset.undo){const k=t.dataset.undo;p.fields[k]=undo[p.id+k];delete undo[p.id+k];persist(p);rerenderCard(p,k);return}
@@ -928,9 +983,10 @@ function planContext(p){const F=FORMS[p.type];return F.fields.filter(f=>p.fields
 const suggest={};
 function suggestHtml(p,f){
   const sg=suggest[p.id+f.k];if(!sg)return"";
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is rewriting this section</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
-  if(sg.status==="error")return `<div class="sugg"><b class="err">Strengthen did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-strengthen="${f.k}">Try again</button><button class="linkbtn" data-sgno="${f.k}">Close</button></div></div>`;
-  return `<div class="sugg"><b>Suggested wording</b><textarea id="sgt-${f.k}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" data-strengthen="${f.k}">Try another version</button></div></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>${sg.from==="ind"?"Claude is reading this week's Individual plans":"Claude is rewriting this section"}</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
+  const again=sg.from==="ind"?`data-inddraft="1"`:`data-strengthen="${f.k}"`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">${sg.from==="ind"?"The draft did not work":"Strengthen did not work"}</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" ${again}>Try again</button><button class="linkbtn" data-sgno="${f.k}">Close</button></div></div>`;
+  return `<div class="sugg"><b>${sg.from==="ind"?"Drafted from this week's Individual plans":"Suggested wording"}</b><textarea id="sgt-${f.k}" rows="${sg.from==="ind"?6:3}">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" ${again}>Try another version</button></div></div>`;
 }
 async function strengthen(p,k,btn){
   const f=FORMS[p.type].fields.find(x=>x.k===k);
