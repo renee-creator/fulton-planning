@@ -1839,7 +1839,7 @@ function renderThreads(){
   const inRoom=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom);
   const tracked=inRoom.filter(t=>!t.unfollowed).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
   const yStart=parseIso(schoolYearStart()).getTime();
-  const stopped=inRoom.filter(t=>t.unfollowed).sort((a,b)=>(b.unfollowed.at||0)-(a.unfollowed.at||0));
+  const stopped=inRoom.filter(t=>t.unfollowed&&!t.undone).sort((a,b)=>(b.unfollowed.at||0)-(a.unfollowed.at||0));
   const stoppedNow=stopped.filter(t=>(t.unfollowed.at||0)>=yStart),stoppedOld=stopped.filter(t=>(t.unfollowed.at||0)<yStart);
   const scan=scans.get(tRoom);
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
@@ -1861,7 +1861,7 @@ function renderThreads(){
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(scan&&scan.threads?.length){
-    const open=x=>!x.trackedId||!threads.has(x.trackedId);
+    const open=x=>!x.trackedId||!threads.has(x.trackedId)||!!threads.get(x.trackedId).undone;
     const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
     h+=`<div class="chiprow-label">Found by Claude, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
@@ -1974,11 +1974,12 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button><span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
-      <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span></div>`;
+      <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
+      <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
-    if(was&&was.unfollowed)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
+    if(was&&was.unfollowed&&!was.undone)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
     else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
     else{const rp=t.relatedProject&&projects.get(t.relatedProject);
       if(rp)h+=`<span class="nudge" style="justify-self:start">Claude noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
@@ -2042,6 +2043,20 @@ function unlinkThread(p,id){
 function saveThread(t){t.updatedAt=Date.now();threads.set(t.id,t);
   if(db)db.doc("threads/"+t.id).set(JSON.parse(JSON.stringify(t))).catch(()=>toast("Could not save the thread. Check your connection."));
   else LS.set("fps.threads",[...threads.values()])}
+// a thread followed by mistake goes back to being a suggestion, in the search where it was found
+function undoFollow(th){
+  if(!th||projectOfThread(th.id))return;const now=Date.now(),by=whoAmI();
+  th.unfollowed={by,at:now};th.undone={by,at:now};saveThread(th);
+  const room=(th.origin&&th.origin.room)||tRoom;
+  const scan=scans.get(room)||{room,range:(th.origin&&th.origin.range)||tRange,createdAt:(th.origin&&th.origin.at)||now,summary:"",threads:[]};
+  scan.threads=scan.threads||[];
+  let x=scan.threads.find(c=>c.trackedId===th.id);
+  // when that search has since been replaced, the thread's card is put back into the current one
+  if(!x){x={name:th.name,question:th.question||"",classroom:th.classroom||"",groups:[...(th.groups||[])],status:th.status||"emerging",weeks:[...(th.weeks||[])],evidence:[...(th.evidence||[])],languages:[...(th.languages||[])],next:[...(th.next||[])],trackedId:th.id};scan.threads.push(x)}
+  delete x.dismissed;saveScan(scan);
+  if(tRoom!==room){tRoom=room;LS.set("fps.troom",tRoom)}
+  renderMain();toast("Undone. It is back among the threads Claude found.");
+}
 function saveScan(c){scans.set(c.room,c);
   if(db)db.doc("scans/"+c.room).set(JSON.parse(JSON.stringify(c))).catch(()=>{});
   else LS.set("fps.scans",[...scans.values()])}
@@ -2054,9 +2069,15 @@ async function threadsClick(t){
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
   if(t.id==="scan"){if(isDirector())findThreads();return true}
   if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
+    const prior=x.trackedId&&threads.get(x.trackedId);
+    if(prior&&prior.undone){delete prior.unfollowed;delete prior.undone;prior.followedBy=whoAmI();prior.createdAt=Date.now();saveThread(prior);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
     const nt={id:uid(),name:x.name,question:x.question||"",classroom:x.classroom||(tRoom!=="All"?tRoom:""),groups:x.groups||[],status:x.status||"emerging",weeks:[...(x.weeks||[])].sort(),lastWeek:[...(x.weeks||[])].sort().slice(-1)[0]||"",evidence:x.evidence||[],languages:x.languages||[],next:x.next||[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:scan.room,range:scan.range,at:scan.createdAt}};
     saveThread(nt);x.trackedId=nt.id;saveScan(scan);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
   if(t.dataset.tstop){$("#tstop-"+t.dataset.tstop).innerHTML=`<span class="confirm">Stop following for the whole team? It moves to No longer following, where anyone can follow it again. <button class="btn warn small" data-tstopyes="${t.dataset.tstop}">Stop following</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
+  if(t.dataset.tundo){const th=threads.get(t.dataset.tundo);if(!th)return true;const pr=projectOfThread(th.id);
+    if(pr){toast(`This thread is part of the project ${pr.name}. Take it out of the project first.`);return true}
+    $("#tundo-"+th.id).innerHTML=`<span class="confirm">Followed by mistake? This puts it back among the threads Claude found, as it was before. <button class="btn warn small" data-tundoyes="${th.id}">Undo follow</button><button class="linkbtn" data-tdelno="1">Keep following</button></span>`;return true}
+  if(t.dataset.tundoyes){undoFollow(threads.get(t.dataset.tundoyes));return true}
   if(t.dataset.tstopyes){const th=threads.get(t.dataset.tstopyes);if(th){th.unfollowed={by:whoAmI(),at:Date.now()};saveThread(th);tOpenStopped=true;toast("Stopped following. Find it under No longer following.")}renderMain();return true}
   if(t.dataset.trefollow){const th=threads.get(t.dataset.trefollow);if(th){delete th.unfollowed;th.refollowed={by:whoAmI(),at:Date.now()};saveThread(th);toast("Following this thread again.")}renderMain();return true}
   if(t.dataset.tdis!=null||t.dataset.tundis!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+(t.dataset.tdis??t.dataset.tundis)];if(!x)return true;
