@@ -196,6 +196,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
+.thread.flash{box-shadow:0 0 0 2px var(--marigold);transition:box-shadow .3s}
 .st-emerging{border-color:var(--sky);color:var(--sky)}
 .st-growing{border-color:var(--marigold);color:var(--marigold)}
 .st-deepening{border-color:var(--moss);color:var(--moss)}
@@ -241,7 +242,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
-    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="moments">Moments</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button></div>
     <div class="spacer"></div>
     <div class="who">
       <label for="me">Educator</label>
@@ -674,10 +675,10 @@ async function boot(){
     },()=>setConn("Offline. Changes stay on this device"));
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
-    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
 }
@@ -804,6 +805,7 @@ function renderMain(){
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
   if(view==="lens"){renderLens();return}
+  if(view==="moments"){renderMoments();return}
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
@@ -1631,14 +1633,23 @@ const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 // anything the app can quote, whether it was a plan or a moment
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
 function noticesFor(room,since){return [...notices.values()].filter(n=>(!room||room==="All"||n.classroom===room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
-function noticeText(n){return [n.noticed,n.wonder].filter(x=>String(x||"").trim()).join(" ")}
+function noticeText(n){return [n.noticed,wonderLine(n.wonder)].filter(x=>String(x||"").trim()).join(" ")}
+// educators write the wonder as a fragment as often as a sentence, so the words join into one readable line either way
+function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
+  if(/^i\s+wonder\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
+  return "I wonder "+(/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t)}
 function renderNoticeForm(){
+  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
+    <div class="sub" style="max-width:72ch">A moment worth keeping, written now.</div></div></div>
+  ${noticeFormCard()}
+  ${noticeBrowseHtml()}`;
+}
+function noticeFormCard(){
   const n=noticeForm;
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
-  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
-    <div class="sub" style="max-width:72ch">A moment worth keeping, written now. It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></div></div>
-  <section class="card">
+  return `<section class="card">
+    <div class="hint muted" style="margin-bottom:8px">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div>
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="4" placeholder="What happened, and what children did or said">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
     <div class="actions">
@@ -1648,8 +1659,7 @@ function renderNoticeForm(){
     </div>
     <div class="hint">A project or thread is optional. One can claim this moment later, whenever it grows.</div>
     <div class="actions"><button class="btn" id="nf-save">Keep this moment</button><button class="linkbtn" id="nf-cancel">Cancel</button></div>
-  </section>
-  ${noticeBrowseHtml()}`;
+  </section>`;
 }
 function noticeBrowseHtml(){
   const all=noticesFor(nRoom==="All"?"":nRoom,0);
@@ -1662,22 +1672,158 @@ function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}</div>
     <div style="font-size:15.5px;margin-top:4px">${esc(n.noticed)}</div>
-    ${has(n.wonder)?`<div class="muted" style="margin-top:4px">I wonder. ${esc(n.wonder)}</div>`:""}
+    ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
     <div class="actions"><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+}
+/* --- The Moments page. The same moments, read four ways, printed, and summarized.
+   Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
+let mGroup=LS.get("fps.mgroup","recent"), mRange=LS.get("fps.mrange","all"), mBusy=false;
+const MGROUPS=[["recent","Most recent first"],["classroom","By classroom"],["educator","By educator"],["month","By month"],["work","By project or thread"]];
+const MRANGES=[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","Everything kept"]];
+const MRANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"Everything kept"};
+const mGroupLabel=()=>(MGROUPS.find(g=>g[0]===mGroup)||MGROUPS[0])[1];
+function mSince(){const cur=mondayOf(new Date());
+  if(mRange==="4")return parseIso(addDays(cur,-21)).getTime();
+  if(mRange==="8")return parseIso(addDays(cur,-49)).getTime();
+  if(mRange==="year")return parseIso(schoolYearStart()).getTime();
+  return 0}
+function momentsIn(){const s=mSince();
+  return [...notices.values()].filter(n=>(nRoom==="All"||(n.classroom||"")===nRoom)&&(n.at||0)>=s).sort((a,b)=>(b.at||0)-(a.at||0))}
+const monthKey=ms=>{const d=new Date(ms||Date.now());return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
+const monthName=ms=>new Date(ms||Date.now()).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+function momentGroups(list){
+  if(mGroup==="recent")return [{key:"all",label:"",items:list}];
+  const by=new Map();
+  const put=(k,label,n)=>{if(!by.has(k))by.set(k,{key:k,label,items:[]});by.get(k).items.push(n)};
+  for(const n of list){
+    if(mGroup==="classroom")put(n.classroom||"~",n.classroom?n.classroom+" classroom":"No classroom named",n);
+    else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
+    else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
+    else{const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
+      if(pr)put("p"+pr.id,"Project, "+pr.name,n);
+      else if(th)put("t"+th.id,"Thread, "+th.name,n);
+      else put("~","Not yet claimed by a project or thread",n)}
+  }
+  const gs=[...by.values()];
+  if(mGroup==="month")gs.sort((a,b)=>b.key.localeCompare(a.key));
+  else gs.sort((a,b)=>(a.key==="~")-(b.key==="~")||b.items.length-a.items.length||a.label.localeCompare(b.label));
+  return gs;
+}
+// an even handful taken across a list, which is one when that is all there is room for
+function spread(list,n){if(n<=0)return[];if(list.length<=n)return list.slice();if(n===1)return [list[0]];
+  const out=[];for(let i=0;i<n;i++)out.push(list[Math.round(i*(list.length-1)/(n-1))]);return [...new Set(out)]}
+function momentsScan(){return scans.get("moments-"+nRoom)}
+function momentsReadHtml(){
+  const s=momentsScan();if(!s)return"";
+  return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these moments keep returning to</h3>
+    <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
+    ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
+    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map(p=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(p.why)}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} moment${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}</div>`).join("")}</div>`:""}
+    ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
+    <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
+}
+function renderMoments(){
+  const all=momentsIn();
+  const gs=momentGroups(all);
+  const people=new Set(all.map(n=>n.by).filter(Boolean)).size;
+  const open=all.filter(n=>!n.projectId&&!n.threadId).length;
+  let shown=0;
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
+    <div class="sub" style="max-width:74ch">Moments kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on a moment whenever it comes round to it.</div></div>
+    <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>`}</span></div>
+    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
+      <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
+      <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading moments":"Summarize with Claude"}</button>`:""}</div>
+    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">Claude reads the moments in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
+  <div class="stats">
+    <div class="stat"><b>${all.length}</b><span>moments in this view</span></div>
+    <div class="stat"><b>${people}</b><span>educators keeping them</span></div>
+    <div class="stat"><b>${open}</b><span>not yet claimed by a project or thread</span></div>
+    <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classrooms they came from</span></div>
+  </div>
+  ${momentsReadHtml()}
+  ${noticeForm?noticeFormCard():""}`;
+  if(!all.length)h+=`<div class="empty">${notices.size?"No moments kept in this view. Widen the classroom or the range.":"No moments kept yet. Press Keep a moment and write one in a minute."}</div>`;
+  for(const g of gs){
+    if(shown>=120)break;
+    const items=g.items.slice(0,Math.max(0,120-shown));shown+=items.length;
+    h+=`<section class="card">${g.label?`<div class="secthead"><h3 style="font-size:17px">${esc(g.label)}</h3><span class="cnt">${g.items.length} moment${g.items.length>1?"s":""}</span></div>`:`<div class="secthead"><h3 style="font-size:17px">Moments kept</h3><span class="cnt">${all.length} in this view</span></div>`}
+      <div style="display:grid;gap:12px">${items.map(noticeCard).join("")}</div>
+      ${items.length<g.items.length?`<div class="cnt" style="margin-top:8px">${g.items.length-items.length} more in this group.</div>`:""}</section>`;
+  }
+  if(shown<all.length)h+=`<div class="cnt">Showing ${shown} of ${all.length}. Print the full set to read them all.</div>`;
+  $("#main").innerHTML=h;
+}
+async function momentsRead(){
+  if(mBusy||!sample||!isDirector())return;
+  const all=momentsIn();
+  if(all.length<3){toast("Keep a few more moments first.");return}
+  const d=capDigest(all.slice(0,160).map(n=>({id:n.id,date:shortDate(n.at),classroom:n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,700),wonder:String(n.wonder||"").slice(0,400)})),150000);
+  const ids=new Set(d.map(x=>x.id));
+  mBusy=true;renderMain();
+  const room=nRoom;
+  const prompt=`You are reading Notice and Wonder moments kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" classroom"}. Each moment was written in the minute it happened. They span many weeks and they are not in any order of importance.
+Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
+Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
+${STYLE}
+Return JSON {"summary": two or three sentences on what these moments show children working on across the whole view, "patterns":[up to 5 {"name": the short label, "why": one or two sentences on what the moments show, grounded in them, "ids": the ids of 2 to 6 moments it draws on}], "questions":[2 or 3 questions the team could take to its next meeting]}
+
+Moments, one JSON object per line.
+${d.map(x=>JSON.stringify(x)).join("\n")}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"moments"});
+    const c2=v=>String(v||"").replace(/—/g,", ").trim();
+    const patterns=(Array.isArray(out?.patterns)?out.patterns:[]).map(p=>({name:c2(p&&p.name).replace(/\s*[.;]+$/,"").slice(0,44),why:c2(p&&p.why).slice(0,320),
+      ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6)})).filter(p=>p.name&&p.ids.length).slice(0,5);
+    saveScan({room:"moments-"+room,kind:"moments",range:mRange,createdAt:Date.now(),by:whoAmI(),count:d.length,
+      summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)});
+    toast(patterns.length?`Read ${d.length} moments and named ${patterns.length} pattern${patterns.length>1?"s":""}.`:`Read ${d.length} moments.`);
+  }catch(err){toast(assistError(err?.code||"unknown"))}
+  mBusy=false;renderMain();
+}
+function momentsDocs(long,cap){
+  const all=momentsIn();
+  if(!all.length)return[];
+  const s=momentsScan();
+  const meta=[["Classrooms",nRoom==="All"?"All":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
+  const blocks=[];
+  if(s&&has(s.summary))blocks.push(dLead("What these moments keep returning to",s.summary));
+  if(long&&s&&(s.patterns||[]).length)blocks.push(dList("Patterns the team is weighing",s.patterns.map(p=>`${p.name}. ${p.why}`).slice(0,5)));
+  // the summary carries a spread. The full set carries them all, with what the educator wondered
+  const total=long?60:(cap||12);
+  const gs=momentGroups(all);let left=total;
+  for(const g of gs){
+    if(left<=0)break;
+    const items=long?g.items.slice(0,left):spread(g.items,Math.max(1,Math.min(left,Math.round(total*g.items.length/all.length)||1)));
+    if(!items.length)continue;left-=items.length;
+    if(g.label)blocks.push(dSub(g.label));
+    else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Moments kept"));
+    for(const n of items){const text=long&&has(n.wonder)?`${n.noticed} ${wonderLine(n.wonder)}`:n.noticed;
+      blocks.push(dQuote(text,[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", "),shortDate(n.at)))}
+  }
+  if(!long&&all.length>total-left)blocks.push({t:"text",label:"",quiet:true,text:`${all.length} moments are kept in this view. The full set prints them all.`});
+  if(s&&(s.questions||[]).length)blocks.push(dList("Questions for the team",s.questions));
+  return [{display:true,type:"report",acc:"story",title:"Notice and Wonder",meta,blocks}];
 }
 function noticeListHtml(list,title){
   if(!list.length)return"";
   return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
 }
 function noticesClick(t){
-  if(t.id==="newnotice"){noticeForm=newNotice();view="plans";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
-  if(t.dataset.nroom&&noticeForm){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
-  if(t.id==="nf-cancel"){noticeForm=null;renderAll();return true}
+  if(t.id==="newnotice"||t.id==="newnotice2"){noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
+  if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
+  if(t.id==="mread"){momentsRead();return true}
+  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the classroom or the range.");return true}
+  if(t.id==="nf-cancel"){noticeForm=null;if(view==="moments")renderMain();else renderAll();return true}
   if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
     if(!n.noticed){toast("Write what you noticed first.");return true}
     if(!me()){needName();return true}
-    n.by=whoAmI();n.at=Date.now();n.week=mondayOf(new Date());saveNotice(n);noticeForm=null;renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
+    n.by=whoAmI();n.at=Date.now();n.week=mondayOf(new Date());saveNotice(n);noticeForm=null;
+    // the moment the educator just wrote should be the first thing they see, not an empty page
+    if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
+    renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.nwopen){nwOpen=t.dataset.nwopen;renderMain();return true}
   if(t.dataset.nwshut){nwOpen="";renderMain();return true}
   if(t.dataset.nwuse||t.dataset.nwskip){
@@ -1698,6 +1844,9 @@ function noticesClick(t){
 document.addEventListener("input",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-noticed"){noticeForm.noticed=t.value;autoGrow(t)}
   else if(t.id==="nf-wonder"){noticeForm.wonder=t.value;autoGrow(t)}});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="moments")return;
+  if(t.id==="mgroup"){mGroup=t.value;LS.set("fps.mgroup",mGroup);renderMain();return}
+  if(t.id==="mrange"){mRange=t.value;LS.set("fps.mrange",mRange);renderMain();return}});
 document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-room")noticeForm.classroom=t.value;
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
@@ -2651,19 +2800,21 @@ function displayAtoms(doc,p,A,s){
 function displayFlow(doc,p,A,s){
   const atoms=displayAtoms(doc,p,A,s);const top1=displayHead(doc,p,A,true),topN=DG.top+40;
   const run=room=>{
-    const pages=[[]];let y=top1;
+    const pages=[[]];let y=top1;let pend="";
     for(let i=0;i<atoms.length;i++){const a=atoms[i];
       // a heading, a side note, or the first lines of a quote never sit alone at the foot of a page
       const hm=x=>x.min||x.h;
       let need=hm(a);for(let k=i;atoms[k]&&(atoms[k].keep||atoms[k].gap)&&atoms[k+1];k++)need+=hm(atoms[k+1]);
       const cap=Math.min(DG.bottom,(pages.length===1?top1:topN)+room);
-      const whole=a.groupH&&y+a.groupH>cap&&topN+a.groupH<=DG.bottom;
+      // a heading group may claim a fresh sheet, but never at the cost of leaving a third of this one empty
+      const whole=a.groupH&&y+a.groupH>cap&&topN+a.groupH<=DG.bottom&&(cap-y)<(DG.bottom-topN)*.33;
       if((y+need>cap||whole)&&pages[pages.length-1].length){
-        pages.push([]);y=topN;
-        if(a.subText){const hd=displayAtoms.head(a.subText+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}
+        pages.push([]);y=topN;pend=a.subText||"";
         if(a.gap)continue;
       }
       if(a.gap&&!pages[pages.length-1].length)continue;
+      // the continuation heading waits until something actually lands under it, so no sheet opens with an empty one
+      if(pend){if(!a.isSub){const hd=displayAtoms.head(pend+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}pend=""}
       if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
       pages[pages.length-1].push({a,y});y+=a.h;
     }
@@ -2808,6 +2959,10 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
+  if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no moments in this view to print.");return true}
+    const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classrooms":nRoom} ${mondayOf(new Date())}`;
+    if(long){out(docs,name);return true}
+    await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
   if(kind==="threads"){out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
   if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`;
     if(long){out(lensDocs(true),name);return true}
