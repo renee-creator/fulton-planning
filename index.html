@@ -979,13 +979,15 @@ function webEditor(p){
    </div></section>`;
 }
 const webSug={};
+// what Claude is told about the threads a plan follows. The question is the educators' hypothesis and the quotes are their own words.
+function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);return ths.length?"\n\nThreads this plan follows. Each question is the educators' hypothesis. Each quote is educators' own words from an earlier plan.\n"+ths.map(t=>JSON.stringify({name:t.name,question:t.question||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text)})).join("\n"):""}
 function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
 function webSuggestHtml(p){
   if(!sample)return"";
   const sg=webSug[p.id];
   const filled=webHasContent(p.web);
-  if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">Claude reads what this plan already says. You see the draft before anything changes.</span></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, brainstorm${teamSources(p).length?", and this week's Individual plans":""}.</div></div>`;
+  if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">Claude reads what this plan already says${planThreads(p).length?" and the threads it follows":""}. You see the draft before anything changes.</span></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, brainstorm${teamSources(p).length?", this week's Individual plans":""}${planThreads(p).length?", and the threads this plan follows":""}.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The web draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="w-assist">Try again</button><button class="linkbtn" id="w-sgno">Close</button></div></div>`;
   const d=sg.web;
   return `<div class="sugg"><b>Suggested web</b>
@@ -1000,21 +1002,21 @@ function webSuggestHtml(p){
     <div class="actions"><button class="btn small" id="w-sgyes">Use this</button><button class="btn small ghost" id="w-sgno">Keep mine</button><button class="linkbtn" id="w-assist">Try another version</button></div></div>`;
 }
 async function webAssist(p){
-  const ctx=planContext(p);
-  if(!ctx&&!teamSources(p).length){toast("Write some of the plan first, such as the observation or brainstorm.");return}
+  const ctx=planContext(p);const thText=threadsForClaude(p);
+  if(!ctx&&!teamSources(p).length&&!thText){toast("Write some of the plan first, such as the observation or brainstorm.");return}
   webSug[p.id]={status:"working"};renderMain();
   const filled=webHasContent(p.web);
   const cur=filled?JSON.stringify({focus:p.web.focus,branches:p.web.branches.filter(b=>b.name).map(b=>({name:b.name,materials:b.materials}))}):"";
   const prev=p.prevId&&plans.get(p.prevId);
   const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, build the curriculum web for their Classroom Curriculum Plan.
-Base the web only on what this plan says below. Never invent observations, children, quotes, or events.
+Base the web only on what this plan says below${thText?" and on the threads it follows":""}. Never invent observations, children, quotes, or events.
 The central focus names the emerging thinking children are holding, as a short phrase, never a topic or theme. Give 3 to 6 branches, each a direction the investigation could take that grows from something in the plan. For each branch list specific, varied, open-ended materials. Use materials the plan names where it names them. Where it names none for a branch, suggest 2 to 4 natural or open-ended materials that fit. Add connections only where two branches truly share an idea. Choose languages of expression only from ${JSON.stringify(langList())}. Open questions come from the children or the observation. Environment notes say how the space may change.
 ${filled?`The team already has this web ${cur}. Suggest how it could evolve from what the plan now says. Keep branches the plan still supports, change or drop ones it no longer supports, and add new ones the plan points to.`:""}${prev&&webHasContent(prev.web)?` Last week's web had the focus "${prev.web.focus}".`:""}${teamSources(p).length?` The educators' Individual and small group plans for this week are below too. A group's investigation can become a branch or a connection where it meets the classroom's thinking.`:""}
 ${STYLE}
 Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
 
 ${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" classroom":""}.
-${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}`;
+${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}${thText}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
     const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
@@ -1565,7 +1567,8 @@ const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classro
 /* ---------- Projects ----------
    A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
    and it can also begin school-wide. It holds hypotheses about where the inquiry could go, never steps or an end date.
-   People start projects and add threads to them. Claude only points out what looks related. */
+   People start projects and add threads to them. Claude points out what looks related, rewords what educators wrote when asked,
+   and drafts possible directions for the team to weigh. It never writes the team's reading. */
 let projects=new Map(), projId=LS.get("fps.proj",""), projForm=null, projBusy={};
 const PSTATUS={active:"Active",resting:"Resting",closed:"Closed"};
 const PJOIN={children:"Children's initiative",educator:"An educator's proposal",event:"An event"};
@@ -1650,20 +1653,22 @@ function renderProject(x){
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
-  if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea></section>`;
+  if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea>${projStrHtml(x,"closure")}</section>`;
 
   const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span></div>`).join("")}</div></details>`:""};
   h+=`<section class="card"><div class="lbl">Where it came from</div>
     ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${dt.id}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The question the team is following there. ${esc(dt.question)}</div>`:""}</div>`:""}
     <label class="fld-label">The experience it grew from<textarea data-pf="experience" rows="2" placeholder="What happened, and what children felt or showed">${esc(x.experience||"")}</textarea></label>
-    <div class="hint">A project usually begins in an experience that mattered to children.</div></section>
+    <div class="hint">A project usually begins in an experience that mattered to children.</div>${projStrHtml(x,"experience")}</section>
   <section class="card"><div class="lbl">What may lie underneath</div>
     <div class="hint">The deeper question or understanding the team thinks children are working on. Write it as a hypothesis, and revise it as documentation comes in.</div>
     <textarea data-pf="underneath" rows="2" placeholder="Ex. Perhaps children are working out whether something can go away and still exist">${esc(projUnder(x))}</textarea>
+    ${projStrHtml(x,"underneath")}
     <div class="actions"><button class="linkbtn" data-prev="underneath">Keep this as an earlier reading and write a new one</button></div>${earlierHtml("underneath")}</section>
   <section class="card"><div class="lbl">Our intent as educators</div>
     <div class="hint">What we hope children may come to understand, and what we want to learn ourselves. It is held loosely and it changes with the work.</div>
     <textarea data-pf="intent" rows="2">${esc(projIntent(x))}</textarea>
+    ${projStrHtml(x,"intent")}
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
@@ -1680,11 +1685,12 @@ function renderProject(x){
   h+=`<section class="card"><div class="lbl">Small groups carrying the project</div>
     <div class="hint">A few children do the close work, and it returns to the wider class.</div>
     <div class="chips">${groupsAvail.map(g=>`<button class="chip ${(x.groups||[]).includes(g.name)?"on":""}" data-pg="${esc(g.name)}">${esc(g.name)}${rooms.length!==1?" · "+esc(g.room):""}</button>`).join("")}</div>
-    <label class="fld-label">How the work returns to the whole class<textarea data-pf="returns" rows="2" placeholder="Ex. The group shares its drawings at meeting time and the class adds questions">${esc(x.returns||"")}</textarea></label></section>`;
+    <label class="fld-label">How the work returns to the whole class<textarea data-pf="returns" rows="2" placeholder="Ex. The group shares its drawings at meeting time and the class adds questions">${esc(x.returns||"")}</textarea></label>${projStrHtml(x,"returns")}</section>`;
 
   const br=(x.web&&x.web.branches)||[];
   h+=`<section class="card"><div class="lbl">Possible directions</div>
     <div class="hint">Hypotheses about where the inquiry could go. Add, change, or drop them as documentation comes in.</div>
+    ${projWebSuggestHtml(x)}
     <div class="webwrap"><div style="display:grid;gap:8px">
       ${br.map((b,i)=>`<div class="pdir"><div class="actions" style="justify-content:space-between"><span class="cnt">Direction ${i+1}</span><button class="linkbtn" data-pwrm="${i}">Remove</button></div>
         <input type="text" data-pwb="${i}|name" value="${esc(b.name||"")}" placeholder="A direction the inquiry could take">
@@ -1738,6 +1744,80 @@ function addThreadToProject(x,t){
   let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
   saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} classroom has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
 }
+/* Claude support on a project follows the same two patterns a plan has. Strengthen wording rewords what educators wrote
+   and adds nothing. The directions draft reads what the project and its threads already say. Both show a suggestion first,
+   and nothing changes until an educator chooses it. Claude never writes the team's reading for them. */
+const PSTD={experience:["The experience it grew from","Tells what happened and what children felt or showed, as educators observed it. Keeps what children did separate from what educators think it means."],
+  underneath:["What may lie underneath","A hypothesis about the deeper question or understanding children may be working on. Written tentatively, with words such as perhaps or it may be. Never phrased in a child's voice, and never a topic."],
+  intent:["Our intent as educators","What educators hope children may come to understand, and what educators want to learn themselves. Held loosely. Never an outcome to reach and never a list of things to do."],
+  returns:["How the work returns to the whole class","How the close work of a few children comes back to the wider class."],
+  closure:["Summary of closure","How the team came to name the project closed, and what stays open for later."]};
+const projStr={},projSug={};
+const projVal=(x,k)=>String(k==="intent"?projIntent(x):k==="underneath"?projUnder(x):x[k]||"");
+function projStrHtml(x,k){
+  if(!sample)return"";const sg=projStr[x.id+k];
+  if(!sg)return `<div class="actions"><button class="btn small ghost" data-pstr="${k}">Strengthen wording</button></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is rewriting this section</b><div class="muted">Reading your entry</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">Strengthen did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-pstr="${k}">Try again</button><button class="linkbtn" data-pstrno="${k}">Close</button></div></div>`;
+  return `<div class="sugg"><b>Suggested wording</b><textarea id="pstr-${k}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-pstryes="${k}">Use this</button><button class="btn small ghost" data-pstrno="${k}">Keep mine</button><button class="linkbtn" data-pstr="${k}">Try another version</button></div></div>`;
+}
+async function projStrengthen(x,k){
+  const cur=projVal(x,k).trim();
+  if(!cur){toast("Write a few words first, then strengthen them.");return}
+  const key=x.id+k;projStr[key]={status:"working"};renderMain();
+  const rest=Object.keys(PSTD).filter(o=>o!==k&&projVal(x,o).trim()).map(o=>`${PSTD[o][0]}. ${projVal(x,o).trim()}`).join("\n");
+  const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, word the "${PSTD[k][0]}" part of a project record.
+The standard for this part. ${PSTD[k][1]}
+Rewrite the educators' entry so it meets the standard. Keep every fact, name, quote, and material from the entry, and keep the educators' own meaning. You may use facts from the rest of the project below. Add no new facts, children, quotes, or materials, and add no interpretation the educators did not write. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
+Return only the rewritten text, with no preface.
+
+Rest of the project.
+${rest||"(none yet)"}
+
+Educators' entry.
+${cur}`;
+  let out="",code="";
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["\u201c]|["\u201d]$/g,"").replace(/\u2014/g,", ").trim();
+  projStr[key]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
+  if(view==="projects"&&projId===x.id)renderMain();
+}
+const projDirs=x=>((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim());
+function projWebSuggestHtml(x){
+  if(!sample)return"";const sg=projSug[x.id];const filled=projDirs(x).length>0;
+  if(!sg)return `<div class="actions"><button class="btn small ghost" id="pw-assist">${filled?"Suggest how the directions could evolve":"Draft directions from this project"}</button><span class="cnt">Claude reads what the project and its threads already say. You see the draft before anything changes.</span></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the project</b><div class="muted">Drafting directions from the experience, what may lie underneath, the intent, and the threads.</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">The directions draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="pw-assist">Try again</button><button class="linkbtn" id="pw-sgno">Close</button></div></div>`;
+  return `<div class="sugg"><b>Suggested directions</b>
+    <ul style="margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px">${sg.branches.map(b=>`<li><span style="font-weight:600">${esc(b.name)}</span>${b.materials?`<span class="muted">. ${esc(b.materials)}</span>`:""}</li>`).join("")}</ul>
+    ${sg.why?`<div class="cnt">${esc(sg.why)}</div>`:""}
+    <div class="cnt">These are hypotheses for the team to weigh. ${filled?"Use these replaces the directions below. Yours stay until you choose.":"Edit any part after you use them."}</div>
+    <div class="actions"><button class="btn small" id="pw-sgyes">Use these</button><button class="btn small ghost" id="pw-sgno">Keep mine</button><button class="linkbtn" id="pw-assist">Try another version</button></div></div>`;
+}
+async function projWebAssist(x){
+  const ths=projThreads(x).map(o=>o.t);
+  if(!["experience","underneath","intent"].some(k=>projVal(x,k).trim())&&!ths.length){toast("Write what may lie underneath first, or add a thread.");return}
+  projSug[x.id]={status:"working"};renderMain();
+  const cur=projDirs(x);
+  const info={name:x.name,the_experience_it_grew_from:x.experience||"",what_may_lie_underneath:projUnder(x),educators_intent:projIntent(x),classrooms:projRooms(x),small_groups:x.groups||[],how_the_work_returns_to_the_class:x.returns||"",people_beyond_the_classrooms:x.people||""};
+  const prompt=`You are helping the educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, think about the possible directions of a project.
+Base the directions only on what the project and its threads say below. Never invent observations, children, quotes, or events.
+A direction is a hypothesis about where the inquiry could go, written as a short phrase. It is never a topic, a theme, an activity, or a step to complete. Give 3 to 6 directions, each growing from something the project or a thread says. For each direction list materials, places, or people. Use the ones the project and its threads name where they name them. Where none are named for a direction, suggest 2 to 4 natural or open-ended materials that fit. The educators' reading of what may lie underneath is theirs. Do not restate it or rewrite it.
+${cur.length?`The team already holds these directions ${JSON.stringify(cur.map(b=>({name:b.name,materials:b.materials||""})))}. Suggest how they could evolve from what the project now says. Keep the ones it still supports, change or drop the ones it no longer supports, and add new ones it points to.`:""}
+${STYLE}
+Return JSON {"branches": [{"name": "", "materials": ""}], "why": one sentence naming which parts of the project the directions grew from}
+
+Project ${JSON.stringify(info)}
+Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question||"",classroom:t.classroom||"",quotes:(t.evidence||[]).slice(-8).map(e=>e.text),possible_next_provocations:t.next||[]})))}`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false});
+    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:c(b?.name),materials:c(b?.materials)})).filter(b=>b.name).slice(0,6);
+    if(!br.length)throw {code:"empty_completion"};
+    projSug[x.id]={status:"ready",why:c(out?.why),branches:br};
+  }catch(err){projSug[x.id]={status:"error",error:assistError(err?.code||"unknown","Your directions are unchanged.")}}
+  if(view==="projects"&&projId===x.id)renderMain();
+}
 async function writeProjectStory(x,label){
   if(!x||projBusy[x.id])return;projBusy[x.id]=true;renderMain();
   const ths=projThreads(x).map(o=>o.t);
@@ -1774,6 +1854,12 @@ async function projectsClick(t){
     if(!cur){toast("Write the current one first.");return true}
     x.earlier=x.earlier||{};x.earlier[key]=[...(x.earlier[key]||[]),{text:cur,at:Date.now(),by:whoAmI()}];x[key]="";saveProject(x);renderMain();
     const ta=document.querySelector(`[data-pf="${key}"]`);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}toast("Kept with today's date. Write the new one.");return true}
+  if(t.id==="pw-assist"){projWebAssist(x);return true}
+  if(t.id==="pw-sgno"){delete projSug[x.id];renderMain();return true}
+  if(t.id==="pw-sgyes"){const d=projSug[x.id]?.branches;if(d){x.web=Object.assign({},x.web,{branches:JSON.parse(JSON.stringify(d))});saveProject(x);delete projSug[x.id];renderMain();toast("Directions updated. Edit any part below.")}return true}
+  if(t.dataset.pstr){projStrengthen(x,t.dataset.pstr);return true}
+  if(t.dataset.pstrno){delete projStr[x.id+t.dataset.pstrno];renderMain();return true}
+  if(t.dataset.pstryes){const k=t.dataset.pstryes;const v=($("#pstr-"+k)?.value||"").trim();if(v){x[k]=v;saveProject(x);delete projStr[x.id+k];renderMain();toast("Wording updated.")}return true}
   if(t.dataset.pg){const g=t.dataset.pg;x.groups=(x.groups||[]).includes(g)?x.groups.filter(v=>v!==g):[...(x.groups||[]),g];saveProject(x);renderMain();return true}
   if(t.dataset.pwadd){x.web=x.web||{branches:[]};x.web.branches=[...(x.web.branches||[]),{name:"",materials:""}];saveProject(x);renderMain();const ins=document.querySelectorAll('[data-pwb$="|name"]');ins[ins.length-1]?.focus();return true}
   if(t.dataset.pwrm!=null){x.web.branches=(x.web.branches||[]).filter((b,i)=>i!==+t.dataset.pwrm);saveProject(x);renderMain();return true}
@@ -2542,7 +2628,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button>
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
@@ -2663,6 +2749,16 @@ async function threadsClick(t){
   if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
     const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
     plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
+  // A classroom writes one Classroom Plan a week, so a thread joins that plan. A new one is started only when the week has none yet.
+  if(t.dataset.tcplan){const th=threads.get(t.dataset.tcplan);if(!th)return true;
+    const room=th.classroom||(roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""));
+    if(!room){toast("This thread runs across classrooms. Choose a classroom on the Plans page first.");return true}
+    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    const made=!cp;
+    if(made){cp=newPlan("classroom",{classroom:room,threadId:th.id});plans.set(cp.id,cp);persist(cp)}
+    else if(!planThreads(cp).some(c=>c.t.id===th.id)){cp.threadLinks=(cp.threadLinks||[]).filter(l=>l.id!==th.id);cp.threadLinks.push({id:th.id,by:whoAmI(),at:Date.now()});if(cp.threadOff)cp.threadOff=cp.threadOff.filter(v=>v!==th.id);persist(cp)}
+    currentId=cp.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
+    toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}, following this thread.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return true}
   if(t.dataset.tstory){const th=threads.get(t.dataset.tstory);
     if(th&&th.story&&!t.dataset.yes){const el=$("#tsrw-"+th.id);if(el){el.innerHTML=`<span class="confirm">Replace the current story? Download its PDF first to keep it. <button class="btn warn small" data-tstory="${th.id}" data-yes="1">Replace it</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}}
     writeStory(th);return true}
