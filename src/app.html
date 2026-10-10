@@ -852,9 +852,10 @@ function webPreviewSvg(w){
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curriculum web preview">`;
   pts.forEach(([x,y])=>s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--muted)" stroke-width="1.2"/>`);
   (w.connections||[]).forEach(([a,b])=>{if(pts[a]&&pts[b]){const [x1,y1]=pts[a],[x2,y2]=pts[b];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="var(--marigold)" stroke-width="1.6" stroke-dasharray="5 4"/>`}});
-  const fl=wrapWords(w.focus||"Central focus",20).slice(0,3);
+  const longW=String(w.focus||"").length>52;
+  const fl=wrapWords(w.focus||"Central focus",longW?26:20).slice(0,longW?4:3);
   s+=`<ellipse cx="${cx}" cy="${cy}" rx="92" ry="44" fill="var(--moss-soft)" stroke="var(--moss)" stroke-width="1.5"/>`;
-  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*8+i*16+5}" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--moss)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
+  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*(longW?6.5:8)+i*(longW?13:16)+5}" text-anchor="middle" font-size="${longW?11:13.5}" font-weight="600" fill="var(--moss)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
   w.branches.forEach((b,i)=>{const [x,y]=pts[i];const nl=wrapWords(b.name||"Branch "+(i+1),22).slice(0,2);const ml=wrapWords(b.materials,28).slice(0,3);const h=14+nl.length*15+ml.length*13;
     s+=`<rect x="${x-78}" y="${y-h/2}" width="156" height="${h}" rx="7" fill="var(--paper)" stroke="var(--line)"/>`;
     nl.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+j*15}" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="Figtree, sans-serif">${esc(l)}</text>`);
@@ -1140,7 +1141,7 @@ function makePdf(list,filename){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});
   const pageAcc={};pageInfo={};
-  list.forEach((p,i)=>{if(i>0)doc.addPage();drawPlan(doc,p,pageAcc)});
+  list.forEach((p,i)=>{if(i>0)doc.addPage();drawAny(doc,p,pageAcc)});
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
     doc.setDrawColor(214,222,216);doc.setLineWidth(.6);doc.line(M,PH-38,PW-M,PH-38);
@@ -1304,8 +1305,9 @@ function webSvgString(web,blank,A){
   if(!blank){const idx=(web.branches||[]).map((b,i)=>(b.name||b.materials)?i:-1).filter(i=>i>=0);
     (web.connections||[]).forEach(([a,b])=>{const ia=idx.indexOf(a),ib=idx.indexOf(b);if(ia<0||ib<0)return;const [x1,y1]=pts[ia],[x2,y2]=pts[ib];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="#C47A06" stroke-width="2.2" stroke-dasharray="7 5"/>`})}
   s+=`<ellipse cx="${cx}" cy="${cy}" rx="150" ry="64" fill="${tint}" stroke="${acc}" stroke-width="2.4"/>`;
-  const fl=blank?["Central focus"]:wrapWords(web.focus||"Central focus",22).slice(0,3);
-  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*11+i*22+7}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="${acc}">${e(l)}</text>`);
+  const longF=!blank&&String(web.focus||"").length>58;
+  const fl=blank?["Central focus"]:wrapWords(web.focus||"Central focus",longF?27:22).slice(0,longF?4:3);
+  fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*(longF?9.5:11)+i*(longF?19:22)+7}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${longF?16:19}" font-weight="700" fill="${acc}">${e(l)}</text>`);
   br.forEach((b,i)=>{const [x,y]=pts[i];const nl=blank?[]:wrapWords(b.name,24).slice(0,2);const ml=blank?[]:wrapWords(b.materials,30).slice(0,4);const bw=236,bh=blank?84:Math.max(52,22+nl.length*20+ml.length*17+6);
     s+=`<rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="8" fill="#ffffff" stroke="${line}" stroke-width="1.6"/><rect x="${x-bw/2+14}" y="${y-bh/2}" width="36" height="4" fill="${acc}"/>`;
     let ty=y-bh/2+26;nl.forEach(l=>{s+=`<text x="${x}" y="${ty}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="${ink}">${e(l)}</text>`;ty+=20});
@@ -1314,7 +1316,7 @@ function webSvgString(web,blank,A){
   return s+`</svg>`;
 }
 function svgToPng(svg){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
-function planPageCount(p){try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});drawPlan(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
+function planPageCount(p){try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
 async function makeDocx(list,filename){
   let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   toast("Preparing the Word file");
@@ -1323,8 +1325,9 @@ async function makeDocx(list,filename){
   const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"};
   const sections=[];
   for(const p of list){
-    const A=ACC[p.type]||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
+    const A=ACC[p.acc||p.type]||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
     const ch=[];
+    if(p.display){await displayDocx(ch,p,D,A)}else{
     ch.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:15,color:ac,characterSpacing:30,font:"Helvetica"})]}));
     ch.push(new Paragraph({spacing:{after:120},children:[new TextRun({text:clean(p.title||F.name),bold:true,size:40,color:"1C2A22",font:"Helvetica"})]}));
     const rows=metaRows(p);
@@ -1353,6 +1356,7 @@ async function makeDocx(list,filename){
       if(b.t==="web"){ch.push(labelPara("Curriculum web"));try{const png=await svgToPng(webSvgString(b.web,b.blank,A));ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:120},children:[new ImageRun({data:png,transformation:{width:620,height:386}})]}))}catch(e){ch.push(...textParas([b.web.focus,...(b.web.branches||[]).map(x=>[x.name,x.materials].filter(Boolean).join(". "))].join("\n")))}continue}
       if(b.t==="sec"){ch.push(boxTable([{label:b.label,text:b.text,w:1}],b.w,b._h));ch.push(gap());continue}
       if(b.t==="cols"){ch.push(boxTable(b.cols,b.w,b._h));ch.push(gap())}
+    }
     }
     const multi=planPageCount(p)>1;
     const footKids=[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:"D6DED8",space:6}},children:[new TextRun({text:CYCLE_TEXT,bold:true,size:12,color:ac,characterSpacing:8,font:"Helvetica"})]})];
@@ -1428,7 +1432,7 @@ function renderProjects(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classrooms</span><h2 style="margin-top:4px">Projects</h2>
     <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
   if(projForm)h+=projectStartForm();
-  else h+=`<div class="actions">${all.length?`<button class="btn small ghost" id="ppdf-all">Download projects PDF</button>`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
+  else h+=`<div class="actions">${all.length?`${printBtns("projects","","Download projects PDF")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
   if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
   else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
@@ -1454,7 +1458,7 @@ function renderProject(x){
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
   let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0"><button class="linkbtn" data-pback="1">All projects</button>
       <div style="margin-top:6px"><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
-      <button class="btn small ghost" data-ppdf="${x.id}">Project PDF</button>
+      ${printBtns("project",x.id,"Project PDF")}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
@@ -1519,7 +1523,7 @@ function renderProject(x){
       <button class="btn small ghost" id="pstory-blank">Start a blank story</button></div>
     ${stories.map(s=>`<details ${s.id===projOpenStory?"open":""}><summary class="chiprow-label" style="cursor:pointer">${esc(s.label||"Project story")}, ${shortDate(s.at)}${s.by?", "+esc(s.by):""}</summary>
       <div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-psf="${s.id}|${k}" rows="2">${esc(s.fields?.[k]||"")}</textarea></label>`).join("")}
-      <div class="actions"><button class="btn small" data-pspdf="${s.id}">Story PDF</button><span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${s.id}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
+      <div class="actions">${printBtns("pstory",s.id,"Story PDF",true)}<span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${s.id}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="pdel"><button class="linkbtn" data-pdel="1">Remove this project</button></span></div>`;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
 }
@@ -1545,10 +1549,6 @@ function addThreadToProject(x,t){
   x.threads=[...(x.threads||[]),{id:t.id,by,at:now,week:wk}];
   let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
   saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} classroom has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
-}
-function projectStoryPdf(x,s){
-  const ws=projWeeks(x);
-  makePdf([{type:"story",title:"Project Story, "+x.name,metaA:[roomsText(x),(x.groups||[]).join(", ")].filter(Boolean).join(", "),metaB:ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:"",story:s.fields||{},fields:{}}],`Project story ${x.name}${s.label?" "+s.label:""}.pdf`.replace(/[\\/:*?"<>|]+/g," "));
 }
 async function writeProjectStory(x,label){
   if(!x||projBusy[x.id])return;projBusy[x.id]=true;renderMain();
@@ -1593,7 +1593,6 @@ async function projectsClick(t){
   if(t.dataset.pcrm){x.classrooms=(x.classrooms||[]).filter(c=>c.room!==t.dataset.pcrm);saveProject(x);renderMain();return true}
   if(t.id==="pstory-go"){writeProjectStory(x,($("#pstory-label")?.value||"").trim());return true}
   if(t.id==="pstory-blank"){const s={id:uid(),label:($("#pstory-label")?.value||"").trim(),at:Date.now(),by:whoAmI(),fields:{}};x.stories=[...(x.stories||[]),s];projOpenStory=s.id;saveProject(x);renderMain();return true}
-  if(t.dataset.pspdf){const s=(x.stories||[]).find(s=>s.id===t.dataset.pspdf);if(s)projectStoryPdf(x,s);return true}
   if(t.dataset.psrm){$("#psrm-"+t.dataset.psrm).innerHTML=`<span class="confirm">Remove this story for everyone? <button class="btn warn small" data-psrmyes="${t.dataset.psrm}">Remove story</button><button class="linkbtn" data-pkeep="1">Keep it</button></span>`;return true}
   if(t.dataset.psrmyes){x.stories=(x.stories||[]).filter(s=>s.id!==t.dataset.psrmyes);saveProject(x);renderMain();toast("Story removed.");return true}
   if(t.dataset.pkeep){renderMain();return true}
@@ -1686,7 +1685,7 @@ function renderLens(){
     <div class="sub" style="max-width:76ch">${esc(LENS.description)}</div></div></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
       <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
-      <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select><button class="btn small ghost" id="lpdf">Download lens PDF</button></div></div>
+      <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select>${printBtns("lens","","Download lens PDF")}</div></div>
   <section class="card"><div class="lbl">How we read a moment</div>
     <ol class="lq">${LENS.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>
     <div class="hint">Read for the thinking. How a product looks is never rated.</div></section>
@@ -1806,111 +1805,191 @@ document.addEventListener("change",e=>{
   if(t.id==="llang"){lLang=t.value;lensShowAll=false;renderMain();return}
 });
 
-/* ---------- Printable pages for threads, projects, and the lens ----------
-   This work is meant to be printed, shared, discussed, and put on the wall. Each printout uses the same page design as the
-   plan forms and shows only the work itself, with no blank or ruled space. */
+/* ---------- Pages for display: threads, projects, the lens, and stories ----------
+   These pages are made to be printed, shared, discussed, and put on the wall. Each one carries a few things that matter,
+   set large enough to read from a step away: the statement the page is about, a small number of moments in educators'
+   own words, and what the team might do next. Counts, lists of plans, and working details stay on the screen.
+   Every page is offered as a PDF and as a Word file, so the layout can be adjusted by hand. */
 const RANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"All saved plans"};
-const pSec=(label,text)=>({t:"sec",label,text:text||"",w:0});
-const pSub=text=>({t:"sub",text});
 const safeFile=n=>String(n).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim();
-function planLine(p,section){return [`Week of ${fmtDate(p.weekOf)}`,FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",section].filter(Boolean).join(", ")}
-function quoteLine(e){const p=plans.get(e.planId);return `"${e.text}"\n    ${p?planLine(p,sectionOf(p,e.text)):"Week of "+fmtDate(e.week)+", plan since deleted"}`}
-function weeksSpan(ws){const s=[...new Set(ws||[])].filter(Boolean).sort();return s.length?(s.length===1?`Week of ${fmtDate(s[0])}`:`${fmtDate(s[0])} to ${fmtDate(s[s.length-1])}`):""}
+const shortWeek=w=>w?parseIso(w).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";
+function weeksSpan(ws){const s=[...new Set(ws||[])].filter(Boolean).sort();return s.length?(s.length===1?`Week of ${fmtDate(s[0])}`:`${shortWeek(s[0])} to ${fmtDate(s[s.length-1])}`):""}
+// who a moment comes from, kept short for the page
+function byLine(p){
+  if(!p)return"";
+  const who=p.type==="classroom"?(p.classroom?p.classroom+" classroom team":"Classroom team"):[p.educator,p.type==="smallgroup"&&p.group?p.group+" group":(p.focus==="smallgroup"&&(p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):""),p.classroom].filter(Boolean).join(", ");
+  return [who,"week of "+shortWeek(p.weekOf)].filter(Boolean).join(", ");
+}
+// a few quotes spread across the weeks, so the page shows the thread moving through time
+function pickSpread(list,n){if(list.length<=n)return list;const out=[];for(let i=0;i<n;i++)out.push(list[Math.round(i*(list.length-1)/(n-1))]);return [...new Set(out)]}
+const dLead=(label,text)=>({t:"lead",label,text});
+const dText=(label,text)=>({t:"text",label,text});
+const dQuote=(text,by)=>({t:"quote",text,by});
+const dList=(label,items,numbered)=>({t:"list",label,items,numbered:!!numbered});
+const dItem=(title,text,by)=>({t:"item",title,text,by});
+const dSub=text=>({t:"sub",text});
+const has=v=>String(v||"").trim().length>0;
 function threadDoc(t){
-  const ev=[...(t.evidence||[])].sort((a,b)=>(a.week||"").localeCompare(b.week||""));const linked=threadLinkedPlans(t);
-  const ps=[...new Map([...ev.map(e=>plans.get(e.planId)).filter(Boolean),...linked].map(p=>[p.id,p])).values()];
-  const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];const pr=projectOfThread(t.id);
-  const seen=ps.length?`Seen in ${ps.length} plan${ps.length>1?"s":""} over ${new Set(ps.map(p=>p.weekOf)).size} week${new Set(ps.map(p=>p.weekOf)).size>1?"s":""}${rooms.length?", in the "+rooms.join(" and ")+" classroom"+(rooms.length>1?"s":""):""}.`:"";
-  const blocks=[];if(t.question)blocks.push(pSec("The question the team is following",t.question));
-  if(seen||t.followedBy)blocks.push(pSec("Where it is seen",[seen,t.followedBy?`Followed by ${t.followedBy} on ${shortDate(t.createdAt)}.`:"",pr?`Part of the project ${pr.name}.`:""].filter(Boolean).join("\n")));
-  if(ev.length)blocks.push(pSec("In educators' own words",ev.map(quoteLine).join("\n")));
-  if(linked.length)blocks.push(pSec("Plans connected by educators",linked.map(p=>planLine(p,"")).join("\n")));
-  if((t.languages||[]).length)blocks.push(pSec("Languages children are using",t.languages.join(", ")));
-  if((t.next||[]).length)blocks.push(pSec("Possible next provocations",t.next.map(n=>"- "+n).join("\n")));
-  if((t.notes||"").trim())blocks.push(pSec("Team notes",t.notes));
-  return {type:"report",acc:"smallgroup",title:t.name,meta:[["Thread",TSTATUS[t.status]||"Emerging"],["Classroom",t.classroom||"All classrooms"],["Weeks",weeksSpan([...(t.weeks||[]),...linked.map(p=>p.weekOf)])]],blocks,fields:{}};
+  const ev=[...(t.evidence||[])].filter(e=>plans.get(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
+  const pr=projectOfThread(t.id);const blocks=[];
+  if(has(t.question))blocks.push(dLead("The question we are following",t.question));
+  const qs=pickSpread(ev,4);
+  if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>blocks.push(dQuote(e.text,byLine(plans.get(e.planId)))))}
+  if((t.languages||[]).length)blocks.push(dText("Languages children are using",t.languages.join("  •  ")));
+  if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.slice(0,4)));
+  if(has(t.notes))blocks.push(dText("Team notes",t.notes));
+  const meta=[["Classroom",t.classroom||"All classrooms"],["Seen",weeksSpan([...(t.weeks||[]),...threadLinkedPlans(t).map(p=>p.weekOf)])]];if(pr)meta.push(["Project",pr.name]);
+  return {display:true,type:"report",acc:"smallgroup",title:t.name,meta,blocks};
 }
-function threadsOverviewDoc(tracked,ps){
-  const scan=scans.get(tRoom);const rec=recurring(ps).slice(0,18);
-  const blocks=[pSec("Threads we are following",tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return `${t.name}. ${[t.classroom&&t.classroom+" classroom",TSTATUS[t.status]||"Emerging",weeksSpan(t.weeks),pr&&"project "+pr.name].filter(Boolean).join(", ")}${t.question?"\n    "+t.question:""}`}).join("\n"):"No threads are being followed in this view yet.")];
-  if(scan&&scan.summary)blocks.push(pSec(`Claude's reading of these plans, ${shortDate(scan.createdAt)}`,scan.summary));
-  if(rec.length)blocks.push(pSec("Recurring ideas, with the weeks each appears",rec.map(x=>`${x.k} (${x.weeks})`).join(",  ")));
-  return {type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Plans read",RANGE_WORDS[tRange]||""],["Printed",shortDate(Date.now())]],blocks,fields:{}};
+function threadsOverviewDoc(tracked){
+  const blocks=tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return dItem(t.name,t.question||"",[t.classroom&&t.classroom+" classroom",weeksSpan(t.weeks),pr&&"part of the project "+pr.name].filter(Boolean).join("  •  "))}):[dText("","No threads are being followed in this view yet.")];
+  return {display:true,type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Printed",shortDate(Date.now())]],blocks};
 }
-function threadsPdf(){
-  const ps=rangePlans();const tracked=[...threads.values()].filter(t=>!t.unfollowed&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
-  makePdf([threadsOverviewDoc(tracked,ps),...tracked.map(threadDoc)],safeFile(`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}.pdf`));
+function threadsDocs(){
+  const tracked=[...threads.values()].filter(t=>!t.unfollowed&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  return [threadsOverviewDoc(tracked),...tracked.map(threadDoc)];
 }
 function projectDoc(x){
-  const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const dt=x.decision&&x.decision.threadId&&threads.get(x.decision.threadId);
-  const earlier=key=>projEarlier(x,key).map(r=>`Earlier, ${shortDate(r.at)}. ${r.text}`).join("\n");
-  const withEarlier=(now,key)=>[now,earlier(key)].filter(Boolean).join("\n");
-  const blocks=[];
-  if(x.status==="closed"&&(x.closure||"").trim())blocks.push(pSec("Summary of closure",x.closure));
-  const add=(label,text)=>{if(String(text||"").trim())blocks.push(pSec(label,text))};
-  add("Where it came from",[dt?`It grew from the thread ${dt.name}.${dt.question?" The question the team is following there. "+dt.question:""}`:"",x.experience?`The experience it grew from. ${x.experience}`:""].filter(Boolean).join("\n"));
-  add("What may lie underneath",withEarlier(projUnder(x),"underneath"));
-  add("Our intent as educators",withEarlier(projIntent(x),"intent"));
-  {const cs=[["Who decided to follow it as a project",x.decision?.who||""],["Small groups carrying the project",(x.groups||[]).join(", ")]].filter(c=>c[1].trim());
-    if(cs.length===2)blocks.push({t:"cols",w:0,cols:cs.map(c=>({label:c[0],text:c[1],w:.5}))});else if(cs.length)add(cs[0][0],cs[0][1])}
-  add("How the work returns to the whole class",x.returns);
-  if(projWeb(x).branches.length)blocks.push({t:"web",web:Object.assign(projWeb(x),{label:"Possible directions, held as hypotheses"}),blank:false});
-  blocks.push(pSub("Threads in this project"));
-  const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
-  if(!ths.length)blocks.push(pSec("Threads","No threads have been added yet."));
-  for(const r of cols){const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
-    const head=`${r?r+" classroom":"No classroom set"}${c&&r===x.home?", home":""}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+PJOIN[c.how].toLowerCase():""}`;
-    const body=[c&&c.note?c.note:"",...mine.map(o=>{const t=o.t;const ev=[...(t.evidence||[])].sort((a,b)=>(b.week||"").localeCompare(a.week||"")).slice(0,3);
-      return `${t.name}. ${[TSTATUS[t.status]||"Emerging",weeksSpan(t.weeks)].filter(Boolean).join(", ")}${t.question?"\n    "+t.question:""}${ev.length?"\n"+ev.map(quoteLine).join("\n"):""}`})].filter(Boolean).join("\n");
-    blocks.push(pSec(head,body||"No thread from this classroom yet."))}
-  if(x.people)blocks.push(pSec("People beyond the classrooms",x.people));
-  if((x.notes||"").trim())blocks.push(pSec("Team notes",x.notes));
-  return {type:"report",acc:"classroom",title:x.name||"Project",meta:[["Project",PSTATUS[x.status]||"Active"],["Classrooms",roomsText(x)],["Weeks",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks,fields:{}};
+  const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const blocks=[];
+  if(has(projUnder(x)))blocks.push(dLead("What may lie underneath",projUnder(x)));
+  if(has(x.experience))blocks.push(dText("The experience it grew from",x.experience));
+  if(has(projIntent(x)))blocks.push(dText("Our intent as educators",projIntent(x)));
+  const earlier=projEarlier(x,"underneath").slice(0,2);
+  if(earlier.length)blocks.push(dList("How our reading has changed",earlier.map(r=>`${shortDate(r.at)}. ${r.text}`)));
+  if(x.status==="closed"&&has(x.closure))blocks.push(dText("Summary of closure",x.closure));
+  if(projWeb(x).branches.length)blocks.push({t:"web",web:Object.assign(projWeb(x),{label:"Possible directions"})});
+  if(ths.length){blocks.push(dSub("Threads in this project"));
+    for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
+      const where=[t.classroom?t.classroom+" classroom":"",c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
+      blocks.push(dItem(t.name,t.question||"",where));
+      const last=[...(t.evidence||[])].filter(e=>plans.get(e.planId)).sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
+      if(last)blocks.push(dQuote(last.text,byLine(plans.get(last.planId))))}}
+  if((x.groups||[]).length)blocks.push(dText("Small groups carrying it",x.groups.join("  •  ")));
+  if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
+  if(has(x.people))blocks.push(dText("People beyond the classrooms",x.people));
+  if(has(x.notes))blocks.push(dText("Team notes",x.notes));
+  return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta:[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks};
 }
-function projectsPdf(list){
-  if(!list.length){toast("There are no projects to print yet.");return}
-  makePdf(list.map(projectDoc),safeFile(list.length===1?`Project ${list[0].name}.pdf`:`Fulton projects ${mondayOf(new Date())}.pdf`));
+function storyDoc(title,fields,meta){
+  return {display:true,type:"report",acc:"story",title,meta,blocks:STORY.filter(([k])=>has(fields&&fields[k])).map(([k,l])=>dText(l,fields[k]))};
 }
+function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Classroom",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classrooms"],["Seen",weeksSpan(th.weeks)]])}
+function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classrooms",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
 function lensDocs(){
-  const ps=lensPlans();let moments=lensMoments(ps);const marked=ps.filter(p=>lensMarked(p).length);
+  const ps=lensPlans();let moments=lensMoments(ps);
   if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
-  const withMoment=new Set(moments.map(m=>m.planId));
-  const silent=(lLang?marked.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===lLang.toLowerCase())):marked).filter(p=>!withMoment.has(p.id)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
-  const weeks=[...new Set(ps.map(p=>p.weekOf))].sort().reverse();
-  const rooms=lRoom==="All"?[...CLASSROOMS,...(ps.some(p=>!p.classroom)?[""]:[])]:[lRoom];
-  const meta=[["Classrooms",lRoom==="All"?"All":lRoom],["Plans read",RANGE_WORDS[lRange]||""],["Printed",shortDate(Date.now())]];
-  const blocks=[pSec("What it means here",LENS.description+(lLang?`\nShowing plans that mark ${lLang}.`:"")),
-    pSec("How we read a moment",LENS.questions.map((q,i)=>`${i+1}. ${q}`).join("\n")+"\nRead for the thinking. How a product looks is never rated.")];
-  if(weeks.length)blocks.push(pSec("By classroom and week, moments found",weeks.map(w=>`Week of ${fmtDate(w)}.   `+rooms.map(r=>`${r||"No classroom"} ${moments.filter(m=>m.week===w&&m.room===r).length}`).join(",   ")).join("\n")));
-  blocks.push(pSub("Moments in educators' own words"));
-  if(!moments.length)blocks.push(pSec("Moments","No moments found in this range yet."));
-  for(const w of [...new Set(moments.map(m=>m.week))]){
-    blocks.push(pSec(`Week of ${fmtDate(w)}`,moments.filter(m=>m.week===w).map(m=>{const p=plans.get(m.planId);const cs=p?planThreads(p):[];
-      return `"${m.text}"\n    ${p?planLine(p,m.section):""}${cs.length?"\n    Thread "+cs.map(c=>{const pr=projectOfThread(c.t.id);return c.t.name+(pr?", in the project "+pr.name:"")}).join(". Thread "):""}`}).join("\n")))}
-  if(silent.length)blocks.push(pSec("Marked, with no moment described yet",silent.slice(0,30).map(p=>`${planLine(p,"")}. ${lensMarked(p).join(", ")}`).join("\n")));
-  const docs=[{type:"report",acc:"individual",title:LENS.name,meta,blocks,fields:{}}];
-  // the closer reading prints as its own pages, and says plainly where the plans were silent
+  const meta=[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
+  const blocks=[dText("What it means here",LENS.description),dList("How we read a moment",LENS.questions,true),dText("","Read for the thinking. How a product looks is never rated.")];
+  // a page shows a few moments from each week, most recent first. The rest stay on the Lens page.
+  const shown=[];const perWeek={};
+  for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=4&&shown.length<12)shown.push(m)}
+  if(shown.length){blocks.push(dSub(`Moments in educators' words${lLang?", "+lLang:""}`));
+    for(const m of shown){const p=plans.get(m.planId);const cs=p?planThreads(p):[];
+      blocks.push(dQuote(m.text,[byLine(p),cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join("  •  ")))}}
+  else blocks.push(dText("","No moments have been described in these weeks yet."));
+  const docs=[{display:true,type:"report",acc:"individual",title:LENS.name,meta,blocks}];
+  // the closer reading is its own page set. A question the plans did not answer is simply left off.
   const scan=scans.get("lens-"+lRoom);
   if(scan&&(scan.moments||[]).length){const qs=scan.questionsAsked||LENS.questions;const b=[];
-    if(scan.summary)b.push(pSec("Summary",scan.summary));
-    scan.moments.forEach((m,i)=>{const p=plans.get(m.planId);
-      b.push(pSub(`Moment ${i+1}${m.language?", "+m.language:""}`));
-      b.push(pSec("In the educator's words",`"${m.quote}"${p?"\n    "+planLine(p,sectionOf(p,m.quote)):""}`));
-      qs.forEach((q,k)=>{b.push(pSec(q,(m.answers||[])[k]||"Not recorded in the plan"))})});
-    if((scan.gaps||[]).length)b.push(pSec("What the plans do not yet say",scan.gaps.map(g=>"- "+g).join("\n")));
-    if((scan.teamQuestions||[]).length)b.push(pSec("Questions for the team",scan.teamQuestions.map(g=>"- "+g).join("\n")));
-    docs.push({type:"report",acc:"individual",title:`${scan.lensName||LENS.name}, a closer reading`,meta:[["Classrooms",lRoom==="All"?"All":lRoom],["Plans read",RANGE_WORDS[scan.range]||""],["Read by Claude",shortDate(scan.createdAt)]],blocks:b,fields:{}})}
+    if(has(scan.summary))b.push(dLead("Across these weeks",scan.summary));
+    scan.moments.forEach(m=>{const p=plans.get(m.planId);
+      b.push(dQuote(m.quote,[byLine(p),m.language].filter(Boolean).join("  •  ")));
+      qs.forEach((q,k)=>{const a=(m.answers||[])[k];if(has(a))b.push({t:"qa",q,a})});
+      b.push({t:"rule"})});
+    if((scan.gaps||[]).length)b.push(dList("What we could notice next",scan.gaps));
+    if((scan.teamQuestions||[]).length)b.push(dList("Questions for the team",scan.teamQuestions));
+    docs.push({display:true,type:"report",acc:"individual",title:`${scan.lensName||LENS.name}, a closer reading`,meta:[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[scan.range]||""]],blocks:b})}
   return docs;
 }
-function lensPdf(){makePdf(lensDocs(),safeFile(`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}.pdf`))}
+
+/* --- drawing a display page as PDF --- */
+const DP={lead:{fs:17,lh:23},body:{fs:11.5,lh:16.5},quote:{fs:13,lh:18.5},small:{fs:8.6,lh:12},label:{fs:7.6,h:15},title:{fs:13.5,lh:18}};
+function displayAtoms(doc,p,A){
+  const atoms=[];const W=CW,ink=[28,42,34],muted=[96,110,101];
+  const lines=(text,fs,w,style)=>{doc.setFont("helvetica",style||"normal");doc.setFontSize(fs);return clean(text).trim().split(/\n+/).flatMap(par=>par.trim()?doc.splitTextToSize(par.trim(),w):[])};
+  const gap=h=>atoms.push({h,gap:true,draw(){}});
+  const label=text=>{if(!has(text))return;atoms.push({h:DP.label.h,keep:true,draw(y){doc.setFont("helvetica","bold");doc.setFontSize(DP.label.fs);doc.setTextColor(...A.c);doc.setCharSpace(.9);doc.text(clean(text).toUpperCase(),M,y+9);doc.setCharSpace(0)}})};
+  const textLines=(ls,spec,x,color,style,bar)=>ls.forEach(l=>atoms.push({h:spec.lh,draw(y){if(bar){doc.setFillColor(...bar);doc.rect(M,y-1,3,spec.lh+.5,"F")}doc.setFont("helvetica",style||"normal");doc.setFontSize(spec.fs);doc.setTextColor(...color);doc.text(l,x,y+spec.fs*.86)}}));
+  for(const b of p.blocks||[]){
+    if(b.t==="lead"){label(b.label);textLines(lines(b.text,DP.lead.fs,W-16,"bold"),DP.lead,M+14,ink,"bold",A.c);gap(16)}
+    else if(b.t==="text"){label(b.label);textLines(lines(b.text,DP.body.fs,W),DP.body,M,ink);gap(13)}
+    else if(b.t==="quote"){const ls=lines('"'+String(b.text||"").trim()+'"',DP.quote.fs,W-16);ls.forEach((l,i)=>{atoms.push({h:DP.quote.lh,keep:i<ls.length-1||has(b.by),draw(y){doc.setFillColor(...A.t);doc.rect(M,y-1,3,DP.quote.lh+.5,"F");doc.setFont("helvetica","normal");doc.setFontSize(DP.quote.fs);doc.setTextColor(...ink);doc.text(l,M+14,y+DP.quote.fs*.86)}})});
+      if(has(b.by))atoms.push({h:DP.small.lh+2,draw(y){doc.setFillColor(...A.t);doc.rect(M,y-1,3,DP.small.lh+2.5,"F");doc.setFont("helvetica","normal");doc.setFontSize(DP.small.fs);doc.setTextColor(...muted);doc.text(doc.splitTextToSize(clean(b.by),W-16)[0],M+14,y+DP.small.fs*.9)}});gap(12)}
+    else if(b.t==="item"){const tl=lines(b.title,DP.title.fs,W,"bold");tl.forEach(l=>atoms.push({h:DP.title.lh,keep:true,draw(y){doc.setFont("helvetica","bold");doc.setFontSize(DP.title.fs);doc.setTextColor(...ink);doc.text(l,M,y+DP.title.fs*.86)}}));
+      const i0=atoms.length;
+      if(has(b.text))textLines(lines(b.text,DP.body.fs,W),DP.body,M,ink);
+      if(has(b.by))atoms.push({h:DP.small.lh+2,draw(y){doc.setFont("helvetica","normal");doc.setFontSize(DP.small.fs);doc.setTextColor(...muted);doc.text(doc.splitTextToSize(clean(b.by),W)[0],M,y+DP.small.fs*.9+1)}});
+      // a short entry stays whole on one page
+      if(atoms.length-i0<=6)for(let k=i0;k<atoms.length-1;k++)atoms[k].keep=true;
+      gap(13)}
+    else if(b.t==="list"){label(b.label);(b.items||[]).filter(has).forEach((it,i)=>{const ls=lines(it,DP.body.fs,W-18);ls.forEach((l,k)=>atoms.push({h:DP.body.lh,keep:k<ls.length-1,draw(y){doc.setFont("helvetica","normal");doc.setFontSize(DP.body.fs);doc.setTextColor(...ink);if(k===0)doc.text(b.numbered?`${i+1}.`:"•",M+2,y+DP.body.fs*.86);doc.text(l,M+18,y+DP.body.fs*.86)}}));gap(3)});gap(10)}
+    else if(b.t==="qa"){atoms.push({h:13,keep:true,draw(y){doc.setFont("helvetica","bold");doc.setFontSize(8.8);doc.setTextColor(...muted);doc.text(doc.splitTextToSize(clean(b.q),W-14)[0],M+14,y+8.5)}});textLines(lines(b.a,DP.body.fs,W-14),DP.body,M+14,ink);gap(6)}
+    else if(b.t==="sub"){gap(4);atoms.push({h:26,keep:true,draw(y){doc.setFont("helvetica","bold");doc.setFontSize(12.5);doc.setTextColor(...ink);doc.text(clean(b.text),M,y+12);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(M,y+17,M+28,y+17)}})}
+    else if(b.t==="rule"){atoms.push({h:14,gap:true,draw(y){doc.setDrawColor(214,222,216);doc.setLineWidth(.6);doc.line(M,y+3,M+W,y+3)}})}
+    else if(b.t==="web"){atoms.push({h:300,draw(y){webBox(doc,M,y,W,300,b.web,false,A)}});gap(14)}
+  }
+  return atoms;
+}
+function drawDisplay(doc,p,pageAcc){
+  const A=ACC[p.acc||p.type]||ACC.classroom;const atoms=displayAtoms(doc,p,A);
+  const pages=[[]];let y=PG.top1+4;const top=()=>pages.length===1?PG.top1+4:PG.topN+4;
+  for(let i=0;i<atoms.length;i++){const a=atoms[i];
+    // a label, a heading, or the first lines of a quote never sit alone at the foot of a page
+    let need=a.h;for(let k=i;atoms[k]&&atoms[k].keep&&atoms[k+1];k++)need+=atoms[k+1].h;
+    if(y+need>PG.bottom&&pages[pages.length-1].length){pages.push([]);y=top();if(a.gap)continue}
+    if(a.gap&&!pages[pages.length-1].length)continue;
+    pages[pages.length-1].push({a,y});y+=a.h;
+  }
+  pages.forEach((pg,pi)=>{
+    if(pi>0)doc.addPage();
+    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:pages.length};
+    if(pi===0)headerFull(doc,p,A);else headerCont(doc,p,A);
+    pg.forEach(({a,y})=>a.draw(y));
+  });
+}
+function drawAny(doc,p,pageAcc){(p.display?drawDisplay:drawPlan)(doc,p,pageAcc)}
+
+/* --- the same page as a Word file --- */
+async function displayDocx(ch,p,D,A){
+  const {Paragraph,TextRun,BorderStyle,AlignmentType,ImageRun}=D;const ac=hex(A.c),tn=hex(A.t);
+  const run=(text,o)=>new TextRun(Object.assign({text:clean(text),font:"Helvetica",color:"1C2A22",size:23},o||{}));
+  const label=text=>{if(has(text))ch.push(new Paragraph({keepNext:true,spacing:{before:120,after:50},children:[run(String(text).toUpperCase(),{bold:true,size:15,color:ac,characterSpacing:18})]}))};
+  const bar=color=>({left:{style:BorderStyle.SINGLE,size:18,color,space:10}});
+  const paras=text=>clean(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  ch.push(new Paragraph({spacing:{after:40},children:[run("FULTON COMMUNITY SCHOOL & FARM",{bold:true,size:15,color:ac,characterSpacing:30})]}));
+  ch.push(new Paragraph({spacing:{after:80},children:[run(p.title||"",{bold:true,size:44})]}));
+  const meta=(p.meta||[]).filter(r=>has(r[1])).map(r=>`${r[0]} ${r[1]}`).join("   •   ");
+  ch.push(new Paragraph({spacing:{after:240},border:{bottom:{style:BorderStyle.SINGLE,size:12,color:ac,space:6}},children:[run(meta,{size:18,color:"606E65"})]}));
+  for(const b of p.blocks||[]){
+    if(b.t==="lead"){label(b.label);paras(b.text).forEach(t=>ch.push(new Paragraph({spacing:{before:60,after:220,line:440,lineRule:"atLeast"},indent:{left:200},border:bar(ac),children:[run(t,{bold:true,size:34})]})))}
+    else if(b.t==="text"){label(b.label);paras(b.text).forEach(t=>ch.push(new Paragraph({spacing:{after:160,line:290},children:[run(t)]})))}
+    else if(b.t==="quote"){ch.push(new Paragraph({keepNext:has(b.by),spacing:{after:has(b.by)?20:160,line:300},indent:{left:200},border:bar(tn),children:[run('"'+String(b.text||"").trim()+'"',{size:26})]}));
+      if(has(b.by))ch.push(new Paragraph({spacing:{after:180},indent:{left:200},border:bar(tn),children:[run(b.by,{size:17,color:"606E65"})]}))}
+    else if(b.t==="item"){ch.push(new Paragraph({keepNext:true,spacing:{before:60,after:30},children:[run(b.title,{bold:true,size:27})]}));
+      if(has(b.text))ch.push(new Paragraph({keepNext:has(b.by),spacing:{after:30,line:290},children:[run(b.text)]}));
+      ch.push(new Paragraph({spacing:{after:200},children:[run(b.by||"",{size:17,color:"606E65"})]}))}
+    else if(b.t==="list"){label(b.label);(b.items||[]).filter(has).forEach((it,i)=>ch.push(new Paragraph({spacing:{after:70,line:290},indent:{left:360,hanging:360},children:[run((b.numbered?`${i+1}.`:"•")+"\t"+String(it).trim())]})));ch.push(new Paragraph({spacing:{after:100},children:[]}))}
+    else if(b.t==="qa"){ch.push(new Paragraph({keepNext:true,spacing:{after:20},indent:{left:200},children:[run(b.q,{bold:true,size:18,color:"606E65"})]}));paras(b.a).forEach(t=>ch.push(new Paragraph({spacing:{after:110,line:290},indent:{left:200},children:[run(t)]})))}
+    else if(b.t==="sub"){ch.push(new Paragraph({keepNext:true,spacing:{before:200,after:120},children:[run(b.text,{bold:true,size:26})]}))}
+    else if(b.t==="rule"){ch.push(new Paragraph({spacing:{after:160},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:"D6DED8",space:4}},children:[]}))}
+    else if(b.t==="web"){label(b.web.label||"Possible directions");
+      try{const png=await svgToPng(webSvgString(b.web,false,A));ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:200},children:[new ImageRun({data:png,transformation:{width:560,height:348}})]}))}
+      catch(e){(b.web.branches||[]).forEach(x=>ch.push(new Paragraph({spacing:{after:70},indent:{left:360,hanging:360},children:[run("•\t"+[x.name,x.materials].filter(Boolean).join(". "))]})))}}
+  }
+}
 function printsClick(t){
-  if(t.id==="tpdf"){threadsPdf();return true}
-  if(t.dataset.tpdf){const th=threads.get(t.dataset.tpdf);if(th)makePdf([threadDoc(th)],safeFile(`Thread ${th.name}.pdf`));return true}
-  if(t.id==="ppdf-all"){projectsPdf([...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0)));return true}
-  if(t.dataset.ppdf){const x=projects.get(t.dataset.ppdf);if(x)projectsPdf([x]);return true}
-  if(t.id==="lpdf"){lensPdf();return true}
+  const word=t.dataset.word==="1";const out=(docs,name)=>{if(!docs.length)return;if(word)makeDocx(docs,safeFile(name+".docx"));else makePdf(docs,safeFile(name+".pdf"))};
+  if(t.dataset.print==="threads"){out(threadsDocs(),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
+  if(t.dataset.print==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
+  if(t.dataset.print==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
+  if(t.dataset.print==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(projectDoc),`Fulton projects ${mondayOf(new Date())}`);return true}
+  if(t.dataset.print==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x)],`Project ${x.name}`);return true}
+  if(t.dataset.print==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
+  if(t.dataset.print==="lens"){out(lensDocs(),`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`);return true}
   return false;
 }
+// a PDF button with its Word twin
+function printBtns(kind,id,pdfLabel,primary){const d=`data-print="${kind}"${id?` data-id="${id}"`:""}`;return `<button class="btn small${primary?"":" ghost"}" ${d}>${pdfLabel}</button><button class="linkbtn" ${d} data-word="1" aria-label="${pdfLabel.replace(/PDF/,"Word")}">Word</button>`}
 
 /* ---------- Threads and overview ---------- */
 const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
@@ -1966,7 +2045,7 @@ function renderThreads(){
 
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
-    <span class="actions"><button class="btn small ghost" id="tpdf">Download threads PDF</button>${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</span></div>
+    <span class="actions">${printBtns("threads","","Download threads PDF")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</span></div>
     <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"Claude reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks Claude to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
@@ -2081,10 +2160,10 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions"><button class="btn small ghost" data-tpdf="${t.id}">Thread PDF</button><button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button>
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
-      ${t.story?`<button class="btn small" data-tstorypdf="${t.id}">Project story PDF</button><span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
+      ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
@@ -2205,8 +2284,7 @@ async function threadsClick(t){
   if(t.dataset.tstory){const th=threads.get(t.dataset.tstory);
     if(th&&th.story&&!t.dataset.yes){const el=$("#tsrw-"+th.id);if(el){el.innerHTML=`<span class="confirm">Replace the current story? Download its PDF first to keep it. <button class="btn warn small" data-tstory="${th.id}" data-yes="1">Replace it</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}}
     writeStory(th);return true}
-  if(t.dataset.tstorypdf){const th=threads.get(t.dataset.tstorypdf);const ws=[...(th.weeks||[])].sort();
-    makePdf([{type:"story",title:"Project Story, "+th.name,metaA:[th.classroom&&th.classroom+" classroom",(th.groups||[]).join(", ")].filter(Boolean).join(", "),metaB:ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:"",story:th.story,fields:{}}],`Project story ${th.name}.pdf`);return true}
+
   return false;
 }
 document.addEventListener("input",e=>{

@@ -1,6 +1,6 @@
 # Fulton Planning Studio
 
-Weekly curriculum planning for Fulton Community School & Farm. Educators complete the Classroom and Individual Curriculum Plans, upload paper plans to have them transcribed, follow threads across weeks, and download printable PDF or Word forms. Threads, projects, and the lens each download as a printable PDF showing the work itself with no blank or ruled space, since printing, sharing, and discussing this work on paper is part of the process. The Lens page reads the year's plans through one lens, this year Graphic Languages, and gathers moments in educators' own words by classroom and week. Threads the team decides to follow further become projects, which belong to a classroom, can be joined by other classrooms, and can also begin school-wide.
+Weekly curriculum planning for Fulton Community School & Farm. Educators complete the Classroom and Individual Curriculum Plans, upload paper plans to have them transcribed, follow threads across weeks, and download printable PDF or Word forms. Threads, projects, the lens, and project stories each download as a PDF and as a Word file, laid out for display with a few things that matter set large, in educators' own words. No printout names the AI tool. The Lens page reads the year's plans through one lens, this year Graphic Languages, and gathers moments in educators' own words by classroom and week. Threads the team decides to follow further become projects, which belong to a classroom, can be joined by other classrooms, and can also begin school-wide.
 
 ## How it runs
 
