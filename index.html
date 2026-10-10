@@ -1567,26 +1567,33 @@ function projWeeks(x){
   const s=new Set();for(const {t} of projThreads(x))(t.weeks||[]).forEach(w=>s.add(w));projPlans(x).forEach(p=>s.add(p.weekOf));
   const ws=[...s].filter(Boolean).sort();if(!ws.length)return[];const out=[];for(let w=ws[0];w<=ws[ws.length-1]&&out.length<60;w=addDays(w,7))out.push(w);return out;
 }
-function projWeb(x){return {focus:x.question||x.name||"",branches:((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim()||(b.materials||"").trim()),connections:[]}}
+// what a project adds to a thread: the experience behind it, the team's reading of what lies underneath, and the educators' intent
+function projUnder(x){return String(x.underneath||"")}
+function projIntent(x){return x.intent!=null?String(x.intent):String(x.decision?.why||"")}   // earlier projects kept the intent as Why
+function firstLine(v,n){const t=String(v||"").trim().split(/\n/)[0];return t.length>n?t.slice(0,n-3).trim()+"...":t}
+function projEarlier(x,key){return [...((x.earlier&&x.earlier[key])||[])].sort((a,b)=>(b.at||0)-(a.at||0))}
+function projWeb(x){return {focus:firstLine(projUnder(x),90)||x.name||"",branches:((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim()||(b.materials||"").trim()),connections:[]}}
 function roomsText(x){const r=projRooms(x);return r.length?r.join(", "):"School-wide"}
 function openProject(id){projId=id||"";LS.set("fps.proj",projId);projForm=null;view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
 
 function projectStartForm(){
   const f=projForm,t=f.threadId&&threads.get(f.threadId);
   return `<section class="card" id="pform"><div class="lbl">${t?"Start a project from the thread "+esc(t.name):"Start a school-wide project"}</div>
-    <div class="hint">${t?"A project begins when the team decides this thread deserves following further. Record that decision here.":"A school-wide project has no home classroom. Each classroom that takes part joins it, and followed threads can be added as they appear."}</div>
+    <div class="hint">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. ${t?"":"A school-wide project has no home classroom. Each classroom that takes part joins it, and followed threads can be added as they appear."}</div>
+    ${t?`<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">The thread it grows from</b><div>${esc(t.name)}</div>${t.question?`<div class="muted">The children's question there. ${esc(t.question)}</div>`:""}</div>`:""}
     <label class="fld-label">Project name<input type="text" id="pf-name" value="${esc(f.name)}" placeholder="A few words from the children's side"></label>
-    <label class="fld-label">Central question<input type="text" id="pf-question" value="${esc(f.question)}" placeholder="The question underneath what children keep returning to"></label>
+    <label class="fld-label">The experience it grew from<textarea id="pf-exp" rows="2" placeholder="What happened, and what children felt or showed">${esc(f.experience||"")}</textarea></label>
+    <label class="fld-label">What may lie underneath<textarea id="pf-under" rows="2" placeholder="The deeper question or understanding, as a hypothesis. Ex. Perhaps children are working out whether something can go away and still exist">${esc(f.underneath||"")}</textarea></label>
+    <label class="fld-label">Our intent as educators<textarea id="pf-intent" rows="2" placeholder="What we hope children may come to understand, and what we want to learn ourselves">${esc(f.intent||"")}</textarea></label>
     ${t?`<label class="fld-label">Home classroom<select id="pf-home">${CLASSROOMS.map(r=>`<option value="${r}" ${f.home===r?"selected":""}>${r}</option>`).join("")}<option value="" ${!f.home?"selected":""}>School-wide, no home classroom</option></select></label>`:""}
     <label class="fld-label">Who decided<input type="text" id="pf-who" value="${esc(f.who)}" placeholder="Ex. The West team at Monday planning"></label>
-    <label class="fld-label">Why we are following this as a project<textarea id="pf-why" rows="3" placeholder="What the documentation showed, and what the team hopes to understand">${esc(f.why)}</textarea></label>
     <div id="pf-msg"></div>
     <div class="actions"><button class="btn" id="pf-go">Start the project</button><button class="linkbtn" id="pf-cancel">Cancel</button></div></section>`;
 }
 function projectCard(x){
   const ths=projThreads(x),ws=projWeeks(x);
   return `<article class="thread"><div class="secthead"><h3>${esc(x.name)}</h3><span class="status st-${x.status==="active"?"growing":x.status==="resting"?"resting":"closed"}">${PSTATUS[x.status]||"Active"}</span></div>
-    ${x.question?`<div class="q">${esc(x.question)}</div>`:""}
+    ${projUnder(x)?`<div class="q">${esc(firstLine(projUnder(x),220))}</div>`:""}
     <div class="cnt">${[x.home?x.home+" classroom":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
     <div class="actions"><button class="btn small" data-popen="${x.id}">Open project</button></div></article>`;
 }
@@ -1596,7 +1603,7 @@ function renderProjects(){
   const all=[...projects.values()].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   const live=all.filter(p=>p.status!=="closed"),closed=all.filter(p=>p.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classrooms</span><h2 style="margin-top:4px">Projects</h2>
-    <div class="sub">A project grows from a thread the team decides to follow further. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
+    <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
   if(projForm)h+=projectStartForm();
   else h+=`<div class="actions"><button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
   if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
@@ -1626,14 +1633,23 @@ function renderProject(x){
       <div style="margin-top:6px"><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
-    <label class="fld-label">Central question<input type="text" data-pf="question" value="${esc(x.question||"")}" placeholder="The question underneath what children keep returning to"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
   if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea></section>`;
 
-  h+=`<section class="card"><div class="lbl">How we decided to follow it</div>
-    ${dt?`<div class="muted" style="font-size:13.5px">It grew from the thread <button class="linkbtn" data-tsee="${dt.id}">${esc(dt.name)}</button>.</div>`:""}
-    <label class="fld-label">Who decided<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label>
-    <label class="fld-label">Why<textarea data-pd="why" rows="2">${esc(x.decision?.why||"")}</textarea></label></section>`;
+  const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span></div>`).join("")}</div></details>`:""};
+  h+=`<section class="card"><div class="lbl">Where it came from</div>
+    ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${dt.id}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The children's question there. ${esc(dt.question)}</div>`:""}</div>`:""}
+    <label class="fld-label">The experience it grew from<textarea data-pf="experience" rows="2" placeholder="What happened, and what children felt or showed">${esc(x.experience||"")}</textarea></label>
+    <div class="hint">A project usually begins in an experience that mattered to children.</div></section>
+  <section class="card"><div class="lbl">What may lie underneath</div>
+    <div class="hint">The deeper question or understanding the team thinks children are working on. Write it as a hypothesis, and revise it as documentation comes in.</div>
+    <textarea data-pf="underneath" rows="2" placeholder="Ex. Perhaps children are working out whether something can go away and still exist">${esc(projUnder(x))}</textarea>
+    <div class="actions"><button class="linkbtn" data-prev="underneath">Keep this as an earlier reading and write a new one</button></div>${earlierHtml("underneath")}</section>
+  <section class="card"><div class="lbl">Our intent as educators</div>
+    <div class="hint">What we hope children may come to understand, and what we want to learn ourselves. It is held loosely and it changes with the work.</div>
+    <textarea data-pf="intent" rows="2">${esc(projIntent(x))}</textarea>
+    <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
+    <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
   h+=`<section class="card"><div class="lbl">Classrooms</div>
     <div class="hint">${x.home?"The project belongs to its home classroom. Other classrooms can join, each by its own path.":"This is a school-wide project with no home classroom. Each classroom that takes part joins it."}</div>
@@ -1686,15 +1702,15 @@ function renderProject(x){
 let projOpenStory="";
 function startProject(){
   const f=projForm;if(!f)return;const g=id=>($("#"+id)?.value||"").trim();
-  const name=g("pf-name"),question=g("pf-question"),who=g("pf-who"),why=g("pf-why");const t=f.threadId&&threads.get(f.threadId);
+  const name=g("pf-name"),experience=g("pf-exp"),underneath=g("pf-under"),intent=g("pf-intent"),who=g("pf-who");const t=f.threadId&&threads.get(f.threadId);
   const home=t?($("#pf-home")?.value||""):"";
-  const miss=[!name&&"a project name",!who&&"who decided",!why&&"why the team is following it"].filter(Boolean);
-  if(miss.length){Object.assign(f,{name,question,who,why,home});$("#pf-msg").innerHTML=`<span class="nudge">Add ${esc(miss.join(", "))} first.</span>`;return}
+  const miss=[!name&&"a project name",!underneath&&"what may lie underneath",!intent&&"your intent as educators",!who&&"who decided"].filter(Boolean);
+  if(miss.length){Object.assign(f,{name,experience,underneath,intent,who,home});$("#pf-msg").innerHTML=`<span class="nudge">Add ${esc(miss.join(", "))} first.</span>`;return}
   if(t&&projectOfThread(t.id)){toast("That thread is already part of a project.");projForm=null;renderMain();return}
   const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
   const firstWeek=t?([...(t.weeks||[])].sort()[0]||wk):wk;
-  const x={id:uid(),name,question,home,classrooms:home?[{room:home,how:"start",week:firstWeek,by,at:now,note:""}]:[],threads:t?[{id:t.id,by,at:now,week:wk}]:[],
-    decision:{who,why,by,at:now,threadId:t?t.id:""},groups:t?[...(t.groups||[])]:[],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
+  const x={id:uid(),name,experience,underneath,intent,earlier:{underneath:[],intent:[]},home,classrooms:home?[{room:home,how:"start",week:firstWeek,by,at:now,note:""}]:[],threads:t?[{id:t.id,by,at:now,week:wk}]:[],
+    decision:{who,by,at:now,threadId:t?t.id:""},groups:t?[...(t.groups||[])]:[],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
   // a thread followed in another classroom than the home brings its classroom in
   if(t&&t.classroom&&t.classroom!==home)x.classrooms.push({room:t.classroom,how:"",week:wk,by,at:now,note:""});
   saveProject(x);projForm=null;openProject(x.id);toast("Project started.");
@@ -1714,14 +1730,15 @@ async function writeProjectStory(x,label){
   if(!x||projBusy[x.id])return;projBusy[x.id]=true;renderMain();
   const ths=projThreads(x).map(o=>o.t);
   const d=capDigest(digest(projPlans(x)),150000).reverse();
-  const info={name:x.name,central_question:x.question||"",status:PSTATUS[x.status]||"Active",home_classroom:x.home||"none, school-wide",
+  const when=e=>e.map(r=>({date:shortDate(r.at),text:r.text}));
+  const info={name:x.name,the_experience_it_grew_from:x.experience||"",what_may_lie_underneath:projUnder(x),earlier_readings_of_what_lies_underneath:when(projEarlier(x,"underneath")),educators_intent:projIntent(x),earlier_intents:when(projEarlier(x,"intent")),status:PSTATUS[x.status]||"Active",home_classroom:x.home||"none, school-wide",
     classrooms:(x.classrooms||[]).map(c=>({classroom:c.room,week:c.week||"",how_it_joined:c.room===x.home?"where the project began":(PJOIN[c.how]||""),note:c.note||""})),
-    small_groups:x.groups||[],how_the_work_returns_to_the_class:x.returns||"",how_we_decided:{who:x.decision?.who||"",why:x.decision?.why||""},
+    small_groups:x.groups||[],how_the_work_returns_to_the_class:x.returns||"",who_decided:x.decision?.who||"",
     possible_directions:((x.web&&x.web.branches)||[]).filter(b=>b.name||b.materials).map(b=>[b.name,b.materials].filter(Boolean).join(". ")),people_beyond_the_classrooms:x.people||"",team_notes:x.notes||"",summary_of_closure:x.status==="closed"?(x.closure||""):""};
   const prompt=`Write a project story for Fulton Community School & Farm educators to share at a family evening or with colleagues, following the school's project presentation timeline.${label?` This story is for ${label}.`:""}
 Project ${JSON.stringify(info)}
 Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question,classroom:t.classroom,groups:t.groups,weeks:t.weeks,evidence:t.evidence,team_notes:t.notes||""})))}
-Use only what the project, threads, plans, evidence, and notes say. Never invent quotes, children, or events. When more than one classroom takes part, keep each classroom's path distinct and say where they met. Treat possible directions as the educators' hypotheses, never as steps that were completed. When the material gives nothing for a section, write one short sentence naming what educators could add there, beginning with "Add". Write 2 to 4 sentences per section. ${STYLE}
+Use only what the project, threads, plans, evidence, and notes say. Never invent quotes, children, or events. When more than one classroom takes part, keep each classroom's path distinct and say where they met. Treat what may lie underneath, the educators' intent, and the possible directions as hypotheses the team holds, never as facts or as steps that were completed. When earlier readings are given, show how the team's understanding changed. When the material gives nothing for a section, write one short sentence naming what educators could add there, beginning with "Add". Write 2 to 4 sentences per section. ${STYLE}
 Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
 
 Plans, oldest first.
@@ -1735,12 +1752,16 @@ async function projectsClick(t){
   if(t.dataset.popen){openProject(t.dataset.popen);return true}
   if(t.dataset.pback){openProject("");return true}
   if(t.dataset.pstart){const th=threads.get(t.dataset.pstart);if(!th)return true;const ex=projectOfThread(th.id);if(ex){openProject(ex.id);return true}
-    projForm={threadId:th.id,name:th.name||"",question:th.question||"",home:th.classroom||"",who:"",why:""};projId="";view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop();return true}
-  if(t.id==="pstart-school"){projForm={threadId:"",name:"",question:"",home:"",who:"",why:""};renderMain();return true}
+    projForm={threadId:th.id,name:th.name||"",experience:"",underneath:"",intent:"",home:th.classroom||"",who:""};projId="";view="projects";LS.set("fps.view",view);renderNav();renderMain();jumpTop();return true}
+  if(t.id==="pstart-school"){projForm={threadId:"",name:"",experience:"",underneath:"",intent:"",home:"",who:""};renderMain();return true}
   if(t.id==="pf-cancel"){projForm=null;renderMain();return true}
   if(t.id==="pf-go"){startProject();return true}
   if(view!=="projects")return false;
   const x=projId&&projects.get(projId);if(!x)return false;
+  if(t.dataset.prev){const key=t.dataset.prev;const cur=(key==="intent"?projIntent(x):projUnder(x)).trim();
+    if(!cur){toast("Write the current one first.");return true}
+    x.earlier=x.earlier||{};x.earlier[key]=[...(x.earlier[key]||[]),{text:cur,at:Date.now(),by:whoAmI()}];x[key]="";saveProject(x);renderMain();
+    const ta=document.querySelector(`[data-pf="${key}"]`);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}toast("Kept with today's date. Write the new one.");return true}
   if(t.dataset.pg){const g=t.dataset.pg;x.groups=(x.groups||[]).includes(g)?x.groups.filter(v=>v!==g):[...(x.groups||[]),g];saveProject(x);renderMain();return true}
   if(t.dataset.pwadd){x.web=x.web||{branches:[]};x.web.branches=[...(x.web.branches||[]),{name:"",materials:""}];saveProject(x);renderMain();const ins=document.querySelectorAll('[data-pwb$="|name"]');ins[ins.length-1]?.focus();return true}
   if(t.dataset.pwrm!=null){x.web.branches=(x.web.branches||[]).filter((b,i)=>i!==+t.dataset.pwrm);saveProject(x);renderMain();return true}
@@ -1758,7 +1779,7 @@ async function projectsClick(t){
 }
 document.addEventListener("input",e=>{
   const t=e.target;if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
-  if(t.dataset.pf){x[t.dataset.pf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);if(t.dataset.pf==="question"||t.dataset.pf==="name"){const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x))}saveProjectSoon(x);return}
+  if(t.dataset.pf){x[t.dataset.pf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);if(t.dataset.pf==="underneath"||t.dataset.pf==="name"){const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x))}saveProjectSoon(x);return}
   if(t.dataset.pd){x.decision=x.decision||{};x.decision[t.dataset.pd]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x);return}
   if(t.dataset.pcn){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcn);if(c){c.note=t.value;saveProjectSoon(x)}return}
   if(t.dataset.pwb){const [i,k]=t.dataset.pwb.split("|");const b=x.web?.branches?.[+i];if(b){b[k]=t.value;const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x));saveProjectSoon(x)}return}
@@ -2268,7 +2289,7 @@ async function findThreads(){
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, and Small Group plans, and notice when different educators or groups describe the same thread.
 Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, strongest first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
-Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,question:x.question||"",threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
+Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,what_may_lie_underneath:firstLine(projUnder(x),240),threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
 ${STYLE}
 Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": "", "relatedProject": ""}]}
 
