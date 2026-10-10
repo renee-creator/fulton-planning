@@ -2007,14 +2007,16 @@ function findDup(p){
   const sameSlot=x=>!p.importNoDate&&p.type==="classroom"&&x.type==="classroom"&&x.weekOf===p.weekOf&&!!p.classroom&&x.classroom===p.classroom;
   const sameText=x=>{if(mine.size<12)return false;const o=wordSet(planText(x));if(o.size<12)return false;let n=0;for(const w of mine)if(o.has(w))n++;return n/Math.max(mine.size,o.size)>=.85};
   let best=null;
-  for(const x of plans.values()){if(x.id===p.id||x.id==="example"||x.id===p.notDupOf||x.dupOf===p.id)continue;if(sameText(x))return x;if(!best&&sameSlot(x))best=x}
+  for(const x of plans.values()){if(x.id===p.id||x.id==="example"||x.id===p.notDupOf||x.dupOf===p.id||x.id===p.prevId||x.prevId===p.id)continue;if(sameText(x))return x;if(!best&&sameSlot(x))best=x}
   return best;
 }
 let dupSweepDone=false;
 // the director's page checks saved plans once per visit, so duplicates from before the upload check get flagged too
 function sweepDuplicates(){
   if(!isDirector())return;let n=0;
-  for(const p of [...plans.values()]){if(p.id==="example"||(p.dupOf&&plans.has(p.dupOf)))continue;const d=findDup(p);if(d&&!(d.dupOf===p.id)){p.dupOf=d.id;persist(p);n++}}
+  for(const p of [...plans.values()]){if(p.id==="example"||(p.dupOf&&plans.has(p.dupOf)))continue;
+    if(p.dupOf){delete p.dupOf;delete p.importDup;persist(p)}
+    const d=findDup(p);if(d&&!(d.dupOf===p.id)){p.dupOf=d.id;persist(p);n++}}
   if(n){toast(`${n} saved plan${n>1?"s look like duplicates":" looks like a duplicate"}. Find them in All plans.`);renderList();if(view==="threads")renderMain()}
 }
 function isGroupPlan(p){return p.type==="smallgroup"||(p.type==="individual"&&(p.focus==="smallgroup"||(p.groups||[]).length>0))}
