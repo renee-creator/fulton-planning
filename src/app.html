@@ -68,6 +68,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
+.tlink{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13.5px;color:var(--muted)}
+.tlink select{width:auto;max-width:100%;flex:1 1 220px}
 .linkbtn{background:none;border:none;padding:0;color:var(--moss);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13.5px}
 .btn{border:1px solid var(--moss);background:var(--moss);color:var(--paper);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px}
 .btn:hover{filter:brightness(1.08)}
@@ -450,7 +452,7 @@ async function boot(){
     },()=>setConn("Offline. Changes stay on this device"));
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name);renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
-    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if(view==="threads"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(view==="threads"&&!scanBusy&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
@@ -606,7 +608,7 @@ function renderMain(){
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
-  const th=p.threadId&&threads.get(p.threadId);if(th)h+=threadRef(th);
+  h+=threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
   h+=dupHtml(p);
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
@@ -898,6 +900,8 @@ document.addEventListener("click",async e=>{
   const p=currentId&&plans.get(currentId);
   if(t.dataset.astatus)aStatus=t.dataset.astatus;
   if(t.dataset.view){view=t.dataset.view;LS.set("fps.view",view);renderNav();renderMain();return}
+  if(t.dataset.tunlink){if(p)unlinkThread(p,t.dataset.tunlink);return}
+  if(t.dataset.tsee){const id=t.dataset.tsee;view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop();return}
   if(await threadsClick(t))return;
   if(await importClick(t))return;
   if(t.dataset.new){view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
@@ -970,6 +974,7 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
   const t=e.target;const p=currentId&&plans.get(currentId);if(!p)return;
   if(t.id==="m-week"&&t.value){p.weekOf=mondayOf(parseIso(t.value));delete p.importNoDate;week=p.weekOf;persist(p);renderAll();return}
+  if(t.id==="m-thread"){if(t.value)linkThread(p,t.value);return}
   if(t.id==="m-room"){p.classroom=t.value;LS.set("fps.myroom",t.value);if(p.group&&!GROUPS.some(g=>g.name===p.group&&g.room===t.value))p.group="";persist(p);renderList();renderMain();return}
   if(t.id==="m-group"){p.group=t.value;const g=GROUPS.find(g=>g.name===t.value);if(g&&!p.educator){p.educator=g.educator}persist(p);renderList();renderMain();return}
 });
@@ -1021,7 +1026,8 @@ function carryForward(p){
     // last week's final remarks are what prompted continuing, so they open this week's observation rationale
     const fr=String(p.fields.remarks||"").trim();if(fr){np.fields.observation=fr;np.obsFrom=fr}}
   if(p.type==="smallgroup"){np.fields.thread=p.fields.thread||""}
-  if(p.threadId)np.threadId=p.threadId;
+  {const cs=planThreads(p);const started=cs.find(c=>c.how==="started");if(started)np.threadId=started.t.id;
+    const links=cs.filter(c=>c.how!=="started").map(c=>({id:c.t.id,by:(c.link&&c.link.by)||whoAmI(),at:Date.now(),carried:true}));if(links.length)np.threadLinks=links}
   if(p.type==="classroom"){np.web=JSON.parse(JSON.stringify(p.web||blankWeb()))}
   plans.set(np.id,np);persist(np);currentId=np.id;week=nw;renderAll();jumpTop();
   toast("Next week's plan is ready. Last week's reflection is shown at the top.");
@@ -1204,6 +1210,9 @@ function headerFull(doc,p,A){
   rows.forEach(([l,v],i)=>{const yy=my+19+i*17;doc.setFont("helvetica","bold");doc.setFontSize(6.6);doc.setTextColor(...A.c);doc.setCharSpace(.9);doc.text(l.toUpperCase(),mx+12,yy);doc.setCharSpace(0);
     if(v){doc.setFont("helvetica","bold");let vs=9.4;doc.setFontSize(vs);while(vs>7&&doc.getTextWidth(clean(v))>mw-80){vs-=.2;doc.setFontSize(vs)}doc.setTextColor(28,42,34);const vv=doc.splitTextToSize(clean(v),mw-80)[0];doc.text(vv,mx+mw-12,yy,{align:"right"})}
     else{doc.setDrawColor(...A.c);doc.setLineWidth(.5);doc.line(mx+76,yy+1.5,mx+mw-12,yy+1.5)}});
+  const thl=threadsLine(p);
+  if(thl){doc.setFont("helvetica","bold");doc.setFontSize(6.6);doc.setTextColor(...A.c);doc.setCharSpace(.9);const lab="FOLLOWING THE THREAD";doc.text(lab,M,104);const lw=doc.getTextWidth(lab)+lab.length*.9+8;doc.setCharSpace(0);
+    doc.setFont("helvetica","normal");doc.setFontSize(8.6);doc.setTextColor(60,74,66);doc.text(doc.splitTextToSize(clean(thl),CW-lw)[0],M+lw,104)}
   doc.setDrawColor(...A.c);doc.setLineWidth(1.4);doc.line(M,112,PW-M,112);
 }
 function headerCont(doc,p,A){
@@ -1294,6 +1303,8 @@ async function makeDocx(list,filename){
     const rows=metaRows(p);
     ch.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:rows.map(([l,v])=>new TableCell({shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},margins:{top:80,bottom:80,left:140,right:140},borders:{top:none,bottom:none,left:none,right:{style:BorderStyle.SINGLE,size:12,color:"FFFFFF"}},
       children:[new Paragraph({children:[new TextRun({text:l.toUpperCase(),bold:true,size:13,color:ac,characterSpacing:16,font:"Helvetica"})]}),new Paragraph({children:[new TextRun({text:v?clean(v):" ",bold:true,size:20,color:"1C2A22",font:"Helvetica"})]})]}))})]}));
+    const tline=threadsLine(p);
+    if(tline)ch.push(new Paragraph({spacing:{before:100,after:0},children:[new TextRun({text:"FOLLOWING THE THREAD   ",bold:true,size:13,color:ac,characterSpacing:16,font:"Helvetica"}),new TextRun({text:clean(tline),size:17,color:"3C4A42",font:"Helvetica"})]}));
     ch.push(new Paragraph({spacing:{after:160},border:{bottom:{style:BorderStyle.SINGLE,size:12,color:ac,space:4}},children:[]}));
     const textParas=t=>{const parts=clean(t||"").split(/\n+/).map(x=>x.trim()).filter(Boolean);return parts.length?parts.map(x=>new Paragraph({spacing:{after:60},children:[new TextRun({text:x,size:20,font:"Helvetica",color:"22302A"})]})):[new Paragraph({children:[new TextRun({text:" ",size:20})]})]};
     const labelPara=l=>new Paragraph({children:[new TextRun({text:clean(l).toUpperCase(),bold:true,size:14,color:ac,characterSpacing:16,font:"Helvetica"})]});
@@ -1305,7 +1316,7 @@ async function makeDocx(list,filename){
     const blocks=planBlocks(p);
     // size each text row so the boxes fill each page, the same way the PDF does
     const estLines=(t,frac)=>{const per=Math.max(20,Math.floor(96*frac));return clean(t||"").split(/\n+/).reduce((n,x)=>n+Math.max(1,Math.ceil(x.length/per)),0)};
-    {let pageNo=0,group=[];const flushG=()=>{const avail=pageNo===0?11000:12800;let fixed=0,sumW=0;
+    {let pageNo=0,group=[];const flushG=()=>{const avail=pageNo===0?11000-(tline?330:0):12800;let fixed=0,sumW=0;
         group.forEach(b=>{if(b.t==="sub")fixed+=420;else if(b.t==="web")fixed+=6300;else{fixed+=520;const nat=Math.max(2,...(b.t==="cols"?b.cols.map(c=>estLines(c.text,c.w||1/b.cols.length)):[estLines(b.text,1)]))*290+200;b._nat=nat;fixed+=nat;sumW+=b.w||0}});
         const extra=Math.max(0,avail-fixed);group.forEach(b=>{if(b._nat!=null)b._h=Math.round(b._nat+(sumW?extra*(b.w||0)/sumW:0))});group=[];pageNo++};
       blocks.forEach(b=>{if(b.t==="break")flushG();else group.push(b)});flushG()}
@@ -1486,12 +1497,14 @@ function evidenceHtml(t){
 }
 function threadCard(t,isTracked,weeks,scanIdx,scan){
   const on=new Set(t.weeks||[]);
-  let h=`<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
+  const linked=isTracked&&t.id?threadLinkedPlans(t):[];linked.forEach(p=>on.add(p.weekOf));
+  let h=`<article class="thread"${isTracked&&t.id?` id="th-${t.id}"`:""}><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
   if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
   h+=originHtml(t,isTracked);
   if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" classroom",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
   h+=evidenceHtml(t);
+  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
@@ -1516,7 +1529,51 @@ function stoppedCard(t){
     <details><summary class="chiprow-label" style="cursor:pointer">Quotes and notes</summary><div style="display:grid;gap:8px;margin-top:8px">${evidenceHtml(t)}${t.notes?`<div class="muted" style="font-size:13.5px">${esc(t.notes)}</div>`:""}</div></details>
     <div class="actions"><button class="btn small" data-trefollow="${t.id}">Follow again</button><span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${t.id}">Remove permanently</button>`:""}</span></div></article>`;
 }
-function threadRef(t){return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}${(t.evidence||[]).slice(-3).map(e=>`<div class="muted">“${esc(e.text)}” ${fmtDate(e.week)}</div>`).join("")}</section>`}
+/* ---------- Plans connected to followed threads ---------- */
+// a plan is connected to a followed thread when it was started from it, when the thread quotes it, or when an educator connected it by hand
+const PLAN_TYPES=["classroom","individual","smallgroup"];
+function planThreads(p){
+  if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return[];
+  const off=new Set(p.threadOff||[]),out=[],seen=new Set();
+  const add=(t,how,link)=>{if(!t||t.unfollowed||off.has(t.id)||seen.has(t.id))return;seen.add(t.id);out.push({t,how,link})};
+  if(p.threadId)add(threads.get(p.threadId),"started");
+  for(const l of p.threadLinks||[])add(threads.get(l.id),"hand",l);
+  for(const t of threads.values())if((t.evidence||[]).some(e=>e.planId===p.id))add(t,"quoted");
+  return out;
+}
+// plans educators tied to a thread themselves, beyond the ones the thread already quotes
+function threadLinkedPlans(t){
+  const ev=new Set((t.evidence||[]).map(e=>e.planId));
+  return [...plans.values()].filter(p=>p.id!=="example"&&!ev.has(p.id)&&!(p.threadOff||[]).includes(t.id)&&(p.threadId===t.id||(p.threadLinks||[]).some(l=>l.id===t.id))).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
+}
+function threadsLine(p){return planThreads(p).map(c=>c.t.name).filter(Boolean).join("  \u2022  ")}
+function threadsNoteHtml(p){
+  if(!p||p.id==="example")return"";
+  const cs=planThreads(p);const on=new Set(cs.map(c=>c.t.id));
+  const rest=[...threads.values()].filter(t=>t&&!t.unfollowed&&!on.has(t.id)).sort((a,b)=>((b.classroom===p.classroom)-(a.classroom===p.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  let h=cs.map(({t,how,link})=>{
+    const why=how==="started"?"This plan was started from the thread.":how==="quoted"?"The thread quotes this plan.":link.carried?"Carried forward from last week's plan.":`Connected by ${esc(link.by||"an educator")}${link.at?" on "+shortDate(link.at):""}.`;
+    const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} classroom.`:"";
+    return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}
+      ${(t.evidence||[]).filter(e=>e.planId!==p.id).slice(cs.length>1?-1:-3).map(e=>`<div class="muted">\u201c${esc(e.text)}\u201d ${fmtDate(e.week)}</div>`).join("")}
+      <div class="muted">${why}${elsewhere}</div>
+      <div class="actions"><button class="linkbtn" data-tsee="${t.id}">See the thread</button><button class="linkbtn" data-tunlink="${t.id}">Disconnect from this plan</button></div></section>`}).join("");
+  if(rest.length)h+=`<label class="tlink">${cs.length?"Connect another thread we are following":"Connect this plan to a thread we are following"}<select id="m-thread"><option value="">Choose a thread</option>${rest.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" \u00b7 "+esc(t.classroom):""}</option>`).join("")}</select></label>`;
+  return h;
+}
+function linkThread(p,id){
+  const t=threads.get(id);if(!t||!p)return;
+  p.threadLinks=(p.threadLinks||[]).filter(l=>l.id!==id);p.threadLinks.push({id,by:whoAmI(),at:Date.now()});
+  if(p.threadOff)p.threadOff=p.threadOff.filter(x=>x!==id);
+  persist(p);renderMain();toast(`Connected to the thread ${t.name}.`);
+}
+function unlinkThread(p,id){
+  if(!p)return;const t=threads.get(id);
+  p.threadLinks=(p.threadLinks||[]).filter(l=>l.id!==id);if(p.threadId===id)p.threadId="";
+  // a plan the thread quotes stays quoted there, so remember that this plan should not show the note
+  if(t&&(t.evidence||[]).some(e=>e.planId===p.id))p.threadOff=[...new Set([...(p.threadOff||[]),id])];
+  persist(p);renderMain();toast("Disconnected. Choose the thread from the list to connect it again.");
+}
 
 function saveThread(t){t.updatedAt=Date.now();threads.set(t.id,t);
   if(db)db.doc("threads/"+t.id).set(JSON.parse(JSON.stringify(t))).catch(()=>toast("Could not save the thread. Check your connection."));
@@ -1571,6 +1628,7 @@ function digest(ps){
   return ps.sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="smallgroup"?(p.group||"")+" group":p.type==="individual"?(p.educator||""):"team",text:{}};
     (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,450)});
     if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...p.web.branches.map(b=>b.name)].filter(Boolean).join("; ");
+    const fol=planThreads(p).filter(c=>c.how!=="quoted").map(c=>c.t.id);if(fol.length)o.follows=fol;
     return o}).filter(o=>Object.keys(o.text).length);
 }
 function capDigest(d,max){const out=[];let n=0;for(const x of d){const l=JSON.stringify(x).length+1;if(n+l>max)break;out.push(x);n+=l}return out}
@@ -1583,7 +1641,7 @@ async function findThreads(){
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classrooms":"the "+tRoom+" classroom"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, and Small Group plans, and notice when different educators or groups describe the same thread.
 Rules. Use only what the plans say. Never invent children, quotes, or events. Report threads supported by at least two plans or two separate weeks. You may add up to two emerging threads seen only once. Return at most 8 threads, strongest first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
-Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id.
+Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
 ${STYLE}
 Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words from the children's side, "question": the question underneath what children keep returning to, phrased as a child might ask it, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials], "trackedId": ""}]}
 
@@ -1608,7 +1666,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
 }
 async function writeStory(th){
   if(!th)return;storyBusy[th.id]=true;renderMain();
-  const src=(th.evidence||[]).map(e=>plans.get(e.planId)).filter(Boolean);
+  const src=[...(th.evidence||[]).map(e=>plans.get(e.planId)),...threadLinkedPlans(th)].filter(Boolean);
   const uniq=[...new Map(src.map(p=>[p.id,p])).values()].sort((a,b)=>a.weekOf.localeCompare(b.weekOf));
   const d=digest(uniq).reverse();
   const prompt=`Write a project story for Fulton Community School & Farm educators to share at a family evening or with colleagues, following the school's project presentation timeline. The project grew from this thread.
