@@ -20,7 +20,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 30 * 1024 * 1024;
 const FLUSH_DELAY_MS = Number(process.env.FLUSH_DELAY_MS) || 15000;   // typing is gathered into one GitHub save
-const UPSTREAM_TIMEOUT_MS = 180000;
+const UPSTREAM_TIMEOUT_MS = 300000;
 const READS_PER_HOUR = Number(process.env.READS_PER_HOUR) || 800;      // whole-school scans send one request per plan
 const CAREFUL_PER_HOUR = Number(process.env.CAREFUL_PER_HOUR) || 400;
 const READS_AT_ONCE = 6;
@@ -246,7 +246,8 @@ async function askClaude(content, careful) {
   const lane = careful ? 'careful' : 'quick'; const list = careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {
     const model = list[modelAt[lane]];
-    const payload = Object.assign({ model, max_tokens: 8000, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {});
+    // careful requests (finding threads, project stories, scans) can write long answers, so they get more room
+    const payload = Object.assign({ model, max_tokens: careful ? 20000 : 8000, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {});
     const r = await postAnthropic(payload);
     let retired = false; try { retired = r.status === 404 && JSON.parse(r.text).error.type === 'not_found_error'; } catch (e) {}
     if (retired && modelAt[lane] < list.length - 1) { log('Model ' + model + ' is not available, switching'); modelAt[lane]++; continue; }
@@ -397,7 +398,7 @@ async function handle(req, res) {
       if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '');
+      log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
       json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens' });
     } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'Could not reach Claude. ' + e.message); }
     finally { readsRunning--; }
