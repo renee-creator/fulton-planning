@@ -348,7 +348,9 @@ async function handle(req, res) {
     if (stopping) { err(req, res, 503, 'The server is restarting. Your change was not saved yet, so type it again in a minute.'); return; }
     const { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
-    if (((kind === 'settings' && id !== 'educators') || ((kind === 'plans' || kind === 'threads') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : 'Only the director can delete. Ask Renee if this needs to be removed.'); return; }
+    // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
+    if (((kind === 'settings' && id !== 'educators') || (kind === 'threads' && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    if (kind === 'plans' && op === 'delete') log('Plan deleted by', me.name, id);
     const map = store.recs[kind]; const cur = map.get(id);
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true }); return; }
