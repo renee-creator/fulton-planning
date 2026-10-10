@@ -148,7 +148,7 @@
     for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b, opts.maxSide||1800)}});
     const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
     content.push({type:"text",text});
-    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex"}, opts.signal);
+    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex", purpose:opts.purpose||""}, opts.signal);
     return j;
   }
   const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
