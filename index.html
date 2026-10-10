@@ -728,6 +728,7 @@ function renderMain(){
         <button class="btn ghost" id="carry">Carry forward to next week</button>
       </div>
     </div>
+    <div id="carrymsg"></div>
     <div class="meta">
       <label>Week of<input type="date" id="m-week" value="${p.weekOf}"></label>
       <label>Classroom<select id="m-room"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${p.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
@@ -934,7 +935,7 @@ document.addEventListener("click",async e=>{
   if(await importClick(t))return;
   if(t.dataset.new){view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}}else jumpTop();return}
-  if(t.dataset.jump&&!t.dataset.open){const ta=$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
+  if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
   if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();return}
   if(t.id==="prevwk"||t.id==="nextwk"){week=addDays(week,t.id==="prevwk"?-7:7);currentId=null;renderAll();return}
   if(t.id==="blanks"){makePdf(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.pdf");return}
@@ -1028,11 +1029,18 @@ function flowRemarks(p){
     pendingSaves.add(x.id);dirty=true;
   }
 }
+function missingSections(p){
+  const out=FORMS[p.type].fields.filter(f=>!String(p.fields?.[f.k]||"").trim()).map(f=>({k:f.k,label:f.label}));
+  if(p.type==="classroom"&&!String(p.web?.focus||"").trim()&&!(p.web?.branches||[]).some(b=>b.name))out.push({k:"web",label:"Curriculum web"});
+  return out;
+}
 function carryForward(p){
   const nw=addDays(p.weekOf,7);
-  const ak=AFTER_KEY[p.type];if(ak&&!String(p.fields?.[ak]||"").trim())toast("Remember to write this week's reflection too. It is flagged until it is done.");
   const exists=[...plans.values()].find(x=>x.prevId===p.id);
   if(exists){currentId=exists.id;week=exists.weekOf;renderAll();toast("Next week's plan already exists. Opened it.");return}
+  // a plan is carried forward only once every section is written, Final remarks included, since they are what prompts the next week
+  const miss=missingSections(p);
+  if(miss.length){const el=$("#carrymsg");if(el){el.innerHTML=`<section class="ref" style="background:var(--clay-soft);margin-top:10px"><b style="color:var(--clay)">This plan is not complete, so it cannot be carried forward yet</b><div>Finish ${miss.length===1?"this section":"these "+miss.length+" sections"} first.</div><div class="actions">${miss.map(m=>`<button class="linkbtn" data-jump="${m.k}">${esc(m.label)}</button>`).join("")}</div></section>`;el.scrollIntoView({block:"nearest"})}return}
   const np=newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
   if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`;
     // last week's final remarks are what prompted continuing, so they open this week's observation rationale
