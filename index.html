@@ -243,6 +243,10 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
           <button class="newbtn" id="importbtn" style="border-style:dashed"><b>Upload a plan or photo</b><span>Transcribe a paper, PDF, or Word plan into the app</span></button>
         </div>
       </section>
+      <section class="panel" id="fbpanel" hidden>
+        <h3 style="color:var(--moss)" id="fbtitle">Feedback from the director</h3>
+        <div class="due" id="fblist"></div>
+      </section>
       <section class="panel" id="duepanel" hidden>
         <h3 style="color:var(--clay)">Final remarks due</h3>
         <div class="due" id="due"></div>
@@ -694,6 +698,36 @@ const STATUS={draft:"Draft",ready:"Ready for review",reviewed:"Reviewed"};
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
 function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(m&&mine.length?mine:all).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+/* Director feedback. Only the director writes it, the educator is told when a note is waiting, and can reply under it. */
+const myName=()=>(window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"")||me()||"";
+const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
+const replyNew=p=>!!(p.feedbackReply&&String(p.feedbackReply.text||"").trim()&&(p.feedbackReply.at||0)>(p.replySeenAt||0));
+function isMine(p,m){m=(m||"").toLowerCase();if(!m)return true;return (p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)}
+function renderFeedbackPanel(){
+  const el=$("#fblist"),panel=$("#fbpanel");if(!el)return;
+  const dir=isDirector();const m=me();
+  const list=[...plans.values()].filter(p=>p.id!=="example"&&(dir?replyNew(p):fbNew(p)&&isMine(p,m))).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
+  panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
+  $("#fbtitle").textContent=dir?"Replies to your feedback":"Feedback from the director";
+  const label=p=>p.type==="classroom"?(p.classroom||"Classroom")+" team":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
+  el.innerHTML=list.slice(0,6).map(p=>`<button class="item" data-open="${p.id}" data-jump="fb"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${dir?", from "+esc(p.feedbackReply.by||"an educator"):""}</span></span><span class="status" style="color:var(--moss);border-color:var(--moss)">New</span></button>`).join("")+(list.length>6?`<div class="cnt">${list.length-6} more</div>`:"");
+}
+function feedbackHtml(p){
+  const fb=String(p.feedback||"").trim();const rep=p.feedbackReply&&String(p.feedbackReply.text||"").trim()?p.feedbackReply:null;
+  const when=ms=>ms?shortDate(ms):"";
+  if(isDirector())return `<section class="review" id="fbsec"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
+    <textarea id="feedback" rows="2" placeholder="Notes from review. The educator is told a note is waiting. Left off the printed form.">${esc(p.feedback)}</textarea>
+    ${fb&&p.feedbackAt?`<span class="cnt">Written by ${esc(p.feedbackBy||"the director")} on ${when(p.feedbackAt)}. ${(p.feedbackSeenAt||0)>=p.feedbackAt?"Seen by "+esc(p.feedbackSeenBy||"the educator")+" on "+when(p.feedbackSeenAt)+".":"Not opened by an educator yet."}</span>`:""}
+    ${rep?`<div class="ref" style="background:var(--moss-soft)"><b style="color:var(--moss)">Reply from ${esc(rep.by||"the educator")}, ${when(rep.at)}</b><div style="white-space:pre-wrap">${esc(rep.text)}</div></div>`:""}</section>`;
+  if(!fb)return `<section class="review" id="fbsec"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div><div class="muted" style="font-size:14px">No feedback from the director yet.</div></section>`;
+  return `<section class="review" id="fbsec"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
+    <div class="ref" style="background:var(--moss-soft)"><b style="color:var(--moss)">From ${esc(p.feedbackBy||"the director")}${p.feedbackAt?", "+when(p.feedbackAt):""}</b><div style="white-space:pre-wrap">${esc(fb)}</div></div>
+    <label class="fld-label">Your reply, optional<textarea id="fbreply" rows="2" placeholder="Answer or ask a question. The director sees it with this plan.">${esc(rep?.text||"")}</textarea></label></section>`;
+}
+function markFeedbackSeen(p){
+  if(isDirector()){if(replyNew(p)){p.replySeenAt=Date.now();persist(p);renderFeedbackPanel()}return}
+  if(fbNew(p)&&isMine(p,me())){p.feedbackSeenAt=Date.now();p.feedbackSeenBy=myName()||"An educator";persist(p);renderFeedbackPanel()}
+}
 function renderDue(){
   const el=$("#due"),panel=$("#duepanel");if(!el)return;const {list,mineOnly,total}=dueList();
   panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
@@ -704,7 +738,7 @@ function renderDue(){
 }
 function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||p.classroom===roomFilter))}
 function renderList(){
-  pruneEmpty();renderDue();
+  pruneEmpty();renderDue();renderFeedbackPanel();
   const ps=weekPlans();
   const order={classroom:0,smallgroup:1,individual:2};
   let html="";
@@ -773,12 +807,12 @@ function renderMain(){
   if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's classroom newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
-  h+=`<section class="review"><div class="lbl" style="font-family:var(--display);font-size:18px">Director feedback</div>
-    <textarea id="feedback" rows="2" placeholder="Notes from review. Stays in the app and is left off the printed form.">${esc(p.feedback)}</textarea></section>
+  h+=feedbackHtml(p)+`
     <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
   $("#main").querySelectorAll("textarea").forEach(autoGrow);
   if(F.web)drawWebPreview(p);
+  setTimeout(()=>{if(currentId===p.id&&view==="plans")markFeedbackSeen(p)},800);
 }
 /* Individual and small group plans flow into the Classroom plan. Educators write their Individual plans on Monday, then the team writes the Classroom plan with them in view. */
 const eduKey=x=>String(x||"").trim().toLowerCase();
@@ -1048,7 +1082,7 @@ document.addEventListener("click",async e=>{
   if(await threadsClick(t))return;
   if(await importClick(t))return;
   if(t.dataset.new){view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
-  if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}}else jumpTop();return}
+  if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
   if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();return}
   if(t.id==="prevwk"||t.id==="nextwk"){week=addDays(week,t.id==="prevwk"?-7:7);currentId=null;renderAll();return}
@@ -1105,7 +1139,8 @@ document.addEventListener("input",e=>{
   if(t.id==="me"){LS.set("fps.me",t.value);renderDue();return}
   const p=currentId&&plans.get(currentId);if(!p)return;
   if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
-  if(t.id==="feedback"){p.feedback=t.value;autoGrow(t);persist(p);return}
+  if(t.id==="feedback"){if(!isDirector())return;p.feedback=t.value;p.feedbackBy=myName()||"The director";p.feedbackAt=Date.now();autoGrow(t);persist(p);return}
+  if(t.id==="fbreply"){const v=t.value;p.feedbackReply={text:v,by:myName()||"An educator",at:Date.now()};autoGrow(t);persist(p);return}
   if(t.id==="f-where"){p.where=t.value;persist(p);renderList();return}
   if(t.id==="family"){p.familyUpdate=t.value;autoGrow(t);persist(p);return}
   if(t.id==="m-ed"){p.educator=t.value;persist(p);renderList();return}
