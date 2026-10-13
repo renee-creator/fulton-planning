@@ -277,6 +277,8 @@ function readBody(req) {
   });
 }
 let readTimes = []; let readsRunning = 0; let stopping = false;
+const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
+function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot() {
   const out = {}; for (const k of KINDS) { out[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted) out[k][id] = r.doc; }
   return out;
@@ -309,11 +311,16 @@ async function handle(req, res) {
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
     const o = store.originals.get(id);
     if (!o || !ID_RE.test(id)) { send(req, res, 404, { 'Content-Type': 'text/plain' }, 'Not found'); return; }
-    const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${o.sha}`);
-    if (b.status !== 200) { send(req, res, 502, { 'Content-Type': 'text/plain' }, 'Could not load the file from GitHub.'); return; }
+    // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
+    let buf = fileCache.get(id);
+    if (!buf) {
+      const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${o.sha}`);
+      if (b.status !== 200) { send(req, res, 502, { 'Content-Type': 'text/plain' }, 'Could not load the file from GitHub.'); return; }
+      buf = Buffer.from(b.json.content, 'base64'); cacheFile(id, buf);
+    } else { fileCache.delete(id); fileCache.set(id, buf); }
     const ext = id.split('.').pop().toLowerCase();
     const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
-    send(req, res, 200, { 'Content-Type': type, 'Cache-Control': 'private, max-age=3600' }, Buffer.from(b.json.content, 'base64'));
+    send(req, res, 200, { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' }, buf);
     return;
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
@@ -381,11 +388,11 @@ async function handle(req, res) {
     const buf = Buffer.from(body.data, 'base64');
     if (buf.length > 15 * 1024 * 1024) { err(req, res, 413, 'That file is larger than 15 MB. Save it smaller or as fewer pages.'); return; }
     const id = crypto.randomBytes(6).toString('hex') + '-' + name.replace(/^[^a-z0-9]+/, '');
-    const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/originals/${id}`, { message: `Add original form by ${me.name}`, content: buf.toString('base64'), branch: store.branch });
+    const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/originals/${id}`, { message: `Add ${/^moment/.test(name) ? 'moment photo' : 'original form'} by ${me.name}`, content: buf.toString('base64'), branch: store.branch });
     if (isRateLimit(r)) { err(req, res, 429, 'GitHub is busy. Wait a minute and try again.'); return; }
     if (r.status === 401 || r.status === 403) { store.saveError = r.status === 401 ? KEY_PROBLEM : KEY_NO_WRITE; err(req, res, 503, store.saveError); return; }
     if (r.status !== 201 && r.status !== 200) { err(req, res, 502, 'GitHub would not store the file. ' + ((r.json && r.json.message) || r.status)); return; }
-    store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length });
+    store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length }); cacheFile(id, buf);
     json(req, res, 200, { id, sizeBytes: buf.length }); return;
   }
   if (path === '/api/read') {

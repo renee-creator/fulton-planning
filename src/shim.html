@@ -30,7 +30,9 @@
   const SERVER= local? want : DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
   const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
-  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", wroteAt:{}};
+  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
+  // a photo link carries a key that lasts twelve hours, so it is renewed only after six, and pictures already loaded are not fetched again
+  function takeFileKey(k){ if(k && (!Store.fileKey || Date.now()-Store.fileKeyAt>6*36e5)){ Store.fileKey=k; Store.fileKeyAt=Date.now(); } }
   window.FP_HOSTED=true;
   window.FP_NAME=()=>Auth.name||"";
   window.FP_DIRECTOR=()=>!!Auth.director;
@@ -56,7 +58,7 @@
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -73,7 +75,7 @@
       for(const [kind,docs] of Object.entries(j.changes||{})) for(const [id,doc] of Object.entries(docs)){
         if((Store.wroteAt[kind+"/"+id]||0)>=sent) continue;   // this browser saved it after the check left, so its copy is newer
         any=true; Store.data[kind]=Store.data[kind]||{}; if(doc) Store.data[kind][id]=doc; else delete Store.data[kind][id]; }
-      if(j.rev>Store.rev) Store.rev=j.rev; if(j.fileKey) Store.fileKey=j.fileKey; saveBanner(j.saveError||j.saveWarn, !j.saveError); if(any) notify();
+      if(j.rev>Store.rev) Store.rev=j.rev; takeFileKey(j.fileKey); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(any) notify();
     }catch(e){} finally{ polling=false; }
   }
 
@@ -157,6 +159,9 @@
   });
   const downloads={ async save({filename,data}){ const blob=data instanceof Blob? data : new Blob([data]); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); return {status:"saved"}; } };
   const caps={db,user,sample,downloads};
+  // a photo kept with a moment is stored beside the records, and shown or printed from there
+  window.FP_KEEP_ORIGINAL=async function(blob,name){ const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data}); return j.id; };
+  window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
   window.claude={ use:async(name)=>{ await Store.ready; return caps[name]||null; } };
   window.addEventListener("pagehide",()=>{ try{ if(Auth.token) navigator.sendBeacon && fetch(SERVER+"/api/save-now",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+Auth.token},body:"{}"}); }catch(e){} });
 })();
