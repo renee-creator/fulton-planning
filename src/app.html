@@ -194,6 +194,14 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
 .thread.flash{box-shadow:0 0 0 2px var(--marigold);transition:box-shadow .3s}
+.nf-photo{margin:0 0 10px;border-radius:10px;overflow:hidden;background:var(--bg);text-align:center}
+.nf-photo img{display:block;margin:0 auto;max-width:100%;max-height:520px;object-fit:contain}
+.nw-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start;margin-top:4px}
+.nw-thumb img{display:block;width:120px;height:150px;object-fit:cover;border-radius:8px;background:var(--bg)}
+@media (max-width:520px){.nw-row{grid-template-columns:84px minmax(0,1fr)}.nw-thumb img{width:84px;height:110px}}
+.warnline{color:var(--clay)}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--accent,currentColor);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
 .st-emerging{border-color:var(--sky);color:var(--sky)}
 .st-growing{border-color:var(--marigold);color:var(--marigold)}
 .st-deepening{border-color:var(--moss);color:var(--moss)}
@@ -1488,6 +1496,83 @@ function noticeText(n){return [n.noticed,wonderLine(n.wonder)].filter(x=>String(
 function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
   if(/^i\s+wonder\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
   return "I wonder "+(/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t)}
+/* --- A photo of children's words, such as chart paper from a group conversation or a story told together.
+   The photo is kept with the moment. Claude copies the writing into What I noticed exactly as it is written, with each
+   child's name, and marks what it could not read. What I wonder is never written for the educator. Several photos
+   become several moments, opened one after another. --- */
+let nQueue=[];const nBlobs=new Map(),nPreview=new Map();
+const photoCache=new Map();
+function photoSrc(n){const ph=n&&n.photo;if(!ph)return"";return nPreview.get(n.id)||ph.data||(ph.id&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(ph.id):"")}
+const MOMENT_PHOTO_PROMPT=`You are copying the writing in a photo taken in a classroom at Fulton Community School & Farm, a Reggio-inspired preschool. It is usually chart paper on which an educator wrote down what children said during a group conversation, a reflection, or a story they told together, with each child's name beside their words.
+Copy the writing exactly as it is written.
+Rules. Copy only the writing. Never describe drawings, marks, colours or scribbles, and never add, explain or summarize anything. Keep every word as written, including the children's grammar and the spelling on the page, and correct nothing. Keep every name exactly as written. When a name or word is hard to read, give your best reading followed by [?]. When a word cannot be read at all, write [unclear]. Leave out writing that is crossed out or covered over. Keep the order of the page.
+Each entry is one turn in the conversation. When a child's words continue onto the next written line, join them into one entry. A title at the top goes in heading. A line with no name, such as a question the educator wrote or something the group said together, has an empty name.
+Return only JSON {"heading": string, "lines": [{"name": string, "words": string}]}`;
+function momentPhotoText(out){
+  const lines=(Array.isArray(out?.lines)?out.lines:[]).map(l=>({name:String(l?.name||"").trim(),words:String(l?.words||"").trim()})).filter(l=>l.words||l.name);
+  const head=String(out?.heading||"").trim();
+  return [head,...lines.map(l=>l.name&&l.words?`${l.name} - ${l.words}`:(l.words||l.name))].filter(Boolean).join("\n");
+}
+const unsureCount=t=>(String(t||"").match(/\[(\?|unclear)\]/g)||[]).length;
+function blobDataUrl(blob,max){return new Promise(async res=>{try{const bmp=await createImageBitmap(blob);const sc=Math.min(1,max/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.82))}catch(e){res("")}})}
+async function addMomentPhotos(files){
+  const list=[...(files||[])].filter(f=>(f.type||"").startsWith("image/")||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name||""));
+  if(!list.length){toast("Choose a photo.");return}
+  if(!me()){needName();return}
+  const drafts=[];
+  for(const f of list){
+    const blob=await shrinkImage(f);
+    let w=0,h=0;try{const bmp=await createImageBitmap(blob);w=bmp.width;h=bmp.height}catch(e){toast(`${f.name||"That photo"} could not be opened here. Save it as a JPEG and try again.`);continue}
+    const n=newNotice();
+    // the day the photo was taken, when the device can tell, since a sheet is often photographed days before it is uploaded
+    const taken=f.lastModified?new Date(f.lastModified):new Date();
+    n.day=(taken.getTime()<=Date.now()&&Date.now()-taken.getTime()<366*864e5)?iso(taken):iso(new Date());
+    n.photo={id:"",w,h,status:"reading"};
+    nBlobs.set(n.id,blob);nPreview.set(n.id,URL.createObjectURL(blob));
+    drafts.push(n)}
+  if(!drafts.length)return;
+  const keepCurrent=noticeForm&&noticeForm.photo&&!notices.has(noticeForm.id);
+  if(keepCurrent)nQueue.push(...drafts);else{noticeForm=drafts[0];nQueue.push(...drafts.slice(1))}
+  view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();
+  // two read at once, so a stack of sheets does not keep the educator waiting for each in turn
+  let i=0;const work=async()=>{while(i<drafts.length){const n=drafts[i++];await readMomentPhoto(n)}};
+  await Promise.all([work(),work()]);
+}
+async function readMomentPhoto(n){
+  const blob=nBlobs.get(n.id);if(!blob||!n.photo)return;
+  n.photo.status="reading";n.photo.error="";refreshPhotoDraft(n);
+  try{
+    // the photo is stored first, so the moment always has it even when the reading does not work
+    if(!n.photo.id&&!n.photo.data){
+      if(window.FP_KEEP_ORIGINAL)n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");
+      else n.photo.data=await blobDataUrl(blob,1400)}
+  }catch(e){n.photo.status="failed";n.photo.error=e?.message||"The photo could not be stored. Check your connection and press Try again.";refreshPhotoDraft(n);return}
+  if(!sample){n.photo.status="done";refreshPhotoDraft(n);return}
+  try{
+    const out=await askRead(MOMENT_PHOTO_PROMPT,{images:[blob],careful:true,purpose:"moment-photo",maxSide:2000});
+    const text=momentPhotoText(out);
+    if(!text){n.photo.status="empty"}
+    else{n.photo.status="done";if(!String(n.noticed||"").trim()){n.noticed=text;n.photo.fromClaude=true}}
+  }catch(e){n.photo.status="unread";n.photo.error=readError(e)}
+  refreshPhotoDraft(n);
+}
+// the open form follows the reading without losing anything typed meanwhile
+function refreshPhotoDraft(n){
+  if(noticeForm!==n||!$("#nf-noticed"))return;
+  const ta=$("#nf-noticed");if(!ta.value.trim()&&n.noticed){ta.value=n.noticed;autoGrow(ta)}
+  const st=$("#nf-pstatus");if(st)st.outerHTML=photoStatusHtml(n);
+  const sv=$("#nf-save");if(sv)sv.disabled=!(n.photo&&(n.photo.id||n.photo.data));
+}
+function photoStatusHtml(n){
+  const ph=n.photo||{};const u=unsureCount(n.noticed);
+  let t="",cls="hint";
+  if(ph.status==="reading")t=`<span class="spin"></span> ${ph.id||ph.data?"Copying the children's words from the photo":"Keeping the photo"}. You can write what you wonder meanwhile.`;
+  else if(ph.status==="failed"){t=esc(ph.error)+` <button class="linkbtn" data-nfretry="${n.id}">Try again</button>`;cls="hint warnline"}
+  else if(ph.status==="unread"){t=`The photo is kept, but the words could not be copied. ${esc(ph.error)} <button class="linkbtn" data-nfretry="${n.id}">Try again</button>, or type them below.`;cls="hint warnline"}
+  else if(ph.status==="empty")t="No writing was found on this photo. Write what you noticed below.";
+  else if(ph.fromClaude)t=`Copied from the photo exactly as written. ${u?`Check the ${u} word${u>1?"s":""} marked [?] or [unclear] against the photo, then`:"Check it against the photo, then"} write what you wonder.`;
+  return `<div class="${cls}" id="nf-pstatus" role="status">${t}</div>`;
+}
 function renderNoticeForm(){
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
     <div class="sub" style="max-width:72ch">A moment worth keeping, written now.</div></div></div>
@@ -1495,20 +1580,23 @@ function renderNoticeForm(){
   ${noticeBrowseHtml()}`;
 }
 function noticeFormCard(){
-  const n=noticeForm;
+  const n=noticeForm;const ph=n.photo,src=photoSrc(n);
+  const waiting=nQueue.length;
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card">
-    <div class="hint muted" style="margin-bottom:8px">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div>
-    <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="4" placeholder="What happened, and what children did or said">${esc(n.noticed)}</textarea></label>
+    ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this moment"></a></div>${photoStatusHtml(n)}`
+      :`<div class="actions" style="margin:0 0 8px"><span class="hint muted" style="margin:0">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</span>${photoPickHtml("nf-photo","Upload a photo instead")}</div>`}
+    <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
     <div class="actions">
+      ${ph?`<label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date()))}" max="${iso(new Date())}" style="width:auto"></label>`:""}
       <label class="cnt">Classroom <select id="nf-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
       ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
     <div class="hint">A project or thread is optional. One can claim this moment later, whenever it grows.</div>
-    <div class="actions"><button class="btn" id="nf-save">Keep this moment</button><button class="linkbtn" id="nf-cancel">Cancel</button></div>
+    <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>Keep this moment</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
   </section>`;
 }
 function noticeBrowseHtml(){
@@ -1521,10 +1609,11 @@ function noticeBrowseHtml(){
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}</div>
-    <div style="font-size:15.5px;margin-top:4px">${esc(n.noticed)}</div>
+    ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
+      :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
-    <div class="actions"><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+    <div class="actions">${printBtns("moment",n.id,"Print PDF")}<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -1581,7 +1670,7 @@ function renderMoments(){
   let shown=0;
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
     <div class="sub" style="max-width:74ch">Moments kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on a moment whenever it comes round to it.</div></div>
-    <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>`}</span></div>
+    <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>${photoPickHtml("nf-photo2","Upload a photo")}`}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
@@ -1650,8 +1739,12 @@ function momentsDocs(long,cap){
     if(!items.length)continue;left-=items.length;
     if(g.label)blocks.push(dSub(g.label));
     else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Moments kept"));
-    for(const n of items){const text=long&&has(n.wonder)?`${n.noticed} ${wonderLine(n.wonder)}`:n.noticed;
-      blocks.push(dQuote(text,[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", "),shortDate(n.at)))}
+    for(const n of items){const credit=[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", ");
+      // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
+      if(n.photo&&long){blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));blocks.push(dPhoto(n,210,false));continue}
+      const body=n.photo?momentBody(n).split("\n").filter(x=>x.trim()).slice(0,3).join("  "):n.noticed;
+      const text=long&&has(n.wonder)?`${body} ${wonderLine(n.wonder)}`:body;
+      blocks.push(dQuote(text,credit,shortDate(n.at)))}
   }
   if(!long&&all.length>total-left)blocks.push({t:"text",label:"",quiet:true,text:`${all.length} moments are kept in this view. The full set prints them all.`});
   if(s&&(s.questions||[]).length)blocks.push(dList("Questions for the team",s.questions));
@@ -1662,15 +1755,24 @@ function noticeListHtml(list,title){
   return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
 }
 function noticesClick(t){
-  if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&((noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
+  if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
   if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the classroom or the range.");return true}
-  if(t.id==="nf-cancel"){noticeForm=null;if(view==="moments")renderMain();else renderAll();return true}
+  if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
+    if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
+    if(view==="moments")renderMain();else renderAll();return true}
+  if(t.dataset.nfretry){const n=noticeForm&&noticeForm.id===t.dataset.nfretry?noticeForm:nQueue.find(x=>x.id===t.dataset.nfretry);if(n)readMomentPhoto(n);return true}
   if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
     if(!n.noticed){toast("Write what you noticed first.");return true}
     if(!me()){needName();return true}
-    n.by=whoAmI();n.at=Date.now();n.week=mondayOf(new Date());saveNotice(n);noticeForm=null;
+    if(n.photo&&!(n.photo.id||n.photo.data)){toast("The photo is still being kept. Wait a moment.");return true}
+    const day=n.photo&&n.day&&/^\d{4}-\d{2}-\d{2}$/.test(n.day)&&n.day<=iso(new Date())?n.day:"";
+    const when=day&&day!==iso(new Date())?parseIso(day).getTime()+12*36e5:Date.now();
+    n.by=whoAmI();n.at=when;n.week=mondayOf(new Date(when));
+    if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{})};delete n.day}
+    saveNotice(n);noticeForm=null;
+    if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast("Kept. The next photo is open.");return true}
     // the moment the educator just wrote should be the first thing they see, not an empty page
     if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
     renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
@@ -1700,7 +1802,10 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="moments")retu
 document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-room")noticeForm.classroom=t.value;
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
-  else if(t.id==="nf-thread")noticeForm.threadId=t.value;});
+  else if(t.id==="nf-thread")noticeForm.threadId=t.value;
+  else if(t.id==="nf-day")noticeForm.day=t.value;});
+document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photo"&&t.id!=="nf-photo2")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addMomentPhotos(fs)});
+function photoPickHtml(id,label){return `<label class="btn small ghost" style="cursor:pointer">${label}<input type="file" id="${id}" accept="image/*" multiple hidden></label>`}
 
 /* ---------- Projects ----------
    A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
@@ -2406,6 +2511,33 @@ const dTags=(label,items)=>({t:"tags",label,items});
 const dList=(label,items,numbered)=>({t:"list",label,items,numbered:!!numbered});
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
 const dSub=text=>({t:"sub",text});
+// a photo kept with a moment. It is drawn from the copy fetched just before printing.
+const dPhoto=(n,maxH,full)=>({t:"photo",key:n.id,src:photoSrc(n),maxH,full:!!full});
+// a sheet's own title, such as Creek Reflection, heads the printout when the photo carries one
+function momentHeading(n){if(!n.photo)return"";const first=String(n.noticed||"").split("\n")[0].trim();return first&&first.length<=40&&!/ - /.test(first)&&String(n.noticed).includes("\n")?first:""}
+function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").trim();return h?t.split("\n").slice(1).join("\n").trim():t}
+function momentDoc(n){
+  const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
+  const meta=[["Classroom",n.classroom||""],["Kept by",n.by||""],["Day",shortDate(n.at)]];
+  const blocks=[];
+  if(n.photo)blocks.push(dPhoto(n,300,true));
+  blocks.push(dText(n.photo?"The children's words":"What I noticed",momentBody(n)));
+  if(has(n.wonder))blocks.push(dText("What I wonder",wonderLine(n.wonder)));
+  if(pr||th)blocks.push(dTags("Part of",[pr&&"Project, "+pr.name,th&&"Thread, "+th.name].filter(Boolean)));
+  return {display:true,type:"report",acc:"story",title:momentHeading(n)||"Notice and Wonder",meta,blocks};
+}
+// photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
+async function loadPhotos(docs){
+  const want=[];for(const d of docs)for(const b of (d.blocks||[]))if(b.t==="photo"&&b.src&&!photoCache.has(b.key))want.push(b);
+  let missed=0;
+  await Promise.all(want.map(async b=>{try{
+    const r=await fetch(b.src,{cache:"force-cache"});if(!r.ok)throw 0;const blob=await r.blob();
+    const bmp=await createImageBitmap(blob);const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
+    const jb=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));
+    photoCache.set(b.key,{url:c.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:c.width,h:c.height})}catch(e){missed++}}));
+  if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the printout leaves ${missed>1?"them":"it"} out.`);
+}
 const SECT_SHORT={"Intentions and questions for the week":"intentions","Meeting time questions, concepts and ideas":"meeting time","Expressed interests of individual and small group":"expressed interests","Provocations and environmental changes, indoor":"indoor provocations","Provocations and environmental changes, outdoor":"outdoor provocations","Possible activities and materials":"possible materials","Observation rationale":"observation","The thread we are following":"the thread"};
 const sectName=l=>SECT_SHORT[l]||String(l||"").toLowerCase();
 const has=v=>String(v||"").trim().length>0;
@@ -2638,6 +2770,8 @@ function displayAtoms(doc,p,A,s){
     else if(b.t==="sub"){gap(18);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:8*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(14);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(10)}
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
+    else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const fw=b.full?w:cw,fx=b.full?m:cx,mh=(b.maxH||260)*Math.min(s,1.15);let pw=fw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
+      gap(6);push({h:ph,keep:true,draw(y){doc.addImage(im.url,"JPEG",fx+(b.full?(fw-pw)/2:0),y,pw,ph,undefined,"FAST")}});gap(10)}}
     if(b.t!=="sub")mark(a0);
   }
   while(atoms.length&&atoms[atoms.length-1].gap)atoms.pop();
@@ -2789,6 +2923,8 @@ async function displayDocx(ch,p,D,A){
       cur=row((b.side||[]).filter(has).map((t,i)=>para(run(t,i?"fr":"fs",i?9.4:10,i?MUT:dp),{spacing:{before:i?0:70}})),kids,{hair:any})}
     else if(b.t==="qa"){const kids=[para(run(b.q,"fs",9.8*s,MUT),{keepNext:true,spacing:{before:120,after:20}}),...body(b.a)];if(cur)cur.right.push(...kids);else cur=row([],kids,{tight:true})}
     else if(b.t==="sub"){flush();ch.push(para(run(b.text,"bs",17*s),{keepNext:true,spacing:{before:300,after:150}}));cur=null}
+    else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){flush();cur=null;const mw=b.full?600:430,mh=(b.maxH||260)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
+      ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:b.full?AlignmentType.CENTER:AlignmentType.LEFT,indent:b.full?undefined:{left:LC},spacing:{after:160}}))}}
     else if(b.t==="web"){flush();cur=null;
       try{const png=await webPng(b.web,A);ch.push(para(new ImageRun({type:"png",data:png.data,transformation:{width:png.w,height:png.h}}),{alignment:AlignmentType.CENTER,spacing:{after:160}}))}
       catch(e){if(has(b.web.focus))row([],body(b.web.focus),{});(b.web.branches||[]).filter(x=>x.name||x.materials).forEach(x=>row(lab(x.name),body(x.materials||" "),{hair:true}));flush()}}
@@ -2803,7 +2939,8 @@ async function onePage(make,from,to){
 }
 async function printsClick(t){
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
-  const out=(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
@@ -2811,7 +2948,7 @@ async function printsClick(t){
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no moments in this view to print.");return true}
     const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classrooms":nRoom} ${mondayOf(new Date())}`;
-    if(long){out(docs,name);return true}
+    if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
   if(kind==="threads"){out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
   if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`;
