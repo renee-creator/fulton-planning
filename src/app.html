@@ -657,7 +657,8 @@ function renderMain(){
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
-  if(noticeForm){renderNoticeForm();return}
+  // an unfinished moment waits on the Moments page, so it never stands in for a plan an educator opened
+  if(noticeForm&&!currentId){renderNoticeForm();return}
   const p=currentId&&plans.get(currentId);
   if(!p){renderWelcome();return}
   const F=FORMS[p.type];
@@ -1661,7 +1662,7 @@ function noticeListHtml(list,title){
   return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
 }
 function noticesClick(t){
-  if(t.id==="newnotice"||t.id==="newnotice2"){noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
+  if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&((noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
   if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the classroom or the range.");return true}
