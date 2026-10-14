@@ -23,8 +23,8 @@ out = head + body.replace(marker, shim + "\n" + marker) + "\n</body>\n</html>\n"
 import sys
 (root / "tree.html").write_text(out)
 print("tree.html", len(out), "bytes")
-if "--switch" in sys.argv:
-    (root / "index.html").write_text(out)
-    print("index.html is TREE")
+# TREE is the main address. The old Planning Studio is kept as planning-studio.html.
+(root / "index.html").write_text(out)
+print("index.html is TREE")
 import subprocess
 subprocess.run([sys.executable, str(root / "tools/build_embeds.py")], check=True)
