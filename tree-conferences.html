@@ -2357,6 +2357,23 @@ async function applyRosterDiff(){
 boot();
 </script>
 <script>setTimeout(()=>{try{if(!(S.loaded.children&&S.loaded.confs)){const a=document.getElementById("app");if(a)a.innerHTML='<div class="empty" style="display:grid;gap:10px;justify-items:center">The conference records are taking longer than usual to load.<button class="btn primary" onclick="location.reload()">Try again</button></div>'}}catch(e){}},25000);</script>
+<style>.tree-lockbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:#fffbe8;border:1px solid #f0cf4f;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14.5px}
+#conf-editor.tree-locked textarea[readonly],#conf-editor.tree-locked input[readonly]{background:transparent;border-color:transparent;box-shadow:none;resize:none;cursor:default}
+#conf-editor.tree-locked select:disabled,#conf-editor.tree-locked input:disabled{opacity:1;color:inherit;background:transparent;border-color:transparent;-webkit-appearance:none;appearance:none}
+#conf-editor.tree-locked button:disabled{opacity:.55}</style>
+<script>(()=>{let seen="",unlocked="",busy=false;
+const keep=b=>/print|pdf|word|download|back|close|open|copy/i.test(b.textContent||"")||b.dataset.go;
+function lock(){const ed=document.getElementById("conf-editor");if(!ed){seen="";unlocked="";return}const id=ed.dataset.id;
+  if(id!==seen){seen=id;unlocked="";const filled=[...ed.querySelectorAll("textarea,input[type=text],input[type=date],input[type=time]")].some(x=>String(x.value||"").trim());if(!filled)unlocked=id}
+  const on=unlocked!==id;ed.classList.toggle("tree-locked",on);
+  let bar=ed.querySelector(".tree-lockbar");
+  if(!on){if(bar)bar.remove();ed.querySelectorAll("[data-tree-locked]").forEach(x=>{x.readOnly=false;x.disabled=false;delete x.dataset.treeLocked});return}
+  ed.querySelectorAll("textarea,input,select,button").forEach(x=>{if(x.dataset.treeLocked||x.closest(".tree-lockbar"))return;
+    if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(x.tagName==="SELECT"||/checkbox|radio|file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
+  if(!bar){bar=document.createElement("div");bar.className="tree-lockbar";bar.innerHTML='<span>Saved. This conference record is shown as it was kept, so nothing changes by accident.</span><button type="button" class="btn small primary">Edit</button>';
+    bar.querySelector("button").onclick=()=>{unlocked=id;lock();const f=ed.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})};ed.prepend(bar)}}
+const go=()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{lock()}catch(e){}})};
+new MutationObserver(go).observe(document.body,{childList:true,subtree:true});go();})();</script>
 
 </body>
 </html>
