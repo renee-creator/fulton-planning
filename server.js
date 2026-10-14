@@ -1,4 +1,4 @@
-// Fulton Planning Studio server
+// TREE server (grew out of Fulton Planning Studio)
 // Runs on Render. Signs educators in with personal passcodes, keeps every curriculum plan,
 // thread and program setting as a file in a private GitHub repository, and passes Claude
 // requests (drafting, strengthening, transcribing plans) to Anthropic. Every failure returns a clear message.
@@ -27,7 +27,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
@@ -53,14 +53,14 @@ const TEACHERS = PASS_RAW.split(',').map(e => e.trim()).filter(Boolean).map(e =>
   return { name: /^[A-Za-z0-9 _.&'-]{1,40}$/.test(name) ? name : (cut > 0 ? '' : 'Staff'), code, hash: sha(code) };
 }).filter(t => t.name && t.code.length >= 6);
 const DIRECTORS = String(process.env.DIRECTOR_NAMES || 'Renee').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-function isDirector(name) { return DIRECTORS.includes(String(name || '').toLowerCase()); }
+function isDirector(name) { if (DIRECTORS.includes(String(name || '').toLowerCase())) return true; const a = accountFor(name); return !!(a && a.director); }
 const SKIPPED_PASSCODES = PASS_RAW.split(',').filter(e => e.trim()).length - TEACHERS.length;
 const SECRET = sha('fulton-planning|' + (process.env.SESSION_SECRET || '') + '|' + githubToken() + '|' + PASS_RAW);
 const SESSION_DAYS = 60;
 
 function b64u(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function sign(body) { return b64u(crypto.createHmac('sha256', SECRET).update(body).digest()); }
-function makeSession(name) { const body = b64u(JSON.stringify({ n: name, e: Date.now() + SESSION_DAYS * 864e5 })); return body + '.' + sign(body); }
+function makeSession(name, v) { const body = b64u(JSON.stringify(Object.assign({ n: name, e: Date.now() + SESSION_DAYS * 864e5 }, v != null ? { v } : {}))); return body + '.' + sign(body); }
 function makeFileKey() { const body = b64u(JSON.stringify({ f: 1, e: Date.now() + 12 * 36e5 })); return body + '.' + sign(body); }
 function checkFileKey(tok) {
   if (!tok || tok.length > 300) return false;
@@ -81,7 +81,9 @@ function checkSession(tok) {
   if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac))) return null;
   let s; try { s = JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) { return null; }
   if (!s || typeof s.n !== 'string' || !(s.e > Date.now())) return null;
-  if (!TEACHERS.some(t => t.name === s.n)) return null;   // a teacher removed on Render is signed out
+  // an educator removed on Render, or whose TREE sign-in was removed or had its code cleared, is signed out
+  if (s.v != null) { const a = accountFor(s.n); if (!a || (a.v || 0) !== s.v || !a.code) return null; return { name: a.name }; }
+  if (!TEACHERS.some(t => t.name === s.n)) return null;
   return { name: s.n };
 }
 function matchPasscode(given) {
@@ -96,6 +98,41 @@ const wrongTries = new Map(); let wrongAll = [];
 function who(req) { const parts = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean); return parts[parts.length - 1] || (req.socket && req.socket.remoteAddress) || 'unknown'; }
 function blocked(ip) { const now = Date.now(); wrongAll = wrongAll.filter(t => t > now - 600000); if (wrongAll.length >= 60) return true; const t = wrongTries.get(ip); return !!t && t.until > now && t.count >= 10; }
 function noteWrong(ip) { const now = Date.now(); wrongAll.push(now); if (wrongTries.size > 5000) for (const [k, v] of wrongTries) if (v.until <= now) wrongTries.delete(k); const t = wrongTries.get(ip); if (!t || t.until <= now) wrongTries.set(ip, { count: 1, until: now + 600000 }); else t.count++; }
+
+/* ---------- TREE sign-ins. Each educator signs in with their first name and a 4-digit passcode they set the first time.
+   The director adds educators, can see their codes, and can clear a code so it is set again. The file lives under access/
+   in the records, never in what is sent to a browser, and only the director's Settings asks for it. ---------- */
+const ACCOUNTS_PATH = 'access/accounts.json';
+const accounts = { list: [], sha: null, loaded: false, saving: Promise.resolve() };
+const nameKey = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+function accountFor(name) { const k = nameKey(name); return k ? accounts.list.find(a => nameKey(a.name) === k) : null; }
+async function loadAccounts() {
+  const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`);
+  if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } }
+  else if (r.status !== 404) throw new Error('GitHub answered ' + r.status + ' when reading the sign-ins.');
+  accounts.loaded = true;
+}
+function saveAccounts(by) {
+  accounts.saving = accounts.saving.then(async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const content = Buffer.from(JSON.stringify({ note: 'TREE sign-ins. Keep this file private.', accounts: accounts.list }, null, 2) + '\n', 'utf8').toString('base64');
+      const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}`, { message: 'Update sign-ins by ' + by, content, branch: store.branch, ...(accounts.sha ? { sha: accounts.sha } : {}) });
+      if (r.status === 200 || r.status === 201) { accounts.sha = r.json.content.sha; return true; }
+      if (r.status === 409 || r.status === 422) { const g = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`); accounts.sha = g.status === 200 ? g.json.sha : null; continue; }
+      log('Could not save the sign-ins', r.status); return false;
+    }
+    return false;
+  }).catch(e => { log('Could not save the sign-ins', e.message); return false; });
+  return accounts.saving;
+}
+// a name that keeps getting the code wrong is held for fifteen minutes
+const nameTries = new Map();
+function nameBlocked(n) { const t = nameTries.get(nameKey(n)); return !!t && t.until > Date.now() && t.count >= 5; }
+function nameWrong(n) { const k = nameKey(n), now = Date.now(); const t = nameTries.get(k); if (!t || t.until <= now) nameTries.set(k, { count: 1, until: now + 15 * 60000 }); else t.count++; }
+const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
+const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
+function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, code: a.code || '', setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
@@ -115,7 +152,20 @@ function gh(method, path, body) {
     req.end(data || undefined);
   });
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+// the calendar keeps its own part of the records, under calendar/
+const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents });
+// each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
+function conferenceEvents(from, to) {
+  const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
+  for (const [id, r] of store.recs.conferences) {
+    const c = r.doc; if (r.deleted || !c || !c.confDate || c.confDate < from || c.confDate > to) continue;
+    const k = store.recs.children.get(c.childId); const first = k && !k.deleted && k.doc.first ? k.doc.first : 'A child';
+    const t = /^\d{2}:\d{2}$/.test(c.confTime || '') ? c.confTime : '';
+    events.push(Object.assign({ id: 'tconf.' + id, cal: 'tconf', title: `Conference, ${first}'s family`, desc: c.teacher ? 'With ' + c.teacher : '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
+  }
+  return { events, status: { tconf: { connected: true, ok: true } } };
+}
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';
 const SAVE_WAIT = 'Changes are taking longer than usual to reach GitHub. They are kept on the server and saving keeps trying, so keep working, and avoid closing the app for a few minutes.';
@@ -133,13 +183,14 @@ async function doLoad() {
     if (repo.status === 401) throw new Error('GitHub rejected the token. Make a new fine-grained token with Contents read and write on the records repository.');
     if (repo.status !== 200) throw new Error('GitHub answered ' + repo.status + ' when opening the records repository.');
     store.branch = repo.json.default_branch || 'main';
+    await loadAccounts();
     const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1`);
     if (tree.status === 409) { store.ready = true; store.loadedAt = Date.now(); return; }   // empty repository
     if (tree.status !== 200) throw new Error('GitHub answered ' + tree.status + ' when listing records.');
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       const o = f.path.match(/^originals\/([^/]+)$/);
       if (o) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
@@ -156,7 +207,7 @@ async function doLoad() {
     };
     await Promise.all(Array.from({ length: 8 }, worker));
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
-    log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.settings.size} settings`);
+    log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
 
@@ -290,10 +341,11 @@ function statusPage(req, res) {
     [!!anthropicKey(), anthropicKey() ? 'An Anthropic key is saved, so Claude assist is available.' : 'No Anthropic key is saved. Add ANTHROPIC_API_KEY under Environment to turn on Claude assist.'],
     [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. Director access for ${TEACHERS.filter(t => isDirector(t.name)).map(t => t.name).join(', ') || 'nobody yet, so set DIRECTOR_NAMES'}.` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like Hannah=maple garden 42.'],
   ];
+  lines.push(calendar.statusLine());
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
-  const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning Studio server status</title></head><body style="font-family:system-ui,sans-serif;font-size:18px;line-height:1.5;max-width:680px;margin:32px auto;padding:0 16px"><h1 style="font-size:22px">Planning Studio server</h1><p>The server is running.</p>' +
+  const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TREE server status</title></head><body style="font-family:system-ui,sans-serif;font-size:18px;line-height:1.5;max-width:680px;margin:32px auto;padding:0 16px"><h1 style="font-size:22px">TREE server</h1><p>The server is running.</p>' +
     lines.map(([ok, t]) => `<p style="font-weight:600;color:${ok ? '#1a7f37' : '#b42318'}">${ok ? 'WORKING.' : 'NEEDS ATTENTION.'} ${t}</p>`).join('') +
     `<p style="color:#555;font-size:15px">Everyday model ${esc(QUICK_MODELS[modelAt.quick])}. Careful model ${esc(CAREFUL_MODELS[modelAt.careful])}.</p></body></html>`;
   send(req, res, 200, { 'Content-Type': 'text/html; charset=utf-8' }, html);
@@ -307,7 +359,7 @@ async function handle(req, res) {
 
   // original form files are opened in an img or a new tab, which cannot send a header, so the session rides in the address
   if (req.method === 'GET' && path.startsWith('/original/')) {
-    if (!checkFileKey(url.searchParams.get('t') || '')) { send(req, res, 403, { 'Content-Type': 'text/plain' }, 'This link has expired. Open it again from Planning Studio.'); return; }
+    if (!checkFileKey(url.searchParams.get('t') || '')) { send(req, res, 403, { 'Content-Type': 'text/plain' }, 'This link has expired. Open it again from TREE.'); return; }
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
     const o = store.originals.get(id);
     if (!o || !ID_RE.test(id)) { send(req, res, 404, { 'Content-Type': 'text/plain' }, 'Not found'); return; }
@@ -325,7 +377,7 @@ async function handle(req, res) {
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
   const origin = String(req.headers.origin || '').replace(/\/+$/, '').toLowerCase();
-  if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the Planning Studio server. Origin received ' + (origin || 'none') + '.'); return; }
+  if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
 
   let body;
   try { body = await readBody(req); }
@@ -334,19 +386,48 @@ async function handle(req, res) {
   if (path === '/login') {
     const ip = who(req);
     if (blocked(ip)) { err(req, res, 429, 'Too many wrong passcodes. Wait ten minutes and try again.'); return; }
+    const name = cleanName(body.name);
+    if (name) {
+      if (!store.ready) await loadAll();
+      const a = accountFor(name);
+      if (a) {
+        if (nameBlocked(name)) { err(req, res, 429, 'Too many wrong passcodes for ' + a.name + '. Wait fifteen minutes and try again, or ask Renee.'); return; }
+        if (!a.code) {
+          // the first sign-in sets the passcode
+          if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
+          const c = String(body.newCode || '');
+          if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
+          if (String(body.again || '') !== c) { err(req, res, 400, 'The two passcodes are not the same. Type them again.'); return; }
+          if (/^(\d)\1{3}$/.test(c) || ['1234', '4321', '0123', '9876'].includes(c)) { err(req, res, 400, 'That passcode is easy to guess. Choose four other numbers.'); return; }
+          a.code = c; a.setAt = Date.now(); a.v = (a.v || 0) + 1; a.lastAt = Date.now();
+          await saveAccounts(a.name);
+          log('Passcode set by', a.name);
+          json(req, res, 200, { token: makeSession(a.name, a.v), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
+        }
+        const given = String(body.passcode || '');
+        const same = given.length === a.code.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(a.code));
+        if (!same) { noteWrong(ip); nameWrong(name); err(req, res, 403, 'That passcode is not right. Check with Renee if you have forgotten it.'); return; }
+        a.lastAt = Date.now(); log('Signed in', a.name);
+        json(req, res, 200, { token: makeSession(a.name, a.v || 0), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
+      }
+      // a name with no TREE sign-in can still use a passcode set on Render
+      if (!/[^0-9]/.test(String(body.passcode || '')) || String(body.passcode || '').length < 6) { noteWrong(ip); err(req, res, 403, `${name} is not set up in TREE yet. Ask Renee to add you.`); return; }
+    }
     if (!TEACHERS.length) { err(req, res, 503, 'No educator passcodes are set on the server yet.'); return; }
     const t = matchPasscode(body.passcode);
     if (!t) { noteWrong(ip); err(req, res, 403, 'That passcode is not right. Check with Renee if you have forgotten it.'); return; }
     log('Signed in', t.name);
-    json(req, res, 200, { token: makeSession(t.name), name: t.name, director: isDirector(t.name), teachers: TEACHERS.map(x => x.name) });
+    json(req, res, 200, { token: makeSession(t.name), name: t.name, director: isDirector(t.name), teachers: teacherNames() });
     return;
   }
 
+  // sign-ins are read with the records, so a server just woken never mistakes an educator for a stranger
+  if (!accounts.loaded) { await loadAll(); if (!accounts.loaded) { err(req, res, 503, store.error || 'TREE is still starting. Try again in a moment.'); return; } }
   const me = readSession(req);
   if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), teachers: TEACHERS.map(x => x.name), data: snapshot() }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), teachers: teacherNames(), data: snapshot() }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const out = {}; for (const c of changeLog) if (c.rev > body.since) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
@@ -358,9 +439,16 @@ async function handle(req, res) {
     const { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
-    // the roster of children is kept by the director, so a child's classroom or status changes in one place
-    if (kind === 'children' && !isDirector(me.name)) { err(req, res, 403, 'Only the director can change the roster of children.'); return; }
-    if (((kind === 'settings' && id !== 'educators') || ((kind === 'threads' || kind === 'projects') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
+    // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
+    if (kind === 'children' && !isDirector(me.name)) {
+      const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
+      const keepSt = d => { for (const k of ST) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'status') d[k] = 'active'; else delete d[k]; } };
+      if (op === 'delete') { err(req, res, 403, 'Only the director can remove a child.'); return; }
+      if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }
+      if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
+    }
+    if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
     const map = store.recs[kind]; const cur = map.get(id);
     // director feedback on a plan is written only by the director; an educator's save keeps whatever the director last wrote
@@ -382,7 +470,7 @@ async function handle(req, res) {
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
   }
-  if (path === '/api/save-now') { const ok = await flushEverything().catch(() => false); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
+  if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
   if (path === '/api/original') {
     const name = String(body.name || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60);
     const ext = (name.match(/\.(pdf|jpe?g|png|webp)$/) || [])[1];
@@ -422,7 +510,87 @@ async function handle(req, res) {
     finally { readsRunning--; }
     return;
   }
+  if (path.startsWith('/api/accounts')) {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director can see and change sign-ins.'); return; }
+    const list = () => json(req, res, 200, { accounts: accounts.list.map(accountView).sort((a, b) => a.name.localeCompare(b.name)), render: TEACHERS.map(t => t.name) });
+    if (path === '/api/accounts') { list(); return; }
+    if (path === '/api/accounts/save') {
+      const name = cleanName(body.name), was = body.was ? accountFor(body.was) : null;
+      if (!okName(name)) { err(req, res, 400, 'Type the educator\'s first name, letters only.'); return; }
+      const other = accountFor(name); if (other && other !== was) { err(req, res, 409, name + ' already has a sign-in.'); return; }
+      const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', v: 0 };
+      if (was && a.name !== name) a.v = (a.v || 0) + 1;
+      a.name = name; a.room = String(body.room || '').slice(0, 20); a.director = !!body.director;
+      if (!was) accounts.list.push(a);
+      if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved to the records. Try again.'); return; }
+      log('Sign-in saved for', a.name, 'by', me.name); list(); return;
+    }
+    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
+    if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
+    err(req, res, 404, 'Not found'); return;
+  }
+  if (path === '/api/signup-feed') {
+    const set = store.recs.settings.get('main'); let link = String(body.link || (set && set.doc && set.doc.signupFeed) || '').trim().replace(/^webcal:\/\//i, 'https://');
+    if (!link) { err(req, res, 400, 'Add the SignUpGenius calendar link in Settings first.'); return; }
+    try {
+      if (!(feedCache.url === link && Date.now() - feedCache.at < 5 * 60000 && !body.fresh)) {
+        const r = await getText(link);
+        if (r.status !== 200) throw new Error('SignUpGenius answered ' + r.status + '.');
+        if (!/BEGIN:VCALENDAR/.test(r.text)) throw new Error(/does not exist/i.test(r.text) ? 'SignUpGenius says this calendar does not exist. In SignUpGenius, open Tools, then Calendar Subscriptions, check the feed is saved with the conference sign up in it, and copy its link again.' : 'That link did not return a calendar.');
+        feedCache.url = link; feedCache.at = Date.now(); feedCache.data = parseIcs(r.text);
+      }
+      json(req, res, 200, { events: feedCache.data, checkedAt: new Date(feedCache.at).toISOString() });
+    } catch (e) { err(req, res, 502, e.message); }
+    return;
+  }
+  if (await calendar.handle(path, { name: me.name, director: isDirector(me.name), shared: me.name === 'Staff' }, body, (status, obj) => json(req, res, status, obj))) return;
   err(req, res, 404, 'Not found');
+}
+
+/* ---------- SignUpGenius, read only, for family conference times ---------- */
+const feedCache = { url: '', at: 0, data: null };
+function getText(url, hops = 0) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' || !/(^|\.)signupgenius\.com$/i.test(u.hostname)) { reject(new Error('Only SignUpGenius calendar links can be read.')); return; }
+    const req = https.get(u, { headers: { 'User-Agent': 'fulton-tree', 'Accept': 'text/calendar,*/*' } }, res => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 3) { res.resume(); resolve(getText(new URL(res.headers.location, u).toString(), hops + 1)); return; }
+      const chunks = []; let n = 0;
+      res.on('data', c => { n += c.length; if (n > 5e6) { req.destroy(new Error('The calendar is too large.')); return; } chunks.push(c); });
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      res.on('error', reject);
+    });
+    req.setTimeout(20000, () => req.destroy(new Error('SignUpGenius did not answer in time.')));
+    req.on('error', reject);
+  });
+}
+function laParts(d) {
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const o = Object.fromEntries(f.formatToParts(d).map(x => [x.type, x.value]));
+  return { date: `${o.year}-${o.month}-${o.day}`, time: `${o.hour}:${o.minute}` };
+}
+function icsTime(prop) {
+  if (!prop) return null;
+  const v = prop.value; const m = v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/); if (!m) return null;
+  if (!m[4]) return { date: `${m[1]}-${m[2]}-${m[3]}`, time: '' };
+  if (m[7]) return laParts(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])));
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}` };
+}
+function parseIcs(text) {
+  const lines = String(text).replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '').split(/\r?\n/);
+  const unesc = s => s.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1');
+  const out = []; let ev = null;
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { ev = {}; continue; }
+    if (line === 'END:VEVENT') { if (ev) out.push(ev); ev = null; continue; }
+    if (!ev) continue;
+    const i = line.indexOf(':'); if (i < 0) continue;
+    const name = line.slice(0, i).split(';')[0].toUpperCase(); ev[name] = { value: line.slice(i + 1) };
+  }
+  return out.map(e => { const s = icsTime(e.DTSTART), en = icsTime(e.DTEND);
+    return { uid: e.UID ? e.UID.value : '', date: s ? s.date : '', time: s ? s.time : '', end: en ? en.time : '',
+      summary: unesc(e.SUMMARY ? e.SUMMARY.value : ''), description: unesc(e.DESCRIPTION ? e.DESCRIPTION.value : ''), location: unesc(e.LOCATION ? e.LOCATION.value : '') }; })
+    .filter(e => e.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
 const server = http.createServer((req, res) => { handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
@@ -436,7 +604,7 @@ async function stop(sig) {
   const until = Date.now() + 25000;
   while (Date.now() < until) {
     for (const t of timers.values()) clearTimeout(t);
-    const ok = await Promise.race([flushEverything().catch(() => false), new Promise(r => setTimeout(() => r(false), Math.max(1000, until - Date.now())))]);
+    const ok = await Promise.race([Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)]).then(([a, b]) => a && b), new Promise(r => setTimeout(() => r(false), Math.max(1000, until - Date.now())))]);
     if (ok) { log('All changes saved'); break; }
     await new Promise(r => setTimeout(r, 3000));
   }
@@ -446,9 +614,9 @@ async function stop(sig) {
 process.on('SIGTERM', () => stop('SIGTERM')); process.on('SIGINT', () => stop('SIGINT'));
 
 server.listen(PORT, () => {
-  log('Planning Studio server on port', PORT, 'records in', RECORDS_REPO);
+  log('TREE server on port', PORT, 'records in', RECORDS_REPO);
   log(TEACHERS.length + ' educator passcodes set');
   log('GitHub key ' + (githubToken() ? 'saved' : 'MISSING') + ', Anthropic key ' + (anthropicKey() ? 'saved' : 'MISSING'));
-  loadAll();
+  loadAll(); calendar.loadAll();
 });
 module.exports = { deepMerge, checkSession, makeSession };

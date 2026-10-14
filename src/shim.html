@@ -9,10 +9,22 @@
 </style>
 <div id="gate" hidden>
   <form class="card" id="gate-form" autocomplete="off">
-    <svg width="34" height="34" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 28V15M15 15c-4-1-7-4-8-8M15 15c4-1 7-4 8-8M15 19c-3 0-5-2-6-4M15 19c3 0 5-2 6-4M15 11V3" fill="none" stroke="var(--moss)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 28h16" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round"/></svg>
-    <div><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Planning Studio</h1></div>
-    <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
-    <input id="gate-code" type="password" autocomplete="current-password" required>
+    <img src="tree-icons/icon-192.png" alt="" width="64" height="64" style="border-radius:14px">
+    <div><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>TREE</h1></div>
+    <div id="gate-step1" style="display:grid;gap:10px">
+      <label for="gate-name" class="small" style="font-weight:600">Your first name</label>
+      <input id="gate-name" type="text" autocomplete="username" autocapitalize="words" spellcheck="false">
+      <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
+      <input id="gate-code" type="password" autocomplete="current-password">
+      <div class="small muted">The first time, type your first name and leave the passcode empty. TREE then asks you to choose four numbers.</div>
+    </div>
+    <div id="gate-step2" hidden style="display:grid;gap:10px">
+      <div><b id="gate-hello"></b><div class="small muted">Choose four numbers you will remember. Only you and Renee will know them.</div></div>
+      <label for="gate-new" class="small" style="font-weight:600">New passcode, four numbers</label>
+      <input id="gate-new" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+      <label for="gate-again" class="small" style="font-weight:600">The same four numbers again</label>
+      <input id="gate-again" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+    </div>
     <button class="btn" id="gate-btn" type="submit" style="justify-content:center">Sign in</button>
     <div class="msg muted" id="gate-msg" aria-live="polite"></div>
   </form>
@@ -30,7 +42,7 @@
   const SERVER= local? want : DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
   const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
-  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
+  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
   // a photo link carries a key that lasts twelve hours, so it is renewed only after six, and pictures already loaded are not fetched again
   function takeFileKey(k){ if(k && (!Store.fileKey || Date.now()-Store.fileKeyAt>6*36e5)){ Store.fileKey=k; Store.fileKeyAt=Date.now(); } }
   window.FP_HOSTED=true;
@@ -47,7 +59,7 @@
     // while the page is closing, let the last save finish in the background
     const keepalive=document.visibilityState==="hidden" && payload.length<60000;
     try{ r=await fetch(SERVER+path,{method:"POST",signal,keepalive,headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:payload}); }
-    catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The Planning Studio server could not be reached. Check your internet connection and try again."}; }
+    catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The TREE server could not be reached. Check your internet connection and try again."}; }
     let j={}; try{ j=await r.json(); }catch(e){}
     if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
@@ -56,9 +68,12 @@
     if(!r.ok) throw {code:r.status>=500?"server_error":"bad_request", status:r.status, message:j.error||("The server answered "+r.status+".")};
     return j;
   }
+  // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
+  window.FP_API=(path,body)=>api(path,body);
+  window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -93,19 +108,27 @@
   window.FP_WAKE=async function(){ const t0=Date.now(); while(Date.now()-t0<120000){ try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; } }catch(e){} await new Promise(r=>setTimeout(r,4000)); } return false; };
   function showGate(){
     const g=document.getElementById("gate"); g.hidden=false;
-    const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code");
-    setTimeout(()=>c.focus(),50);
+    const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code"), n=document.getElementById("gate-name");
+    const nv=document.getElementById("gate-new"), ag=document.getElementById("gate-again"), s1=document.getElementById("gate-step1"), s2=document.getElementById("gate-step2");
+    n.value=LS.get("fp-last-name")||""; setTimeout(()=>(n.value?c:n).focus(),50);
+    let setting="";
     return new Promise(resolve=>{
-      f.onsubmit=async e=>{ e.preventDefault(); b.disabled=true; b.textContent="Signing in…";
-        try{ if(!(await wake())) throw {message:""}; const j=await api("/login",{passcode:c.value}); Auth.token=j.token; Auth.name=j.name; Auth.director=!!j.director; LS.set("fp-token",j.token); LS.set("fp-name",j.name); LS.set("fp-director",j.director?"1":null); g.hidden=true; resolve(); }
-        catch(err){ if(err.message) gateMsg(err.message,true); b.disabled=false; b.textContent="Sign in"; c.select(); } };
+      const done=j=>{ Auth.token=j.token; Auth.name=j.name; Auth.director=!!j.director; LS.set("fp-token",j.token); LS.set("fp-name",j.name); LS.set("fp-director",j.director?"1":null); LS.set("fp-last-name",j.name); g.hidden=true; resolve(); };
+      f.onsubmit=async e=>{ e.preventDefault(); b.disabled=true; b.textContent=setting?"Saving…":"Signing in…"; gateMsg("");
+        try{ if(!(await wake())) throw {message:""};
+          if(setting){ const j=await api("/login",{name:setting,newCode:nv.value.trim(),again:ag.value.trim()}); done(j); return; }
+          if(!n.value.trim()&&!c.value){ throw {message:"Type your first name."}; }
+          const j=await api("/login",{name:n.value.trim(),passcode:c.value});
+          if(j.setup){ setting=j.name; s1.hidden=true; s2.hidden=false; document.getElementById("gate-hello").textContent="Welcome, "+j.name+"."; b.disabled=false; b.textContent="Save my passcode"; setTimeout(()=>nv.focus(),50); return; }
+          done(j); }
+        catch(err){ if(err.message) gateMsg(err.message,true); b.disabled=false; b.textContent=setting?"Save my passcode":"Sign in"; (setting?nv:c).select(); } };
     });
   }
   async function start(){
     if(!Auth.token) await showGate();
     else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);
       const t=setTimeout(()=>{ note.textContent="Waking the server. The first visit after a quiet stretch takes about a minute."; },2500);
-      const ok=await wake(); clearTimeout(t); if(!ok){ note.textContent="The Planning Studio server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; throw new Error("down"); }
+      const ok=await wake(); clearTimeout(t); if(!ok){ note.textContent="The TREE server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; throw new Error("down"); }
       g.hidden=true; document.getElementById("gate-form").style.display=""; note.remove(); }
     await loadAll();
     setInterval(poll, 15000);
