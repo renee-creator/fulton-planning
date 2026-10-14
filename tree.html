@@ -216,6 +216,10 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .stat b small{font-size:15px;font-weight:600;color:var(--muted)}
 .stat b.wordval{font-size:21px;line-height:1.2;overflow-wrap:anywhere}
 .kmlist{display:grid;gap:8px}
+.kmwrap{display:grid;gap:4px}
+.pfstate{justify-self:start;font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--paper);color:var(--muted);border-radius:999px;padding:2px 10px;cursor:pointer}
+.pfstate.on{border-color:var(--moss);color:var(--moss);background:var(--moss-soft);font-weight:600}
+span.pfstate{cursor:default;border-style:dashed}
 .kmrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px;cursor:pointer;color:var(--ink);font:inherit}
 .kmrow:hover{background:var(--sun-wash)}
 .kmrow img,.kmnone{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg)}
@@ -1879,12 +1883,37 @@ document.addEventListener("change",e=>{const t=e.target;
 });
 
 /* ---------- A child's portfolio, for the family. Every moment that tags or names the child, in order. ---------- */
+// what goes in a child's portfolio. Only moments and slides that tag the child, so nothing about another child or for
+// the team alone is sent home by accident, and an educator can take any one of them out.
+const pfKey=(kind,id)=>kind+":"+id;
+const kidInPortfolio=(c,kind,id)=>!((c.portfolio||{}).out||{})[pfKey(kind,id)];
+function portfolioItems(c){
+  const ms=kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)).map(n=>({kind:"notices",at:n.at||0,n}));
+  const ss=kidSlides(c).filter(s=>kidInPortfolio(c,"slides",s.id)).map(s=>({kind:"slides",at:s.at||0,s}));
+  return [...ms,...ss].sort((a,b)=>a.at-b.at);
+}
+// the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
+function portfolioDrdpDoc(c,mode){
+  const {v}=drdpViewOf(c);const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view===v||!x.view));if(!done.length)return null;
+  const latest={};for(const x of done){const t=x.src?.at||x.at||0;if(!latest[x.code]||t>(latest[x.code].src?.at||latest[x.code].at||0))latest[x.code]=x}
+  const blocks=[dText("About this page",`Each level was read from ${c.first}'s documentation and confirmed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
+  const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
+  for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
+    blocks.push(dSub(DRDP_DOM[dm]||dm));
+    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),x.evidence||"",x.src?`From ${x.src.title||"documentation"}, ${shortDate(x.src.at||x.at)}`:"",[drdpLevelText(x.level,x.emerging)]))}}
+  const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
+  return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-","–")]],blocks};
+}
 function portfolioDocs(c,mode){
-  mode=mode||PRINT.names;const ms=kidMoments(c).slice().sort((a,b)=>(a.at||0)-(b.at||0));const ss=kidSlides(c).sort((a,b)=>(a.at||0)-(b.at||0));
+  mode=mode||PRINT.names;const items=portfolioItems(c);
+  const nM=items.filter(x=>x.kind==="notices").length,nS=items.length-nM;
   const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" classroom":"",yearFromTime(Date.now()).replace("-","–")],photos:[],
-    blocks:[{t:"para",text:`${ms.length} moment${ms.length===1?"":"s"}${ss.length?` and ${ss.length} slide${ss.length===1?"":"s"}`:""} kept, in the words of the children and the educators.`}]};
-  return [cover,...ss.map(s=>Object.assign(slideDoc(Object.assign({},s,{names:mode})),{})),...ms.map(n=>momentDoc(n,mode))];
+    blocks:[{t:"para",text:(()=>{const who=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${who} story`;
+      const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
+      return d0===d1?`${who} story on ${d0}`:`${who} story from ${d0} to ${d1}`})()},{t:"para",text:"In the words of the children and the educators."}]};
+  const dr=portfolioDrdpDoc(c,mode);
+  return [cover,...items.map(x=>x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode})):momentDoc(x.n,mode)),...(dr?[dr]:[])];
 }
 
 /* ---------- Keeping a moment without signal ----------
@@ -4514,7 +4543,7 @@ async function printsClick(t){
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
-  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!kidMoments(c).length&&!kidSlides(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in a moment or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
+  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in a moment or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
@@ -5388,7 +5417,11 @@ function kidAgeText(c){const m=kidMonths(c);if(m==null)return"";const y=Math.flo
 // the DRDP measures a moment or slide is evidence for, for this child
 function kidDrdpOf(c,kind,id){const its=kidDrdpItems(c).filter(x=>x.src&&x.src.kind===kind&&x.src.id===id&&x.status!=="aside");const codes=[...new Set(its.map(x=>x.code))];
   return codes.length?`<span class="drchips">${codes.map(k=>`<span class="drchip" title="${esc(DRDP[k]||"")}">${esc(k)}</span>`).join("")}</span>`:""}
+function pfToggle(c,kind,id,tagged){if(!tagged)return `<span class="pfstate muted">Not tagged, so not in the portfolio</span>`;const on=kidInPortfolio(c,kind,id);
+  return `<button class="pfstate ${on?"on":""}" data-pftoggle="${kind}|${id}" aria-pressed="${on}">${on?"In the portfolio":"Not in the portfolio"}</button>`}
 function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
+  return `<div class="kmwrap">${kidMomentRow0(c,n,open)}${pfToggle(c,"notices",n.id,kidTagged(c,n))}</div>`}
+function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
   :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoSrc(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
     <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
@@ -5414,9 +5447,9 @@ function renderChild(){
   }else if(kidTab==="docs"){
     const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
-        <div class="cnt">Tagged moments chose ${esc(c.first)}. The others come from ${esc(c.classroom||"their classroom")} and use ${esc(c.first)}'s name. Tap a moment to read it.</div>
+        <div class="cnt">Tap a moment to read it. The portfolio holds the moments and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
         ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">None here.</div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>`}).join("")}</div></section>`:""}`;
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
@@ -5440,6 +5473,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.kdoc){kidDocShow=t.dataset.kdoc;kidOpenMoment="";renderMain();return}
   if(t.dataset.kmopen){kidOpenMoment=t.dataset.kmopen;renderMain();const el=document.getElementById("nw-"+kidOpenMoment);if(el)formTop(el);return}
   if(t.dataset.kmclose){kidOpenMoment="";renderMain();return}
+  if(t.dataset.pftoggle){const c=children.get(kidOpen);if(!c)return;const [kind,id]=t.dataset.pftoggle.split("|");const k=pfKey(kind,id);const on=kidInPortfolio(c,kind,id);
+    kidDrdpPatch(c,{portfolio:{out:{[k]:on?true:{__delete__:true}}}});toast(on?"Taken out of the portfolio.":"Back in the portfolio.");renderMain();return}
 });
 function kidEditHtml(c){
   const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
