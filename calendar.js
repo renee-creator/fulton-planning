@@ -280,14 +280,20 @@ async function eventsFor(from, to) {
     }
   }));
   // family conferences from TREE's own records, on the same week as everything else
-  if (opts.extraEvents) { try { const x = opts.extraEvents(from, to); out.push(...x.events); Object.assign(status, x.status); } catch (e) { log('Could not add conferences to the calendar', e.message); } }
+  // when the conference sign-up sheet is also a school calendar, the two show as one calendar, and a conference on both is shown once
+  if (opts.extraEvents) { try { const x = opts.extraEvents(from, to); const into = confCalId();
+    if (into) { const have = new Set(out.filter(e => e.cal === into).map(e => String(e.start).slice(0, 16)));
+      for (const e of x.events) if (!have.has(String(e.start).slice(0, 16))) out.push(Object.assign({}, e, { cal: into })); }
+    else { out.push(...x.events); Object.assign(status, x.status); } } catch (e) { log('Could not add conferences to the calendar', e.message); } }
   return { events: out, status };
 }
 
 
 const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }];
+// the school calendar that is the family conference sign-up sheet, if there is one
+function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
-  const p0 = core.program; const p = opts.extraEvents ? Object.assign({}, p0, { calendars: p0.calendars.concat(EXTRA_CALS) }) : p0;
+  const p0 = core.program; const p = opts.extraEvents && !confCalId() ? Object.assign({}, p0, { calendars: p0.calendars.concat(EXTRA_CALS) }) : p0;
   if (!me.director) return p;
   return Object.assign({}, p, { calendars: p.calendars.map(c => Object.assign({}, c, { hasAddress: !!feedAddresses[c.id], publicAddress: /\/public\/(basic|full)\.ics$/.test(feedAddresses[c.id] || '') })) });
 }
