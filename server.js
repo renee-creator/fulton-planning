@@ -192,6 +192,7 @@ async function doLoad() {
     for (const f of files) {
       const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
+      if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
       if (o) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
     }
@@ -206,9 +207,33 @@ async function doLoad() {
       }
     };
     await Promise.all(Array.from({ length: 8 }, worker));
+    await loadDrdp();
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
+}
+
+/* ---------- DRDP (2025) definitions and level descriptors ----------
+   The official wording of each measure, read from the DRDP (2025) Infant and Toddler View and Preschool through
+   Kindergarten View. It is kept in the private records, never in the page, and added to a DRDP request here. */
+const DRDP_PATH = 'drdp/descriptors.json';
+let drdpSha = '', DRDP_DESC = null;
+const DRDP_LV = { RE: 'Responding Earlier', RL: 'Responding Later', EE: 'Exploring Earlier', EM: 'Exploring Middle', EL: 'Exploring Later', BE: 'Building Earlier', BM: 'Building Middle', BL: 'Building Later', IE: 'Integrating Earlier', IM: 'Integrating Middle', IL: 'Integrating Later' };
+async function loadDrdp() {
+  if (!drdpSha) { DRDP_DESC = null; log('No DRDP descriptors in the records, so DRDP requests go without the official wording'); return; }
+  try { const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`); DRDP_DESC = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); log('DRDP descriptors loaded,', Object.keys(DRDP_DESC.ptk || {}).length, 'preschool and', Object.keys(DRDP_DESC.it || {}).length, 'infant and toddler measures'); }
+  catch (e) { DRDP_DESC = null; log('Could not read the DRDP descriptors', e.message); }
+}
+function drdpBlock(view, codes) {
+  const v = DRDP_DESC && DRDP_DESC[view]; if (!v) return '';
+  const want = Array.isArray(codes) && codes.length ? new Set(codes.map(String)) : null;
+  const label = view === 'it' ? 'Infant and Toddler View' : 'Preschool through Kindergarten View';
+  let out = `Official DRDP (2025) ${label}. For each measure, its definition and the descriptor of each developmental level it uses, earliest to latest, word for word from the instrument.\n`;
+  for (const [code, m] of Object.entries(v)) {
+    if (want && !want.has(code)) continue;
+    out += `\n${code} ${m.name}. ${m.def}\n` + Object.entries(m.levels).map(([k, d]) => `  ${DRDP_LV[k] || k}: ${d}`).join('\n') + '\n';
+  }
+  return out;
 }
 
 // Saving to GitHub. Each file is saved by one chain at a time, and quick edits are gathered.
@@ -431,7 +456,7 @@ async function handle(req, res) {
   if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), teachers: teacherNames(), data: snapshot() }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, teachers: teacherNames(), data: snapshot() }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const out = {}; for (const c of changeLog) if (c.rev > body.since) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
@@ -502,6 +527,12 @@ async function handle(req, res) {
     if (readTimes.length >= READS_PER_HOUR || (body.careful && readTimes.filter(t => t.careful).length >= CAREFUL_PER_HOUR)) { refuse(429, 'Claude has been asked many times in the last hour. Wait a little and try again.', 'hourly limit'); return; }
     if (readsRunning >= READS_AT_ONCE) { refuse(429, 'Claude is working on several requests right now. Try again in a moment.', readsRunning + ' already running'); return; }
     readTimes.push({ at: now, careful: !!body.careful }); readsRunning++;
+    // a DRDP request carries the official definitions and level descriptors for its view
+    let drdpUsed;
+    if (body.purpose === 'drdp' && body.drdp && (body.drdp.view === 'ptk' || body.drdp.view === 'it')) {
+      const block = drdpBlock(body.drdp.view, body.drdp.codes); drdpUsed = !!block;
+      for (const b of content) if (b.type === 'text') b.text = b.text.includes('[[DRDP_DESCRIPTORS]]') ? b.text.replace('[[DRDP_DESCRIPTORS]]', block) : b.text;
+    }
     const kb = Math.round(JSON.stringify(content).length / 1024);
     try {
       const r = await askClaude(content, !!body.careful);
@@ -509,7 +540,7 @@ async function handle(req, res) {
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
       log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
-      json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens' });
+      json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens', drdp: drdpUsed });
     } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'Could not reach Claude. ' + e.message); }
     finally { readsRunning--; }
     return;
