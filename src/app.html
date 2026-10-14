@@ -1581,22 +1581,23 @@ function renderNoticeForm(){
 }
 function noticeFormCard(){
   const n=noticeForm;const ph=n.photo,src=photoSrc(n);
-  const waiting=nQueue.length;
+  const waiting=nQueue.length;const editing=notices.has(n.id);
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
-  return `<section class="card">
+  return `<section class="card" id="nf-card">
+    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this moment</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
     ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this moment"></a></div>${photoStatusHtml(n)}`
-      :`<div class="actions" style="margin:0 0 8px"><span class="hint muted" style="margin:0">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</span>${photoPickHtml("nf-photo","Upload a photo instead")}</div>`}
+      :editing?"":`<div class="actions" style="margin:0 0 8px"><span class="hint muted" style="margin:0">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</span>${photoPickHtml("nf-photo","Upload a photo instead")}</div>`}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
     <div class="actions">
-      ${ph?`<label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date()))}" max="${iso(new Date())}" style="width:auto"></label>`:""}
+      <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
       <label class="cnt">Classroom <select id="nf-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
       ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
     <div class="hint">A project or thread is optional. One can claim this moment later, whenever it grows.</div>
-    <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>Keep this moment</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
+    <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>${editing?"Save changes":"Keep this moment"}</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
   </section>`;
 }
 function noticeBrowseHtml(){
@@ -1608,12 +1609,12 @@ function noticeBrowseHtml(){
 }
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
-    <div class="actions">${printBtns("moment",n.id,"Print PDF")}<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+    <div class="actions">${printBtns("moment",n.id,"Print PDF")}<button class="linkbtn" data-nwedit="${n.id}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -1767,11 +1768,17 @@ function noticesClick(t){
     if(!n.noticed){toast("Write what you noticed first.");return true}
     if(!me()){needName();return true}
     if(n.photo&&!(n.photo.id||n.photo.data)){toast("The photo is still being kept. Wait a moment.");return true}
-    const day=n.photo&&n.day&&/^\d{4}-\d{2}-\d{2}$/.test(n.day)&&n.day<=iso(new Date())?n.day:"";
-    const when=day&&day!==iso(new Date())?parseIso(day).getTime()+12*36e5:Date.now();
-    n.by=whoAmI();n.at=when;n.week=mondayOf(new Date(when));
-    if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{})};delete n.day}
+    const editing=notices.has(n.id),was=notices.get(n.id);
+    const day=n.day&&/^\d{4}-\d{2}-\d{2}$/.test(n.day)&&n.day<=iso(new Date())?n.day:"";
+    const sameDay=editing&&was.at&&day===iso(new Date(was.at));
+    const when=sameDay?was.at:day&&day!==iso(new Date())?parseIso(day).getTime()+12*36e5:Date.now();
+    if(editing){n.by=was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
+    n.at=when;n.week=mondayOf(new Date(when));
+    if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{})}}
+    delete n.day;delete n.fromClaude;
     saveNotice(n);noticeForm=null;
+    if(editing){if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
+      renderAll();const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}toast("Changes saved.");return true}
     if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast("Kept. The next photo is open.");return true}
     // the moment the educator just wrote should be the first thing they see, not an empty page
     if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
@@ -1788,6 +1795,9 @@ function noticesClick(t){
     const left=new Set(p.noticeUsed);if(!noticesFor(p.classroom,0).some(x=>!left.has(x.id)))nwOpen="";
     renderMain();
     toast(t.dataset.nwuse?"Added. Edit it into the team's words.":"Left out of this plan. It stays in the record.");return true}
+  if(t.dataset.nwedit){const n=notices.get(t.dataset.nwedit);if(!n)return true;
+    noticeForm=Object.assign({},n,{day:iso(new Date(n.at||Date.now()))});if(n.photo)noticeForm.photo=Object.assign({},n.photo);
+    view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();const c=$("#nf-card");if(c)c.scrollIntoView({block:"start"});else jumpTop();return true}
   if(t.dataset.nwdel){$("#nwd-"+t.dataset.nwdel).innerHTML=`<span class="confirm">Remove this moment for everyone? <button class="btn warn small" data-nwdelyes="${t.dataset.nwdel}">Remove</button><button class="linkbtn" data-nwkeep="1">Keep it</button></span>`;return true}
   if(t.dataset.nwkeep){renderMain();return true}
   if(t.dataset.nwdelyes){removeNotice(t.dataset.nwdelyes);renderMain();toast("Removed.");return true}
@@ -1946,6 +1956,7 @@ function renderProject(x){
 
   h+=`<section class="card"><div class="lbl">Classrooms</div>
     <div class="hint">${x.home?"The project belongs to its home classroom. Other classrooms can join, each by its own path.":"This is a school-wide project with no home classroom. Each classroom that takes part joins it."}</div>
+    <label class="cnt">Home classroom <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home classroom</option></select></label>
     ${(x.classrooms||[]).map(c=>{const isHome=c.room===x.home;const used=ths.some(o=>o.t.classroom===c.room);
       return `<div class="proom"><div class="actions"><b>${esc(c.room)}</b>${isHome?`<span class="tag classroom">Home</span>`:""}
         <label class="cnt">${isHome?"Began":"Joined"} the week of <input type="date" data-pcw="${c.room}" value="${esc(c.week||"")}" style="width:auto"></label>
@@ -2167,6 +2178,8 @@ document.addEventListener("change",e=>{
   if(t.dataset.padd){const x=projects.get(t.value),th=threads.get(t.dataset.padd);if(x&&th)addThreadToProject(x,th);return}
   if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
   if(t.dataset.pstatus){x.status=t.value;saveProject(x);renderMain();return}
+  // a new home keeps the old home as a classroom that took part, so nothing it holds is lost
+  if(t.dataset.phome){const r=t.value;x.home=r;if(r&&!(x.classrooms||[]).some(c=>c.room===r))x.classrooms=[{room:r,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""},...(x.classrooms||[])];saveProject(x);renderMain();toast(r?`${r} is now the home classroom.`:"This is now a school-wide project.");return}
   if(t.dataset.pch){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pch);if(c){c.how=t.value;saveProject(x);renderMain()}return}
   if(t.dataset.pcw){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcw);if(c&&t.value){c.week=mondayOf(parseIso(t.value));saveProject(x);renderMain()}return}
   if(t.dataset.pcadd){if(t.value&&!projRooms(x).includes(t.value)){x.classrooms=[...(x.classrooms||[]),{room:t.value,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""}];saveProject(x);renderMain()}return}
@@ -3114,7 +3127,14 @@ function evidenceHtml(t){
   const line=e=>`<div>“${esc(e.text)}”${evSource(e)}</div>`;
   return `<div class="evid">${all.slice(0,4).map(line).join("")}</div>${all.length>4?`<details><summary class="chiprow-label" style="cursor:pointer">Show ${all.length-4} earlier quote${all.length-4>1?"s":""}</summary><div class="evid" style="margin-top:8px">${all.slice(4).map(line).join("")}</div></details>`:""}`;
 }
+let tEdit="";
+function threadEditHtml(t){return `<div class="tedit" style="display:grid;gap:8px">
+    <label class="fld-label">Thread name<input type="text" id="te-name" value="${esc(t.name)}"></label>
+    <label class="fld-label">The team's question<textarea id="te-q" rows="2" placeholder="Written as the educators' hypothesis">${esc(t.question||"")}</textarea></label>
+    <label class="cnt">Classroom <select id="te-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${t.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
+    <div class="actions"><button class="btn small" data-tesave="${t.id}">Save changes</button><button class="linkbtn" data-tecancel="1">Cancel</button></div></div>`}
 function threadCard(t,isTracked,weeks,scanIdx,scan){
+  if(isTracked&&t.id&&tEdit===t.id)return `<article class="thread" id="th-${t.id}">${threadEditHtml(t)}</article>`;
   const on=new Set(t.weeks||[]);
   const linked=isTracked&&t.id?threadLinkedPlans(t):[];linked.forEach(p=>on.add(p.weekOf));
   let h=`<article class="thread"${isTracked&&t.id?` id="th-${t.id}"`:""}><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
@@ -3135,6 +3155,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
+      <button class="linkbtn" data-tedit="${t.id}">Change name or classroom</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
     {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} Notice and Wonder moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
@@ -3228,6 +3249,12 @@ const tTimers={};
 function saveThreadSoon(t){threads.set(t.id,t);clearTimeout(tTimers[t.id]);tTimers[t.id]=setTimeout(()=>saveThread(t),700)}
 
 async function threadsClick(t){
+  if(t.dataset.tedit){tEdit=t.dataset.tedit;renderMain();const el=document.getElementById("th-"+tEdit);if(el)el.scrollIntoView({block:"center"});return true}
+  if(t.dataset.tecancel){const id=tEdit;tEdit="";renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"center"});return true}
+  if(t.dataset.tesave){const th=threads.get(t.dataset.tesave);if(!th)return true;const name=($("#te-name")?.value||"").trim();
+    if(!name){toast("The thread needs a name.");return true}
+    th.name=name;th.question=($("#te-q")?.value||"").trim();th.classroom=$("#te-room")?.value||"";th.editedBy=whoAmI();th.editedAt=Date.now();
+    saveThread(th);tEdit="";renderMain();const el=document.getElementById("th-"+th.id);if(el)el.scrollIntoView({block:"center"});toast("Changes saved.");return true}
   if(t.dataset.troom){tRoom=t.dataset.troom;LS.set("fps.troom",tRoom);renderMain();return true}
   if(t.dataset.cell){const [w,r0]=t.dataset.cell.split("|");const r=r0||"All";week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
