@@ -208,9 +208,24 @@ async function doLoad() {
     };
     await Promise.all(Array.from({ length: 8 }, worker));
     await loadDrdp();
+    if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
+}
+
+async function recheckRecords() {
+  const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
+  if (tree.status !== 200) return;
+  let n = 0;
+  for (const f of (tree.json.tree || [])) {
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides)\/([^/]+)\.json$/); if (!m) continue;
+    const rec = store.recs[m[1]].get(m[2]);
+    if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
+    const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
+    try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[m[1]].set(m[2], { doc, sha: f.sha, path: f.path }); noteChange(m[1], m[2]); n++; } catch (e) {}
+  }
+  if (n) log('Read', n, 'records again that changed while the server was starting');
 }
 
 /* ---------- DRDP (2025) definitions and level descriptors ----------
@@ -257,10 +272,13 @@ function flushPath(path) {
 }
 // true when everything waiting reached GitHub
 async function flushEverything() { await Promise.all([...dirtyPaths.keys()].map(flushPath)); await Promise.all([...chains.values()]); return dirtyPaths.size === 0; }
-async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}`); return r.status === 200 ? r.json.sha : null; }
+// the address changes each time, so GitHub never hands back a copy from before the last save
+async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); return r.status === 200 ? r.json.sha : null; }
 async function writeFile(kind, id) {
   const rec = store.recs[kind].get(id); const path = `${kind}/${id}.json`;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    // after a refusal, GitHub is given a moment to catch up with a save that has just been made elsewhere
+    if (attempt) await new Promise(res => setTimeout(res, 1500 * attempt));
     let r;
     if (!rec || rec.deleted) {
       const shaNow = (rec && rec.sha) || await currentSha(path);
@@ -472,6 +490,7 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
+    const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
       const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
       const keepSt = d => { for (const k of ST) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'status') d[k] = 'active'; else delete d[k]; } };
@@ -481,7 +500,6 @@ async function handle(req, res) {
     }
     if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
-    const map = store.recs[kind]; const cur = map.get(id);
     // director feedback on a plan is written only by the director; an educator's save keeps whatever the director last wrote
     if (kind === 'plans' && !isDirector(me.name)) {
       const keep = d => { for (const k of DIRECTOR_FIELDS) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'feedback') d[k] = ''; else delete d[k]; } };
@@ -493,10 +511,12 @@ async function handle(req, res) {
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       map.set(id, { doc: Object.assign({}, body.data, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
-    else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; } map.set(id, { doc: Object.assign({}, body.data, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
+    else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
+      if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
     else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; } deepMerge(cur.doc, body.patch || {}); cur.doc.updatedByName = me.name; }
     else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
+    { const r0 = map.get(id); if (r0) r0.local = true; }
     noteChange(kind, id); scheduleSave(kind, id);
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
