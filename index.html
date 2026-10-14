@@ -1472,6 +1472,9 @@ function drdpLevelOk(v,code,txt){
 }
 const drdpRank=(v,code,l)=>drdpLevels(v,code).indexOf(l);
 function kidMonths(c){if(!c||!c.dob)return null;const b=parseIso(String(c.dob).slice(0,10)),n=new Date();let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;return m}
+// a child's age on a given day, in years and months, as it is written on portfolio pages
+function kidAgeAt(c,t){if(!c||!c.dob)return"";const b=parseIso(String(c.dob).slice(0,10)),n=new Date(t||Date.now());let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;if(m<0)return"";
+  const y=Math.floor(m/12),r=m%12,ys=y?`${y} year${y===1?"":"s"}`:"",ms=r||!y?`${r} month${r===1?"":"s"}`:"";return [ys,ms].filter(Boolean).join(" ")}
 // which view of the DRDP a child is read against. Chosen on the child's page, or by age, under three years old is Infant and Toddler
 function drdpViewOf(c){
   const d=c&&c.drdp||{};if(d.view==="it"||d.view==="ptk")return {v:d.view,why:"chosen for "+(c.first||"this child")};
@@ -1745,7 +1748,15 @@ function newSlide(n){
 }
 const slidePhotos=s=>(s.photos||[]).filter(id=>{const n=notices.get(id);return n&&n.photo}).slice(0,3);
 function slideSources(s){const ids=[...new Set([...(s.momentIds||[]),...(s.photos||[])])];return ids.map(id=>notices.get(id)).filter(Boolean)}
+// a page in one child's portfolio. Other children's own words stay in the classroom record, and other children are named by initial.
+function focusText(t,c,dropLines){
+  t=String(t||"");if(!c)return t;
+  if(dropLines)t=t.split("\n").filter(l=>{const m=l.trim().match(NAMED_LINE);return !m||m[1].replace(/ \[\?\]$/,"")===c.first}).join("\n");
+  for(const n of displayNames(t))if(n!==c.first)t=t.replace(new RegExp("\\b"+n+"\\b(?!\\s+[Gg]roup)(?:\\s+[A-Z]\\.)?","g"),n[0]+".");
+  return t.replace(/\b([A-Z])\.\./g,"$1.");
+}
 function slideDoc(s){
+  if(s.focus){const c=s.focus;s=Object.assign({},s,{focus:null,text:focusText(s.text,c),title:focusText(s.title,c),quotes:(s.quotes||[]).filter(q=>String(q.name||"").replace(/ \[\?\]$/,"")===c.first)})}
   const mode=s.names||PRINT.names;const src=slideSources(s);const all=src.map(n=>n.noticed+"\n"+(n.wonder||"")).join("\n")+"\n"+(s.quotes||[]).map(q=>q.name+" - "+q.words).join("\n");
   const blocks=[];if(has(s.text))blocks.push({t:"box",text:displayText(s.text,mode,all)});
   (s.quotes||[]).forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
@@ -1913,7 +1924,7 @@ function portfolioDrdpDoc(c,mode){
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
-    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),x.evidence||"",x.src?`From ${x.src.title||"documentation"}, ${shortDate(x.src.at||x.at)}`:"",[drdpLevelText(x.level,x.emerging)]))}}
+    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),focusText(x.evidence||"",c),x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",[drdpLevelText(x.level,x.emerging)]))}}
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-","–")]],blocks};
 }
@@ -1924,9 +1935,10 @@ function portfolioDocs(c,mode){
   const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" classroom":"",yearFromTime(Date.now()).replace("-","–")],photos:[],
     blocks:[{t:"para",text:(()=>{const who=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${who} story`;
       const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
-      return d0===d1?`${who} story on ${d0}`:`${who} story from ${d0} to ${d1}`})()},{t:"para",text:"In the words of the children and the educators."}]};
+      return d0===d1?`${who} story on ${d0}`:`${who} story from ${d0} to ${d1}`})()},{t:"para",text:mode==="none"?"In the child's own words and the educators'.":`In ${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s own words and the educators'.`}]};
   const dr=portfolioDrdpDoc(c,mode);
-  return [cover,...items.map(x=>x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode})):momentDoc(x.n,mode)),...(dr?[dr]:[])];
+  const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
+  return [cover,...items.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at)),...(dr?[dr]:[])];
 }
 
 /* ---------- Keeping a moment without signal ----------
@@ -3780,9 +3792,10 @@ function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").tr
 const NAMED_LINE=/^([A-Z][A-Za-z.'’]{0,24}(?:-[A-Za-z.'’]{1,24})?(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) ?[-–] (.{2,})$/;
 const momentPhotos=n=>n&&n.photo&&n.photo.w?[{key:n.id,src:photoSrc(n),w:n.photo.w,h:n.photo.h}]:[];
 const momentDetails=n=>[n.classroom?n.classroom+" classroom":"",longDate(iso(new Date(n.at||Date.now()))),n.by||""];
-function momentDoc(n,mode){
+function momentDoc(n,mode,focus){
   mode=mode||PRINT.names;const blocks=[];let buf=[];
   const all=String(n.noticed||"")+"\n"+String(n.wonder||"");
+  if(focus)n=Object.assign({},n,{noticed:focusText(n.noticed,focus,true),wonder:focusText(n.wonder,focus)});
   const flush=()=>{if(buf.length)blocks.push({t:"para",text:displayText(buf.join("\n"),mode,all)});buf=[]};
   for(const raw of momentBody(n).split("\n")){const l=raw.trim();if(!l)continue;const m=l.match(NAMED_LINE);
     if(m){flush();blocks.push({t:"quote",words:displayText(m[2].trim(),mode,all),by:credit(m[1],mode)})}else buf.push(l)}
@@ -5437,7 +5450,7 @@ function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
 function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
   :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoSrc(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
-    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
+    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
   if(!c){$("#main").innerHTML=`<div class="empty">That child is not on the roster.</div>`;return}
@@ -5462,7 +5475,7 @@ function renderChild(){
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
         <div class="cnt">Tap a moment to read it. The portfolio holds the moments and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
         ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">None here.</div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
