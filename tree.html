@@ -336,7 +336,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .titem,.kidc,.quick button{box-shadow:var(--shadow)}
 .ttop{background:var(--paper)}
 .ttop .brand small{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:1px}
-@media (max-width:760px){.ttop .brand small{display:none}}
+@media (max-width:760px){.ttop .brand small{font-size:9.5px;letter-spacing:.02em;white-space:nowrap}}
 /* Today */
 .hello{display:grid;gap:4px}
 .hello h2{font-size:clamp(28px,5vw,40px)}
@@ -379,7 +379,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kidc span{font-size:12.5px;color:var(--muted)}
 /* the Conferences and Calendar pages, inside TREE */
 .embed{width:100%;border:0;display:block;background:var(--bg);height:calc(100vh - 150px);min-height:520px;border-radius:var(--r)}
-@media (max-width:760px){.embed{height:calc(100vh - 210px)}}
+#main{align-self:stretch;width:100%}
+@media (max-width:760px){.embed{height:calc(100dvh - 200px);width:calc(100% + 24px);margin-inline:-12px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1769,7 +1770,8 @@ function rerenderCard(p,k){
   const F=FORMS[p.type];const f=F.fields.find(x=>x.k===k);const card=document.querySelector(`[data-card="${k}"]`);if(!card)return;
   const tmp=document.createElement("div");tmp.innerHTML=fieldCard(p,f);card.replaceWith(tmp.firstElementChild);autoGrow($("#f-"+k));
 }
-function jumpTop(){if(innerWidth<900)$("#main").scrollIntoView({block:"start"});else window.scrollTo({top:0})}
+function jumpTop(){window.scrollTo({top:0})}
+function formTop(el){if(typeof el==="string")el=$(el);if(!el)return;const bar=$(".ttop"),hb=bar?bar.getBoundingClientRect().bottom:0;const y=el.getBoundingClientRect().top+scrollY-Math.max(0,hb)-10;window.scrollTo({top:Math.max(0,y)})}
 function fileName(p){return `${FORMS[p.type].name} ${p.type==="smallgroup"?(p.group||""):p.type==="individual"?(p.educator||""):(p.classroom||"")} ${p.weekOf}.pdf`.replace(/\s+/g," ")}
 // when final remarks are written after the plan was carried forward, they still reach next week's observation rationale, unless the educator has already written their own
 function flowRemarks(p){
@@ -2366,7 +2368,7 @@ function renderMoments(){
   const people=new Set(all.map(n=>n.by).filter(Boolean)).size;
   const open=all.filter(n=>!n.projectId&&!n.threadId).length;
   let shown=0;
-  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
+  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Notice and Wonder</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change a moment":"Keep a moment"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
     <div class="sub" style="max-width:74ch">Moments kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on a moment whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>${photoPickHtml("nf-photo2","Upload a photo")}`}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
@@ -2380,8 +2382,7 @@ function renderMoments(){
     <div class="stat"><b>${open}</b><span>not yet claimed by a project or thread</span></div>
     <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classrooms they came from</span></div>
   </div>
-  ${momentsReadHtml()}
-  ${noticeForm?noticeFormCard():""}`;
+  ${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No moments kept in this view. Widen the classroom or the range.":"No moments kept yet. Press Keep a moment and write one in a minute."}</div>`;
   for(const g of gs){
     if(shown>=120)break;
@@ -2500,7 +2501,7 @@ function noticesClick(t){
     toast(t.dataset.nwuse?"Added. Edit it into the team's words.":"Left out of this plan. It stays in the record.");return true}
   if(t.dataset.nwedit){const n=notices.get(t.dataset.nwedit);if(!n)return true;
     noticeForm=Object.assign({},n,{day:iso(new Date(n.at||Date.now()))});if(n.photo)noticeForm.photo=Object.assign({},n.photo);
-    view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();const c=$("#nf-card");if(c)c.scrollIntoView({block:"start"});else jumpTop();return true}
+    view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nwdel){$("#nwd-"+t.dataset.nwdel).innerHTML=`<span class="confirm">Remove this moment for everyone? <button class="btn warn small" data-nwdelyes="${t.dataset.nwdel}">Remove</button><button class="linkbtn" data-nwkeep="1">Keep it</button></span>`;return true}
   if(t.dataset.nwkeep){renderMain();return true}
   if(t.dataset.nwdelyes){removeNotice(t.dataset.nwdelyes);renderMain();toast("Removed.");return true}
@@ -2613,7 +2614,7 @@ function renderProjects(){
   else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
-  if(projForm){const el=$("#pf-name");if(el&&!projForm.shown){projForm.shown=true;el.focus()}}
+  if(projForm){const el=$("#pf-name");if(el&&!projForm.shown){projForm.shown=true;el.focus({preventScroll:true});formTop(el.closest("section,.card")||el)}}
 }
 function projThreadCard(x,l,t,ws){
   const on=new Set(t.weeks||[]);threadLinkedPlans(t).forEach(p=>on.add(p.weekOf));
@@ -4895,7 +4896,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
     if(st==="at"){c.status="active";delete c.leftAs;delete c.leftOn;delete c.withdrawnAt;kidNote(c,"At Fulton again",{date})}
     else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left Fulton",{date})}
     saveKid(c);toast(st==="at"?`${c.first} is back on the roster.`:`${c.first} is now with Former children.`);renderMain();return}
-  if(t.id==="ka-open"){kAdding=true;renderChildren();$("#ka-first")?.focus();return}
+  if(t.id==="ka-open"){kAdding=true;renderChildren();const f=$("#ka-first");if(f){f.focus({preventScroll:true});formTop(f.closest("section"))}return}
   if(t.id==="ka-cancel"){kAdding=false;renderChildren();return}
   if(t.id==="ka-save"){const first=($("#ka-first").value||"").trim(),last=($("#ka-last").value||"").trim(),dob=$("#ka-dob").value||"";if(!first){toast("Type the child's first name.");return}
     let id=kidSlug(first+"-"+last)+(dob?"-"+dob.replace(/-/g,""):"");if(!id)id="child";while(children.has(id))id+="-2";

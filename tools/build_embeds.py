@@ -44,6 +44,7 @@ app = rep(app, '</style>\n\n<header class="top">', '''/* inside TREE */
 h1,h2,h3{font-weight:700}
 header.top .brand,.who-chip{display:none!important}
 header.top{position:static!important;border-bottom:0!important;background:transparent!important}
+@media (max-width:760px){main{padding:12px 10px 80px!important}}
 </style>
 
 <header class="top">''')
@@ -70,6 +71,21 @@ cal = cal.replace("Fulton Calendar server", "TREE server")
 cal = rep(cal, '<div class="wrap" id="app">\n  <header class="top">', '''<style>/* inside TREE */
 #app>header.top .brand,#app>header.top .spacer,#who-name,#btn-signout{display:none!important}
 #app>header.top{border-bottom:0;padding:0;margin:0 0 8px;justify-content:flex-end;min-height:0}
+@media (max-width:760px){
+  .wrap{padding-inline:10px}
+  #app{position:relative}
+  #app>header.top{position:absolute;top:12px;right:10px;margin:0;z-index:25}
+  #app>header.top #btn-settings{padding:6px 10px;font-size:13px}
+  .bar h2{padding-right:96px}
+}
+.glance{border:2px solid var(--marigold);border-radius:12px;background:var(--paper);overflow:hidden;margin-bottom:16px}
+.glance-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px 8px}
+.glance-h b{font-family:var(--display);font-size:22px;color:var(--marigold)}
+.glance-h span{font-size:14px;color:var(--muted)}
+.glance-sum{padding:0 14px 10px;font-size:15px}
+.rest-h{font-family:var(--display);font-size:17px;font-weight:700;margin:4px 2px 8px}
+.rest{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.cal:has(.glance){background:transparent;border:0;overflow:visible}
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--paper:#ffffff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--line-soft:#dde4da}}
 </style>
 <div class="wrap" id="app">
@@ -84,7 +100,21 @@ cal = rep(cal, 'function step(dir){\n', 'function step(dir){\n  if(S.view==="nex
 cal = rep(cal, 'function renderMonth(idx){', '''// today first, then the six days after it, each with everything on it
 function renderNext(idx){
   const t=today(), box=h("div",{});
-  for(let i=0;i<7;i++){
+  let list=box, from=0;
+  if(S.anchor===t){
+    // today at a glance, everything on it in one card, then the rest of the week below
+    const v=idx.get(t)||{allDay:[],timed:[]}, rows=v.allDay.concat(v.timed);
+    const g=h("div",{class:"glance"});
+    g.append(h("div",{class:"glance-h"}, h("b",{text:"Today"}), h("span",{text:fmt(t,{weekday:"long",month:"long",day:"numeric"})})));
+    const timed=v.timed.filter(x=>x.start!=null), now=new Date(), mins=now.getHours()*60+now.getMinutes();
+    const next=timed.find(x=>x.end==null?x.start>=mins:x.end>mins);
+    g.append(h("div",{class:"glance-sum",text: !rows.length? "Nothing scheduled today." : rows.length+(rows.length>1?" things":" thing")+" today"+(next?". Next is "+(next.kind==="event"?next.ev.title:next.space.name)+" at "+clock(next.start)+".":".")}));
+    for(const x of rows) g.append(agRow(x));
+    box.append(g);
+    box.append(h("div",{class:"rest-h",text:"The rest of the week"}));
+    list=h("div",{class:"rest"}); box.append(list); from=1;
+  }
+  for(let i=from;i<7;i++){
     const d=addDays(S.anchor,i);
     const v=idx.get(d)||{allDay:[],timed:[]};
     const day=h("div",{class:"ag-day"});
@@ -92,7 +122,7 @@ function renderNext(idx){
     const rows=v.allDay.concat(v.timed);
     if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
     for(const x of rows) day.append(agRow(x));
-    box.append(day);
+    list.append(day);
   }
   return box;
 }
