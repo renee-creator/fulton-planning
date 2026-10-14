@@ -653,8 +653,10 @@ function newPlan(type,extra={}){
 function setConn(t){$("#conn").textContent=t}
 async function boot(){
   {const stored=LS.get("fps.me","");const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";
-   $("#me").value=isShared(stored)?"":(stored||(isShared(signed)?"":signed));
-   if(isShared(stored))LS.set("fps.me","")}
+   // a personal sign-in always names the educator. A name typed on this device earlier is used only with a shared sign-in.
+   const own=signed&&!isShared(signed)?signed:"";
+   $("#me").value=own||(isShared(stored)?"":stored);
+   if(own&&stored!==own)LS.set("fps.me",own);else if(isShared(stored))LS.set("fps.me","")}
   PDEF=PROGRAM_DEFAULTS();
   {const pr=LS.get("fps.program",null);if(pr)applyProgram(pr)}
   {const r=LS.get("fps.roster",null);if(Array.isArray(r)&&r.length)roster=r.filter(x=>x&&!isShared(x.name))}
@@ -668,7 +670,7 @@ async function boot(){
   if(!window.claude||!window.claude.use){setConn("Saving on this device");return}
   const [d,s,dl]=await Promise.all([claude.use("db").catch(()=>null),claude.use("sample").catch(()=>null),claude.use("downloads").catch(()=>null)]);
   sample=s;downloads=dl;
-  if(window.FP_HOSTED&&!$("#me").value&&window.FP_NAME&&!isShared(window.FP_NAME())){$("#me").value=window.FP_NAME();LS.set("fps.me",$("#me").value)}
+  if(window.FP_HOSTED&&window.FP_NAME&&window.FP_NAME()&&!isShared(window.FP_NAME())&&$("#me").value!==window.FP_NAME()){$("#me").value=window.FP_NAME();LS.set("fps.me",$("#me").value)}
   renderWho();
   renderTreeNav();
   if(sample){try{const lim=await sample.limits();imgLimit=lim?.images?.maxCount||0}catch(e){imgLimit=0}}
