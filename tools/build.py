@@ -1,4 +1,5 @@
-"""Builds index.html from src/app.html (Planning Studio) and src/shim.html (sign-in and server connection).
+"""Builds tree.html, TREE, from src/app.html and src/shim.html (sign-in and server connection), and the Conferences and
+Calendar pages that sit inside it. With --switch it also writes index.html, so the old Planning Studio link opens TREE.
 Run from the repository folder with  python3 tools/build.py"""
 import pathlib, re
 root = pathlib.Path(__file__).resolve().parent.parent
@@ -12,12 +13,18 @@ headbits, body = app[:cut], app[cut:]
 head = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
         '<meta name="robots" content="noindex,nofollow">\n'
-        '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="apple-touch-icon.png">\n'
-        '<link rel="manifest" href="manifest.webmanifest">\n<meta name="theme-color" content="#2f5a43">\n'
+        '<link rel="icon" href="tree-icons/favicon-32.png" type="image/png">\n<link rel="apple-touch-icon" href="tree-icons/apple-touch-icon.png">\n'
+        '<link rel="manifest" href="tree.webmanifest">\n<meta name="theme-color" content="#fbf7ec">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="mobile-web-app-capable" content="yes">\n'
-        '<meta name="apple-mobile-web-app-title" content="Planning">\n<meta name="apple-mobile-web-app-status-bar-style" content="default">\n' + headbits +
+        '<meta name="apple-mobile-web-app-title" content="TREE">\n<meta name="apple-mobile-web-app-status-bar-style" content="default">\n' + headbits +
         '<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}'
         'body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>\n</head>\n<body>\n')
 out = head + body.replace(marker, shim + "\n" + marker) + "\n</body>\n</html>\n"
-(root / "index.html").write_text(out)
-print("index.html", len(out), "bytes")
+import sys
+(root / "tree.html").write_text(out)
+print("tree.html", len(out), "bytes")
+if "--switch" in sys.argv:
+    (root / "index.html").write_text(out)
+    print("index.html is TREE")
+import subprocess
+subprocess.run([sys.executable, str(root / "tools/build_embeds.py")], check=True)
