@@ -265,6 +265,28 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .wordrow b{min-width:7em;font-size:14px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
 .wordrow b.muted{color:var(--muted);font-weight:500}
 .wordrow .linkbtn{font-size:15px;line-height:1;padding:0 2px;color:var(--muted)}
+.wsphs{display:flex;flex-wrap:wrap;gap:6px}
+.wsph{position:relative;width:64px;height:64px;padding:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);cursor:pointer}
+.wsph img{width:100%;height:100%;object-fit:cover;display:block}
+.wsph[aria-pressed="true"]{border-color:var(--moss)}
+.wsph span{position:absolute;top:3px;left:3px;background:var(--moss);color:var(--paper);font-size:11px;font-weight:700;border-radius:999px;width:18px;height:18px;display:grid;place-items:center}
+.csheets{display:flex;flex-wrap:wrap;gap:12px}
+.csheet{flex:1 1 260px;max-width:360px;border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);background:#fff}
+.csheet svg{display:block;width:100%;height:auto}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.prow .seg{flex-wrap:wrap}
+.kbar{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center}
+.kbar .seg{flex-wrap:wrap}
+.klist{display:grid}
+.kid{border-top:1px solid var(--line);padding:9px 0}.kid:first-child{border-top:none}
+.krow{display:flex;justify-content:space-between;align-items:center;gap:6px 12px;flex-wrap:wrap}
+.kmain{display:grid;gap:1px;min-width:0}.kside{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kst{font-size:12px;border-radius:999px;padding:2px 9px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.kst.next{color:var(--moss);border-color:color-mix(in srgb,var(--moss) 35%,var(--line))}
+.kst.left,.kst.moved{color:var(--ink)}
+.kedit{display:grid;gap:10px;margin-top:10px;padding:12px;border-radius:10px;background:var(--bg)}
+.kfields{display:flex;flex-wrap:wrap;gap:10px}.kfields label{display:grid;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 170px;min-width:0}
+.khist{font-size:12px;color:var(--muted);display:grid;gap:2px}
 .rname{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;background:var(--bg)}
 .rname button{border:none;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
 .radio{display:flex;gap:8px;align-items:flex-start;font-size:14px}
@@ -274,7 +296,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>Planning Studio</h1></div>
-    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button><button data-view="moments">Moments</button></div>
+    <div class="nav" role="group" aria-label="View"><button data-view="plans">Plans</button><button data-view="all">All plans</button><button data-view="threads">Threads<span class="navx"> and overview</span></button><button data-view="projects">Projects</button><button data-view="lens">Lens</button><button data-view="moments">Moments</button><button data-view="children">Children</button></div>
     <div class="spacer"></div>
     <div class="who">
       <label for="me">Educator</label>
@@ -367,7 +389,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
   const SERVER= local? want : DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
   const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
-  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
+  const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
   // a photo link carries a key that lasts twelve hours, so it is renewed only after six, and pictures already loaded are not fetched again
   function takeFileKey(k){ if(k && (!Store.fileKey || Date.now()-Store.fileKeyAt>6*36e5)){ Store.fileKey=k; Store.fileKeyAt=Date.now(); } }
   window.FP_HOSTED=true;
@@ -395,7 +417,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -507,6 +529,8 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 <script>
 /* ---------- Program data, from the Teacher Policies & Procedures and Small Group Work policy ---------- */
 const CLASSROOMS=["West","North","South"];
+// printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
+let PRINT={schoolDocs:false,schoolRecords:true,names:"first"};
 let GROUPS=[
   {name:"Cosmos",room:"West",educator:"Delia M"},{name:"Yarrow",room:"West",educator:"Delia M"},{name:"Zinnia",room:"West",educator:"Delia F"},{name:"Borage",room:"West",educator:"Delia F"},
   {name:"Marigold",room:"North",educator:"Maren"},{name:"Morning Glory",room:"North",educator:"Odette"},{name:"Sunflower",room:"North",educator:"Ines"},
@@ -715,6 +739,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});children=m;if(view==="children"&&!document.activeElement?.closest?.("#main"))renderChildren()},()=>{});
     db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
@@ -861,6 +886,7 @@ function renderMain(){
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="settings"){renderSettings();return}
+  if(view==="children"){renderChildren();return}
   // an unfinished moment waits on the Moments page, so it never stands in for a plan an educator opened
   if(noticeForm&&!currentId){renderNoticeForm();return}
   const p=currentId&&plans.get(currentId);
@@ -1412,7 +1438,7 @@ async function makePdf(list,filename){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
   const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});if(disp)pdfFonts(doc);
-  const pageAcc={};pageInfo={};
+  const pageAcc={};pageInfo={};centerOver=[];
   list.forEach((p,i)=>{if(i>0)doc.addPage();drawAny(doc,p,pageAcc)});
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
@@ -1421,8 +1447,10 @@ async function makePdf(list,filename){
     doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(.6);
     doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
     if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(110,124,115);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-15,{align:"center"})}}
-  saveFile(doc.output("blob"),filename);
+  saveFile(doc.output("blob"),filename);overWarn();
 }
+// a sheet with more words than fit still prints, and the educator hears which one to shorten
+function overWarn(){const u=[...new Set(centerOver)];if(u.length)setTimeout(()=>toast(`${u.length===1?"“"+u[0]+"” has":u.length+" sheets have"} more words than fit. Choose fewer quotes or shorten the words.`),1200);centerOver=[]}
 async function saveFile(blob,filename){
   if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
   try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
@@ -1517,9 +1545,9 @@ function metaRows(p){
 function headerFull(doc,p,A){
   const F=FORMS[p.type]||{name:"",who:""};
   doc.setFillColor(...A.c);doc.rect(M,30,22,3.2,"F");
-  doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,46);doc.setCharSpace(0);
+  doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);if(PRINT.schoolRecords){doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,46);doc.setCharSpace(0)}
   const title=clean(p.title||F.name);let ts=23;doc.setFontSize(ts);while(ts>15&&doc.getTextWidth(title)>CW-215){ts--;doc.setFontSize(ts)}
-  doc.setTextColor(28,42,34);const tl=doc.splitTextToSize(title,CW-215).slice(0,2);const tlh=ts*1.08;const ty0=tl.length>1?66:72;tl.forEach((l,i)=>doc.text(l,M,ty0+i*tlh));
+  doc.setTextColor(28,42,34);const tl=doc.splitTextToSize(title,CW-215).slice(0,2);const tlh=ts*1.08;const ty0=(tl.length>1?66:72)-(PRINT.schoolRecords?0:8);tl.forEach((l,i)=>doc.text(l,M,ty0+i*tlh));
 
   const rows=metaRows(p);const mw=196,mx=PW-M-mw,my=30,mh=14+rows.length*17;
   doc.setFillColor(...A.t);doc.roundedRect(mx,my,mw,mh,6,6,"F");
@@ -1533,7 +1561,8 @@ function headerFull(doc,p,A){
 }
 function headerCont(doc,p,A){
   const F=FORMS[p.type]||{name:""};
-  doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,40);doc.setCharSpace(0);
+  if(PRINT.schoolRecords){doc.setFont("helvetica","bold");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(1.5);doc.text("FULTON COMMUNITY SCHOOL & FARM",M,40);doc.setCharSpace(0)}
+  doc.setFont("helvetica","bold");
   doc.setFontSize(12.5);doc.setTextColor(28,42,34);doc.text(clean(p.title||F.name),M,57);
   doc.setFont("helvetica","normal");doc.setFontSize(8.6);doc.setTextColor(96,110,101);
   doc.text(clean(metaRows(p).map(r=>r[1]).filter(Boolean).join("  •  ")),PW-M,57,{align:"right"});
@@ -1607,7 +1636,7 @@ function svgToPng(svg){return new Promise((res,rej)=>{const img=new Image();img.
 function planPageCount(p){try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});if(p.display)pdfFonts(t);drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
 async function makeDocx(list,filename){
   let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
-  toast("Preparing the Word file");
+  toast("Preparing the Word file");centerOver=[];
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
   const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,HeightRule,AlignmentType,ImageRun,Footer,PageNumber,PageBreak}=D;
   const bd=c=>({style:BorderStyle.SINGLE,size:6,color:c});
@@ -1616,8 +1645,8 @@ async function makeDocx(list,filename){
   for(const p of list){
     const A=ACC[p.acc||p.type]||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
     const ch=[];
-    if(p.display){await displayDocx(ch,p,D,A)}else{
-    ch.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:15,color:ac,characterSpacing:30,font:"Helvetica"})]}));
+    if(p.centered){await centeredDocx(ch,p,D,A)}else if(p.display){await displayDocx(ch,p,D,A)}else{
+    if(PRINT.schoolRecords)ch.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:15,color:ac,characterSpacing:30,font:"Helvetica"})]}));
     ch.push(new Paragraph({spacing:{after:120},children:[new TextRun({text:clean(p.title||F.name),bold:true,size:40,color:"1C2A22",font:"Helvetica"})]}));
     const rows=metaRows(p);
     ch.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:rows.map(([l,v])=>new TableCell({shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},margins:{top:80,bottom:80,left:140,right:140},borders:{top:none,bottom:none,left:none,right:{style:BorderStyle.SINGLE,size:12,color:"FFFFFF"}},
@@ -1659,7 +1688,7 @@ async function makeDocx(list,filename){
   const wf=disp?wordFonts():[];
   const docx=new Document(Object.assign({creator:"Fulton Planning Studio",title:filename.replace(/\.docx$/,""),sections},disp?{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}}:{},wf.length?{fonts:wf}:{}));
   const blob=await Packer.toBlob(docx);
-  saveFile(blob,filename);
+  saveFile(blob,filename);overWarn();
 }
 
 /* A filled example built from the strong examples in the Teacher Policies & Procedures */
@@ -2218,7 +2247,7 @@ function startProject(){
   if(t&&projectOfThread(t.id)){toast("That thread is already part of a project.");projForm=null;renderMain();return}
   const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
   const firstWeek=t?([...(t.weeks||[])].sort()[0]||wk):wk;
-  const x={id:uid(),name,experience,underneath,intent,earlier:{underneath:[],intent:[]},home,classrooms:home?[{room:home,how:"start",week:firstWeek,by,at:now,note:""}]:[],threads:t?[{id:t.id,by,at:now,week:wk}]:[],
+  const x={id:uid(),year:yearFromTime(now),name,experience,underneath,intent,earlier:{underneath:[],intent:[]},home,classrooms:home?[{room:home,how:"start",week:firstWeek,by,at:now,note:""}]:[],threads:t?[{id:t.id,by,at:now,week:wk}]:[],
     decision:{who,by,at:now,threadId:t?t.id:""},groups:t?[...(t.groups||[])]:[],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
   // a thread followed in another classroom than the home brings its classroom in
   if(t&&t.classroom&&t.classroom!==home)x.classrooms.push({room:t.classroom,how:"",week:wk,by,at:now,note:""});
@@ -2339,8 +2368,13 @@ async function projectsClick(t){
     if(t.dataset.pwallshut){wallOpen[x.id]=false;renderMain();return true}
     if(t.dataset.wsfresh){$("#pwall .actions").insertAdjacentHTML("beforeend",`<span class="confirm">Replace these sheets with a fresh set from the timeline? <button class="btn warn small" data-wsfreshyes="1">Replace</button><button class="linkbtn" data-wsfreshno="1">Keep these</button></span>`);t.remove();return true}
     if(t.dataset.wsfreshno){renderMain();return true}
-    if(t.dataset.wsfreshyes){x.wall=wallProposal(x);saveProject(x);renderMain();toast("A fresh set of sheets is ready.");return true}
-    if(t.dataset.wsadd){x.wall.sheets.push({id:"w"+Math.random().toString(36).slice(2,8),kind:"other",title:"",photo:"",text:"",quotes:[],include:true});saveProject(x);renderMain();return true}
+    if(t.dataset.wsfreshyes){x.wall=Object.assign(wallProposal(x),x.wall&&x.wall.names?{names:x.wall.names}:{});saveProject(x);renderMain();toast("A fresh set of sheets is ready.");return true}
+    if(t.dataset.wsph){const [id,nid]=t.dataset.wsph.split("|");const sh=wallSheet(x,id);if(!sh)return true;const cur=wallPhotos(sh);
+      if(cur.includes(nid))sh.photos=cur.filter(v=>v!==nid);else if(cur.length>=3){toast("A sheet holds up to three photos. Take one off first.");return true}else sh.photos=[...cur,nid];
+      delete sh.photo;saveProject(x);renderMain();return true}
+    if(t.dataset.wnames){x.wall.names=t.dataset.wnames;saveProject(x);renderMain();return true}
+    if(t.dataset.wsprev){wallPrev[t.dataset.wsprev]=!wallPrev[t.dataset.wsprev];if(wallPrev[t.dataset.wsprev]&&!PF.buf)loadPrintFonts().then(()=>renderMain());renderMain();return true}
+    if(t.dataset.wsadd){x.wall.sheets.push({id:"w"+Math.random().toString(36).slice(2,8),kind:"other",title:"",photos:[],text:"",quotes:[],include:true});saveProject(x);renderMain();return true}
     const mv=(id,d)=>{const a=x.wall.sheets,i=a.findIndex(s=>s.id===id),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];saveProject(x);renderMain()};
     if(t.dataset.wsup){mv(t.dataset.wsup,-1);return true}
     if(t.dataset.wsdown){mv(t.dataset.wsdown,1);return true}
@@ -2400,7 +2434,6 @@ document.addEventListener("change",e=>{
   if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
   if(t.dataset.pstatus){x.status=t.value;saveProject(x);renderMain();return}
   if(t.dataset.wsinc){const sh=wallSheet(x,t.dataset.wsinc);if(sh){sh.include=t.checked;saveProject(x);renderMain()}return}
-  if(t.dataset.wsphoto){const sh=wallSheet(x,t.dataset.wsphoto);if(sh){sh.photo=t.value;saveProject(x);renderMain()}return}
   // a new home keeps the old home as a classroom that took part, so nothing it holds is lost
   if(t.dataset.phome){const r=t.value;x.home=r;if(r&&!(x.classrooms||[]).some(c=>c.room===r))x.classrooms=[{room:r,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""},...(x.classrooms||[])];saveProject(x);renderMain();toast(r?`${r} is now the home classroom.`:"This is now a school-wide project.");return}
   if(t.dataset.pch){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pch);if(c){c.how=t.value;saveProject(x);renderMain()}return}
@@ -2756,19 +2789,23 @@ const dPhoto=(n,maxH,full)=>({t:"photo",key:n.id,src:photoSrc(n),maxH,full:!!ful
 // a sheet's own title, such as Creek Reflection, heads the printout when the photo carries one
 function momentHeading(n){if(!n.photo)return"";const first=String(n.noticed||"").split("\n")[0].trim();return first&&first.length<=40&&!/ - /.test(first)&&String(n.noticed).includes("\n")?first:""}
 function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").trim();return h?t.split("\n").slice(1).join("\n").trim():t}
-function momentDoc(n){
-  const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  const meta=[["Classroom",n.classroom||""],["Kept by",n.by||""],["Day",shortDate(n.at)]];
-  const blocks=[];
-  if(n.photo)blocks.push(dPhoto(n,300,true));
-  blocks.push(dText(n.photo?"The children's words":"What I noticed",momentBody(n)));
-  if(has(n.wonder))blocks.push(dText("What I wonder",wonderLine(n.wonder)));
-  if(pr||th)blocks.push(dTags("Part of",[pr&&"Project, "+pr.name,th&&"Thread, "+th.name].filter(Boolean)));
-  return {display:true,type:"report",acc:"story",title:momentHeading(n)||"Notice and Wonder",meta,blocks};
+// a moment's sheet: the photo, the words as they were written, each child's line as a quote, and the wonder in a box
+const NAMED_LINE=/^([A-Z][A-Za-z.'’-]{0,24}(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) - (.{2,})$/;
+const momentPhotos=n=>n&&n.photo&&n.photo.w?[{key:n.id,src:photoSrc(n),w:n.photo.w,h:n.photo.h}]:[];
+const momentDetails=n=>[n.classroom?n.classroom+" classroom":"",longDate(iso(new Date(n.at||Date.now()))),n.by||""];
+function momentDoc(n,mode){
+  mode=mode||PRINT.names;const blocks=[];let buf=[];
+  const all=String(n.noticed||"")+"\n"+String(n.wonder||"");
+  const flush=()=>{if(buf.length)blocks.push({t:"para",text:displayText(buf.join("\n"),mode,all)});buf=[]};
+  for(const raw of momentBody(n).split("\n")){const l=raw.trim();if(!l)continue;const m=l.match(NAMED_LINE);
+    if(m){flush();blocks.push({t:"quote",words:displayText(m[2].trim(),mode,all),by:credit(m[1],mode)})}else buf.push(l)}
+  flush();
+  if(has(n.wonder))blocks.push({t:"box",text:displayText(wonderLine(n.wonder),mode,all)});
+  return {centered:true,display:true,type:"report",acc:"story",flow:true,title:displayText(momentHeading(n)||"Notice and Wonder",mode,all),details:momentDetails(n),photos:momentPhotos(n),blocks};
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs){
-  const want=[];for(const d of docs)for(const b of (d.blocks||[]))if(b.t==="photo"&&b.src&&!photoCache.has(b.key))want.push(b);
+  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0;
   await Promise.all(want.map(async b=>{try{
     const r=await fetch(b.src,{cache:"force-cache"});if(!r.ok)throw 0;const blob=await r.blob();
@@ -2853,14 +2890,15 @@ function projWordsHtml(x){
     <div class="cwords">${ws.map(w=>`<div><span class="gdate">${shortDate(w.at)}</span><div>${w.name?`<b>${esc(w.name)}</b> `:""}“${esc(w.words)}”${w.src.plan?` <button class="linkbtn" data-open="${w.src.plan}">plan</button>`:""}</div></div>`).join("")}</div></section>`;
 }
 /* --- the wall: a run of sheets that hang in order --- */
+let wallPrev={};
 function wallPhotoMoments(x){return projNotices(x).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0))}
 function wallProposal(x){
   const sid=()=>"w"+Math.random().toString(36).slice(2,8);
   const ms=wallPhotoMoments(x);const words=projChildWords(x);
-  const sheets=[{id:sid(),kind:"begin",title:"Where it began",photo:ms[0]?ms[0].id:"",text:"",quotes:words.filter(w=>!ms[0]||w.at<=(ms[0].at||0)+864e5).slice(0,3),include:true}];
-  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photo:n.id,text:"",quotes:childLines(n.noticed,true).slice(0,6),include:true});
+  const sheets=[{id:sid(),kind:"begin",title:"Where it began",photos:ms[0]?[ms[0].id]:[],text:"",quotes:words.filter(w=>!ms[0]||w.at<=(ms[0].at||0)+864e5).slice(0,3),include:true}];
+  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photos:[n.id],text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true});
   sheets.push({id:sid(),kind:"now",title:"Where it is now",photo:"",text:"",quotes:words.slice(-3),include:true});
-  if(sheets[0].photo&&sheets[1]&&sheets[1].photo===sheets[0].photo)sheets[0].photo="";
+  if(sheets[0].photos[0]&&sheets[1]&&sheets[1].photos[0]===sheets[0].photos[0])sheets[0].photos=[];
   return {sheets,at:Date.now(),by:whoAmI()};
 }
 function wallSheet(x,id){return ((x.wall&&x.wall.sheets)||[]).find(s=>s.id===id)}
@@ -2870,15 +2908,15 @@ function projWallHtml(x){
     <div class="hint">A run of sheets that hang in order and tell the project as it grew, each with a photo, the children's words, and a few lines from the team.</div>
     <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF"):""}</div></section>`;
   const sheets=w.sheets;
-  const sheetHtml=(sh,i)=>{const n=sh.photo&&notices.get(sh.photo);const sg=wallSug[sh.id];
+  const sheetHtml=(sh,i)=>{const sel=wallPhotos(sh);const n=notices.get(sel[0]);const sg=wallSug[sh.id];
     const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
     return `<div class="wsheet${sh.include?"":" off"}"><div class="actions"><b>Sheet ${i+1}</b>
         <label class="cnt"><input type="checkbox" data-wsinc="${sh.id}" ${sh.include?"checked":""}> Hang this sheet</label>
         <button class="linkbtn" data-wsup="${sh.id}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${sh.id}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${sh.id}">Remove</button></div>
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
-      <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
+      <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
-        ${ms.length?`<label class="cnt">Photo <select data-wsphoto="${sh.id}" style="width:auto;max-width:100%"><option value="">None</option>${ms.map(m=>`<option value="${m.id}" ${sh.photo===m.id?"selected":""}>${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}</option>`).join("")}</select></label>`:""}
+        ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}"><img src="${esc(photoSrc(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
         ${sample?(sg&&sg.status==="working"?`<div class="hint"><span class="spin"></span> Drafting from the team's writing</div>`
           :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${sh.id}">Use this</button><button class="btn small ghost" data-wsno="${sh.id}">Leave it</button></div></div>`
@@ -2886,14 +2924,17 @@ function projWallHtml(x){
           :`<div class="actions"><button class="btn small ghost" data-wsdraft="${sh.id}">Draft from our writing</button></div>`):""}
       </div></div>
       ${pool.length?`<div class="chiprow-label">The children's words on this sheet</div><div class="chips">${pool.map((q,k)=>`<button class="chip ${chosen.has(q.words.toLowerCase())?"on":""}" data-wsq="${sh.id}|${k}" type="button" title="${esc(shortDate(q.at))}">${q.name?esc(q.name)+", ":""}${esc(q.words.length>70?q.words.slice(0,67)+"...":q.words)}</button>`).join("")}</div>`:""}
+      <div class="actions"><button class="linkbtn" data-wsprev="${sh.id}">${wallPrev[sh.id]?"Hide how it prints":"See how it prints"}</button></div>
+      ${wallPrev[sh.id]?cPreview(wallSheetDoc(x,sh)):""}
     </div>`};
   return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
     <div class="hint">Each sheet prints on its own page, in this order. Every word on it comes from the children or from the team.</div>
+    <div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on the wall</span><div class="seg" role="group" aria-label="Children's names on the wall">${NAME_MODES.map(([k,l])=>`<button data-wnames="${k}" aria-pressed="${wallNames(x)===k}">${l}</button>`).join("")}</div></div>
     <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
     <div style="display:grid;gap:14px">${sheets.map(sheetHtml).join("")}</div></section>`;
 }
 async function wallDraft(x,sh){
-  const n=sh.photo&&notices.get(sh.photo);const span=n?n.at:null;
+  const n=notices.get(wallPhotos(sh)[0]);const span=n?n.at:null;
   const near=span?projPlans(x).filter(pl=>!pl.notice&&Math.abs(parseIso(pl.weekOf).getTime()-span)<=10*864e5):[];
   const src=[`Project. ${x.name}`,has(x.experience)?`The experience it grew from. ${x.experience}`:"",has(projUnder(x))?`What the team thinks may lie underneath. ${projUnder(x)}`:"",has(projIntent(x))?`The team's intent. ${projIntent(x)}`:"",
     n?`The moment on this sheet, kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`:"",
@@ -2914,16 +2955,18 @@ ${src}`;
   wallSug[sh.id]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","The sheet is unchanged.")};
   if(view==="projects"&&projId===x.id)renderMain();
 }
-function wallDocs(x){
-  const span=weeksSpan(projWeeks(x));
-  return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>{const n=sh.photo&&notices.get(sh.photo);const blocks=[];
-    // the photo gives way to the words, so each sheet hangs as one page
-    const nq=(sh.quotes||[]).length,tl=has(sh.text)?Math.ceil(sh.text.length/70):0;
-    if(n&&n.photo)blocks.push(dPhoto(n,Math.max(160,Math.min(340,540-48*nq-(tl?40+22*tl:0))),true));
-    if(has(sh.text))blocks.push(dLead("",sh.text));
-    (sh.quotes||[]).forEach(q=>blocks.push(dQuote(q.words,q.name||"",shortDate(q.at))));
-    return {display:true,type:"report",acc:"story",title:sh.title||x.name,meta:[["Project",x.name],["When",n?shortDate(n.at):span||""]],blocks}});
+// photos on a wall sheet, up to three. Sheets made before there could be several keep their one photo.
+function wallPhotos(sh){return (Array.isArray(sh.photos)?sh.photos:(sh.photo?[sh.photo]:[])).filter(id=>{const n=notices.get(id);return n&&n.photo}).slice(0,3)}
+function wallNames(x){return (x.wall&&x.wall.names)||PRINT.names}
+function wallSheetDoc(x,sh){
+  const mode=wallNames(x);const ns=wallPhotos(sh).map(id=>notices.get(id));const n=ns[0];
+  const all=(sh.quotes||[]).map(q=>q.name+" - "+q.words).join("\n")+"\n"+(sh.text||"")+"\n"+ns.map(m=>m.noticed).join("\n");
+  const blocks=[];if(has(sh.text))blocks.push({t:"box",text:displayText(sh.text,mode,all)});
+  (sh.quotes||[]).forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
+  const details=n?momentDetails(n):[x.home?x.home+" classroom":"",weeksSpan(projWeeks(x))||""];
+  return {centered:true,display:true,type:"report",acc:"story",title:displayText(sh.title||x.name,mode,all),details,photos:ns.flatMap(momentPhotos),blocks};
 }
+function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>wallSheetDoc(x,sh))}
 function projectDoc(x,long){
   const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const blocks=[];
   if(has(projUnder(x)))blocks.push(dLead("What may lie underneath",projUnder(x)));
@@ -3012,8 +3055,7 @@ const dq=(doc,t)=>doc.__pf?"\u201C"+t+"\u201D":'"'+t+'"';
 const deep=c=>c.map(v=>Math.round(v*.8));
 function displayHead(doc,p,A,dry){
   const {m,w}=DG;let y=DG.top;
-  if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,y+8)}
-  y+=22;
+  if(PRINT.schoolDocs){if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,y+8)}y+=22}
   let ts=38,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean(p.title||""),w);if(tl.length<=(ts>30?1:2)||ts<=24)break;ts-=2}
   tl=tl.slice(0,3);const tlh=ts*1.12;
   if(!dry){doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,y+ts*.8+i*tlh))}
@@ -3028,8 +3070,8 @@ function displayHead(doc,p,A,dry){
   return y+20;
 }
 function displayHeadCont(doc,p,A){
-  const {m,w}=DG;pfont(doc,"fs",9);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,DG.top+8);
-  pfont(doc,"bs",11);doc.setTextColor(...D_INK);const t=doc.splitTextToSize(clean(p.title||""),w-200)[0];doc.text(t,m+w,DG.top+8,{align:"right"});
+  const {m,w}=DG;if(PRINT.schoolDocs){pfont(doc,"fs",9);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,DG.top+8)}
+  pfont(doc,"bs",11);doc.setTextColor(...D_INK);const t=doc.splitTextToSize(clean(p.title||""),PRINT.schoolDocs?w-200:w)[0];if(PRINT.schoolDocs)doc.text(t,m+w,DG.top+8,{align:"right"});else doc.text(t,m,DG.top+8);
   doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,DG.top+18,m+w,DG.top+18);
   return DG.top+40;
 }
@@ -3194,7 +3236,138 @@ function displayFoot(doc,A,pi){
   pfont(doc,"fr",8);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m+w/2,PH-28,{align:"center"});
   if(pi&&pi.n>1)doc.text(`Page ${pi.i} of ${pi.n}`,m+w/2,PH-17,{align:"center"});
 }
-function drawAny(doc,p,pageAcc){(p.display?drawDisplay:drawPlan)(doc,p,pageAcc)}
+/* --- centred display sheets: a moment, or one sheet of a wall ---
+   The photo comes first and takes at least the top two thirds of the sheet, more when the words are few. The words sit centred
+   below it, set larger or smaller so the sheet stays one page. Up to three photos, the first largest. A moment keeps every word
+   that was written, so words that do not fit beside the photo carry on to a second sheet. The same layout makes the PDF,
+   the preview and the Word file. */
+const CM=54,CSCALES=[1.6,1.5,1.4,1.3,1.25,1.2,1.15,1.1,1.05,1,.95,.9,.85,.8];
+let centerOver=[];
+const ct=(doc,t)=>doc.__pf?String(t??"").replace(/—/g,", ").replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF–‘’“”…•]/g,""):clean(t);
+function cwrap(doc,k,s,text,w){pfont(doc,k,s);return ct(doc,text).split("\n").flatMap(p=>p.trim()?doc.splitTextToSize(p.trim(),w):[])}
+function cHead(doc,md,A,PWd,ops){
+  const x=PWd/2,W=PWd-2*CM;let y=44;
+  if(PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School & Farm"});y+=24}else y+=4;
+  let ts=36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
+  tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
+  const d=(md.details||[]).filter(has).join("   ·   ");if(d){const dl=cwrap(doc,"fr",11,d,W)[0]||"";ops.push({t:"text",x,y:y+11,k:"fr",s:11,c:D_MUTED,txt:dl});y+=25}
+  ops.push({t:"line",x1:CM,y1:y,x2:PWd-CM,y2:y,c:A.c,w:1.3});return y+20;
+}
+// the words of a sheet, measured, or set down when ops is given
+function cWords(doc,md,A,s,cx,w,y0,ops){
+  const B=md.blocks||[];let y=y0;const put=o=>{if(ops)ops.push(o)};
+  const oq=doc.__pf?"“":'"',cq=doc.__pf?"”":'"';
+  B.forEach((b,i)=>{
+    if(b.t==="para"){const z=12.5*s,lh=z*1.45;cwrap(doc,"fr",z,b.text,w).forEach(l=>{put({t:"text",x:cx,y:y+z,k:"fr",s:z,c:D_INK,txt:l});y+=lh});y+=10*s}
+    else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote"){put({t:"dot",x:cx,y:y+3*s,r:2.2,c:A.c});y+=13*s}
+      const z=15*s,lh=z*1.28;cwrap(doc,"bm",z,oq+b.words+cq,w*.9).forEach(l=>{put({t:"text",x:cx,y:y+z*.86,k:"bm",s:z,c:D_INK,txt:l});y+=lh});
+      if(has(b.by)){put({t:"text",x:cx,y:y+9.5*s,k:"fr",s:9.5*s,c:D_MUTED,txt:ct(doc,b.by)});y+=14*s}y+=6*s}
+    else if(b.t==="box"){const z=13*s,pad=14*s,lh=z*1.42;const ls=cwrap(doc,"bm",z,b.text,w-2*pad);const h=ls.length*lh+2*pad-3*s;
+      if(i>0)y+=4*s;put({t:"rect",x:cx-w/2,y,w,h,r:10,fill:A.t});ls.forEach((l,j)=>put({t:"text",x:cx,y:y+pad+z*.84+j*lh,k:"bm",s:z,c:D_INK,txt:l}));y+=h+14*s}
+  });
+  return y-y0;
+}
+const fitBox=(p,w,h)=>{const r=Math.min(w/p.w,h/p.h);return [p.w*r,p.h*r]};
+function cPhotos(ps,x,y,W,H){
+  const g=10,it=[];
+  if(ps.length===1){const [w,h]=fitBox(ps[0],W,H);it.push({p:ps[0],x:x+(W-w)/2,y,w,h});return {items:it,h}}
+  if(ps.length===2){const cw=(W-g)/2,f=ps.map(p=>fitBox(p,cw,H)),hh=Math.max(f[0][1],f[1][1]),tw=f[0][0]+g+f[1][0];let xx=x+(W-tw)/2;
+    ps.forEach((p,i)=>{it.push({p,x:xx,y:y+(hh-f[i][1])/2,w:f[i][0],h:f[i][1]});xx+=f[i][0]+g});return {items:it,h:hh}}
+  // three photos, the first large and two beside it
+  const lw=(W-g)*.6,rw=W-g-lw,a=fitBox(ps[0],lw,H),hh0=a[1],b=fitBox(ps[1],rw,(hh0-g)/2),c=fitBox(ps[2],rw,(hh0-g)/2);
+  const tw=a[0]+g+Math.max(b[0],c[0]),x0=x+(W-tw)/2,rx=x0+a[0]+g,top=y+(hh0-(b[1]+g+c[1]))/2;
+  it.push({p:ps[0],x:x0,y,w:a[0],h:a[1]});it.push({p:ps[1],x:rx,y:top,w:b[0],h:b[1]});it.push({p:ps[2],x:rx,y:top+b[1]+g,w:c[0],h:c[1]});return {items:it,h:hh0};
+}
+function cLayout(doc,md,A){
+  const ps=(md.photos||[]).filter(p=>p.w&&p.h).slice(0,3),PWd=PW,PHd=PH,W=PWd-2*CM,ops=[];
+  const top=cHead(doc,md,A,PWd,ops),H=PHd-62-top,gap=18;let s=1,over=false;const meas=(k,w)=>cWords(doc,md,A,k,0,w,0,null);
+  if(ps.length){const ww=W*.88;let minP=H*2/3;
+    s=CSCALES.filter(k=>k<=1.25).find(k=>meas(k,ww)<=H-minP-gap);
+    // when the words still do not fit, the photo gives a little room before anything is called too long
+    if(!s&&!md.flow){minP=H*.5;s=CSCALES.filter(k=>k<=1.25).find(k=>meas(k,ww)<=H-minP-gap)}
+    if(!s){s=.8;over=true}
+    let wh=meas(s,ww);const lay=cPhotos(ps,CM,top,W,Math.max(minP,H-(wh?wh+gap:0)));
+    // a wide photo leaves room below it, so the words grow into it
+    if(!over){const s2=CSCALES.filter(k=>k<=1.4&&k>s).find(k=>meas(k,ww)<=H-lay.h-gap);if(s2){s=s2;wh=meas(s,ww)}}
+    const total=lay.h+(wh?gap+wh:0),y0=top+Math.max(0,(H-total)*.35);
+    lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+y0,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
+    cWords(doc,md,A,s,PWd/2,ww,y0+lay.h+gap,ops);
+  }else{const ww=W*.8;s=CSCALES.find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*.4),ops)}
+  return {ops,s,over,PW:PWd,PH:PHd};
+}
+// a moment sheet keeps everything that was written, so words that do not fit beside the photo go on to a second sheet
+function cFlow(doc,md,A){
+  const L=cLayout(doc,md,A);if(!md.flow||!L.over||!(md.photos||[]).length)return {sheets:[md],pages:[L],over:L.over};
+  const B=md.blocks||[];let k=B.length-1;
+  for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=.9)break}
+  // a single long block is split by its lines, so the photo still has its words beneath it
+  let first=B.slice(0,k),rest=B.slice(k);
+  if(k===0||!first.length){const b=B[0],ls=String(b.text||b.words||"").split("\n");if(ls.length>1){const half=Math.max(1,Math.floor(ls.length/3));first=[Object.assign({},b,{text:ls.slice(0,half).join("\n")})];rest=[Object.assign({},b,{text:ls.slice(half).join("\n")}),...B.slice(1)]}}
+  const m1=Object.assign({},md,{blocks:first}),m2=Object.assign({},md,{photos:[],blocks:rest});
+  const P1=cLayout(doc,m1,A),P2=cLayout(doc,m2,A);
+  return {sheets:[m1,m2],pages:[P1,P2],over:P1.over||P2.over};
+}
+// photos that could not be fetched are left out before the layout, so nothing leaves an empty frame
+function cReady(md){return Object.assign({},md,{photos:(md.photos||[]).map(p=>{const im=photoCache.get(p.key);return im?Object.assign({},p,{w:im.w,h:im.h}):null}).filter(Boolean)})}
+function cDraw(doc,ops){for(const o of ops){
+  if(o.t==="text"){pfont(doc,o.k,o.s);doc.setTextColor(...o.c);doc.text(o.txt,o.x,o.y,{align:"center"})}
+  else if(o.t==="img"){const im=photoCache.get(o.key);if(im)doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}
+  else if(o.t==="rect"){doc.setFillColor(...o.fill);doc.roundedRect(o.x,o.y,o.w,o.h,o.r,o.r,"F")}
+  else if(o.t==="line"){doc.setDrawColor(...o.c);doc.setLineWidth(o.w);doc.line(o.x1,o.y1,o.x2,o.y2)}
+  else if(o.t==="dot"){doc.setFillColor(...o.c);doc.circle(o.x,o.y,o.r,"F")}}}
+function drawCentered(doc,p,pageAcc){
+  const A=ACC[p.acc]||ACC.story;const F=cFlow(doc,cReady(p),A);
+  if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
+  F.pages.forEach((L,i)=>{if(i>0)doc.addPage();const n=doc.getNumberOfPages();pageAcc[n]=A;pageInfo[n]={i:i+1,n:F.pages.length,display:true};cDraw(doc,L.ops)});
+}
+// how a sheet prints, drawn on the page before anything is printed
+function cPreview(md){
+  if(!window.jspdf)return `<div class="empty">The preview is loading.</div>`;
+  try{const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=ACC[md.acc]||ACC.story;const F=cFlow(doc,md,A);
+    const rgb=c=>`rgb(${c.join(",")})`,fam=k=>PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
+    const svg=L=>{let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre" role="img" aria-label="How the sheet prints"><rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`;
+      for(const o of L.ops){
+        if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle">${esc(o.txt)}</text>`;
+        else if(o.t==="img")h+=`<image href="${esc(o.src)}" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" preserveAspectRatio="xMidYMid slice"/>`;
+        else if(o.t==="rect")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`;
+        else if(o.t==="line")h+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${rgb(o.c)}" stroke-width="${o.w}"/>`;
+        else if(o.t==="dot")h+=`<circle cx="${o.x}" cy="${o.y}" r="${o.r}" fill="${rgb(o.c)}"/>`}
+      h+=`<line x1="${CM}" y1="${L.PH-42}" x2="${L.PW-CM}" y2="${L.PH-42}" stroke="${rgb(D_HAIR)}" stroke-width=".7"/><text x="${L.PW/2}" y="${L.PH-28}" font-family="${fam("fr")}" font-size="8" fill="${rgb(D_MUTED)}" text-anchor="middle">Observe    Provoke    Document    Reflect    Evolve</text>`;
+      return h+"</svg>"};
+    return `${F.over&&!md.flow?`<div class="hint warnline" role="status">This sheet has more words than fit. Choose fewer of the children's words or shorten the team's lines, so it prints cleanly on one page.</div>`:""}<div class="csheets">${F.pages.map(L=>`<div class="csheet">${svg(L)}</div>`).join("")}</div>`}
+  catch(e){return `<div class="empty">The preview could not be drawn.</div>`}
+}
+// the same sheet as a Word page: the words centred, the photos in a borderless table so two or three keep their arrangement
+async function centeredDocx(ch,p,D,A){
+  const {Paragraph,TextRun,ImageRun,AlignmentType,BorderStyle,ShadingType,Table,TableRow,TableCell,WidthType,VerticalAlign,TableLayoutType,PageBreak}=D;
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);
+  const F=cFlow(doc,cReady(p),A);if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
+  const word=k=>PF.buf?PF.word[k]:"Arial",heavy=k=>!PF.buf&&(k==="bs"||k==="fs");
+  const run=(t,k,pt,c)=>new TextRun({text:ct(doc,t),font:word(k),bold:heavy(k),size:Math.round(pt*2),color:hex(c||D_INK)});
+  const P=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[kids]},o||{}));
+  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none},noT=Object.assign({insideHorizontal:none,insideVertical:none},noB);
+  const CEN=AlignmentType.CENTER,TW=10080;
+  const img=(o,w,h)=>{const im=photoCache.get(o.key);return im?new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(w*96/72),height:Math.round(h*96/72)}}):null};
+  const photoTable=items=>{if(!items.length)return [];if(items.length===1){const r=img(items[0],items[0].w,items[0].h);return r?[P(r,{alignment:CEN,spacing:{after:200}})]:[]}
+    const cols=[];for(const o of [...items].sort((a,b)=>a.x-b.x)){const c=cols.find(c=>Math.abs(c.x-o.x)<2);if(c)c.items.push(o);else cols.push({x:o.x,w:o.w,items:[o]})}
+    const tw=cols.reduce((n,c)=>n+c.w,0)+10*(cols.length-1),dx=cols.map(c=>Math.round(TW*Math.min(1,tw/504)*c.w/tw)+100);
+    return [new Table({width:{size:dx.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:dx,layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({children:cols.map((c,i)=>new TableCell({width:{size:dx[i],type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:c.items.map(o=>{const r=img(o,o.w,o.h);return r?P(r,{alignment:CEN,spacing:{after:120}}):P([])})}))})]}),P([],{spacing:{after:120}})]};
+  const words=(md,s)=>{const out=[],B=md.blocks||[];B.forEach((b,i)=>{
+    if(b.t==="para")String(b.text).split("\n").filter(has).forEach(l=>out.push(P(run(l,"fr",12.5*s),{alignment:CEN,spacing:{after:90,line:Math.round(12.5*s*1.45*20),lineRule:"atLeast"}})));
+    else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote")out.push(P(run("•","fr",9,A.c),{alignment:CEN,spacing:{after:40}}));
+      out.push(P(run("“"+b.words+"”","bm",15*s),{alignment:CEN,spacing:{after:has(b.by)?20:100,line:Math.round(15*s*1.28*20),lineRule:"atLeast"}}));
+      if(has(b.by))out.push(P(run(b.by,"fr",9.5*s,D_MUTED),{alignment:CEN,spacing:{after:100}}))}
+    else if(b.t==="box")out.push(P(run(b.text,"bm",13*s),{alignment:CEN,shading:{type:ShadingType.CLEAR,fill:hex(A.t),color:"auto"},indent:{left:300,right:300},spacing:{before:120,after:220,line:Math.round(13*s*1.42*20),lineRule:"atLeast"}}))});return out};
+  F.sheets.forEach((md,si)=>{const L=F.pages[si];
+    if(si>0)ch.push(P(new PageBreak()));
+    if(PRINT.schoolDocs)ch.push(P(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
+    ch.push(P(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
+    const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
+    ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}));
+    ch.push(...photoTable(L.ops.filter(o=>o.t==="img")));ch.push(...words(md,L.s));
+  });
+}
+function drawAny(doc,p,pageAcc){(p.centered?drawCentered:p.display?drawDisplay:drawPlan)(doc,p,pageAcc)}
 
 /* --- the same page as a Word file ---
    The Word page follows the PDF: the same order, the same two columns, the same colours. The two typefaces travel inside
@@ -3242,7 +3415,7 @@ async function displayDocx(ch,p,D,A){
   const W=10080,LC=2680,RC=W-LC;
   const spacer=h=>para([],{spacing:{before:0,after:0,line:h,lineRule:"exact"}});
   // heading: the school, the title, a row of facts, and a rule in the page's colour
-  ch.push(para(run("Fulton Community School & Farm","fs",9.5,dp),{spacing:{after:70}}));
+  if(PRINT.schoolDocs)ch.push(para(run("Fulton Community School & Farm","fs",9.5,dp),{spacing:{after:70}}));
   const tpt=String(p.title||"").length>30?28:36;
   ch.push(para(run(p.title||"","bs",tpt),{spacing:{after:150,line:Math.round(tpt*22.4),lineRule:"atLeast"}}));
   const facts=(p.meta||[]).filter(r=>has(r[1]));
@@ -3299,7 +3472,7 @@ async function onePage(make,from,to){
 }
 async function printsClick(t){
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
-  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
@@ -4105,6 +4278,111 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
 document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
 document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.target.value;refreshAll()}});
 
+/* ---------- Children, the roster kept by the director ---------- */
+/* Each child is At Fulton, Left Fulton, or Moved on to kindergarten. Nobody is removed: a child who leaves moves to Former children,
+   and their record stays until the director chooses how long records are kept. */
+let children=new Map(), kRoom=LS.get("fps.kroom","All"), kShow="at", kQ="", kEdit="", kAdding=false;
+const KSTATUS={at:"At Fulton",left:"Left Fulton",moved:"Moved on to kindergarten"};
+const NEXTPLAN={k:"Kindergarten next year",tk:"Transitional kindergarten next year"};
+function kidList(){return [...children.values()].filter(c=>c&&c.first)}
+function kidsAt(){return kidList().filter(c=>(c.status||"at")==="at")}
+function kidName(c){return [c.first,c.last].filter(Boolean).join(" ")}
+const longDate=s=>s?parseIso(s).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"";
+function kidSince(c){const h=(c.history||[]).filter(x=>x.status===c.status).slice(-1)[0];return h?h.date||h.at:""}
+function saveKid(c){c.updatedAt=Date.now();children.set(c.id,c);if(db)db.doc("children/"+c.id).set(JSON.parse(JSON.stringify(c))).then(()=>setConn("Roster saved")).catch(()=>toast("Could not save the roster. Check your connection."))}
+function kidNote(c,what,extra){(c.history=c.history||[]).push(Object.assign({at:iso(new Date()),what,by:whoAmI()},extra||{}))}
+function renderChildren(){
+  const all=kidList(),dir=isDirector();
+  const inRoom=c=>kRoom==="All"||c.room===kRoom;
+  const q=kQ.trim().toLowerCase();
+  const shown=all.filter(c=>(kShow==="at"?(c.status||"at")==="at":(c.status||"at")!=="at")&&inRoom(c)&&(!q||kidName(c).toLowerCase().includes(q)||(c.group||"").toLowerCase().includes(q)));
+  const nAt=all.filter(c=>(c.status||"at")==="at"&&inRoom(c)).length,nFormer=all.filter(c=>(c.status||"at")!=="at"&&inRoom(c)).length;
+  const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
+  const editHtml=c=>`<div class="kedit">
+      <div class="kfields"><label>Classroom<select data-kroomset="${c.id}">${CLASSROOMS.map(r=>`<option ${c.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label>Small group<select data-kgroupset="${c.id}"><option value="">None</option>${[...new Set([...groupsFor(c.room),c.group].filter(Boolean))].map(g=>`<option ${c.group===g?"selected":""}>${esc(g)}</option>`).join("")}</select></label>
+      <label>Next year<select data-knextset="${c.id}"><option value="">Staying at Fulton, or not decided</option>${Object.entries(NEXTPLAN).map(([k,v])=>`<option value="${k}" ${c.nextPlan===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
+      ${(c.status||"at")==="at"?`<div class="kfields"><label>Last day<input type="date" id="kdate-${c.id}" value="${iso(new Date())}"></label></div>
+      <div class="actions"><button class="btn small ghost" data-kstatus="left" data-id="${c.id}">Left Fulton</button><button class="btn small ghost" data-kstatus="moved" data-id="${c.id}">Moved on to kindergarten</button><button class="linkbtn" data-kdone="1">Done</button></div>
+      <div class="cnt">Moments, plans and portfolios that name ${esc(c.first)} stay as they are. ${esc(c.first)} moves to Former children.</div>`
+      :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${c.id}">At Fulton again</button><button class="linkbtn" data-kdone="1">Done</button></div>`}
+      ${(c.history||[]).length?`<div class="khist">${c.history.slice().reverse().map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}
+    </div>`;
+  const row=c=>{const st=c.status||"at";const since=kidSince(c);
+    return `<div class="kid${kEdit===c.id?" open":""}"><div class="krow"><div class="kmain"><b>${esc(kidName(c))}</b>
+      <span class="cnt">${esc([c.group,st!=="at"?c.room+" classroom":""].filter(Boolean).join(", "))}${c.enrolled?`${c.group||st!=="at"?" · ":""}At Fulton since ${esc(longDate(c.enrolled))}`:""}</span></div>
+      <div class="kside">${st!=="at"?`<span class="kst ${st}">${KSTATUS[st]}${since?", "+esc(longDate(since)):""}</span>`:c.nextPlan&&NEXTPLAN[c.nextPlan]?`<span class="kst next">${NEXTPLAN[c.nextPlan]}</span>`:""}
+      ${dir?`<button class="linkbtn" data-kedit="${c.id}">${kEdit===c.id?"Close":"Change"}</button>`:""}</div></div>
+      ${dir&&kEdit===c.id?editHtml(c):""}</div>`};
+  const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
+  let body="";
+  for(const r of rooms){const rs=shown.filter(c=>c.room===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first));if(!rs.length)continue;
+    body+=`<section class="card"><div class="secthead"><div class="lbl">${esc(r)}</div><span class="cnt">${rs.length} ${rs.length===1?"child":"children"}</span></div><div class="klist">${rs.map(row).join("")}</div></section>`}
+  const other=shown.filter(c=>!CLASSROOMS.includes(c.room));if(other.length)body+=`<section class="card"><div class="lbl">No classroom chosen</div><div class="klist">${other.map(row).join("")}</div></section>`;
+  if(!body)body=`<div class="empty">${all.length?(kShow==="at"?"No children match.":"No former children yet. A child who leaves Fulton or moves on to kindergarten is kept here."):"The roster has not come in yet."}</div>`;
+  const addHtml=dir?(kAdding?`<section class="card"><div class="lbl">Add a child</div><div class="kfields">
+      <label>First name<input type="text" id="ka-first"></label><label>Last name<input type="text" id="ka-last"></label>
+      <label>Classroom<select id="ka-room">${CLASSROOMS.map(r=>`<option ${kRoom===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label>Small group<select id="ka-group"><option value="">None</option>${GROUPS.map(g=>`<option>${esc(g.name)}</option>`).join("")}</select></label>
+      <label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
+      <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div></section>`
+    :`<button class="btn small ghost" id="ka-open">Add a child</button>`):"";
+  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">The roster</span><h2 style="margin-top:4px">Children</h2>
+    <div class="sub">${dir?"Classrooms, small groups and next year's plans. Changes made here are the roster from now on.":"Classrooms and small groups. The director keeps the roster."}</div></div></div>
+    <div class="kbar"><div class="seg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At Fulton <span class="cnt">${nAt}</span></button><button data-kshow="former" aria-pressed="${kShow!=="at"}">Former children <span class="cnt">${nFormer}</span></button></div>
+    <div class="seg" role="group" aria-label="Classroom">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
+    <input type="search" id="kq" placeholder="Find a child or group" value="${esc(kQ)}" style="max-width:220px"></div>
+    ${addHtml}${body}`;
+}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="children")return;
+  if(t.dataset.kshow){kShow=t.dataset.kshow;kEdit="";renderChildren();return}
+  if(t.dataset.kroom){kRoom=t.dataset.kroom;LS.set("fps.kroom",kRoom);renderChildren();return}
+  if(!isDirector())return;
+  if(t.dataset.kedit){kEdit=kEdit===t.dataset.kedit?"":t.dataset.kedit;renderChildren();return}
+  if(t.dataset.kdone){kEdit="";renderChildren();return}
+  if(t.dataset.kstatus){const c=children.get(t.dataset.id);if(!c)return;const st=t.dataset.kstatus;
+    const date=st==="at"?iso(new Date()):($("#kdate-"+c.id)?.value||iso(new Date()));
+    c.status=st;kidNote(c,st==="at"?"At Fulton again":KSTATUS[st],{status:st,date});if(st!=="at")c.leftOn=date;else delete c.leftOn;
+    saveKid(c);kEdit="";toast(st==="at"?`${c.first} is back on the roster.`:`${c.first} is now with Former children.`);renderChildren();return}
+  if(t.id==="ka-open"){kAdding=true;renderChildren();$("#ka-first")?.focus();return}
+  if(t.id==="ka-cancel"){kAdding=false;renderChildren();return}
+  if(t.id==="ka-save"){const first=($("#ka-first").value||"").trim(),last=($("#ka-last").value||"").trim();if(!first){toast("Type the child's first name.");return}
+    const c={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),first,last,room:$("#ka-room").value,group:$("#ka-group").value,status:"at",enrolled:$("#ka-date").value||iso(new Date()),year:yearOf({}),history:[]};
+    kidNote(c,"Added to the roster",{status:"at",date:c.enrolled});saveKid(c);kAdding=false;toast(`${first} is on the roster.`);renderChildren();return}
+});
+document.addEventListener("change",e=>{if(view!=="children"||!isDirector())return;const t=e.target;
+  const set=(id,f)=>{const c=children.get(id);if(c){f(c);saveKid(c);renderChildren()}};
+  if(t.dataset.kroomset)set(t.dataset.kroomset,c=>{const was=c.room;c.room=t.value;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.room))c.group="";kidNote(c,`Moved from ${was} to ${c.room}`)});
+  if(t.dataset.kgroupset)set(t.dataset.kgroupset,c=>{c.group=t.value;kidNote(c,c.group?`Joined ${c.group}`:"No small group")});
+  if(t.dataset.knextset)set(t.dataset.knextset,c=>{if(t.value)c.nextPlan=t.value;else delete c.nextPlan;kidNote(c,t.value?NEXTPLAN[t.value]:"Next year not decided")});
+});
+document.addEventListener("input",e=>{if(view==="children"&&e.target.id==="kq"){kQ=e.target.value;const pos=e.target.selectionStart;renderChildren();const q=$("#kq");q.focus();q.setSelectionRange(pos,pos)}});
+
+/* ---------- School years ---------- */
+// a school year runs August to July. Records made before years were kept belong to the year they happened in.
+function yearFromTime(t){const d=t instanceof Date?t:new Date(t||Date.now());const y=d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;return y+"-"+String(y+1).slice(2)}
+function yearOf(rec){if(rec&&rec.year)return rec.year;if(rec&&rec.weekOf)return yearFromTime(parseIso(rec.weekOf));return yearFromTime(rec&&(rec.at||rec.createdAt)||Date.now())}
+const yearLabel=y=>{const a=+y.slice(0,4);return a+" to "+(a+1)};
+
+/* ---------- Children's names on display documentation ---------- */
+const NAME_MODES=[["first","First names"],["full","First name and last initial"],["initials","Initials"],["none","No names"]];
+function shownName(first,last,mode){if(mode==="none")return"";if(mode==="initials")return first[0]+".";if(mode==="full"&&last)return first+" "+last[0]+".";return first}
+function displayNames(text){
+  const named=new Set(kidList().map(c=>c.first));
+  for(const line of String(text||"").split("\n")){const m=line.match(/^([A-Z][a-z]+)(?: \[\?\])? - /);if(m)named.add(m[1])}
+  return [...named].filter(Boolean).sort((a,b)=>b.length-a.length);
+}
+// the educators' words with children's names as the director chose for display. The words themselves never change.
+function displayText(text,mode,extra){
+  let t=String(text||"");mode=mode||PRINT.names;if(mode==="first")return t;
+  const names=displayNames(t+"\n"+(extra||""));const lastOf=n=>{const c=kidList().find(x=>x.first===n&&(x.status||"at")==="at")||kidList().find(x=>x.first===n);return c?c.last||"":""};
+  t=t.split("\n").map(line=>{const m=line.match(/^([A-Z][a-z]+)( \[\?\])? - (.+)$/);if(m&&names.includes(m[1]))return mode==="none"?"“"+m[3]+"”":shownName(m[1],lastOf(m[1]),mode)+" - "+m[3];return line}).join("\n");
+  for(const n of names){const re=new RegExp("\\b"+n+"\\b(?!\\s+[Gg]roup)(?:\\s+[A-Z]\\.)?","g");t=t.replace(re,mode==="none"?"a child":shownName(n,lastOf(n),mode))}
+  if(mode==="none")t=t.replace(/\ba child and a child\b/g,"two children").replace(/(^|[.!?]\s+|\n)(a child|two children)/g,(m,p,w)=>p+w[0].toUpperCase()+w.slice(1));
+  return t;
+}
+function credit(name,mode){mode=mode||PRINT.names;if(!name)return"";const n=name.replace(/ \[\?\]$/,"");const c=kidList().find(x=>x.first===n);return mode==="none"?"":shownName(n,c?c.last||"":"",mode)+(name!==n&&mode!=="initials"?" [?]":"")}
+
 /* ---------- Program settings ---------- */
 function applyProgram(v){
   if(Array.isArray(v.groups))GROUPS=v.groups.filter(g=>g&&g.name).map(g=>({name:String(g.name),room:g.room||"",educator:g.educator||""}));
@@ -4116,6 +4394,7 @@ function applyProgram(v){
   if(Array.isArray(v.lenses)&&v.lenses.length)LENSES=v.lenses.map(normLens);
   else if(v.lens&&typeof v.lens==="object")LENSES=[normLens(Object.assign({year:true},v.lens),0)];
   if(!LENSES.some(l=>l.year))LENSES[0].year=true;
+  if(v.print&&typeof v.print==="object")PRINT=Object.assign({schoolDocs:false,schoolRecords:true,names:"first"},v.print);
   setLens(lensId);
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
@@ -4123,7 +4402,7 @@ function applyProgram(v){
 function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
 let progTimer=null;
 function saveProgram(){
-  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,updatedAt:Date.now()};
+  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,updatedAt:Date.now()};
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
@@ -4134,6 +4413,13 @@ function renderSettings(){
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
   ${lensSettingsHtml()}
+  <section class="card"><div class="lbl">Printing</div><div class="hint">How printouts and Word files look for everyone.</div>
+    <div class="prow"><div><b>The school's name on display documentation</b><div class="cnt">Moment sheets, wall sheets, threads, projects, the lens, and story pages</div></div>
+      <div class="seg" role="group" aria-label="School name on documentation"><button data-psd="1" aria-pressed="${PRINT.schoolDocs}">On</button><button data-psd="0" aria-pressed="${!PRINT.schoolDocs}">Off</button></div></div>
+    <div class="prow"><div><b>The school's name on plans and records</b><div class="cnt">Weekly plans, blank forms, and week packets</div></div>
+      <div class="seg" role="group" aria-label="School name on plans"><button data-psr="1" aria-pressed="${PRINT.schoolRecords}">On</button><button data-psr="0" aria-pressed="${!PRINT.schoolRecords}">Off</button></div></div>
+    <div class="prow"><div><b>Children's names on display documentation</b><div class="cnt">On moment sheets and walls. A wall can choose its own. Plans always keep names as written, and nothing in a moment changes.</div></div>
+      <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's classroom and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Classroom</th><th>Educator</th><th></th></tr></thead><tbody>
     ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
@@ -4169,6 +4455,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.adel!=null){AREAS.splice(+t.dataset.adel,1);saveProgram();renderSettings();return}
   if(t.id==="l-add"){const n=val("#l-new");if(n&&!LANGUAGES.some(x=>x.toLowerCase()===n.toLowerCase())){LANGUAGES.push(n);saveProgram()}renderSettings();return}
   if(t.dataset.ldel!=null){LANGUAGES.splice(+t.dataset.ldel,1);saveProgram();renderSettings();return}
+  if(t.dataset.psd!=null){PRINT.schoolDocs=t.dataset.psd==="1";saveProgram();renderSettings();return}
+  if(t.dataset.psr!=null){PRINT.schoolRecords=t.dataset.psr==="1";saveProgram();renderSettings();return}
+  if(t.dataset.pnm){PRINT.names=t.dataset.pnm;saveProgram();renderSettings();return}
   if(t.dataset.mdel){const [c,i]=t.dataset.mdel.split("|");MATERIALS[c].splice(+i,1);saveProgram();renderSettings();return}
   if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
   if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
