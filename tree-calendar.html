@@ -322,6 +322,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
 <style>/* inside TREE */
 #app>header.top .brand,#app>header.top .spacer,#who-name,#btn-signout{display:none!important}
 #app>header.top{border-bottom:0;padding:0;margin:0 0 8px;justify-content:flex-end;min-height:0}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--paper:#ffffff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--line-soft:#dde4da}}
 </style>
 <div class="wrap" id="app">
   <header class="top">
@@ -361,7 +362,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
         </div>
         <h2 id="title" aria-live="polite"></h2>
         <div class="right">
-          <div class="seg" role="group" aria-label="View"><button type="button" data-view="day" aria-pressed="false">Day</button><button type="button" data-view="week" aria-pressed="false">Week</button><button type="button" data-view="month" aria-pressed="false">Month</button></div>
+          <div class="seg" role="group" aria-label="View"><button type="button" data-view="next" aria-pressed="false">From today</button><button type="button" data-view="day" aria-pressed="false">Day</button><button type="button" data-view="week" aria-pressed="false">Week</button><button type="button" data-view="month" aria-pressed="false">Month</button></div>
           <button class="btn" type="button" id="btn-new"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="long">Sign up for a space</span><span class="short">Sign up</span></button>
         </div>
       </div>
@@ -507,7 +508,7 @@ function span(a,b){ const A=clock(a), B=clock(b); return A.slice(-2)===B.slice(-
 const mins = iso => Number(iso.slice(11,13))*60+Number(iso.slice(14,16));
 
 /* ---------- state ---------- */
-const S = { view: ["day","week","month"].includes(LS.get("fc-view")) ? LS.get("fc-view") : "week", anchor: localToday(), data:null, stamp:"", range:null, me:"", director:false, shared:false, who:(LS.get("fc-who")||"").slice(0,40),
+const S = { view: "next", anchor: localToday(), data:null, stamp:"", range:null, me:"", director:false, shared:false, who:(LS.get("fc-who")||"").slice(0,40),
   hiddenCals:new Set(), hiddenSpaces:new Set(), busy:false, loadError:"" };
 try{ S.hiddenCals=new Set(JSON.parse(LS.get("fc-hide-cals")||"[]")); S.hiddenSpaces=new Set(JSON.parse(LS.get("fc-hide-spaces")||"[]")); }catch(e){}
 const narrow = window.matchMedia("(max-width: 760px)");
@@ -517,6 +518,7 @@ const weekendsOn = () => settings().weekends !== false;
 
 function weekDays(anchor){ const start=addDays(anchor,-dow(anchor)); const out=[]; for(let i=0;i<7;i++){ const d=addDays(start,i); if(weekendsOn() || (dow(d)!==0 && dow(d)!==6)) out.push(d); } return out; }
 function computeRange(){
+  if(S.view==="next") return {from:S.anchor, to:addDays(S.anchor,6)};
   if(S.view==="month"){ const first=S.anchor.slice(0,8)+"01"; const from=addDays(first,-dow(first)); return {from, to:addDays(from,41)}; }
   const from=addDays(S.anchor,-dow(S.anchor)); return {from, to:addDays(from,6)};
 }
@@ -696,6 +698,21 @@ function renderAgenda(idx){
   }
   return box;
 }
+// today first, then the six days after it, each with everything on it
+function renderNext(idx){
+  const t=today(), box=h("div",{});
+  for(let i=0;i<7;i++){
+    const d=addDays(S.anchor,i);
+    const v=idx.get(d)||{allDay:[],timed:[]};
+    const day=h("div",{class:"ag-day"});
+    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"short",day:"numeric"})}), h("small",{text:"Open day"})));
+    const rows=v.allDay.concat(v.timed);
+    if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
+    for(const x of rows) day.append(agRow(x));
+    box.append(day);
+  }
+  return box;
+}
 function renderMonth(idx){
   const t=today(), month=S.anchor.slice(0,7), {from}=S.range;
   const keep=d=>weekendsOn() || (dow(d)!==0&&dow(d)!==6);
@@ -758,6 +775,7 @@ function renderSide(){
 /* ---------- main render ---------- */
 function canSignUp(){ return settings().spaces.some(s=>!s.hidden); }
 function titleText(){
+  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"short",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"short",day:"numeric"});
   if(S.view==="month") return fmt(S.anchor,{month:"long",year:"numeric"});
   if(S.view==="day") return fmt(S.anchor,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
   const days=weekDays(S.anchor), a=days[0], b=days[days.length-1];
@@ -783,7 +801,8 @@ function render(){
   else if(!S.director && !st.spaces.length && !st.calendars.some(c=>(status[c.id]||{}).connected)){ notice.hidden=false; notice.append(h("span",{text:"The calendar is still being set up. Spaces and school calendars will appear here once the director adds them."})); }
   const idx=buildIndex();
   let body;
-  if(S.view==="month") body=renderMonth(idx);
+  if(S.view==="next") body=renderNext(idx);
+  else if(S.view==="month") body=renderMonth(idx);
   else if(S.view==="day") body = narrow.matches ? renderDayList(idx) : renderDay(idx);
   else body = narrow.matches ? renderAgenda(idx) : renderWeek(idx);
   const keep=cal.querySelector(".tg-scroll"); const sx=keep?keep.scrollLeft:0;
@@ -806,6 +825,7 @@ async function refresh(force){
 }
 function go(view, anchor){ if(view){ S.view=view; LS.set("fc-view",view); } if(anchor) S.anchor=anchor; refresh(); }
 function step(dir){
+  if(S.view==="next"){ go(null,addDays(S.anchor,7*dir)); return; }
   if(S.view==="month"){ const y=Number(S.anchor.slice(0,4)), m=Number(S.anchor.slice(5,7))-1+dir; const d=new Date(Date.UTC(y,m,1)); go(null,d.toISOString().slice(0,10)); return; }
   if(S.view==="week"){ go(null,addDays(S.anchor,7*dir)); return; }
   let d=addDays(S.anchor,dir); if(!weekendsOn()) while(dow(d)===0||dow(d)===6) d=addDays(d,dir);
