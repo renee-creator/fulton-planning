@@ -593,7 +593,7 @@ function parseIcs(text) {
     .filter(e => e.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
-const server = http.createServer((req, res) => { handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
+const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms'); }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
 server.on('clientError', (e, socket) => { try { socket.destroy(); } catch (x) {} });
 process.on('uncaughtException', e => log('Unexpected error, server kept running', e && e.stack));
 process.on('unhandledRejection', e => log('Unexpected rejection, server kept running', e));

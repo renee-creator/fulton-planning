@@ -197,7 +197,7 @@ details summary{cursor:pointer;font-weight:600}
 .sc-block input:not([type=checkbox]){border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);font:inherit}
 .sc-opt{display:inline-flex;gap:5px;align-items:center;font-size:.9rem;white-space:nowrap;cursor:pointer}
 /* inside TREE */
-:root:not([data-theme="dark"]){--bg:#f3f5ef;--surface:#fffffb;--surface-2:#e9eee7;--ink:#22332a;--muted:#5d6e63;--line:#d5ddd2;--accent:#2f5a43;--accent-soft:#e3ece4}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#245b78;--accent-soft:#d9e9f2}}
 :root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif}
 h1,h2,h3{font-weight:700}
 header.top .brand,.who-chip{display:none!important}
@@ -2355,6 +2355,7 @@ async function applyRosterDiff(){
 
 boot();
 </script>
+<script>setTimeout(()=>{try{if(!(S.loaded.children&&S.loaded.confs)){const a=document.getElementById("app");if(a)a.innerHTML='<div class="empty" style="display:grid;gap:10px;justify-items:center">The conference records are taking longer than usual to load.<button class="btn primary" onclick="location.reload()">Try again</button></div>'}}catch(e){}},25000);</script>
 
 </body>
 </html>

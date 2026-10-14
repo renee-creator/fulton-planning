@@ -39,7 +39,7 @@ app = rep(app, '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?f
           '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">')
 # TREE's colours and typefaces, and no second header inside TREE
 app = rep(app, '</style>\n\n<header class="top">', '''/* inside TREE */
-:root:not([data-theme="dark"]){--bg:#f3f5ef;--surface:#fffffb;--surface-2:#e9eee7;--ink:#22332a;--muted:#5d6e63;--line:#d5ddd2;--accent:#2f5a43;--accent-soft:#e3ece4}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#245b78;--accent-soft:#d9e9f2}}
 :root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif}
 h1,h2,h3{font-weight:700}
 header.top .brand,.who-chip{display:none!important}
@@ -54,7 +54,9 @@ app = rep(app, 'function go(name, extra={}){ flushAll(); S.view={name,...extra};
 app = app.replace(">Withdrawn<", ">Left Fulton<").replace('"Withdrawn"', '"Left Fulton"')
 marker = '<script>\n"use strict";\n/* ---------- constants'
 assert app.count(marker) == 1
-out = head("Family Conferences, TREE") + TELL + app.replace(marker, shim + "\n" + marker) + "\n</body>\n</html>\n"
+# if the records have not arrived after a while, say so and offer to try again, never an endless loading line
+WATCH = """<script>setTimeout(()=>{try{if(!(S.loaded.children&&S.loaded.confs)){const a=document.getElementById("app");if(a)a.innerHTML='<div class="empty" style="display:grid;gap:10px;justify-items:center">The conference records are taking longer than usual to load.<button class="btn primary" onclick="location.reload()">Try again</button></div>'}}catch(e){}},25000);</script>\n"""
+out = head("Family Conferences, TREE") + TELL + app.replace(marker, shim + "\n" + marker) + WATCH + "\n</body>\n</html>\n"
 (root / "tree-conferences.html").write_text(out)
 print("tree-conferences.html", len(out), "bytes")
 
@@ -68,9 +70,33 @@ cal = cal.replace("Fulton Calendar server", "TREE server")
 cal = rep(cal, '<div class="wrap" id="app">\n  <header class="top">', '''<style>/* inside TREE */
 #app>header.top .brand,#app>header.top .spacer,#who-name,#btn-signout{display:none!important}
 #app>header.top{border-bottom:0;padding:0;margin:0 0 8px;justify-content:flex-end;min-height:0}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--paper:#ffffff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--line-soft:#dde4da}}
 </style>
 <div class="wrap" id="app">
   <header class="top">''')
+# inside TREE the calendar opens on today, with the next six days below it, so nothing needs scrolling to find today
+cal = rep(cal, 'const S = { view: ["day","week","month"].includes(LS.get("fc-view")) ? LS.get("fc-view") : "week",', 'const S = { view: "next",')
+cal = rep(cal, '<button type="button" data-view="day" aria-pressed="false">Day</button>', '<button type="button" data-view="next" aria-pressed="false">From today</button><button type="button" data-view="day" aria-pressed="false">Day</button>')
+cal = rep(cal, 'function computeRange(){\n', 'function computeRange(){\n  if(S.view==="next") return {from:S.anchor, to:addDays(S.anchor,6)};\n')
+cal = rep(cal, 'function titleText(){\n', 'function titleText(){\n  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"short",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"short",day:"numeric"});\n')
+cal = rep(cal, '  if(S.view==="month") body=renderMonth(idx);\n', '  if(S.view==="next") body=renderNext(idx);\n  else if(S.view==="month") body=renderMonth(idx);\n')
+cal = rep(cal, 'function step(dir){\n', 'function step(dir){\n  if(S.view==="next"){ go(null,addDays(S.anchor,7*dir)); return; }\n')
+cal = rep(cal, 'function renderMonth(idx){', '''// today first, then the six days after it, each with everything on it
+function renderNext(idx){
+  const t=today(), box=h("div",{});
+  for(let i=0;i<7;i++){
+    const d=addDays(S.anchor,i);
+    const v=idx.get(d)||{allDay:[],timed:[]};
+    const day=h("div",{class:"ag-day"});
+    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"short",day:"numeric"})}), h("small",{text:"Open day"})));
+    const rows=v.allDay.concat(v.timed);
+    if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
+    for(const x of rows) day.append(agRow(x));
+    box.append(day);
+  }
+  return box;
+}
+function renderMonth(idx){''')
 cal = cal.replace("<!--PREVIEW-->", "")
 cut = cal.index("<style>")
 out = head("Calendar, TREE") + TELL + cal[:cut].replace("<title>Fulton Calendar</title>", "") + cal[cut:] + "\n</body>\n</html>\n"
