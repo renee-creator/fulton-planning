@@ -10,6 +10,7 @@
   --bg:#edf0e8; --paper:#ffffff; --ink:#1b2920; --muted:#46564c; --line:#c6d0c3;
   --moss:#2b5a40; --moss-soft:#dce9de; --marigold:#9a5b07; --marigold-soft:#f9e9cc;
   --clay:#984331; --clay-soft:#f5ddd5; --sky:#245b78; --sky-soft:#d9e9f2;
+  --sun:#7a5c00; --sun-soft:#fbefb8; --sun-wash:#fffbe8;
   --focus:#c47a06; --shadow:0 1px 2px rgba(27,41,32,.06),0 2px 8px rgba(27,41,32,.05);
   --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -18,11 +19,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#121814; --paper:#1d2620; --ink:#edf2ed; --muted:#aebdb3; --line:#3a4a41;
   --moss:#93ccaa; --moss-soft:#24382c; --marigold:#f2b955; --marigold-soft:#3b2f18;
-  --clay:#eba189; --clay-soft:#3d2821; --sky:#8fc8e2; --sky-soft:#1d323c; --focus:#f0b44a; --shadow:none; color-scheme:dark}}
+  --clay:#eba189; --clay-soft:#3d2821; --sky:#8fc8e2; --sky-soft:#1d323c; --sun:#f3d36b; --sun-soft:#3a3214; --sun-wash:#201e12; --focus:#f0b44a; --shadow:none; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#121814; --paper:#1d2620; --ink:#edf2ed; --muted:#aebdb3; --line:#3a4a41;
   --moss:#93ccaa; --moss-soft:#24382c; --marigold:#f2b955; --marigold-soft:#3b2f18;
-  --clay:#eba189; --clay-soft:#3d2821; --sky:#8fc8e2; --sky-soft:#1d323c; --focus:#f0b44a; --shadow:none; color-scheme:dark}
+  --clay:#eba189; --clay-soft:#3d2821; --sky:#8fc8e2; --sky-soft:#1d323c; --sun:#f3d36b; --sun-soft:#3a3214; --sun-wash:#201e12; --focus:#f0b44a; --shadow:none; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
@@ -175,6 +176,23 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .grid2 th,.grid2 td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .grid2 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
 .grid2 tr:last-child td{border-bottom:none}
+/* the list of plans on a phone, one card for each plan */
+@media (max-width:760px){
+  .plist,.plist tbody{display:block}
+  .plist colgroup,.plist thead{display:none}
+  .plist tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"form room status" "plan plan plan" "fill fill fill";gap:6px 10px;align-items:center;padding:14px;border-bottom:1px solid var(--line)}
+  .plist tr:nth-child(even){background:var(--sun-wash)}
+  .plist tr:last-child{border-bottom:0}
+  .plist td{display:block;padding:0;border:0!important;min-width:0}
+  .plist td:nth-child(1){grid-area:form}
+  .plist td:nth-child(2){grid-area:plan;font-size:16px;line-height:1.4}
+  .plist td:nth-child(2) .linkbtn{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:normal;max-width:100%;text-align:left;overflow-wrap:anywhere}
+  .plist{width:100%!important;min-width:0!important}
+  .plist td:nth-child(3){grid-area:room;font-size:13.5px;color:var(--muted);font-weight:600}
+  .plist td:nth-child(4){grid-area:fill;font-size:13.5px}
+  .plist td:nth-child(4)::before{content:attr(data-l) " ";color:var(--muted)}
+  .plist td:nth-child(5){grid-area:status;justify-self:end}
+}
 .cellbtn{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:none;background:transparent;padding:2px;cursor:pointer;text-align:left}
 .dot{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line);display:inline-block}
 .dot.draft{border-color:var(--muted);background:transparent}
@@ -317,7 +335,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .subnav button.sub[aria-current="page"]{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
 #main .head .eyebrow{color:var(--acc)}
 .titem,.kidc,.quick button{box-shadow:var(--shadow)}
-.ttop{background:var(--paper)}
+.ttop{background:var(--sun-wash);border-bottom:3px solid var(--sun-soft)}
+.stat{background:var(--sun-wash);border-color:var(--sun-soft)}
+.stat b{color:var(--ink)}
+.quick button:not(.qmain){background:var(--sun-wash);border-color:var(--sun-soft)}
+.grid2 tbody tr:hover{background:var(--sun-wash)}
 .ttop .brand small{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:1px}
 @media (max-width:760px){.ttop .brand small{font-size:9.5px;letter-spacing:.02em;white-space:nowrap}}
 /* Today */
@@ -1300,7 +1322,7 @@ async function loadTodayCal(force){
   try{const j=await window.FP_API("/api/view",{from:day,to:day});
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
-    for(const e of j.events||[])out.push({kind:e.cal==="tconf"?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||""});
+    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||""});
     for(const b of j.bookings||[]){const sp=spaces[b.spaceId]||{};const mins=v=>typeof v==="number"?String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0"):"";
       out.push({kind:"space",start:b.week?"":mins(b.start),end:b.week?"":mins(b.end),week:!!b.week,title:sp.name||"A space",sub:[b.who||b.by,b.group||b.what].filter(Boolean).join(", ")})}
     out.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
@@ -4562,8 +4584,8 @@ function allListHtml(ps){
   if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
   return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${countShown(wp).replace(" shown","")}</div>
-    <div class="tablewrap"><table class="grid2" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
-    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
+    <div class="tablewrap"><table class="grid2 plist" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="${p.type==="notice"?"Kept by":"Sections filled"}">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
 function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.length-n;

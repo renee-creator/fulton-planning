@@ -329,12 +329,14 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
   #app>header.top #btn-settings{padding:6px 10px;font-size:13px}
   .bar h2{padding-right:96px}
 }
-.glance{border:2px solid var(--marigold);border-radius:12px;background:var(--paper);overflow:hidden;margin-bottom:16px}
+.glance{border:2px solid #e6c84f;border-radius:12px;background:#fffbe8;overflow:hidden;margin-bottom:16px}
 .glance-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px 8px}
-.glance-h b{font-family:var(--display);font-size:22px;color:var(--marigold)}
+.glance-h b{font-family:var(--display);font-size:22px;color:#7a5c00}
 .glance-h span{font-size:14px;color:var(--muted)}
 .glance-sum{padding:0 14px 10px;font-size:15px}
 .rest-h{font-family:var(--display);font-size:17px;font-weight:700;margin:4px 2px 8px}
+.glance .ag-row{background:transparent}
+@media (prefers-color-scheme: dark){.glance{background:#201e12;border-color:#8a7426}.glance-h b{color:#f3d36b}}
 .rest{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
 .cal:has(.glance){background:transparent;border:0;overflow:visible}
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--paper:#ffffff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--line-soft:#dde4da}}
