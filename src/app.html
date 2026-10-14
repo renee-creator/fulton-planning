@@ -1224,7 +1224,7 @@ function portfolioDocs(c,mode){
    A moment kept with no connection waits on this device and sends itself once the connection is back. A photo waits
    with it and is stored first. Nothing is lost if the page is closed, since the waiting moments are kept on the device. */
 let outbox=LS.get("tree.outbox",[])||[];
-function outboxSave(){LS.set("tree.outbox",outbox)}
+function outboxSave(){try{localStorage.setItem("tree.outbox",JSON.stringify(outbox))}catch(e){toast("This device is out of room for moments waiting to send. Keep TREE open until there is signal.")}}
 function outboxAdd(n){outbox=outbox.filter(x=>x.id!==n.id);outbox.push(JSON.parse(JSON.stringify(n)));outboxSave()}
 const waitingToSend=id=>outbox.some(x=>x.id===id);
 let outboxBusy=false;
@@ -1378,6 +1378,7 @@ function renderWeekBoard(){
   const statusPill=p=>`<span class="status ${p?p.status:"missing"}">${p?(p.status==="ready"?"Ready for review":STATUS[p.status]):"Not started"}</span>`;
   const first=t=>{const s=String(t||"").trim().split("\n")[0];return s.length>90?s.slice(0,89)+"…":s};
   const thisWk=mondayOf(new Date());
+  const loose=[...plans.values()].filter(p=>p.weekOf===week&&!p.classroom&&p.id!=="example"&&p.type!=="notice");
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Plans</span><h2 style="margin-top:4px">Week of ${esc(parseIso(week).toLocaleDateString("en-US",{month:"long",day:"numeric"}))}</h2>
     <div class="sub">Individual plans come first on Monday. The team writes the Classroom plan from them, and nobody's absence holds it up.</div></div>
     <span class="actions"><button class="btn small ghost" id="importbtn">Upload a plan or photo</button></span></div></div>
@@ -1393,6 +1394,7 @@ function renderWeekBoard(){
       ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
         :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom">Start the Classroom plan</button></div>`}
       ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${p.id}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
+      ${loose.length?`<div class="lbl" style="margin-top:6px">No classroom chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the classroom.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
   </div>`;
 }
@@ -2228,6 +2230,9 @@ function momentsDocs(long,cap){
     for(const n of items){const credit=[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", ");
       // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
       if(n.photo&&long){blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));blocks.push(dPhoto(n,210,false));continue}
+      // a sheet of children's words gives its first child's line in the summary, with the child and the sheet named in the credit
+      const first=n.photo?momentBody(n).split("\n").map(x=>x.trim()).map(x=>x.match(NAMED_LINE)).find(Boolean):null;
+      if(first&&!long){blocks.push(dQuote(first[2].trim(),[first[1],momentHeading(n)&&"in "+momentHeading(n),credit].filter(Boolean).join(", "),shortDate(n.at)));continue}
       const body=n.photo?momentBody(n).split("\n").filter(x=>x.trim()).slice(0,3).join("  "):n.noticed;
       const text=long&&has(n.wonder)?`${body} ${wonderLine(n.wonder)}`:body;
       blocks.push(dQuote(text,credit,shortDate(n.at)))}
@@ -3776,7 +3781,7 @@ async function printsClick(t){
     const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classrooms":nRoom} ${mondayOf(new Date())}`;
     if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
-  if(kind==="threads"){out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
+  if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
   if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`;
     if(long){out(lensDocs(true),name);return true}
     await loadPrintFonts();out(await onePage(n=>lensDocs(false,n),5,3),name);return true}
