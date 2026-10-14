@@ -1654,6 +1654,14 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.drdpkw){const [k,id]=t.dataset.drdpkw.split("|");drdpAnalyze(k,id,"keywords");return}
 });
 
+/* what a conference form can bring in from TREE. The DRDP levels educators accepted in the period, and the moments and
+   slides that tag the child in that period. The Family Conferences page asks for them through these two. */
+window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+  return kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>({code:x.code,name:DRDP[x.code]||"",dom:x.code.split(" ")[0],level:x.level,emerging:!!x.emerging,evidence:x.evidence||"",title:x.src&&x.src.title||"",at:(x.src&&x.src.at)||x.at||0}))
+    .filter(x=>x.at>=t0&&x.at<=t1).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})||a.at-b.at)};
+window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,at:x.at,title:x.kind==="slides"?(x.s.title||"A slide"):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
+
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
 let drdpEdit="",drdpShowAside=false;
