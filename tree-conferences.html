@@ -2370,7 +2370,7 @@ function lock(){const ed=document.getElementById("conf-editor");if(!ed){seen="";
   if(!on){if(bar)bar.remove();ed.querySelectorAll("[data-tree-locked]").forEach(x=>{x.readOnly=false;x.disabled=false;delete x.dataset.treeLocked});return}
   ed.querySelectorAll("textarea,input,select,button").forEach(x=>{if(x.dataset.treeLocked||x.closest(".tree-lockbar"))return;
     if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(x.tagName==="SELECT"||/checkbox|radio|file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
-  if(!bar){bar=document.createElement("div");bar.className="tree-lockbar";bar.innerHTML='<span>Saved. This conference record is shown as it was kept, so nothing changes by accident.</span><button type="button" class="btn small primary">Edit</button>';
+  if(!bar){bar=document.createElement("div");bar.className="tree-lockbar";bar.innerHTML='<span>Saved</span><button type="button" class="btn small primary">Edit</button>';
     bar.querySelector("button").onclick=()=>{unlocked=id;lock();const f=ed.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})};ed.prepend(bar)}}
 const go=()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{lock()}catch(e){}})};
 new MutationObserver(go).observe(document.body,{childList:true,subtree:true});go();})();</script>
@@ -2388,8 +2388,11 @@ const line=x=>x.name+", "+x.level+(x.emerging?", emerging to the next level":"")
 function addTo(k,lines){const ta=document.querySelector('#conf-editor textarea[data-k="'+k+'"]');if(!ta||ta.readOnly||ta.disabled)return 0;
   const have=ta.value;const add=lines.filter(l=>!have.includes(l));if(!add.length)return 0;ta.value=(have.trim()?have.replace(/\s+$/,"")+"\n":"")+add.join("\n");
   ta.dispatchEvent(new Event("input",{bubbles:true}));ta.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return add.length}
-function draw(){const ed=document.getElementById("conf-editor");if(!ed||ed.querySelector(".tree-bringall,.tree-bring-none"))return;const id=ed.dataset.id;const cf=S.confs&&S.confs[id];if(!cf||!P.TREE_DRDP_FOR)return;
-  const w=windowOf(cf);const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
+function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;const id=ed.dataset.id;const cf=S.confs&&S.confs[id];if(!cf||!P.TREE_DRDP_FOR)return;
+  // the period follows the conference date, so a new date draws the lists again
+  const w=windowOf(cf);const key=id+"|"+w.from+"|"+w.to;
+  if(ed.querySelector(".tree-bringall,.tree-bring-none")){if(ed.dataset.bringKey===key)return;ed.querySelectorAll(".tree-bringall,.tree-bring-none,.tree-bring").forEach(x=>x.remove())}
+  ed.dataset.bringKey=key;const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
   const span="from "+long(w.from)+" to "+long(w.to);
   const per={};for(const [k,doms] of Object.entries(MAP))per[k]=items.filter(x=>doms.includes(x.dom));
   for(const [k,list] of Object.entries(per)){if(!list.length)continue;const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))continue;

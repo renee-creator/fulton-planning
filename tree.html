@@ -1439,7 +1439,7 @@ function applyLock(){
   for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
-    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. This ${what} is shown as it was kept, so nothing changes by accident.</span><button class="btn small" data-unlock="1">Edit</button>`;
+    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved</span><button class="btn small" data-unlock="1">Edit</button>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
 const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});

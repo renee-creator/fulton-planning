@@ -160,10 +160,25 @@ function conferenceEvents(from, to) {
   for (const [id, r] of store.recs.conferences) {
     const c = r.doc; if (r.deleted || !c || !c.confDate || c.confDate < from || c.confDate > to) continue;
     const k = store.recs.children.get(c.childId); const first = k && !k.deleted && k.doc.first ? k.doc.first : 'A child';
+    // a child who has left keeps their past conferences, and nothing after their last day shows as coming up
+    if (k && !k.deleted && k.doc.status === 'withdrawn' && c.confDate > (k.doc.leftOn || String(k.doc.withdrawnAt || '').slice(0, 10) || '0000')) continue;
     const t = /^\d{2}:\d{2}$/.test(c.confTime || '') ? c.confTime : '';
     events.push(Object.assign({ id: 'tconf.' + id, cal: 'tconf', title: `Conference, ${first}'s family`, desc: c.teacher ? 'With ' + c.teacher : '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
   }
-  return { events, status: { tconf: { connected: true, ok: true } } };
+  // every child at Fulton has a birthday on the calendar each year, from the birthday on the roster
+  const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
+  for (const [id, r] of store.recs.children) {
+    const k = r.doc; if (r.deleted || !k || !k.first || k.status === 'withdrawn' || !/^\d{4}-\d{2}-\d{2}$/.test(String(k.dob || '').slice(0, 10))) continue;
+    const dob = String(k.dob).slice(0, 10), by = +dob.slice(0, 4), md = dob.slice(5);
+    for (let y = y0; y <= y1; y++) {
+      if (y <= by) continue;
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+      const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
+      if (day < from || day > to) continue;
+      events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' classroom' : ''}`, allDay: true, start: day, end: day });
+    }
+  }
+  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
 }
 const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
