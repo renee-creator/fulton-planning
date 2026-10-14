@@ -200,6 +200,16 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .nw-thumb img{display:block;width:120px;height:150px;object-fit:cover;border-radius:8px;background:var(--bg)}
 @media (max-width:520px){.nw-row{grid-template-columns:84px minmax(0,1fr)}.nw-thumb img{width:84px;height:110px}}
 .warnline{color:var(--clay)}
+.grow{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.grow li,.cwords>div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start;font-size:14.5px}
+.gdate{font-size:12.5px;color:var(--muted);padding-top:2px}
+.cwords{display:grid;gap:8px}
+.wsheet{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px}
+.wsheet.off{opacity:.55}
+.wsgrid{display:grid;grid-template-columns:160px minmax(0,1fr);gap:14px;align-items:start}
+.wsimg{width:160px;height:200px;object-fit:cover;border-radius:8px;background:var(--bg)}
+.wsnone{display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+@media (max-width:520px){.wsgrid{grid-template-columns:minmax(0,1fr)}.wsimg{width:100%;height:220px}.wsimg.wsnone{height:44px}.grow li,.cwords>div{grid-template-columns:minmax(0,1fr);gap:2px}}
 .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--accent,currentColor);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .st-emerging{border-color:var(--sky);color:var(--sky)}
@@ -1485,7 +1495,7 @@ function saveNotice(n){n.updatedAt=Date.now();notices.set(n.id,n);
 function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
 function removeNotice(id){notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.notices",[...notices.values()])}
 // a notice is read by the same machinery that reads plans, so it is evidence in the same way
-function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||"",educator:n.by||"",group:"",setting:[],languages:[],docplan:[],groups:[],status:"ready",
+function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||"",educator:n.by||"",group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
   fields:{noticed:n.noticed||"",wonder:n.wonder||""},createdAt:n.at,updatedAt:n.updatedAt||n.at,notice:n}:null}
 const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 // anything the app can quote, whether it was a plan or a moment
@@ -1590,6 +1600,7 @@ function noticeFormCard(){
       :editing?"":`<div class="actions" style="margin:0 0 8px"><span class="hint muted" style="margin:0">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</span>${photoPickHtml("nf-photo","Upload a photo instead")}</div>`}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
+    <div class="fld-label">Languages children used, optional<div class="chips">${langList(n.languages).map(x=>`<button class="chip ${(n.languages||[]).includes(x)?"on":""}" data-nflang="${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div></div>
     <div class="actions">
       <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
       <label class="cnt">Classroom <select id="nf-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
@@ -1613,6 +1624,8 @@ function noticeCard(n){
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
+    ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
+    ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
     <div class="actions">${printBtns("moment",n.id,"Print PDF")}<button class="linkbtn" data-nwedit="${n.id}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
 }
@@ -1763,6 +1776,7 @@ function noticesClick(t){
   if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
     if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
     if(view==="moments")renderMain();else renderAll();return true}
+  if(t.dataset.nflang&&noticeForm){const v=t.dataset.nflang,a=noticeForm.languages||(noticeForm.languages=[]);const i=a.indexOf(v);i>=0?a.splice(i,1):a.push(v);t.classList.toggle("on");return true}
   if(t.dataset.nfretry){const n=noticeForm&&noticeForm.id===t.dataset.nfretry?noticeForm:nQueue.find(x=>x.id===t.dataset.nfretry);if(n)readMomentPhoto(n);return true}
   if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
     if(!n.noticed){toast("Write what you noticed first.");return true}
@@ -1954,6 +1968,7 @@ function renderProject(x){
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
+  h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
   h+=`<section class="card"><div class="lbl">Classrooms</div>
     <div class="hint">${x.home?"The project belongs to its home classroom. Other classrooms can join, each by its own path.":"This is a school-wide project with no home classroom. Each classroom that takes part joins it."}</div>
     <label class="cnt">Home classroom <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home classroom</option></select></label>
@@ -2131,6 +2146,25 @@ ${d.map(o=>JSON.stringify(o)).join("\n")}`;
   delete projBusy[x.id];renderMain();
 }
 async function projectsClick(t){
+  {const x=view==="projects"&&projId&&projects.get(projId);
+  if(x){
+    if(t.dataset.pgrow){growAll[x.id]=true;renderMain();return true}
+    if(t.dataset.pwall){if(!x.wall){x.wall=wallProposal(x);saveProject(x)}wallOpen[x.id]=true;renderMain();const el=$("#pwall");if(el)el.scrollIntoView({block:"start"});return true}
+    if(t.dataset.pwallshut){wallOpen[x.id]=false;renderMain();return true}
+    if(t.dataset.wsfresh){$("#pwall .actions").insertAdjacentHTML("beforeend",`<span class="confirm">Replace these sheets with a fresh set from the timeline? <button class="btn warn small" data-wsfreshyes="1">Replace</button><button class="linkbtn" data-wsfreshno="1">Keep these</button></span>`);t.remove();return true}
+    if(t.dataset.wsfreshno){renderMain();return true}
+    if(t.dataset.wsfreshyes){x.wall=wallProposal(x);saveProject(x);renderMain();toast("A fresh set of sheets is ready.");return true}
+    if(t.dataset.wsadd){x.wall.sheets.push({id:"w"+Math.random().toString(36).slice(2,8),kind:"other",title:"",photo:"",text:"",quotes:[],include:true});saveProject(x);renderMain();return true}
+    const mv=(id,d)=>{const a=x.wall.sheets,i=a.findIndex(s=>s.id===id),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];saveProject(x);renderMain()};
+    if(t.dataset.wsup){mv(t.dataset.wsup,-1);return true}
+    if(t.dataset.wsdown){mv(t.dataset.wsdown,1);return true}
+    if(t.dataset.wsdel){x.wall.sheets=x.wall.sheets.filter(s=>s.id!==t.dataset.wsdel);saveProject(x);renderMain();return true}
+    if(t.dataset.wsq){const [id,k]=t.dataset.wsq.split("|");const sh=wallSheet(x,id),q=projChildWords(x)[+k];if(sh&&q){const i=(sh.quotes||[]).findIndex(o=>o.words.toLowerCase()===q.words.toLowerCase());
+      if(i>=0)sh.quotes.splice(i,1);else{sh.quotes=[...(sh.quotes||[]),{name:q.name,words:q.words,at:q.at}];sh.quotes.sort((a,b)=>(a.at||0)-(b.at||0))}t.classList.toggle("on");saveProjectSoon(x)}return true}
+    if(t.dataset.wsdraft){const sh=wallSheet(x,t.dataset.wsdraft);if(sh)wallDraft(x,sh);return true}
+    if(t.dataset.wsyes){const sh=wallSheet(x,t.dataset.wsyes);if(sh){sh.text=($("#wsg-"+sh.id)?.value||wallSug[sh.id]?.text||"").trim();delete wallSug[sh.id];saveProject(x);renderMain()}return true}
+    if(t.dataset.wsno){delete wallSug[t.dataset.wsno];renderMain();return true}
+  }}
   if(t.dataset.popen){openProject(t.dataset.popen);return true}
   if(t.dataset.pback){openProject("");return true}
   if(t.dataset.pstart){const th=threads.get(t.dataset.pstart);if(!th)return true;const ex=projectOfThread(th.id);if(ex){openProject(ex.id);return true}
@@ -2167,6 +2201,7 @@ async function projectsClick(t){
 document.addEventListener("input",e=>{
   const t=e.target;if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
   if(t.dataset.pf){x[t.dataset.pf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);if(t.dataset.pf==="underneath"||t.dataset.pf==="name"){const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x))}saveProjectSoon(x);return}
+  if(t.dataset.ws){const [id,k]=t.dataset.ws.split("|");const sh=wallSheet(x,id);if(sh){sh[k]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x)}return}
   if(t.dataset.pd){x.decision=x.decision||{};x.decision[t.dataset.pd]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x);return}
   if(t.dataset.pcn){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcn);if(c){c.note=t.value;saveProjectSoon(x)}return}
   if(t.dataset.pwb){const [i,k]=t.dataset.pwb.split("|");const b=x.web?.branches?.[+i];if(b){b[k]=t.value;const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x));saveProjectSoon(x)}return}
@@ -2178,6 +2213,8 @@ document.addEventListener("change",e=>{
   if(t.dataset.padd){const x=projects.get(t.value),th=threads.get(t.dataset.padd);if(x&&th)addThreadToProject(x,th);return}
   if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
   if(t.dataset.pstatus){x.status=t.value;saveProject(x);renderMain();return}
+  if(t.dataset.wsinc){const sh=wallSheet(x,t.dataset.wsinc);if(sh){sh.include=t.checked;saveProject(x);renderMain()}return}
+  if(t.dataset.wsphoto){const sh=wallSheet(x,t.dataset.wsphoto);if(sh){sh.photo=t.value;saveProject(x);renderMain()}return}
   // a new home keeps the old home as a classroom that took part, so nothing it holds is lost
   if(t.dataset.phome){const r=t.value;x.home=r;if(r&&!(x.classrooms||[]).some(c=>c.room===r))x.classrooms=[{room:r,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""},...(x.classrooms||[])];saveProject(x);renderMain();toast(r?`${r} is now the home classroom.`:"This is now a school-wide project.");return}
   if(t.dataset.pch){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pch);if(c){c.how=t.value;saveProject(x);renderMain()}return}
@@ -2214,11 +2251,14 @@ function lensScan(room){return scans.get(lensKey(room))||(LENSES[0]&&lensId===LE
 function lensRangeStart(){const cur=mondayOf(new Date());if(lRange==="4")return addDays(cur,-21);if(lRange==="8")return addDays(cur,-49);if(lRange==="year")return schoolYearStart();return "0000-00-00"}
 function lensPlans(){const s=lensRangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&LENS_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||p.classroom===lRoom))}
 // a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing)
-function lensRegex(){
-  const parts=LENS.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
+function lensRegex(L){
+  L=L||LENS;const parts=L.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
     return `${w}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==w?`|${stem}(?:ing|ed)`:"")});
   return parts.length?new RegExp("\\b(?:"+parts.join("|")+")\\b","gi"):null;
 }
+// the lenses of this year that find a moment, by its words or by a language an educator marked on it
+function lensesFinding(n){const text=[n.noticed,n.wonder].filter(Boolean).join(" ");const mine=new Set((n.languages||[]).map(x=>x.toLowerCase()));
+  return LENSES.filter(l=>l.year&&((()=>{const re=lensRegex(l);if(!re)return false;re.lastIndex=0;return re.test(text)})()||l.languages.some(x=>mine.has(x.toLowerCase()))))}
 function lensMarked(p){const set=new Set(LENS.languages.map(x=>x.toLowerCase()));return [...new Set([...(p.languages||[]),...((p.web&&p.web.languages)||[])].filter(x=>set.has(String(x).toLowerCase())))]}
 // the sections that record what children did and said, as against what educators mean to offer
 const OBSERVED_KEYS=new Set(["observation","interests","meeting","area","remarks","reflection","thread","noticed"]);
@@ -2280,7 +2320,7 @@ function renderLens(){
   const scan=lensScan(lRoom);
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">${LENS.year?"This year's lens":"Lens"}</span><h2 style="margin-top:4px">${esc(LENS.name)}</h2>
     <div class="sub" style="max-width:76ch">${esc(LENS.description)}</div></div></div>
-    ${LENSES.length>1?`<div class="filters" style="margin:0 0 4px" role="group" aria-label="Lens">${LENSES.map(l=>`<button class="pill" aria-pressed="${l.id===lensId}" data-lensid="${esc(l.id)}">${esc(l.name)}</button>`).join("")}</div>`:""}
+    ${LENSES.length>1?`<div class="filters" style="margin:0 0 4px" role="group" aria-label="Lens">${[...LENSES.filter(l=>l.year),...LENSES.filter(l=>!l.year)].map(l=>`<button class="pill" aria-pressed="${l.id===lensId}" data-lensid="${esc(l.id)}">${esc(l.name)}</button>`).join("")}</div>`:""}
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
       <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select>${printTwo("lens","")}</div></div>
@@ -2373,6 +2413,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   lensBusy=false;renderMain();
 }
 function lensClick(t){
+  if(t.dataset.lensgo){setLens(t.dataset.lensgo);lLang="";view="lens";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.lensid&&view==="lens"){setLens(t.dataset.lensid);lensShowAll=false;lLang="";renderMain();return true}
   if(t.dataset.lroom){lRoom=t.dataset.lroom;LS.set("fps.lroom",lRoom);renderMain();return true}
   if(t.dataset.lmore){lensShowAll=true;renderMain();return true}
@@ -2394,7 +2435,7 @@ function lensClick(t){
       lensWords[L.id]=lensWordCheck(L);saveProgram();renderSettings();toast(`${n-L.words.length} word${n-L.words.length===1?"":"s"} removed.`)}return true}
   if(t.id==="lens-add"){const l=normLens(BLANK_LENS);LENSES=[...LENSES,l];setLens(l.id);saveProgram();renderSettings();setTimeout(()=>{const el=document.querySelector(`[data-lf="${l.id}|name"]`);if(el){el.scrollIntoView({block:"center"});el.select()}},40);return true}
   if(t.dataset.lensdup){const o=LENSES.find(x=>x.id===t.dataset.lensdup);if(o){const l=normLens(Object.assign({},o,{id:"",name:o.name+" copy",year:false}));LENSES=[...LENSES,l];setLens(l.id);saveProgram();renderSettings();setTimeout(()=>{const el=document.querySelector(`[data-lf="${l.id}|name"]`);if(el){el.scrollIntoView({block:"center"});el.select()}},40)}return true}
-  if(t.dataset.lensyear){LENSES.forEach(l=>l.year=l.id===t.dataset.lensyear);saveProgram();renderSettings();toast("Marked as this year's lens.");return true}
+  if(t.dataset.lensyear){const l=LENSES.find(x=>x.id===t.dataset.lensyear);if(l){l.year=!l.year;saveProgram();renderSettings();toast(l.year?`${l.name} is one of this year's lenses.`:`${l.name} is kept, and no longer marked as this year's.`)}return true}
   if(t.dataset.lensdel){const l=LENSES.find(x=>x.id===t.dataset.lensdel);if(!l)return true;
     if(LENSES.length<2){toast("The school keeps at least one lens. Add another before removing this one.");return true}
     const n=[...scans.keys()].filter(k=>k.indexOf("lens-"+l.id+"-")===0).length;
@@ -2475,12 +2516,12 @@ function lensSettingsHtml(){
     ${lensWordsHtml(l)}${lensDraftHtml(l)}
     <div class="actions">${sample&&!lensSug[l.id]?`<button class="btn small ghost" data-lensdraft="${esc(l.id)}">Draft this lens with Claude</button>`:""}
       ${lensWords[l.id]?"":`<button class="btn small ghost" data-lensw="${esc(l.id)}">Check the words</button>`}
-      ${l.year?"":`<button class="btn small ghost" data-lensyear="${esc(l.id)}">Make this year's lens</button>`}
+      ${l.year?`<button class="linkbtn" data-lensyear="${esc(l.id)}">Not this year</button>`:`<button class="btn small ghost" data-lensyear="${esc(l.id)}">Mark as this year's</button>`}
       <button class="btn small ghost" data-lensdup="${esc(l.id)}">Duplicate</button>
       ${l.id===LENS_DEFAULT_ID?`<button class="linkbtn" id="lens-reset">Return it to Graphic Languages</button>`:""}
       <span id="lensdel-${esc(l.id)}">${LENSES.length>1?`<button class="linkbtn" data-lensdel="${esc(l.id)}">Remove this lens</button>`:""}</span>
       ${n?`<span class="cnt">${n} reading${n>1?"s":""} kept with this lens</span>`:""}</div></section>`};
-  return `<section class="card"><div class="lbl">Lenses</div><div class="hint">A lens is a way of reading the year's documentation. The school can hold several, and the Lens page shows one at a time. Each one keeps its own readings.</div>
+  return `<section class="card"><div class="lbl">Lenses</div><div class="hint">A lens is a way of reading the year's documentation. The school can hold several, and more than one can be this year's. The Lens page shows one at a time, each with its own readings, and a moment shows every lens of this year that finds it.</div>
     <div class="actions"><button class="btn small ghost" id="lens-add">Add a lens</button></div></section>`+LENSES.map(one).join("");
 }
 const LENS_DEFAULT_ID="lens1";
@@ -2576,6 +2617,126 @@ function threadsDocs(long){
   // With one or two threads the list sheet would be mostly empty, so the threads speak for themselves.
   if(tracked.length<3)return tracked.map(threadDoc);
   return long?[threadsOverviewDoc(tracked),...tracked.map(threadDoc)]:[threadsOverviewDoc(tracked)];
+}
+/* --- How a project has grown, the children's words in it, and the wall it can become.
+   Everything here is gathered from what is already kept. Nothing on these sheets is invented. Display text is written
+   by educators, or drafted from their own writing and kept only when an educator chooses it. --- */
+let growAll={},wallOpen={},wallSug={};
+const dayOf=ms=>iso(new Date(ms||Date.now()));
+function projTimeline(x){
+  const ev=[];const add=(at,kind,text,extra)=>{if(at)ev.push(Object.assign({at,kind,text:String(text||"").trim()},extra||{}))};
+  add(x.createdAt,"The project began",x.experience,{by:x.createdBy});
+  for(const l of (x.threads||[])){const t=threads.get(l.id);if(t)add(l.at||parseIso(l.week||dayOf(x.createdAt)).getTime(),"A thread joined",t.name,{by:l.by,tsee:t.id})}
+  for(const c of (x.classrooms||[]))if(c.room!==x.home)add(c.at||(c.week?parseIso(c.week).getTime():0),"A classroom joined",c.room+(c.how&&PJOIN[c.how]?", "+PJOIN[c.how].toLowerCase():"")+(has(c.note)?". "+c.note:""),{by:c.by});
+  for(const n of projNotices(x))add(n.at,"Notice and Wonder",momentBody(n).split("\n").filter(Boolean).slice(0,3).join("  "),{by:n.by,photo:n.photo?n:null,heading:momentHeading(n)});
+  for(const pl of projPlans(x).filter(q=>!q.notice)){const f=pl.fields||{};const t=firstSentence(f.observation||f.remarks||f.reflection||"",220);
+    add(parseIso(pl.weekOf).getTime()+864e5,FORMS[pl.type].name,t,{by:planWho(pl),open:pl.id,week:pl.weekOf})}
+  for(const key of ["underneath","intent"])for(const r of projEarlier(x,key))add(r.at,key==="underneath"?"The team set aside a reading":"The team set aside an intent",r.text,{by:r.by});
+  for(const st of (x.stories||[]))add(st.at,"A project story",st.label||"",{by:st.by});
+  return ev.sort((a,b)=>a.at-b.at);
+}
+function projGrowHtml(x){
+  const ev=projTimeline(x);if(ev.length<2)return"";
+  const all=growAll[x.id],show=all?ev:ev.slice(-10);
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">How it has grown</h3><span class="cnt">${ev.length} things kept, ${shortDate(ev[0].at)} to ${shortDate(ev[ev.length-1].at)}</span></div>
+    <div class="hint">Everything the project holds, in the order it happened. The current reading and intent are above.</div>
+    ${!all&&ev.length>show.length?`<div class="actions"><button class="linkbtn" data-pgrow="1">Show the ${ev.length-show.length} earlier</button></div>`:""}
+    <ol class="grow">${show.map(e=>`<li><span class="gdate">${e.week?"Week of "+fmtDate(e.week).replace(/, \d{4}$/,""):shortDate(e.at)}</span><div><b>${esc(e.kind)}</b>${e.heading?` <span class="muted">${esc(e.heading)}</span>`:""}
+      ${e.photo?`<div class="nw-row" style="margin-top:4px"><a class="nw-thumb" href="${esc(photoSrc(e.photo))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(e.photo))}" alt="Photo kept with this moment" loading="lazy"></a><div>${esc(e.text)}</div></div>`:has(e.text)?`<div>${esc(e.text)}</div>`:""}
+      <div class="cnt">${e.by?esc(e.by):""}${e.open?` <button class="linkbtn" data-open="${e.open}">Open the plan</button>`:""}${e.tsee?` <button class="linkbtn" data-tsee="${e.tsee}">See the thread</button>`:""}</div></div></li>`).join("")}</ol></section>`;
+}
+// a child's line is a named line copied from a sheet, or words an educator put in quotation marks
+function childLines(text,named){
+  const out=[];const t=String(text||"");
+  if(named)for(const raw of t.split("\n")){const m=raw.trim().match(/^([A-Z][A-Za-z.'’-]{0,24}(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) - (.{2,})$/);if(m)out.push({name:m[1],words:m[2].trim()})}
+  for(const m of t.matchAll(/[“"]([^”"]{3,240})[”"]/g)){const before=t.slice(Math.max(0,m.index-40),m.index);const nm=before.match(/([A-Z][a-z]+)\s+(?:said|says|asked|told|added|wondered|shouted|whispered|explained|replied|called)[^“"]*$/);out.push({name:nm?nm[1]:"",words:m[1].trim()})}
+  return out;
+}
+function projChildWords(x){
+  const seen=new Set(),out=[];
+  const push=(l,at,src)=>{const k=l.words.toLowerCase();if(seen.has(k))return;seen.add(k);out.push(Object.assign({at,src},l))};
+  for(const n of projNotices(x))childLines(n.noticed,true).forEach(l=>push(l,n.at,{moment:n.id}));
+  for(const pl of projPlans(x).filter(q=>!q.notice))for(const v of Object.values(pl.fields||{}))childLines(v,false).forEach(l=>push(l,parseIso(pl.weekOf).getTime()+864e5,{plan:pl.id}));
+  return out.sort((a,b)=>a.at-b.at);
+}
+function projWordsHtml(x){
+  const ws=projChildWords(x);if(!ws.length)return"";
+  const kids=new Set(ws.map(w=>w.name).filter(Boolean)).size;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">In the children's words</h3><span class="cnt">${ws.length} line${ws.length>1?"s":""}${kids?`, from ${kids} child${kids>1?"ren":""}`:""}</span></div>
+    <div class="hint">Gathered from the moments and plans in this project, exactly as they were written down.</div>
+    <div class="cwords">${ws.map(w=>`<div><span class="gdate">${shortDate(w.at)}</span><div>${w.name?`<b>${esc(w.name)}</b> `:""}“${esc(w.words)}”${w.src.plan?` <button class="linkbtn" data-open="${w.src.plan}">plan</button>`:""}</div></div>`).join("")}</div></section>`;
+}
+/* --- the wall: a run of sheets that hang in order --- */
+function wallPhotoMoments(x){return projNotices(x).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0))}
+function wallProposal(x){
+  const sid=()=>"w"+Math.random().toString(36).slice(2,8);
+  const ms=wallPhotoMoments(x);const words=projChildWords(x);
+  const sheets=[{id:sid(),kind:"begin",title:"Where it began",photo:ms[0]?ms[0].id:"",text:"",quotes:words.filter(w=>!ms[0]||w.at<=(ms[0].at||0)+864e5).slice(0,3),include:true}];
+  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photo:n.id,text:"",quotes:childLines(n.noticed,true).slice(0,6),include:true});
+  sheets.push({id:sid(),kind:"now",title:"Where it is now",photo:"",text:"",quotes:words.slice(-3),include:true});
+  if(sheets[0].photo&&sheets[1]&&sheets[1].photo===sheets[0].photo)sheets[0].photo="";
+  return {sheets,at:Date.now(),by:whoAmI()};
+}
+function wallSheet(x,id){return ((x.wall&&x.wall.sheets)||[]).find(s=>s.id===id)}
+function projWallHtml(x){
+  const w=x.wall;const ms=wallPhotoMoments(x);
+  if(!wallOpen[x.id])return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The wall</h3>${w?`<span class="cnt">${w.sheets.filter(s=>s.include).length} sheets ready</span>`:""}</div>
+    <div class="hint">A run of sheets that hang in order and tell the project as it grew, each with a photo, the children's words, and a few lines from the team.</div>
+    <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF"):""}</div></section>`;
+  const sheets=w.sheets;
+  const sheetHtml=(sh,i)=>{const n=sh.photo&&notices.get(sh.photo);const sg=wallSug[sh.id];
+    const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
+    return `<div class="wsheet${sh.include?"":" off"}"><div class="actions"><b>Sheet ${i+1}</b>
+        <label class="cnt"><input type="checkbox" data-wsinc="${sh.id}" ${sh.include?"checked":""}> Hang this sheet</label>
+        <button class="linkbtn" data-wsup="${sh.id}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${sh.id}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${sh.id}">Remove</button></div>
+      <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
+      <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
+      <div style="display:grid;gap:8px;min-width:0">
+        ${ms.length?`<label class="cnt">Photo <select data-wsphoto="${sh.id}" style="width:auto;max-width:100%"><option value="">None</option>${ms.map(m=>`<option value="${m.id}" ${sh.photo===m.id?"selected":""}>${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}</option>`).join("")}</select></label>`:""}
+        <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
+        ${sample?(sg&&sg.status==="working"?`<div class="hint"><span class="spin"></span> Drafting from the team's writing</div>`
+          :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${sh.id}">Use this</button><button class="btn small ghost" data-wsno="${sh.id}">Leave it</button></div></div>`
+          :sg&&sg.status==="error"?`<div class="hint warnline">${esc(sg.error)} <button class="linkbtn" data-wsdraft="${sh.id}">Try again</button></div>`
+          :`<div class="actions"><button class="btn small ghost" data-wsdraft="${sh.id}">Draft from our writing</button></div>`):""}
+      </div></div>
+      ${pool.length?`<div class="chiprow-label">The children's words on this sheet</div><div class="chips">${pool.map((q,k)=>`<button class="chip ${chosen.has(q.words.toLowerCase())?"on":""}" data-wsq="${sh.id}|${k}" type="button" title="${esc(shortDate(q.at))}">${q.name?esc(q.name)+", ":""}${esc(q.words.length>70?q.words.slice(0,67)+"...":q.words)}</button>`).join("")}</div>`:""}
+    </div>`};
+  return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
+    <div class="hint">Each sheet prints on its own page, in this order. Every word on it comes from the children or from the team.</div>
+    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
+    <div style="display:grid;gap:14px">${sheets.map(sheetHtml).join("")}</div></section>`;
+}
+async function wallDraft(x,sh){
+  const n=sh.photo&&notices.get(sh.photo);const span=n?n.at:null;
+  const near=span?projPlans(x).filter(pl=>!pl.notice&&Math.abs(parseIso(pl.weekOf).getTime()-span)<=10*864e5):[];
+  const src=[`Project. ${x.name}`,has(x.experience)?`The experience it grew from. ${x.experience}`:"",has(projUnder(x))?`What the team thinks may lie underneath. ${projUnder(x)}`:"",has(projIntent(x))?`The team's intent. ${projIntent(x)}`:"",
+    n?`The moment on this sheet, kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`:"",
+    ...near.map(pl=>{const f=pl.fields||{};return [`${FORMS[pl.type].name}, week of ${fmtDate(pl.weekOf)}.`,f.observation&&"Observation. "+f.observation,f.remarks&&"Final remarks. "+f.remarks].filter(Boolean).join(" ")}),
+    sh.kind==="now"?projEarlier(x,"underneath").map(r=>`An earlier reading, set aside ${shortDate(r.at)}. ${r.text}`).join("\n"):""].filter(Boolean).join("\n");
+  wallSug[sh.id]={status:"working"};renderMain();
+  const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the few lines that sit on one sheet of a documentation wall for a project. Families, colleagues and the children read the wall.
+This sheet is titled "${sh.title}".${sh.kind==="begin"?" It shows how the project began.":sh.kind==="now"?" It shows where the project stands now, and how the team's understanding has moved.":""}
+Write two to four short sentences in the team's voice, using we, that say what happened here and what the team understood. Use only what the team wrote below. Keep their meaning, their facts and their interpretation, and add nothing they did not write. Never rate or praise children or their work. The children's own words are printed separately on the sheet, so do not quote them.
+${STYLE}
+Return only the sentences.
+
+What the team wrote.
+${src}`;
+  let out="",code="";
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/—/g,", ").trim();
+  wallSug[sh.id]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","The sheet is unchanged.")};
+  if(view==="projects"&&projId===x.id)renderMain();
+}
+function wallDocs(x){
+  const span=weeksSpan(projWeeks(x));
+  return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>{const n=sh.photo&&notices.get(sh.photo);const blocks=[];
+    // the photo gives way to the words, so each sheet hangs as one page
+    const nq=(sh.quotes||[]).length,tl=has(sh.text)?Math.ceil(sh.text.length/70):0;
+    if(n&&n.photo)blocks.push(dPhoto(n,Math.max(160,Math.min(340,540-48*nq-(tl?40+22*tl:0))),true));
+    if(has(sh.text))blocks.push(dLead("",sh.text));
+    (sh.quotes||[]).forEach(q=>blocks.push(dQuote(q.words,q.name||"",shortDate(q.at))));
+    return {display:true,type:"report",acc:"story",title:sh.title||x.name,meta:[["Project",x.name],["When",n?shortDate(n.at):span||""]],blocks}});
 }
 function projectDoc(x,long){
   const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const blocks=[];
@@ -2958,6 +3119,7 @@ async function printsClick(t){
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
+  if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no moments in this view to print.");return true}
     const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classrooms":nRoom} ${mondayOf(new Date())}`;
