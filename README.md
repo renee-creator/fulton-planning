@@ -10,7 +10,7 @@ TREE is the school's one app for Fulton Community School & Farm. It grew out of 
 
 Educators sign in with their first name. The first time, they choose four numbers as their passcode. The director adds educators in Settings, sees their codes, and can clear a code so it is chosen again. After five wrong tries a name waits fifteen minutes. Passcodes set on Render still work.
 
-TREE is published at https://renee-creator.github.io/fulton-planning/tree.html. The Family Conferences and Calendar pages inside it are tree-conferences.html and tree-calendar.html, built from the copies in src/embed. Run `python3 tools/build.py` to build all three, and `python3 tools/build.py --switch` to make the old Planning Studio address open TREE too.
+TREE is published at https://renee-creator.github.io/fulton-planning/ (tree.html is the same page). The old Planning Studio is kept at planning-studio.html. The Family Conferences and Calendar pages inside it are tree-conferences.html and tree-calendar.html, built from the copies in src/embed. Run `python3 tools/build.py` to build all three and index.html.
 
 The calendar's sign-up rules and Google calendar reading came from the Fulton Calendar server and live in calendar.js and calendar-core.js, keeping their records under calendar/ in the records repository. Sign-ins live in access/accounts.json in the records repository and are never sent to a browser except to the director.
 
