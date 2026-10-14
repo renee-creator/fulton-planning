@@ -214,6 +214,7 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 @media (max-width:760px){.ktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}.ktabs button{white-space:nowrap}}
 .stat.press{text-align:left;cursor:pointer;color:var(--ink);font:inherit}
 .stat b small{font-size:15px;font-weight:600;color:var(--muted)}
+.stat b.wordval{font-size:21px;line-height:1.2;overflow-wrap:anywhere}
 .kmlist{display:grid;gap:8px}
 .kmrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px;cursor:pointer;color:var(--ink);font:inherit}
 .kmrow:hover{background:var(--sun-wash)}
@@ -1385,8 +1386,8 @@ function navTrack(){if(!$("#main"))return;const s=navState(),k=JSON.stringify(s)
   if(!navCur){navCur={s,k,y:scrollY};drawBack();return}
   if(k!==navCur.k){NAVS.push(navCur);if(NAVS.length>40)NAVS.shift();navCur={s,k,y:0};try{history.pushState({tree:1},"")}catch(e){}}
   drawBack()}
-function drawBack(){const m=$("#main");if(!m)return;let b=m.querySelector(":scope>.navback");const prev=NAVS[NAVS.length-1];
-  if(!prev){if(b)b.remove();return}
+function drawBack(){const m=$("#main");if(!m)return;placeSubnav();let b=m.querySelector(":scope>.navback");const prev=NAVS[NAVS.length-1];
+  if(!prev||m.querySelector("#tsubnav [data-navback]")){if(b)b.remove();return}
   const t="‹ Back to "+navLabel(prev.s);if(b){if(b.textContent!==t)b.textContent=t;return}
   b=document.createElement("button");b.className="navback";b.type="button";b.textContent=t;b.onclick=()=>{try{history.back()}catch(e){navBack()}};m.prepend(b)}
 function navBack(){const prev=NAVS.pop();if(!prev)return false;const s=prev.s;
@@ -1397,6 +1398,7 @@ function navBack(){const prev=NAVS.pop();if(!prev)return false;const s=prev.s;
   navCur={s,k:JSON.stringify(s),y:prev.y};renderNav();renderMain();drawBack();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,prev.y||0)));return true}
 window.addEventListener("popstate",()=>{navBack()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-navback]");if(!t)return;e.stopImmediatePropagation();try{history.back()}catch(err){navBack()}},true);
 window.addEventListener("scroll",()=>{if(navCur&&JSON.stringify(navState())===navCur.k)navCur.y=scrollY},{passive:true});
 const navObs=new MutationObserver(()=>queueMicrotask(navTrack));
 setTimeout(()=>{const m=$("#main");if(m)navObs.observe(m,{childList:true})},0);
@@ -1940,6 +1942,8 @@ function subnavHtml(){
   if(view==="plans"&&currentId&&plans.get(currentId))back=`<button class="chip-btn back" data-tback="1">‹ Week of ${esc(fmtDate(plans.get(currentId).weekOf).replace(/, \d{4}$/,""))}</button>`;
   if(view==="child")back=`<button class="chip-btn back" data-tview="children">‹ All children</button>`;
   if(view==="slide")back=`<button class="chip-btn back" data-tview="slides">‹ All slides</button>`;
+  // one way back. When there is a screen to return to, Back names it and takes its place
+  const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev)back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
   const subs=SUBS[s];if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back}${(subs||[]).map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`;
@@ -2579,11 +2583,11 @@ async function makeDocx(list,filename){
     if(tline)ch.push(new Paragraph({spacing:{before:100,after:0},children:[new TextRun({text:"FOLLOWING THE THREAD   ",bold:true,size:13,color:ac,characterSpacing:16,font:"Helvetica"}),new TextRun({text:clean(tline),size:17,color:"3C4A42",font:"Helvetica"})]}));
     ch.push(new Paragraph({spacing:{after:160},border:{bottom:{style:BorderStyle.SINGLE,size:12,color:ac,space:4}},children:[]}));
     const textParas=t=>{const parts=clean(t||"").split(/\n+/).map(x=>x.trim()).filter(Boolean);return parts.length?parts.map(x=>new Paragraph({spacing:{after:60},children:[new TextRun({text:x,size:20,font:"Helvetica",color:"22302A"})]})):[new Paragraph({children:[new TextRun({text:" ",size:20})]})]};
-    const labelPara=l=>new Paragraph({children:[new TextRun({text:clean(l).toUpperCase(),bold:true,size:14,color:ac,characterSpacing:16,font:"Helvetica"})]});
+    const labelPara=l=>new Paragraph({keepNext:true,children:[new TextRun({text:clean(l).toUpperCase(),bold:true,size:14,color:ac,characterSpacing:16,font:"Helvetica"})]});
     const cellB={top:bd("CDD7D0"),bottom:bd("CDD7D0"),left:bd("CDD7D0"),right:bd("CDD7D0")};
     const boxTable=(cols,w,hgt)=>new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[
-      new TableRow({children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:cellB,margins:{top:70,bottom:70,left:140,right:140},children:[labelPara(c.label)]}))}),
-      new TableRow({height:{value:hgt||700,rule:HeightRule.ATLEAST},children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},borders:cellB,margins:{top:100,bottom:100,left:140,right:140},children:textParas(c.text)}))})]});
+      new TableRow({cantSplit:true,tableHeader:true,children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:cellB,margins:{top:70,bottom:70,left:140,right:140},children:[labelPara(c.label)]}))}),
+      new TableRow({cantSplit:true,height:{value:hgt||700,rule:HeightRule.ATLEAST},children:cols.map(c=>new TableCell({width:{size:Math.round((c.w||1/cols.length)*100),type:WidthType.PERCENTAGE},borders:cellB,margins:{top:100,bottom:100,left:140,right:140},children:textParas(c.text)}))})]});
     const gap=()=>new Paragraph({spacing:{after:0},children:[new TextRun({text:"",size:8})]});
     const blocks=planBlocks(p);
     // size each text row so the boxes fill each page, the same way the PDF does
@@ -2594,7 +2598,7 @@ async function makeDocx(list,filename){
       blocks.forEach(b=>{if(b.t==="break")flushG();else group.push(b)});flushG()}
     for(const b of blocks){
       if(b.t==="break"){ch.push(new Paragraph({children:[new PageBreak()]}));continue}
-      if(b.t==="sub"){ch.push(new Paragraph({spacing:{before:80,after:60},children:[new TextRun({text:clean(b.text),bold:true,size:22,color:"1C2A22",font:"Helvetica"})]}));continue}
+      if(b.t==="sub"){ch.push(new Paragraph({keepNext:true,keepLines:true,spacing:{before:80,after:60},children:[new TextRun({text:clean(b.text),bold:true,size:22,color:"1C2A22",font:"Helvetica"})]}));continue}
       if(b.t==="web"){ch.push(labelPara("Curriculum web"));try{const png=await svgToPng(webSvgString(b.web,b.blank,A));ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:120},children:[new ImageRun({type:"png",data:png,transformation:{width:620,height:386}})]}))}catch(e){ch.push(...textParas([b.web.focus,...(b.web.branches||[]).map(x=>[x.name,x.materials].filter(Boolean).join(". "))].join("\n")))}continue}
       if(b.t==="sec"){ch.push(boxTable([{label:b.label,text:b.text,w:1}],b.w,b._h));ch.push(gap());continue}
       if(b.t==="cols"){ch.push(boxTable(b.cols,b.w,b._h));ch.push(gap())}
@@ -2906,13 +2910,13 @@ function momentsDocs(long,cap){
     else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Moments kept"));
     for(const n of items){const credit=[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", ");
       // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
-      if(n.photo&&long){blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));blocks.push(dPhoto(n,210,false));continue}
+      if(n.photo&&long){blocks.push(dPhoto(n,230,false));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));continue}
       // a sheet of children's words gives its first child's line in the summary, with the child and the sheet named in the credit
       const first=n.photo?momentBody(n).split("\n").map(x=>x.trim()).map(x=>x.match(NAMED_LINE)).find(Boolean):null;
       if(first&&!long){blocks.push(dQuote(first[2].trim(),[first[1],momentHeading(n)&&"in "+momentHeading(n),credit].filter(Boolean).join(", "),shortDate(n.at)));continue}
       const body=n.photo?momentBody(n).split("\n").filter(x=>x.trim()).slice(0,3).join("  "):n.noticed;
-      const text=long&&has(n.wonder)?`${body} ${wonderLine(n.wonder)}`:body;
-      blocks.push(dQuote(text,credit,shortDate(n.at)))}
+      const text=long&&has(n.wonder)?`${body}\n${wonderLine(n.wonder)}`:body;
+      blocks.push(dQuote(text,credit,shortDate(n.at),true))}
   }
   if(!long&&all.length>total-left)blocks.push({t:"text",label:"",quiet:true,text:`${all.length} moments are kept in this view. The full set prints them all.`});
   if(s&&(s.questions||[]).length)blocks.push(dList("Questions for the team",s.questions));
@@ -3099,10 +3103,10 @@ function renderProject(x){
   const free=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).sort((a,b)=>(rooms.includes(b.classroom)-rooms.includes(a.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
   const dt=x.decision&&x.decision.threadId&&threads.get(x.decision.threadId);
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
-  let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0"><button class="linkbtn" data-pback="1">All projects</button>
-      <div style="margin-top:6px"><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
-      ${printTwo("project",x.id)}
-      <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
+  let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0">
+      <div><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
+      <div class="actions">${printTwo("project",x.id)}
+      <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
   if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea>${projStrHtml(x,"closure")}</section>`;
@@ -3450,11 +3454,11 @@ function lensWordCheck(L){
 function lensMoments(ps){
   const re=lensRegex();const out=[];if(!re)return out;
   for(const p of ps){const seen=new Set();
-    for(const [label,text] of lensPlanParts(p)){
+    for(const [label,text,pkey] of lensPlanParts(p)){
       for(const raw of (text.match(/[^.!?\n]+[.!?]*/g)||[])){const sent=raw.trim();if(sent.length<12)continue;re.lastIndex=0;
         const hits=[...new Set((sent.match(re)||[]).map(x=>x.toLowerCase()))];if(!hits.length)continue;
         const key=sent.toLowerCase();if(seen.has(key))continue;seen.add(key);
-        out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,text:sent.length>300?sent.slice(0,297)+"...":sent,hits});
+        out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,obs:OBSERVED_KEYS.has(pkey),text:sent.length>300?sent.slice(0,297)+"...":sent,hits});
       }}}
   return out.sort((a,b)=>b.week.localeCompare(a.week)||(a.room||"").localeCompare(b.room||""));
 }
@@ -3502,7 +3506,7 @@ function renderLens(){
     </tbody></table></div></section>`;
 
   // moments
-  const cap=lensShowAll?moments.length:40;
+  const cap=lensShowAll?moments.length:15;
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Moments in educators' own words</h2><span class="cnt">Sentences from saved plans that name a mark, a tool, or a material of the lens</span></div>`;
   if(!moments.length)h+=`<div class="empty">${ps.length?"No moments found in this range yet. They appear as plans describe what children drew, marked, mapped, built, or arranged.":"No plans saved in this range yet."}</div>`;
   else{const shown=moments.slice(0,cap);
@@ -3720,7 +3724,7 @@ function pickSpread(list,n){if(list.length<=n)return list;const out=[];for(let i
 const dLead=(label,text)=>({t:"lead",label,text});
 const dText=(label,text)=>({t:"text",label,text});
 // side is the short note that sits beside a quote or an entry, such as the week or the classroom
-const dQuote=(text,by,side)=>({t:"quote",text,by,side});
+const dQuote=(text,by,side,plain)=>({t:"quote",text,by,side,plain:!!plain});
 const dTags=(label,items)=>({t:"tags",label,items});
 const dList=(label,items,numbered)=>({t:"list",label,items,numbered:!!numbered});
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
@@ -3731,7 +3735,7 @@ const dPhoto=(n,maxH,full)=>({t:"photo",key:n.id,src:photoSrc(n),maxH,full:!!ful
 function momentHeading(n){if(!n.photo)return"";const first=String(n.noticed||"").split("\n")[0].trim();return first&&first.length<=40&&!/ - /.test(first)&&String(n.noticed).includes("\n")?first:""}
 function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").trim();return h?t.split("\n").slice(1).join("\n").trim():t}
 // a moment's sheet: the photo, the words as they were written, each child's line as a quote, and the wonder in a box
-const NAMED_LINE=/^([A-Z][A-Za-z.'’-]{0,24}(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) - (.{2,})$/;
+const NAMED_LINE=/^([A-Z][A-Za-z.'’]{0,24}(?:-[A-Za-z.'’]{1,24})?(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) ?[-–] (.{2,})$/;
 const momentPhotos=n=>n&&n.photo&&n.photo.w?[{key:n.id,src:photoSrc(n),w:n.photo.w,h:n.photo.h}]:[];
 const momentDetails=n=>[n.classroom?n.classroom+" classroom":"",longDate(iso(new Date(n.at||Date.now()))),n.by||""];
 function momentDoc(n,mode){
@@ -3950,6 +3954,7 @@ function lensDocs(long,cap){
   // the summary carries the strongest few. The full set carries more, a few from each week, most recent first.
   const perMax=long?6:3,total=long?24:(cap||5);
   const shown=[];const perWeek={};
+  if(!long){const score=m=>m.hits.length*2+(m.obs?2:0)+(m.text.length>=60?1:0);moments=moments.filter(m=>m.text.length>=40).sort((a,b)=>score(b)-score(a)||b.week.localeCompare(a.week))}
   for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=perMax&&shown.length<total)shown.push(m)}
   if(shown.length){blocks.push(dSub(`Moments in educators' words${lLang?", "+lLang:""}`));
     for(const m of shown){const p=rec(m.planId);const cs=p&&!p.notice?planThreads(p):[];
@@ -4102,7 +4107,7 @@ function displayAtoms(doc,p,A,s){
       // a run of moments uses the whole sheet, so the narrow column is not left empty beside them
       const QX=chain?m+14:cx,QW=chain?w-14:cw;const lx=QX-13;let lastSide=null;
       if(!chain)gap(2);
-      run.forEach((q,j)=>{const i0=atoms.length;const last=j===n-1;const ls=wrap(q.text,"bm",Z.quote,QW,true);const qb=base(Z.qlh,Z.quote),dotY=qb-Z.quote*.3;
+      run.forEach((q,j)=>{const i0=atoms.length;const last=j===n-1;const ls=wrap(q.text,"bm",Z.quote,QW,!q.plain);const qb=base(Z.qlh,Z.quote),dotY=qb-Z.quote*.3;
         ls.forEach((l,k)=>push({h:Z.qlh,base:qb,keep:k<ls.length-1||has(q.by),draw(y){
           if(chain){doc.setDrawColor(...A.c);doc.setLineWidth(1);if(k===0){if(j>0)doc.line(lx,y,lx,y+dotY);if(!last)doc.line(lx,y+dotY,lx,y+Z.qlh);doc.setFillColor(...A.c);doc.circle(lx,y+dotY,3.2,"F")}else if(!last)doc.line(lx,y,lx,y+Z.qlh)}
           pfont(doc,"bm",Z.quote);doc.setTextColor(...D_INK);doc.text(l,QX,y+qb)}}));
@@ -4245,7 +4250,7 @@ function cLayout(doc,md,A){
   const PWd=sq?PW:land?PH:PW,PHd=sq?PW:land?PW:PH,W=PWd-2*CM,ops=[];
   if(md.bg==="tint")ops.push({t:"rect",x:0,y:0,w:PWd,h:PHd,r:0,fill:mixW(A.t,.45)});
   const foot=(md.footLine||[]).filter(has).join("    ·    ");
-  const cap={s:[1.05,1.1,1.2],l:[1.5,1.6,1.6]}[md.tsize]||[1.25,1.4,1.6];
+  let cap={s:[1.05,1.1,1.2],l:[1.5,1.6,1.6]}[md.tsize]||[1.25,1.4,1.6];if(md.capS)cap=cap.map(x=>Math.min(x,Math.max(md.capS,1)));
   // a full page photo, with the title and the words on a panel across the foot
   if(pos==="full"&&ps.length){const p0=ps[0];ops.push({t:"img",x:0,y:0,w:PWd,h:PHd,key:p0.key,src:p0.src,cover:true,iw:p0.w,ih:p0.h});
     ops.push({t:"rect",x:0,y:PHd-56,w:PWd,h:56,r:0,fill:md.bg==="tint"?mixW(A.t,.45):[255,255,255]});
@@ -4290,12 +4295,12 @@ function cFlow(doc,md,A){
 function cFlow0(doc,md,A){
   const L=cLayout(doc,md,A);if(!md.flow||!L.over||!(md.photos||[]).length)return {sheets:[md],pages:[L],over:L.over};
   const B=md.blocks||[];let k=B.length-1;
-  for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=.9)break}
+  for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=1)break}
   // a single long block is split by its lines, so the photo still has its words beneath it
   let first=B.slice(0,k),rest=B.slice(k);
   if(k===0||!first.length){const b=B[0],ls=String(b.text||b.words||"").split("\n");if(ls.length>1){const half=Math.max(1,Math.floor(ls.length/3));first=[Object.assign({},b,{text:ls.slice(0,half).join("\n")})];rest=[Object.assign({},b,{text:ls.slice(half).join("\n")}),...B.slice(1)]}}
   const m1=Object.assign({},md,{blocks:first}),m2=Object.assign({},md,{photos:[],blocks:rest});
-  const P1=cLayout(doc,m1,A),P2=cLayout(doc,m2,A);
+  const P1=cLayout(doc,m1,A),P2=cLayout(doc,Object.assign(m2,{capS:P1.s}),A);
   return {sheets:[m1,m2],pages:[P1,P2],over:P1.over||P2.over};
 }
 // photos that could not be fetched are left out before the layout, so nothing leaves an empty frame
@@ -4383,10 +4388,10 @@ async function centeredDocx(ch,p,D,A){
     else if(b.t==="box")out.push(P(run(b.text,"bm",13*s),{alignment:CEN,shading:{type:ShadingType.CLEAR,fill:hex(A.t),color:"auto"},indent:{left:300,right:300},spacing:{before:120,after:220,line:Math.round(13*s*1.42*20),lineRule:"atLeast"}}));
     else if(b.t==="small"){out.push(P(run(b.label,"fs",9,deep(A.c)),{alignment:CEN,spacing:{before:80,after:40}}));(b.lines||[]).forEach(l=>out.push(P(run(l,"fr",9.5,D_MUTED),{alignment:CEN})))}});return out};
   F.sheets.forEach((md,si)=>{const L=F.pages[si];
-    if(si>0)ch.push(P(new PageBreak()));
-    if(md.bare)ch.push(P([],{spacing:{before:2400}}));else{
-    if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
-    ch.push(P(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
+    let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
+    if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
+    if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
+    ch.push(P1(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
     const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
     ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}))}
     const foot=(md.footLine||[]).filter(has).join("    ·    ");
@@ -4469,7 +4474,7 @@ async function displayDocx(ch,p,D,A){
   const row=(left,right,o)=>{const r=Object.assign({left,right},o||{});rows.push(r);return r};
   const lab=(t,right)=>has(t)?[para(run(t,"fs",10,dp),{alignment:right?AlignmentType.RIGHT:AlignmentType.LEFT,spacing:{before:right?110:80}})]:[];
   const body=(t,color)=>paras(t).map(x=>para(run(x,"fr",12.5*s,color),{spacing:{after:80,line:Math.round(370*s),lineRule:"atLeast"}}));
-  const quoteP=q=>{const out=[para(raw("“"+clean(q.text).trim().replace(/^"+|"+$/g,"").replace(/\s*\n+\s*/g," ")+"”","bm",15*s),{keepNext:has(q.by),spacing:{after:30,line:Math.round(420*s),lineRule:"atLeast"}})];
+  const quoteP=q=>{const out=[para(raw(q.plain?clean(q.text).trim().replace(/\s*\n+\s*/g,"  "):"“"+clean(q.text).trim().replace(/^"+|"+$/g,"").replace(/\s*\n+\s*/g," ")+"”","bm",15*s),{keepNext:has(q.by),spacing:{after:30,line:Math.round(420*s),lineRule:"atLeast"}})];
     if(has(q.by))out.push(para(run(q.by,"fr",9.6*s,MUT),{spacing:{after:40}}));return out};
   const B=p.blocks||[];let cur=null,any=false,ruleNext=false;
   for(let bi=0;bi<B.length;bi++){const b=B[bi];
@@ -4509,7 +4514,7 @@ async function printsClick(t){
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
-  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(c)await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
+  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!kidMoments(c).length&&!kidSlides(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in a moment or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
@@ -5401,8 +5406,8 @@ function renderChild(){
     body=`<div class="stats">
         <button class="stat press" data-ktab="docs"><b>${ms.length}</b><span>moment${ms.length===1?"":"s"}${ss.length?` and ${ss.length} slide${ss.length===1?"":"s"}`:""}</span></button>
         <button class="stat press" data-ktab="drdp"><b>${levelled}<small> of ${nMs}</small></b><span>DRDP measures with an accepted level${wait?`, ${wait} waiting`:""}</span></button>
-        <button class="stat press" data-ktab="confs"><b>${nextConf?esc(shortDate(parseIso(nextConf.confDate).getTime())):"None"}</b><span>${nextConf?"next family conference":"conference scheduled"}</span></button>
-        <button class="stat press" data-ktab="details"><b>${esc(nx&&NEXTPLAN[nx]?({staying:"Staying",tk:"TK",k:"Kindergarten",deciding:"Deciding",other:"Other"})[nx]:"Not set")}</b><span>next year</span></button></div>
+        <button class="stat press" data-ktab="confs"><b class="wordval">${nextConf?esc(shortDate(parseIso(nextConf.confDate).getTime())):"None"}</b><span>${nextConf?"next family conference":"conference scheduled"}</span></button>
+        <button class="stat press" data-ktab="details"><b class="wordval">${esc(nx&&NEXTPLAN[nx]?({staying:"Staying",tk:"TK",k:"Kindergarten",deciding:"Deciding",other:"Other"})[nx]:"Not set")}</b><span>next year</span></button></div>
       ${wait?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><button class="btn small" data-ktab="drdp">Review ${wait}</button></div><div class="cnt">DRDP suggestions from ${esc(c.first)}'s documentation wait for an educator to accept, change or set aside.</div></section>`:""}
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
         ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No moments tag or name ${esc(c.first)} yet. Tag children when keeping a moment so nothing is missed.</div>`}</section>`;
