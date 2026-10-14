@@ -1228,7 +1228,7 @@ function applyLock(){
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
     const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. This ${what} is shown as it was kept, so nothing changes by accident.</span><button class="btn small" data-unlock="1">Edit</button>`;
-    const head=main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
+    const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
 const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});
 document.addEventListener("DOMContentLoaded",()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})});
@@ -1453,6 +1453,9 @@ window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
 let drdpEdit="",drdpShowAside=false;
+// which measures an educator has opened or closed stay that way while they work on the page
+const drdpOpen=new Set(),drdpShut=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.drrow)return;const k=d.dataset.drrow;if(d.open){drdpOpen.add(k);drdpShut.delete(k)}else{drdpOpen.delete(k);drdpShut.add(k)}},true);
 function kidDrdpHtml(c){
   const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=all.filter(x=>x.status==="suggested").sort((a,b)=>(b.at||0)-(a.at||0));
@@ -1472,7 +1475,7 @@ function kidDrdpHtml(c){
   const evLine=x=>`<div class="drev">${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div></div></div>`;
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
     const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[])];
-    return `<details class="drrow" ${n||wn?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
+    return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
         <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">No level yet</span>`}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
       <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
@@ -1485,7 +1488,7 @@ function kidDrdpHtml(c){
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span></div>
       <div class="cnt">Levels here were accepted by an educator from documentation. They are not a DRDP rating, which is still entered in DRDPtech. Tap a measure to see its evidence.</div>
-      <details class="drset"><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
+      <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
         <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
         ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English. This adds ELD 1 to 3.</span></label>`:""}
