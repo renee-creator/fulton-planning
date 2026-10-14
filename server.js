@@ -384,20 +384,22 @@ async function handle(req, res) {
 
   // original form files are opened in an img or a new tab, which cannot send a header, so the session rides in the address
   if (req.method === 'GET' && path.startsWith('/original/')) {
-    if (!checkFileKey(url.searchParams.get('t') || '')) { send(req, res, 403, { 'Content-Type': 'text/plain' }, 'This link has expired. Open it again from TREE.'); return; }
+    // the key in the address is the permission, so any page of TREE may read the picture, and the answer never depends on who asked
+    const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
+    if (!checkFileKey(url.searchParams.get('t') || '')) { log('Photo refused, the key has expired or is not valid'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
     const o = store.originals.get(id);
-    if (!o || !ID_RE.test(id)) { send(req, res, 404, { 'Content-Type': 'text/plain' }, 'Not found'); return; }
+    if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60)); send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
     if (!buf) {
       const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${o.sha}`);
-      if (b.status !== 200) { send(req, res, 502, { 'Content-Type': 'text/plain' }, 'Could not load the file from GitHub.'); return; }
+      if (b.status !== 200) { log('Photo could not be read from GitHub', id.slice(0, 60), b.status); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the file from GitHub.'); return; }
       buf = Buffer.from(b.json.content, 'base64'); cacheFile(id, buf);
     } else { fileCache.delete(id); fileCache.set(id, buf); }
     const ext = id.split('.').pop().toLowerCase();
     const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
-    send(req, res, 200, { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' }, buf);
+    send(req, res, 200, Object.assign({ 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' }, open), buf);
     return;
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }

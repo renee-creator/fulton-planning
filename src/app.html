@@ -183,12 +183,35 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .palchip[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
 .palchip input[type=color]{width:22px;height:22px;border:0;padding:0;background:none}
 .wrapseg{flex-wrap:wrap}
+/* saved and locked */
+.lockbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--sun-wash);border:1px solid var(--sun-line);border-radius:var(--r);padding:10px 14px;margin:6px 0 12px;font-size:14.5px}
+#main.locked textarea[readonly],#main.locked input[readonly]{background:transparent;border-color:transparent;box-shadow:none;resize:none;padding-left:0;cursor:default}
+#main.locked select:disabled,#main.locked input:disabled{opacity:1;color:var(--ink);background:transparent;border-color:transparent;-webkit-appearance:none;appearance:none}
+#main.locked button:disabled{opacity:.55}
+#main.locked .ai{display:none}
+/* a child's page */
+.ktabs{flex-wrap:wrap;margin:6px 0 14px}
+@media (max-width:760px){.ktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}.ktabs button{white-space:nowrap}}
+.stat.press{text-align:left;cursor:pointer;color:var(--ink);font:inherit}
+.stat b small{font-size:15px;font-weight:600;color:var(--muted)}
+.kmlist{display:grid;gap:8px}
+.kmrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px;cursor:pointer;color:var(--ink);font:inherit}
+.kmrow:hover{background:var(--sun-wash)}
+.kmrow img,.kmnone{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg)}
+.kmtext{display:grid;gap:2px;min-width:0}.kmtext b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px 18px}
+.kgrid .lbl{display:block;margin-bottom:2px}
 .slidecard[aria-pressed="true"]{outline:3px solid var(--acc,var(--moss));outline-offset:-3px}
 .decknum{position:absolute;top:10px;left:10px;background:var(--moss);color:#fff;border-radius:999px;width:28px;height:28px;display:grid;place-items:center;font-weight:700;z-index:2}
 /* DRDP on slides, moments and a child's page */
 .dritem{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px;background:var(--paper)}
 .drdpres{display:grid;gap:8px;margin-top:8px}
 .drst.wait{color:var(--marigold);font-weight:600}.drst.ok{color:var(--moss);font-weight:600}.drst.muted{color:var(--muted)}
+.drdom{margin-top:12px}.drdomh{display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-bottom:2px solid var(--line);padding-bottom:4px;margin-bottom:2px}
+.drrow{border-bottom:1px solid var(--line)}.drrow>summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:9px 2px;cursor:pointer;list-style:none}
+.drrow>summary::-webkit-details-marker{display:none}.drrow[open]>summary{background:var(--sun-wash)}
+.drcode{min-width:0;flex:1 1 260px}.drnow{text-align:right}.drbody{display:grid;gap:6px;padding:6px 2px 12px}
+.drset{margin:8px 0}.drset>summary{cursor:pointer}.drtop{font-size:15px}.drlvl{font-weight:700}
 .drtab{table-layout:fixed}.drtab td{vertical-align:top}.drtab select{max-width:230px}
 @media (max-width:760px){
   .drtab,.drtab tbody{display:block;min-width:0!important;width:100%}
@@ -1128,6 +1151,48 @@ function renderWelcome(){
   </section>`;
 }
 
+/* ---------- Saved, then locked ----------
+   Whatever is typed saves as it is typed. Once an educator leaves a plan, a slide, a project or a child's details, the
+   next time it opens it shows as saved, with Edit to change it, so nothing is changed by accident. Something new or empty
+   opens ready to write. Feedback, sign-ups, DRDP reviews and printing stay open, since each is its own deliberate step. */
+let lockFor="",lockOn=false;
+function lockKey(){
+  if(view==="plans"&&currentId&&currentId!=="example"&&plans.has(currentId))return "plan:"+currentId;
+  if(view==="slide"&&slideOpen&&slides.has(slideOpen))return "slide:"+slideOpen;
+  if(view==="projects"&&projId&&projects.has(projId))return "proj:"+projId;
+  if(view==="child"&&kidOpen&&(kidTab==="details"||kidTab==="drdp"))return "kid:"+kidOpen+":"+kidTab;
+  return "";
+}
+function lockHasContent(k){const [kind,id]=k.split(":");
+  if(kind==="plan"){const p=plans.get(id);return !!p&&(Object.values(p.fields||{}).some(has)||Object.values(p.story||{}).some(has))}
+  if(kind==="slide"){const s=slides.get(id);return !!s&&(has(s.title)||has(s.text)||(s.quotes||[]).length>0)}
+  if(kind==="proj"){const x=projects.get(id);return !!x&&(has(x.name)||has(x.experience))}
+  return true;
+}
+const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,#slideprev,.prow,.lockbar,.ai,#deckbar,section.review";
+function applyLock(){
+  const main=$("#main");if(!main)return;const k=lockKey();
+  if(k!==lockFor){lockFor=k;lockOn=!!k&&lockHasContent(k)}
+  main.classList.toggle("locked",!!k&&lockOn);
+  if(!k||!lockOn){const b=main.querySelector(".lockbar");if(b)b.remove();return}
+  const ctrls=[...main.querySelectorAll("textarea,input,select")].filter(el=>!el.closest(LOCK_KEEP)&&el.type!=="search");
+  if(!ctrls.length)return;
+  const zones=new Set();
+  for(const el of ctrls){if(el.tagName==="SELECT"||el.type==="checkbox"||el.type==="radio"||el.type==="color"||el.type==="date"||el.type==="time"||el.type==="file")el.disabled=true;else el.readOnly=true;
+    const z=el.closest("section,.card,.meta,.kfields,.two,.pdir");if(z)zones.add(z)}
+  for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
+  for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP))b.disabled=true;
+  if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
+    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. This ${what} is shown as it was kept, so nothing changes by accident.</span><button class="btn small" data-unlock="1">Edit</button>`;
+    const head=main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
+}
+const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});
+document.addEventListener("DOMContentLoaded",()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})});
+setTimeout(()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})},0);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-unlock]");if(!t)return;lockOn=false;const m=$("#main");m.classList.remove("locked");
+  m.querySelectorAll("[readonly]").forEach(el=>el.readOnly=false);m.querySelectorAll(":disabled").forEach(el=>{if(!el.dataset.keepoff)el.disabled=false});
+  const b=m.querySelector(".lockbar");if(b)b.remove();renderMain();const f=m.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})});
+
 /* ---------- DRDP (2025) ----------
    Both views of the instrument, the Infant and Toddler View and the Preschool through Kindergarten View: every measure's
    name, its domain, the levels it uses from earliest to latest, whether it is conditional, and its keywords. Checked page
@@ -1180,7 +1245,19 @@ function drdpSource(kind,rec){
   return {text:`Moment kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
     photos:rec.photo?[rec]:[],kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:momentHeading(rec)||firstLine(rec.noticed,60)};
 }
-async function drdpPhotoBlobs(ns){const out=[];for(const n of ns.slice(0,3)){try{const u=photoSrc(n);if(!u)continue;const b=await (await fetch(u)).blob();if(b&&b.size)out.push(b)}catch(e){}}return out}
+async function drdpPhotoBlobs(ns){const out=[];for(const n of ns.slice(0,3)){try{const u=photoSrc(n);if(!u)continue;const b=await (await fetchPhoto(u)).blob();if(b&&b.size)out.push(b)}catch(e){}}if(ns.length&&!out.length)toast("The photos could not be fetched, so this reading uses the words only.");return out}
+// a photo for a printout or a reading. Its address differs from the one a card shows, so Safari never hands back a
+// picture it kept for the page, which a printout is not allowed to read. A stale key is renewed and tried once more.
+async function fetchPhoto(u){
+  if(/^(data|blob):/.test(u))return await fetch(u);
+  const go=x=>fetch(x+(x.includes("?")?"&":"?")+"use=print",{cache:"no-store",mode:"cors"});
+  let r=await go(u);if(r.ok)return r;
+  if(r.status===403&&window.FP_RENEW_KEY){await window.FP_RENEW_KEY();const m=u.match(/\/original\/([^?]+)/);if(m&&window.FP_ORIGINAL_URL){r=await go(window.FP_ORIGINAL_URL(decodeURIComponent(m[1])));if(r.ok)return r}}
+  throw new Error("photo "+r.status);
+}
+// a picture on a card that does not load is asked for again once, with a fresh key
+document.addEventListener("error",e=>{const im=e.target;if(!(im instanceof HTMLImageElement)||!/\/original\//.test(im.src)||im.dataset.retried)return;im.dataset.retried="1";
+  const m=im.src.match(/\/original\/([^?]+)/);Promise.resolve(window.FP_RENEW_KEY&&window.FP_RENEW_KEY()).then(()=>{if(m&&window.FP_ORIGINAL_URL)im.src=window.FP_ORIGINAL_URL(decodeURIComponent(m[1]))+"&r="+Date.now()})},true);
 function drdpPrompt(v,cs,S,ms,nPhotos){
   const eld=cs.some(kidEld);
   return `You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, read their documentation against the DRDP (2025) ${DRDP_VIEW[v]} View. An educator reviews every suggestion and accepts, changes or sets it aside. Nothing you return is a DRDP rating.
@@ -1277,14 +1354,14 @@ function drdpPanelHtml(kind,rec){
   const views=[...new Set(S.kids.map(c=>drdpViewOf(c).v))];
   const legacy=(rec.measures||[]).filter(m=>m.kept);
   return `<div class="cnt">${S.kids.length?`Read against the ${views.map(v=>DRDP_VIEW[v]).join(" and the ")} View${views.length>1?"s":""}, for ${S.kids.map(c=>esc(c.first)).join(", ")}.`:"Tag the children this documentation is about. A level always belongs to one child."} Each suggestion waits on the child's page for an educator to accept, change or set aside. A suggestion is never a DRDP rating.</div>
-    <div class="actions">${sample?`<button class="btn small ghost" data-drdpgo="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>${busy?'<span class="spin"></span> Reading':"Read words and photos"}</button>`:""}<button class="linkbtn" data-drdpkw="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>Keyword match</button></div>
+    <div class="actions">${sample?`<button class="btn small ghost" data-keep="1" data-drdpgo="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>${busy?'<span class="spin"></span> Reading':"Read words and photos"}</button>`:""}<button class="linkbtn" data-keep="1" data-drdpkw="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>Keyword match</button></div>
     ${d?`<div class="drdpres">
       ${d.mode==="keywords"?`<div class="cnt">Keyword match on ${shortDate(d.at)}. Keywords point to possible measures and give no level.</div>`:`<div class="cnt">Read on ${shortDate(d.at)} by ${esc(d.by||"an educator")}${d.official===false?". The official DRDP wording was not available on the server for this reading, so read it again once the director has added it.":", against the official DRDP (2025) definitions and level descriptors."}</div>`}
       ${has(d.summary)?`<div class="ref"><b>What it shows</b><div>${esc(d.summary)}</div></div>`:""}
       ${has(d.photo)?`<div class="ref"><b>The photos</b><div>${esc(d.photo)}</div></div>`:""}
       ${(d.items||[]).length?(d.items||[]).map(x=>{const st=drdpStatusOf(kind,rec.id,x);const c=children.get(x.childId);
         return `<div class="dritem"><div><b>${esc(c?c.first:"A child")}</b> · <b>${esc(x.code)}</b> ${esc(DRDP[x.code]||"")}</div>
-          <div class="cnt">${esc(drdpLevelText(st.level!==undefined?st.level:x.level,st.emerging!==undefined?st.emerging:x.emerging))} · <span class="drst ${st.cls}">${esc(st.label)}</span>${c?` · <button class="linkbtn" data-kid="${esc(c.id)}">Review on ${esc(c.first)}'s page</button>`:""}</div>
+          <div class="cnt">${esc(drdpLevelText(st.level!==undefined?st.level:x.level,st.emerging!==undefined?st.emerging:x.emerging))} · <span class="drst ${st.cls}">${esc(st.label)}</span>${c?` · <button class="linkbtn" data-kid="${esc(c.id)}" data-drdpfocus="1">Review on ${esc(c.first)}'s page</button>`:""}</div>
           ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}</div>`}).join(""):`<div class="cnt">No measure was clear enough from this documentation.</div>`}
     </div>`:""}
     ${legacy.length?`<div class="cnt">Linked earlier, without a level. ${legacy.map(m=>esc(m.code)).join(", ")}</div>`:""}`;
@@ -1331,34 +1408,37 @@ function kidDrdpHtml(c){
   const marks=(c.drdp&&c.drdp.marks)||{};
   const legacy={};for(const [code,list] of kidEvidence(c))legacy[code]=list;
   const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
-  const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-mjumpto="${esc(x.src.id)}"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
+  const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-kmopen="${esc(x.src.id)}" data-ktab="docs"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
   const levelSel=x=>`<select data-drlevel="${x.id}" aria-label="Level">${["",...drdpLevels(v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
-  const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div><b>${esc(x.code)}</b> ${esc(DRDP[x.code]||"")}</div>
-      <div class="cnt"><b class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</b> · ${x.by==="keywords"?"pointed to by keywords":"suggested from the documentation"} · ${srcBtn(x)}</div>
+  const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
+      <div class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</div>
       ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}
+      <div class="cnt">From ${srcBtn(x)}${x.by==="keywords"?", by keyword match":""}</div>
       ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
       :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${x.id}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${x.id}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`}</div>`;
-  const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const n=done.filter(x=>x.code===code).length+(legacy[code]||[]).length;
-    const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English is the only language spoken at home"]]:[])];
-    const ev=[...done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0)).map(x=>`<div class="cnt"><b>${esc(drdpLevelText(x.level,x.emerging))}</b>, ${x.status==="changed"?"changed":"accepted"} by ${esc(x.reviewedBy||"an educator")}. ${srcBtn(x)}${has(x.evidence)?". "+esc(x.evidence):""}</div>`),
-      ...(legacy[code]||[]).map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-mjumpto="${y.id}"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`)];
-    return `<tr><td><b>${esc(code)}</b><div class="cnt">${esc(m.n)}${m.c==="iep"?`<br>${kidIep(c)?"Required with an IEP or IFSP":"Optional, required only with an IEP or IFSP"}`:""}</div></td>
-      <td>${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b><div class="cnt">${shortDate(l.reviewedAt||l.at)}</div>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">None yet</span>`}</td>
-      <td>${n?`<details><summary class="cnt" style="cursor:pointer">${n} piece${n===1?"":"s"} of evidence</summary>${ev.join("")}</details>`:`<span class="cnt">None</span>`}</td>
-      <td><select data-drmark="${code}" aria-label="Mark for ${esc(code)}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></td></tr>`};
+  const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;
+    const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[])];
+    return `<details class="drrow"><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
+        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">No level yet</span>`}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}</span></summary>
+      <div class="drbody">${evs.map(x=>`<div class="cnt"><b>${esc(drdpLevelText(x.level,x.emerging))}</b>, ${x.status==="changed"?"changed":"accepted"} by ${esc(x.reviewedBy||"an educator")}. ${srcBtn(x)}${has(x.evidence)?`. ${esc(x.evidence)}`:""}</div>`).join("")}
+        ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
+        ${n?"":`<div class="cnt">No evidence yet.</div>`}
+        <label class="fld-label" style="max-width:340px">Mark<select data-drmark="${code}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></label></div></details>`};
   const doms=[...new Set(ms.map(k=>DRDP_M[v][k].d))];
-  return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">DRDP (2025)</h3><span class="cnt">${DRDP_VIEW[v]} View</span></div>
-    <div class="hint">Levels come from documentation and wait here for an educator to accept, change or set aside. They are not a DRDP rating. Ratings are still entered in DRDPtech.</div>
-    <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
-    <div class="cnt">Read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
-    ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English as a way ${esc(c.first)} communicates. This adds the ELD measures.</span></label>`:""}
-    <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label>
-    <div class="secthead" style="margin-top:8px"><b>Waiting for review</b><span class="cnt">${wait.length}</span></div>
-    ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, read it for DRDP to add suggestions here.</div>`}
-    <div class="secthead" style="margin-top:8px"><b>All measures</b><span class="cnt">${done.length} level${done.length===1?"":"s"} accepted across ${new Set(done.map(x=>x.code)).size} of ${ms.length} measures</span></div>
-    ${doms.map(dm=>`<div class="lbl" style="margin-top:6px">${esc(DRDP_DOM[dm]||dm)}</div><div class="tablewrap"><table class="grid2 drtab"><colgroup><col style="width:38%"><col style="width:24%"><col style="width:16%"><col style="width:22%"></colgroup><thead><tr><th>Measure</th><th>Latest accepted level</th><th>Evidence</th><th>Mark</th></tr></thead><tbody>${ms.filter(k=>DRDP_M[v][k].d===dm).map(rowOf).join("")}</tbody></table></div>`).join("")}
-    ${aside.length?`<details ${drdpShowAside?"open":""}><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${x.id}">Review again</button></div>`).join("")}</details>`:""}
-  </section>`;
+  const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;
+    return `<div class="drdom"><div class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level</span></div>${codes.map(rowOf).join("")}</div>`};
+  return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
+      ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span></div>
+      <div class="cnt">Levels here were accepted by an educator from documentation. They are not a DRDP rating, which is still entered in DRDPtech. Tap a measure to see its evidence.</div>
+      <details class="drset"><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
+        <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
+        <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
+        ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English. This adds ELD 1 to 3.</span></label>`:""}
+        <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label></details>
+      ${doms.map(domBlock).join("")}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${x.id}">Review again</button></div>`).join("")}</details>`:""}
+    </section>`;
 }
 function drdpKid(){return children.get(kidOpen)}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;const c=drdpKid();if(!c)return;
@@ -1661,7 +1741,7 @@ function todayWaiting(){
   // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
-      out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}"`,b:"Review"})}}
+      out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
   const mineC=upcoming.filter(c=>{const k=children.get(c.childId);const t=(c.teacher||"").toLowerCase();return m&&t===m.toLowerCase()||(!dir&&room&&k.classroom===room)});
@@ -3422,7 +3502,7 @@ async function loadPhotos(docs){
   const want=[];for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0;
   await Promise.all(want.map(async b=>{try{
-    const r=await fetch(b.src,{cache:"force-cache"});if(!r.ok)throw 0;const blob=await r.blob();
+    const r=await fetchPhoto(b.src);const blob=await r.blob();
     const bmp=await decodeImage(blob);const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
     const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
     const jb=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));
@@ -5045,26 +5125,62 @@ function kidEvidence(c){
   for(const s of kidSlides(c))for(const m of (s.measures||[]).filter(x=>x.kept))add(m.code,{kind:"slide",id:s.id,at:s.at,note:m.note,title:s.title||"A slide"});
   return Object.entries(by).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
 }
+// a child's page, in five parts so each one is quick to read: an overview, the documentation, the DRDP, conferences, and details
+let kidTab=LS.get("tree.kidtab","overview"),kidDocShow="all",kidOpenMoment="";
+function kidAgeText(c){const m=kidMonths(c);if(m==null)return"";const y=Math.floor(m/12),mo=m%12;return y?`${y} year${y===1?"":"s"}${mo?` ${mo} month${mo===1?"":"s"}`:""}`:`${mo} month${mo===1?"":"s"}`}
+function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
+  return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
+  :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoSrc(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
+    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span></span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
   if(!c){$("#main").innerHTML=`<div class="empty">That child is not on the roster.</div>`;return}
-  const dir=isDirector();const ms=kidMoments(c);const cs=kidConfs(c);const ss=kidSlides(c);const ev=kidEvidence(c);
-  const nx=kidNext(c);
+  const dir=isDirector();const ms=kidMoments(c);const cs=kidConfs(c);const ss=kidSlides(c);
+  const nx=kidNext(c);const {v}=drdpViewOf(c);const its=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
+  const wait=its.filter(x=>x.status==="suggested").length,levelled=new Set(its.filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>x.code)).size,nMs=drdpMeasuresFor(c).length;
+  const today=iso(new Date());const nextConf=cs.filter(x=>x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
+  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],["details","Details"]];
+  if(!tabs.some(t=>t[0]===kidTab))kidTab="overview";
+  let body="";
+  if(kidTab==="overview"){
+    body=`<div class="stats">
+        <button class="stat press" data-ktab="docs"><b>${ms.length}</b><span>moment${ms.length===1?"":"s"}${ss.length?` and ${ss.length} slide${ss.length===1?"":"s"}`:""}</span></button>
+        <button class="stat press" data-ktab="drdp"><b>${levelled}<small> of ${nMs}</small></b><span>DRDP measures with an accepted level${wait?`, ${wait} waiting`:""}</span></button>
+        <button class="stat press" data-ktab="confs"><b>${nextConf?esc(shortDate(parseIso(nextConf.confDate).getTime())):"None"}</b><span>${nextConf?"next family conference":"conference scheduled"}</span></button>
+        <button class="stat press" data-ktab="details"><b>${esc(nx&&NEXTPLAN[nx]?({staying:"Staying",tk:"TK",k:"Kindergarten",deciding:"Deciding",other:"Other"})[nx]:"Not set")}</b><span>next year</span></button></div>
+      ${wait?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><button class="btn small" data-ktab="drdp">Review ${wait}</button></div><div class="cnt">DRDP suggestions from ${esc(c.first)}'s documentation wait for an educator to accept, change or set aside.</div></section>`:""}
+      <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
+        ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No moments tag or name ${esc(c.first)} yet. Tag children when keeping a moment so nothing is missed.</div>`}</section>`;
+  }else if(kidTab==="docs"){
+    const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
+    body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
+        <div class="cnt">Tagged moments chose ${esc(c.first)}. The others come from ${esc(c.classroom||"their classroom")} and use ${esc(c.first)}'s name. Tap a moment to read it.</div>
+        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">None here.</div>`}</section>
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)} · ${esc(s.by||"")}</span></span></button>`}).join("")}</div></section>`:""}`;
+  }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
+  else if(kidTab==="confs"){
+    body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
+      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
+  }else{
+    body=`<section class="card"><div class="kgrid">
+        <div><span class="lbl">Classroom</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
+        <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
+        <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
+        <div class="cnt">Family details live on the conference record.</div></section>
+      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change classroom, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
+  }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" classroom",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
-      <div class="sub">${kidAt(c)?`At Fulton${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}${nx&&NEXTPLAN[nx]?". "+NEXTPLAN[nx]+".":""}`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
-      <span class="actions">${printBtns("portfolio",c.id,"Portfolio PDF")}<button class="btn small ghost" data-tconfchild="${esc(c.id)}">Conference record</button></span></div></div>
-  <div class="tgrid2" style="margin-top:12px">
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">Documentation</h3><span class="cnt">${ms.filter(n=>kidTagged(c,n)).length} tagged · ${ms.filter(n=>!kidTagged(c,n)).length} naming ${esc(c.first)} · ${ss.length} slide${ss.length===1?"":"s"}</span></div>
-      <div class="hint">Moments that tag ${esc(c.first)}, and moments from ${esc(c.classroom||"their classroom")} that name them. Tag children when keeping a moment so nothing is missed.</div>
-      ${ms.length?`<div style="display:grid;gap:12px">${ms.slice(0,30).map(n=>noticeCard(n)).join("")}</div>${ms.length>30?`<div class="cnt">Showing the 30 most recent of ${ms.length}.</div>`:""}`:`<div class="empty">No moments tag or name ${esc(c.first)} yet.</div>`}
-      ${ss.length?`<div class="lbl" style="margin-top:6px">Slides</div><div class="tlist">${ss.map(s=>`<button class="titem two press" data-slide="${s.id}"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)}</span></button>`).join("")}</div>`:""}</section>
-    <div style="display:grid;gap:14px;min-width:0">
-      <section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open</button></div>
-        ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}</div></div><span class="status">${has((x.fields||{}).goals)||has((x.fields||{}).nextSteps)?"Goals kept":"Open"}</span></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>
-      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Classroom and next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}
-    </div></div>
-  <div style="margin-top:14px">${kidDrdpHtml(c)}</div>`;
+      <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At Fulton${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
+      <span class="actions">${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
+    <div class="tseg ktabs" role="tablist" aria-label="${esc(c.first)}'s page">${tabs.map(([k,l])=>`<button role="tab" data-ktab="${k}" aria-pressed="${kidTab===k}">${l}</button>`).join("")}</div>
+    <div style="display:grid;gap:14px">${body}</div>`;
 }
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;
+  if(t.dataset.ktab){kidTab=t.dataset.ktab;LS.set("tree.kidtab",kidTab);kidOpenMoment=t.dataset.kmopen||"";renderMain();if(kidOpenMoment){const el=document.getElementById("nw-"+kidOpenMoment);if(el){formTop(el);return}}jumpTop();return}
+  if(t.dataset.kdoc){kidDocShow=t.dataset.kdoc;kidOpenMoment="";renderMain();return}
+  if(t.dataset.kmopen){kidOpenMoment=t.dataset.kmopen;renderMain();const el=document.getElementById("nw-"+kidOpenMoment);if(el)formTop(el);return}
+  if(t.dataset.kmclose){kidOpenMoment="";renderMain();return}
+});
 function kidEditHtml(c){
   const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
   const hist=(c.treeHistory||[]).slice().reverse();
@@ -5078,7 +5194,7 @@ function kidEditHtml(c){
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
-  if(t.dataset.kid){kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
+  if(t.dataset.kid){if(t.dataset.drdpfocus||kidOpen!==t.dataset.kid){kidTab=t.dataset.drdpfocus?"drdp":"overview";LS.set("tree.kidtab",kidTab)}kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
   if(t.dataset.tconfchild){embedRoute.conferences="child="+t.dataset.tconfchild;embedGo.conferences=true;goView("conferences");return}
   if(t.dataset.mjumpto){const n=notices.get(t.dataset.mjumpto);if(n){const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}}return}
   if(view!=="children"&&view!=="child")return;
