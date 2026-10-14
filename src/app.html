@@ -176,6 +176,31 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .grid2 th,.grid2 td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .grid2 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
 .grid2 tr:last-child td{border-bottom:none}
+/* slide design */
+.palrow{display:flex;flex-wrap:wrap;gap:6px}
+.palchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 10px 4px 6px;cursor:pointer;font-size:13px;color:var(--ink)}
+.palchip i{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+.palchip[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.palchip input[type=color]{width:22px;height:22px;border:0;padding:0;background:none}
+.wrapseg{flex-wrap:wrap}
+.slidecard[aria-pressed="true"]{outline:3px solid var(--acc,var(--moss));outline-offset:-3px}
+.decknum{position:absolute;top:10px;left:10px;background:var(--moss);color:#fff;border-radius:999px;width:28px;height:28px;display:grid;place-items:center;font-weight:700;z-index:2}
+/* DRDP on slides, moments and a child's page */
+.dritem{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px;background:var(--paper)}
+.drdpres{display:grid;gap:8px;margin-top:8px}
+.drst.wait{color:var(--marigold);font-weight:600}.drst.ok{color:var(--moss);font-weight:600}.drst.muted{color:var(--muted)}
+.drtab{table-layout:fixed}.drtab td{vertical-align:top}.drtab select{max-width:230px}
+@media (max-width:760px){
+  .drtab,.drtab tbody{display:block;min-width:0!important;width:100%}
+  .drtab thead,.drtab colgroup{display:none}
+  .drtab tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:12px;border-bottom:1px solid var(--line)}
+  .drtab tr:last-child{border-bottom:0}
+  .drtab td{display:block;padding:0;border:0!important;min-width:0}
+  .drtab td:nth-child(1){grid-column:1/-1}
+  .drtab td:nth-child(3){grid-column:1/-1}
+  .drtab td:nth-child(4){grid-column:1/-1}
+  .drtab td:nth-child(4) select{max-width:100%;width:100%}
+}
 /* the list of plans on a phone, one card for each plan */
 @media (max-width:760px){
   .plist,.plist tbody{display:block}
@@ -1103,26 +1128,259 @@ function renderWelcome(){
   </section>`;
 }
 
-/* ---------- DRDP 2025 preschool measures, the same list the prototype used, for linking documentation. Never a level or a rating. ---------- */
-const DRDP={"ATL 1":"Engagement, Attention, and Persistence","ATL 2":"Curiosity, Interest, and Initiative","ATL 3":"Problem-Solving","ATL 4":"Planning","SED 1":"Self-Awareness","SED 2":"Social Awareness","SED 3":"Relationships and Reciprocal Interactions with Familiar Adults","SED 4":"Relationships and Interactions with Peers","SED 5":"Emotional Knowledge and Regulation","FLD 1":"Understanding Language (Receptive)","FLD 2":"Using Language (Expressive)","FLD 3":"Shared Communication and Conversation","FLD 4":"Foundational Literacy Skills","FLD 5":"Alphabetics and Print Knowledge","FLD 6":"Writing","MATH 1":"Spatial Thinking","MATH 2":"Classification","MATH 3":"Number and Counting","MATH 4":"Number Operations","MATH 5":"Measurement","SCI 1":"Cause and Effect","SCI 2":"Inquiry Through Observation and Investigation","SCI 3":"Documentation and Communication of Inquiry","PD 1":"Perceptual-Motor Skills and Movement Concepts","PD 2":"Gross Locomotor Movement Skills","PD 3":"Gross Motor Manipulative Skills","PD 4":"Fine Motor Manipulative Skills","HLTH 1":"Safety"};
-const DRDP_PROMPT=src=>`From this documentation of preschool children at Fulton Community School & Farm, a Reggio-inspired preschool, suggest up to four DRDP 2025 preschool measures it may give evidence for, for an educator to review. Use only these codes. ${Object.entries(DRDP).map(([k,v])=>k+" "+v).join("; ")}.
-For each give the code and one short note quoting or closely paraphrasing the evidence in the educators' words. Never estimate or mention a developmental level, never rate the child, and never praise. Leave out any measure the documentation does not clearly show.
-Return only JSON {"measures":[{"code":string,"note":string}]}.
+/* ---------- DRDP (2025) ----------
+   Both views of the instrument, the Infant and Toddler View and the Preschool through Kindergarten View: every measure's
+   name, its domain, the levels it uses from earliest to latest, whether it is conditional, and its keywords. Checked page
+   by page against the official View files (Infant and Toddler 08/20/2026, Preschool through Kindergarten 04/20/2026).
+   The official definitions and level descriptors are kept in the private records and the server adds them to each DRDP
+   request. A level here is only ever a suggestion, and an educator accepts, changes or sets it aside on the child's page. */
+const DRDP_M={"ptk":{"ATL 1":{"n":"Engagement, Attention, and Persistence","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["attention","focus","persist","engaged","concentrate","sustained","extended","return","continue","complete","finish","work on","stay with","paying attention","focused"]},"ATL 2":{"n":"Curiosity, Interest, and Initiative","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["curious","interest","explore","investigate","wonder","question","ask","discover","try","initiate","seek","examine","wondering","exploring"]},"ATL 3":{"n":"Problem-Solving","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["problem","solve","figure out","try different","strategy","solution","work through","overcome","challenge","figured out"]},"ATL 4":{"n":"Planning","d":"ATL","l":"EL BE BM BL IE IM IL","c":"","k":["plan","organize","prepare","step","sequence","order","goal","ahead","next","planning"]},"SED 1":{"n":"Self-Awareness","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["self","identity","preference","like","don't like","favorite","who I am","my","mine","myself"]},"SED 2":{"n":"Social Awareness","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["others","friend","peer","feeling","emotion","understand","perspective","empathy","notice","aware","noticed"]},"SED 3":{"n":"Relationships and Reciprocal Interactions with Familiar Adults","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["adult","teacher","parent","caregiver","trust","comfort","seek","relationship","bond","connection"]},"SED 4":{"n":"Relationships and Interactions with Peers","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["peer","friend","play together","share","turn","cooperate","collaborate","together","social","playing with"]},"SED 5":{"n":"Emotional Knowledge and Regulation","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["emotion","feeling","calm","regulate","control","manage","express","happy","sad","angry","frustrated","cope","self-regulation"]},"FLD 1":{"n":"Understanding Language (Receptive)","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["understand","listen","follow direction","comprehend","respond to","recognize word","listening"]},"FLD 2":{"n":"Using Language (Expressive)","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["speak","talk","communicate","express","tell","describe","explain","word","sentence","language","said","asked","told","describing"]},"FLD 3":{"n":"Shared Communication and Conversation","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["conversation","back and forth","dialogue","discuss","respond","reply","exchange","talking with"]},"FLD 4":{"n":"Foundational Literacy Skills","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["rhyme","sound","syllable","phoneme","letter sound","phonological"]},"FLD 5":{"n":"Alphabetics and Print Knowledge","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["letter","alphabet","print","book","read","word","text","writing","reading"]},"FLD 6":{"n":"Writing","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["write","draw","mark","scribble","letter","name","pencil","crayon","drawing","writing"]},"ELD 1":{"n":"Comprehension of English (Receptive English)","d":"ELD","l":"ELD","c":"eld","k":["home language","dual language","bilingual","learning english","understands english","english learner","in spanish"]},"ELD 2":{"n":"Self-Expression in English (Expressive English)","d":"ELD","l":"ELD","c":"eld","k":["speaks english","english words","says in english","in english","learning english","bilingual"]},"ELD 3":{"n":"Understanding and Responding to English Literacy Activities","d":"ELD","l":"ELD","c":"eld","k":["english book","story in english","song in english","english song","learning english"]},"MATH 1":{"n":"Spatial Thinking","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["spatial","shape","position","location","direction","above","below","beside","in front","behind","build","construct","building"]},"MATH 2":{"n":"Classification","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["sort","group","classify","category","same","different","match","compare","attribute","sorting"]},"MATH 3":{"n":"Number and Counting","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["count","number","how many","quantity","more","less","few","one","two","three","counting"]},"MATH 4":{"n":"Number Operations","d":"MATH","l":"EE EL BE BM BL IE IM IL","c":"","k":["add","subtract","combine","take away","plus","minus","total","altogether"]},"MATH 5":{"n":"Measurement","d":"MATH","l":"EE EL BE BM BL IE IM IL","c":"","k":["measure","size","big","small","long","short","tall","heavy","light","compare size"]},"SCI 1":{"n":"Cause and Effect","d":"SCI","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["cause","effect","because","if then","what happens","result","make happen","when I"]},"SCI 2":{"n":"Inquiry Through Observation and Investigation","d":"SCI","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["observe","notice","investigate","experiment","test","try","explore","discover","find out","watching","looking closely","observed"]},"SCI 3":{"n":"Documentation and Communication of Inquiry","d":"SCI","l":"EE EL BE BM BL IE IM IL","c":"","k":["document","record","share","explain finding","describe observation","tell about","draw what"]},"PD 1":{"n":"Perceptual-Motor Skills and Movement Concepts","d":"PD","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["body","movement","balance","coordinate","space","body awareness","control body"]},"PD 2":{"n":"Gross Locomotor Movement Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["walk","run","jump","hop","skip","climb","crawl","move","running","jumping","climbing"]},"PD 3":{"n":"Gross Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["throw","catch","kick","ball","strike","bounce","roll","throwing","catching"]},"PD 4":{"n":"Fine Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["fine motor","pinch","grasp","hold","manipulate","finger","hand","scissors","pencil grip","button","zip","cutting","holding"]},"HLTH 1":{"n":"Safety","d":"HLTH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["safe","safety","careful","danger","rule","protect"]},"HLTH 2":{"n":"Understanding of Health and Wellness","d":"HLTH","l":"EL BE BM BL IE IM IL","c":"","k":["health","healthy","body","nutrition","exercise","rest","sleep","food","eating"]},"HLTH 3":{"n":"Personal Care Routines: Hygiene","d":"HLTH","l":"RE RL EE EL BE BM BL IE","c":"iep","k":["wash hands","washing hands","washed","handwashing","soap","toilet","potty","brush teeth","toothbrush","tissue","hygiene"]},"HLTH 4":{"n":"Personal Care Routines: Feeding","d":"HLTH","l":"RE RL EE EL BE BL IE","c":"iep","k":["feed","feeding","spoon","fork","drink","snack","lunch","meal","eats","eating","chew"]},"HLTH 5":{"n":"Personal Care Routines: Self-Dressing","d":"HLTH","l":"RE RL EE EL BE BL IE","c":"iep","k":["dress","jacket","coat","shoes","boots","socks","zipper","sleeve","put on","take off"]}},"it":{"ATL 1":{"n":"Engagement, Attention, and Persistence","d":"ATL","l":"RE RL EE EL BE","c":"","k":["attention","focus","engaged","looking at","watching","interested in"]},"ATL 2":{"n":"Curiosity, Interest, and Initiative","d":"ATL","l":"RE RL EE EL BE","c":"","k":["curious","interest","explore","reaching","touching","examining"]},"ATL 3":{"n":"Problem-Solving","d":"ATL","l":"RE RL EE EL BE","c":"","k":["problem","solve","try","figure out"]},"SED 1":{"n":"Self-Awareness","d":"SED","l":"RE RL EE EL BE","c":"","k":["self","own","my","me"]},"SED 2":{"n":"Social Awareness","d":"SED","l":"RE RL EE EL BE","c":"","k":["others","peer","looking at others"]},"SED 3":{"n":"Relationships and Reciprocal Interactions with Familiar Adults","d":"SED","l":"RE RL EE EL BE","c":"","k":["adult","caregiver","comfort","trust","attachment"]},"SED 4":{"n":"Relationships and Interactions with Peers","d":"SED","l":"RE RL EE EL BE","c":"","k":["peer","other children","together"]},"SED 5":{"n":"Emotional Knowledge and Regulation","d":"SED","l":"RE RL EE EL BE","c":"","k":["emotion","calm","soothe","cry","comfort"]},"FLD 1":{"n":"Understanding Language (Receptive)","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["understand","respond","look when","turn toward"]},"FLD 2":{"n":"Using Language (Expressive)","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["babble","coo","vocalize","gesture","point","word"]},"FLD 3":{"n":"Shared Communication and Conversation","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["back and forth","respond","vocalize together"]},"COG 1":{"n":"Imitation","d":"COG","l":"RE RL EE EL BE","c":"","k":["imitate","copy","repeat","do what"]},"MATH 1":{"n":"Spatial Thinking","d":"COG","l":"RE RL EE EL BE","c":"","k":["spatial","where","in","out","under"]},"MATH 2":{"n":"Classification","d":"COG","l":"RE RL EE EL BE","c":"","k":["same","different","match","group"]},"MATH 3":{"n":"Number and Counting","d":"COG","l":"RE RL EE EL BE","c":"","k":["one","two","more","count"]},"SCI 1":{"n":"Cause and Effect","d":"COG","l":"RE RL EE EL BE","c":"","k":["cause","effect","when I","makes it"]},"SCI 2":{"n":"Inquiry Through Observation and Investigation","d":"COG","l":"RE RL EE EL BE","c":"","k":["observe","watch","look","explore"]},"PD 1":{"n":"Perceptual-Motor Skills and Movement Concepts","d":"PD","l":"RE RL EE EL BE","c":"","k":["body","reach","grasp","movement"]},"PD 2":{"n":"Gross Locomotor Movement Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["crawl","walk","move","sit","stand"]},"PD 3":{"n":"Gross Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["throw","roll","push","pull"]},"PD 4":{"n":"Fine Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["grasp","pinch","hold","finger"]},"HLTH 1":{"n":"Safety","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["safe","safety","careful","danger","rule","protect"]},"HLTH 3":{"n":"Personal Care Routines: Hygiene","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["wash hands","washing hands","washed","handwashing","soap","toilet","potty","brush teeth","toothbrush","tissue","hygiene"]},"HLTH 4":{"n":"Personal Care Routines: Feeding","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["feed","feeding","spoon","fork","drink","snack","lunch","meal","eats","eating","chew"]},"HLTH 5":{"n":"Personal Care Routines: Self-Dressing","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["dress","jacket","coat","shoes","boots","socks","zipper","sleeve","put on","take off"]}}};
+const DRDP_LV={RE:"Responding Earlier",RL:"Responding Later",EE:"Exploring Earlier",EM:"Exploring Middle",EL:"Exploring Later",BE:"Building Earlier",BM:"Building Middle",BL:"Building Later",IE:"Integrating Earlier",IM:"Integrating Middle",IL:"Integrating Later"};
+const DRDP_ELD=["Discovering Language","Discovering English","Exploring English","Developing English","Building English","Integrating English"];
+const DRDP_VIEW={ptk:"Preschool through Kindergarten",it:"Infant and Toddler"};
+const DRDP_DOM={ATL:"Approaches to Learning",SED:"Social and Emotional Development",FLD:"Foundational Language Development",ELD:"English Language Development",COG:"Cognition",MATH:"Math",SCI:"Science",PD:"Physical Development",HLTH:"Health"};
+const DRDP=Object.assign({},...["it","ptk"].map(v=>Object.fromEntries(Object.entries(DRDP_M[v]).map(([k,m])=>[k,m.n]))));
+const drdpLevels=(v,code)=>{const m=DRDP_M[v]&&DRDP_M[v][code];if(!m)return[];return m.l==="ELD"?DRDP_ELD.slice():m.l.split(" ").map(k=>DRDP_LV[k])};
+// a level is kept only when it is one this measure uses on this view
+function drdpLevelOk(v,code,txt){
+  const t=String(txt||"").trim().toLowerCase().replace(/\s+/g," ");if(!t)return"";
+  const ls=drdpLevels(v,code);const hit=ls.find(l=>l.toLowerCase()===t)||ls.find(l=>Object.entries(DRDP_LV).some(([k,n])=>n===l&&k.toLowerCase()===t));
+  return hit||"";
+}
+const drdpRank=(v,code,l)=>drdpLevels(v,code).indexOf(l);
+function kidMonths(c){if(!c||!c.dob)return null;const b=parseIso(String(c.dob).slice(0,10)),n=new Date();let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;return m}
+// which view of the DRDP a child is read against. Chosen on the child's page, or by age, under three years old is Infant and Toddler
+function drdpViewOf(c){
+  const d=c&&c.drdp||{};if(d.view==="it"||d.view==="ptk")return {v:d.view,why:"chosen for "+(c.first||"this child")};
+  const m=kidMonths(c);if(m!=null)return m<36?{v:"it",why:"under three years old"}:{v:"ptk",why:"three years old or older"};
+  return {v:"ptk",why:"no birthday on the roster"};
+}
+const kidEld=c=>!!(c&&c.drdp&&c.drdp.eld);
+const kidIep=c=>!!(c&&c.drdp&&c.drdp.iep)||(!!String(c&&c.ifsp||"").trim()&&!/^(no|none|n\/?a|-)$/i.test(String(c.ifsp).trim()));
+// the measures that apply to a child. ELD only for a child learning English. Conditional health measures are listed for every
+// child, required with an IEP or IFSP and optional otherwise.
+function drdpMeasuresFor(c){const {v}=drdpViewOf(c);return Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].c!=="eld"||kidEld(c))}
+const drdpName=code=>code+" "+(DRDP[code]||"");
+const drdpId=()=>"d"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const KW_RE={};
+function kwHit(txt,k){const re=KW_RE[k]||(KW_RE[k]=new RegExp("(^|[^a-z])"+k.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));return re.test(txt)}
+function localMerge(target,patch){for(const [k,v] of Object.entries(patch||{})){if(v&&typeof v==="object"&&v.__delete__===true){delete target[k];continue}
+  if(v&&typeof v==="object"&&!Array.isArray(v)){if(!target[k]||typeof target[k]!=="object"||Array.isArray(target[k]))target[k]={};localMerge(target[k],v)}else target[k]=v}return target}
+// a change to a child's DRDP is sent as a patch, so two educators reviewing at once never overwrite each other
+function kidDrdpPatch(c,patch){localMerge(c,patch);children.set(c.id,c);
+  if(db)db.doc("children/"+c.id).update(JSON.parse(JSON.stringify(patch))).catch(e=>toast(e&&e.message||"Could not save the DRDP change. Check your connection."))}
+const kidDrdpItems=c=>Object.entries((c.drdp&&c.drdp.items)||{}).map(([id,x])=>Object.assign({id},x));
 
-${src}`;
-async function suggestMeasures(src){
-  const out=await askRead(DRDP_PROMPT(src),{purpose:"drdp"});
-  return (Array.isArray(out?.measures)?out.measures:[]).filter(x=>x&&DRDP[x.code]).slice(0,4).map(x=>({code:x.code,note:String(x.note||"").replace(/—/g,", ").trim(),kept:false}));
+/* what a slide or a moment holds for a DRDP reading: its words, its photos and the children tagged on it */
+function drdpSource(kind,rec){
+  if(kind==="slides"){const src=slideSources(rec);
+    const text=[has(rec.title)?"Slide title. "+rec.title:"",has(rec.text)?"What the team understood. "+rec.text:"",...(rec.quotes||[]).map(q=>(q.name?q.name+" said, ":"A child said, ")+q.words),
+      ...src.map(n=>`Moment kept by ${n.by||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
+    return {text,photos:slidePhotos(rec).map(id=>notices.get(id)).filter(Boolean),kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:rec.title||"A slide"}}
+  return {text:`Moment kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
+    photos:rec.photo?[rec]:[],kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:momentHeading(rec)||firstLine(rec.noticed,60)};
 }
-let nwDrdp={},nwDrdpBusy={};
+async function drdpPhotoBlobs(ns){const out=[];for(const n of ns.slice(0,3)){try{const u=photoSrc(n);if(!u)continue;const b=await (await fetch(u)).blob();if(b&&b.size)out.push(b)}catch(e){}}return out}
+function drdpPrompt(v,cs,S,ms,nPhotos){
+  const eld=cs.some(kidEld);
+  return `You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, read their documentation against the DRDP (2025) ${DRDP_VIEW[v]} View. An educator reviews every suggestion and accepts, changes or sets it aside. Nothing you return is a DRDP rating.
+
+[[DRDP_DESCRIPTORS]]
+
+Measures to consider, each with the levels it uses from earliest to latest. Use only these codes, and for a level use only one of the levels listed for that measure.
+${ms.map(k=>`${k} ${DRDP_M[v][k].n}. ${drdpLevels(v,k).join(", ")}`).join("\n")}
+
+Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".":""} has the id ${c.id}${kidEld(c)?", and speaks a home language other than English and is learning English":""}${kidIep(c)?", and has an IEP or IFSP":""}`).join(". ")}.
+
+How to read it.
+Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
+child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
+level is the latest level whose descriptor the evidence shows the child has mastered. Give one level only, never a range. Use an empty string when the evidence does not show a level clearly.
+emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
+evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
+${eld?"ELD measures apply only to the children described as learning English.\n":""}photo says in two sentences what the photos show, the actions, materials and interactions. Use an empty string when there are no photos.
+summary says in two sentences what the documentation shows about the children's learning.
+Write in plain, warm, professional language an educator would use. Call adults educators, never teachers. Never praise or rate a child, and never use em dashes.
+Return only JSON {"measures":[{"code":"ATL 1","child":"the child's id","level":"one listed level","emerging":false,"evidence":"one or two sentences"}],"photo":"","summary":""}
+
+The documentation.
+${S.text}`;
+}
+async function drdpRead(v,cs,S){
+  const ms=Object.keys(DRDP_M[v]).filter(k=>{const m=DRDP_M[v][k];return (m.c!=="eld"||cs.some(kidEld))&&(m.c!=="iep"||cs.some(kidIep))});
+  const imgs=await drdpPhotoBlobs(S.photos);
+  const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
+  const byId=new Map(cs.map(c=>[c.id,c]));const seen=new Set();const items=[];
+  for(const m of (Array.isArray(out?.measures)?out.measures:[])){
+    if(!m||typeof m!=="object")continue;const code=String(m.code||"").replace(/\s+/g," ").trim().toUpperCase();
+    let c=byId.get(String(m.child||"").trim())||cs.find(k=>String(m.child||"").toLowerCase().startsWith(k.first.toLowerCase()));
+    if(!c&&cs.length===1)c=cs[0];
+    if(!c||!ms.includes(code)||(DRDP_M[v][code].c==="eld"&&!kidEld(c))||seen.has(code+"|"+c.id))continue;seen.add(code+"|"+c.id);
+    const level=drdpLevelOk(v,code,m.level);
+    items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpRank(v,code,level)<drdpLevels(v,code).length-1),evidence:String(m.evidence||"").replace(/—/g,", ").trim().slice(0,600)});
+  }
+  const clean=t=>{t=String(t||"").replace(/—/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":t.slice(0,900)};
+  return {items:items.slice(0,12),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
+}
+// without Claude, or when an educator asks for it, keywords point to possible measures. They give no level.
+function drdpKeywords(v,cs,text){
+  const t=" "+String(text||"").toLowerCase()+" ";
+  const ms=Object.entries(DRDP_M[v]).filter(([k,m])=>(m.c!=="eld"||cs.some(kidEld))&&(m.c!=="iep"||cs.some(kidIep)))
+    .map(([k,m])=>({k,score:(m.k||[]).filter(w=>kwHit(t,w)).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+  const out=[];for(const x of ms){const words=(DRDP_M[v][x.k].k||[]).filter(w=>kwHit(t,w)).slice(0,4);
+    for(const c of cs)if(DRDP_M[v][x.k].c!=="eld"||kidEld(c))out.push({id:drdpId(),code:x.k,view:v,childId:c.id,level:"",emerging:false,evidence:"Words in the documentation that point to this measure, "+words.join(", ")+"."})}
+  return out;
+}
+let drdpBusy={};
+async function drdpAnalyze(kind,id,mode){
+  const rec=kind==="slides"?slides.get(id):notices.get(id);if(!rec)return;const key=kind+":"+id;if(drdpBusy[key])return;
+  const S=drdpSource(kind,rec);
+  if(!S.kids.length){toast("Tag the children this documentation is about first. A level always belongs to one child.");return}
+  if(!has(S.text)&&!S.photos.length){toast("There is nothing to read yet.");return}
+  const useKw=mode==="keywords"||!sample||!navigator.onLine;
+  drdpBusy[key]=true;drdpRefresh();
+  try{
+    const groups={};for(const c of S.kids){const v=drdpViewOf(c).v;(groups[v]=groups[v]||[]).push(c)}
+    let items=[],photo="",summary="",official;
+    for(const [v,cs] of Object.entries(groups)){
+      if(useKw){items.push(...drdpKeywords(v,cs,S.text));continue}
+      const r=await drdpRead(v,cs,S);items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
+    }
+    const before=rec.drdp&&rec.drdp.items||[];
+    rec.drdp={at:Date.now(),by:whoAmI(),mode:useKw?"keywords":"reading",official:useKw?undefined:official,photo,summary,items};
+    if(kind==="slides")saveSlide(rec);else saveNotice(rec);
+    // each child gets the suggestion to review. A suggestion from an earlier reading of the same documentation that nobody has
+    // reviewed yet is replaced. One an educator has reviewed stays as it is.
+    const byKid={};for(const x of items)(byKid[x.childId]=byKid[x.childId]||[]).push(x);
+    const kidIds=new Set([...Object.keys(byKid),...before.map(x=>x.childId)]);
+    for(const cid of kidIds){const c=children.get(cid);if(!c)continue;const patch={};
+      for(const old of kidDrdpItems(c))if(old.src&&old.src.kind===kind&&old.src.id===id&&old.status==="suggested")patch[old.id]={__delete__:true};
+      for(const x of byKid[cid]||[])patch[x.id]={code:x.code,view:x.view,level:x.level,emerging:x.emerging,evidence:x.evidence,src:{kind,id,title:S.title,at:rec.at||Date.now()},at:Date.now(),by:useKw?"keywords":"reading",status:"suggested",suggested:{level:x.level,emerging:x.emerging}};
+      if(Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}})}
+    toast(items.length?`${items.length} suggestion${items.length===1?"":"s"} now wait${items.length===1?"s":""} on ${Object.keys(byKid).length===1?children.get(Object.keys(byKid)[0])?.first+"'s page":"the children's pages"} for review.`:"No measure was clear enough from this documentation.");
+  }catch(e){toast(assistError(e?.code||"unknown","Nothing changed."))}
+  finally{delete drdpBusy[key];drdpRefresh()}
+}
+function drdpRefresh(){if(view==="slide")renderSlide();else if(view==="moments"||view==="child")renderMain()}
+// where each suggestion from this documentation stands now, read from the child's page
+function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c.drdp||{}).items||{})[x.id];
+  if(!it)return {label:"Removed from the child's page",cls:"muted"};
+  if(it.status==="accepted")return {label:`Accepted by ${it.reviewedBy||"an educator"}`,cls:"ok",level:it.level,emerging:it.emerging};
+  if(it.status==="changed")return {label:`Changed by ${it.reviewedBy||"an educator"}`,cls:"ok",level:it.level,emerging:it.emerging};
+  if(it.status==="aside")return {label:`Set aside by ${it.reviewedBy||"an educator"}`,cls:"muted"};
+  return {label:"Waiting for an educator to review",cls:"wait",level:it.level,emerging:it.emerging};
+}
+const drdpLevelText=(l,em)=>l?l+(em?", emerging to the next level":""):"No level suggested";
+// the DRDP panel on a slide or a moment
+function drdpPanelHtml(kind,rec){
+  const key=kind+":"+rec.id,busy=drdpBusy[key],d=rec.drdp;const S=drdpSource(kind,rec);
+  const views=[...new Set(S.kids.map(c=>drdpViewOf(c).v))];
+  const legacy=(rec.measures||[]).filter(m=>m.kept);
+  return `<div class="cnt">${S.kids.length?`Read against the ${views.map(v=>DRDP_VIEW[v]).join(" and the ")} View${views.length>1?"s":""}, for ${S.kids.map(c=>esc(c.first)).join(", ")}.`:"Tag the children this documentation is about. A level always belongs to one child."} Each suggestion waits on the child's page for an educator to accept, change or set aside. A suggestion is never a DRDP rating.</div>
+    <div class="actions">${sample?`<button class="btn small ghost" data-drdpgo="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>${busy?'<span class="spin"></span> Reading':"Read words and photos"}</button>`:""}<button class="linkbtn" data-drdpkw="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>Keyword match</button></div>
+    ${d?`<div class="drdpres">
+      ${d.mode==="keywords"?`<div class="cnt">Keyword match on ${shortDate(d.at)}. Keywords point to possible measures and give no level.</div>`:`<div class="cnt">Read on ${shortDate(d.at)} by ${esc(d.by||"an educator")}${d.official===false?". The official DRDP wording was not available on the server for this reading, so read it again once the director has added it.":", against the official DRDP (2025) definitions and level descriptors."}</div>`}
+      ${has(d.summary)?`<div class="ref"><b>What it shows</b><div>${esc(d.summary)}</div></div>`:""}
+      ${has(d.photo)?`<div class="ref"><b>The photos</b><div>${esc(d.photo)}</div></div>`:""}
+      ${(d.items||[]).length?(d.items||[]).map(x=>{const st=drdpStatusOf(kind,rec.id,x);const c=children.get(x.childId);
+        return `<div class="dritem"><div><b>${esc(c?c.first:"A child")}</b> · <b>${esc(x.code)}</b> ${esc(DRDP[x.code]||"")}</div>
+          <div class="cnt">${esc(drdpLevelText(st.level!==undefined?st.level:x.level,st.emerging!==undefined?st.emerging:x.emerging))} · <span class="drst ${st.cls}">${esc(st.label)}</span>${c?` · <button class="linkbtn" data-kid="${esc(c.id)}">Review on ${esc(c.first)}'s page</button>`:""}</div>
+          ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}</div>`}).join(""):`<div class="cnt">No measure was clear enough from this documentation.</div>`}
+    </div>`:""}
+    ${legacy.length?`<div class="cnt">Linked earlier, without a level. ${legacy.map(m=>esc(m.code)).join(", ")}</div>`:""}`;
+}
+let nwDrdp={};
 function momentDrdpHtml(n){
-  const ms=n.measures||[];const kept=ms.filter(m=>m.kept);
-  if(!nwDrdp[n.id])return kept.length?`<div class="cnt">DRDP ${kept.map(m=>`<span class="chip on" style="cursor:default" title="${esc(DRDP[m.code]||"")}">${esc(m.code)}</span>`).join(" ")}</div>`:"";
-  return `<div class="pdir"><div class="secthead"><b>DRDP measures</b>${sample?`<button class="btn small ghost" data-nwdrdpgo="${n.id}" ${nwDrdpBusy[n.id]?"disabled":""}>${nwDrdpBusy[n.id]?'<span class="spin"></span> Reading':"Suggest measures"}</button>`:""}</div>
-    <div class="cnt">Suggestions for an educator to keep or leave. They link this moment to a child's DRDP evidence and never appear on a plan.</div>
-    ${ms.length?ms.map((m,i)=>`<label class="radio"><input type="checkbox" data-nwmkeep="${n.id}|${i}" ${m.kept?"checked":""}><span><b>${esc(m.code)}</b> ${esc(DRDP[m.code]||"")}<br><span class="cnt">${esc(m.note)}</span></span></label>`).join(""):`<div class="cnt">No suggestions yet.</div>`}
-    <div class="actions"><button class="linkbtn" data-nwdrdp="${n.id}">Close</button></div></div>`;
+  if(!nwDrdp[n.id]){const its=(n.drdp&&n.drdp.items)||[];const codes=[...new Set([...its.map(x=>x.code),...(n.measures||[]).filter(m=>m.kept).map(m=>m.code)])];
+    return codes.length?`<div class="cnt">DRDP ${codes.map(k=>`<span class="chip on" style="cursor:default" title="${esc(DRDP[k]||"")}">${esc(k)}</span>`).join(" ")}</div>`:""}
+  return `<div class="pdir"><div class="secthead"><b>DRDP (2025)</b><button class="linkbtn" data-nwdrdp="${n.id}">Close</button></div>${drdpPanelHtml("notices",n)}</div>`;
 }
+// the measures a slide prints in its strip, codes and names only. Levels never go on a wall.
+function slideMeasureCodes(s){const its=(s.drdp&&s.drdp.items)||[];const keep=[];
+  for(const x of its){const st=drdpStatusOf("slides",s.id,x);if(st.cls==="muted")continue;if(!keep.includes(x.code))keep.push(x.code)}
+  for(const m of (s.measures||[]).filter(m=>m.kept))if(!keep.includes(m.code))keep.push(m.code);
+  return keep.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+}
+// a page after the slide for educators and families, with every measure, the child, where the level stands and the evidence
+function drdpSummaryDoc(s,mode){
+  mode=mode||s.names||PRINT.names;const d=s.drdp;if(!d||!(d.items||[]).length)return null;
+  const blocks=[dLead("About these levels","Levels come from the documentation and an educator reviews each one on the child's page. They are not a DRDP rating.")];
+  if(has(d.summary))blocks.push(dText("What the documentation shows",d.summary));
+  if(has(d.photo))blocks.push(dText("What the photos show",d.photo));
+  const its=(d.items||[]).slice().sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}));const items=[];
+  for(const x of its){const st=drdpStatusOf("slides",s.id,x);if(st.cls==="muted")continue;const c=children.get(x.childId);
+    const lvl=st.level!==undefined?st.level:x.level,em=st.emerging!==undefined?st.emerging:x.emerging;
+    items.push(dItem(drdpName(x.code),x.evidence||"",st.cls==="ok"?"Reviewed by "+st.label.replace(/^(Accepted|Changed) by /,""):"Awaiting educator review",[c?credit(c.first,mode)||"A child":"A child",lvl?lvl+(em?", emerging":""):"No level"]))}
+  if(!items.length)return null;
+  blocks.push(dSub("Measures and evidence"),...items);
+  const meta=[["Slide",s.title||"Untitled"],["Classroom",s.classroom||"All classrooms"],["Date",longDate(iso(new Date(s.at)))]];
+  return {display:true,type:"report",acc:"story",title:"DRDP (2025) evidence",meta,blocks};
+}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.drdpgo){const [k,id]=t.dataset.drdpgo.split("|");drdpAnalyze(k,id,"reading");return}
+  if(t.dataset.drdpkw){const [k,id]=t.dataset.drdpkw.split("|");drdpAnalyze(k,id,"keywords");return}
+});
+
+/* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
+   the suggestions waiting for review, and the marks the instrument allows. */
+let drdpEdit="",drdpShowAside=false;
+function kidDrdpHtml(c){
+  const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
+  const wait=all.filter(x=>x.status==="suggested").sort((a,b)=>(b.at||0)-(a.at||0));
+  const done=all.filter(x=>x.status==="accepted"||x.status==="changed");const aside=all.filter(x=>x.status==="aside");
+  const marks=(c.drdp&&c.drdp.marks)||{};
+  const legacy={};for(const [code,list] of kidEvidence(c))legacy[code]=list;
+  const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
+  const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-mjumpto="${esc(x.src.id)}"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
+  const levelSel=x=>`<select data-drlevel="${x.id}" aria-label="Level">${["",...drdpLevels(v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
+  const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div><b>${esc(x.code)}</b> ${esc(DRDP[x.code]||"")}</div>
+      <div class="cnt"><b class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</b> · ${x.by==="keywords"?"pointed to by keywords":"suggested from the documentation"} · ${srcBtn(x)}</div>
+      ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}
+      ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
+      :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${x.id}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${x.id}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`}</div>`;
+  const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const n=done.filter(x=>x.code===code).length+(legacy[code]||[]).length;
+    const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English is the only language spoken at home"]]:[])];
+    const ev=[...done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0)).map(x=>`<div class="cnt"><b>${esc(drdpLevelText(x.level,x.emerging))}</b>, ${x.status==="changed"?"changed":"accepted"} by ${esc(x.reviewedBy||"an educator")}. ${srcBtn(x)}${has(x.evidence)?". "+esc(x.evidence):""}</div>`),
+      ...(legacy[code]||[]).map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-mjumpto="${y.id}"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`)];
+    return `<tr><td><b>${esc(code)}</b><div class="cnt">${esc(m.n)}${m.c==="iep"?`<br>${kidIep(c)?"Required with an IEP or IFSP":"Optional, required only with an IEP or IFSP"}`:""}</div></td>
+      <td>${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b><div class="cnt">${shortDate(l.reviewedAt||l.at)}</div>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">None yet</span>`}</td>
+      <td>${n?`<details><summary class="cnt" style="cursor:pointer">${n} piece${n===1?"":"s"} of evidence</summary>${ev.join("")}</details>`:`<span class="cnt">None</span>`}</td>
+      <td><select data-drmark="${code}" aria-label="Mark for ${esc(code)}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></td></tr>`};
+  const doms=[...new Set(ms.map(k=>DRDP_M[v][k].d))];
+  return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">DRDP (2025)</h3><span class="cnt">${DRDP_VIEW[v]} View</span></div>
+    <div class="hint">Levels come from documentation and wait here for an educator to accept, change or set aside. They are not a DRDP rating. Ratings are still entered in DRDPtech.</div>
+    <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
+    <div class="cnt">Read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
+    ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English as a way ${esc(c.first)} communicates. This adds the ELD measures.</span></label>`:""}
+    <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label>
+    <div class="secthead" style="margin-top:8px"><b>Waiting for review</b><span class="cnt">${wait.length}</span></div>
+    ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, read it for DRDP to add suggestions here.</div>`}
+    <div class="secthead" style="margin-top:8px"><b>All measures</b><span class="cnt">${done.length} level${done.length===1?"":"s"} accepted across ${new Set(done.map(x=>x.code)).size} of ${ms.length} measures</span></div>
+    ${doms.map(dm=>`<div class="lbl" style="margin-top:6px">${esc(DRDP_DOM[dm]||dm)}</div><div class="tablewrap"><table class="grid2 drtab"><colgroup><col style="width:38%"><col style="width:24%"><col style="width:16%"><col style="width:22%"></colgroup><thead><tr><th>Measure</th><th>Latest accepted level</th><th>Evidence</th><th>Mark</th></tr></thead><tbody>${ms.filter(k=>DRDP_M[v][k].d===dm).map(rowOf).join("")}</tbody></table></div>`).join("")}
+    ${aside.length?`<details ${drdpShowAside?"open":""}><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${x.id}">Review again</button></div>`).join("")}</details>`:""}
+  </section>`;
+}
+function drdpKid(){return children.get(kidOpen)}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;const c=drdpKid();if(!c)return;
+  const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted. ${x.code} is on ${c.first}'s DRDP.`);renderMain();return}
+  if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");renderMain();return}
+  if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested"}}}});renderMain();return}
+  if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
+  if(t.dataset.drcancel){drdpEdit="";renderMain();return}
+  if(t.dataset.drsave){const id=t.dataset.drsave,x=it(id);if(!x)return;const lv=document.querySelector(`[data-drlevel="${id}"]`)?.value||"";const em=!!document.querySelector(`[data-dremerg="${id}"]`)?.checked;
+    if(!lv){toast("Choose a level, or set this aside.");return}
+    const sug=x.suggested||{};const same=lv===sug.level&&em===!!sug.emerging;
+    kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpRank(x.view||drdpViewOf(c).v,x.code,lv)<drdpLevels(x.view||drdpViewOf(c).v,x.code).length-1,status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
+    drdpEdit="";toast(`Saved. ${x.code} is on ${c.first}'s DRDP.`);renderMain();return}
+});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return;const c=drdpKid();if(!c)return;
+  if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
+  if(t.dataset.dreld!==undefined){kidDrdpPatch(c,{drdp:{eld:t.checked}});renderMain();return}
+  if(t.dataset.driep!==undefined){kidDrdpPatch(c,{drdp:{iep:t.checked}});renderMain();return}
+  if(t.dataset.drmark){kidDrdpPatch(c,{drdp:{marks:{[t.dataset.drmark]:t.value||{__delete__:true}}}});renderMain();return}
+});
+
 
 /* ---------- Slides. Documentation for the classroom walls, made from moments. ---------- */
 let slides=new Map(), slideOpen=LS.get("tree.slide",""), slideSug={}, slideTimers={};
@@ -1140,16 +1398,54 @@ function slideDoc(s){
   const mode=s.names||PRINT.names;const src=slideSources(s);const all=src.map(n=>n.noticed+"\n"+(n.wonder||"")).join("\n")+"\n"+(s.quotes||[]).map(q=>q.name+" - "+q.words).join("\n");
   const blocks=[];if(has(s.text))blocks.push({t:"box",text:displayText(s.text,mode,all)});
   (s.quotes||[]).forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
-  const ms=(s.measures||[]).filter(x=>x.kept);if(s.showMeasures&&ms.length)blocks.push({t:"small",label:"DRDP measures",lines:ms.map(x=>x.code+"  "+(DRDP[x.code]||""))});
+  const ms=slideMeasureCodes(s);if(s.showMeasures&&ms.length)blocks.push({t:"small",label:"DRDP (2025) measures",lines:ms.map(k=>k+"  "+(DRDP[k]||""))});
   const n=notices.get(slidePhotos(s)[0])||src[0];
-  return {centered:true,display:true,type:"report",acc:"story",land:!!s.land,title:displayText(s.title||"Untitled",mode,all),details:n?momentDetails(n):[s.classroom?s.classroom+" classroom":"",longDate(iso(new Date(s.at))),s.by],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
+  const room=(n&&n.classroom)||s.classroom,day=longDate(iso(new Date((n&&n.at)||s.at||Date.now()))),by=(n&&n.by)||s.by||"";
+  const dAt=s.dateAt||"top",foot=[dAt==="foot"?day:"",...(s.footExtra||[])];
+  return {centered:true,display:true,type:"report",acc:s.pal||"story",pos:s.pos||(s.land?"left":"top"),sq:!!s.sq,bg:s.bg||"",fonts:s.fonts||{},tsize:s.tsize||"m",brand:s.brand,footLine:foot,
+    title:displayText(s.title||"Untitled",mode,all),details:[room?room+" classroom":"",dAt==="top"?day:"",s.showBy===false?"":by],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
 }
+// the closing quotes the original Documentation Slides offered
+const SLIDE_QUOTES=[["The environment is the third teacher.", "Loris Malaguzzi"], ["Children have a hundred languages, but school steals ninety-nine.", "Loris Malaguzzi"], ["Stand aside for a while and leave room for learning.", "Loris Malaguzzi"], ["Creativity emerges from multiple experiences, coupled with a sense of freedom to venture beyond the known.", "Loris Malaguzzi"], ["Nothing without joy.", "Loris Malaguzzi"], ["The child has a hundred languages, a hundred hands, a hundred thoughts, a hundred ways of thinking.", "Loris Malaguzzi"], ["What children learn does not follow as an automatic result from what is taught. Rather, it is in large part due to the children's own doing.", "Loris Malaguzzi"], ["Things about children and for children are only learned from children.", "Loris Malaguzzi"], ["Our task is to help children communicate with the world using all their potential, strengths, and languages.", "Loris Malaguzzi"], ["Listening is not easy. It requires a deep awareness and suspension of our judgments.", "Carlina Rinaldi"], ["Documentation is visible listening.", "Carlina Rinaldi"], ["Learning is a process of construction that takes place in relationship with others.", "Carlina Rinaldi"], ["The child is a rich, capable, competent protagonist of their own growth.", "Carlina Rinaldi"], ["Children's questions are the curriculum.", "Lella Gandini"], ["The space speaks of the values of the people who live and work there.", "Lella Gandini"], ["Children need the freedom and time to play. Play is not a luxury; play is a necessity.", "Lella Gandini"], ["The goal of early childhood education should be to activate the child's own natural desire to learn.", "Maria Montessori"], ["The greatest sign of success for a teacher is to be able to say, 'The children are now working as if I did not exist.'", "Maria Montessori"], ["The child is both a hope and a promise for mankind.", "Maria Montessori"], ["Free the child's potential, and you will transform him into the world.", "Maria Montessori"], ["The hand is the instrument of intelligence.", "Maria Montessori"], ["Never help a child with a task at which he feels he can succeed.", "Maria Montessori"], ["The land is where our roots are. The children must be taught to feel and live in harmony with the Earth.", "Maria Montessori"], ["Play gives children a chance to practice what they are learning.", "Fred Rogers"], ["Play is often talked about as if it were a relief from serious learning. But for children play is serious learning.", "Fred Rogers"], ["The first years of life lay the foundation for learning, behavior, and health throughout the lifespan.", "Harvard Center on the Developing Child"], ["Brains are built over time, from the bottom up.", "Harvard Center on the Developing Child"], ["Serve and return interactions shape brain architecture.", "Harvard Center on the Developing Child"], ["What a child can do today with assistance, she will be able to do by herself tomorrow.", "Lev Vygotsky"], ["Through others we become ourselves.", "Lev Vygotsky"], ["Children learn best when they are actively engaged.", "Lev Vygotsky"], ["The principal goal of education is to create people who are capable of doing new things.", "Jean Piaget"], ["Play is the work of childhood.", "Jean Piaget"], ["Intelligence is what you use when you don't know what to do.", "Jean Piaget"], ["Every time we teach a child something, we keep him from inventing it himself.", "Jean Piaget"], ["The only limit to the development of the child is the limit we put on our own expectations.", "Jerome Bruner"], ["Childhood is a period of extraordinary learning and exploration.", "Alison Gopnik"], ["Children are the R&D department of the human species.", "Alison Gopnik"], ["Children require long, uninterrupted periods to play and work.", "Howard Gardner"], ["Education is not preparation for life; education is life itself.", "John Dewey"], ["We do not learn from experience. We learn from reflecting on experience.", "John Dewey"], ["Give the pupils something to do, not something to learn.", "John Dewey"], ["Young children learn best through active, hands-on experiences.", "NAEYC"], ["Relationships are at the heart of all meaningful learning.", "NAEYC"], ["Children are competent learners from birth.", "NAEYC"], ["Becoming is better than being.", "Carol Dweck"], ["Effort is what ignites ability and turns it into accomplishment.", "Carol Dweck"], ["Play is the glue that holds the curriculum together.", "Vivian Gussin Paley"], ["Pretend play is the natural language of young children.", "Vivian Gussin Paley"], ["Allow the child to be competent.", "Magda Gerber"], ["Do less, observe more, enjoy most.", "Magda Gerber"], ["People will forget what you said, but people will never forget how you made them feel.", "Maya Angelou"], ["We delight in the beauty of the butterfly, but rarely admit the changes it has gone through.", "Maya Angelou"], ["The more that you read, the more things you will know.", "Dr. Seuss"], ["A person's a person, no matter how small.", "Dr. Seuss"], ["Children are not things to be molded, but are people to be unfolded.", "Jess Lair"], ["Every child is an artist. The problem is how to remain an artist once we grow up.", "Pablo Picasso"], ["It takes a village to raise a child.", "African Proverb"], ["Children learn what they live.", "Dorothy Law Nolte"], ["The soul is healed by being with children.", "Fyodor Dostoevsky"], ["It is easier to build strong children than to repair broken men.", "Frederick Douglass"], ["Children are our most valuable resource and its best hope for the future.", "John F. Kennedy"], ["While we try to teach our children all about life, our children teach us what life is all about.", "Angela Schwindt"], ["Every child deserves a champion.", "Rita Pierson"], ["Children are like wet cement. Whatever falls on them makes an impression.", "Haim Ginott"], ["The way we talk to our children becomes their inner voice.", "Peggy O'Mara"], ["In every walk with nature, one receives far more than he seeks.", "John Muir"], ["The clearest way into the universe is through a forest wilderness.", "John Muir"], ["Between every two pines is a doorway to a new world.", "John Muir"], ["Study nature, love nature, stay close to nature. It will never fail you.", "Frank Lloyd Wright"], ["Those who contemplate the beauty of the earth find reserves of strength that will endure as long as life lasts.", "Rachel Carson"], ["If a child is to keep alive his inborn sense of wonder, he needs the companionship of at least one adult who can share it.", "Rachel Carson"], ["A child's world is fresh and new and beautiful, full of wonder and excitement.", "Rachel Carson"], ["Children need nature for the healthy development of their senses, and therefore, for learning and creativity.", "Richard Louv"], ["Time in nature is not leisure time; it's an essential investment in our children's health.", "Richard Louv"], ["The future will belong to the nature-smart.", "Richard Louv"], ["Nature is not a place to visit. It is home.", "Gary Snyder"], ["Look deep into nature, and then you will understand everything better.", "Albert Einstein"], ["Adopt the pace of nature: her secret is patience.", "Ralph Waldo Emerson"], ["In nature, nothing is perfect and everything is perfect.", "Alice Walker"], ["The earth has music for those who listen.", "William Shakespeare"], ["Children are born naturalists. They explore the world with all their senses.", "David Sobel"], ["If we want children to flourish, we need to give them time to connect with nature.", "David Sobel"], ["Let nature be your teacher.", "William Wordsworth"], ["Come forth into the light of things, let nature be your teacher.", "William Wordsworth"], ["Nature does not hurry, yet everything is accomplished.", "Lao Tzu (interpretation)"], ["Dirt is not dirt, but a world of creatures that give life to the earth.", "Claire Walker Leslie"], ["The goal of life is to make your heartbeat match the beat of the universe.", "Joseph Campbell"], ["To plant a garden is to believe in tomorrow.", "Audrey Hepburn"], ["The love of gardening is a seed once sown that never dies.", "Gertrude Jekyll"], ["A garden requires patient labor and attention. Plants do not grow merely to satisfy ambitions.", "Liberty Hyde Bailey"], ["We do not inherit the earth from our ancestors; we borrow it from our children.", "Native American Proverb"], ["The earth is what we all have in common.", "Wendell Berry"], ["The care of the Earth is our most ancient and most worthy, and after all our most pleasing responsibility.", "Wendell Berry"], ["Eating is an agricultural act.", "Wendell Berry"], ["When we heal the earth, we heal ourselves.", "David Orr"], ["The garden suggests there might be a place where we can meet nature halfway.", "Michael Pollan"], ["To forget how to dig the earth and to tend the soil is to forget ourselves.", "Mahatma Gandhi"], ["A nation that destroys its soils destroys itself.", "Franklin D. Roosevelt"], ["One of the most important resources that a garden makes available is the gardener's own body.", "Wendell Berry"], ["Gardening adds years to your life and life to your years.", "Proverb"], ["To see things in the seed, that is genius.", "Lao Tzu"], ["From tiny seeds grow mighty trees.", "Proverb"], ["Alone we can do so little; together we can do so much.", "Helen Keller"], ["We rise by lifting others.", "Robert Ingersoll"], ["What we learn with pleasure we never forget.", "Alfred Mercier"], ["Learning is a treasure that will follow its owner everywhere.", "Chinese Proverb"], ["Tell me and I forget. Teach me and I may remember. Involve me and I learn.", "Xunzi (Chinese philosopher)"], ["The function of education is to teach one to think intensively and to think critically.", "Martin Luther King Jr."], ["Education is the most powerful weapon which you can use to change the world.", "Nelson Mandela"], ["No one is born fully formed: it is through self-experience in the world that we become what we are.", "Paulo Freire"], ["Knowledge emerges only through invention and re-invention, through the restless, impatient, continuing, hopeful inquiry.", "Paulo Freire"], ["The important thing is not to stop questioning. Curiosity has its own reason for existing.", "Albert Einstein"], ["I have no special talents. I am only passionately curious.", "Albert Einstein"], ["Imagination is more important than knowledge.", "Albert Einstein"], ["The mind is not a vessel to be filled but a fire to be kindled.", "Plutarch"], ["Curiosity is the wick in the candle of learning.", "William Arthur Ward"], ["Wonder is the beginning of wisdom.", "Socrates"], ["The world is full of magical things patiently waiting for our senses to grow sharper.", "W.B. Yeats"], ["Not all who wander are lost.", "J.R.R. Tolkien"], ["Respect the child. Wait and see what he will become.", "Rudolf Steiner"], ["Children must be taught how to think, not what to think.", "Margaret Mead"], ["If we are to reach real peace in the world, we shall have to begin with the children.", "Mahatma Gandhi"], ["There can be no keener revelation of a society's soul than the way in which it treats its children.", "Nelson Mandela"], ["Each day of our lives we make deposits in the memory banks of our children.", "Charles R. Swindoll"], ["Children see magic because they look for it.", "Christopher Moore"], ["The child must know that he is a miracle.", "Pablo Casals"], ["What is the good of your stars and trees, your sunrise and the wind, if they do not enter into our daily lives?", "E.M. Forster"], ["The best classroom and the richest cupboard is roofed only by the sky.", "Margaret McMillan"], ["Nature holds the key to our aesthetic, intellectual, cognitive, and even spiritual satisfaction.", "E.O. Wilson"], ["We need the tonic of wildness.", "Henry David Thoreau"], ["I go to nature to be soothed and healed, and to have my senses put in order.", "John Burroughs"], ["Keep close to Nature's heart and break clear away, once in a while, and climb a mountain or spend a week in the woods.", "John Muir"], ["The child is made of one hundred. The child has a hundred languages, a hundred hands, a hundred thoughts.", "Loris Malaguzzi"], ["The atelier is a place where children's different languages can be explored and developed.", "Vea Vecchi"], ["If you have a garden and a library, you have everything you need.", "Cicero"], ["The greatest fine art of the future will be the making of a comfortable living from a small piece of land.", "Abraham Lincoln"], ["Children who play in nature become adults who protect it.", "Children & Nature Network"], ["A garden is a friend you can visit any time.", "Proverb"], ["What we learn to do, we learn by doing.", "Aristotle"], ["Children learn as they play. Most importantly, in play children learn how to learn.", "O. Fred Donaldson"], ["Connection is why we're here; it is what gives purpose and meaning to our lives.", "Brené Brown"]];
+let deck=LS.get("tree.deck",null)||null;
+function deckSave(){LS.set("tree.deck",deck)}
 function renderSlides(){
   const ss=[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0));
+  if(deck)deck.ids=(deck.ids||[]).filter(id=>slides.has(id));
+  const card=s=>{const ph=notices.get(slidePhotos(s)[0]);const k=deck?deck.ids.indexOf(s.id):-1;
+    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink);position:relative" ${deck?`data-deckpick="${s.id}" aria-pressed="${k>=0}"`:`data-slide="${s.id}"`}>${deck&&k>=0?`<span class="decknum">${k+1}</span>`:""}${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(s.title||"Untitled")}</b><span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.sq?" · square":(s.pos==="left"||s.pos==="right"||s.land)?" · landscape":""}</span></button>`};
+  const deckBar=deck?`<section class="card" id="deckbar"><div class="secthead"><h3 style="font-size:17px">A deck of slides</h3><span class="cnt">${deck.ids.length} chosen</span></div>
+      <div class="cnt">Tap slides in the order they should go. Tap again to take one out.</div>
+      <label class="radio"><input type="checkbox" data-deckopt="numbers" ${deck.numbers!==false?"checked":""}><span>Number the slides at the foot</span></label>
+      <label class="radio"><input type="checkbox" data-deckopt="drdp" ${deck.drdp?"checked":""}><span>Add each slide's DRDP evidence page after it</span></label>
+      <label class="fld-label">End with a quote<select data-deckquote="1"><option value="">No closing quote</option><option value="r" ${deck.quote==="r"?"selected":""}>A different one each time</option>${SLIDE_QUOTES.map((q,i)=>`<option value="${i}" ${String(deck.quote)===String(i)?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0])}, ${esc(q[1])}</option>`).join("")}</select></label>
+      <div class="actions"><button class="btn small" data-deckout="pdf" ${deck.ids.length?"":"disabled"}>Deck PDF</button><button class="btn small ghost" data-deckout="docx" ${deck.ids.length?"":"disabled"}>Word</button><button class="btn small ghost" data-deckout="jpg" ${deck.ids.length?"":"disabled"}>A JPG of each slide</button><button class="linkbtn" data-deckend="1">Done</button></div></section>`:"";
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Slides</h2><div class="sub">Documentation slides for the classroom walls, made from moments. The photo is large and sharp, and every word comes from the children or the educators.</div></div>
-    <span class="actions"><button class="btn" data-slidenew="1">Make a slide</button></span></div><div class="cnt">Or open a moment and choose Make a slide.</div></div>
-  ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(s.title||"Untitled")}</b><span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.land?" · landscape":""}</span></button>`}).join("")}</div>`:`<div class="empty" style="margin-top:12px">No slides yet.</div>`}`;
+    <span class="actions"><button class="btn" data-slidenew="1">Make a slide</button>${ss.length>1&&!deck?`<button class="btn ghost" data-deckstart="1">Make a deck</button>`:""}</span></div><div class="cnt">Or open a moment and choose Make a slide.</div></div>
+  ${deckBar}
+  ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No slides yet.</div>`}`;
 }
+// the deck as its sheets, in order, numbered, each with its evidence page when asked, and the closing quote
+function deckDocs(){
+  const list=deck.ids.map(id=>slides.get(id)).filter(Boolean);const n=list.length;const docs=[];
+  list.forEach((s,i)=>{docs.push(slideDoc(Object.assign({},s,{footExtra:deck.numbers!==false?[`Slide ${i+1} of ${n}`]:[]})));if(deck.drdp){const pg=drdpSummaryDoc(s);if(pg)docs.push(pg)}});
+  if(deck.quote!==""&&deck.quote!=null&&deck.quote!==undefined){const q=deck.quote==="r"?SLIDE_QUOTES[Math.floor(Math.random()*SLIDE_QUOTES.length)]:SLIDE_QUOTES[+deck.quote];
+    const f=list[0]||{};if(q)docs.push({centered:true,display:true,type:"report",acc:f.pal||"story",sq:!!f.sq,bg:f.bg||"",fonts:f.fonts||{},tsize:"l",bare:true,title:"",details:[],photos:[],blocks:[{t:"quote",words:q[0],by:q[1]}]})}
+  return docs;
+}
+document.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t||view!=="slides")return;
+  if(t.dataset.deckstart){deck={ids:[],numbers:true,drdp:false,quote:""};deckSave();renderSlides();return}
+  if(t.dataset.deckend){deck=null;deckSave();renderSlides();return}
+  if(t.dataset.deckpick){const id=t.dataset.deckpick,i=deck.ids.indexOf(id);i>=0?deck.ids.splice(i,1):deck.ids.push(id);deckSave();renderSlides();return}
+  if(t.dataset.deckout){const docs=deckDocs();if(!docs.length)return;const name=safeFile(`Slides ${iso(new Date())}`);const kind=t.dataset.deckout;
+    if(kind==="jpg"){toast("Drawing the pictures");let k=0;for(const d of docs){if(!d.centered)continue;k++;try{const b=await sheetJpg(d,d.sq?2400:3300);if(b)await saveFile(b,`${name} ${String(k).padStart(2,"0")}.jpg`)}catch(err){}}return}
+    if(docs.some(d=>(d.photos||[]).length)){toast("Preparing the photos");await loadPhotos(docs)}
+    if(kind==="docx")makeDocx(docs,name+".docx");else makePdf(docs,name+".pdf");return}
+});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="slides"||!deck)return;
+  if(t.dataset.deckopt){deck[t.dataset.deckopt]=t.checked;deckSave();return}
+  if(t.dataset.deckquote){deck.quote=t.value;deckSave();return}
+});
 function renderSlide(){
   const s=slides.get(slideOpen);if(!s){$("#main").innerHTML=`<div class="empty">That slide is not here.</div>`;return}
   const mode=s.names||PRINT.names;const pool=[...notices.values()].filter(n=>n.photo&&n.photo.w).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,60);
@@ -1158,21 +1454,23 @@ function renderSlide(){
   const kids=kidsAt().filter(c=>!s.classroom||c.classroom===s.classroom).sort((a,b)=>a.first.localeCompare(b.first));
   if(!PF.buf)loadPrintFonts().then(()=>{if(view==="slide")renderSlide()});
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation slide</span><h2 style="margin-top:4px">${esc(s.title||"A new slide")}</h2></div>
-    <span class="actions">${printBtns("slide",s.id,"PDF",true)}<span id="sdel"><button class="linkbtn" data-slidedel="${s.id}">Remove</button></span></span></div></div>
+    <span class="actions">${printBtns("slide",s.id,"PDF",true)}<button class="linkbtn" data-sfjpg="${s.id}">JPG</button><span id="sdel"><button class="linkbtn" data-slidedel="${s.id}">Remove</button></span></span></div></div>
   <div class="tgrid2" style="margin-top:12px">
     <div style="display:grid;gap:14px;min-width:0">
       <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="In the children's words, or the team's"></label>
         <div class="fld-label">Photos, up to three<span class="cnt" style="font-weight:400">The first chosen is the largest.</span>
           ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoSrc(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}</div>
-        <div class="fld-label">Page<div class="tseg"><button data-sfland="0" aria-pressed="${!s.land}">Portrait</button><button data-sfland="1" aria-pressed="${!!s.land}">Landscape, photos beside the words</button></div></div></section>
+</section>
       <section class="card"><label class="fld-label">What the team understood<textarea data-sf="text" rows="4" placeholder="A few lines in the team's words">${esc(s.text||"")}</textarea></label>
         ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the moments on this slide.</span></div>`:""}
         ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the moments</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
         ${lines.length?`<div class="fld-label">The children's words on the slide<div class="chips">${lines.map((q,i)=>`<button class="chip ${qs.has(q.words.toLowerCase())?"on":""}" data-sfq="${i}" type="button">${q.name?esc(q.name)+", ":""}${esc(q.words.length>60?q.words.slice(0,57)+"...":q.words)}</button>`).join("")}</div></div>`:""}
         <div class="fld-label">Children on this slide, optional<div class="chips">${kids.map(c=>`<button class="chip ${(s.children||[]).includes(c.id)?"on":""}" data-sfkid="${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">The roster for this classroom appears here.</span>`}</div><span class="cnt">A tagged child finds this slide on their page and in their portfolio.</span></div></section>
-      <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP measures</h3>${sample&&src.length?`<button class="btn small ghost" data-sfdrdp="${s.id}" ${slideSug[s.id+"d"]?"disabled":""}>${slideSug[s.id+"d"]?'<span class="spin"></span> Reading':"Suggest measures"}</button>`:""}</div>
-        <div class="cnt">Suggestions for educator review, never a rating. They stay with documentation and never appear on a plan.</div>
-        ${(s.measures||[]).length?s.measures.map((m,i)=>`<label class="radio"><input type="checkbox" data-sfm="${i}" ${m.kept?"checked":""}><span><b>${esc(m.code)}</b> ${esc(DRDP[m.code]||"")}<br><span class="cnt">${esc(m.note)}</span></span></label>`).join("")+`<label class="radio"><input type="checkbox" data-sfshow="1" ${s.showMeasures?"checked":""}><span>Print the kept measures on the slide</span></label>`:`<div class="cnt">No measures yet.</div>`}</section>
+      ${slideDesignHtml(s)}
+      <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025)</h3></div>
+        ${drdpPanelHtml("slides",s)}
+        <label class="radio"><input type="checkbox" data-sfshow="1" ${s.showMeasures?"checked":""}><span>Print the measures along the foot of the slide, codes and names only</span></label>
+        <label class="radio"><input type="checkbox" data-sfdpage="1" ${s.drdpPage?"checked":""}><span>Add a DRDP evidence page after the slide, with each child, level and its evidence</span></label></section>
     </div>
     <div style="display:grid;gap:10px;align-content:start;min-width:0;position:sticky;top:96px">
       <div class="lbl">How it prints</div>
@@ -1180,7 +1478,26 @@ function renderSlide(){
       <div id="slideprev">${cPreview(slideDoc(s))}</div>
     </div></div>`;
 }
+// how a slide looks: its colours, typefaces, text size, where the photos go, the page, and what the heading carries
+function slideDesignHtml(s){
+  const pos=s.pos||(s.land?"left":"top"),seg=(key,cur,opts)=>`<div class="tseg wrapseg" role="group">${opts.map(([v,l])=>`<button data-sfset="${key}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join("")}</div>`;
+  const pal=s.pal||"story",custom=String(pal).startsWith("#");
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Design</h3></div>
+    <div class="fld-label">Colours<div class="palrow">${Object.entries(SLIDE_PALS).map(([k,[l,h]])=>{const A=accOf(k)||ACC.story;return `<button class="palchip" data-sfset="pal" data-v="${k}" aria-pressed="${pal===k}" title="${esc(l)}"><i style="background:rgb(${A.c.join(",")})"></i><i style="background:rgb(${A.t.join(",")})"></i><span>${esc(l)}</span></button>`}).join("")}
+      <label class="palchip" aria-pressed="${custom}" title="Your own colour"><input type="color" data-sfcolor="1" value="${custom?pal:"#6f7f63"}"><span>Your own</span></label></div></div>
+    <div class="fld-label">Background${seg("bg",s.bg||"",[["","White"],["tint","A soft tint of the colour"]])}</div>
+    <div class="kfields"><label>Title type<select data-sffont="title">${Object.entries(FONT_CHOICES).map(([k,l])=>`<option value="${k}" ${((s.fonts||{}).title||"tree")===k?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label>Words type<select data-sffont="body">${Object.entries(FONT_CHOICES).map(([k,l])=>`<option value="${k}" ${((s.fonts||{}).body||"tree")===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="fld-label">Text size${seg("tsize",s.tsize||"m",[["s","Smaller"],["m","Standard"],["l","Larger"]])}</div>
+    <div class="fld-label">Photos${seg("pos",pos,[["top","Above the words"],["below","Below the words"],["left","On the left"],["right","On the right"],["full","Full page, words over it"]])}<span class="cnt" style="font-weight:400">On the left or right, a letter page turns to landscape.</span></div>
+    <div class="fld-label">Page${seg("sq",s.sq?"1":"",[["","Letter"],["1","Square"]])}</div>
+    <div class="fld-label">Date${seg("dateAt",s.dateAt||"top",[["top","Under the title"],["foot","At the foot"],["none","Leave it off"]])}</div>
+    <label class="radio"><input type="checkbox" data-sfchk="brand" ${(s.brand!==undefined?s.brand:PRINT.schoolDocs)?"checked":""}><span>The school's name above the title</span></label>
+    <label class="radio"><input type="checkbox" data-sfchk="showBy" ${s.showBy===false?"":"checked"}><span>The educator's name under the title</span></label>
+  </section>`;
+}
 function refreshSlidePreview(s){const el=$("#slideprev");if(el)el.innerHTML=cPreview(slideDoc(s))}
+async function slideJpgSave(s){toast("Drawing the picture");try{const b=await sheetJpg(slideDoc(s),s.sq?2400:3300);if(b)saveFile(b,safeFile(`Slide ${s.title||"untitled"}`)+".jpg");else toast("The picture could not be drawn.")}catch(e){toast("The picture could not be drawn. Try the PDF.")}}
 async function slideDraft(s){
   const src=slideSources(s);if(!src.length)return;slideSug[s.id]="working";renderSlide();
   const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the few lines on a documentation slide for a classroom wall. Families, colleagues and the children read it.
@@ -1194,24 +1511,17 @@ ${src.map(n=>`Kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}
   catch(e){delete slideSug[s.id];toast(assistError(e?.code||"unknown","The slide is unchanged."))}
   if(view==="slide")renderSlide();
 }
-async function slideDrdp(s){
-  const src=slideSources(s);if(!src.length)return;slideSug[s.id+"d"]=true;renderSlide();
-  try{const ms=await suggestMeasures(src.map(n=>n.noticed+" "+(n.wonder||"")).join("\n"));const kept=(s.measures||[]).filter(m=>m.kept);s.measures=[...kept,...ms.filter(m=>!kept.some(k=>k.code===m.code))];saveSlide(s);if(!ms.length)toast("No measures were clear from these moments.")}
-  catch(e){toast(assistError(e?.code||"unknown","Nothing changed."))}
-  delete slideSug[s.id+"d"];if(view==="slide")renderSlide();
-}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.slidenew){newSlide(null);return}
   if(t.dataset.slidefrom){const n=notices.get(t.dataset.slidefrom);if(n)newSlide(n);return}
   if(t.dataset.slide){slideOpen=t.dataset.slide;LS.set("tree.slide",slideOpen);goView("slide");return}
   if(t.dataset.nwdrdp){nwDrdp[t.dataset.nwdrdp]=!nwDrdp[t.dataset.nwdrdp];renderMain();return}
-  if(t.dataset.nwdrdpgo){const n=notices.get(t.dataset.nwdrdpgo);if(!n)return;nwDrdpBusy[n.id]=true;renderMain();
-    suggestMeasures(n.noticed+" "+(n.wonder||"")).then(ms=>{const kept=(n.measures||[]).filter(m=>m.kept);n.measures=[...kept,...ms.filter(m=>!kept.some(k=>k.code===m.code))];saveNotice(n);if(!ms.length)toast("No measures were clear from this moment.")}).catch(err=>toast(assistError(err?.code||"unknown","Nothing changed."))).finally(()=>{delete nwDrdpBusy[n.id];renderMain()});return}
   if(view!=="slide")return;
   const s=slides.get(slideOpen);if(!s)return;
   if(t.dataset.sfph){const id=t.dataset.sfph;const cur=slidePhotos(s);if(cur.includes(id))s.photos=cur.filter(x=>x!==id);else if(cur.length>=3){toast("A slide holds up to three photos. Take one off first.");return}else{s.photos=[...cur,id];const n=notices.get(id);if(n&&!s.momentIds.includes(id))s.momentIds.push(id);if(n&&!s.classroom)s.classroom=n.classroom||"";if(n&&!has(s.title))s.title=momentHeading(n)}
     saveSlide(s);renderSlide();return}
-  if(t.dataset.sfland!=null){s.land=t.dataset.sfland==="1";saveSlide(s);renderSlide();return}
+  if(t.dataset.sfset){const k=t.dataset.sfset,v=t.dataset.v;if(k==="sq")s.sq=v==="1";else{s[k]=v;if(k==="pos")delete s.land}saveSlide(s);renderSlide();return}
+  if(t.dataset.sfjpg){slideJpgSave(s);return}
   if(t.dataset.sfnames){s.names=t.dataset.sfnames;saveSlide(s);renderSlide();return}
   if(t.dataset.sfq!=null){const src=slideSources(s);const lines=[];const seen=new Set();for(const n of src)for(const l of childLines(n.noticed,true)){const k=l.words.toLowerCase();if(!seen.has(k)){seen.add(k);lines.push(l)}}
     const q=lines[+t.dataset.sfq];if(!q)return;const i=(s.quotes||[]).findIndex(o=>o.words.toLowerCase()===q.words.toLowerCase());if(i>=0)s.quotes.splice(i,1);else (s.quotes=s.quotes||[]).push({name:q.name,words:q.words});saveSlide(s);renderSlide();return}
@@ -1219,7 +1529,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.sfdraft){slideDraft(s);return}
   if(t.dataset.sfuse){const v=($("#sfsg")?.value||"").trim();if(v){s.text=v;saveSlide(s)}delete slideSug[s.id];renderSlide();return}
   if(t.dataset.sfleave){delete slideSug[s.id];renderSlide();return}
-  if(t.dataset.sfdrdp){slideDrdp(s);return}
   if(t.dataset.slidedel){$("#sdel").innerHTML=`<span class="confirm">Remove this slide for everyone? <button class="btn warn small" data-slidedelyes="${s.id}">Remove</button><button class="linkbtn" data-slidekeep="1">Keep it</button></span>`;return}
   if(t.dataset.slidekeep){renderSlide();return}
   if(t.dataset.slidedelyes){slides.delete(s.id);if(db)db.doc("slides/"+s.id).delete().catch(()=>toast("Could not remove it. Check your connection."));goView("slides");toast("Removed.");return}
@@ -1227,10 +1536,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
 document.addEventListener("input",e=>{const t=e.target;if(view!=="slide"||!t.dataset.sf)return;const s=slides.get(slideOpen);if(!s)return;s[t.dataset.sf]=t.value;saveSlideSoon(s);
   clearTimeout(refreshSlidePreview._t);refreshSlidePreview._t=setTimeout(()=>refreshSlidePreview(s),400)});
 document.addEventListener("change",e=>{const t=e.target;
-  if(t.dataset.nwmkeep){const [id,i]=t.dataset.nwmkeep.split("|");const n=notices.get(id);if(n&&n.measures&&n.measures[+i]){n.measures[+i].kept=t.checked;saveNotice(n)}return}
   if(view!=="slide")return;const s=slides.get(slideOpen);if(!s)return;
-  if(t.dataset.sfm!=null){const m=s.measures[+t.dataset.sfm];if(m){m.kept=t.checked;saveSlide(s);refreshSlidePreview(s)}return}
   if(t.dataset.sfshow){s.showMeasures=t.checked;saveSlide(s);refreshSlidePreview(s);return}
+  if(t.dataset.sfdpage){s.drdpPage=t.checked;saveSlide(s);return}
+  if(t.dataset.sffont){s.fonts=Object.assign({},s.fonts,{[t.dataset.sffont]:t.value});saveSlide(s);refreshSlidePreview(s);return}
+  if(t.dataset.sfchk){s[t.dataset.sfchk]=t.checked;saveSlide(s);refreshSlidePreview(s);return}
+  if(t.dataset.sfcolor){s.pal=t.value;saveSlide(s);renderSlide();return}
 });
 
 /* ---------- A child's portfolio, for the family. Every moment that tags or names the child, in order. ---------- */
@@ -1347,6 +1658,10 @@ function todayWaiting(){
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write"});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
+  // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
+  {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
+    if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
+      out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}"`,b:"Review"})}}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
   const mineC=upcoming.filter(c=>{const k=children.get(c.childId);const t=(c.teacher||"").toLowerCase();return m&&t===m.toLowerCase()||(!dir&&room&&k.classroom===room)});
@@ -1697,6 +2012,13 @@ function clean(s){return String(s??"").replace(/—/g,", ").replace(/[‘’]/g,
 const CYCLE=["Informal observation","Assumptions, outcomes, goals, biases","Provocation","Formal observation","Documentation","Reflection"];
 const CYCLE_TEXT=["OBSERVE","PROVOKE","DOCUMENT","REFLECT","EVOLVE"].join("  \u2022  ");
 let pageInfo={};
+// colour families for slides, the TREE colours and the ones the original Documentation Slides offered
+const SLIDE_PALS={story:["TREE",null],"warm-neutral":["Warm neutral","#B28B61"],"sage-green":["Sage","#8A7A70"],"ocean-blue":["Ocean blue","#5F889B"],forest:["Forest","#6F7F63"],lavender:["Lavender","#857598"],coral:["Coral","#A9746A"],earthy:["Earthy","#8F7863"],minimal:["Minimal","#6E6E6E"],sunset:["Sunset","#B76E58"]};
+const hexRgb=h=>{const m=String(h||"").match(/^#?([0-9a-f]{6})$/i);if(!m)return null;const n=parseInt(m[1],16);return [n>>16&255,n>>8&255,n&255]};
+const mixW=(c,f)=>c.map(v=>Math.round(v+(255-v)*f));
+// the accent and tint of a sheet. A colour family or a custom colour gives its own, darkened enough to read on white
+function accOf(k){if(ACC[k])return ACC[k];const raw=k&&String(k).startsWith("#")?k:(SLIDE_PALS[k]||[])[1];const c=hexRgb(raw);if(!c)return undefined;
+  let cc=c;const lum=x=>(.2126*x[0]+.7152*x[1]+.0722*x[2])/255;while(lum(cc)>.45)cc=cc.map(v=>Math.round(v*.9));return {c:cc,t:mixW(c,.84)}}
 const ACC={classroom:{c:[47,90,67],t:[234,242,236]},individual:{c:[43,98,124],t:[229,239,244]},smallgroup:{c:[168,104,8],t:[251,240,220]},story:{c:[122,72,52],t:[246,236,230]}};
 const PG0={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB:10};
 const PG=Object.assign({},PG0);
@@ -1705,10 +2027,11 @@ function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=P
 async function makePdf(list,filename){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
-  const isLand=p=>!!(p.centered&&p.land&&(p.photos||[]).length);
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:list[0]&&isLand(list[0])?"landscape":"portrait"});if(disp)pdfFonts(doc);
+  const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
+  const fmt=p=>p&&p.centered&&p.sq?[PW,PW]:"letter";
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:fmt(list[0]),orientation:list[0]&&isLand(list[0])?"landscape":"portrait"});if(disp)pdfFonts(doc);
   const pageAcc={};pageInfo={};centerOver=[];
-  list.forEach((p,i)=>{if(i>0)doc.addPage("letter",isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc)});
+  list.forEach((p,i)=>{if(i>0)doc.addPage(fmt(p),isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc)});
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
     if(pi&&pi.display){displayFoot(doc,A,pi);continue}
@@ -1758,7 +2081,7 @@ function drawPlan(doc,p,pageAcc){
   layoutPlan(doc,p,pageAcc);planScale(1);
 }
 function layoutPlan(doc,p,pageAcc,countOnly){
-  const A=ACC[p.acc||p.type]||ACC.classroom;const blank=!!p.blank;const filled=!blank&&!p.blocks&&p.type!=="story";
+  const A=accOf(p.acc||p.type)||ACC.classroom;const blank=!!p.blank;const filled=!blank&&!p.blocks&&p.type!=="story";
   MINL=(p.type==="story"||p.blocks)?1:filled?0:2;RULED=!p.blocks&&!filled;
   const pages=[];let page={items:[],top:PG.top1};const avail=()=>PG.bottom-page.top-page.items.reduce((s,it)=>s+it.h+PG.gap,0);
   const flush=()=>{pages.push(page);page={items:[],top:PG.topN}};
@@ -1912,7 +2235,7 @@ async function makeDocx(list,filename){
   const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"};
   const sections=[];
   for(const p of list){
-    const A=ACC[p.acc||p.type]||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
+    const A=accOf(p.acc||p.type)||ACC.classroom,ac=hex(A.c),tn=hex(A.t),blank=!!p.blank;const F=FORMS[p.type]||{name:""};
     const ch=[];
     if(p.centered){await centeredDocx(ch,p,D,A)}else if(p.display){await displayDocx(ch,p,D,A)}else{
     if(PRINT.schoolRecords)ch.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:15,color:ac,characterSpacing:30,font:"Helvetica"})]}));
@@ -1952,8 +2275,8 @@ async function makeDocx(list,filename){
     const dfont=PF.buf?PF.word.fr:"Arial";
     const dFoot=[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:"D0D9D3",space:8}},children:[new TextRun({text:"Observe    Provoke    Document    Reflect    Evolve",size:16,color:"606E65",font:dfont})]})];
     if(multi)dFoot.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:40},children:[new TextRun({children:list.length===1?["Page ",PageNumber.CURRENT," of ",PageNumber.TOTAL_PAGES]:["Page ",PageNumber.CURRENT],size:16,color:"606E65",font:dfont})]}));
-    const landP=!!(p.centered&&p.land&&(p.photos||[]).length);
-    sections.push({properties:{page:{size:landP?{width:12240,height:15840,orientation:D.PageOrientation.LANDSCAPE}:{width:12240,height:15840},margin:p.display?{top:960,bottom:840,left:1080,right:1080}:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:p.display?dFoot:footKids})},children:ch});
+    const landP=!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
+    sections.push({properties:{page:{size:p.centered&&p.sq?{width:12240,height:12240}:landP?{width:12240,height:15840,orientation:D.PageOrientation.LANDSCAPE}:{width:12240,height:15840},margin:p.display?{top:960,bottom:840,left:1080,right:1080}:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:p.display?dFoot:footKids})},children:ch});
   }
   const wf=disp?wordFonts():[];
   const docx=new Document(Object.assign({creator:"TREE, Fulton Community School & Farm",title:filename.replace(/\.docx$/,""),sections},disp?{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}}:{},wf.length?{fonts:wf}:{}));
@@ -3333,7 +3656,12 @@ function loadPrintFonts(){
 function pdfFonts(doc){if(!PF.b64||doc.__pf)return;for(const [k,f] of Object.entries(PF.files)){doc.addFileToVFS(f,PF.b64[k]);doc.addFont(f,"pf"+k,"normal")}doc.__pf=true}
 // if the typefaces could not be fetched, the page still prints in the built-in face
 const PF_FALL={bs:["helvetica","bold"],bm:["helvetica","normal"],fr:["helvetica","normal"],fs:["helvetica","bold"]};
-function pfont(doc,k,size){if(doc.__pf)doc.setFont("pf"+k,"normal");else doc.setFont(...PF_FALL[k]);if(size)doc.setFontSize(size)}
+let CFONT={};
+const FONT_CHOICES={tree:"TREE",serif:"Classic serif",sans:"Plain sans"};
+// the keys a centred sheet uses, mapped to a standard typeface. T is Times, H is Helvetica, s is bold and r regular
+function fontMapOf(md){const f=md&&md.fonts||{},m={};if(f.title==="serif")m.bs="Ts";if(f.title==="sans")m.bs="Hs";
+  if(f.body==="serif")Object.assign(m,{fr:"Tr",fs:"Ts",bm:"Tr"});if(f.body==="sans")Object.assign(m,{fr:"Hr",fs:"Hs",bm:"Hr"});return m}
+function pfont(doc,k,size){k=CFONT[k]||k;if(k[0]==="T"||k[0]==="H"){doc.setFont(k[0]==="T"?"times":"helvetica",k[1]==="s"?"bold":"normal")}else if(doc.__pf)doc.setFont("pf"+k,"normal");else doc.setFont(...PF_FALL[k]);if(size)doc.setFontSize(size)}
 
 /* --- drawing a display page as PDF ---
    The page is a narrow column of side notes and a wide column of content. The statement the page is about sits in a tinted
@@ -3514,7 +3842,7 @@ function displayFit(doc,p,A){
   return {s,F};
 }
 function drawDisplay(doc,p,pageAcc){
-  const A=ACC[p.acc||p.type]||ACC.classroom;const {F}=displayFit(doc,p,A);
+  const A=accOf(p.acc||p.type)||ACC.classroom;const {F}=displayFit(doc,p,A);
   F.pages.forEach((pg,pi)=>{
     if(pi>0)doc.addPage();
     pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:F.pages.length,display:true};
@@ -3536,9 +3864,9 @@ const CM=54,CSCALES=[1.6,1.5,1.4,1.3,1.25,1.2,1.15,1.1,1.05,1,.95,.9,.85,.8];
 let centerOver=[];
 const ct=(doc,t)=>doc.__pf?String(t??"").replace(/—/g,", ").replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF–‘’“”…•]/g,""):clean(t);
 function cwrap(doc,k,s,text,w){pfont(doc,k,s);return ct(doc,text).split("\n").flatMap(p=>p.trim()?doc.splitTextToSize(p.trim(),w):[])}
-function cHead(doc,md,A,PWd,ops){
-  const x=PWd/2,W=PWd-2*CM;let y=44;
-  if(PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School & Farm"});y+=24}else y+=4;
+function cHead(doc,md,A,PWd,ops,y0){
+  const x=PWd/2,W=PWd-2*CM;let y=y0||44;
+  if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School & Farm"});y+=24}else y+=4;
   let ts=36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
   const d=(md.details||[]).filter(has).join("   ·   ");if(d){const dl=cwrap(doc,"fr",11,d,W)[0]||"";ops.push({t:"text",x,y:y+11,k:"fr",s:11,c:D_MUTED,txt:dl});y+=25}
@@ -3580,31 +3908,54 @@ function cPhotos(ps,x,y,W,H){
   return cands.reduce((m,c)=>area(c)>area(m)?c:m);
 }
 function cLayout(doc,md,A){
-  const ps=(md.photos||[]).filter(p=>p.w&&p.h).slice(0,3),land=!!(md.land&&ps.length),PWd=land?PH:PW,PHd=land?PW:PH,W=PWd-2*CM,ops=[];
-  const top=cHead(doc,md,A,PWd,ops),H=PHd-62-top,gap=18;let s=1,over=false;const meas=(k,w)=>cWords(doc,md,A,k,0,w,0,null);
-  // landscape, the photos beside the words
-  if(land){const pw=W*.56,ww=W-pw-30;const lay=cPhotos(ps,CM,top,pw,H);
-    s=CSCALES.filter(k=>k<=1.4).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}
-    const wh=meas(s,ww),py=top+(H-lay.h)/2;lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+py,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
-    cWords(doc,md,A,s,CM+pw+30+ww/2,ww,top+Math.max(0,(H-wh)/2),ops);
-    return {ops,s,over,PW:PWd,PH:PHd,land:true};
+  const ps=(md.photos||[]).filter(p=>p.w&&p.h).slice(0,3),pos=md.pos||(md.land?"left":"top"),sq=!!md.sq;
+  const beside=(pos==="left"||pos==="right")&&ps.length>0,land=beside&&!sq;
+  const PWd=sq?PW:land?PH:PW,PHd=sq?PW:land?PW:PH,W=PWd-2*CM,ops=[];
+  if(md.bg==="tint")ops.push({t:"rect",x:0,y:0,w:PWd,h:PHd,r:0,fill:mixW(A.t,.45)});
+  const foot=(md.footLine||[]).filter(has).join("    ·    ");
+  const cap={s:[1.05,1.1,1.2],l:[1.5,1.6,1.6]}[md.tsize]||[1.25,1.4,1.6];
+  // a full page photo, with the title and the words on a panel across the foot
+  if(pos==="full"&&ps.length){const p0=ps[0];ops.push({t:"img",x:0,y:0,w:PWd,h:PHd,key:p0.key,src:p0.src,cover:true,iw:p0.w,ih:p0.h});
+    ops.push({t:"rect",x:0,y:PHd-56,w:PWd,h:56,r:0,fill:md.bg==="tint"?mixW(A.t,.45):[255,255,255]});
+    const ww=W*.86;let s=CSCALES.filter(k=>k<=cap[0]).find(k=>cWords(doc,md,A,k,0,ww,0,null)<=PHd*.3);if(!s)s=.8;
+    const wh=cWords(doc,md,A,s,0,ww,0,null);const tmp=[];const hh=cHead(doc,md,A,PWd,tmp,0);const ph=hh+wh+40,py=PHd-ph-(foot?70:54);
+    ops.push({t:"rect",x:CM-18,y:py-14,w:W+36,h:ph+10,r:14,fill:md.bg==="tint"?mixW(A.t,.45):[255,255,255]});
+    tmp.forEach(o=>{const c=Object.assign({},o);if(c.y!==undefined)c.y+=py;if(c.y1!==undefined){c.y1+=py;c.y2+=py;c.x1=CM;c.x2=PWd-CM}ops.push(c)});
+    cWords(doc,md,A,s,PWd/2,ww,py+hh,ops);
+    if(foot)ops.push({t:"text",x:PWd/2,y:PHd-50,k:"fr",s:8.5,c:D_MUTED,txt:foot});
+    return {ops,s,over:false,PW:PWd,PH:PHd,land:false,sq,full:true};
   }
-  if(ps.length){const ww=W*.88;let minP=H*2/3;
-    s=CSCALES.filter(k=>k<=1.25).find(k=>meas(k,ww)<=H-minP-gap);
+  const top=md.bare?90:cHead(doc,md,A,PWd,ops),H=PHd-62-top-(foot?14:0),gap=18;let s=1,over=false;const meas=(k,w)=>cWords(doc,md,A,k,0,w,0,null);
+  if(foot)ops.push({t:"text",x:PWd/2,y:PHd-50,k:"fr",s:8.5,c:D_MUTED,txt:foot});
+  // the photos beside the words, on the left or the right
+  if(beside){const pw=W*(sq?.5:.56),ww=W-pw-30;const lay=cPhotos(ps,pos==="right"?CM+ww+30:CM,top,pw,H);
+    s=CSCALES.filter(k=>k<=cap[1]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}
+    const wh=meas(s,ww),py=top+(H-lay.h)/2;lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+py,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
+    cWords(doc,md,A,s,(pos==="right"?CM:CM+pw+30)+ww/2,ww,top+Math.max(0,(H-wh)/2),ops);
+    return {ops,s,over,PW:PWd,PH:PHd,land,sq,pos};
+  }
+  if(ps.length){const ww=W*.88;let minP=H*(sq?.55:2/3);
+    s=CSCALES.filter(k=>k<=cap[0]).find(k=>meas(k,ww)<=H-minP-gap);
     // when the words still do not fit, the photo gives a little room before anything is called too long
-    if(!s&&!md.flow){minP=H*.5;s=CSCALES.filter(k=>k<=1.25).find(k=>meas(k,ww)<=H-minP-gap)}
+    if(!s&&!md.flow){minP=H*.5;s=CSCALES.filter(k=>k<=cap[0]).find(k=>meas(k,ww)<=H-minP-gap)}
     if(!s){s=.8;over=true}
     let wh=meas(s,ww);const lay=cPhotos(ps,CM,top,W,Math.max(minP,H-(wh?wh+gap:0)));
     // a wide photo leaves room below it, so the words grow into it
-    if(!over){const s2=CSCALES.filter(k=>k<=1.4&&k>s).find(k=>meas(k,ww)<=H-lay.h-gap);if(s2){s=s2;wh=meas(s,ww)}}
+    if(!over){const s2=CSCALES.filter(k=>k<=cap[1]&&k>s).find(k=>meas(k,ww)<=H-lay.h-gap);if(s2){s=s2;wh=meas(s,ww)}}
     const total=lay.h+(wh?gap+wh:0),y0=top+Math.max(0,(H-total)*.35);
-    lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+y0,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
-    cWords(doc,md,A,s,PWd/2,ww,y0+lay.h+gap,ops);
-  }else{const ww=W*.8;s=CSCALES.find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*.4),ops)}
-  return {ops,s,over,PW:PWd,PH:PHd,land:false};
+    // the words above the photos, or below them as usual
+    const pyy=pos==="below"?y0+(wh?wh+gap:0):y0,wy=pos==="below"?y0:y0+lay.h+gap;
+    lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+pyy,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
+    cWords(doc,md,A,s,PWd/2,ww,wy,ops);
+  }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:.4)),ops)}
+  return {ops,s,over,PW:PWd,PH:PHd,land:false,sq,pos};
 }
 // a moment sheet keeps everything that was written, so words that do not fit beside the photo go on to a second sheet
 function cFlow(doc,md,A){
+  const fm=fontMapOf(md);if(!Object.keys(fm).length)return cFlow0(doc,md,A);
+  CFONT=fm;try{const F=cFlow0(doc,md,A);F.pages.forEach(L=>L.ops.forEach(o=>{if(o.k&&fm[o.k])o.k=fm[o.k]}));return F}finally{CFONT={}}
+}
+function cFlow0(doc,md,A){
   const L=cLayout(doc,md,A);if(!md.flow||!L.over||!(md.photos||[]).length)return {sheets:[md],pages:[L],over:L.over};
   const B=md.blocks||[];let k=B.length-1;
   for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=.9)break}
@@ -3619,39 +3970,67 @@ function cFlow(doc,md,A){
 function cReady(md){return Object.assign({},md,{photos:(md.photos||[]).map(p=>{const im=photoCache.get(p.key);return im?Object.assign({},p,{w:im.w,h:im.h}):null}).filter(Boolean)})}
 function cDraw(doc,ops){for(const o of ops){
   if(o.t==="text"){pfont(doc,o.k,o.s);doc.setTextColor(...o.c);doc.text(o.txt,o.x,o.y,{align:"center"})}
-  else if(o.t==="img"){const im=photoCache.get(o.key);if(im)doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}
-  else if(o.t==="rect"){doc.setFillColor(...o.fill);doc.roundedRect(o.x,o.y,o.w,o.h,o.r,o.r,"F")}
+  else if(o.t==="img"){const im=photoCache.get(o.key);if(!im)continue;
+    if(o.cover){const r=Math.max(o.w/im.w,o.h/im.h),w=im.w*r,h=im.h*r;try{doc.saveGraphicsState();doc.rect(o.x,o.y,o.w,o.h,null);doc.clip();doc.discardPath();doc.addImage(im.url,"JPEG",o.x+(o.w-w)/2,o.y+(o.h-h)/2,w,h,undefined,"FAST");doc.restoreGraphicsState()}catch(e){doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}}
+    else doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}
+  else if(o.t==="rect"){doc.setFillColor(...o.fill);if(o.r)doc.roundedRect(o.x,o.y,o.w,o.h,o.r,o.r,"F");else doc.rect(o.x,o.y,o.w,o.h,"F")}
   else if(o.t==="line"){doc.setDrawColor(...o.c);doc.setLineWidth(o.w);doc.line(o.x1,o.y1,o.x2,o.y2)}
   else if(o.t==="dot"){doc.setFillColor(...o.c);doc.circle(o.x,o.y,o.r,"F")}}}
 function drawCentered(doc,p,pageAcc){
-  const A=ACC[p.acc]||ACC.story;const F=cFlow(doc,cReady(p),A);
+  const A=accOf(p.acc)||ACC.story;const F=cFlow(doc,cReady(p),A);
   if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
-  F.pages.forEach((L,i)=>{if(i>0)doc.addPage("letter",L.land?"landscape":"portrait");const n=doc.getNumberOfPages();pageAcc[n]=A;pageInfo[n]={i:i+1,n:F.pages.length,display:true};cDraw(doc,L.ops)});
+  F.pages.forEach((L,i)=>{if(i>0)doc.addPage(L.sq?[PW,PW]:"letter",L.land?"landscape":"portrait");const n=doc.getNumberOfPages();pageAcc[n]=A;pageInfo[n]={i:i+1,n:F.pages.length,display:true};cDraw(doc,L.ops)});
 }
 // how a sheet prints, drawn on the page before anything is printed
 function cPreview(md){
   if(!window.jspdf)return `<div class="empty">The preview is loading.</div>`;
-  try{const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=ACC[md.acc]||ACC.story;const F=cFlow(doc,md,A);
-    const rgb=c=>`rgb(${c.join(",")})`,fam=k=>PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
-    const svg=L=>{let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre" role="img" aria-label="How the sheet prints"><rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`;
-      for(const o of L.ops){
+  try{const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=accOf(md.acc)||ACC.story;const F=cFlow(doc,md,A);
+    const rgb=c=>`rgb(${c.join(",")})`,fam=k=>k[0]==="T"?"'Times New Roman', Times, serif":k[0]==="H"?"Helvetica, Arial, sans-serif":PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>(k[0]==="T"||k[0]==="H")?(k[1]==="s"?"bold":"normal"):PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
+    const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover);
+      let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre${cover.length?";position:relative":""}" role="img" aria-label="How the sheet prints">${cover.length?"":`<rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`}`;
+      for(const o of L.ops){if(o.cover)continue;
         if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle">${esc(o.txt)}</text>`;
         else if(o.t==="img")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" fill="#eef1ec"/>`;
-        else if(o.t==="rect")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`;
+        else if(o.t==="rect")h+=(o.after?"":`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`);
         else if(o.t==="line")h+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${rgb(o.c)}" stroke-width="${o.w}"/>`;
         else if(o.t==="dot")h+=`<circle cx="${o.x}" cy="${o.y}" r="${o.r}" fill="${rgb(o.c)}"/>`}
       h+=`<line x1="${CM}" y1="${L.PH-42}" x2="${L.PW-CM}" y2="${L.PH-42}" stroke="${rgb(D_HAIR)}" stroke-width=".7"/><text x="${L.PW/2}" y="${L.PH-28}" font-family="${fam("fr")}" font-size="8" fill="${rgb(D_MUTED)}" text-anchor="middle">Observe    Provoke    Document    Reflect    Evolve</text>`;
       // photos sit over the drawing as ordinary pictures, which every browser shows, including Safari on an iPad or iPhone
+      const pic=o=>`<img src="${esc(o.src)}" alt="" style="position:absolute;left:${(o.x/L.PW*100).toFixed(3)}%;top:${(o.y/L.PH*100).toFixed(3)}%;width:${(o.w/L.PW*100).toFixed(3)}%;height:${(o.h/L.PH*100).toFixed(3)}%;object-fit:cover;display:block">`;
+      // a full page photo lies under the drawing, so the panel of words shows over it
+      if(cover.length)return cover.map(pic).join("")+h.replace("<svg ","<svg ")+"</svg>";
       return h+"</svg>"+L.ops.filter(o=>o.t==="img").map(o=>`<img src="${esc(o.src)}" alt="" style="position:absolute;left:${(o.x/L.PW*100).toFixed(3)}%;top:${(o.y/L.PH*100).toFixed(3)}%;width:${(o.w/L.PW*100).toFixed(3)}%;height:${(o.h/L.PH*100).toFixed(3)}%;object-fit:cover;display:block">`).join("")};
     return `${F.over&&!md.flow?`<div class="hint warnline" role="status">This sheet has more words than fit. Choose fewer of the children's words or shorten the team's lines, so it prints cleanly on one page.</div>`:""}<div class="csheets">${F.pages.map(L=>`<div class="csheet">${svg(L)}</div>`).join("")}</div>`}
   catch(e){return `<div class="empty">The preview could not be drawn.</div>`}
+}
+// a sheet as a JPG picture, drawn from the same layout as the PDF, at print quality
+async function sheetJpg(md,longSide){
+  await loadPrintFonts();await loadPhotos([md]);
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=accOf(md.acc)||ACC.story;const L=cFlow(doc,cReady(md),A).pages[0];
+  const k=(longSide||3300)/Math.max(L.PW,L.PH),cv=document.createElement("canvas");cv.width=Math.round(L.PW*k);cv.height=Math.round(L.PH*k);const g=cv.getContext("2d");
+  g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);
+  const rgb=c=>`rgb(${c.join(",")})`;
+  const face=key=>key[0]==="T"?`${key[1]==="s"?"bold ":""}%spx 'Times New Roman', Times, serif`:key[0]==="H"?`${key[1]==="s"?"bold ":""}%spx Helvetica, Arial, sans-serif`:PF.face?`%spx PF${key}`:`${key==="bs"||key==="fs"?"bold ":""}%spx Helvetica, Arial, sans-serif`;
+  const pics={};for(const o of L.ops)if(o.t==="img"&&!pics[o.key]){const im=photoCache.get(o.key);if(im)pics[o.key]=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=im.url})}
+  const ops=[...L.ops.filter(o=>o.cover),...L.ops.filter(o=>!o.cover)];
+  for(const o of ops){
+    if(o.t==="text"){g.font=face(o.k).replace("%s",(o.s*k).toFixed(1));g.fillStyle=rgb(o.c);g.textAlign="center";g.fillText(o.txt,o.x*k,o.y*k)}
+    else if(o.t==="img"){const im=pics[o.key];if(!im)continue;if(o.cover){const r=Math.max(o.w/im.width,o.h/im.height),w=im.width*r,h=im.height*r;g.save();g.beginPath();g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.clip();g.drawImage(im,(o.x+(o.w-w)/2)*k,(o.y+(o.h-h)/2)*k,w*k,h*k);g.restore()}else g.drawImage(im,o.x*k,o.y*k,o.w*k,o.h*k)}
+    else if(o.t==="rect"){g.fillStyle=rgb(o.fill);g.beginPath();if(g.roundRect)g.roundRect(o.x*k,o.y*k,o.w*k,o.h*k,(o.r||0)*k);else g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.fill()}
+    else if(o.t==="line"){g.strokeStyle=rgb(o.c);g.lineWidth=o.w*k;g.beginPath();g.moveTo(o.x1*k,o.y1*k);g.lineTo(o.x2*k,o.y2*k);g.stroke()}
+    else if(o.t==="dot"){g.fillStyle=rgb(o.c);g.beginPath();g.arc(o.x*k,o.y*k,o.r*k,0,Math.PI*2);g.fill()}}
+  // the same quiet footer as the printed sheet
+  g.strokeStyle=rgb(D_HAIR);g.lineWidth=.7*k;g.beginPath();g.moveTo(CM*k,(L.PH-42)*k);g.lineTo((L.PW-CM)*k,(L.PH-42)*k);g.stroke();
+  g.font=face("fr").replace("%s",(8*k).toFixed(1));g.fillStyle=rgb(D_MUTED);g.textAlign="center";g.fillText("Observe    Provoke    Document    Reflect    Evolve",L.PW/2*k,(L.PH-28)*k);
+  return await new Promise(r=>cv.toBlob(r,"image/jpeg",.92));
 }
 // the same sheet as a Word page: the words centred, the photos in a borderless table so two or three keep their arrangement
 async function centeredDocx(ch,p,D,A){
   const {Paragraph,TextRun,ImageRun,AlignmentType,BorderStyle,ShadingType,Table,TableRow,TableCell,WidthType,VerticalAlign,TableLayoutType,PageBreak}=D;
   const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);
   const F=cFlow(doc,cReady(p),A);if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
-  const word=k=>PF.buf?PF.word[k]:"Arial",heavy=k=>!PF.buf&&(k==="bs"||k==="fs");
+  const FM=fontMapOf(p);
+  const word=k=>{k=FM[k]||k;return k[0]==="T"?"Times New Roman":k[0]==="H"?"Arial":PF.buf?PF.word[k]:"Arial"},heavy=k=>{k=FM[k]||k;return (k[0]==="T"||k[0]==="H")?k[1]==="s":!PF.buf&&(k==="bs"||k==="fs")};
   const run=(t,k,pt,c)=>new TextRun({text:ct(doc,t),font:word(k),bold:heavy(k),size:Math.round(pt*2),color:hex(c||D_INK)});
   const P=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[kids]},o||{}));
   const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none},noT=Object.assign({insideHorizontal:none,insideVertical:none},noB);
@@ -3673,15 +4052,21 @@ async function centeredDocx(ch,p,D,A){
     else if(b.t==="small"){out.push(P(run(b.label,"fs",9,deep(A.c)),{alignment:CEN,spacing:{before:80,after:40}}));(b.lines||[]).forEach(l=>out.push(P(run(l,"fr",9.5,D_MUTED),{alignment:CEN})))}});return out};
   F.sheets.forEach((md,si)=>{const L=F.pages[si];
     if(si>0)ch.push(P(new PageBreak()));
-    if(PRINT.schoolDocs)ch.push(P(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
+    if(md.bare)ch.push(P([],{spacing:{before:2400}}));else{
+    if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
     ch.push(P(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
     const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
-    ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}));
-    if(L.land){shrink=.82;const TWL=15840-2160,pw=Math.round(TWL*.56),ww=TWL-pw;
-      ch.push(new Table({width:{size:TWL,type:WidthType.DXA},columnWidths:[pw,ww],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({children:[
-        new TableCell({width:{size:pw,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:photoTable(L.ops.filter(o=>o.t==="img"))}),
-        new TableCell({width:{size:ww,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,margins:{left:300},children:words(md,L.s)})]})]}));shrink=1;return}
-    ch.push(...photoTable(L.ops.filter(o=>o.t==="img")));ch.push(...words(md,L.s));
+    ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}))}
+    const foot=(md.footLine||[]).filter(has).join("    ·    ");
+    if(L.land||(L.sq&&(L.pos==="left"||L.pos==="right"))){shrink=.82;const TWL=(L.sq?12240:15840)-2160,pw=Math.round(TWL*(L.sq?.5:.56)),ww=TWL-pw,right=L.pos==="right";
+      const pc=new TableCell({width:{size:pw,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:photoTable(L.ops.filter(o=>o.t==="img"))});
+      const wc=new TableCell({width:{size:ww,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,margins:right?{right:300}:{left:300},children:words(md,L.s)});
+      ch.push(new Table({width:{size:TWL,type:WidthType.DXA},columnWidths:right?[ww,pw]:[pw,ww],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({children:right?[wc,pc]:[pc,wc]})]}));shrink=1;
+      if(foot)ch.push(P(run(foot,"fr",8.5,D_MUTED),{alignment:CEN,spacing:{before:200}}));return}
+    // a full page photo has no Word twin, so the Word page keeps the photo above the words
+    const ims=L.full?[(()=>{const o=L.ops.find(x=>x.t==="img");if(!o)return null;const r=Math.min(504/o.iw,(L.sq?330:430)/o.ih);return Object.assign({},o,{w:o.iw*r,h:o.ih*r})})()].filter(Boolean):L.ops.filter(o=>o.t==="img");
+    if(L.pos==="below"){ch.push(...words(md,L.s));ch.push(...photoTable(ims))}else{ch.push(...photoTable(ims));ch.push(...words(md,L.s))}
+    if(foot)ch.push(P(run(foot,"fr",8.5,D_MUTED),{alignment:CEN,spacing:{before:200}}));
   });
 }
 function drawAny(doc,p,pageAcc){(p.centered?drawCentered:p.display?drawDisplay:drawPlan)(doc,p,pageAcc)}
@@ -3791,7 +4176,7 @@ async function printsClick(t){
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
-  if(kind==="slide"){const s=slides.get(t.dataset.id);if(s)await out([slideDoc(s)],`Slide ${s.title||"untitled"}`);return true}
+  if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
   if(kind==="portfolio"){const c=children.get(t.dataset.id);if(c)await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
@@ -4653,7 +5038,7 @@ function kidMoments(c){const re=new RegExp("(^|[^A-Za-z])"+c.first.replace(/[^A-
 const kidTagged=(c,n)=>(n.children||[]).includes(c.id);
 function kidConfs(c){return [...conferences.values()].filter(x=>x.childId===c.id).sort((a,b)=>((b.schoolYear||"")+(b.term==="Spring"?"2":"1")).localeCompare((a.schoolYear||"")+(a.term==="Spring"?"2":"1"))||(b.confDate||"").localeCompare(a.confDate||""))}
 function kidSlides(c){return [...slides.values()].filter(s=>(s.children||[]).includes(c.id))}
-// DRDP measures linked to a child's documentation across the year, with no levels or ratings
+// DRDP measures linked to a child's documentation before levels came in, kept as evidence without a level
 function kidEvidence(c){
   const by={};const add=(code,src)=>{if(!DRDP[code])return;(by[code]=by[code]||[]).push(src)};
   for(const n of kidMoments(c))for(const m of (n.measures||[]).filter(x=>x.kept))add(m.code,{kind:"moment",id:n.id,at:n.at,note:m.note,title:momentHeading(n)||firstLine(n.noticed,60)});
@@ -4676,11 +5061,9 @@ function renderChild(){
     <div style="display:grid;gap:14px;min-width:0">
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open</button></div>
         ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}</div></div><span class="status">${has((x.fields||{}).goals)||has((x.fields||{}).nextSteps)?"Goals kept":"Open"}</span></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>
-      <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP evidence</h3><span class="cnt">${ev.length} measure${ev.length===1?"":"s"}</span></div>
-        <div class="hint">Documentation an educator linked to each measure. No levels or ratings are given here.</div>
-        ${ev.length?`<div style="display:grid;gap:10px">${ev.map(([code,list])=>`<div class="pdir"><b>${esc(code)} <span style="font-weight:400">${esc(DRDP[code])}</span></b>${list.map(x=>`<div class="cnt"><button class="linkbtn" ${x.kind==="slide"?`data-slide="${x.id}"`:`data-mjumpto="${x.id}"`}>${esc(x.title)}</button>, ${shortDate(x.at)}. ${esc(x.note||"")}</div>`).join("")}</div>`).join("")}</div>`:`<div class="empty">No measures linked yet. On a moment or a slide, Suggest DRDP measures offers ones to keep.</div>`}</section>
       ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Classroom and next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}
-    </div></div>`;
+    </div></div>
+  <div style="margin-top:14px">${kidDrdpHtml(c)}</div>`;
 }
 function kidEditHtml(c){
   const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
