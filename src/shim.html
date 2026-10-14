@@ -118,7 +118,8 @@
         try{ if(!(await wake())) throw {message:""};
           if(setting){ const j=await api("/login",{name:setting,newCode:nv.value.trim(),again:ag.value.trim()}); done(j); return; }
           if(!n.value.trim()&&!c.value){ throw {message:"Type your first name."}; }
-          const j=await api("/login",{name:n.value.trim(),passcode:c.value});
+          let j=await api("/login",{name:n.value.trim(),passcode:c.value});
+          if(j.retry){ n.value=j.retry; j=await api("/login",{name:j.retry,passcode:c.value}); }
           if(j.setup){ setting=j.name; s1.hidden=true; s2.hidden=false; document.getElementById("gate-hello").textContent="Welcome, "+j.name+"."; b.disabled=false; b.textContent="Save my passcode"; setTimeout(()=>nv.focus(),50); return; }
           done(j); }
         catch(err){ if(err.message) gateMsg(err.message,true); b.disabled=false; b.textContent=setting?"Save my passcode":"Sign in"; (setting?nv:c).select(); } };

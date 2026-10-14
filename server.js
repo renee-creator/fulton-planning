@@ -410,6 +410,10 @@ async function handle(req, res) {
         a.lastAt = Date.now(); log('Signed in', a.name);
         json(req, res, 200, { token: makeSession(a.name, a.v || 0), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
       }
+      // two educators can share a first name, so a name that starts several sign-ins asks for the one that is theirs
+      const near = accounts.list.filter(x => nameKey(x.name).split(' ')[0] === nameKey(name).split(' ')[0]);
+      if (near.length > 1 && !(String(body.passcode || '').length >= 6)) { err(req, res, 400, `More than one educator is named ${near[0].name.split(" ")[0]}. Type ${near.map(x => x.name).join(' or ')}.`); return; }
+      if (near.length === 1 && !(String(body.passcode || '').length >= 6)) { json(req, res, 200, near[0].code ? { retry: near[0].name } : { setup: true, name: near[0].name }); return; }
       // a name with no TREE sign-in can still use a passcode set on Render
       if (!/[^0-9]/.test(String(body.passcode || '')) || String(body.passcode || '').length < 6) { noteWrong(ip); err(req, res, 403, `${name} is not set up in TREE yet. Ask Renee to add you.`); return; }
     }
