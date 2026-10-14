@@ -615,7 +615,9 @@ const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 let plans=new Map(), db=null, sample=null, downloads=null;
 let week=mondayOf(new Date()), roomFilter=LS.get("fps.room","All"), currentId=null, dirty=false, saveTimer=null, showExample={};
 const undo={};
-let view=LS.get("fps.view","today"), threads=new Map(), scans=new Map(), tRoom=LS.get("fps.troom","All"), tRange=LS.get("fps.trange","8"), tSearch="", scanBusy=false, storyBusy={};
+// the old Family Conferences and Calendar addresses forward here with ?open=conferences or ?open=calendar
+const OPEN_AT=(()=>{try{const o=new URLSearchParams(location.search).get("open");return o==="conferences"||o==="calendar"?o:""}catch(e){return ""}})();
+let view=OPEN_AT||LS.get("fps.view","today"), threads=new Map(), scans=new Map(), tRoom=LS.get("fps.troom","All"), tRange=LS.get("fps.trange","8"), tSearch="", scanBusy=false, storyBusy={};
 
 function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return iso(x)}
 function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
