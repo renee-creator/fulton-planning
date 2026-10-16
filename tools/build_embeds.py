@@ -39,7 +39,7 @@ app = rep(app, '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?f
           '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">')
 # TREE's colours and typefaces, and no second header inside TREE
 app = rep(app, '</style>\n\n<header class="top">', '''/* inside TREE */
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#245b78;--accent-soft:#d9e9f2}}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#2b5a40;--accent-soft:#dce9de}}
 :root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif}
 h1,h2,h3{font-weight:700}
 header.top .brand,.who-chip{display:none!important}
@@ -51,6 +51,12 @@ header.top{position:static!important;border-bottom:0!important;background:transp
 app = rep(app, 'view:{name:"overview"}', 'view:(()=>{const h=decodeURIComponent(location.hash.slice(1));const m=h.match(/^(child|conf)=(.+)$/);return m?{name:m[1],id:m[2]}:{name:["overview","children","portfolios","nextyear","settings"].includes(h)?h:"overview"}})()')
 app = rep(app, 'function go(name, extra={}){ flushAll(); S.view={name,...extra}; window.scrollTo(0,0); render(); }',
           'function go(name, extra={}){ flushAll(); S.view={name,...extra}; window.scrollTo(0,0); render(); if(window.TREE_TELL) window.TREE_TELL({tree:"route",which:"conferences",route:extra.id?name+"="+extra.id:name}); }')
+# the monthly checklist is not the child's portfolio, so it is named for what it is, and Settings shows only for the director
+app = app.replace('<button data-go="portfolios">Portfolios</button>', '<button data-go="portfolios">Monthly pages</button>')
+app = rep(app, '<div class="eyebrow">Advocate educators</div><h1>Portfolios</h1>', '<div class="eyebrow">Advocate educators</div><h1>Monthly portfolio pages</h1>')
+# TREE does the reading, so the screens say TREE
+import re as _re
+app = _re.sub(r"(?<![A-Za-z.])Claude(?![A-Za-z])(?! was not allowed)(?!, which is not available)", "TREE", app.replace("Open this page inside Claude", "Open this page inside TREE"))
 # the word for a child who has left, as TREE names it
 app = app.replace(">Withdrawn<", ">Left Fulton<").replace('"Withdrawn"', '"Left Fulton"')
 marker = '<script>\n"use strict";\n/* ---------- constants'
@@ -114,7 +120,8 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   bar.append(b);if(sec){const t=sec.querySelector(".sheet-title");t?t.after(bar):sec.prepend(bar)}else ed.prepend(bar)}
 let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true});})();</script>
 """
-out = head("Family Conferences, TREE") + TELL + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
+NODIR = '<script>try{if(localStorage.getItem("fp-director")!=="1"){const st=document.createElement("style");st.textContent=\'[data-go="settings"]{display:none!important}\';document.head.appendChild(st)}}catch(e){}</script>\n'
+out = head("Family Conferences, TREE") + TELL + NODIR + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
 (root / "tree-conferences.html").write_text(out)
 print("tree-conferences.html", len(out), "bytes")
 
