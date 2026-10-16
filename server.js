@@ -590,6 +590,18 @@ async function handle(req, res) {
     finally { readsRunning--; }
     return;
   }
+  // an educator changes their own four numbers, after typing the ones they have now
+  if (path === '/api/me/passcode') {
+    const a = accountFor(me.name); if (!a || !a.code) { err(req, res, 400, 'This sign-in has no passcode of its own to change.'); return; }
+    const old = String(body.current || ''), c = String(body.newCode || '');
+    if (!(old.length === a.code.length && crypto.timingSafeEqual(Buffer.from(old), Buffer.from(a.code)))) { nameWrong(a.name); err(req, res, 403, 'The passcode you have now is not right.'); return; }
+    if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your new passcode.'); return; }
+    if (String(body.again || '') !== c) { err(req, res, 400, 'The two new passcodes are not the same. Type them again.'); return; }
+    if (/^(\d)\1{3}$/.test(c) || ['1234', '4321', '0123', '9876'].includes(c)) { err(req, res, 400, 'That passcode is easy to guess. Choose four other numbers.'); return; }
+    a.code = c; a.setAt = Date.now();
+    if (!(await saveAccounts(a.name))) { err(req, res, 502, 'The new passcode could not be saved. Try again.'); return; }
+    log('Passcode changed by', a.name); json(req, res, 200, { ok: true }); return;
+  }
   if (path.startsWith('/api/accounts')) {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director can see and change sign-ins.'); return; }
     const list = () => json(req, res, 200, { accounts: accounts.list.map(accountView).sort((a, b) => a.name.localeCompare(b.name)), render: TEACHERS.map(t => t.name) });

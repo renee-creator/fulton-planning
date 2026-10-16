@@ -242,6 +242,16 @@ span.pfstate{cursor:default;border-style:dashed}
 .storebar{width:180px;max-width:40vw;height:10px;border-radius:6px;background:var(--moss-soft);overflow:hidden;align-self:center}.storebar span{display:block;height:100%;background:var(--moss)}
 .drmean{margin:6px 0;padding:8px 10px;border-left:3px solid var(--moss);background:var(--moss-soft);border-radius:6px;font-size:14.5px}.drmean .ml{display:block;font-size:12.5px;font-weight:700;color:var(--moss);margin-bottom:1px}
 .drcmp{margin:6px 0}.drcmp>summary{cursor:pointer}.drcmp ol{margin:6px 0 0 18px;display:grid;gap:4px;font-size:14px}.drcmp li.on{background:var(--marigold-soft);border-radius:4px;padding:2px 4px}
+.nf-photobtn{display:flex;gap:12px;align-items:center;padding:14px 16px;margin:0 0 10px;border:1.5px dashed var(--moss);border-radius:var(--r);background:var(--moss-soft);color:var(--ink);cursor:pointer}.nf-photobtn svg{width:30px;height:30px;flex:none;fill:none;stroke:var(--moss);stroke-width:1.8}.nf-photobtn span{display:grid;gap:2px}.nf-photobtn small{color:var(--muted);font-size:13.5px}
+.nfwhat{margin:0 0 8px}.nfwhat>summary,.nfother>summary{cursor:pointer}.nfother{margin-top:6px}
+.tgroup>summary{list-style:none;cursor:pointer}.tgroup>summary::-webkit-details-marker{display:none}.tgroup[open]>summary .btn{visibility:hidden}.tgroup>.tlist{margin:6px 0 4px 14px;padding-left:10px;border-left:2px solid var(--line)}
+.lenshow>summary{cursor:pointer}.lenshow[open]>summary{margin-bottom:6px}.lenscards{display:none}
+@media (max-width:760px){.tablewrap:has(+.lenscards){display:none}.lenscards{display:grid;gap:8px}.lenscard{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}.lcells{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:14.5px}}
+details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-webkit-details-marker{display:none}details.drdom:not([open])>summary{opacity:.8}details.drdom>summary b::before{content:"▸ ";color:var(--muted)}details.drdom[open]>summary b::before{content:"▾ "}
+.secidx{display:none}
+@media (max-width:760px){.secidx{display:grid;gap:6px;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 6px;margin-bottom:4px}.secidx .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.secidx .chip{flex:none;white-space:nowrap}
+  section.card.filled[data-card]:not(.showall)>.hint,section.card.filled[data-card]:not(.showall)>.chips,section.card.filled[data-card]:not(.showall)>details,section.card.filled[data-card]:not(.showall)>.chiprow-label,section.card.filled[data-card]:not(.showall) .cardfoot .actions{display:none}
+  section.card.filled[data-card]:not(.showall)>.lbl::after{content:" · prompts";font-size:12px;color:var(--muted);font-family:var(--body)}}
 .drnote{margin:10px 0;padding:10px 12px;border-left:3px solid var(--marigold);background:var(--marigold-soft);border-radius:6px;font-size:14.5px}
 .drset{margin:8px 0}.drset>summary{cursor:pointer}.drtop{font-size:15px}.drlvl{font-weight:700}
 .drtab{table-layout:fixed}.drtab td{vertical-align:top}.drtab select{max-width:230px}
@@ -391,17 +401,21 @@ body{margin:0}
 .subnav button.sub{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;font-weight:600;cursor:pointer;color:var(--muted)}
 .subnav button.sub[aria-current="page"]{border-color:var(--moss);background:var(--moss-soft);color:var(--moss)}
 .subnav .back{margin-right:6px}
+.subnav .backrow,.subnav .subrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tabbar{display:none}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:0;background:var(--moss);color:var(--paper);border-radius:999px;padding:13px 20px;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.16);cursor:pointer;display:flex;gap:8px;align-items:center}
 .fab svg{width:18px;height:18px}
+.fab{transition:transform .22s ease,opacity .22s ease}.fab.away{transform:translateY(180%);opacity:0;pointer-events:none}
 @media (max-width:760px){
   .tnav{display:none}
   .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
   .tabbar button{border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:4px 0;cursor:pointer}
   .tabbar button svg{width:22px;height:22px}
+  .tabbar button{font-size:10.5px;letter-spacing:-.01em;white-space:nowrap;min-width:0}
   .tabbar button[aria-current="page"]{color:var(--moss)}
   .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:12px 16px}
   .fab span{display:none}
+  #main{padding-bottom:84px}
   .ttop .who .savestate#conn{display:none}
   .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 }
@@ -461,10 +475,20 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kidc:hover{border-color:var(--moss)}
 .kidc b{font-family:var(--display);font-size:16px}
 .kidc span{font-size:12.5px;color:var(--muted)}
+.kidc{grid-template-columns:auto 1fr;column-gap:12px}.kidc>*:not(.kav){grid-column:2}.kidc .kav{grid-row:1/span 4;width:38px;height:38px;border-radius:50%;background:var(--moss-soft);color:var(--moss);display:grid;place-items:center;font-weight:700;font-size:14px;align-self:start}.kidc .ksoon{color:var(--marigold);font-weight:600}
 /* the Conferences and Calendar pages, inside TREE */
 .embed{width:100%;border:0;display:block;background:var(--bg);height:calc(100vh - 150px);min-height:520px;border-radius:var(--r)}
 #main{align-self:stretch;width:100%}
 @media (max-width:760px){.embed{height:calc(100dvh - 200px);width:calc(100% + 24px);margin-inline:-12px;border-radius:0}}
+/* on a phone, Back sits on its own line, the pages of a section and a child's tabs stay in one row that scrolls sideways, and small text is a size larger */
+@media (max-width:760px){
+  .subnav{display:block}.subnav .backrow{margin-bottom:8px}
+  .subnav .subrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-12px;padding-inline:12px}.subnav .subrow::-webkit-scrollbar{display:none}
+  .subnav .subrow button.sub{white-space:nowrap;flex:none}
+  .tseg.ktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-12px;padding-inline:12px}.tseg.ktabs::-webkit-scrollbar{display:none}.tseg.ktabs button{flex:none;white-space:nowrap}
+  .cnt{font-size:14px;color:var(--ink);opacity:.78}
+  .card .hint{font-size:14.5px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -513,6 +537,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
       <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
       <input id="gate-code" type="password" autocomplete="current-password">
       <div class="small muted">The first time, type your first name and leave the passcode empty. TREE then asks you to choose four numbers.</div>
+      <div class="small muted">Forgot your four numbers? Ask Renee to clear them, then sign in with an empty passcode to choose new ones.</div>
     </div>
     <div id="gate-step2" hidden style="display:grid;gap:10px">
       <div><b id="gate-hello"></b><div class="small muted">Choose four numbers you will remember. Only you and Renee will know them.</div></div>
@@ -822,7 +847,7 @@ const FORMS={
    strong:"The tunnel idea repeated every day. Three children answered in drawing first, two built with sticks. Next, offer clay to build underground spaces.",weak:"Good week",
    starters:["What repeated was ","Children reached for ","Next, "]}
  ],small:true},
- notice:{name:"Notice and Wonder",short:"Notice",who:"Written in the moment by one educator",fields:[
+ notice:{name:"Notice and Wonder",short:"Moment",who:"Written in the moment by one educator",fields:[
   {k:"noticed",label:"What I noticed",rows:4,hint:"What happened, and what children did or said.",strong:"Three children reminded each other to use kinder words when they heard one.",weak:"They were kind today."},
   {k:"wonder",label:"What I wonder",rows:2,hint:"What the moment makes you ask.",strong:"I wonder whether they would hold each other to an agreement they wrote themselves.",weak:"I wonder if they will be kind tomorrow."}]}
 };
@@ -865,6 +890,20 @@ function newPlan(type,extra={}){
   return Object.assign(p,extra);
 }
 
+document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]");if(j){const el=document.querySelector(`[data-card="${j.dataset.secjump}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
+  const l=e.target.closest("section.card.filled[data-card]>.lbl");if(l&&window.innerWidth<=760){l.parentElement.classList.toggle("showall")}});
+document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#mp-roomreset");if(!t)return;
+  if(t.id==="mp-roomreset"){for(const k of ["fps.troom","fps.kroom","fps.lroom","fps.nroom"])try{localStorage.removeItem(k)}catch(x){}ownRoomDefaults();toast("Your lists open on your classroom again.");return}
+  const m=$("#mp-msg");const v=id=>($("#"+id)||{}).value||"";
+  try{t.disabled=true;await window.FP_API("/api/me/passcode",{current:v("mp-old"),newCode:v("mp-new"),again:v("mp-again")});["mp-old","mp-new","mp-again"].forEach(id=>{$("#"+id).value=""});m.textContent="Saved";toast("Saved")}
+  catch(err){m.textContent=(err&&err.message)||"The passcode could not be changed."}finally{t.disabled=false}});
+/* the round Keep a moment button steps aside while a page is read downward, and comes back on any move up or at the top */
+{let lastY=0;window.addEventListener("scroll",()=>{const y=window.scrollY||0,f=document.getElementById("newnotice");if(!f)return;
+  if(y>lastY+6&&y>140)f.classList.add("away");else if(y<lastY-6||y<140)f.classList.remove("away");lastY=y},{passive:true})}
+/* An educator's lists open on their own classroom until they choose another. The director starts on All. */
+function ownRoomDefaults(){if(isDirector())return false;const r=myRoom();if(!r||!CLASSROOMS.includes(r))return false;let ch=false;
+  for(const [k,set] of [["fps.troom",v=>tRoom=v],["fps.kroom",v=>kRoom=v],["fps.lroom",v=>lRoom=v],["fps.nroom",v=>nRoom=v]]){let raw=null;try{raw=localStorage.getItem(k)}catch(e){}if(raw==null){set(r);ch=true}}
+  return ch}
 /* ---------- Storage, shared when available ---------- */
 function setConn(t){$("#conn").textContent=t}
 async function boot(){
@@ -887,7 +926,7 @@ async function boot(){
   const [d,s,dl]=await Promise.all([claude.use("db").catch(()=>null),claude.use("sample").catch(()=>null),claude.use("downloads").catch(()=>null)]);
   sample=s;downloads=dl;
   if(window.FP_HOSTED&&window.FP_NAME&&window.FP_NAME()&&!isShared(window.FP_NAME())&&$("#me").value!==window.FP_NAME()){$("#me").value=window.FP_NAME();LS.set("fps.me",$("#me").value)}
-  renderWho();
+  renderWho();ownRoomDefaults();
   renderTreeNav();
   if(sample){try{const lim=await sample.limits();imgLimit=lim?.images?.maxCount||0}catch(e){imgLimit=0}}
   if(d){
@@ -904,7 +943,7 @@ async function boot(){
       if(!dupSweepDone&&snap.docs.length){dupSweepDone=true;setTimeout(sweepDuplicates,1500)}
       if(remoteChangedCurrent&&!document.activeElement?.closest?.("#main"))renderMain();
     },()=>setConn("Offline. Changes stay on this device"));
-    db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
+    db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -1096,11 +1135,15 @@ function renderMain(){
   h+=noticeNoteHtml(p)+threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
   h+=dupHtml(p);
-  if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
-  if(sample)h+=`<section class="ai"><div class="lbl">Start from your notes</div>
-    <p>Paste or dictate your quick jottings from the week. Claude sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
+  if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words TREE could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
+  // on a phone, a short index of the sections shows how many are written and jumps to any of them
+  {const fsx=F.fields;const done=fsx.filter(f=>String(p.fields[f.k]||"").trim()).length;
+   h+=`<nav class="secidx" aria-label="Sections of this plan"><span class="cnt"><b>${done} of ${fsx.length}</b> sections written</span><div class="chips">${fsx.map(f=>`<button class="chip ${String(p.fields[f.k]||"").trim()?"on":""}" data-secjump="${f.k}" type="button">${esc(f.label)}</button>`).join("")}</div></nav>`}
+  const planStarted=F.fields.some(f=>String(p.fields[f.k]||"").trim());
+  if(sample)h+=`<${planStarted?"details":"section"} class="ai">${planStarted?`<summary class="lbl" style="cursor:pointer">Start from your notes</summary>`:`<div class="lbl">Start from your notes</div>`}
+    <p>Paste or dictate your quick jottings from the week. TREE sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
     <textarea id="notes" rows="4" placeholder="Ex. Tamsin and Mira spent all of free choice lining up acorns by size again, third day. Mira said the big ones are the grandmas..."></textarea>
-    <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></section>`;
+    <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></${planStarted?"details":"section"}>`;
   if(p.type==="smallgroup")h+=smallGroupMeta(p);
   if(p.type==="individual")h+=focusCard(p);
   if(p.type==="individual"||p.type==="smallgroup")h+=spaceCardHtml(p);
@@ -1211,7 +1254,7 @@ function fieldCard(p,f){
   if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}`;
   if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
   const ex=showExample[f.k]?`<div class="ex"><div><b>Strong.</b> ${esc(f.strong)}</div><div class="weak"><b>Weak.</b> ${esc(f.weak)}</div></div>`:"";
-  return `<section class="card" data-card="${f.k}">
+  return `<section class="card${String(v).trim()?" filled":""}" data-card="${f.k}">
     <label class="lbl" for="f-${f.k}">${f.label}${f.after?' <span class="muted" style="font-size:13px;font-family:var(--body)">end of week</span>':""}</label>
     <div class="hint">${f.hint}</div>
     ${p.type==="individual"&&f.k==="observation"&&p.obsFrom&&v===p.obsFrom?`<span class="nudge" style="justify-self:start">Started from last week's Final remarks, the reflection that prompted continuing. Edit it into this week's rationale, or use Strengthen wording.</span>`:""}
@@ -1264,15 +1307,15 @@ function webEditor(p){
    </div></section>`;
 }
 const webSug={};
-// what Claude is told about the threads a plan follows. The question is the educators' hypothesis and the quotes are their own words.
+// what TREE is told about the threads a plan follows. The question is the educators' hypothesis and the quotes are their own words.
 function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);return ths.length?"\n\nThreads this plan follows. Each question is the educators' hypothesis. Each quote is educators' own words from an earlier plan.\n"+ths.map(t=>JSON.stringify({name:t.name,question:t.question||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text)})).join("\n"):""}
 function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
 function webSuggestHtml(p){
   if(!sample)return"";
   const sg=webSug[p.id];
   const filled=webHasContent(p.web);
-  if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">Claude reads what this plan already says${planThreads(p).length?" and the threads it follows":""}. You see the draft before anything changes.</span></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, brainstorm${teamSources(p).length?", this week's Individual plans":""}${planThreads(p).length?", and the threads this plan follows":""}.</div></div>`;
+  if(!sg)return `<div class="actions"><button class="btn small ghost" id="w-assist">${filled?"Suggest how the web could evolve":"Draft the web from this plan"}</button><span class="cnt">TREE reads what this plan already says${planThreads(p).length?" and the threads it follows":""}. You see the draft before anything changes.</span></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>TREE is reading the plan</b><div class="muted">Drafting a web from the observation, intentions, interests, provocations, brainstorm${teamSources(p).length?", this week's Individual plans":""}${planThreads(p).length?", and the threads this plan follows":""}.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The web draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="w-assist">Try again</button><button class="linkbtn" id="w-sgno">Close</button></div></div>`;
   const d=sg.web;
   return `<div class="sugg"><b>Suggested web</b>
@@ -1375,7 +1418,7 @@ function renderWelcome(){
     <div><span class="eyebrow">Week of ${fmtDate(week)}</span><h2 style="font-size:32px;margin-top:4px">Plan from what children are thinking</h2>
     <p class="muted" style="max-width:62ch;margin:.4em 0 0">Each form follows the cycle in our handbook. Informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, then back to observation. Tap a sentence starter or a material to add it, check the example for each section, and download a printable PDF when you are done.</p></div>
     <div class="steps">
-      <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"Claude can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
+      <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"TREE can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
       <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, Fulton's outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
       <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team, and the director can mark them reviewed.</p></div>
       <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
@@ -1389,7 +1432,7 @@ function renderWelcome(){
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",plans:"This week",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Notice and Wonder",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+const NAV_NAMES={today:"Today",plans:"This week",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Moments",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -1412,6 +1455,8 @@ function navBack(){const prev=NAVS.pop();if(!prev)return false;const s=prev.s;
   navCur={s,k:JSON.stringify(s),y:prev.y};renderNav();renderMain();drawBack();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,prev.y||0)));return true}
 window.addEventListener("popstate",()=>{navBack()});
+// moving between sections, or between the pages of one section, starts a fresh trail. Back then only returns from a page opened from another.
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tsec],#tsubnav .subrow button.sub");if(!t)return;NAVS.length=0;navCur=null},true);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-navback]");if(!t)return;e.stopImmediatePropagation();try{history.back()}catch(err){navBack()}},true);
 window.addEventListener("scroll",()=>{if(navCur&&JSON.stringify(navState())===navCur.k)navCur.y=scrollY},{passive:true});
 const navObs=new MutationObserver(()=>queueMicrotask(navTrack));
@@ -1576,7 +1621,7 @@ async function drdpRead(v,cs,S){
   const clean=t=>{t=String(t||"").replace(/—/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":t.slice(0,900)};
   return {items:items.slice(0,12),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
 }
-// without Claude, or when an educator asks for it, keywords point to possible measures. They give no level.
+// without TREE, or when an educator asks for it, keywords point to possible measures. They give no level.
 function drdpKeywords(v,cs,text){
   const t=" "+String(text||"").toLowerCase()+" ";
   const ms=Object.entries(DRDP_M[v]).filter(([k,m])=>(m.c!=="eld"||cs.some(kidEld))&&(m.c!=="iep"||cs.some(kidIep)))
@@ -1667,7 +1712,7 @@ function drdpSummaryDoc(s,mode){
     items.push(dItem(drdpName(x.code),x.evidence||"",st.cls==="ok"?"Reviewed by "+st.label.replace(/^(Accepted|Changed) by /,""):"Awaiting educator review",[c?credit(c.first,mode)||"A child":"A child",lvl?lvl+(em?", emerging":""):"No level"]))}
   if(!items.length)return null;
   blocks.push(dSub("Measures and evidence"),...items);
-  const meta=[["Slide",s.title||"Untitled"],["Classroom",s.classroom||"All classrooms"],["Date",longDate(iso(new Date(s.at)))]];
+  const meta=[["Slide",slideTitle(s)],["Classroom",s.classroom||"All classrooms"],["Date",longDate(iso(new Date(s.at)))]];
   return {display:true,type:"report",acc:"story",title:"DRDP (2025) evidence",meta,blocks};
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
@@ -1681,7 +1726,7 @@ window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
   return kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>({code:x.code,name:DRDP[x.code]||"",dom:x.code.split(" ")[0],level:x.level,emerging:!!x.emerging,evidence:x.evidence||"",title:x.src&&x.src.title||"",at:(x.src&&x.src.at)||x.at||0}))
     .filter(x=>x.at>=t0&&x.at<=t1).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})||a.at-b.at)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
-  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,at:x.at,title:x.kind==="slides"?(x.s.title||"A slide"):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
+  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
 
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
@@ -1735,8 +1780,10 @@ function kidDrdpHtml(c){
         ${n||wn?"":`<div class="cnt">No evidence yet.</div>`}
         <label class="fld-label" style="max-width:340px">Mark<select data-drmark="${code}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></label></div></details>`};
   const doms=[...new Set(ms.map(k=>DRDP_M[v][k].d))];
-  const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;
-    return `<div class="drdom"><div class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level</span></div>${codes.map(rowOf).join("")}</div>`};
+  // a domain with nothing yet folds to one line, so the measures with evidence are easy to find
+  const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;const busy=codes.some(k=>latest(k)||wait.some(x=>x.code===k)||(legacy[k]||[]).length||marks[k]);
+    const key="dom:"+dm;const open=drdpOpen.has(key)||(busy&&!drdpShut.has(key));
+    return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span></div>
@@ -1784,6 +1831,9 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return
 let slides=new Map(), slideOpen=LS.get("tree.slide",""), slideSug={}, slideTimers={};
 function saveSlide(s){s.updatedAt=Date.now();slides.set(s.id,s);if(db)db.doc("slides/"+s.id).set(JSON.parse(JSON.stringify(s))).catch(()=>toast("Could not save the slide. Check your connection."))}
 function saveSlideSoon(s){slides.set(s.id,s);clearTimeout(slideTimers[s.id]);slideTimers[s.id]=setTimeout(()=>saveSlide(s),700)}
+// a slide with no title of its own is named from its moment, so no slide is ever called Untitled
+function slideTitle(s){if(s&&String(s.title||"").trim())return s.title;const n=notices.get(((s&&s.momentIds)||[])[0])||notices.get((s&&slidePhotos(s)[0])||"");
+  const t=n?(momentHeading(n)||firstLine(String(n.noticed||"").replace(/^[A-Z][A-Za-z]+ ?[-–] /,""),44)):"";return t||"A slide"}
 function newSlide(n){
   if(needName())return null;
   const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:"",photos:n&&n.photo?[n.id]:[],land:false,
@@ -1809,7 +1859,7 @@ function slideDoc(s){
   const room=(n&&n.classroom)||s.classroom,day=longDate(iso(new Date((n&&n.at)||s.at||Date.now()))),by=(n&&n.by)||s.by||"";
   const dAt=s.dateAt||"top",foot=[dAt==="foot"?day:"",...(s.footExtra||[])];
   return {centered:true,display:true,type:"report",acc:s.pal||"story",pos:s.pos||(s.land?"left":"top"),sq:!!s.sq,bg:s.bg||"",fonts:s.fonts||{},tsize:s.tsize||"m",brand:s.brand,footLine:foot,
-    title:displayText(s.title||"Untitled",mode,all),details:[room?room+" classroom":"",dAt==="top"?day:"",s.showBy===false?"":pBy(by)],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
+    title:displayText(slideTitle(s),mode,all),details:[room?room+" classroom":"",dAt==="top"?day:"",s.showBy===false?"":pBy(by)],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
 }
 // the closing quotes the original Documentation Slides offered
 const SLIDE_QUOTES=[["The environment is the third teacher.", "Loris Malaguzzi"], ["Children have a hundred languages, but school steals ninety-nine.", "Loris Malaguzzi"], ["Stand aside for a while and leave room for learning.", "Loris Malaguzzi"], ["Creativity emerges from multiple experiences, coupled with a sense of freedom to venture beyond the known.", "Loris Malaguzzi"], ["Nothing without joy.", "Loris Malaguzzi"], ["The child has a hundred languages, a hundred hands, a hundred thoughts, a hundred ways of thinking.", "Loris Malaguzzi"], ["What children learn does not follow as an automatic result from what is taught. Rather, it is in large part due to the children's own doing.", "Loris Malaguzzi"], ["Things about children and for children are only learned from children.", "Loris Malaguzzi"], ["Our task is to help children communicate with the world using all their potential, strengths, and languages.", "Loris Malaguzzi"], ["Listening is not easy. It requires a deep awareness and suspension of our judgments.", "Carlina Rinaldi"], ["Documentation is visible listening.", "Carlina Rinaldi"], ["Learning is a process of construction that takes place in relationship with others.", "Carlina Rinaldi"], ["The child is a rich, capable, competent protagonist of their own growth.", "Carlina Rinaldi"], ["Children's questions are the curriculum.", "Lella Gandini"], ["The space speaks of the values of the people who live and work there.", "Lella Gandini"], ["Children need the freedom and time to play. Play is not a luxury; play is a necessity.", "Lella Gandini"], ["The goal of early childhood education should be to activate the child's own natural desire to learn.", "Maria Montessori"], ["The greatest sign of success for a teacher is to be able to say, 'The children are now working as if I did not exist.'", "Maria Montessori"], ["The child is both a hope and a promise for mankind.", "Maria Montessori"], ["Free the child's potential, and you will transform him into the world.", "Maria Montessori"], ["The hand is the instrument of intelligence.", "Maria Montessori"], ["Never help a child with a task at which he feels he can succeed.", "Maria Montessori"], ["The land is where our roots are. The children must be taught to feel and live in harmony with the Earth.", "Maria Montessori"], ["Play gives children a chance to practice what they are learning.", "Fred Rogers"], ["Play is often talked about as if it were a relief from serious learning. But for children play is serious learning.", "Fred Rogers"], ["The first years of life lay the foundation for learning, behavior, and health throughout the lifespan.", "Harvard Center on the Developing Child"], ["Brains are built over time, from the bottom up.", "Harvard Center on the Developing Child"], ["Serve and return interactions shape brain architecture.", "Harvard Center on the Developing Child"], ["What a child can do today with assistance, she will be able to do by herself tomorrow.", "Lev Vygotsky"], ["Through others we become ourselves.", "Lev Vygotsky"], ["Children learn best when they are actively engaged.", "Lev Vygotsky"], ["The principal goal of education is to create people who are capable of doing new things.", "Jean Piaget"], ["Play is the work of childhood.", "Jean Piaget"], ["Intelligence is what you use when you don't know what to do.", "Jean Piaget"], ["Every time we teach a child something, we keep him from inventing it himself.", "Jean Piaget"], ["The only limit to the development of the child is the limit we put on our own expectations.", "Jerome Bruner"], ["Childhood is a period of extraordinary learning and exploration.", "Alison Gopnik"], ["Children are the R&D department of the human species.", "Alison Gopnik"], ["Children require long, uninterrupted periods to play and work.", "Howard Gardner"], ["Education is not preparation for life; education is life itself.", "John Dewey"], ["We do not learn from experience. We learn from reflecting on experience.", "John Dewey"], ["Give the pupils something to do, not something to learn.", "John Dewey"], ["Young children learn best through active, hands-on experiences.", "NAEYC"], ["Relationships are at the heart of all meaningful learning.", "NAEYC"], ["Children are competent learners from birth.", "NAEYC"], ["Becoming is better than being.", "Carol Dweck"], ["Effort is what ignites ability and turns it into accomplishment.", "Carol Dweck"], ["Play is the glue that holds the curriculum together.", "Vivian Gussin Paley"], ["Pretend play is the natural language of young children.", "Vivian Gussin Paley"], ["Allow the child to be competent.", "Magda Gerber"], ["Do less, observe more, enjoy most.", "Magda Gerber"], ["People will forget what you said, but people will never forget how you made them feel.", "Maya Angelou"], ["We delight in the beauty of the butterfly, but rarely admit the changes it has gone through.", "Maya Angelou"], ["The more that you read, the more things you will know.", "Dr. Seuss"], ["A person's a person, no matter how small.", "Dr. Seuss"], ["Children are not things to be molded, but are people to be unfolded.", "Jess Lair"], ["Every child is an artist. The problem is how to remain an artist once we grow up.", "Pablo Picasso"], ["It takes a village to raise a child.", "African Proverb"], ["Children learn what they live.", "Dorothy Law Nolte"], ["The soul is healed by being with children.", "Fyodor Dostoevsky"], ["It is easier to build strong children than to repair broken men.", "Frederick Douglass"], ["Children are our most valuable resource and its best hope for the future.", "John F. Kennedy"], ["While we try to teach our children all about life, our children teach us what life is all about.", "Angela Schwindt"], ["Every child deserves a champion.", "Rita Pierson"], ["Children are like wet cement. Whatever falls on them makes an impression.", "Haim Ginott"], ["The way we talk to our children becomes their inner voice.", "Peggy O'Mara"], ["In every walk with nature, one receives far more than he seeks.", "John Muir"], ["The clearest way into the universe is through a forest wilderness.", "John Muir"], ["Between every two pines is a doorway to a new world.", "John Muir"], ["Study nature, love nature, stay close to nature. It will never fail you.", "Frank Lloyd Wright"], ["Those who contemplate the beauty of the earth find reserves of strength that will endure as long as life lasts.", "Rachel Carson"], ["If a child is to keep alive his inborn sense of wonder, he needs the companionship of at least one adult who can share it.", "Rachel Carson"], ["A child's world is fresh and new and beautiful, full of wonder and excitement.", "Rachel Carson"], ["Children need nature for the healthy development of their senses, and therefore, for learning and creativity.", "Richard Louv"], ["Time in nature is not leisure time; it's an essential investment in our children's health.", "Richard Louv"], ["The future will belong to the nature-smart.", "Richard Louv"], ["Nature is not a place to visit. It is home.", "Gary Snyder"], ["Look deep into nature, and then you will understand everything better.", "Albert Einstein"], ["Adopt the pace of nature: her secret is patience.", "Ralph Waldo Emerson"], ["In nature, nothing is perfect and everything is perfect.", "Alice Walker"], ["The earth has music for those who listen.", "William Shakespeare"], ["Children are born naturalists. They explore the world with all their senses.", "David Sobel"], ["If we want children to flourish, we need to give them time to connect with nature.", "David Sobel"], ["Let nature be your teacher.", "William Wordsworth"], ["Come forth into the light of things, let nature be your teacher.", "William Wordsworth"], ["Nature does not hurry, yet everything is accomplished.", "Lao Tzu (interpretation)"], ["Dirt is not dirt, but a world of creatures that give life to the earth.", "Claire Walker Leslie"], ["The goal of life is to make your heartbeat match the beat of the universe.", "Joseph Campbell"], ["To plant a garden is to believe in tomorrow.", "Audrey Hepburn"], ["The love of gardening is a seed once sown that never dies.", "Gertrude Jekyll"], ["A garden requires patient labor and attention. Plants do not grow merely to satisfy ambitions.", "Liberty Hyde Bailey"], ["We do not inherit the earth from our ancestors; we borrow it from our children.", "Native American Proverb"], ["The earth is what we all have in common.", "Wendell Berry"], ["The care of the Earth is our most ancient and most worthy, and after all our most pleasing responsibility.", "Wendell Berry"], ["Eating is an agricultural act.", "Wendell Berry"], ["When we heal the earth, we heal ourselves.", "David Orr"], ["The garden suggests there might be a place where we can meet nature halfway.", "Michael Pollan"], ["To forget how to dig the earth and to tend the soil is to forget ourselves.", "Mahatma Gandhi"], ["A nation that destroys its soils destroys itself.", "Franklin D. Roosevelt"], ["One of the most important resources that a garden makes available is the gardener's own body.", "Wendell Berry"], ["Gardening adds years to your life and life to your years.", "Proverb"], ["To see things in the seed, that is genius.", "Lao Tzu"], ["From tiny seeds grow mighty trees.", "Proverb"], ["Alone we can do so little; together we can do so much.", "Helen Keller"], ["We rise by lifting others.", "Robert Ingersoll"], ["What we learn with pleasure we never forget.", "Alfred Mercier"], ["Learning is a treasure that will follow its owner everywhere.", "Chinese Proverb"], ["Tell me and I forget. Teach me and I may remember. Involve me and I learn.", "Xunzi (Chinese philosopher)"], ["The function of education is to teach one to think intensively and to think critically.", "Martin Luther King Jr."], ["Education is the most powerful weapon which you can use to change the world.", "Nelson Mandela"], ["No one is born fully formed: it is through self-experience in the world that we become what we are.", "Paulo Freire"], ["Knowledge emerges only through invention and re-invention, through the restless, impatient, continuing, hopeful inquiry.", "Paulo Freire"], ["The important thing is not to stop questioning. Curiosity has its own reason for existing.", "Albert Einstein"], ["I have no special talents. I am only passionately curious.", "Albert Einstein"], ["Imagination is more important than knowledge.", "Albert Einstein"], ["The mind is not a vessel to be filled but a fire to be kindled.", "Plutarch"], ["Curiosity is the wick in the candle of learning.", "William Arthur Ward"], ["Wonder is the beginning of wisdom.", "Socrates"], ["The world is full of magical things patiently waiting for our senses to grow sharper.", "W.B. Yeats"], ["Not all who wander are lost.", "J.R.R. Tolkien"], ["Respect the child. Wait and see what he will become.", "Rudolf Steiner"], ["Children must be taught how to think, not what to think.", "Margaret Mead"], ["If we are to reach real peace in the world, we shall have to begin with the children.", "Mahatma Gandhi"], ["There can be no keener revelation of a society's soul than the way in which it treats its children.", "Nelson Mandela"], ["Each day of our lives we make deposits in the memory banks of our children.", "Charles R. Swindoll"], ["Children see magic because they look for it.", "Christopher Moore"], ["The child must know that he is a miracle.", "Pablo Casals"], ["What is the good of your stars and trees, your sunrise and the wind, if they do not enter into our daily lives?", "E.M. Forster"], ["The best classroom and the richest cupboard is roofed only by the sky.", "Margaret McMillan"], ["Nature holds the key to our aesthetic, intellectual, cognitive, and even spiritual satisfaction.", "E.O. Wilson"], ["We need the tonic of wildness.", "Henry David Thoreau"], ["I go to nature to be soothed and healed, and to have my senses put in order.", "John Burroughs"], ["Keep close to Nature's heart and break clear away, once in a while, and climb a mountain or spend a week in the woods.", "John Muir"], ["The child is made of one hundred. The child has a hundred languages, a hundred hands, a hundred thoughts.", "Loris Malaguzzi"], ["The atelier is a place where children's different languages can be explored and developed.", "Vea Vecchi"], ["If you have a garden and a library, you have everything you need.", "Cicero"], ["The greatest fine art of the future will be the making of a comfortable living from a small piece of land.", "Abraham Lincoln"], ["Children who play in nature become adults who protect it.", "Children & Nature Network"], ["A garden is a friend you can visit any time.", "Proverb"], ["What we learn to do, we learn by doing.", "Aristotle"], ["Children learn as they play. Most importantly, in play children learn how to learn.", "O. Fred Donaldson"], ["Connection is why we're here; it is what gives purpose and meaning to our lives.", "Brené Brown"]];
@@ -1819,7 +1869,7 @@ function renderSlides(){
   const ss=[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   if(deck)deck.ids=(deck.ids||[]).filter(id=>slides.has(id));
   const card=s=>{const ph=notices.get(slidePhotos(s)[0]);const k=deck?deck.ids.indexOf(s.id):-1;
-    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink);position:relative" ${deck?`data-deckpick="${s.id}" aria-pressed="${k>=0}"`:`data-slide="${s.id}"`}>${deck&&k>=0?`<span class="decknum">${k+1}</span>`:""}${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(s.title||"Untitled")}</b><span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.sq?" · square":(s.pos==="left"||s.pos==="right"||s.land)?" · landscape":""}</span></button>`};
+    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink);position:relative" ${deck?`data-deckpick="${s.id}" aria-pressed="${k>=0}"`:`data-slide="${s.id}"`}>${deck&&k>=0?`<span class="decknum">${k+1}</span>`:""}${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(slideTitle(s))}</b>${String(s.title||"").trim()?"":`<span class="cnt">No title yet</span>`}<span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.sq?" · square":(s.pos==="left"||s.pos==="right"||s.land)?" · landscape":""}</span></button>`};
   const deckBar=deck?`<section class="card" id="deckbar"><div class="secthead"><h3 style="font-size:17px">A deck of slides</h3><span class="cnt">${deck.ids.length} chosen</span></div>
       <div class="cnt">Tap slides in the order they should go. Tap again to take one out.</div>
       <label class="radio"><input type="checkbox" data-deckopt="numbers" ${deck.numbers!==false?"checked":""}><span>Number the slides at the foot</span></label>
@@ -1859,11 +1909,11 @@ function renderSlide(){
   const qs=new Set((s.quotes||[]).map(q=>q.words.toLowerCase()));const sg=slideSug[s.id];
   const kids=kidsAt().filter(c=>!s.classroom||c.classroom===s.classroom).sort((a,b)=>a.first.localeCompare(b.first));
   if(!PF.buf)loadPrintFonts().then(()=>{if(view==="slide")renderSlide()});
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation slide</span><h2 style="margin-top:4px">${esc(s.title||"A new slide")}</h2></div>
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation slide</span><h2 style="margin-top:4px">${esc(slideTitle(s))}</h2></div>
     <span class="actions">${printBtns("slide",s.id,"PDF",true)}<button class="linkbtn" data-sfjpg="${s.id}">JPG</button><span id="sdel"><button class="linkbtn" data-slidedel="${s.id}">Remove</button></span></span></div></div>
   <div class="tgrid2" style="margin-top:12px">
     <div style="display:grid;gap:14px;min-width:0">
-      <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="In the children's words, or the team's"></label>
+      <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="${esc(slideTitle(s))}"></label>${String(s.title||"").trim()?"":`<div class="cnt" style="margin-top:-4px">No title yet. Until one is typed, the slide is named ${esc(slideTitle(s))}.</div>`}
         <div class="fld-label">Photos, up to three<span class="cnt" style="font-weight:400">The first chosen is the largest.</span>
           ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoSrc(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}</div>
 </section>
@@ -2030,9 +2080,9 @@ function goSection(s){if(s==="today")return goView("today");if(s==="calendar")re
 function renderTreeNav(){
   const cur=secOf(view);document.body.dataset.sec=cur;
   const nav=$("#tnav");if(nav)nav.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
-  const tb=$("#ttab");if(tb)tb.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${k==="docs"?"Document":l}</button>`).join("");
+  const tb=$("#ttab");if(tb)tb.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
   const fab=$("#newnotice");if(fab)fab.hidden=view==="calendar"||view==="conferences"||(view==="moments"&&!!noticeForm);
-  const st=$("#tsettings");if(st){st.hidden=!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
+  const st=$("#tsettings");if(st){st.hidden=!window.FP_HOSTED&&!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
 // the pages under a section, shown at the top of the page. A plan that is open shows the way back to its week.
@@ -2045,7 +2095,7 @@ function subnavHtml(){
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev)back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
   const subs=SUBS[s];if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
-  return `<div class="subnav" id="tsubnav">${back}${(subs||[]).map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`;
+  return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
 function placeSubnav(){
   const m=$("#main");if(!m)return;const want=subnavHtml();const have=$("#tsubnav");
@@ -2116,6 +2166,21 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
+// Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
+let todayAll=false;
+const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+  :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
+function waitingHtml(list){
+  const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
+  const rows=[],seen=new Map();
+  for(const w of list){const k=WAIT_KIND(w);const n=k?list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]).length:0;
+    if(k&&n>1){if(seen.has(k[0]))continue;const items=list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]);seen.set(k[0],1);
+      rows.push(`<details class="tgroup"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(items.slice(0,2).map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):(x.s||x.t),56)).join(". "))}${items.length>2?", and more":""}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
+    else rows.push(row(w))}
+  const shown=todayAll?rows:rows.slice(0,5);
+  return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":`Show all ${rows.length}`}</button>`:""}`;
+}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
 function renderToday(){
   const h=new Date().getHours();const greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   const name=me()||(window.FP_NAME?window.FP_NAME():"");const room=myRoom();const mg=myGroups();
@@ -2132,7 +2197,7 @@ function renderToday(){
   </div>
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.length||"Nothing"}</span></div>
-      ${waiting.length?`<div class="tlist">${waiting.map(w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`).join("")}</div>`:`<div class="empty">Nothing is waiting. Keep a moment when something matters.</div>`}</section>
+      ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep a moment when something matters.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Today</h3><button class="linkbtn" data-tview="calendar">Calendar</button></div>
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
   </div>
@@ -2186,7 +2251,7 @@ function renderWalls(){
   const ps=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
-    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" classroom":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?`${n} sheet${n===1?"":"s"} ready to hang`:"No wall planned yet"}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
+    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" classroom":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -2300,7 +2365,7 @@ document.addEventListener("input",e=>{
   const t=e.target;
   if(t.id==="me"){LS.set("fps.me",me());renderWho();renderDue();return}
   const p=currentId&&plans.get(currentId);if(!p)return;
-  if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
+  if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);{const cd=t.closest("[data-card]");if(cd)cd.classList.toggle("filled",!!t.value.trim());const ch=document.querySelector(`[data-secjump="${t.dataset.f}"]`);if(ch)ch.classList.toggle("on",!!t.value.trim());const ix=document.querySelector(".secidx b");if(ix){const all=FORMS[p.type].fields;ix.textContent=`${all.filter(f=>String(p.fields[f.k]||"").trim()).length} of ${all.length}`}}const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
   if(t.id==="feedback"){if(!isDirector())return;p.feedback=t.value;p.feedbackBy=myName()||"The director";p.feedbackAt=Date.now();autoGrow(t);persist(p);return}
   if(t.id==="fbreply"){const v=t.value;p.feedbackReply={text:v,by:myName()||"An educator",at:Date.now()};autoGrow(t);persist(p);return}
   if(t.id==="f-where"){p.where=t.value;persist(p);renderList();return}
@@ -2379,7 +2444,7 @@ function planContext(p){const F=FORMS[p.type];return F.fields.filter(f=>p.fields
 const suggest={};
 function suggestHtml(p,f){
   const sg=suggest[p.id+f.k];if(!sg)return"";
-  if(sg.status==="working")return `<div class="sugg"><b>${sg.from==="ind"?"Claude is reading this week's Individual plans":"Claude is rewriting this section"}</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>${sg.from==="ind"?"TREE is reading this week's Individual plans":"TREE is rewriting this section"}</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
   const again=sg.from==="ind"?`data-inddraft="1"`:`data-strengthen="${f.k}"`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">${sg.from==="ind"?"The draft did not work":"Strengthen did not work"}</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" ${again}>Try again</button><button class="linkbtn" data-sgno="${f.k}">Close</button></div></div>`;
   return `<div class="sugg"><b>${sg.from==="ind"?"Drafted from this week's Individual plans":"Suggested wording"}</b><textarea id="sgt-${f.k}" rows="${sg.from==="ind"?6:3}">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" ${again}>Try another version</button></div></div>`;
@@ -2414,7 +2479,7 @@ ${cur}`;
   if(currentId===P.id)rerenderCard(P,k);
 }
 function assistError(code,tail){
-  const m={rate_limited:"Claude is busy right now. Wait a minute and try again.",not_granted:"Claude assist was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Claude assist is turned off for this account or organization.",session_expired:"Your Claude session expired. Reload the page and try again.",refused:"Claude declined this one. Try rewording the entry.",empty_completion:"Claude returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"Claude's answer came back garbled. Try again.",truncated:"Claude's answer was too long and got cut off. Choose a shorter range or one classroom, then try again."};
+  const m={rate_limited:"TREE is busy right now. Wait a minute and try again.",not_granted:"Claude assist was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Claude assist is turned off for this account or organization.",session_expired:"Your TREE session expired. Reload the page and try again.",refused:"TREE declined this one. Try rewording the entry.",empty_completion:"TREE returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"The answer came back garbled. Try again.",truncated:"TREE's answer was too long and got cut off. Choose a shorter range or one classroom, then try again."};
   return (m[code]||`That did not work (${code}). Try again in a moment.`)+(tail?" "+tail:"");
 }
 async function draftFromNotes(p,btn){
@@ -2734,7 +2799,7 @@ const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classro
    whenever they come round to it, which may be months later. Nothing expires and nobody approves it. */
 let notices=new Map(), noticeForm=null, nRoom=LS.get("fps.nroom","All");
 const nTimers={};
-function newNotice(){return {id:"n"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),noticed:"",wonder:"",classroom:LS.get("fps.myroom","")||(roomFilter!=="All"?roomFilter:""),by:whoAmI(),at:Date.now(),week:mondayOf(new Date()),projectId:"",threadId:""}}
+function newNotice(){return {id:"n"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),noticed:"",wonder:"",classroom:myRoom()||(roomFilter!=="All"?roomFilter:""),by:whoAmI(),at:Date.now(),week:mondayOf(new Date()),projectId:"",threadId:""}}
 function saveNotice(n){n.updatedAt=Date.now();notices.set(n.id,n);
   if(db&&(!navigator.onLine||(n.photo&&!n.photo.id&&n.photo.pending))){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.");return}
   if(db)db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n))).catch(e=>{if(e&&(e.code==="unavailable"||e.code==="server_error")){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.")}else toast(e&&e.message||"Could not save. Check your connection.")});
@@ -2754,7 +2819,7 @@ function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
   if(/^i\s+wonder\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
   return "I wonder "+(/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t)}
 /* --- A photo of children's words, such as chart paper from a group conversation or a story told together.
-   The photo is kept with the moment. Claude copies the writing into What I noticed exactly as it is written, with each
+   The photo is kept with the moment. TREE copies the writing into What I noticed exactly as it is written, with each
    child's name, and marks what it could not read. What I wonder is never written for the educator. Several photos
    become several moments, opened one after another. --- */
 let nQueue=[];const nBlobs=new Map(),nPreview=new Map();
@@ -2832,10 +2897,16 @@ function photoStatusHtml(n){
   return `<div class="${cls}" id="nf-pstatus" role="status">${t}</div>`;
 }
 // children in the moment, from the classroom it happened in. A tagged child finds the moment on their page, in their portfolio and at conference time.
+let nfOtherOpen=false;
+document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("nfother"))nfOtherOpen=e.target.open},true);
 function nfKidsHtml(n){
-  const kids=kidsAt().filter(c=>!n.classroom||c.classroom===n.classroom).sort((a,b)=>a.first.localeCompare(b.first));const on=new Set(n.children||[]);
+  const all=kidsAt().sort((a,b)=>a.first.localeCompare(b.first));const on=new Set(n.children||[]);
+  // the classroom's own children come first. Children from other classrooms wait one tap away, and any already tagged stay in view.
+  const kids=all.filter(c=>!n.classroom||c.classroom===n.classroom||on.has(c.id));const others=n.classroom?all.filter(c=>c.classroom!==n.classroom&&!on.has(c.id)):[];
+  const chip=c=>`<button class="chip ${on.has(c.id)?"on":""}" data-nfkid="${esc(c.id)}" type="button">${esc(c.first)}${c.last?" "+esc(c.last[0])+".":""}</button>`;
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(c=>`<button class="chip ${on.has(c.id)?"on":""}" data-nfkid="${esc(c.id)}" type="button">${esc(c.first)}${c.last?" "+esc(c.last[0])+".":""}</button>`).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this classroom yet.":"Choose the classroom below to tag children."}</span>`}</div>`;
+  return `Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this classroom yet.":"Choose the classroom below to tag children."}</span>`}</div>
+    ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classrooms, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
 function renderNoticeForm(){
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
@@ -2851,7 +2922,8 @@ function noticeFormCard(){
   return `<section class="card" id="nf-card">
     ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this moment</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
     ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this moment"></a></div>${photoStatusHtml(n)}`
-      :editing?"":`<div class="actions" style="margin:0 0 8px"><span class="hint muted" style="margin:0">It is not tied to this week and it does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</span>${photoPickHtml("nf-photo","Upload a photo instead")}</div>`}
+      :editing?"":`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the moment itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
+        <details class="nfwhat"><summary class="cnt">What is a moment?</summary><div class="cnt" style="margin-top:4px">A moment is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
     <div class="fld-label" id="nf-kids">${nfKidsHtml(n)}</div>
@@ -2940,14 +3012,14 @@ function renderMoments(){
   const people=new Set(all.map(n=>n.by).filter(Boolean)).size;
   const open=all.filter(n=>!n.projectId&&!n.threadId).length;
   let shown=0;
-  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Notice and Wonder</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change a moment":"Keep a moment"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
+  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Notice and Wonder</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change a moment":"Keep a moment"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Notice and Wonder, our observational frame</span><h2 style="margin-top:4px">Moments</h2>
     <div class="sub" style="max-width:74ch">Moments kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on a moment whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>${photoPickHtml("nf-photo2","Upload a photo")}`}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
-    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading moments":"Summarize with Claude"}</button>`:""}</div>
-    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">Claude reads the moments in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
+    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading moments":"Read the moments"}</button>`:""}</div>
+    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">TREE reads the moments in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   <div class="stats">
     <div class="stat"><b>${all.length}</b><span>moments in this view</span></div>
     <div class="stat"><b>${people}</b><span>educators keeping them</span></div>
@@ -3029,6 +3101,7 @@ function noticeListHtml(list,title){
   return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
 }
 function noticesClick(t){
+  if(t.dataset.newfor){const c=children.get(t.dataset.newfor);if(c){noticeForm=Object.assign(newNotice(),{children:[c.id],classroom:c.classroom||myRoom()||""});view="moments";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}return}
   if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
@@ -3096,7 +3169,7 @@ function photoPickHtml(id,label){return `<label class="btn small ghost" style="c
 /* ---------- Projects ----------
    A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
    and it can also begin school-wide. It holds hypotheses about where the inquiry could go, never steps or an end date.
-   People start projects and add threads to them. Claude points out what looks related, rewords what educators wrote when asked,
+   People start projects and add threads to them. TREE points out what looks related, rewords what educators wrote when asked,
    and drafts possible directions for the team to weigh. It never writes the team's reading. */
 let projects=new Map(), projId=LS.get("fps.proj",""), projForm=null, projBusy={};
 const PSTATUS={active:"Active",resting:"Resting",closed:"Closed"};
@@ -3118,7 +3191,7 @@ function noticeNoteHtml(p){
   const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id));
   if(!ns.length)return"";
   const k=NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
-  const head=`<b style="color:var(--sky)">${ns.length} Notice and Wonder from ${esc(p.classroom||"no classroom")}</b>
+  const head=`<b style="color:var(--sky)">${ns.length} moment${ns.length===1?"":"s"} from ${esc(p.classroom||"no classroom")}</b>
     <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
   if(nwOpen!==p.id)return `<section class="ref" style="background:var(--sky-soft)">${head}
     <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
@@ -3258,7 +3331,7 @@ function renderProject(x){
       ${br.length<8?`<div class="actions"><button class="btn small ghost" data-pwadd="1">Add a direction</button></div>`:""}</div>
       <div id="pwebprev">${webPreviewSvg(projWeb(x))}</div></div></section>`;
 
-  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Notice and Wonder</div>
+  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Moments</div>
     <div class="hint">Moments educators kept for this project, in the order they happened.</div>
     <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
@@ -3307,9 +3380,9 @@ function addThreadToProject(x,t){
   let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
   saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} classroom has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
 }
-/* Claude support on a project follows the same two patterns a plan has. Strengthen wording rewords what educators wrote
+/* TREE support on a project follows the same two patterns a plan has. Strengthen wording rewords what educators wrote
    and adds nothing. The directions draft reads what the project and its threads already say. Both show a suggestion first,
-   and nothing changes until an educator chooses it. Claude never writes the team's reading for them. */
+   and nothing changes until an educator chooses it. TREE never writes the team's reading for them. */
 const PSTD={experience:["The experience it grew from","Tells what happened and what children felt or showed, as educators observed it. Keeps what children did separate from what educators think it means."],
   underneath:["What may lie underneath","A hypothesis about the deeper question or understanding children may be working on. Written tentatively, with words such as perhaps or it may be. Never phrased in a child's voice, and never a topic."],
   intent:["Our intent as educators","What educators hope children may come to understand, and what educators want to learn themselves. Held loosely. Never an outcome to reach and never a list of things to do."],
@@ -3320,7 +3393,7 @@ const projVal=(x,k)=>String(k==="intent"?projIntent(x):k==="underneath"?projUnde
 function projStrHtml(x,k){
   if(!sample)return"";const sg=projStr[x.id+k];
   if(!sg)return `<div class="actions"><button class="btn small ghost" data-pstr="${k}">Strengthen wording</button></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is rewriting this section</b><div class="muted">Reading your entry</div></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>TREE is rewriting this section</b><div class="muted">Reading your entry</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">Strengthen did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-pstr="${k}">Try again</button><button class="linkbtn" data-pstrno="${k}">Close</button></div></div>`;
   return `<div class="sugg"><b>Suggested wording</b><textarea id="pstr-${k}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-pstryes="${k}">Use this</button><button class="btn small ghost" data-pstrno="${k}">Keep mine</button><button class="linkbtn" data-pstr="${k}">Try another version</button></div></div>`;
 }
@@ -3348,8 +3421,8 @@ ${cur}`;
 const projDirs=x=>((x.web&&x.web.branches)||[]).filter(b=>(b.name||"").trim());
 function projWebSuggestHtml(x){
   if(!sample)return"";const sg=projSug[x.id];const filled=projDirs(x).length>0;
-  if(!sg)return `<div class="actions"><button class="btn small ghost" id="pw-assist">${filled?"Suggest how the directions could evolve":"Draft directions from this project"}</button><span class="cnt">Claude reads what the project and its threads already say. You see the draft before anything changes.</span></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is reading the project</b><div class="muted">Drafting directions from the experience, what may lie underneath, the intent, and the threads.</div></div>`;
+  if(!sg)return `<div class="actions"><button class="btn small ghost" id="pw-assist">${filled?"Suggest how the directions could evolve":"Draft directions from this project"}</button><span class="cnt">TREE reads what the project and its threads already say. You see the draft before anything changes.</span></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>TREE is reading the project</b><div class="muted">Drafting directions from the experience, what may lie underneath, the intent, and the threads.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The directions draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" id="pw-assist">Try again</button><button class="linkbtn" id="pw-sgno">Close</button></div></div>`;
   return `<div class="sugg"><b>Suggested directions</b>
     <ul style="margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px">${sg.branches.map(b=>`<li><span style="font-weight:600">${esc(b.name)}</span>${b.materials?`<span class="muted">. ${esc(b.materials)}</span>`:""}</li>`).join("")}</ul>
@@ -3540,7 +3613,7 @@ function wordRegex(w){
   return new RegExp("\\b(?:"+`${c}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==c?`|${stem}(?:ing|ed)`:"")+")\\b","i");
 }
 // What each word of a lens would actually find in the school's own plans, and in which parts of them.
-// This is counting, not Claude. It lets the team keep the words that find children's work and drop the rest.
+// This is counting, not TREE. It lets the team keep the words that find children's work and drop the rest.
 function lensWordCheck(L){
   const ps=[...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type));
   const rows=(L.words||[]).map(w=>({w,n:0,obs:0,by:{},stem:String(w).toLowerCase().replace(/[^a-z' -]/g,"").replace(/e$/,"")}));
@@ -3590,9 +3663,9 @@ function renderLens(){
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
       <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="llang" style="width:auto" aria-label="Language"><option value="">Every language in the lens</option>${LENS.languages.map(l=>`<option ${lLang===l?"selected":""}>${esc(l)}</option>`).join("")}</select>${printTwo("lens","")}</div></div>
-  <section class="card"><div class="lbl">How we read a moment</div>
+  <details class="card lenshow"><summary><span class="lbl" style="display:inline">How we read a moment</span> <span class="cnt">${LENS.questions.length} questions</span></summary>
     <ol class="lq">${LENS.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>
-    <div class="hint">Read for the thinking. How a product looks is never rated.</div></section>
+    <div class="hint">Read for the thinking. How a product looks is never rated.</div></details>
   <div class="stats">
     <div class="stat"><b>${moments.length}</b><span>moments in educators' words</span></div>
     <div class="stat"><b>${marked.length}</b><span>plans marking a language of the lens</span></div>
@@ -3605,7 +3678,9 @@ function renderLens(){
     <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r||"No classroom set"}</th>`).join("")}</tr></thead><tbody>
     ${weeks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;
       return `<td>${n||k?`<span class="cnt"><b style="color:var(--moss);font-size:14px">${n}</b> moment${n===1?"":"s"}${k?` · ${k} marked`:""}</span>`:`<span class="cnt">None yet</span>`}</td>`}).join("")}</tr>`).join("")}
-    </tbody></table></div></section>`;
+    </tbody></table></div>
+    <div class="lenscards">${weeks.map(w=>{const cells=rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;return n||k?`<span><b>${esc(r||"No classroom")}</b> ${n} moment${n===1?"":"s"}${k?`, ${k} marked`:""}</span>`:""}).filter(Boolean);
+      return `<div class="lenscard"><div class="cnt">Week of ${fmtDate(w)}</div>${cells.length?`<div class="lcells">${cells.join("")}</div>`:`<div class="cnt">None yet</div>`}</div>`}).join("")}</div></section>`;
 
   // moments
   const cap=lensShowAll?moments.length:15;
@@ -3630,10 +3705,10 @@ function renderLens(){
 
   // a closer reading
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>A closer reading</h2>
-    ${sample&&isDirector()?`<button class="btn small" id="lensread" ${lensBusy||!ps.length?"disabled":""}>${lensBusy?"Reading plans":"Read through the lens with Claude"}</button>`:""}</div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">${isDirector()?"Claude reads the saved plans in this range and answers the questions above for the moments the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask Claude to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
+    ${sample&&isDirector()?`<button class="btn small" id="lensread" ${lensBusy||!ps.length?"disabled":""}>${lensBusy?"Reading plans":"Read through the lens"}</button>`:""}</div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">${isDirector()?"TREE reads the saved plans in this range and answers the questions above for the moments the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask TREE to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
   if(scan&&(scan.moments||[]).length){
-    h+=`<div class="chiprow-label">Read by Claude, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
+    h+=`<div class="chiprow-label">Read by TREE, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     const qs=scan.questionsAsked||LENS.questions;
     h+=`<div class="lmoments">${scan.moments.map(m=>{const p=rec(m.planId);
@@ -3716,7 +3791,7 @@ function lensClick(t){
   return false;
 }
 const lensSug={},lensWords={};
-// Claude proposes a lens from its name. Nothing is saved until an educator chooses it.
+// TREE proposes a lens from its name. Nothing is saved until an educator chooses it.
 async function lensDraft(L){
   if(!L.name.trim()||L.name==="New lens"){toast("Give the lens a name first.");return}
   lensSug[L.id]={status:"working"};renderSettings();
@@ -3745,7 +3820,7 @@ Return JSON {"description":"","questions":[],"languages":[],"words":[]}`;
 function lensDraftHtml(L){
   if(!sample)return"";const sg=lensSug[L.id];
   if(!sg)return "";
-  if(sg.status==="working")return `<div class="sugg"><b>Claude is drafting the lens</b><div class="muted">Working from the name and what you have written.</div></div>`;
+  if(sg.status==="working")return `<div class="sugg"><b>TREE is drafting the lens</b><div class="muted">Working from the name and what you have written.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The draft did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-lensdraft="${esc(L.id)}">Try again</button><button class="linkbtn" data-lenssgno="${esc(L.id)}">Close</button></div></div>`;
   return `<div class="sugg"><b>Suggested lens</b>
     ${sg.description?`<div><span class="muted">What it means here.</span> ${esc(sg.description)}</div>`:""}
@@ -3780,7 +3855,7 @@ function lensSettingsHtml(){
     <label class="fld-label">Words that point to a moment, separated by commas<textarea data-lf="${esc(l.id)}|words" rows="3">${esc(l.words.join(", "))}</textarea></label>
     ${l.words.length?"":`<div class="hint" style="color:var(--clay)">Without words, this lens finds no moments in the plans. Add the words educators would use.</div>`}
     ${lensWordsHtml(l)}${lensDraftHtml(l)}
-    <div class="actions">${sample&&!lensSug[l.id]?`<button class="btn small ghost" data-lensdraft="${esc(l.id)}">Draft this lens with Claude</button>`:""}
+    <div class="actions">${sample&&!lensSug[l.id]?`<button class="btn small ghost" data-lensdraft="${esc(l.id)}">Draft this lens</button>`:""}
       ${lensWords[l.id]?"":`<button class="btn small ghost" data-lensw="${esc(l.id)}">Check the words</button>`}
       ${l.year?`<button class="linkbtn" data-lensyear="${esc(l.id)}">Not this year</button>`:`<button class="btn small ghost" data-lensyear="${esc(l.id)}">Mark as this year's</button>`}
       <button class="btn small ghost" data-lensdup="${esc(l.id)}">Duplicate</button>
@@ -4694,20 +4769,20 @@ function renderThreads(){
 
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
-    <span class="actions">${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads with Claude"}</button>`:""}</span></div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"Claude reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks Claude to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
+    <span class="actions">${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads"}</button>`:""}</span></div>
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(scan&&scan.threads?.length){
     const open=x=>!x.trackedId||!threads.has(x.trackedId)||!!threads.get(x.trackedId).undone;
     const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
-    h+=`<div class="chiprow-label">Found by Claude, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
+    h+=`<div class="chiprow-label">Found by TREE, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
     else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
-  }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?(isDirector()?"No threads found yet. Press Find threads with Claude.":"No threads found yet. The director's next thread search will show here."):"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
+  }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?(isDirector()?"No threads found yet. Press Find threads.":"No threads found yet. The director's next thread search will show here."):"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
   h+=`</section>`;
 
   // Planning grid
@@ -4782,7 +4857,7 @@ function originHtml(t,isTracked){
     const wks=new Set(ps.map(p=>p.weekOf)).size;
     rows.push(`<div><b>Seen in</b>${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classrooms":" classroom"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
   if(isTracked){
-    const how=t.origin?`after Claude found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" classroom":" across all classrooms"}`:"";
+    const how=t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" classroom":" across all classrooms"}`:"";
     rows.push(`<div><b>Followed</b>${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
   }
   return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
@@ -4823,14 +4898,14 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       <button class="linkbtn" data-tedit="${t.id}">Change name or classroom</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
-    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} Notice and Wonder moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
+    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
     if(was&&was.unfollowed&&!was.undone)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
     else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
     else{const rp=t.relatedProject&&projects.get(t.relatedProject);
-      if(rp)h+=`<span class="nudge" style="justify-self:start">Claude noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
+      if(rp)h+=`<span class="nudge" style="justify-self:start">TREE noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
       h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`}
   }
   return h+`</article>`;
@@ -4905,7 +4980,7 @@ function undoFollow(th){
   if(!x){x={name:th.name,question:th.question||"",classroom:th.classroom||"",groups:[...(th.groups||[])],status:th.status||"emerging",weeks:[...(th.weeks||[])],evidence:[...(th.evidence||[])],languages:[...(th.languages||[])],next:[...(th.next||[])],trackedId:th.id};scan.threads.push(x)}
   delete x.dismissed;saveScan(scan);
   if(tRoom!==room){tRoom=room;LS.set("fps.troom",tRoom)}
-  renderMain();toast("Undone. It is back among the threads Claude found.");
+  renderMain();toast("Undone. It is back among the threads TREE found.");
 }
 function saveScan(c){scans.set(c.room,c);
   if(db)db.doc("scans/"+c.room).set(JSON.parse(JSON.stringify(c))).catch(()=>{});
@@ -4932,7 +5007,7 @@ async function threadsClick(t){
   if(t.dataset.tstop){$("#tstop-"+t.dataset.tstop).innerHTML=`<span class="confirm">Stop following for the whole team? It moves to No longer following, where anyone can follow it again. <button class="btn warn small" data-tstopyes="${t.dataset.tstop}">Stop following</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
   if(t.dataset.tundo){const th=threads.get(t.dataset.tundo);if(!th)return true;const pr=projectOfThread(th.id);
     if(pr){toast(`This thread is part of the project ${pr.name}. Take it out of the project first.`);return true}
-    $("#tundo-"+th.id).innerHTML=`<span class="confirm">Followed by mistake? This puts it back among the threads Claude found, as it was before. <button class="btn warn small" data-tundoyes="${th.id}">Undo follow</button><button class="linkbtn" data-tdelno="1">Keep following</button></span>`;return true}
+    $("#tundo-"+th.id).innerHTML=`<span class="confirm">Followed by mistake? This puts it back among the threads TREE found, as it was before. <button class="btn warn small" data-tundoyes="${th.id}">Undo follow</button><button class="linkbtn" data-tdelno="1">Keep following</button></span>`;return true}
   if(t.dataset.tundoyes){undoFollow(threads.get(t.dataset.tundoyes));return true}
   if(t.dataset.tstopyes){const th=threads.get(t.dataset.tstopyes);if(th){th.unfollowed={by:whoAmI(),at:Date.now()};saveThread(th);tOpenStopped=true;toast("Stopped following. Find it under No longer following.")}renderMain();return true}
   if(t.dataset.trefollow){const th=threads.get(t.dataset.trefollow);if(th){delete th.unfollowed;th.refollowed={by:whoAmI(),at:Date.now()};saveThread(th);toast("Following this thread again.")}renderMain();return true}
@@ -5090,7 +5165,7 @@ function jobLine(j){
 }
 function asideHtml(j){
   const why={blank:"Looked blank",other:"Did not look like a planning form"};
-  return `<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${j.aside.length} page${j.aside.length===1?" was":"s were"} set aside and not transcribed</b><div>Claude judged ${j.aside.length===1?"this page":"these pages"} blank or not a plan. If ${j.aside.length===1?"it holds":"any hold"} planning writing, transcribe ${j.aside.length===1?"it":"them"} here.</div>
+  return `<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${j.aside.length} page${j.aside.length===1?" was":"s were"} set aside and not transcribed</b><div>TREE judged ${j.aside.length===1?"this page":"these pages"} blank or not a plan. If ${j.aside.length===1?"it holds":"any hold"} planning writing, transcribe ${j.aside.length===1?"it":"them"} here.</div>
     <div class="thumbs">${j.aside.map((a,i)=>`<div class="thumb">${a.u.url?`<a href="${a.u.url}" target="_blank" rel="noopener" title="Open page ${a.n} full size"><img src="${a.u.url}" alt="Page ${a.n}"></a>`:`<div class="doc">Page</div>`}<span>Page ${a.n}. ${why[a.form]||""}</span><button class="thumbact" data-aside="${j.id}|${i}">Transcribe this page</button></div>`).join("")}</div>
     ${j.aside.length>1?`<div><button class="btn small" data-asideall="${j.id}">Transcribe all ${j.aside.length} as one plan each</button></div>`:""}</div>`;
 }
@@ -5101,12 +5176,12 @@ function renderImport(){
   const tooBig=imgLimit?groups.filter(g=>g.filter(u=>u.kind==="image").length>imgLimit):[];
   const oneTooBig=!batch&&imgLimit&&uploads.filter(u=>u.kind==="image").length>imgLimit;
   let h=`<div class="head"><div><span class="eyebrow">Bring plans into the app</span><h2 style="margin-top:4px">Upload a plan or photo</h2>
-    <div class="sub">Snap photos of handwritten plans, or upload PDF and Word files. Claude transcribes the writing word for word into the right sections. You check it, then it saves and prints like any other plan.</div></div></div>`;
+    <div class="sub">Snap photos of handwritten plans, or upload PDF and Word files. TREE transcribes the writing word for word into the right sections. You check it, then it saves and prints like any other plan.</div></div></div>`;
   if(!sample)h+=`<div class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">Transcription needs Claude assist</b><div>Open this page in the Claude app or claude.ai and allow Claude assist when asked.</div></div>`;
   h+=`<section class="card"><div class="lbl">How many plans?</div>
     <div class="seg" role="group" aria-label="Upload mode"><button data-imode="one" aria-pressed="${!batch}">One plan</button><button data-imode="batch" aria-pressed="${batch}">Batch, many plans</button></div>
     <div class="hint">${batch?"For a whole-school scan, upload the scanned PDF from the copier, or a stack of photos, in any mix of classrooms and forms. Word files holding several weeks are split into separate plans too.":"Every file and photo you add is treated as pages of a single plan."}</div>
-    ${batch?`<label class="radio"><input type="checkbox" id="isort" ${importSort?"checked":""}> <span><b>Let Claude sort the pages into plans.</b> Claude looks at every page, finds where each plan starts, and files it under the right form, classroom, group, educator, and week. Turn this off to group pages yourself.</span></label>${!importSort?`<span class="nudge" style="justify-self:start">Sorting is off. Each file is read as one plan, and any plan longer than ${imgLimit||4} pages is sorted automatically.</span>`:""}`:""}</section>`;
+    ${batch?`<label class="radio"><input type="checkbox" id="isort" ${importSort?"checked":""}> <span><b>Let TREE sort the pages into plans.</b> TREE looks at every page, finds where each plan starts, and files it under the right form, classroom, group, educator, and week. Turn this off to group pages yourself.</span></label>${!importSort?`<span class="nudge" style="justify-self:start">Sorting is off. Each file is read as one plan, and any plan longer than ${imgLimit||4} pages is sorted automatically.</span>`:""}`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Add ${batch?"the plans":"the plan"}</div>
     <label class="drop" id="drop" for="upfile"><b>Tap to take a photo or choose files</b><span class="muted" style="font-size:13.5px">Photos, PDF, Word (.docx), or text. ${batch?"Select as many as you like.":"Several pages are fine"+(imgLimit?`, up to ${imgLimit} images.`:".")} You can also drop files here.</span></label>
     <input type="file" id="upfile" multiple accept="image/*,.pdf,.docx,.txt" hidden>
@@ -5117,12 +5192,12 @@ function renderImport(){
     else if(batch){h+=groups.map((g,gi)=>`<div style="display:grid;gap:6px"><div class="chiprow-label">Plan ${gi+1} of ${groups.length}${imgLimit&&g.filter(u=>u.kind==="image").length>imgLimit?` <span class="nudge">${g.filter(u=>u.kind==="image").length} pages. These will be sorted into plans automatically so every page is read</span>`:""}</div><div class="thumbs">${g.map(u=>thumb(u,true)).join("")}</div></div>`).join("")}
     else h+=`<div class="thumbs">${uploads.map(u=>thumb(u,false)).join("")}</div>`;
   }
-  if(oneTooBig)h+=`<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${uploads.filter(u=>u.kind==="image").length} pages is more than one plan</b><div>Claude reads ${imgLimit} pages per plan. For a scan of several plans, switch to Batch with sorting and every page will be read and split into plans.</div><div><button class="btn small" id="sorton">Switch to Batch with sorting</button></div></div>`;
+  if(oneTooBig)h+=`<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${uploads.filter(u=>u.kind==="image").length} pages is more than one plan</b><div>TREE reads ${imgLimit} pages per plan. For a scan of several plans, switch to Batch with sorting and every page will be read and split into plans.</div><div><button class="btn small" id="sorton">Switch to Batch with sorting</button></div></div>`;
   if(!batch)h+=`<details ${importPaste?"open":""}><summary class="chiprow-label" style="cursor:pointer">Or paste typed text</summary><textarea id="uppaste" rows="4" style="margin-top:6px" placeholder="Paste the text of a plan from an email or document">${esc(importPaste)}</textarea></details>`;
   h+=`</section>
   <section class="card"><div class="lbl">Which form ${batch?"are they":"is it"}?</div>
-    <div class="seg" role="group" aria-label="Form type">${[["auto","Let Claude tell"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Older Small Group form"]].map(([k,l])=>`<button data-itype="${k}" aria-pressed="${importType===k}">${l}</button>`).join("")}</div>
-    <div class="hint">${batch?"Let Claude tell works best for a mixed batch. ":""}Older or differently laid out forms work too. Writing that fits no section is kept in a note at the top of the plan.</div>
+    <div class="seg" role="group" aria-label="Form type">${[["auto","Let TREE tell"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Older Small Group form"]].map(([k,l])=>`<button data-itype="${k}" aria-pressed="${importType===k}">${l}</button>`).join("")}</div>
+    <div class="hint">${batch?"Let TREE tell works best for a mixed batch. ":""}Older or differently laid out forms work too. Writing that fits no section is kept in a note at the top of the plan.</div>
     ${target&&!batch?`<div class="chiprow-label" style="margin-top:6px">Where should it go?</div>
       <label class="radio"><input type="radio" name="into" value="new" ${importInto==="new"?"checked":""}> A new plan</label>
       <label class="radio"><input type="radio" name="into" value="open" ${importInto==="open"?"checked":""}> The ${esc(FORMS[target.type].name)} I had open, ${esc(planTitle(target))}, week of ${fmtDate(target.weekOf)}. Fills empty sections only.</label>`:""}
@@ -5194,14 +5269,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function queueRender(){if(view==="import")renderImport()}
 function readError(err){
   const c=err?.code;
-  const m={image_rejected:"A page image could not be prepared. Try a clearer photo or scan.",images_unavailable:"Photos cannot be sent from this view. Try the Claude app or claude.ai.",not_granted:"Claude assist was not allowed for this page.",session_expired:"You were signed out. Sign in again, then press Try again.",not_allowed:"The server would not allow this request.",
+  const m={image_rejected:"A page image could not be prepared. Try a clearer photo or scan.",images_unavailable:"Photos cannot be sent from this view. Try again from TREE.",not_granted:"Claude assist was not allowed for this page.",session_expired:"You were signed out. Sign in again, then press Try again.",not_allowed:"The server would not allow this request.",
     too_big:"These pages are too large to send. Press Try again and they will be sent smaller.",unavailable:"The server could not be reached, even after waking it. Check the internet connection, then press Try again.",
-    invalid_json:"Claude's answer came back garbled several times. Press Try again.",empty:"Claude found no plan writing on these pages. Check them, then press Try again."};
+    invalid_json:"The answer came back garbled several times. Press Try again.",empty:"TREE found no plan writing on these pages. Check them, then press Try again."};
   if(m[c])return m[c];
   if(err?.message)return String(err.message);
   return `Something went wrong (${c||"unknown"}). Press Try again.`;
 }
-// every Claude reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
+// every TREE reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
 async function askRead(prompt,opts,j){
   const waits=[8000,25000,60000];
   for(let a=0;;a++){
@@ -5209,7 +5284,7 @@ async function askRead(prompt,opts,j){
     catch(err){
       const c=err?.code;
       if(!["rate_limited","unavailable","server_error","invalid_json"].includes(c)||a>=waits.length)throw err;
-      if(j){j.note=c==="unavailable"?"The server is waking up. Trying again":c==="rate_limited"?"Claude is busy. Trying again shortly":"Trying again";queueRender()}
+      if(j){j.note=c==="unavailable"?"The server is waking up. Trying again":c==="rate_limited"?"TREE is busy. Trying again shortly":"Trying again";queueRender()}
       if(c==="unavailable"&&window.FP_WAKE)await window.FP_WAKE();else await sleep(waits[a]);
     }
   }
@@ -5389,14 +5464,16 @@ function allFiltered(){
 function filledCount(p){const F=FORMS[p.type];return F.fields.filter(f=>(p.fields?.[f.k]||"").trim()).length+"/"+F.fields.length}
 function renderAllPlans(){
   const ps=allFiltered();const all=[...plans.values()].filter(p=>p.id!=="example");
-  const c=k=>all.filter(p=>p.type!=="notice"&&(k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k)).length;
+  // an educator's counts are their own plans. The director's are the whole school's.
+  const mine=!isDirector()&&me()?all.filter(p=>p.type!=="notice"&&isMine(p,me())):null;const base=mine||all;
+  const c=k=>base.filter(p=>p.type!=="notice"&&(k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k)).length;const yours=mine?" of yours":"";
   let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
     <div class="sub">Every plan from every week and classroom. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
-    <div class="stats"><div class="stat"><b>${all.filter(p=>p.type!=="notice").length}</b><span>plans saved</span></div><div class="stat"><b>${notices.size} </b><span>moments kept</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review</span></div><div class="stat"><b>${c("draft")}</b><span>still in draft</span></div></div>
+    <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>moments kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
     <section class="card" style="gap:10px">
       <div class="filters" style="margin:0">${[["All","All classrooms"],["West","West"],["North","North"],["South","South"],["none","No classroom"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
-        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Notice and Wonder"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Moments"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>
@@ -5449,8 +5526,12 @@ function renderChildren(){
   const shown=all.filter(c=>(kShow==="at"?kidAt(c):!kidAt(c))&&inRoom(c)&&(!q||kidName(c).toLowerCase().includes(q)||(c.group||"").toLowerCase().includes(q)));
   const nAt=all.filter(c=>kidAt(c)&&inRoom(c)).length,nFormer=all.filter(c=>!kidAt(c)&&inRoom(c)).length;
   const mCount=c=>kidMoments(c).length;
+  const today=iso(new Date());
   const card=c=>{const nx=kidNext(c);const n=mCount(c);
-    return `<button class="kidc" data-kid="${esc(c.id)}"><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>
+    const cf=[...conferences.values()].filter(x=>x.childId===c.id&&x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
+    const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;const t3=kidTurnsThree(c);
+    const soon=[cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:"",dw?`${dw} DRDP to review`:"",t3?`Turns three ${parseIso(t3).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:""].filter(Boolean);
+    return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${soon.length?`<span class="ksoon">${esc(soon.join(" · "))}</span>`:""}
       <span>${kidAt(c)?((nx==="k"||nx==="tk")?(nx==="k"?"Kindergarten next year":"TK next year"):n?`${n} moment${n===1?"":"s"}`:"No moments yet"):`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}`}</span></button>`};
   const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
   let body="";
@@ -5482,7 +5563,7 @@ function kidSlides(c){return [...slides.values()].filter(s=>(s.children||[]).inc
 function kidEvidence(c){
   const by={};const add=(code,src)=>{if(!DRDP[code])return;(by[code]=by[code]||[]).push(src)};
   for(const n of kidMoments(c))for(const m of (n.measures||[]).filter(x=>x.kept))add(m.code,{kind:"moment",id:n.id,at:n.at,note:m.note,title:momentHeading(n)||firstLine(n.noticed,60)});
-  for(const s of kidSlides(c))for(const m of (s.measures||[]).filter(x=>x.kept))add(m.code,{kind:"slide",id:s.id,at:s.at,note:m.note,title:s.title||"A slide"});
+  for(const s of kidSlides(c))for(const m of (s.measures||[]).filter(x=>x.kept))add(m.code,{kind:"slide",id:s.id,at:s.at,note:m.note,title:slideTitle(s)});
   return Object.entries(by).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
 }
 // a child's page, in five parts so each one is quick to read: an overview, the documentation, the DRDP, conferences, and details
@@ -5517,13 +5598,13 @@ function renderChild(){
         <button class="stat press" data-ktab="details"><b class="wordval">${esc(nx&&NEXTPLAN[nx]?({staying:"Staying",tk:"TK",k:"Kindergarten",deciding:"Deciding",other:"Other"})[nx]:"Not set")}</b><span>next year</span></button></div>
       ${wait?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><button class="btn small" data-ktab="drdp">Review ${wait}</button></div><div class="cnt">DRDP suggestions from ${esc(c.first)}'s documentation wait for an educator to accept, change or set aside.</div></section>`:""}
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
-        ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No moments tag or name ${esc(c.first)} yet. Tag children when keeping a moment so nothing is missed.</div>`}</section>`;
+        ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No moments tag or name ${esc(c.first)} yet. <button class="btn small" data-newfor="${esc(c.id)}">Keep a moment for ${esc(c.first)}</button></div>`}</section>`;
   }else if(kidTab==="docs"){
     const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
         <div class="cnt">Tap a moment to read it. The portfolio holds the moments and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
-        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">None here.</div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(s.title||"A slide")}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
+        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No moments for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep a moment for ${esc(c.first)}</button></div>`}</section>
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
@@ -5734,7 +5815,13 @@ function saveProgram(){
 }
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
 function renderSettings(){
-  if(!isDirector()){$("#main").innerHTML=`<div class="empty">Program settings are managed by the director.</div>`;return}
+  if(!isDirector()){const nm=window.FP_NAME?window.FP_NAME():me();const rm=myRoom();
+    $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" classroom. ":""}Your lists open on your classroom. The director sets the program's lists, groups and classrooms.</div></div></div>
+    <section class="card" id="mypass"><div class="lbl">Change my passcode</div><div class="hint">Type the four numbers you use now, then four new ones twice.</div>
+      <div class="kfields"><label>Passcode now<input type="password" inputmode="numeric" maxlength="4" id="mp-old" autocomplete="current-password"></label><label>New passcode<input type="password" inputmode="numeric" maxlength="4" id="mp-new" autocomplete="new-password"></label><label>New passcode again<input type="password" inputmode="numeric" maxlength="4" id="mp-again" autocomplete="new-password"></label></div>
+      <div class="actions"><button class="btn small" id="mp-save">Save my new passcode</button><span class="cnt" id="mp-msg"></span></div></section>
+    <section class="card"><div class="lbl">My classroom</div><div class="hint">Lists open on ${rm?esc(rm):"all classrooms"}. Choosing another classroom on a list is remembered on this device.</div>
+      <div class="actions"><button class="btn small ghost" id="mp-roomreset">Open every list on ${rm?esc(rm):"my classroom"} again</button></div></section>`;return}
   const names=rosterNames();
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
