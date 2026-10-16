@@ -2104,7 +2104,8 @@ function placeSubnav(){
   if(have)have.remove();m.insertAdjacentHTML("afterbegin",want);m.firstElementChild.__src=want;
 }
 new MutationObserver(()=>placeSubnav()).observe(document.getElementById("main"),{childList:true});
-function myRoom(){const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
+// the director looks after every classroom, so no one classroom is theirs, whatever a plan last used on this device
+function myRoom(){if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
 const myGroups=()=>{const m=me().toLowerCase();return m?GROUPS.filter(g=>(g.educator||"").toLowerCase()===m):[]};
 const fmtLong=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 const tlabel=t=>{if(!t)return"";let [h,m]=String(t).split(":").map(Number);const ap=h>=12?"pm":"am";h=h%12||12;return h+(m?":"+String(m).padStart(2,"0"):"")+ap};
@@ -2379,7 +2380,7 @@ document.addEventListener("change",e=>{
   const t=e.target;const p=currentId&&plans.get(currentId);if(!p)return;
   if(t.id==="m-week"&&t.value){p.weekOf=mondayOf(parseIso(t.value));delete p.importNoDate;week=p.weekOf;persist(p);renderAll();return}
   if(t.id==="m-thread"){if(t.value)linkThread(p,t.value);return}
-  if(t.id==="m-room"){p.classroom=t.value;LS.set("fps.myroom",t.value);if(p.group&&!GROUPS.some(g=>g.name===p.group&&g.room===t.value))p.group="";persist(p);renderList();renderMain();return}
+  if(t.id==="m-room"){p.classroom=t.value;if(!isDirector())LS.set("fps.myroom",t.value);if(p.group&&!GROUPS.some(g=>g.name===p.group&&g.room===t.value))p.group="";persist(p);renderList();renderMain();return}
   if(t.id==="m-group"){p.group=t.value;const g=GROUPS.find(g=>g.name===t.value);if(g&&!p.educator){p.educator=g.educator}persist(p);renderList();renderMain();return}
 });
 function insertText(k,text,isMaterial){
