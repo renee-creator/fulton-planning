@@ -1514,8 +1514,18 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
 window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
   return kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>({code:x.code,name:DRDP[x.code]||"",dom:x.code.split(" ")[0],level:x.level,emerging:!!x.emerging,evidence:x.evidence||"",title:x.src&&x.src.title||"",at:(x.src&&x.src.at)||x.at||0}))
     .filter(x=>x.at>=t0&&x.at<=t1).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})||a.at-b.at)};
+// the documentation for a conference, as pages that print after the form, in date order with the child's age, as in the portfolio
+window.TREE_CONF_DOCS_FILE=async(childId,from,to,word)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+  const its=portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
+  const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
+  const docs=its.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
+  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
+  return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
+// opens a piece of documentation from a conference form
+window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
+  const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
-  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
+  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,id:x.kind==="slides"?x.s.id:x.n.id,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
 
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
@@ -1622,12 +1632,13 @@ function saveSlide(s){s.updatedAt=Date.now();slides.set(s.id,s);if(db)db.doc("sl
 function saveSlideSoon(s){slides.set(s.id,s);clearTimeout(slideTimers[s.id]);slideTimers[s.id]=setTimeout(()=>saveSlide(s),700)}
 // a slide with no title of its own is named from its moment, so no slide is ever called Untitled
 // what the educator noticed and wondered, for a slide's words. Each child's own line becomes a quote instead.
-function momentText(n){if(!n)return"";const said=momentBody(n).split("\n").map(l=>l.trim()).filter(l=>l&&!NAMED_LINE.test(l)).join(" ");return [said,wonderLine(n.wonder)].filter(Boolean).join("\n\n")}
+// a photographed sheet of children's words is the children's, so only the educator's wondering comes across from it
+function momentText(n){if(!n)return"";if(momentHeading(n))return wonderLine(n.wonder);const said=momentBody(n).split("\n").map(l=>l.trim()).filter(l=>l&&!NAMED_LINE.test(l)).join(" ");return [said,wonderLine(n.wonder)].filter(Boolean).join("\n\n")}
 // only the educators' own title is ever printed. On screen, a slide without one is listed as A slide.
 function slideTitle(s){return s&&String(s.title||"").trim()?s.title:"A slide"}
 function newSlide(n){
   if(needName())return null;
-  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:n?momentText(n):"",photos:n&&n.photo?[n.id]:[],land:false,
+  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:n?momentText(n):"",autoText:!!n,photos:n&&n.photo?[n.id]:[],land:false,
     momentIds:n?[n.id]:[],children:n?[...(n.children||[])]:[],quotes:n?childLines(n.noticed,true).slice(0,2):[],measures:[],showMeasures:false,names:"",classroom:n?n.classroom||"":myRoom()};
   FRESH_SLIDES.add(s.id);saveSlide(s);slideOpen=s.id;LS.set("tree.slide",slideOpen);goView("slide");return s;
 }
@@ -1695,6 +1706,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="slides"||!dec
 });
 function renderSlide(){
   const s=slides.get(slideOpen);if(!s){$("#main").innerHTML=`<div class="empty">That slide is not here.</div>`;return}
+  if(!has(s.text)&&!s.autoText){const t=slideSources(s).map(momentText).filter(Boolean).join("\n\n");if(t){s.text=t;s.autoText=true;saveSlide(s)}}
   const mode=s.names||PRINT.names;const pool=[...notices.values()].filter(n=>n.photo&&n.photo.w).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,60);
   const sel=slidePhotos(s);const src=slideSources(s);const lines=[];const seen=new Set();for(const n of src)for(const l of childLines(n.noticed,true)){const k=l.words.toLowerCase();if(!seen.has(k)){seen.add(k);lines.push(l)}}
   const qs=new Set((s.quotes||[]).map(q=>q.words.toLowerCase()));const sg=slideSug[s.id];
@@ -1766,7 +1778,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.nwdrdp){nwDrdp[t.dataset.nwdrdp]=!nwDrdp[t.dataset.nwdrdp];renderMain();return}
   if(view!=="slide")return;
   const s=slides.get(slideOpen);if(!s)return;
-  if(t.dataset.sfph){const id=t.dataset.sfph;const cur=slidePhotos(s);if(cur.includes(id))s.photos=cur.filter(x=>x!==id);else if(cur.length>=3){toast("A slide holds up to three photos. Take one off first.");return}else{s.photos=[...cur,id];const n=notices.get(id);if(n&&!s.momentIds.includes(id))s.momentIds.push(id);if(n&&!s.classroom)s.classroom=n.classroom||"";if(n&&!has(s.title))s.title=momentHeading(n)}
+  if(t.dataset.sfph){const id=t.dataset.sfph;const cur=slidePhotos(s);if(cur.includes(id))s.photos=cur.filter(x=>x!==id);else if(cur.length>=3){toast("A slide holds up to three photos. Take one off first.");return}else{s.photos=[...cur,id];const n=notices.get(id);if(n&&!s.momentIds.includes(id))s.momentIds.push(id);if(n&&!s.classroom)s.classroom=n.classroom||"";if(n&&!has(s.title))s.title=momentHeading(n);if(n&&!has(s.text)){s.text=momentText(n);s.autoText=true}}
     saveSlide(s);renderSlide();return}
   if(t.dataset.sfset){const k=t.dataset.sfset,v=t.dataset.v;if(k==="sq")s.sq=v==="1";else{s[k]=v;if(k==="pos")delete s.land}saveSlide(s);renderSlide();return}
   if(t.dataset.sfjpg){slideJpgSave(s);return}
@@ -2322,7 +2334,7 @@ const PG0={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB
 const PG=Object.assign({},PG0);
 // a long plan is set a little smaller rather than spilling onto a third sheet
 function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=PG0.padB*z;PG.gap=PG0.gap*z;PG.strip=PG0.strip*Math.max(z,.92)}
-async function makePdf(list,filename){
+async function makePdf(list,filename,ret){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
   const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
@@ -2337,6 +2349,7 @@ async function makePdf(list,filename){
     doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(.6);
     doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
     if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(110,124,115);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-15,{align:"center"})}}
+  if(ret){overWarn();return doc.output("blob")}
   saveFile(doc.output("blob"),filename);overWarn();
 }
 // a sheet with more words than fit still prints, and the educator hears which one to shorten
@@ -2524,7 +2537,7 @@ function webSvgString(web,blank,A){
 }
 function svgToPng(svg){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
 function planPageCount(p){try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});if(p.display)pdfFonts(t);drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
-async function makeDocx(list,filename){
+async function makeDocx(list,filename,ret){
   let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   toast("Preparing the Word file");centerOver=[];
   const disp=list.some(p=>p.display);if(disp)await loadPrintFonts();
@@ -2579,6 +2592,7 @@ async function makeDocx(list,filename){
   const wf=disp?wordFonts():[];
   const docx=new Document(Object.assign({creator:"TREE, Fulton Community School & Farm",title:filename.replace(/\.docx$/,""),sections},disp?{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}}:{},wf.length?{fonts:wf}:{}));
   const blob=await Packer.toBlob(docx);
+  if(ret){overWarn();return blob}
   saveFile(blob,filename);overWarn();
 }
 
