@@ -1467,6 +1467,8 @@ setTimeout(()=>{const m=$("#main");if(m)navObs.observe(m,{childList:true})},0);
    next time it opens it shows as saved, with Edit to change it, so nothing is changed by accident. Something new or empty
    opens ready to write. Feedback, sign-ups, DRDP reviews and printing stay open, since each is its own deliberate step. */
 let lockFor="",lockOn=false;
+// a slide just made opens ready to write, even though it starts with the moment's words
+const FRESH_SLIDES=new Set();
 function lockKey(){
   if(view==="plans"&&currentId&&currentId!=="example"&&plans.has(currentId))return "plan:"+currentId;
   if(view==="slide"&&slideOpen&&slides.has(slideOpen))return "slide:"+slideOpen;
@@ -1476,11 +1478,11 @@ function lockKey(){
 }
 function lockHasContent(k){const [kind,id]=k.split(":");
   if(kind==="plan"){const p=plans.get(id);return !!p&&(Object.values(p.fields||{}).some(has)||Object.values(p.story||{}).some(has))}
-  if(kind==="slide"){const s=slides.get(id);return !!s&&(has(s.title)||has(s.text)||(s.quotes||[]).length>0)}
+  if(kind==="slide"){const s=slides.get(id);if(FRESH_SLIDES.has(id))return false;return !!s&&(has(s.title)||has(s.text)||(s.quotes||[]).length>0)}
   if(kind==="proj"){const x=projects.get(id);return !!x&&(has(x.name)||has(x.experience))}
   return true;
 }
-const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,.drev,[data-drback],#slideprev,.prow,.lockbar,.ai,#deckbar,section.review";
+const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,.drev,[data-drback],#slideprev,[data-sfmoment],.prow,.lockbar,.ai,#deckbar,section.review";
 function applyLock(){
   const main=$("#main");if(!main)return;const k=lockKey();
   if(k!==lockFor){lockFor=k;lockOn=!!k&&lockHasContent(k)}
@@ -1832,13 +1834,15 @@ let slides=new Map(), slideOpen=LS.get("tree.slide",""), slideSug={}, slideTimer
 function saveSlide(s){s.updatedAt=Date.now();slides.set(s.id,s);if(db)db.doc("slides/"+s.id).set(JSON.parse(JSON.stringify(s))).catch(()=>toast("Could not save the slide. Check your connection."))}
 function saveSlideSoon(s){slides.set(s.id,s);clearTimeout(slideTimers[s.id]);slideTimers[s.id]=setTimeout(()=>saveSlide(s),700)}
 // a slide with no title of its own is named from its moment, so no slide is ever called Untitled
+// what the educator noticed and wondered, for a slide's words. Each child's own line becomes a quote instead.
+function momentText(n){if(!n)return"";const said=momentBody(n).split("\n").map(l=>l.trim()).filter(l=>l&&!NAMED_LINE.test(l)).join(" ");return [said,wonderLine(n.wonder)].filter(Boolean).join("\n\n")}
 // only the educators' own title is ever printed. On screen, a slide without one is listed as A slide.
 function slideTitle(s){return s&&String(s.title||"").trim()?s.title:"A slide"}
 function newSlide(n){
   if(needName())return null;
-  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:"",photos:n&&n.photo?[n.id]:[],land:false,
+  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:n?momentText(n):"",photos:n&&n.photo?[n.id]:[],land:false,
     momentIds:n?[n.id]:[],children:n?[...(n.children||[])]:[],quotes:n?childLines(n.noticed,true).slice(0,2):[],measures:[],showMeasures:false,names:"",classroom:n?n.classroom||"":myRoom()};
-  saveSlide(s);slideOpen=s.id;LS.set("tree.slide",slideOpen);goView("slide");return s;
+  FRESH_SLIDES.add(s.id);saveSlide(s);slideOpen=s.id;LS.set("tree.slide",slideOpen);goView("slide");return s;
 }
 const slidePhotos=s=>(s.photos||[]).filter(id=>{const n=notices.get(id);return n&&n.photo}).slice(0,3);
 function slideSources(s){const ids=[...new Set([...(s.momentIds||[]),...(s.photos||[])])];return ids.map(id=>notices.get(id)).filter(Boolean)}
@@ -1918,6 +1922,7 @@ function renderSlide(){
           ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoSrc(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}</div>
 </section>
       <section class="card"><label class="fld-label">What the team understood<textarea data-sf="text" rows="4" placeholder="A few lines in the team's words">${esc(s.text||"")}</textarea></label>
+        ${!String(s.text||"").trim()&&src.some(n=>momentText(n))?`<div class="actions"><button class="btn small ghost" data-sfmoment="${s.id}">Use what was noticed and wondered</button></div>`:""}
         ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the moments on this slide.</span></div>`:""}
         ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the moments</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
         ${lines.length?`<div class="fld-label">The children's words on the slide<div class="chips">${lines.map((q,i)=>`<button class="chip ${qs.has(q.words.toLowerCase())?"on":""}" data-sfq="${i}" type="button">${q.name?esc(q.name)+", ":""}${esc(q.words.length>60?q.words.slice(0,57)+"...":q.words)}</button>`).join("")}</div></div>`:""}
@@ -1989,6 +1994,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.slidekeep){renderSlide();return}
   if(t.dataset.slidedelyes){slides.delete(s.id);if(db)db.doc("slides/"+s.id).delete().catch(()=>toast("Could not remove it. Check your connection."));goView("slides");toast("Removed.");return}
 });
+document.addEventListener("click",e=>{const t=e.target.closest("[data-sfmoment]");if(!t||view!=="slide")return;const s=slides.get(t.dataset.sfmoment);if(!s)return;
+  s.text=slideSources(s).map(momentText).filter(Boolean).join("\n\n");saveSlide(s);renderMain()});
 document.addEventListener("input",e=>{const t=e.target;if(view!=="slide"||!t.dataset.sf)return;const s=slides.get(slideOpen);if(!s)return;s[t.dataset.sf]=t.value;saveSlideSoon(s);
   clearTimeout(refreshSlidePreview._t);refreshSlidePreview._t=setTimeout(()=>refreshSlidePreview(s),400)});
 document.addEventListener("change",e=>{const t=e.target;
