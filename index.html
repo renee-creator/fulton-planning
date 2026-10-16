@@ -239,6 +239,7 @@ span.pfstate{cursor:default;border-style:dashed}
 .drev{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px dashed var(--line)}.drev:first-child{border-top:0}
 .drthumb{width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none}
 .drchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}.drchip{font-size:11.5px;font-weight:700;letter-spacing:.03em;background:var(--sky-soft);color:var(--sky);border-radius:999px;padding:1px 8px}
+.storebar{width:180px;max-width:40vw;height:10px;border-radius:6px;background:var(--moss-soft);overflow:hidden;align-self:center}.storebar span{display:block;height:100%;background:var(--moss)}
 .drnote{margin:10px 0;padding:10px 12px;border-left:3px solid var(--marigold);background:var(--marigold-soft);border-radius:6px;font-size:14.5px}
 .drset{margin:8px 0}.drset>summary{cursor:pointer}.drtop{font-size:15px}.drlvl{font-weight:700}
 .drtab{table-layout:fixed}.drtab td{vertical-align:top}.drtab select{max-width:230px}
@@ -566,7 +567,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -680,7 +681,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_KEEP_ORIGINAL=async function(blob,name){ const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data}); return j.id; };
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
   // a fresh key for photos, taken at once when one is refused
-  window.FP_RENEW_KEY=async()=>{try{const j=await api("/api/data");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}}catch(e){}};
+  window.FP_RENEW_KEY=async()=>{try{const j=await api("/api/data");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}if(j&&j.storage)window.FP_STORAGE=j.storage;}catch(e){}};
   window.claude={ use:async(name)=>{ await Store.ready; return caps[name]||null; } };
   window.addEventListener("pagehide",()=>{ try{ if(Auth.token) navigator.sendBeacon && fetch(SERVER+"/api/save-now",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+Auth.token},body:"{}"}); }catch(e){} });
 })();
@@ -1480,6 +1481,11 @@ function kidMonths(c){if(!c||!c.dob)return null;const b=parseIso(String(c.dob).s
 // a child's age on a given day, in years and months, as it is written on portfolio pages
 function kidAgeAt(c,t){if(!c||!c.dob)return"";const b=parseIso(String(c.dob).slice(0,10)),n=new Date(t||Date.now());let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;if(m<0)return"";
   const y=Math.floor(m/12),r=m%12,ys=y?`${y} year${y===1?"":"s"}`:"",ms=r||!y?`${r} month${r===1?"":"s"}`:"";return [ys,ms].filter(Boolean).join(" ")}
+// how much room the school's records use, from the server. GitHub asks for under 1 GB and strongly recommends under 5 GB.
+const STORE_SOFT=1024**3,STORE_HARD=5*1024**3;
+function storageInfo(){const s=window.FP_STORAGE;if(!s||!s.repoBytes)return null;const mb=b=>b>=1024**3?(b/1024**3).toFixed(2)+" GB":Math.max(1,Math.round(b/1024**2))+" MB";
+  const used=s.repoBytes,avg=s.photos?s.photoBytes/s.photos:900*1024,left=Math.max(0,STORE_SOFT-used);
+  return {used,usedText:mb(used),photos:s.photos,photoText:mb(s.photoBytes),pct:Math.min(100,Math.round(used/STORE_SOFT*100)),roomFor:Math.floor(left/avg),over:used>=STORE_SOFT,near:used>=STORE_SOFT/2}}
 // the day a child under three turns three, when no view was chosen and it falls within the next six weeks
 function kidTurnsThree(c){if(!c||!c.dob||(c.drdp||{}).view)return"";const d=String(c.dob).slice(0,10);const t=(Number(d.slice(0,4))+3)+d.slice(4);const day=t.endsWith("-02-29")?t.slice(0,5)+"02-28":t;
   const today=iso(new Date());return day>today&&day<=addDays(today,42)?day:""}
@@ -2068,6 +2074,7 @@ function todayWaiting(){
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
       out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
+  {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   {const rm=myRoom();for(const c of kidsAt().filter(c=>(dir||!rm||c.classroom===rm)&&kidTurnsThree(c)).slice(0,3))
     out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new moments against the Preschool through Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
@@ -5710,6 +5717,10 @@ function renderSettings(){
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
   ${signinsHtml()}
   ${lensSettingsHtml()}
+  ${(()=>{const si=storageInfo();if(!si)return"";return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos and records are kept in the school's private records on GitHub, which asks for under 1 GB and strongly recommends under 5 GB. A deleted photo still counts, since the history is kept.</div>
+    <div class="prow"><div><b>${esc(si.usedText)} used of 1 GB</b><div class="cnt">${si.photos} photo${si.photos===1?"":"s"}, ${esc(si.photoText)}. ${si.over?"Past 1 GB.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size.`}</div></div>
+      <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div>
+    <div class="cnt">Today shows a note for the director at 500 MB and again at 1 GB.</div></section>`})()}
   <section class="card"><div class="lbl">Printing</div><div class="hint">How printouts and Word files look for everyone.</div>
     <div class="prow"><div><b>The school's name on display documentation</b><div class="cnt">Moment sheets, wall sheets, threads, projects, the lens, and story pages</div></div>
       <div class="seg" role="group" aria-label="School name on documentation"><button data-psd="1" aria-pressed="${PRINT.schoolDocs}">On</button><button data-psd="0" aria-pressed="${!PRINT.schoolDocs}">Off</button></div></div>
