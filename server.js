@@ -189,6 +189,11 @@ let rev = 0; const changeLog = []; const BOOT_ID = crypto.randomBytes(6).toStrin
 function noteChange(kind, id) { rev++; changeLog.push({ rev, kind, id }); if (changeLog.length > 5000) changeLog.splice(0, 1000); }
 
 let loading = null;
+// how much room the records use. GitHub asks for under 1 GB and strongly recommends under 5 GB. Its own count includes
+// the history, so a deleted photo still counts. It is read again every six hours.
+async function readRepoSize() { try { const r = await gh('GET', `/repos/${RECORDS_REPO}?fresh=${Date.now()}`); if (r.status === 200) { store.repoKb = Number(r.json.size) || 0; store.repoKbAt = Date.now(); } } catch (e) {} }
+setInterval(readRepoSize, 6 * 3600e3).unref();
+function storageNow() { let photos = 0, bytes = 0; for (const o of store.originals.values()) { photos++; bytes += Number(o.size) || 0; } return { photos, photoBytes: bytes, repoBytes: Math.max((store.repoKb || 0) * 1024, bytes), at: store.repoKbAt || 0 }; }
 function loadAll() { if (!loading) loading = doLoad().finally(() => { loading = null; if (!store.ready && githubToken()) setTimeout(loadAll, 60000); }); return loading; }
 async function doLoad() {
   if (!githubToken()) { store.error = 'No GITHUB_TOKEN is saved on Render. Add it under Environment.'; log(store.error); return; }
@@ -198,6 +203,7 @@ async function doLoad() {
     if (repo.status === 401) throw new Error('GitHub rejected the token. Make a new fine-grained token with Contents read and write on the records repository.');
     if (repo.status !== 200) throw new Error('GitHub answered ' + repo.status + ' when opening the records repository.');
     store.branch = repo.json.default_branch || 'main';
+    store.repoKb = Number(repo.json.size) || 0; store.repoKbAt = Date.now();
     await loadAccounts();
     const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1`);
     if (tree.status === 409) { store.ready = true; store.loadedAt = Date.now(); return; }   // empty repository
@@ -491,7 +497,7 @@ async function handle(req, res) {
   if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, teachers: teacherNames(), data: snapshot() }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot() }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const out = {}; for (const c of changeLog) if (c.rev > body.since) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
