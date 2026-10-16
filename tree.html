@@ -240,6 +240,8 @@ span.pfstate{cursor:default;border-style:dashed}
 .drthumb{width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none}
 .drchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}.drchip{font-size:11.5px;font-weight:700;letter-spacing:.03em;background:var(--sky-soft);color:var(--sky);border-radius:999px;padding:1px 8px}
 .storebar{width:180px;max-width:40vw;height:10px;border-radius:6px;background:var(--moss-soft);overflow:hidden;align-self:center}.storebar span{display:block;height:100%;background:var(--moss)}
+.drmean{margin:6px 0;padding:8px 10px;border-left:3px solid var(--moss);background:var(--moss-soft);border-radius:6px;font-size:14.5px}.drmean .ml{display:block;font-size:12.5px;font-weight:700;color:var(--moss);margin-bottom:1px}
+.drcmp{margin:6px 0}.drcmp>summary{cursor:pointer}.drcmp ol{margin:6px 0 0 18px;display:grid;gap:4px;font-size:14px}.drcmp li.on{background:var(--marigold-soft);border-radius:4px;padding:2px 4px}
 .drnote{margin:10px 0;padding:10px 12px;border-left:3px solid var(--marigold);background:var(--marigold-soft);border-radius:6px;font-size:14.5px}
 .drset{margin:8px 0}.drset>summary{cursor:pointer}.drtop{font-size:15px}.drlvl{font-weight:700}
 .drtab{table-layout:fixed}.drtab td{vertical-align:top}.drtab select{max-width:230px}
@@ -1687,7 +1689,23 @@ let drdpEdit="",drdpShowAside=false;
 // which measures an educator has opened or closed stay that way while they work on the page
 const drdpOpen=new Set(),drdpShut=new Set();
 document.addEventListener("toggle",e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.drrow)return;const k=d.dataset.drrow;if(d.open){drdpOpen.add(k);drdpShut.delete(k)}else{drdpOpen.delete(k);drdpShut.add(k)}},true);
+/* The official wording of each level, read from the server, so an educator sees what a level means before accepting it */
+let DRDP_TXT=null,drdpTxtAsked=false;
+async function loadDrdpTxt(){if(DRDP_TXT||drdpTxtAsked||!window.FP_API||!db)return;drdpTxtAsked=true;
+  try{const j=await window.FP_API("/api/drdp-levels",{});if(j&&j.levels){DRDP_TXT=j.levels;if(view==="child"&&kidTab==="drdp"&&!drdpEdit)renderMain()}else drdpTxtAsked=false}catch(e){drdpTxtAsked=false}}
+const LV_KEY=Object.fromEntries(Object.entries(DRDP_LV).map(([k,n])=>[n,k]));
+function drdpLevelDesc(v,code,level){const m=DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][code];return m&&m.levels&&level?(m.levels[LV_KEY[level]]||""):""}
+function drdpMeanHtml(v,code,level,emerging){
+  if(!level)return `<div class="cnt">Choose a level to read what it means.</div>`;
+  const d=drdpLevelDesc(v,code,level);if(!d)return DRDP_TXT?"":`<div class="cnt">Loading what each level means.</div>`;
+  const ls=drdpLevels(v,code),nx=ls[ls.indexOf(level)+1];const nd=emerging&&nx?drdpLevelDesc(v,code,nx):"";
+  return `<div class="drmean"><span class="ml">${esc(level)} means</span><div>${esc(d)}</div>${nd?`<span class="ml" style="margin-top:6px">Emerging to ${esc(nx)}, which means</span><div>${esc(nd)}</div>`:""}</div>`}
+function drdpCompareHtml(v,code,level,open){
+  const m=DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][code];if(!m)return"";
+  return `<details class="drcmp" ${open?"open":""}><summary class="cnt">Compare every level of ${esc(code)}</summary>${m.def?`<div class="cnt" style="margin:6px 0">${esc(m.def)}</div>`:""}
+    <ol>${drdpLevels(v,code).map(l=>`<li class="${l===level?"on":""}"><b>${esc(l)}</b> ${esc(drdpLevelDesc(v,code,l))}</li>`).join("")}</ol></details>`}
 function kidDrdpHtml(c){
+  loadDrdpTxt();
   const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=all.filter(x=>x.status==="suggested").sort((a,b)=>(b.at||0)-(a.at||0));
   const done=all.filter(x=>x.status==="accepted"||x.status==="changed");const aside=all.filter(x=>x.status==="aside");
@@ -1698,14 +1716,16 @@ function kidDrdpHtml(c){
   const levelSel=x=>`<select data-drlevel="${x.id}" aria-label="Level">${["",...drdpLevels(x.view||v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
       <div class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</div>
-      ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}
+      <div data-drmean="${x.id}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
+      ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}
       <div class="cnt">From ${srcBtn(x)}${x.by==="keywords"?", by keyword match":""}</div>
+      ${drdpCompareHtml(x.view||v,x.code,x.level,drdpEdit===x.id)}
       ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
       :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${x.id}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${x.id}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`}</div>`;
   const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoSrc(n))}" alt="" loading="lazy">`:""};
-  const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
+  const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${x.id}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${drdpCompareHtml(x.view||v,x.code,x.level,true)}<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
     :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${x.id}">Change</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`;
-  const evLine=x=>`<div class="drev" id="dr-${x.id}">${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
+  const evLine=x=>`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
     const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[])];
     return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
@@ -1753,6 +1773,9 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return
   if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
   if(t.dataset.dreld!==undefined){kidDrdpPatch(c,{drdp:{eld:t.checked}});renderMain();return}
   if(t.dataset.driep!==undefined){kidDrdpPatch(c,{drdp:{iep:t.checked}});renderMain();return}
+  if(t.dataset.drlevel!==undefined||t.dataset.dremerg!==undefined){const id=t.dataset.drlevel||t.dataset.dremerg;const x=((c.drdp||{}).items||{})[id];const box=document.querySelector(`[data-drmean="${id}"]`);
+    if(x&&box){const lv=document.querySelector(`[data-drlevel="${id}"]`)?.value||"",em=!!document.querySelector(`[data-dremerg="${id}"]`)?.checked;const vv=x.view||drdpViewOf(c).v;box.innerHTML=drdpMeanHtml(vv,x.code,lv,em);
+      document.querySelectorAll(`#dr-${id} .drcmp li`).forEach((li,i)=>li.classList.toggle("on",drdpLevels(vv,x.code)[i]===lv))}return}
   if(t.dataset.drmark){kidDrdpPatch(c,{drdp:{marks:{[t.dataset.drmark]:t.value||{__delete__:true}}}});renderMain();return}
 });
 

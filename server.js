@@ -497,6 +497,8 @@ async function handle(req, res) {
   if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
+  // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
+  if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot() }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
