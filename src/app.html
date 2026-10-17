@@ -1523,6 +1523,7 @@ window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only)=>{const c=children.g
   const docs=its.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
   if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
   return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
+document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pfdrdp)LS.set("tree.pfdrdp",t.value)});
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
 // opens a piece of documentation from a conference form
@@ -1852,24 +1853,43 @@ function portfolioDrdpDoc(c,mode,view){
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-","–")]],blocks};
 }
-function portfolioDocs(c,mode){
-  mode=mode||PRINT.names;const items=portfolioItems(c);
-  const nM=items.filter(x=>x.kind==="notices").length,nS=items.length-nM;
+// how the DRDP sits in a portfolio. Within the moments, each accepted level prints on the page of the moment or slide it
+// was read from, so the reading stays with the experience and is seen over time. At the end keeps the summary page.
+const PF_DRDP={within:"DRDP within the moments",end:"DRDP at the end",none:"Without the DRDP"};
+const pfDrdpMode=()=>{const v=LS.get("tree.pfdrdp","within");return PF_DRDP[v]?v:"within"};
+function portfolioDocs(c,mode,drdp){
+  mode=mode||PRINT.names;drdp=drdp||pfDrdpMode();const items=portfolioItems(c);
   const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
-  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-","–")],photos:[],
-    blocks:[{t:"para",text:(()=>{const who=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${who} story`;
+  const who=[...new Set(items.map(x=>x.kind==="slides"?x.s.by:x.n.by).filter(Boolean))];
+  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-","–"),who.length&&who.length<=3?"With "+who.join(", ").replace(/, ([^,]*)$/," and $1"):""],photos:[],
+    blocks:[{t:"para",text:(()=>{const whose=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${whose} story`;
       const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
-      return d0===d1?`${who} story on ${d0}`:`${who} story from ${d0} to ${d1}`})()},{t:"para",text:mode==="none"?"In the child's own words and the educators'.":`In ${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s own words and the educators'.`}]};
-  // the DRDP closes the portfolio. A child who moved views this year has the earlier view's page first.
-  const cv=drdpViewOf(c).v;const dr=[portfolioDrdpDoc(c,mode,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,mode,cv)].filter(Boolean);
-  const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
-  const page=x=>{if(x.kind==="slides")return slideDoc(Object.assign({},x.s,{names:mode,focus:c}));const d=momentDoc(x.n,mode,c);if((x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);return d};
-  // the year is told month by month, each month opening with its name
+      return d0===d1?`${whose} story on ${d0}`:`${whose} story from ${d0} to ${d1}`})()},{t:"para",text:mode==="none"?"In the child's own words and the educators'.":`In ${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s own words and the educators'.`}]};
+  // the levels educators accepted, each kept with the moment or slide it was read from
+  const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&x.src&&x.src.id);
+  const bySrc=new Map();for(const x of done){const k=x.src.kind+"|"+x.src.id;if(!bySrc.has(k))bySrc.set(k,[]);bySrc.get(k).push(x)}
+  const placed=new Set();
+  const band=keys=>{const latest={};for(const k of keys)for(const x of bySrc.get(k)||[]){placed.add(x.id);const t=x.reviewedAt||x.at||0;if(!latest[x.code]||t>(latest[x.code].reviewedAt||latest[x.code].at||0))latest[x.code]=x}
+    const ls=Object.values(latest).sort((a,b)=>a.code.localeCompare(b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
+    return ls.length?{t:"small",label:"Learning seen here",lines:ls}:null};
+  const keysOf=x=>x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
+  const page=x=>{const d=x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
+    if(x.kind!=="slides"&&(x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);
+    if(x.kind==="slides")d.blocks=(d.blocks||[]).filter(b=>!(b.t==="small"&&/DRDP/.test(b.label||"")));
+    const a=kidAgeAt(c,x.at);d.details=[longDate(iso(new Date(x.at))),a?"Age "+a:""];
+    if(drdp==="within"){const b=band(keysOf(x));if(b)d.blocks=[...(d.blocks||[]),b]}
+    return d};
+  // the month's name sits small above the first piece of each month
   const out=[cover];let mon="";
-  for(const x of items){const m=new Date(x.at).toLocaleDateString("en-US",{month:"long",year:"numeric"});
-    if(m!==mon){mon=m;out.push({centered:true,display:true,type:"report",acc:"story",title:m,details:[],photos:[],blocks:[]})}
-    out.push(aged(page(x),x.at))}
-  return [...out,...dr];
+  for(const x of items){const d=page(x);const m=new Date(x.at).toLocaleDateString("en-US",{month:"long",year:"numeric"});if(m!==mon){mon=m;d.over=m}out.push(d)}
+  if(drdp==="none")return out;
+  const cv=drdpViewOf(c).v;
+  if(drdp==="end")return [...out,...[portfolioDrdpDoc(c,mode,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,mode,cv)].filter(Boolean)];
+  // a level read from a piece that is not in the portfolio still prints, on one closing page, so nothing accepted is lost
+  const left=done.filter(x=>!placed.has(x.id));
+  if(left.length){const lines=left.sort((a,b)=>(a.src.at||0)-(b.src.at||0)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}  ·  ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}`);
+    out.push({display:true,type:"report",acc:"story",title:"More learning seen this year",details:[],blocks:[{t:"small",label:"Read from documentation kept outside this portfolio",lines}]})}
+  return out;
 }
 
 /* ---------- Keeping a moment without signal ----------
@@ -4232,6 +4252,7 @@ function cwrap(doc,k,s,text,w){pfont(doc,k,s);return ct(doc,text).split("\n").fl
 function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
   if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School & Farm"});y+=24}else y+=4;
+  if(md.over){ops.push({t:"text",x,y:y+9,k:"fs",s:11,c:deep(A.c),txt:ct(doc,md.over)});y+=22}
   let ts=36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
   const d=(md.details||[]).filter(has).join("   ·   ");if(d){const dl=cwrap(doc,"fr",11,d,W)[0]||"";ops.push({t:"text",x,y:y+11,k:"fr",s:11,c:D_MUTED,txt:dl});y+=25}
@@ -4419,6 +4440,7 @@ async function centeredDocx(ch,p,D,A){
     let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
     if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
     if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
+    if(md.over)ch.push(P1(run(md.over,"fs",11,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
     ch.push(P1(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
     const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
     ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}))}
@@ -5469,7 +5491,7 @@ function renderChild(){
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
       <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At Fulton${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
-      <span class="actions">${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
+      <span class="actions"><select data-pfdrdp="1" aria-label="How the DRDP prints in the portfolio" style="width:auto">${Object.entries(PF_DRDP).map(([k,l])=>`<option value="${k}" ${pfDrdpMode()===k?"selected":""}>${l}</option>`).join("")}</select>${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
     <div class="tseg ktabs" role="tablist" aria-label="${esc(c.first)}'s page">${tabs.map(([k,l])=>`<button role="tab" data-ktab="${k}" aria-pressed="${kidTab===k}">${l}</button>`).join("")}</div>
     <div style="display:grid;gap:14px">${body}</div>`;
 }
