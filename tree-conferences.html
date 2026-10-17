@@ -616,7 +616,7 @@ function groupOf(c){ return c?.group ? groupsList().find(g=>g.name===c.group) : 
 function educatorOf(c){ return (c?.primaryEducator||"").trim() || groupOf(c)?.educator || ""; }
 function educatorsFor(room){ const e=S.settings.educators||{}; const g=groupsList().filter(x=>!room||x.room===room).map(x=>x.educator); return [...new Set([...(room? (e[room]||[]) : Object.values(e).flat()), ...g].filter(Boolean))]; }
 function eduFilter(list){ const f=S.filters.edu||"All"; return f==="All"? list : list.filter(c=>educatorOf(c)===f); }
-const SORTS=[["room","Classroom, then first name"],["last","Last name"],["first","First name"],["age","Oldest first"]];
+const SORTS=[["room","Class, then first name"],["last","Last name"],["first","First name"],["age","Oldest first"]];
 function sortKids(list){
   const s=S.filters.sort||"room", by=(k)=>(x,y)=>(!x[k])-(!y[k]) || (x[k]||"").localeCompare(y[k]||"");
   const rooms=S.settings.classrooms||[], ri=c=>{ const i=rooms.indexOf(c.classroom); return i<0? 99 : i; };
@@ -773,7 +773,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
     <div class="stack" style="min-width:0">
       <div class="filters">
         <input type="search" id="f-q" placeholder="Find a child" value="${esc(f.q)}" aria-label="Find a child">
-        <select id="f-room" aria-label="Classroom"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
+        <select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
         <select id="f-status" aria-label="Status"><option value="All">Every status</option>${[["none","Not started"],["progress","Preparing"],["scheduled","Scheduled"],["held","Date passed"],["nosignup","Did not sign up"],["complete","Complete"]].map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select>
         ${eduSelect()}${sortSelect()}
         <span id="live-meta"><span class="small muted mono">${list.length} of ${tot.total}</span>
@@ -827,7 +827,7 @@ function viewChildren(){
   </div>
   <div class="filters" style="margin-bottom:12px">
     <input type="search" id="f-q" placeholder="Find a child or parent" value="${esc(f.q)}" aria-label="Find">
-    <select id="f-room" aria-label="Classroom"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
+    <select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
     <div class="seg" role="group" aria-label="Enrollment">${[["active","Enrolled"],["withdrawn","Left Fulton"],["all","All"]].map(([k,l])=>`<button data-act="show" data-v="${k}" aria-pressed="${f.show===k}">${l}</button>`).join("")}</div>
     ${eduSelect()}${sortSelect()}
     <span id="live-meta"><span class="small muted mono">${list.length} shown</span></span>
@@ -857,7 +857,7 @@ function viewChild(id){
   const p = periodConf(id);
   return `
   <div style="margin-bottom:6px"><a href="#" data-go="children" class="small">All children</a></div>
-  <div class="conf-head"><div class="who"><div class="eyebrow">${esc(c.classroom||"")} classroom</div><h1>${esc(childName(c))}</h1>
+  <div class="conf-head"><div class="who"><div class="eyebrow">${esc(c.classroom||"")} class</div><h1>${esc(childName(c))}</h1>
     <div class="meta-line"><span>Born ${esc(fmtDate(c.dob))}</span><span>${esc(ageAt(c.dob))}</span>${c.program?`<span>${esc(c.program)}</span>`:""}${c.status==="withdrawn"?'<span class="chip st-withdrawn">Left Fulton</span>':""}</div></div>
     <div class="row">${canEdit()?`<button class="btn" data-act="child-edit" data-id="${esc(id)}">Edit details</button>
       <button class="btn" data-act="conf-new-additional" data-id="${esc(id)}">Add an extra conference</button>
@@ -1157,11 +1157,11 @@ function viewSettings(){
   return `<div style="max-width:760px" class="stack">
   <div><div class="eyebrow">Setup</div><h1>Settings</h1></div>
   <form id="settings-form" class="panel stack">
-    <div class="field"><label for="s-rooms">Classrooms</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${canEdit()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
+    <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${canEdit()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
     <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${canEdit()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${canEdit()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${canEdit()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
-    <div class="stack" style="gap:10px"><div class="lbl" style="font-weight:600">Educators by classroom</div><div class="hint small muted"><i>Names, separated by commas. These are listed under Settings for reference and for the small groups below.</i></div>
+    <div class="stack" style="gap:10px"><div class="lbl" style="font-weight:600">Educators by class</div><div class="hint small muted"><i>Names, separated by commas. These are listed under Settings for reference and for the small groups below.</i></div>
       ${s.classrooms.map(r=>`<div class="field"><label for="s-ed-${esc(r)}">${esc(r)}</label><input id="s-ed-${esc(r)}" data-room="${esc(r)}" value="${esc((s.educators?.[r]||[]).join(", "))}" ${canEdit()?"":"disabled"}></div>`).join("")}
     </div>
     <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, classroom, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${canEdit()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
@@ -1195,7 +1195,7 @@ function viewPortfolios(){
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Advocate educators</div><h1>Monthly portfolio pages</h1>
     <p class="muted small" style="margin:.3em 0 0;max-width:62ch">One portfolio page per child each month. Tick a month when that page is done. Past months without a page are shaded.</p></div>
     <div class="filters"><select id="pf-year" aria-label="School year">${yrs.map(y=>`<option ${y===yr?"selected":""}>${esc(y)}</option>`).join("")}</select></div></div>
-  <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Classroom"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}<span class="small muted mono">${list.length} ${list.length===1?"child":"children"}</span></div>
+  <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}<span class="small muted mono">${list.length} ${list.length===1?"child":"children"}</span></div>
   <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th>${MONTHS.map(m=>`<th style="text-align:center">${m}</th>`).join("")}<th>Done</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="empty">No children match.</td></tr>`}</tbody></table></div>`;
 }
 function viewNextYear(){
@@ -1213,7 +1213,7 @@ function viewNextYear(){
       <td style="text-align:center"><input type="checkbox" data-ck="${esc(c.id)}|transition.${key}.recordsShared" ${tr.recordsShared?"checked":""} aria-label="Records shared" ${dis}></td></tr>`; }).join("");
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Transitions</div><h1>Fall ${ny}</h1>
     <p class="muted small" style="margin:.3em 0 0;max-width:68ch">Children old enough for TK or Kindergarten next fall, using California's September 1 cutoffs, turning 4 for TK and 5 for Kindergarten. Confirm each family's district rules. Talk about plans at the spring conference and the Kindergarten and TK Info Night.</p></div></div>
-  <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Classroom"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}
+  <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}
     <span class="small muted">${list.length} eligible · ${PLANS.filter(([v])=>counts[v]).map(([v,l])=>`${counts[v]} ${l.toLowerCase()}`).join(" · ")}</span></div>
   <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Eligible for</th><th>Plan</th><th>Next school</th><th>Info Night</th><th>Records shared</th></tr></thead><tbody>${rows||`<tr><td colspan="6" class="empty">No children are old enough for TK or Kindergarten next fall.</td></tr>`}</tbody></table></div>`;
 }
@@ -1278,7 +1278,7 @@ const actions = {
   "save-settings": async ()=>{
     const lines = v=>v.split(/\n/).map(s=>s.trim()).filter(Boolean);
     const classrooms=lines($("#s-rooms").value); const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
-    if(!classrooms.length){ toast("Add at least one classroom"); return; }
+    if(!classrooms.length){ toast("Add at least one class"); return; }
     if(!years.length){ toast("Write school years like 2026-27"); return; }
     const educators={}; $$("[data-room]").forEach(i=>{ educators[i.dataset.room]=i.value.split(",").map(s=>s.trim()).filter(Boolean); });
     classrooms.forEach(r=>{ if(!educators[r]) educators[r]=S.settings.educators?.[r]||[]; });
@@ -1328,7 +1328,7 @@ function childForm(c){
       <div class="field"><label for="c-last">Last name</label><input id="c-last" value="${esc(c.last||"")}"></div>
       <div class="field"><label for="c-dob">Birthdate</label><input id="c-dob" type="date" value="${esc(c.dob||"")}"></div>
       <div class="field"><label for="c-gender">Gender</label><input id="c-gender" value="${esc(c.gender||"")}"></div>
-      <div class="field"><label for="c-room">Classroom</label><select id="c-room">${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label for="c-room">Class</label><select id="c-room">${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-group">Small group</label><select id="c-group"><option value="">Choose</option>${c.group&&!groupsList().some(g=>g.name===c.group)?`<option selected value="${esc(c.group)}">${esc(c.group)}</option>`:""}${groupsList().map(g=>`<option ${c.group===g.name?"selected":""} value="${esc(g.name)}">${esc(g.name)} · ${esc(g.room)} · ${esc(g.educator)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-edu">Primary educator</label><input id="c-edu" value="${esc(c.primaryEducator||"")}" autocomplete="off" placeholder="From the small group"></div>
       <div class="field"><label for="c-program">Program</label><input id="c-program" value="${esc(c.program||"")}"></div>
@@ -1363,13 +1363,13 @@ async function saveFile(filename, blob){
 }
 function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
 function exportSeasonCSV(){
-  const rows=[["Child","Classroom","Primary educator","Status","Family sign-up","Conference date","Time","Format","Educators","Sections filled","Follow-up date"]];
+  const rows=[["Child","Class","Primary educator","Status","Family sign-up","Conference date","Time","Format","Educators","Sections filled","Follow-up date"]];
   sortKids(activeChildren()).forEach(c=>{ const cf=periodConf(c.id);
     rows.push([childName(c),c.classroom,educatorOf(c),confStatus(cf).label,(SIGNUP.find(s=>s[0]===(cf?.signup||""))||[])[1],cf?.confDate,cf?.confTime,cf?.format,cf?.teacher,cf?filledCount(cf)+"/"+TOTAL_FIELDS:"",cf?.followUpDate]); });
   saveFile(`conferences-${S.period.term.toLowerCase()}-${S.period.year}.csv`, new Blob(["\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n")],{type:"text/csv;charset=utf-8"}));
 }
 function exportAllCSV(){
-  const head=["Child","Classroom","School year","Season","Status","Conference date","Educators","Family present",...FIELDS.map(f=>f.label),"Progress on earlier goals",...REFLECTIONS.map((r,i)=>"Reflection "+(i+1)),"Self-care at school","Self-care at school notes","Self-care at home","Self-care at home notes","Other sections from the original form"];
+  const head=["Child","Class","School year","Season","Status","Conference date","Educators","Family present",...FIELDS.map(f=>f.label),"Progress on earlier goals",...REFLECTIONS.map((r,i)=>"Reflection "+(i+1)),"Self-care at school","Self-care at school notes","Self-care at home","Self-care at home notes","Other sections from the original form"];
   const rows=[head];
   Object.values(S.confs).sort(confSort).forEach(cf=>{ const c=S.children[cf.childId];
     rows.push([childName(c),c?.classroom,cf.schoolYear,cf.term,confStatus(cf).label,cf.confDate,cf.teacher,cf.familyPresent,...FIELDS.map(f=>cf.fields?.[f.k]),cf.prevGoalsProgress,...REFLECTIONS.map(r=>cf.reflections?.[r.k]),scTicked(cf,"school").join(", "),cf.selfCare?.schoolNotes,scTicked(cf,"home").join(", "),cf.selfCare?.homeNotes,cf.otherSections]); });
@@ -2304,7 +2304,7 @@ function parseRosterPages(pages){
   }
   return kids.filter(k=>k.name).map(k=>{ const parts=k.name.split(" "); return {first:parts[0]||"",last:parts.slice(1).join(" "),dob:toISODate(k.dob),gender:k.gender,classroom:k.classroom,program:k.program,schedule:k.schedule,enrollDate:toISODate(k.enrollDate),familyKey:k.familyKey||"",parents:k.parents,ifsp:k.ifsp}; });
 }
-const ROSTER_KEYS=[["classroom","Classroom"],["program","Program"],["schedule","Schedule"],["dob","Birthdate"],["enrollDate","Enrolled"],["ifsp","IEP/IFSP"],["gender","Gender"]];
+const ROSTER_KEYS=[["classroom","Class"],["program","Program"],["schedule","Schedule"],["dob","Birthdate"],["enrollDate","Enrolled"],["ifsp","IEP/IFSP"],["gender","Gender"]];
 function openRosterImport(){
   openModal(`<h2>Update the roster from 1Core</h2>
     <p class="small muted" style="margin:0">In 1Core, export the Family Information Sheets as a PDF and upload it here. You will see every change before anything is saved.</p>
