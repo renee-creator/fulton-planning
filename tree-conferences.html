@@ -81,6 +81,7 @@ main{max-width:1180px;margin:0 auto;padding:24px 16px 80px}
 .st-none{background:var(--todo-soft);color:var(--todo)}
 .st-held{background:var(--danger-soft);color:var(--danger)}
 .pf-late{background:var(--danger-soft)}
+.pf-count{display:inline-block;min-width:22px;padding:1px 6px;border-radius:999px;background:var(--ok-soft);font-weight:600;text-decoration:none;color:inherit}
 input[type=checkbox]{accent-color:var(--accent)}
 .st-nosignup{background:var(--surface-2);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
 .st-withdrawn{background:var(--danger-soft);color:var(--danger)}
@@ -907,9 +908,9 @@ function childPanels(c){
     ${!ro && S.sample? `<button class="btn sm" style="margin-top:8px" data-act="visit-upload" data-id="${esc(id)}">Read visit notes from a photo or PDF</button>`:""}
   </div>` : (!ro? `<div class="panel"><button class="btn sm ghost" data-act="show-onboarding">Show the getting started checklist</button></div>` : "");
   // portfolio
-  const yr=S.period.year; const pf=c.portfolio?.[yr]||{}; const done=MONTHS.filter(m=>pf[m]).length;
+  const yr=S.period.year; const pfd=pfDone(c,yr); const done=pfd.filter(Boolean).length;
   const portfolio=`<div class="panel"><div class="spread"><h3>Portfolio ${esc(yr)}</h3><span class="mono small muted">${done} of 12 pages</span></div>
-    <div class="row" style="gap:4px 10px">${MONTHS.map(m=>`<label class="check" style="padding:2px 0"><input type="checkbox" data-pf="${esc(id)}|${yr}|${m}" ${pf[m]?"checked":""} ${dis}><span class="small">${m}</span></label>`).join("")}</div></div>`;
+    <div class="row" style="gap:4px 10px">${MONTHS.map((m,i)=>`<span class="check" style="padding:2px 0;gap:6px">${pfCell(c,yr,m,i,dis)}<span class="small">${m}</span></span>`).join("")}</div></div>`;
   // next year
   const ny=nextFallYear(), key=`${ny}-${String(ny+1).slice(2)}`, el=eligibility(c, ny), tr=c.transition?.[key]||{};
   const next = el? `<div class="panel"><h3>Fall ${ny}</h3><p class="small muted" style="margin:0 0 8px">Age ${ageOnSept1(c.dob,ny)} on September 1, so eligible for ${esc(el.label)}.</p>
@@ -1179,6 +1180,16 @@ function viewSettings(){
   </div></div>`;
 }
 
+/* a month of a child's portfolio fills itself from the documentation TREE holds for that child that month. A month
+   ticked by hand, for a page made outside TREE, still counts. */
+const TREE_P=(()=>{try{return window.parent!==window&&window.parent.TREE_DOCS_FOR?window.parent:null}catch(e){return null}})();
+function pfMonthSpan(yr,i){const start=+String(yr).slice(0,4);const m=(7+i)%12,y=start+(i>=5?1:0);const p=n=>String(n).padStart(2,"0");return {from:`${y}-${p(m+1)}-01`,to:`${y}-${p(m+1)}-${p(new Date(y,m+1,0).getDate())}`}}
+function pfDocs(id,yr,i){if(!TREE_P)return 0;try{const w=pfMonthSpan(yr,i);return TREE_P.TREE_DOCS_FOR(id,w.from,w.to).length}catch(e){return 0}}
+function pfCell(c,yr,m,i,dis){const n=pfDocs(c.id,yr,i);const pf=c.portfolio?.[yr]||{};
+  return n?`<a href="#" class="pf-count" data-pfopen="${esc(c.id)}" title="${n} piece${n===1?"":"s"} of documentation in TREE for ${esc(m)}">${n}</a>`
+    :`<input type="checkbox" aria-label="${esc(childName(c))} ${m}" data-pf="${esc(c.id)}|${yr}|${m}" ${pf[m]?"checked":""} ${dis}>`}
+const pfDone=(c,yr)=>MONTHS.map((m,i)=>!!(c.portfolio?.[yr]||{})[m]||pfDocs(c.id,yr,i)>0);
+document.addEventListener("click",e=>{const a=e.target.closest("[data-pfopen]");if(!a)return;e.preventDefault();if(TREE_P&&TREE_P.TREE_OPEN_CHILD)TREE_P.TREE_OPEN_CHILD(a.dataset.pfopen)});
 function viewPortfolios(){
   const f=S.filters, rooms=S.settings.classrooms; const yr=S.view.pfYear||S.period.year;
   const yrs=[...new Set([...(S.settings.years||[]), S.period.year])].sort();
@@ -1188,12 +1199,12 @@ function viewPortfolios(){
   const monthEnd=i=>{ const m=(7+i)%12, y=start+(i>=5?1:0); return new Date(y,m+1,0,23,59); };
   const late=i=>monthEnd(i)<now;
   const dis=canEdit()?"":"disabled";
-  const rows=list.map(c=>{ const pf=c.portfolio?.[yr]||{}; const n=MONTHS.filter(m=>pf[m]).length; const owed=MONTHS.filter((m,i)=>late(i)&&!pf[m]).length;
+  const rows=list.map(c=>{ const done=pfDone(c,yr); const n=done.filter(Boolean).length; const owed=MONTHS.filter((m,i)=>late(i)&&!done[i]).length;
     return `<tr><td class="name-cell"><a href="#" data-go="child" data-id="${esc(c.id)}"><b>${esc(childName(c))}</b></a><div class="small muted">${esc(educatorOf(c)||c.classroom||"")}</div></td>
-    ${MONTHS.map((m,i)=>`<td class="${late(i)&&!pf[m]?"pf-late":""}" style="text-align:center"><input type="checkbox" aria-label="${esc(childName(c))} ${m}" data-pf="${esc(c.id)}|${yr}|${m}" ${pf[m]?"checked":""} ${dis}></td>`).join("")}
+    ${MONTHS.map((m,i)=>`<td class="${late(i)&&!done[i]?"pf-late":""}" style="text-align:center">${pfCell(c,yr,m,i,dis)}</td>`).join("")}
     <td class="mono small">${n}${owed?` <span style="color:var(--danger)">${owed} behind</span>`:""}</td></tr>`; }).join("");
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Advocate educators</div><h1>Monthly portfolio pages</h1>
-    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">One portfolio page per child each month. Tick a month when that page is done. Past months without a page are shaded.</p></div>
+    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">Each month fills itself with the number of moments and slides in TREE that tag the child, and a number opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</p></div>
     <div class="filters"><select id="pf-year" aria-label="School year">${yrs.map(y=>`<option ${y===yr?"selected":""}>${esc(y)}</option>`).join("")}</select></div></div>
   <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}<span class="small muted mono">${list.length} ${list.length===1?"child":"children"}</span></div>
   <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th>${MONTHS.map(m=>`<th style="text-align:center">${m}</th>`).join("")}<th>Done</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="empty">No children match.</td></tr>`}</tbody></table></div>`;
