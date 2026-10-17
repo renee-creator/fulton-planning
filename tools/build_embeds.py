@@ -109,7 +109,7 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
     const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>From the DRDP, "+span+"</b><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,list.map(line));b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
   if(docs.length){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(wrap&&!wrap.querySelector(".tree-bring")){const box=document.createElement("div");box.className="tree-bring";
-    const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. They print after the form, in the PDF and as a second Word file.</div>";
+    const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. Pieces added to this section print after the form, in the PDF and as a second Word file. A piece not listed here does not print.</div>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields.documentation",dl);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}}
   const sec=[...ed.querySelectorAll(".sheet-sec")].find(x=>/Educator observations/.test(x.querySelector("h2")?.textContent||""));
   const bar=document.createElement("div");
@@ -119,16 +119,20 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   b.onclick=()=>{let n=0;for(const [k,list] of Object.entries(per))if(list.length)n+=addTo("fields."+k,list.map(line));if(docs.length)n+=addTo("fields.documentation",docs.map(d=>d.title+", "+long(iso(d.at))));b.textContent=n?"Added":"Already here"};
   bar.append(b);if(sec){const t=sec.querySelector(".sheet-title");t?t.after(bar):sec.prepend(bar)}else ed.prepend(bar)}
 document.addEventListener("click",e=>{const a=e.target.closest("[data-treedoc]");if(!a)return;e.preventDefault();const [k,i]=a.dataset.treedoc.split("|");if(P.TREE_OPEN_DOC)P.TREE_OPEN_DOC(k,i)});
-// a conference's documentation prints after its form. The PDF holds both. Word saves the documentation as a second file beside the form.
+// a conference's documentation prints after its form, and only the pieces listed in its Documentation Shared section,
+// so a line taken out of that section is left out of the printout. The PDF holds both. Word saves the documentation as a
+// second file beside the form.
+const attached=(cf,id)=>{const text=String((cf&&cf.fields&&cf.fields.documentation)||"");if(!text.trim()||!P.TREE_DOCS_FOR)return [];
+  return P.TREE_DOCS_FOR(id,"","").filter(d=>text.includes(d.title+", "+long(iso(d.at)))).map(d=>d.kind+"|"+d.id)};
 if(typeof downloadPdf==="function"&&P.TREE_CONF_DOCS_FILE){const pdf0=downloadPdf,docx0=downloadDocx;
   window.downloadPdf=async function(items,filename){if(!items||items.length!==1)return pdf0(items,filename);
-    try{toast("Preparing the PDF…");const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const extra=await P.TREE_CONF_DOCS_FILE(it.cf.childId||(it.child&&it.child.id),w.from,w.to,false);
+    try{toast("Preparing the PDF…");const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const cid=it.cf.childId||(it.child&&it.child.id);const ids=attached(it.cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",false,ids):null;
       if(!extra){await saveFile(filename,form);return}
       const L=window.PDFLib;const out=await L.PDFDocument.load(await form.arrayBuffer());const add=await L.PDFDocument.load(new Uint8Array(await extra.arrayBuffer()));
       (await out.copyPages(add,add.getPageIndices())).forEach(pg=>out.addPage(pg));await saveFile(filename,new Blob([await out.save()],{type:"application/pdf"}))}
     catch(e){console.error(e);return pdf0(items,filename)}};
   window.downloadDocx=async function(list,child){await docx0(list,child);if(!list||list.length!==1)return;
-    try{const cf=list[0];const w=windowOf(cf);const extra=await P.TREE_CONF_DOCS_FILE(cf.childId||(child&&child.id),w.from,w.to,true);
+    try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids):null;
       if(extra)await saveFile(slug(childName(child))+"-conference-documentation-"+String(cf.term||"").toLowerCase()+"-"+(cf.schoolYear||"")+".docx",new Blob([new Uint8Array(await extra.arrayBuffer())],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}))}catch(e){console.error(e)}};}
 let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true});})();</script>
 """

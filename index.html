@@ -1728,15 +1728,17 @@ window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
   return kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>({code:x.code,name:DRDP[x.code]||"",dom:x.code.split(" ")[0],level:x.level,emerging:!!x.emerging,evidence:x.evidence||"",title:x.src&&x.src.title||"",at:(x.src&&x.src.at)||x.at||0}))
     .filter(x=>x.at>=t0&&x.at<=t1).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})||a.at-b.at)};
 // the documentation for a conference, as pages that print after the form, in date order with the child's age, as in the portfolio
-window.TREE_CONF_DOCS_FILE=async(childId,from,to,word)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
-  const its=portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
+window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+  // with a list, only those pieces print, the ones listed on the conference form
+  const want=Array.isArray(only)?new Set(only):null;
+  const its=portfolioItems(c).filter(x=>want?want.has(x.kind+"|"+(x.kind==="slides"?x.s.id:x.n.id)):x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
   const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
   const docs=its.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
   if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
   return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
-// opens a piece of documentation from a conference form
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
+// opens a piece of documentation from a conference form
 window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
   const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
