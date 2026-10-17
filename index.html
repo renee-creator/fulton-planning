@@ -1951,7 +1951,7 @@ function renderSlide(){
   // an empty slide takes its moments' words, unless those words were filled once already and an educator cleared them
   if(!has(s.text)&&!s.autoFilled){const t=slideSources(s).map(momentText).filter(Boolean).join("\n\n");if(t){s.text=t;s.autoText=true;s.autoFilled=true;saveSlide(s)}}
   const mode=s.names||PRINT.names;if(sfPick.id!==s.id)sfPick={id:s.id,room:s.classroom||"All",show:60};
-  const allPh=[...notices.values()].filter(n=>n.photo&&n.photo.w&&(sfPick.room==="All"||n.classroom===sfPick.room)).sort((a,b)=>(b.at||0)-(a.at||0));
+  const allPh=[...notices.values()].filter(n=>n.photo&&n.photo.w&&momentIn(n,sfPick.room)).sort((a,b)=>(b.at||0)-(a.at||0));
   const pool=[...slidePhotos(s).map(id=>notices.get(id)).filter(n=>n&&!allPh.slice(0,sfPick.show).includes(n)),...allPh.slice(0,sfPick.show)];const morePh=allPh.length-sfPick.show;
   const sel=slidePhotos(s);const src=slideSources(s);const lines=[];const seen=new Set();for(const n of src)for(const l of childLines(n.noticed,true)){const k=l.words.toLowerCase();if(!seen.has(k)){seen.add(k);lines.push(l)}}
   const qs=new Set((s.quotes||[]).map(q=>q.words.toLowerCase()));const sg=slideSug[s.id];
@@ -2232,8 +2232,8 @@ function todayWaiting(){
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
-  {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!n.classroom||n.classroom===rm)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
-    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!n.classroom?"No class was named in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+  {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
+    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
@@ -2254,7 +2254,7 @@ function todayWaiting(){
 // a moment in a few lines, for Today and a child's page. The whole moment is one tap away.
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
-    <div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
+    <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
@@ -2900,12 +2900,16 @@ function saveNotice(n){n.updatedAt=Date.now();notices.set(n.id,n);
 function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
 function removeNotice(id){notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.notices",[...notices.values()])}
 // a notice is read by the same machinery that reads plans, so it is evidence in the same way
-function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||"",educator:n.by||"",group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
+function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||momentRooms(n)[0]||"",rooms:momentRooms(n),educator:n.by||"",group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
   fields:{noticed:n.noticed||"",wonder:n.wonder||""},createdAt:n.at,updatedAt:n.updatedAt||n.at,notice:n}:null}
 const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 // anything the app can quote, whether it was a plan or a moment
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
-function noticesFor(room,since){return [...notices.values()].filter(n=>(!room||room==="All"||n.classroom===room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
+// Fulton's classes mix, so a moment belongs to its own class and to the class of every child tagged in it
+function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
+const momentIn=(n,room)=>!room||room==="All"||momentRooms(n).includes(room);
+const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
+function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
 function noticeText(n){return [n.noticed,wonderLine(n.wonder)].filter(x=>String(x||"").trim()).join(" ")}
 // educators write the wonder as a fragment as often as a sentence, so the words join into one readable line either way
 function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
@@ -3064,7 +3068,7 @@ function noticeBrowseHtml(){
 }
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" class":""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
@@ -3090,7 +3094,7 @@ function mSince(){const cur=mondayOf(new Date());
   if(mRange==="year")return parseIso(schoolYearStart()).getTime();
   return 0}
 function momentsIn(){const s=mSince();
-  return [...notices.values()].filter(n=>(nRoom==="All"||(n.classroom||"")===nRoom)&&(n.at||0)>=s).sort((a,b)=>(b.at||0)-(a.at||0))}
+  return [...notices.values()].filter(n=>momentIn(n,nRoom)&&(n.at||0)>=s).sort((a,b)=>(b.at||0)-(a.at||0))}
 const monthKey=ms=>{const d=new Date(ms||Date.now());return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
 const monthName=ms=>new Date(ms||Date.now()).toLocaleDateString("en-US",{month:"long",year:"numeric"});
 function momentGroups(list){
@@ -3098,7 +3102,7 @@ function momentGroups(list){
   const by=new Map();
   const put=(k,label,n)=>{if(!by.has(k))by.set(k,{key:k,label,items:[]});by.get(k).items.push(n)};
   for(const n of list){
-    if(mGroup==="classroom")put(n.classroom||"~",n.classroom?n.classroom+" class":"No class named",n);
+    if(mGroup==="classroom"){const r=momentRooms(n);put(r.length?r.join("+"):"~",r.length?momentRoomsText(n):"No class named",n)}
     else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
     else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
     else{const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
@@ -3318,7 +3322,7 @@ function noticeNoteHtml(p){
   const one=n=>`<div class="nwrow"><div style="min-width:0">
       <div>${esc(n.noticed)}</div>
       ${has(n.wonder)?`<div class="muted" style="font-size:13.5px">I wonder. ${esc(n.wonder)}</div>`:""}
-      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}${n.classroom&&n.classroom!==p.classroom?" \u00b7 "+esc(n.classroom)+" class":""}</span></div>
+      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}${momentRooms(n).length&&!(momentRooms(n).length===1&&momentRooms(n)[0]===p.classroom)?" \u00b7 "+esc(momentRoomsText(n)):""}</span></div>
     <div class="actions" style="justify-self:end">${f?`<button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button>`:""}<button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div></div>`;
   let h="";
   if(fromThread.length){const names=planThreads(p).map(c=>c.t.name).filter(Boolean);
@@ -3719,7 +3723,7 @@ function lensKey(room){return "lens-"+lensId+"-"+room}
 // readings made before the school held more than one lens belong to the first lens
 function lensScan(room){return scans.get(lensKey(room))||(LENSES[0]&&lensId===LENSES[0].id?scans.get("lens-"+room):null)}
 function lensRangeStart(){const cur=mondayOf(new Date());if(lRange==="4")return addDays(cur,-21);if(lRange==="8")return addDays(cur,-49);if(lRange==="year")return schoolYearStart();return "0000-00-00"}
-function lensPlans(){const s=lensRangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&LENS_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||p.classroom===lRoom))}
+function lensPlans(){const s=lensRangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&LENS_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||(p.rooms?p.rooms.includes(lRoom):p.classroom===lRoom)))}
 // a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing)
 function lensRegex(L){
   L=L||LENS;const parts=L.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
@@ -4045,7 +4049,7 @@ function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").tr
 // a moment's sheet: the photo, the words as they were written, each child's line as a quote, and the wonder in a box
 const NAMED_LINE=/^([A-Z][A-Za-z.'’]{0,24}(?:-[A-Za-z.'’]{1,24})?(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) ?[-–] (.{2,})$/;
 const momentPhotos=n=>n&&n.photo&&n.photo.w?[{key:n.id,src:photoSrc(n),w:n.photo.w,h:n.photo.h}]:[];
-const momentDetails=n=>[n.classroom?n.classroom+" class":"",longDate(iso(new Date(n.at||Date.now()))),pBy(n.by)];
+const momentDetails=n=>[momentRoomsText(n),longDate(iso(new Date(n.at||Date.now()))),pBy(n.by)];
 function momentDoc(n,mode,focus){
   mode=mode||PRINT.names;const blocks=[];let buf=[];
   const all=String(n.noticed||"")+"\n"+String(n.wonder||"");
