@@ -89,7 +89,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     // GitHub refuses a save that lands at the same moment as another, so it is tried again after a short wait
     for (let k = 0; k < 4; k++) {
       if (k) await new Promise(ok => setTimeout(ok, 1500 * k));
-      r = await gh('PUT', `/repos/${repo}/contents/originals/${id}`, { message: `Add moment photo from Kaymbu shared by ${by}`, content: buf.toString('base64'), branch: store.branch });
+      r = await gh('PUT', `/repos/${repo}/contents/originals/${id}`, { message: `Add moment photo from Kaymbu shared by ${by || "a class account"}`, content: buf.toString('base64'), branch: store.branch });
       if (r.status !== 409 && r.status !== 422 && r.status < 500) break;
     }
     if (r.status !== 201 && r.status !== 200) throw new Error('GitHub answered ' + r.status + ' when keeping a Kaymbu photo');
@@ -160,11 +160,16 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   }
 
   // the educator who shared it from Kaymbu, matched to their TREE sign-in by first name
+  // A class's own Kaymbu account, such as West Class, names no educator, so the moment carries no educator's name.
+  function classNames() { const set = (store.recs.settings.get('main') || {}).doc || {}; return (Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South']).map(words); }
+  function isClassName(n) { const w = words(n).replace(/\b(class|classroom|room|fulton|community|school|farm|kaymbu)\b/g, ' ').trim(); return !w || classNames().includes(w); }
   function sharedBy(name, email) {
     const n = String(name || '').trim().replace(/^"|"$/g, '');
     const first = n.split(/\s+/)[0] || '';
     const a = (n && accountFor(n)) || (first && accountFor(first));
-    return a ? a.name : (first || String(email || '').split('@')[0] || 'Kaymbu');
+    if (a) return a.name;
+    if (isClassName(n) || isClassName(first)) return '';
+    return first || String(email || '').split('@')[0].replace(/[^A-Za-z]/g, '') || '';
   }
 
   async function handle(req, res, url, body, reply) {
@@ -213,9 +218,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       } catch (e) { problems.push(e.message); log('A Kaymbu Moment could not be kept', e.message); }
       finally { seen.delete(k); }
     }
-    log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.rooms.length ? ', class ' + sub.rooms.join(' and ') : ', no class in the subject'}`);
+    log(`Kaymbu email from ${by || "a class account"}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.rooms.length ? ', class ' + sub.rooms.join(' and ') : ', no class in the subject'}`);
     // a Moment that could not be kept leaves the email waiting, so the Apps Script sends it again later and only that Moment is added
-    if (more) { log(`Kaymbu batch from ${by}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
+    if (more) { log(`Kaymbu batch from ${by || "a class account"}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
     if (problems.length) { reply(502, { error: (kept ? `${kept} moments were kept. ` : '') + 'Some could not be kept yet. ' + problems[0], kept }); return; }
     reply(200, { ok: true, kept, again, check, classroom: sub.room, problems });
   }
@@ -224,6 +229,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   async function repair() {
     let n = 0;
     for (const [id, r] of store.recs.notices) {
+      const d0 = r.doc; if (!r.deleted && d0 && d0.kaymbu && d0.by && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
       if (d.kaymbu.v === 2) {
         const twins = live('notices').filter(o => o !== d && o.kaymbu && (o.noticed || '').trim() === (d.noticed || '').trim() && o.classroom === d.classroom).length;
