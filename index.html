@@ -3506,7 +3506,7 @@ function inqWhen(ns){const parts={"Early morning":0,"Morning":0,"Midday":0,"Afte
   return `Of ${timed} observation${timed===1?"":"s"} with a time, by time of day, ${p}. By day, ${d}.`}
 // the thinking in date order, so the team can see how its reading moved
 function inqTimeline(x){const out=[];
-  for(const h of x.hyps||[])if(has(h.text))out.push({at:h.at,by:h.by,what:h.aside?"A reading, later set aside":"A reading",text:h.text});
+  for(const h of x.hyps||[])if(has(h.text))out.push({at:h.at,by:h.by,what:h.aside?"A guess, later set aside":"A guess",text:h.text});
   for(const t of x.tries||[]){if(has(t.text))out.push({at:t.at,by:t.by,what:t.curriculum?"Something to try, in the curriculum":"Something to try",text:t.text});if(has(t.result))out.push({at:t.resultAt||t.at,by:t.resultBy||t.by,what:"What happened when we tried it",text:t.result})}
   for(const l of x.looks||[])if(has(l.text))out.push({at:l.at,by:l.by,what:"When we looked again",text:l.text});
   return out.sort((a,b)=>(a.at||0)-(b.at||0))}
@@ -3523,7 +3523,8 @@ function renderInquiries(){
     <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
-  else h+=`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`;
+  else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
+    :`<div class="ref" style="background:var(--sky-soft)">The director starts each team inquiry with the team. You can add observations and threads to one, write what happened when the team tried something, and start a plan from it.</div>`;
   if(live.length)h+=`<div class="threads">${live.map(inqCard).join("")}</div>`;
   else if(!iqForm)h+=`<div class="empty">No team inquiries${iqRoom!=="All"?" here":""} yet.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(inqCard).join("")}</div></details>`;
@@ -3570,8 +3571,8 @@ function renderInquiry(x){
     <div id="iqplan-pick"></div></div>`;
 
   h+=`<section class="card"><div class="lbl">What we see</div>
-    <div class="hint">Plainly, as it happens, without a judgment. The observations below hold the detail.</div>
-    <textarea data-iqf="see" rows="2">${esc(x.see||"")}</textarea>
+    <div class="hint">What the team sees, in plain words and without judgment. The observations below hold the detail.</div>
+    <textarea data-iqf="see" rows="2">${esc(x.see||"")}</textarea>${iqAssistHtml(x,"see")}
     ${kids.length?`<div class="cnt">Children in these observations, ${kids.map(c=>`<button class="linkbtn" data-kid="${esc(c.id)}">${esc(c.first)}</button>`).join(", ")}</div>`:""}
     <div class="chiprow-label" style="margin-top:6px">Observations, ${ns.length}</div>
     <div class="iqobs">${ns.slice(0,30).map(obRow).join("")||`<div class="empty" style="padding:10px">None yet. Add one below, or keep one for this inquiry from Observations.</div>`}</div>
@@ -3580,34 +3581,35 @@ function renderInquiry(x){
 
   h+=`<section class="card"><div class="lbl">When and where it happens</div>
     <div class="hint">Who is asking, what the child is leaving, how far they go, who they look back at, and what comes just before.</div>
-    <textarea data-iqf="whenwhere" rows="2">${esc(x.whenwhere||"")}</textarea>
+    <textarea data-iqf="whenwhere" rows="2">${esc(x.whenwhere||"")}</textarea>${iqAssistHtml(x,"whenwhere")}
     ${when?`<div class="cnt">${esc(when)}</div>`:""}</section>`;
 
-  h+=`<section class="card"><div class="lbl">What it might be telling us</div>
-    <div class="hint">Readings written from the child's side, held loosely. When the evidence moves the team's thinking, set a reading aside and write the new one, so the change stays visible.</div>
-    ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${o.id}" rows="2">${esc(o.text||"")}</textarea><div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${o.id}">Set aside</button></div></div>`).join("")}
-    <div class="actions"><button class="btn small ghost" data-iqhadd="1">Add a reading</button></div>
-    ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Readings set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${o.id}">Bring back</button></span></div>`).join("")}</div></details>`:""}
+  h+=`<section class="card"><div class="lbl">What we think is happening</div>
+    <div class="hint">The team's best guesses about what the child may be communicating or needing. When new observations change your thinking, set the old guess aside and write a new one. The old one stays, so you can see how your thinking changed.</div>
+    ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${o.id}" rows="2">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"hyp:"+o.id)}<div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${o.id}">Set aside</button></div></div>`).join("")}
+    <div class="actions"><button class="btn small ghost" data-iqhadd="1">Add a guess</button></div>${iqAssistHtml(x,"hyp")}
+    ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${o.id}">Bring back</button></span></div>`).join("")}</div></details>`:""}
     <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
       <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">What we will try</div>
-    <div class="hint">Changes to the transition, the space, the warning, the role a child is given, or who goes with them. Mark the ones that belong in the curriculum. Those sit beside every plan written from this inquiry, for the whole group, with no child named as the reason.</div>
-    ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>
+    <div class="hint">Changes the adults will make, such as to a transition, the space, the warning, a role a child is given, or who goes with them. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div>
+    ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"try:"+o.id)}
       <label class="cnt"><input type="checkbox" data-iqtcur="${o.id}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
       <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
       <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqtrm="${o.id}">Remove</button></div></div>`).join("")}
-    <div class="actions"><button class="btn small ghost" data-iqtadd="1">Add something to try</button></div></section>`;
+    <div class="actions"><button class="btn small ghost" data-iqtadd="1">Add something to try</button></div>${iqAssistHtml(x,"try")}</section>`;
 
   h+=`<section class="card"><div class="lbl">What we will watch for</div>
-    <textarea data-iqf="watch" rows="2" placeholder="What would tell us the reading is right, or that it needs to change">${esc(x.watch||"")}</textarea>
+    <div class="hint">Signs the team can see that would show whether a guess fits, or needs to change.</div>
+    <textarea data-iqf="watch" rows="2">${esc(x.watch||"")}</textarea>${iqAssistHtml(x,"watch")}
     <label class="cnt">Look again on <input type="date" data-iqf="lookAgain" value="${esc(x.lookAgain||"")}" style="width:auto"></label>
     <div class="hint">On that day it appears on Today for the class, and for the director.</div></section>`;
 
   const looks=[...(x.looks||[])].sort((a,b)=>(b.at||0)-(a.at||0));
   h+=`<section class="card"><div class="lbl">When we looked again</div>
-    <div class="hint">What the team saw, at a staff meeting or after a week of trying. Each look is kept with its date.</div>
+    <div class="hint">What the team saw when it met again, at a staff meeting or after a week of trying. Each look is kept with its date.</div>
     <textarea id="iq-look" rows="2" placeholder="What we saw this time"></textarea>
     <div class="actions"><button class="btn small ghost" data-iqlook="1">Keep this look</button></div>
     ${looks.length?`<div class="evid">${looks.map(o=>`<div style="white-space:pre-line">${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}</span></div>`).join("")}</div>`:""}
@@ -3627,8 +3629,18 @@ function renderInquiry(x){
       return `<div><button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
         ${after?`<div class="muted" style="white-space:pre-line">${esc(firstLine(after,240))}</div>`:""}</div>`}).join("")}</div>`:`<div class="cnt">No plans yet. Start one from this inquiry, or connect a thread that plans follow.</div>`}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="iqdel"><button class="linkbtn" data-iqdel="1">Remove this inquiry</button></span></div>`;
+  else h=h.replace('<div id="iqplan-pick"></div></div>','<div id="iqplan-pick"></div></div><div class="ref" style="background:var(--sky-soft);margin-bottom:10px">The director writes this inquiry with the team. You can add observations and threads to it, write what happened when the team tried something, and start a plan from it.</div>');
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(!isDirector())lockInquiryPage();
 }
+// an educator reads an inquiry, adds observations and threads, writes what happened when something was tried, and plans from it
+const IQ_OPEN=["iqback","iqplan","iqplango","iqplanno","iqopen","mopen","tsee","popen","print","word","kid","lensgo","open"];
+function lockInquiryPage(){const m=$("#main");if(!m)return;
+  m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{if(el.dataset.iqt&&/\|result$/.test(el.dataset.iqt))return;if(el.type==="checkbox"){el.disabled=true;return}el.readOnly=true;el.setAttribute("aria-readonly","true")});
+  m.querySelectorAll("select").forEach(el=>{if(!el.dataset.iqaddobs&&!el.dataset.iqaddth)el.disabled=true});
+  m.querySelectorAll("button").forEach(b=>{if(b.closest("#tsubnav"))return;const keys=Object.keys(b.dataset);if(!keys.length||!keys.some(k=>IQ_OPEN.includes(k)))b.hidden=true});
+  const lk=m.querySelector("#iq-look");if(lk)lk.hidden=true;
+  m.querySelectorAll(".sugg").forEach(el=>el.hidden=true)}
 
 // a plan from an inquiry. Its curriculum side is for the whole group, so the plan starts empty and the inquiry sits beside it.
 function planFromInquiry(x,kind){
@@ -3648,7 +3660,7 @@ function inquiryDoc(x,long){
   const blocks=[];
   if(has(x.see))blocks.push(dLead("What we see",x.see));
   if(has(x.whenwhere))blocks.push(dText("When and where it happens",x.whenwhere));
-  if(hy.length)blocks.push(dList("What it might be telling us",hy.map(h=>h.text)));
+  if(hy.length)blocks.push(dList("What we think is happening",hy.map(h=>h.text)));
   if(tries.length)blocks.push(dList("What we will try",tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))));
   if(has(x.watch))blocks.push(dText("What we will watch for",x.watch));
   const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));if(a.length){blocks.push(dSub("Read through "+L.name));a.forEach(q=>blocks.push(dText(q,x.lensNotes[q])))}}
@@ -3663,12 +3675,83 @@ function inquiryDoc(x,long){
   if(!blocks.length)blocks.push(dText("","Nothing is written in this inquiry yet."));
   return {display:true,type:"report",acc:"smallgroup",title:x.name||"Team inquiry",meta,blocks}}
 
+/* --- Writing support for a team inquiry, the same help plans and projects have. Draft from the evidence writes a section
+   from the inquiry's own observations, threads, plans and project, and Strengthen wording improves what the team wrote.
+   Both use only what educators wrote, and nothing is kept until the director chooses it. --- */
+const iqSug={};
+const IQ_STD={
+  see:["What we see","What the team sees, in plain factual sentences and without judgment. Who, what and when, as the observations record it."],
+  whenwhere:["When and where it happens","When and where it happens, what comes just before, who is asking, what the child is leaving, how far they go and who they look back at, only as the evidence records it."],
+  hyp:["What we think is happening","One best guess about what the child may be communicating or needing, written from the child's side as a possibility, beginning with Perhaps. Grounded in the evidence. Never a diagnosis, a label, or a judgment of the child."],
+  try:["What we will try","One change the adults could make, to a transition, the space, the warning, a role a child is given, or who goes with them. Practical, respectful of the child's agency, and written so it could be offered to the whole group with no child named as the reason."],
+  watch:["What we will watch for","Signs the team could see in the coming days that would show whether the team's guesses fit or need to change."]};
+const iqKind=key=>key.split(":")[0];
+function iqVal(x,key){const [k,id]=key.split(":");
+  if(k==="hyp")return id?String(((x.hyps||[]).find(h=>h.id===id)||{}).text||""):"";
+  if(k==="try")return id?String(((x.tries||[]).find(t=>t.id===id)||{}).text||""):"";
+  return String(x[k]||"")}
+// everything the inquiry draws on, in the educators' own words, newest first
+function inqDigest(x){const out=[];const ns=inqNotices(x).slice(0,30);
+  if(ns.length){out.push("Observations.");for(const n of ns)out.push(`${shortDate(n.at)}, ${n.by||"an educator"}${momentRoomsText(n)?", "+momentRoomsText(n):""}. ${noticeText(n)}`)}
+  for(const id of x.threads||[]){const t=threads.get(id);if(!t)continue;out.push(`Thread ${t.name}.${t.question?" Its question. "+t.question:""}`);
+    for(const e of [...(t.evidence||[])].sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,10))if(!notices.has(e.planId)&&has(e.text))out.push(`From a plan, week of ${e.week}. ${e.text}`)}
+  for(const id of x.projects||[]){const p=projects.get(id);if(!p)continue;out.push(`Project ${p.name}.${projUnder(p)?" What may lie underneath. "+projUnder(p):""}${projIntent(p)?" The educators' intent. "+projIntent(p):""}`)}
+  for(const p of inqPlans(x).slice(0,6)){const k=AFTER_KEY[p.type];const f=p.fields||{};const bits=[f.observation,k&&f[k]].filter(has).map(v=>String(v).slice(0,600));if(bits.length)out.push(`${planTitle(p)}, week of ${p.weekOf}. ${bits.join(" ")}`)}
+  const L=inqLens(x);if(L)out.push(`The lens ${L.name}, with its questions. ${L.questions.join(" ")}`);
+  for(const [k,[label]] of Object.entries(IQ_STD)){if(k==="hyp"){const hs=inqOpenHyps(x);if(hs.length)out.push(`${label}, already written. ${hs.map(h=>h.text).join(" ")}`);continue}
+    if(k==="try"){const ts=(x.tries||[]).filter(t=>has(t.text));if(ts.length)out.push(`${label}, already written. ${ts.map(t=>t.text+(has(t.result)?" What happened. "+t.result:"")).join(" ")}`);continue}
+    if(has(x[k]))out.push(`${label}, already written. ${x[k]}`)}
+  for(const l of [...(x.looks||[])].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,5))out.push(`When the team looked again, ${shortDate(l.at)}. ${l.text}`);
+  let txt="";for(const l of out){if(txt.length+l.length>14000)break;txt+=l+"\n"}return txt}
+function iqAssistHtml(x,key){
+  if(!sample||!isDirector())return"";const sg=iqSug[x.id+"|"+key];const k=iqKind(key),one=key.includes(":");const cur=iqVal(x,key).trim();
+  if(!sg){const draft=!one&&(k==="hyp"||k==="try"||!cur);
+    return `<div class="actions">${draft?`<button class="btn small ghost" data-iqdraft="${key}">${k==="hyp"?"Draft a guess from the evidence":k==="try"?"Draft something to try from the evidence":"Draft from the evidence"}</button>`:""}${cur?`<button class="btn small ghost" data-iqstr="${key}">Strengthen wording</button>`:""}</div>`}
+  if(sg.status==="working")return `<div class="sugg"><b>TREE is ${sg.mode==="draft"?"reading the evidence":"rewriting this"}</b><div class="muted">Using only what educators wrote</div></div>`;
+  if(sg.status==="error")return `<div class="sugg"><b class="err">${sg.mode==="draft"?"Drafting":"Strengthen"} did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-${sg.mode==="draft"?"iqdraft":"iqstr"}="${key}">Try again</button><button class="linkbtn" data-iqsugno="${key}">Close</button></div></div>`;
+  return `<div class="sugg"><b>${sg.mode==="draft"?"Drafted from the evidence":"Suggested wording"}</b><textarea id="iqsug-${key.replace(/[^a-z0-9]/gi,"_")}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. ${sg.mode==="draft"&&!one&&(k==="hyp"||k==="try")?"Use this adds it as a new one.":"What is written stays until you choose Use this."}</div>
+    <div class="actions"><button class="btn small" data-iqsugyes="${key}">Use this</button><button class="btn small ghost" data-iqsugno="${key}">Keep mine</button><button class="linkbtn" data-${sg.mode==="draft"?"iqdraft":"iqstr"}="${key}">Try another version</button></div></div>`}
+async function iqAssist(x,key,mode){
+  if(!sample||!isDirector())return;const k=iqKind(key),std=IQ_STD[k];if(!std)return;const cur=iqVal(x,key).trim();
+  if(mode==="str"&&!cur){toast("Write a few words first, then strengthen them.");return}
+  const evid=inqDigest(x);if(mode==="draft"&&!evid.trim()){toast("Add an observation or a thread first, so there is evidence to draft from.");return}
+  const sk=x.id+"|"+key;iqSug[sk]={status:"working",mode};renderMain();
+  const head=`You are helping the director of Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, write the "${std[0]}" part of a team inquiry. A team inquiry is how the team reflects on its own practice and on a child's development, beside the curriculum. It is never about labeling or fixing a child.
+The standard for this part. ${std[1]}
+The inquiry. ${x.name||"Untitled"}${x.room?", "+x.room+" class":", the whole school"}.`;
+  const prompt=mode==="draft"?`${head}
+Draft this part using only the evidence below. Use only facts, names and words found there. Add no new facts, children, quotes or events, and no diagnosis or label. Keep it short, two to four sentences${k==="hyp"||k==="try"?", and write one only, different from any already written":""}. If the evidence does not say enough for this part, return only the word THIN. ${STYLE}
+Return only the text, with no preface.
+
+The evidence.
+${evid}`:`${head}
+Rewrite the team's entry so it meets the standard. Keep every fact, name and quote from the entry, and keep the team's own meaning. You may use facts from the evidence below. Add no new facts, children, quotes or events, no diagnosis or label, and no interpretation the team did not write. Keep it about the same length or up to twice as long. ${STYLE}
+Return only the rewritten text, with no preface.
+
+The evidence.
+${evid}
+
+The team's entry.
+${cur}`;
+  let out="",code="";
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/—/g,", ").trim();
+  if(/^THIN\.?$/i.test(out))iqSug[sk]={status:"error",mode,error:"The evidence does not say enough for this part yet. Add observations, or write it from the team's discussion."};
+  else iqSug[sk]=out?{status:"ready",mode,text:out}:{status:"error",mode,error:assistError(code||"empty_completion","What is written is unchanged.")};
+  if(view==="inquiries"&&inqId===x.id)renderMain()}
+function iqAssistUse(x,key){if(!isDirector())return;const sk=x.id+"|"+key,sg=iqSug[sk];if(!sg||sg.status!=="ready")return;
+  const el=document.getElementById("iqsug-"+key.replace(/[^a-z0-9]/gi,"_"));const v=(el?el.value:sg.text).trim();if(!v)return;
+  const [k,id]=key.split(":");const now=Date.now(),by=whoAmI();
+  if(k==="hyp"){if(id){const o=(x.hyps||[]).find(h=>h.id===id);if(o)o.text=v}else x.hyps=[...(x.hyps||[]),{id:uid(),text:v,by,at:now}]}
+  else if(k==="try"){if(id){const o=(x.tries||[]).find(t=>t.id===id);if(o)o.text=v}else x.tries=[...(x.tries||[]),{id:uid(),text:v,by,at:now,curriculum:false,result:""}]}
+  else x[k]=v;
+  delete iqSug[sk];saveInquiry(x);renderMain();toast("Kept. Edit it into the team's words as you talk it through.")}
 async function inquiriesClick(t){
   const d=t.dataset;
   if(d.iqopen){openInquiry(d.iqopen);return true}
   if(d.iqback){openInquiry("");return true}
   if(d.iqroom){iqRoom=d.iqroom;LS.set("fps.iqroom",iqRoom);renderMain();return true}
-  if(d.iqnew){startInquiry({});return true}
+  if(d.iqnew){if(isDirector())startInquiry({});return true}
   if(d.iqcancel){iqForm=null;renderMain();return true}
   if(d.iqmake){const f=iqForm;if(!f)return true;f.name=($("#iqf-name")?.value||"").trim();f.room=$("#iqf-room")?.value||"";
     if(!f.name){$("#iqf-msg").innerHTML=`<span class="nudge">Name what the team is wondering about first.</span>`;return true}
@@ -3683,6 +3766,10 @@ async function inquiriesClick(t){
   if(d.iqplango&&x){planFromInquiry(x,d.iqplango);return true}
   if(d.iqplanno){const el=$("#iqplan-pick");if(el)el.innerHTML="";return true}
   if(!x)return false;
+  if(d.iqdraft||d.iqstr){iqAssist(x,d.iqdraft||d.iqstr,d.iqdraft?"draft":"str");return true}
+  if(d.iqsugno){delete iqSug[x.id+"|"+d.iqsugno];renderMain();return true}
+  if(d.iqsugyes){iqAssistUse(x,d.iqsugyes);return true}
+  if(!isDirector())return false;
   const now=Date.now(),by=whoAmI();
   if(d.iqhadd){x.hyps=[...(x.hyps||[]),{id:uid(),text:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll("[data-iqh]");if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqhaside){const o=(x.hyps||[]).find(h=>h.id===d.iqhaside);if(o){if(!has(o.text))x.hyps=x.hyps.filter(h=>h!==o);else{o.aside=true;o.asideAt=now;o.asideBy=by}saveInquiry(x);renderMain()}return true}
@@ -3698,11 +3785,13 @@ async function inquiriesClick(t){
   if(d.iqdelyes){inquiries.delete(x.id);if(db)db.doc("inquiries/"+x.id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.inquiries",[...inquiries.values()]);openInquiry("");return true}
   return false}
 document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+  if(!isDirector()&&!(d.iqt&&/\|result$/.test(d.iqt)))return;
   if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
   if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqlq!=null){const L=inqLens(x);if(L){x.lensNotes=x.lensNotes||{};x.lensNotes[L.questions[+d.iqlq]]=t.value;autoGrow(t);saveInquirySoon(x)}return}});
 document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+  if(!isDirector()&&!d.iqaddobs&&!d.iqaddth)return;
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
@@ -3716,7 +3805,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
 function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||"Team inquiry"} ${list.map(x=>`<button class="linkbtn" data-iqopen="${x.id}">${esc(x.name||"Untitled")}</button>`).join(", ")}</div>`:""}
 function inqObsChooser(n){const open=inqAll().filter(x=>x.status!=="closed"&&!(x.obs||[]).includes(n.id)&&(!x.room||momentIn(n,x.room)||!momentRooms(n).length));
   return `<span class="confirm">${open.length?`<select data-nwinqadd="${n.id}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${x.id}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
-    <button class="btn small ghost" data-nwinqnew="${n.id}">Start a team inquiry from it</button><button class="linkbtn" data-nwinqno="${n.id}">Cancel</button></span>`}
+    ${isDirector()?`<button class="btn small ghost" data-nwinqnew="${n.id}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${n.id}">Cancel</button></span>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq]");if(!t)return;const d=t.dataset;
   if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();const pr=projectOfThread(th.id);startInquiry({threads:[th.id],room:th.classroom||"",projects:pr?[pr.id]:[]});return}
   if(d.nwinq){const el=document.getElementById("nwi-"+d.nwinq);const n=notices.get(d.nwinq);if(el&&n)el.innerHTML=inqObsChooser(n);e.stopImmediatePropagation();return}
@@ -3739,7 +3828,7 @@ function planEvidence(p){
     heads.push({kind:"Thread",name:t.name,open:`data-tsee="${t.id}"`,lines:[t.question&&["The question",t.question],last&&["Last written about it",last.text]].filter(Boolean),
       from:(t.evidence||[]).filter((e,i,all)=>e.planId!==p.id&&has(e.text)&&all.findIndex(o=>String(o.text).trim()===String(e.text).trim())===i).sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,8)});take(threadNotices(t))}
   for(const id of p.inquiries||[]){const q=inquiries.get(id);if(!q||!inqOf(q))continue;
-    heads.push({kind:"Team inquiry",name:q.name||"Untitled",open:`data-iqopen="${q.id}"`,lines:[has(q.see)&&["What we see",q.see],inqOpenHyps(q).length&&["What it might be telling us",inqOpenHyps(q).map(h=>h.text).join("\n")],
+    heads.push({kind:"Team inquiry",name:q.name||"Untitled",open:`data-iqopen="${q.id}"`,lines:[has(q.see)&&["What we see",q.see],inqOpenHyps(q).length&&["What we think is happening",inqOpenHyps(q).map(h=>h.text).join("\n")],
       inqCurric(q).length&&["What we will try in the curriculum",inqCurric(q).map(t=>t.text+(has(t.result)?". What happened. "+t.result:"")).join("\n")],has(q.watch)&&["What we will watch for",q.watch]].filter(Boolean)});take(inqNotices(q))}
   if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
   take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
@@ -5520,7 +5609,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button><button class="linkbtn" data-tinq="${t.id}">Open a team inquiry with it</button>
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button>${isDirector()?`<button class="linkbtn" data-tinq="${t.id}">Open a team inquiry with it</button>`:""}
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
