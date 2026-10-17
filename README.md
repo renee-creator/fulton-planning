@@ -1,6 +1,6 @@
 # TREE
 
-TREE is the school's one app for Fulton Community School & Farm. It grew out of Planning Studio and now holds planning, documentation, children and family conferences, and the calendar. It has five sections, Today, Plans, Documentation, Children and Calendar, with a Keep a moment button always one tap away.
+TREE is the school's one app for Fulton Community School & Farm. It grew out of Planning Studio and now holds planning, documentation, children and family conferences, and the calendar. It has six sections, Today, Observations, Plans, Documentation, Children and Calendar, with a Keep an observation button always one tap away. Observations come before Plans and Documentation because they feed both. Each observation shows where it has been used, in a plan, on a slide or on a wall. The Lens keeps the word moment for the passages it quotes from plans and observations.
 
 - **Today** greets the educator and shows what is waiting for them: notes from the director, plans to finish or review, final remarks still to write, words to check on a copied photo, and family conferences coming up. It also shows today's calendar and the latest moments.
 - **Plans** opens on the week. Each small group's Individual plan sits beside the Classroom plan, with All plans, Threads, Projects and the Lens one tap away. An Individual plan signs up for a space for the small group, Tuesday to Friday from 9 to 10:30 unless the educator changes the days or times, and the sign-up shows on the calendar.

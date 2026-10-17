@@ -391,10 +391,10 @@ body{margin:0}
 .fab{transition:transform .22s ease,opacity .22s ease}.fab.away{transform:translateY(180%);opacity:0;pointer-events:none}
 @media (max-width:760px){
   .tnav{display:none}
-  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .tabbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
   .tabbar button{border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:4px 0;cursor:pointer}
   .tabbar button svg{width:22px;height:22px}
-  .tabbar button{font-size:10.5px;letter-spacing:-.01em;white-space:nowrap;min-width:0}
+  .tabbar button{font-size:9.8px;letter-spacing:-.02em;white-space:nowrap;min-width:0}
   .tabbar button[aria-current="page"]{color:var(--moss)}
   .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:12px 16px}
   .fab span{display:none}
@@ -505,7 +505,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   </div>
 </div>
 <nav class="tabbar" id="ttab" aria-label="Sections"></nav>
-<button class="fab" id="newnotice" aria-label="Keep a moment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Keep a moment</span></button>
+<button class="fab" id="newnotice" aria-label="Keep an observation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Keep an observation</span></button>
 <datalist id="educators"></datalist><datalist id="placelist"></datalist><datalist id="arealist"></datalist>
 <div class="toast" id="toast" hidden></div>
 
@@ -642,7 +642,7 @@ const FORMS={
    strong:"The tunnel idea repeated every day. Three children answered in drawing first, two built with sticks. Next, offer clay to build underground spaces.",weak:"Good week",
    starters:["What repeated was ","Children reached for ","Next, "]}
  ],small:true},
- notice:{name:"Notice and Wonder",short:"Moment",who:"Written in the moment by one educator",fields:[
+ notice:{name:"Notice and Wonder",short:"Observation",who:"Written in the moment by one educator",fields:[
   {k:"noticed",label:"What I noticed",rows:4,hint:"What happened, and what children did or said.",strong:"Three children reminded each other to use kinder words when they heard one.",weak:"They were kind today."},
   {k:"wonder",label:"What I wonder",rows:2,hint:"What the moment makes you ask.",strong:"I wonder whether they would hold each other to an agreement they wrote themselves.",weak:"I wonder if they will be kind tomorrow."}]}
 };
@@ -804,7 +804,7 @@ function renderFilters(){
   $("#filters").innerHTML=["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===roomFilter}" data-room="${r}">${r}</button>`).join("");
 }
 function planTitle(p){
-  if(p.type==="notice")return firstLine(String(p.fields?.noticed||"").trim(),72)||"A moment";
+  if(p.type==="notice")return firstLine(String(p.fields?.noticed||"").trim(),72)||"An observation";
   if(p.type==="classroom")return (p.classroom||"Classroom")+" team";
   if(p.type==="smallgroup")return (p.group||"Small group")+(p.educator?" · "+p.educator:"");
   const foc=(p.groups||[]).length?p.groups.join(" and "):(p.focus==="area"&&p.where?p.where:"");
@@ -1234,7 +1234,7 @@ function renderWelcome(){
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",plans:"This week",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Moments",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+const NAV_NAMES={today:"Today",plans:"This week",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -1366,9 +1366,9 @@ const kidDrdpItems=c=>Object.entries((c.drdp&&c.drdp.items)||{}).map(([id,x])=>O
 function drdpSource(kind,rec){
   if(kind==="slides"){const src=slideSources(rec);
     const text=[has(rec.title)?"Slide title. "+rec.title:"",has(rec.text)?"What the team understood. "+rec.text:"",...(rec.quotes||[]).map(q=>(q.name?q.name+" said, ":"A child said, ")+q.words),
-      ...src.map(n=>`Moment kept by ${n.by||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
+      ...src.map(n=>`Observation kept by ${n.by||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
     return {text,photos:slidePhotos(rec).map(id=>notices.get(id)).filter(Boolean),kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:rec.title||"A slide"}}
-  return {text:`Moment kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
+  return {text:`Observation kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
     photos:rec.photo?[rec]:[],kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:momentHeading(rec)||firstLine(rec.noticed,60)};
 }
 async function drdpPhotoBlobs(ns){const out=[];for(const n of ns.slice(0,3)){try{const u=photoSrc(n);if(!u)continue;const b=await (await fetchPhoto(u)).blob();if(b&&b.size)out.push(b)}catch(e){}}if(ns.length&&!out.length)toast("The photos could not be fetched, so this reading uses the words only.");return out}
@@ -1546,7 +1546,7 @@ window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.
 window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
   const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
-  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,id:x.kind==="slides"?x.s.id:x.n.id,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"A moment")}))};
+  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,id:x.kind==="slides"?x.s.id:x.n.id,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"An observation")}))};
 
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
@@ -1605,7 +1605,7 @@ function kidDrdpHtml(c){
     const key="dom:"+dm;const open=drdpOpen.has(key)||(busy&&!drdpShut.has(key));
     return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
-      ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
+      ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
       <div class="cnt">Levels here were accepted by an educator from documentation. They are not a DRDP rating, which is still entered in DRDPtech. Tap a measure to see its evidence.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
@@ -1613,7 +1613,7 @@ function kidDrdpHtml(c){
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
         ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English. This adds ELD 1 to 3.</span></label>`:""}
         <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label></details>
-      ${(()=>{const t3=kidTurnsThree(c);return t3?`<div class="drnote"><b>${esc(c.first)} turns three on ${esc(longDate(t3))}.</b> From then TREE reads new moments against the Preschool through Kindergarten View. To keep ${esc(c.first)} in the ${DRDP_VIEW[v]} View for this rating period, choose it under The view and the measures that apply.</div>`:""})()}
+      ${(()=>{const t3=kidTurnsThree(c);return t3?`<div class="drnote"><b>${esc(c.first)} turns three on ${esc(longDate(t3))}.</b> From then TREE reads new observations against the Preschool through Kindergarten View. To keep ${esc(c.first)} in the ${DRDP_VIEW[v]} View for this rating period, choose it under The view and the measures that apply.</div>`:""})()}
       ${doms.map(domBlock).join("")}
       ${(()=>{const ov=v==="ptk"?"it":"ptk";const ex=kidDrdpItems(c).filter(x=>x.view===ov&&(x.status==="accepted"||x.status==="changed")&&x.level);if(!ex.length)return"";
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
@@ -1665,6 +1665,10 @@ function newSlide(n){
   FRESH_SLIDES.add(s.id);saveSlide(s);slideOpen=s.id;LS.set("tree.slide",slideOpen);goView("slide");return s;
 }
 const slidePhotos=s=>(s.photos||[]).filter(id=>{const n=notices.get(id);return n&&n.photo}).slice(0,3);
+// the plans an observation went into, whether added from the plan's offer or written in, and the walls it hangs on
+function obsPlans(n){const bit=String(n.noticed||"").replace(/\s+/g," ").trim().slice(0,50);
+  return [...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type)&&((p.noticeAdded||[]).includes(n.id)||(bit.length>=20&&Object.values(p.fields||{}).some(v=>String(v||"").replace(/\s+/g," ").includes(bit))))).sort((a,b)=>String(b.weekOf).localeCompare(String(a.weekOf)))}
+function obsWalls(n){return [...projects.values()].filter(x=>((x.wall&&x.wall.sheets)||[]).some(sh=>sh.include!==false&&(sh.photos||[]).includes(n.id)))}
 // the slides a moment's photo or words are on
 const slidesWith=id=>[...slides.values()].filter(s=>(s.photos||[]).includes(id)||(s.momentIds||[]).includes(id));
 // the threads and projects a slide's moments belong to
@@ -1707,8 +1711,8 @@ function renderSlides(){
       <label class="radio"><input type="checkbox" data-deckopt="drdp" ${deck.drdp?"checked":""}><span>Add each slide's DRDP evidence page after it</span></label>
       <label class="fld-label">End with a quote<select data-deckquote="1"><option value="">No closing quote</option><option value="r" ${deck.quote==="r"?"selected":""}>A different one each time</option>${SLIDE_QUOTES.map((q,i)=>`<option value="${i}" ${String(deck.quote)===String(i)?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0])}, ${esc(q[1])}</option>`).join("")}</select></label>
       <div class="actions"><button class="btn small" data-deckout="pdf" ${deck.ids.length?"":"disabled"}>Deck PDF</button><button class="btn small ghost" data-deckout="docx" ${deck.ids.length?"":"disabled"}>Word</button><button class="btn small ghost" data-deckout="jpg" ${deck.ids.length?"":"disabled"}>A JPG of each slide</button><button class="linkbtn" data-deckend="1">Done</button></div></section>`:"";
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Slides</h2><div class="sub">Documentation slides for the classroom walls, made from moments. The photo is large and sharp, and every word comes from the children or the educators.</div></div>
-    <span class="actions"><button class="btn" data-slidenew="1">Make a slide</button>${ss.length>1&&!deck?`<button class="btn ghost" data-deckstart="1">Make a deck</button>`:""}</span></div><div class="cnt">Or open a moment and choose Make a slide.</div></div>
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Slides</h2><div class="sub">Documentation slides for the classroom walls, made from observations. The photo is large and sharp, and every word comes from the children or the educators.</div></div>
+    <span class="actions"><button class="btn" data-slidenew="1">Make a slide</button>${ss.length>1&&!deck?`<button class="btn ghost" data-deckstart="1">Make a deck</button>`:""}</span></div><div class="cnt">Or open an observation and choose Make a slide.</div></div>
   ${deckBar}
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No slides yet.</div>`}`;
 }
@@ -1751,12 +1755,12 @@ function renderSlide(){
       <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="In the children's words, or the team's"></label>
         <div class="fld-label">Photos, up to three<span class="cnt" style="font-weight:400">The first chosen is the largest.</span>
           <div class="filters" style="margin:2px 0 6px">${["All",...CLASSROOMS].map(r=>`<button type="button" class="pill" aria-pressed="${r===sfPick.room}" data-sfroom="${r}">${r}</button>`).join("")}</div>
-          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
+          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Observation")+", "+shortDate(n.at))}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Observations with photos appear here. Keep an observation with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
 </section>
       <section class="card"><label class="fld-label">What the team understood<textarea data-sf="text" rows="4" placeholder="A few lines in the team's words">${esc(s.text||"")}</textarea></label>
         ${!String(s.text||"").trim()&&src.some(n=>momentText(n))?`<div class="actions"><button class="btn small ghost" data-sfmoment="${s.id}">Use what was noticed and wondered</button></div>`:""}
-        ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the moments on this slide.</span></div>`:""}
-        ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the moments</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
+        ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the observations on this slide.</span></div>`:""}
+        ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the observations</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
         ${lines.length?`<div class="fld-label">The children's words on the slide<div class="chips">${lines.map((q,i)=>`<button class="chip ${qs.has(q.words.toLowerCase())?"on":""}" data-sfq="${i}" type="button">${q.name?esc(q.name)+", ":""}${esc(q.words.length>60?q.words.slice(0,57)+"...":q.words)}</button>`).join("")}</div></div>`:""}
         <div class="fld-label">Children on this slide, optional<div class="chips">${kids.map(c=>`<button class="chip ${(s.children||[]).includes(c.id)?"on":""}" data-sfkid="${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">The roster for this class appears here.</span>`}</div><span class="cnt">A tagged child finds this slide on their page and in their portfolio.</span></div></section>
       ${slideDesignHtml(s)}
@@ -1871,7 +1875,7 @@ function portfolioDrdpDoc(c,mode,view){
 }
 // how the DRDP sits in a portfolio. Within the moments, each accepted level prints on the page of the moment or slide it
 // was read from, so the reading stays with the experience and is seen over time. At the end keeps the summary page.
-const PF_DRDP={within:"DRDP within the moments",end:"DRDP at the end",none:"Without the DRDP"};
+const PF_DRDP={within:"DRDP within the observations",end:"DRDP at the end",none:"Without the DRDP"};
 const pfDrdpMode=()=>{const v=LS.get("tree.pfdrdp","within");return PF_DRDP[v]?v:"within"};
 function portfolioDocs(c,mode,drdp){
   mode=mode||PRINT.names;drdp=drdp||pfDrdpMode();const items=portfolioItems(c);
@@ -1914,7 +1918,7 @@ function portfolioDocs(c,mode,drdp){
    A moment kept with no connection waits on this device and sends itself once the connection is back. A photo waits
    with it and is stored first. Nothing is lost if the page is closed, since the waiting moments are kept on the device. */
 let outbox=LS.get("tree.outbox",[])||[];
-function outboxSave(){try{localStorage.setItem("tree.outbox",JSON.stringify(outbox))}catch(e){toast("This device is out of room for moments waiting to send. Keep TREE open until there is signal.")}}
+function outboxSave(){try{localStorage.setItem("tree.outbox",JSON.stringify(outbox))}catch(e){toast("This device is out of room for observations waiting to send. Keep TREE open until there is signal.")}}
 function outboxAdd(n){outbox=outbox.filter(x=>x.id!==n.id);outbox.push(JSON.parse(JSON.stringify(n)));outboxSave()}
 const waitingToSend=id=>outbox.some(x=>x.id===id);
 let outboxBusy=false;
@@ -1927,7 +1931,7 @@ async function outboxSend(){
       notices.set(n.id,n);outbox=outbox.filter(x=>x.id!==n.id);outboxSave();
     }catch(e){break}}
   }finally{outboxBusy=false}
-  if(!outbox.length)toast("The moments kept without signal are now saved.");
+  if(!outbox.length)toast("The observations kept without signal are now saved.");
   if(view==="moments"||view==="today")renderMain();
 }
 window.addEventListener("online",()=>setTimeout(outboxSend,1500));
@@ -1936,13 +1940,14 @@ setInterval(outboxSend,30000);
 /* ---------- TREE. Five sections, each with its own pages ----------
    Today, Plans, Documentation, Children and Calendar. Every page Planning Studio had lives under one of them,
    so nothing is lost and nothing has to be found twice. The Keep a moment button is always one tap away. */
-const SECTIONS=[["today","Today"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
+// observations come first after Today, since they feed both the plans and the documentation
+const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 const SUBS={plans:[["plans","This week"],["all","All plans"],["threads","Threads"],["projects","Projects"],["lens","Lens"]],
-  docs:[["moments","Moments"],["slides","Slides"],["walls","Walls"]],
+  docs:[["slides","Slides"],["walls","Walls"]],
   children:[["children","Children"],["conferences","Conferences"]]};
 const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",lens:"plans",import:"plans",
-  moments:"docs",slides:"docs",slide:"docs",walls:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
-const TICON={today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
+const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
@@ -1950,7 +1955,7 @@ function goView(v,opts){
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
 }
-function goSection(s){if(s==="today")return goView("today");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
+function goSection(s){if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
 function renderTreeNav(){
   const cur=secOf(view);document.body.dataset.sec=cur;
   const nav=$("#tnav");if(nav)nav.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
@@ -2020,7 +2025,7 @@ function todayWaiting(){
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
-    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
@@ -2040,13 +2045,13 @@ function todayWaiting(){
 }
 // a moment in a few lines, for Today and a child's page. The whole moment is one tap away.
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
-  return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
+  return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu moment"?["kaymbu","Kaymbu moments to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
   :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
@@ -2068,19 +2073,19 @@ function renderToday(){
   $("#main").innerHTML=`<section class="hello"><span class="eyebrow">${esc(fmtLong(new Date()))}</span><h2>${greet}${name&&!isShared(name)?", "+esc(name):""}</h2>
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
-    <button class="qmain" data-newmoment="1"><b>Keep a moment</b><span>Words, a photo, or both. One minute.</span></button>
-    <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from moments</span></button>
+    <button class="qmain" data-newmoment="1"><b>Keep an observation</b><span>Words, a photo, or both. One minute.</span></button>
+    <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from observations</span></button>
     <button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
   </div>
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.length||"Nothing"}</span></div>
-      ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep a moment when something matters.</div>`}</section>
+      ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Today</h3><button class="linkbtn" data-tview="calendar">Calendar</button></div>
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
   </div>
-  <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Recent moments${room?" in "+esc(room):""}</h3><button class="linkbtn" data-tview="moments">All moments</button></div>
-    ${recent.length?`<div class="tlist">${recent.map(momentMini).join("")}</div>`:`<div class="empty">No moments yet.</div>`}</section>`;
+  <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Recent observations${room?" in "+esc(room):""}</h3><button class="linkbtn" data-tview="moments">All observations</button></div>
+    ${recent.length?`<div class="tlist">${recent.map(momentMini).join("")}</div>`:`<div class="empty">No observations yet.</div>`}</section>`;
   loadTodayCal();
 }
 
@@ -2129,7 +2134,7 @@ function renderWalls(){
   const ps=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
-    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
+    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -2813,12 +2818,12 @@ function nfKidsHtml(n){
   const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
   if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class below to tag children."}</span>`}</div>
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this observation, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class below to tag children."}</span>`}</div>
     ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classes, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
 function renderNoticeForm(){
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
-    <div class="sub" style="max-width:72ch">A moment worth keeping, written now.</div></div></div>
+    <div class="sub" style="max-width:72ch">An observation worth keeping, written now.</div></div></div>
   ${noticeFormCard()}
   ${noticeBrowseHtml()}`;
 }
@@ -2828,10 +2833,10 @@ function noticeFormCard(){
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
-    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this moment</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
-    ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this moment"></a></div>${photoStatusHtml(n)}`
-      :editing?"":`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the moment itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
-        <details class="nfwhat"><summary class="cnt">What is a moment?</summary><div class="cnt" style="margin-top:4px">A moment is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
+    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
+    ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
+      :editing?"":`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the scene itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
+        <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. What it makes you ask">${esc(n.wonder)}</textarea></label>
     <div class="fld-label" id="nf-kids">${nfKidsHtml(n)}</div>
@@ -2842,27 +2847,31 @@ function noticeFormCard(){
       ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
-    <div class="hint">A project or thread is optional. One can claim this moment later, whenever it grows.</div>
-    <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>${editing?"Save changes":"Keep this moment"}</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
+    <div class="hint">A project or thread is optional. One can claim this observation later, whenever it grows.</div>
+    <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>${editing?"Save changes":"Keep this observation"}</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
   </section>`;
 }
 function noticeBrowseHtml(){
   const all=noticesFor(nRoom==="All"?"":nRoom,0);
   const rooms=["All",...CLASSROOMS];
-  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Moments kept</h3><span class="cnt">${all.length} in the record</span></div>
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations kept</h3><span class="cnt">${all.length} in the record</span></div>
     <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}</div>
-    ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No moments kept for this view yet.</div>`}</section>`;
+    ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No observations kept for this view yet.</div>`}</section>`;
 }
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
-    ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
+    ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
-    ${(()=>{const ss=slidesWith(n.id);return ss.length?`<div class="cnt">On ${ss.length===1?"a slide":ss.length+" slides"} ${ss.map(x=>`<button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join(", ")}</div>`:""})()}
+    ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
+        ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
+        ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
+        ...ws.map(x=>`the wall for <button class="linkbtn" data-popen="${x.id}">${esc(x.name)}</button>`)];
+      return bits.length?`<div class="cnt">Used in ${bits.join(", ")}${ps.length>4?`, and ${ps.length-4} more plans`:""}</div>`:""})()}
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
@@ -2908,10 +2917,10 @@ function spread(list,n){if(n<=0)return[];if(list.length<=n)return list.slice();i
 function momentsScan(){return scans.get("moments-"+nRoom)}
 function momentsReadHtml(){
   const s=momentsScan();if(!s)return"";
-  return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these moments keep returning to</h3>
+  return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these observations keep returning to</h3>
     <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
-    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map(p=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(p.why)}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} moment${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}</div>`).join("")}</div>`:""}
+    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map(p=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(p.why)}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} observation${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
     <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
 }
@@ -2921,26 +2930,26 @@ function renderMoments(){
   const people=new Set(all.map(n=>n.by).filter(Boolean)).size;
   const open=all.filter(n=>!n.projectId&&!n.threadId).length;
   let shown=0;
-  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Notice and Wonder</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change a moment":"Keep a moment"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Notice and Wonder, our observational frame</span><h2 style="margin-top:4px">Moments</h2>
-    <div class="sub" style="max-width:74ch">Moments kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on a moment whenever it comes round to it.</div></div>
-    <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep a moment</button>${photoPickHtml("nf-photo2","Upload a photo")}`}</span></div>
+  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Notice and Wonder</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change an observation":"Keep an observation"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Notice and Wonder, our observational frame</span><h2 style="margin-top:4px">Observations</h2>
+    <div class="sub" style="max-width:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
+    <span class="actions">${noticeForm?"":`<button class="btn small" id="newnotice2">Keep an observation</button>${photoPickHtml("nf-photo2","Upload a photo")}`}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
-    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading moments":"Read the moments"}</button>`:""}</div>
-    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">TREE reads the moments in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
+    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
+    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">TREE reads the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   <div class="stats">
-    <div class="stat"><b>${all.length}</b><span>moments in this view</span></div>
+    <div class="stat"><b>${all.length}</b><span>observations in this view</span></div>
     <div class="stat"><b>${people}</b><span>educators keeping them</span></div>
     <div class="stat"><b>${open}</b><span>not yet claimed by a project or thread</span></div>
     <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classes they came from</span></div>
   </div>
   ${momentsReadHtml()}`;
-  if(!all.length)h+=`<div class="empty">${notices.size?"No moments kept in this view. Widen the class or the range.":"No moments kept yet. Press Keep a moment and write one in a minute."}</div>`;
+  if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
   for(const g of gs){
     if(shown>=120)break;
     const items=g.items.slice(0,Math.max(0,120-shown));shown+=items.length;
-    h+=`<section class="card">${g.label?`<div class="secthead"><h3 style="font-size:17px">${esc(g.label)}</h3><span class="cnt">${g.items.length} moment${g.items.length>1?"s":""}</span></div>`:`<div class="secthead"><h3 style="font-size:17px">Moments kept</h3><span class="cnt">${all.length} in this view</span></div>`}
+    h+=`<section class="card">${g.label?`<div class="secthead"><h3 style="font-size:17px">${esc(g.label)}</h3><span class="cnt">${g.items.length} observation${g.items.length>1?"s":""}</span></div>`:`<div class="secthead"><h3 style="font-size:17px">Observations kept</h3><span class="cnt">${all.length} in this view</span></div>`}
       <div style="display:grid;gap:12px">${items.map(noticeCard).join("")}</div>
       ${items.length<g.items.length?`<div class="cnt" style="margin-top:8px">${g.items.length-items.length} more in this group.</div>`:""}</section>`;
   }
@@ -2950,12 +2959,12 @@ function renderMoments(){
 async function momentsRead(){
   if(mBusy||!sample||!isDirector())return;
   const all=momentsIn();
-  if(all.length<3){toast("Keep a few more moments first.");return}
+  if(all.length<3){toast("Keep a few more observations first.");return}
   const d=capDigest(all.slice(0,160).map(n=>({id:n.id,date:shortDate(n.at),classroom:n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,700),wonder:String(n.wonder||"").slice(0,400)})),150000);
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom;
-  const prompt=`You are reading Notice and Wonder moments kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each moment was written in the minute it happened. They span many weeks and they are not in any order of importance.
+  const prompt=`You are reading Notice and Wonder moments kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
 ${STYLE}
@@ -2970,7 +2979,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
       ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6)})).filter(p=>p.name&&p.ids.length).slice(0,5);
     saveScan({room:"moments-"+room,kind:"moments",range:mRange,createdAt:Date.now(),by:whoAmI(),count:d.length,
       summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)});
-    toast(patterns.length?`Read ${d.length} moments and named ${patterns.length} pattern${patterns.length>1?"s":""}.`:`Read ${d.length} moments.`);
+    toast(patterns.length?`Read ${d.length} observations and named ${patterns.length} pattern${patterns.length>1?"s":""}.`:`Read ${d.length} observations.`);
   }catch(err){toast(assistError(err?.code||"unknown"))}
   mBusy=false;renderMain();
 }
@@ -2980,7 +2989,7 @@ function momentsDocs(long,cap){
   const s=momentsScan();
   const meta=[["Classrooms",nRoom==="All"?"All":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
   const blocks=[];
-  if(s&&has(s.summary))blocks.push(dLead("What these moments keep returning to",s.summary));
+  if(s&&has(s.summary))blocks.push(dLead("What these observations keep returning to",s.summary));
   if(long&&s&&(s.patterns||[]).length)blocks.push(dList("Patterns the team is weighing",s.patterns.map(p=>`${p.name}. ${p.why}`).slice(0,5)));
   // the summary carries a spread. The full set carries them all, with what the educator wondered
   const total=long?60:(cap||12);
@@ -2990,7 +2999,7 @@ function momentsDocs(long,cap){
     const items=long?g.items.slice(0,left):spread(g.items,Math.max(1,Math.min(left,Math.round(total*g.items.length/all.length)||1)));
     if(!items.length)continue;left-=items.length;
     if(g.label)blocks.push(dSub(g.label));
-    else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Moments kept"));
+    else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Observations kept"));
     for(const n of items){const credit=[pBy(n.by),n.classroom&&n.classroom+" class"].filter(Boolean).join(", ");
       // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
       if(n.photo&&long){blocks.push(dPhoto(n,230,false));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));continue}
@@ -3001,7 +3010,7 @@ function momentsDocs(long,cap){
       const text=long&&has(n.wonder)?`${body}\n${wonderLine(n.wonder)}`:body;
       blocks.push(dQuote(text,credit,shortDate(n.at),true))}
   }
-  if(!long&&all.length>total-left)blocks.push({t:"text",label:"",quiet:true,text:`${all.length} moments are kept in this view. The full set prints them all.`});
+  if(!long&&all.length>total-left)blocks.push({t:"text",label:"",quiet:true,text:`${all.length} observations are kept in this view. The full set prints them all.`});
   if(s&&(s.questions||[]).length)blocks.push(dList("Questions for the team",s.questions));
   return [{display:true,type:"report",acc:"story",title:"Notice and Wonder",meta,blocks}];
 }
@@ -3014,7 +3023,7 @@ function noticesClick(t){
   if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
-  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the class or the range.");return true}
+  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That observation is outside this view. Widen the class or the range.");return true}
   if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
     if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
     if(view==="moments")renderMain();else renderAll();return true}
@@ -3049,7 +3058,7 @@ function noticesClick(t){
     const [pid,nid]=(t.dataset.nwuse||t.dataset.nwskip).split("|");
     const p=plans.get(pid),n=notices.get(nid);if(!p)return true;
     if(t.dataset.nwuse&&n){const k=NOTICE_TARGET[p.type];
-      if(k){const cur=String(p.fields[k]||"").trim();p.fields[k]=(cur?cur+"\n":"")+noticeText(n)}}
+      if(k){const cur=String(p.fields[k]||"").trim();p.fields[k]=(cur?cur+"\n":"")+noticeText(n);p.noticeAdded=[...new Set([...(p.noticeAdded||[]),n.id])]}}
     p.noticeUsed=[...new Set([...(p.noticeUsed||[]),nid])];persist(p);
     // once there is nothing left to read, the offer folds itself away
     const left=new Set(p.noticeUsed);if(!noticesFor(p.classroom,0).some(x=>!left.has(x.id)))nwOpen="";
@@ -3058,7 +3067,7 @@ function noticesClick(t){
   if(t.dataset.nwedit){const n=notices.get(t.dataset.nwedit);if(!n)return true;
     noticeForm=Object.assign({},n,{day:iso(new Date(n.at||Date.now()))});if(n.photo)noticeForm.photo=Object.assign({},n.photo);
     view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
-  if(t.dataset.nwdel){$("#nwd-"+t.dataset.nwdel).innerHTML=`<span class="confirm">Remove this moment for everyone? <button class="btn warn small" data-nwdelyes="${t.dataset.nwdel}">Remove</button><button class="linkbtn" data-nwkeep="1">Keep it</button></span>`;return true}
+  if(t.dataset.nwdel){$("#nwd-"+t.dataset.nwdel).innerHTML=`<span class="confirm">Remove this observation for everyone? <button class="btn warn small" data-nwdelyes="${t.dataset.nwdel}">Remove</button><button class="linkbtn" data-nwkeep="1">Keep it</button></span>`;return true}
   if(t.dataset.nwkeep){renderMain();return true}
   if(t.dataset.nwdelyes){removeNotice(t.dataset.nwdelyes);renderMain();toast("Removed.");return true}
   return false;
@@ -3113,9 +3122,9 @@ function noticeNoteHtml(p){
     <div class="actions" style="justify-self:end">${f?`<button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button>`:""}<button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div></div>`;
   let h="";
   if(fromThread.length){const names=planThreads(p).map(c=>c.t.name).filter(Boolean);
-    h+=`<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${fromThread.length} moment${fromThread.length===1?"":"s"} from ${names.length===1?"the thread "+esc(names[0]):"the threads this plan follows"}</b>
+    h+=`<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${fromThread.length} observation${fromThread.length===1?"":"s"} from ${names.length===1?"the thread "+esc(names[0]):"the threads this plan follows"}</b>
       <div class="nwlist">${fromThread.slice(0,12).map(one).join("")}</div>${fromThread.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</section>`}
-  if(ns.length){const head=`<b style="color:var(--sky)">${fromThread.length?"Other moments":ns.length+" moment"+(ns.length===1?"":"s")} from ${esc(p.classroom||"no class")}${fromThread.length?", "+ns.length:""}</b>
+  if(ns.length){const head=`<b style="color:var(--sky)">${fromThread.length?"Other observations":ns.length+" observation"+(ns.length===1?"":"s")} from ${esc(p.classroom||"no class")}${fromThread.length?", "+ns.length:""}</b>
     <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
     if(nwOpen!==p.id)h+=`<section class="ref" style="background:var(--sky-soft)">${head}
       <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
@@ -3224,7 +3233,7 @@ function renderProject(x){
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
-  {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's moments</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
+  {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
   h+=`<section class="card"><div class="lbl">Classes</div>
     <div class="hint">${x.home?"The project belongs to its home class. Other classes can join, each by its own path.":"This is a school-wide project with no home class. Each class that takes part joins it."}</div>
@@ -3253,8 +3262,8 @@ function renderProject(x){
       ${br.length<8?`<div class="actions"><button class="btn small ghost" data-pwadd="1">Add a direction</button></div>`:""}</div>
       <div id="pwebprev">${webPreviewSvg(projWeb(x))}</div></div></section>`;
 
-  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Moments</div>
-    <div class="hint">Moments educators kept for this project, in the order they happened.</div>
+  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Observations</div>
+    <div class="hint">Observations educators kept for this project, in the order they happened.</div>
     <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
     <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each class's path is shown beside the others.":""}</div>
@@ -3918,7 +3927,7 @@ function projGrowHtml(x){
     <div class="hint">Everything the project holds, in the order it happened. The current reading and intent are above.</div>
     ${!all&&ev.length>show.length?`<div class="actions"><button class="linkbtn" data-pgrow="1">Show the ${ev.length-show.length} earlier</button></div>`:""}
     <ol class="grow">${show.map(e=>`<li><span class="gdate">${e.week?"Week of "+fmtDate(e.week).replace(/, \d{4}$/,""):shortDate(e.at)}</span><div><b>${esc(e.kind)}</b>${e.heading?` <span class="muted">${esc(e.heading)}</span>`:""}
-      ${e.photo?`<div class="nw-row" style="margin-top:4px"><a class="nw-thumb" href="${esc(photoSrc(e.photo))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(e.photo))}" alt="Photo kept with this moment" loading="lazy"></a><div>${esc(e.text)}</div></div>`:has(e.text)?`<div>${esc(e.text)}</div>`:""}
+      ${e.photo?`<div class="nw-row" style="margin-top:4px"><a class="nw-thumb" href="${esc(photoSrc(e.photo))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(e.photo))}" alt="Photo kept with this observation" loading="lazy"></a><div>${esc(e.text)}</div></div>`:has(e.text)?`<div>${esc(e.text)}</div>`:""}
       <div class="cnt">${e.by?esc(e.by):""}${e.open?` <button class="linkbtn" data-open="${e.open}">Open the plan</button>`:""}${e.tsee?` <button class="linkbtn" data-tsee="${e.tsee}">See the thread</button>`:""}</div></div></li>`).join("")}</ol></section>`;
 }
 // a child's line is a named line copied from a sheet, or words an educator put in quotation marks
@@ -3982,7 +3991,7 @@ function projWallHtml(x){
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
       <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
-        ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
+        ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Observation")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
         ${sample?(sg&&sg.status==="working"?`<div class="hint"><span class="spin"></span> Drafting from the team's writing</div>`
           :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${sh.id}">Use this</button><button class="btn small ghost" data-wsno="${sh.id}">Leave it</button></div></div>`
@@ -4635,14 +4644,14 @@ async function printsClick(t){
   // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
-  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in a moment or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
+  if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in an observation or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
-  if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no moments in this view to print.");return true}
+  if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
     const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classes":nRoom} ${mondayOf(new Date())}`;
     if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
@@ -4841,7 +4850,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       <button class="linkbtn" data-tedit="${t.id}">Change name or class</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
-    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
+    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
@@ -5429,11 +5438,11 @@ function renderAllPlans(){
   const c=k=>base.filter(p=>p.type!=="notice"&&(k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k)).length;const yours=mine?" of yours":"";
   let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
     <div class="sub">Every plan from every week and class. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
-    <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>moments kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
+    <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>observations kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
     <section class="card" style="gap:10px">
       <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
-        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Moments"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>
@@ -5450,7 +5459,7 @@ function allListHtml(ps){
     </tbody></table></div></section>`}).join("");
 }
 function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.length-n;
-  return [pl?`${pl} plan${pl===1?"":"s"}`:"",n?`${n} moment${n===1?"":"s"}`:""].filter(Boolean).join(" and ")+" shown"||"nothing shown"}
+  return [pl?`${pl} plan${pl===1?"":"s"}`:"",n?`${n} observation${n===1?"":"s"}`:""].filter(Boolean).join(" and ")+" shown"||"nothing shown"}
 function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=countShown(ps);$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="all")return;
   if(t.dataset.aroom){aRoom=t.dataset.aroom;renderAllPlans()}
@@ -5494,7 +5503,7 @@ function portfoliosHtml(list,yr){
     return `<div class="pfcard"><div class="pfhead"><button class="linkbtn" data-kid="${esc(c.id)}"><b>${esc(kidName(c))}</b></button><span class="cnt">${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>
       <span class="pfsum">${done} of ${due.length}${behind?` <span style="color:var(--clay)">· ${behind} behind</span>`:""}</span></div>
       <div class="pfstrip">${cells.map(x=>`<div class="pfm${x.past&&!x.done?" late":""}${x.future?" later":""}"><span>${x.m}</span>${x.n?`<button class="pfn" data-kid="${esc(c.id)}" data-kdocgo="1" aria-label="${x.n} in the portfolio for ${x.m}, open ${esc(c.first)}'s documentation">${x.n}</button>`:x.future?`<i aria-hidden="true"></i>`:`<input type="checkbox" aria-label="${esc(kidName(c))}, ${x.m}, a page made outside TREE" data-pftick="${esc(c.id)}|${yr}|${x.m}" ${x.tick?"checked":""}>`}</div>`).join("")}</div></div>`}).join("");
-  return `<section class="card"><div class="cnt">A number is the moments and slides in the child's portfolio that month, and opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</div>
+  return `<section class="card"><div class="cnt">A number is the observations and slides in the child's portfolio that month, and opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</div>
     <div class="pflist">${cards||`<div class="empty">No children in this view.</div>`}</div></section>`;
 }
 function renderChildren(){
@@ -5510,7 +5519,7 @@ function renderChildren(){
     const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;const t3=kidTurnsThree(c);
     const soon=[cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:"",dw?`${dw} DRDP to review`:"",t3?`Turns three ${parseIso(t3).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:""].filter(Boolean);
     return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${soon.length?`<span class="ksoon">${esc(soon.join(" · "))}</span>`:""}
-      <span>${kidAt(c)?((nx==="k"||nx==="tk")?(nx==="k"?"Kindergarten next year":"TK next year"):n?`${n} moment${n===1?"":"s"}`:"No moments yet"):`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}`}</span></button>`};
+      <span>${kidAt(c)?((nx==="k"||nx==="tk")?(nx==="k"?"Kindergarten next year":"TK next year"):n?`${n} observation${n===1?"":"s"}`:"No observations yet"):`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}`}</span></button>`};
   const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
   let body="";
   for(const r of rooms){const rs=shown.filter(c=>c.classroom===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first));if(!rs.length)continue;
@@ -5558,7 +5567,7 @@ function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
 function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
   :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
-    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
+    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"An observation")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
   if(!c){$("#main").innerHTML=`<div class="empty">That child is not on the roster.</div>`;return}
@@ -5571,18 +5580,18 @@ function renderChild(){
   let body="";
   if(kidTab==="overview"){
     body=`<div class="stats">
-        <button class="stat press" data-ktab="docs"><b>${ms.length}</b><span>moment${ms.length===1?"":"s"}${ss.length?` and ${ss.length} slide${ss.length===1?"":"s"}`:""}</span></button>
+        <button class="stat press" data-ktab="docs"><b>${ms.length}</b><span>observation${ms.length===1?"":"s"}${ss.length?` and ${ss.length} slide${ss.length===1?"":"s"}`:""}</span></button>
         <button class="stat press" data-ktab="drdp"><b>${levelled}<small> of ${nMs}</small></b><span>DRDP measures with an accepted level${wait?`, ${wait} waiting`:""}</span></button>
         <button class="stat press" data-ktab="confs"><b class="wordval">${nextConf?esc(shortDate(parseIso(nextConf.confDate).getTime())):"None"}</b><span>${nextConf?"next family conference":"conference scheduled"}</span></button>
         <button class="stat press" data-ktab="details"><b class="wordval">${esc(nx&&NEXTPLAN[nx]?({staying:"Staying",tk:"TK",k:"Kindergarten",deciding:"Deciding",other:"Other"})[nx]:"Not set")}</b><span>next year</span></button></div>
       ${wait?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><button class="btn small" data-ktab="drdp">Review ${wait}</button></div><div class="cnt">DRDP suggestions from ${esc(c.first)}'s documentation wait for an educator to accept, change or set aside.</div></section>`:""}
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
-        ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No moments tag or name ${esc(c.first)} yet. <button class="btn small" data-newfor="${esc(c.id)}">Keep a moment for ${esc(c.first)}</button></div>`}</section>`;
+        ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No observations tag or name ${esc(c.first)} yet. <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>`;
   }else if(kidTab==="docs"){
     const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
-    body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
-        <div class="cnt">Tap a moment to read it. The portfolio holds the moments and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
-        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No moments for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep a moment for ${esc(c.first)}</button></div>`}</section>
+    body=`<section class="card"><div class="tseg" role="group" aria-label="Which observations"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
+        <div class="cnt">Tap an observation to read it. The portfolio holds the observations and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
+        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
       ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
@@ -5618,7 +5627,7 @@ function kidEditHtml(c){
       <label>Next year<select data-knextset="${esc(c.id)}"><option value="">Not decided</option>${Object.entries(NEXTPLAN).map(([k,v])=>`<option value="${k}" ${kidNext(c)===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     ${kidAt(c)?`<div class="lbl" style="margin-top:6px">Leaving Fulton</div><div class="kfields"><label>Last day<input type="date" id="kdate-${esc(c.id)}" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small ghost" data-kstatus="left" data-id="${esc(c.id)}">Left Fulton</button><button class="btn small ghost" data-kstatus="moved" data-id="${esc(c.id)}">Moved on to kindergarten</button></div>
-      <div class="cnt">Moments, plans, conferences and the portfolio that name ${esc(c.first)} stay as they are. ${esc(c.first)} moves to Former children, and the portfolio can still be printed for the family.</div>`
+      <div class="cnt">Observations, plans, conferences and the portfolio that name ${esc(c.first)} stay as they are. ${esc(c.first)} moves to Former children, and the portfolio can still be printed for the family.</div>`
     :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${esc(c.id)}">At Fulton again</button></div>`}
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
@@ -5760,7 +5769,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} chooses a new code at their next sign-in.`);return}
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
-  if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and moments stay.");return}
+  if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
   if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} can sign in now and choose a code.`);return}
   if(t.id==="sg-addall"){(async()=>{const known=new Set(signins.list.map(a=>a.name.toLowerCase()));for(const r of roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)))await signinCall("/api/accounts/save",{name:r.name,room:r.room||"",director:false});toast("Everyone on the educators list can sign in now.")})();return}
 });
@@ -5812,13 +5821,13 @@ function renderSettings(){
       <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div>
     <div class="cnt">Today shows a note for the director at 500 MB and again at 1 GB.</div></section>`})()}
   <section class="card"><div class="lbl">Printing</div><div class="hint">How printouts and Word files look for everyone.</div>
-    <div class="prow"><div><b>The school's name on display documentation</b><div class="cnt">Moment sheets, wall sheets, threads, projects, the lens, and story pages</div></div>
+    <div class="prow"><div><b>The school's name on display documentation</b><div class="cnt">Observation sheets, wall sheets, threads, projects, the lens, and story pages</div></div>
       <div class="seg" role="group" aria-label="School name on documentation"><button data-psd="1" aria-pressed="${PRINT.schoolDocs}">On</button><button data-psd="0" aria-pressed="${!PRINT.schoolDocs}">Off</button></div></div>
     <div class="prow"><div><b>The school's name on plans and records</b><div class="cnt">Weekly plans, blank forms, and week packets</div></div>
       <div class="seg" role="group" aria-label="School name on plans"><button data-psr="1" aria-pressed="${PRINT.schoolRecords}">On</button><button data-psr="0" aria-pressed="${!PRINT.schoolRecords}">Off</button></div></div>
-    <div class="prow"><div><b>Children's names on display documentation</b><div class="cnt">On moment sheets and walls. A wall can choose its own. Plans always keep names as written, and nothing in a moment changes.</div></div>
+    <div class="prow"><div><b>Children's names on display documentation</b><div class="cnt">On observation sheets and walls. A wall can choose its own. Plans always keep names as written, and nothing in an observation changes.</div></div>
       <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div>
-    <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of moment sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
+    <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of observation sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
       <div class="seg" role="group" aria-label="Educators' names"><button data-pby="1" aria-pressed="${PRINT.by!==false}">On</button><button data-pby="0" aria-pressed="${PRINT.by===false}">Off</button></div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
