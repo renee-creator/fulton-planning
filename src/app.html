@@ -1826,9 +1826,15 @@ document.addEventListener("change",e=>{const t=e.target;
 const pfKey=(kind,id)=>kind+":"+id;
 const kidInPortfolio=(c,kind,id)=>!((c.portfolio||{}).out||{})[pfKey(kind,id)];
 function portfolioItems(c){
-  const ms=kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)).map(n=>({kind:"notices",at:n.at||0,n}));
   const ss=kidSlides(c).filter(s=>kidInPortfolio(c,"slides",s.id)).map(s=>({kind:"slides",at:s.at||0,s}));
-  return [...ms,...ss].sort((a,b)=>a.at-b.at);
+  // a moment already on one of the child's slides is told once, by the slide
+  const onSlide=new Set(ss.flatMap(x=>slideSources(x.s).map(n=>n.id)));
+  // photos that share one note are one story, so they share a page of up to three photos
+  const groups=new Map();
+  for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!onSlide.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){
+    const k=String(n.noticed||"").trim().toLowerCase()+"|"+(n.classroom||"");const g=groups.get(k);
+    if(g&&n.photo&&g.n.photo)g.more.push(n);else groups.set(g?k+"|"+n.id:k,{kind:"notices",at:n.at||0,n,more:[]})}
+  return [...groups.values(),...ss].sort((a,b)=>a.at-b.at);
 }
 // the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
 function portfolioDrdpDoc(c,mode,view){
@@ -1853,7 +1859,13 @@ function portfolioDocs(c,mode){
   // the DRDP closes the portfolio. A child who moved views this year has the earlier view's page first.
   const cv=drdpViewOf(c).v;const dr=[portfolioDrdpDoc(c,mode,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,mode,cv)].filter(Boolean);
   const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
-  return [cover,...items.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at)),...dr];
+  const page=x=>{if(x.kind==="slides")return slideDoc(Object.assign({},x.s,{names:mode,focus:c}));const d=momentDoc(x.n,mode,c);if((x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);return d};
+  // the year is told month by month, each month opening with its name
+  const out=[cover];let mon="";
+  for(const x of items){const m=new Date(x.at).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+    if(m!==mon){mon=m;out.push({centered:true,display:true,type:"report",acc:"story",title:m,details:[],photos:[],blocks:[]})}
+    out.push(aged(page(x),x.at))}
+  return [...out,...dr];
 }
 
 /* ---------- Keeping a moment without signal ----------
