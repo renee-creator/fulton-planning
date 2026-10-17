@@ -680,7 +680,7 @@ function newPlan(type,extra={}){
 document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]");if(j){const el=document.querySelector(`[data-card="${j.dataset.secjump}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
   const l=e.target.closest("section.card.filled[data-card]>.lbl");if(l&&window.innerWidth<=760){l.parentElement.classList.toggle("showall")}});
 document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#mp-roomreset");if(!t)return;
-  if(t.id==="mp-roomreset"){for(const k of ["fps.troom","fps.kroom","fps.lroom","fps.nroom"])try{localStorage.removeItem(k)}catch(x){}ownRoomDefaults();toast("Your lists open on your classroom again.");return}
+  if(t.id==="mp-roomreset"){for(const k of ["fps.troom","fps.kroom","fps.lroom","fps.nroom"])try{localStorage.removeItem(k)}catch(x){}ownRoomDefaults();toast("Your lists open on your class again.");return}
   const m=$("#mp-msg");const v=id=>($("#"+id)||{}).value||"";
   try{t.disabled=true;await window.FP_API("/api/me/passcode",{current:v("mp-old"),newCode:v("mp-new"),again:v("mp-again")});["mp-old","mp-new","mp-again"].forEach(id=>{$("#"+id).value=""});m.textContent="Saved";toast("Saved")}
   catch(err){m.textContent=(err&&err.message)||"The passcode could not be changed."}finally{t.disabled=false}});
@@ -868,7 +868,7 @@ function renderList(){
   for(const r of rooms){
     const rp=ps.filter(p=>(p.classroom||"")===r).sort((a,b)=>order[a.type]-order[b.type]||planTitle(a).localeCompare(planTitle(b)));
     if(!rp.length)continue;
-    html+=`<div class="group-h">${r?esc(r):"No classroom chosen"}</div>`;
+    html+=`<div class="group-h">${r?esc(r):"No class chosen"}</div>`;
     html+=rp.map(p=>`<button class="item" data-open="${p.id}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Ready":STATUS[p.status]}</span></button>`).join("");
   }
   $("#list").innerHTML=html;
@@ -907,7 +907,7 @@ function renderMain(){
     <div id="carrymsg"></div>
     <div class="meta">
       <label>Week of<input type="date" id="m-week" value="${p.weekOf}"></label>
-      <label>Classroom<select id="m-room"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${p.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label>Class<select id="m-room"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${p.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
       ${p.type!=="classroom"?educatorSelect(p):""}
       ${p.type==="classroom"?teamPicker(p):""}
       ${p.type==="smallgroup"?`<label>Small group<select id="m-group"><option value="">Choose</option>${GROUPS.filter(g=>!p.classroom||g.room===p.classroom).map(g=>`<option ${p.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>`:""}
@@ -958,7 +958,7 @@ function teamSources(p){
   return [...plans.values()].filter(x=>x.id!=="example"&&(x.type==="individual"||x.type==="smallgroup")&&x.weekOf===p.weekOf&&x.classroom===p.classroom&&!isEmptyPlan(x)&&!(x.dupOf&&plans.has(x.dupOf)))
     .sort((a,b)=>(a.educator||"").localeCompare(b.educator||""));
 }
-// who wrote an Individual plan in this classroom last week, so the team can see who is still to come; it never holds the Classroom plan back
+// who wrote an Individual plan in this class last week, so the team can see who is still to come; it never holds the Classroom plan back
 function teamReadiness(p,src){
   const last=addDays(p.weekOf,-7);const names=new Map();
   for(const x of plans.values())if(x.id!=="example"&&(x.type==="individual"||x.type==="smallgroup")&&x.weekOf===last&&x.classroom===p.classroom&&eduKey(x.educator)&&!isEmptyPlan(x))names.set(eduKey(x.educator),x.educator.trim());
@@ -973,11 +973,11 @@ function teamSourceText(src){
     return `${x.educator||"An educator"}${g?", "+g+" group":x.where?", "+x.where:""}. `+parts.filter(([,v])=>String(v||"").trim()).map(([l,v])=>`${l}. ${String(v).trim().slice(0,700)}`).join(" ");}).join("\n");
 }
 function teamSourcesHtml(p){
-  if(!p.classroom)return `<section class="ref"><b>This week's Individual plans</b><div class="muted">Choose the classroom above to see this week's Individual and small group plans here.</div></section>`;
+  if(!p.classroom)return `<section class="ref"><b>This week's Individual plans</b><div class="muted">Choose the class above to see this week's Individual and small group plans here.</div></section>`;
   const src=teamSources(p);const r=teamReadiness(p,src);
   const line=r.expected?`${r.written} of ${r.expected} Individual plans for this week are written.${r.missing.length?` Still to come, ${r.missing.map(esc).join(", ")}. The team can plan without them and add their thinking later.`:""}`:`${src.length} Individual plan${src.length===1?"":"s"} written for this week.`;
   const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?esc(t.slice(0,n))+"…":esc(t)};
-  return `<details class="ref" ${src.length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans, ${esc(p.classroom)} classroom</b></summary>
+  return `<details class="ref" ${src.length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans, ${esc(p.classroom)} class</b></summary>
     <div style="margin-top:6px">${line}</div>
     ${src.length?`<div style="display:grid;gap:8px;margin-top:8px">${src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");const f=x.fields||{};
       return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${x.id}">Open</button></span>
@@ -987,7 +987,7 @@ function teamSourcesHtml(p){
   </details>`;
 }
 async function draftInterests(p){
-  const src=teamSources(p);if(!src.length){toast("No Individual plans are written for this classroom and week yet.");return}
+  const src=teamSources(p);if(!src.length){toast("No Individual plans are written for this class and week yet.");return}
   const f=FORMS.classroom.fields.find(x=>x.k==="interests");const key=p.id+"interests";
   suggest[key]={status:"working",text:"",from:"ind"};rerenderCard(p,"interests");
   const cur=String(p.fields.interests||"").trim();
@@ -1130,7 +1130,7 @@ ${filled?`The team already has this web ${cur}. Suggest how it could evolve from
 ${STYLE}
 Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
 
-${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" classroom":""}.
+${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" class":""}.
 ${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}${thText}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
@@ -1501,7 +1501,7 @@ function drdpSummaryDoc(s,mode){
     items.push(dItem(drdpName(x.code),x.evidence||"",st.cls==="ok"?"Reviewed by "+st.label.replace(/^(Accepted|Changed) by /,""):"Awaiting educator review",[c?credit(c.first,mode)||"A child":"A child",lvl?lvl+(em?", emerging":""):"No level"]))}
   if(!items.length)return null;
   blocks.push(dSub("Measures and evidence"),...items);
-  const meta=[...(String(s.title||"").trim()?[["Slide",s.title]]:[]),["Classroom",s.classroom||"All classrooms"],["Date",longDate(iso(new Date(s.at)))]];
+  const meta=[...(String(s.title||"").trim()?[["Slide",s.title]]:[]),["Class",s.classroom||"All classes"],["Date",longDate(iso(new Date(s.at)))]];
   return {display:true,type:"report",acc:"story",title:"DRDP (2025) evidence",meta,blocks};
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
@@ -1669,7 +1669,7 @@ function slideDoc(s){
   const room=(n&&n.classroom)||s.classroom,day=longDate(iso(new Date((n&&n.at)||s.at||Date.now()))),by=(n&&n.by)||s.by||"";
   const dAt=s.dateAt||"top",foot=[dAt==="foot"?day:"",...(s.footExtra||[])];
   return {centered:true,display:true,type:"report",acc:s.pal||"story",pos:s.pos||(s.land?"left":"top"),sq:!!s.sq,bg:s.bg||"",fonts:s.fonts||{},tsize:s.tsize||"m",brand:s.brand,footLine:foot,
-    title:String(s.title||"").trim()?displayText(s.title,mode,all):"",details:[room?room+" classroom":"",dAt==="top"?day:"",s.showBy===false?"":pBy(by)],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
+    title:String(s.title||"").trim()?displayText(s.title,mode,all):"",details:[room?room+" class":"",dAt==="top"?day:"",s.showBy===false?"":pBy(by)],photos:slidePhotos(s).map(id=>notices.get(id)).flatMap(momentPhotos),blocks};
 }
 // the closing quotes the original Documentation Slides offered
 const SLIDE_QUOTES=[["The environment is the third teacher.", "Loris Malaguzzi"], ["Children have a hundred languages, but school steals ninety-nine.", "Loris Malaguzzi"], ["Stand aside for a while and leave room for learning.", "Loris Malaguzzi"], ["Creativity emerges from multiple experiences, coupled with a sense of freedom to venture beyond the known.", "Loris Malaguzzi"], ["Nothing without joy.", "Loris Malaguzzi"], ["The child has a hundred languages, a hundred hands, a hundred thoughts, a hundred ways of thinking.", "Loris Malaguzzi"], ["What children learn does not follow as an automatic result from what is taught. Rather, it is in large part due to the children's own doing.", "Loris Malaguzzi"], ["Things about children and for children are only learned from children.", "Loris Malaguzzi"], ["Our task is to help children communicate with the world using all their potential, strengths, and languages.", "Loris Malaguzzi"], ["Listening is not easy. It requires a deep awareness and suspension of our judgments.", "Carlina Rinaldi"], ["Documentation is visible listening.", "Carlina Rinaldi"], ["Learning is a process of construction that takes place in relationship with others.", "Carlina Rinaldi"], ["The child is a rich, capable, competent protagonist of their own growth.", "Carlina Rinaldi"], ["Children's questions are the curriculum.", "Lella Gandini"], ["The space speaks of the values of the people who live and work there.", "Lella Gandini"], ["Children need the freedom and time to play. Play is not a luxury; play is a necessity.", "Lella Gandini"], ["The goal of early childhood education should be to activate the child's own natural desire to learn.", "Maria Montessori"], ["The greatest sign of success for a teacher is to be able to say, 'The children are now working as if I did not exist.'", "Maria Montessori"], ["The child is both a hope and a promise for mankind.", "Maria Montessori"], ["Free the child's potential, and you will transform him into the world.", "Maria Montessori"], ["The hand is the instrument of intelligence.", "Maria Montessori"], ["Never help a child with a task at which he feels he can succeed.", "Maria Montessori"], ["The land is where our roots are. The children must be taught to feel and live in harmony with the Earth.", "Maria Montessori"], ["Play gives children a chance to practice what they are learning.", "Fred Rogers"], ["Play is often talked about as if it were a relief from serious learning. But for children play is serious learning.", "Fred Rogers"], ["The first years of life lay the foundation for learning, behavior, and health throughout the lifespan.", "Harvard Center on the Developing Child"], ["Brains are built over time, from the bottom up.", "Harvard Center on the Developing Child"], ["Serve and return interactions shape brain architecture.", "Harvard Center on the Developing Child"], ["What a child can do today with assistance, she will be able to do by herself tomorrow.", "Lev Vygotsky"], ["Through others we become ourselves.", "Lev Vygotsky"], ["Children learn best when they are actively engaged.", "Lev Vygotsky"], ["The principal goal of education is to create people who are capable of doing new things.", "Jean Piaget"], ["Play is the work of childhood.", "Jean Piaget"], ["Intelligence is what you use when you don't know what to do.", "Jean Piaget"], ["Every time we teach a child something, we keep him from inventing it himself.", "Jean Piaget"], ["The only limit to the development of the child is the limit we put on our own expectations.", "Jerome Bruner"], ["Childhood is a period of extraordinary learning and exploration.", "Alison Gopnik"], ["Children are the R&D department of the human species.", "Alison Gopnik"], ["Children require long, uninterrupted periods to play and work.", "Howard Gardner"], ["Education is not preparation for life; education is life itself.", "John Dewey"], ["We do not learn from experience. We learn from reflecting on experience.", "John Dewey"], ["Give the pupils something to do, not something to learn.", "John Dewey"], ["Young children learn best through active, hands-on experiences.", "NAEYC"], ["Relationships are at the heart of all meaningful learning.", "NAEYC"], ["Children are competent learners from birth.", "NAEYC"], ["Becoming is better than being.", "Carol Dweck"], ["Effort is what ignites ability and turns it into accomplishment.", "Carol Dweck"], ["Play is the glue that holds the curriculum together.", "Vivian Gussin Paley"], ["Pretend play is the natural language of young children.", "Vivian Gussin Paley"], ["Allow the child to be competent.", "Magda Gerber"], ["Do less, observe more, enjoy most.", "Magda Gerber"], ["People will forget what you said, but people will never forget how you made them feel.", "Maya Angelou"], ["We delight in the beauty of the butterfly, but rarely admit the changes it has gone through.", "Maya Angelou"], ["The more that you read, the more things you will know.", "Dr. Seuss"], ["A person's a person, no matter how small.", "Dr. Seuss"], ["Children are not things to be molded, but are people to be unfolded.", "Jess Lair"], ["Every child is an artist. The problem is how to remain an artist once we grow up.", "Pablo Picasso"], ["It takes a village to raise a child.", "African Proverb"], ["Children learn what they live.", "Dorothy Law Nolte"], ["The soul is healed by being with children.", "Fyodor Dostoevsky"], ["It is easier to build strong children than to repair broken men.", "Frederick Douglass"], ["Children are our most valuable resource and its best hope for the future.", "John F. Kennedy"], ["While we try to teach our children all about life, our children teach us what life is all about.", "Angela Schwindt"], ["Every child deserves a champion.", "Rita Pierson"], ["Children are like wet cement. Whatever falls on them makes an impression.", "Haim Ginott"], ["The way we talk to our children becomes their inner voice.", "Peggy O'Mara"], ["In every walk with nature, one receives far more than he seeks.", "John Muir"], ["The clearest way into the universe is through a forest wilderness.", "John Muir"], ["Between every two pines is a doorway to a new world.", "John Muir"], ["Study nature, love nature, stay close to nature. It will never fail you.", "Frank Lloyd Wright"], ["Those who contemplate the beauty of the earth find reserves of strength that will endure as long as life lasts.", "Rachel Carson"], ["If a child is to keep alive his inborn sense of wonder, he needs the companionship of at least one adult who can share it.", "Rachel Carson"], ["A child's world is fresh and new and beautiful, full of wonder and excitement.", "Rachel Carson"], ["Children need nature for the healthy development of their senses, and therefore, for learning and creativity.", "Richard Louv"], ["Time in nature is not leisure time; it's an essential investment in our children's health.", "Richard Louv"], ["The future will belong to the nature-smart.", "Richard Louv"], ["Nature is not a place to visit. It is home.", "Gary Snyder"], ["Look deep into nature, and then you will understand everything better.", "Albert Einstein"], ["Adopt the pace of nature: her secret is patience.", "Ralph Waldo Emerson"], ["In nature, nothing is perfect and everything is perfect.", "Alice Walker"], ["The earth has music for those who listen.", "William Shakespeare"], ["Children are born naturalists. They explore the world with all their senses.", "David Sobel"], ["If we want children to flourish, we need to give them time to connect with nature.", "David Sobel"], ["Let nature be your teacher.", "William Wordsworth"], ["Come forth into the light of things, let nature be your teacher.", "William Wordsworth"], ["Nature does not hurry, yet everything is accomplished.", "Lao Tzu (interpretation)"], ["Dirt is not dirt, but a world of creatures that give life to the earth.", "Claire Walker Leslie"], ["The goal of life is to make your heartbeat match the beat of the universe.", "Joseph Campbell"], ["To plant a garden is to believe in tomorrow.", "Audrey Hepburn"], ["The love of gardening is a seed once sown that never dies.", "Gertrude Jekyll"], ["A garden requires patient labor and attention. Plants do not grow merely to satisfy ambitions.", "Liberty Hyde Bailey"], ["We do not inherit the earth from our ancestors; we borrow it from our children.", "Native American Proverb"], ["The earth is what we all have in common.", "Wendell Berry"], ["The care of the Earth is our most ancient and most worthy, and after all our most pleasing responsibility.", "Wendell Berry"], ["Eating is an agricultural act.", "Wendell Berry"], ["When we heal the earth, we heal ourselves.", "David Orr"], ["The garden suggests there might be a place where we can meet nature halfway.", "Michael Pollan"], ["To forget how to dig the earth and to tend the soil is to forget ourselves.", "Mahatma Gandhi"], ["A nation that destroys its soils destroys itself.", "Franklin D. Roosevelt"], ["One of the most important resources that a garden makes available is the gardener's own body.", "Wendell Berry"], ["Gardening adds years to your life and life to your years.", "Proverb"], ["To see things in the seed, that is genius.", "Lao Tzu"], ["From tiny seeds grow mighty trees.", "Proverb"], ["Alone we can do so little; together we can do so much.", "Helen Keller"], ["We rise by lifting others.", "Robert Ingersoll"], ["What we learn with pleasure we never forget.", "Alfred Mercier"], ["Learning is a treasure that will follow its owner everywhere.", "Chinese Proverb"], ["Tell me and I forget. Teach me and I may remember. Involve me and I learn.", "Xunzi (Chinese philosopher)"], ["The function of education is to teach one to think intensively and to think critically.", "Martin Luther King Jr."], ["Education is the most powerful weapon which you can use to change the world.", "Nelson Mandela"], ["No one is born fully formed: it is through self-experience in the world that we become what we are.", "Paulo Freire"], ["Knowledge emerges only through invention and re-invention, through the restless, impatient, continuing, hopeful inquiry.", "Paulo Freire"], ["The important thing is not to stop questioning. Curiosity has its own reason for existing.", "Albert Einstein"], ["I have no special talents. I am only passionately curious.", "Albert Einstein"], ["Imagination is more important than knowledge.", "Albert Einstein"], ["The mind is not a vessel to be filled but a fire to be kindled.", "Plutarch"], ["Curiosity is the wick in the candle of learning.", "William Arthur Ward"], ["Wonder is the beginning of wisdom.", "Socrates"], ["The world is full of magical things patiently waiting for our senses to grow sharper.", "W.B. Yeats"], ["Not all who wander are lost.", "J.R.R. Tolkien"], ["Respect the child. Wait and see what he will become.", "Rudolf Steiner"], ["Children must be taught how to think, not what to think.", "Margaret Mead"], ["If we are to reach real peace in the world, we shall have to begin with the children.", "Mahatma Gandhi"], ["There can be no keener revelation of a society's soul than the way in which it treats its children.", "Nelson Mandela"], ["Each day of our lives we make deposits in the memory banks of our children.", "Charles R. Swindoll"], ["Children see magic because they look for it.", "Christopher Moore"], ["The child must know that he is a miracle.", "Pablo Casals"], ["What is the good of your stars and trees, your sunrise and the wind, if they do not enter into our daily lives?", "E.M. Forster"], ["The best classroom and the richest cupboard is roofed only by the sky.", "Margaret McMillan"], ["Nature holds the key to our aesthetic, intellectual, cognitive, and even spiritual satisfaction.", "E.O. Wilson"], ["We need the tonic of wildness.", "Henry David Thoreau"], ["I go to nature to be soothed and healed, and to have my senses put in order.", "John Burroughs"], ["Keep close to Nature's heart and break clear away, once in a while, and climb a mountain or spend a week in the woods.", "John Muir"], ["The child is made of one hundred. The child has a hundred languages, a hundred hands, a hundred thoughts.", "Loris Malaguzzi"], ["The atelier is a place where children's different languages can be explored and developed.", "Vea Vecchi"], ["If you have a garden and a library, you have everything you need.", "Cicero"], ["The greatest fine art of the future will be the making of a comfortable living from a small piece of land.", "Abraham Lincoln"], ["Children who play in nature become adults who protect it.", "Children & Nature Network"], ["A garden is a friend you can visit any time.", "Proverb"], ["What we learn to do, we learn by doing.", "Aristotle"], ["Children learn as they play. Most importantly, in play children learn how to learn.", "O. Fred Donaldson"], ["Connection is why we're here; it is what gives purpose and meaning to our lives.", "Brené Brown"]];
@@ -1737,7 +1737,7 @@ function renderSlide(){
         ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the moments on this slide.</span></div>`:""}
         ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the moments</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
         ${lines.length?`<div class="fld-label">The children's words on the slide<div class="chips">${lines.map((q,i)=>`<button class="chip ${qs.has(q.words.toLowerCase())?"on":""}" data-sfq="${i}" type="button">${q.name?esc(q.name)+", ":""}${esc(q.words.length>60?q.words.slice(0,57)+"...":q.words)}</button>`).join("")}</div></div>`:""}
-        <div class="fld-label">Children on this slide, optional<div class="chips">${kids.map(c=>`<button class="chip ${(s.children||[]).includes(c.id)?"on":""}" data-sfkid="${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">The roster for this classroom appears here.</span>`}</div><span class="cnt">A tagged child finds this slide on their page and in their portfolio.</span></div></section>
+        <div class="fld-label">Children on this slide, optional<div class="chips">${kids.map(c=>`<button class="chip ${(s.children||[]).includes(c.id)?"on":""}" data-sfkid="${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">The roster for this class appears here.</span>`}</div><span class="cnt">A tagged child finds this slide on their page and in their portfolio.</span></div></section>
       ${slideDesignHtml(s)}
       <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025)</h3></div>
         ${drdpPanelHtml("slides",s)}
@@ -1852,7 +1852,7 @@ function portfolioDocs(c,mode){
   mode=mode||PRINT.names;const items=portfolioItems(c);
   const nM=items.filter(x=>x.kind==="notices").length,nS=items.length-nM;
   const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
-  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" classroom":"",yearFromTime(Date.now()).replace("-","–")],photos:[],
+  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-","–")],photos:[],
     blocks:[{t:"para",text:(()=>{const who=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${who} story`;
       const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
       return d0===d1?`${who} story on ${d0}`:`${who} story from ${d0} to ${d1}`})()},{t:"para",text:mode==="none"?"In the child's own words and the educators'.":`In ${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s own words and the educators'.`}]};
@@ -1979,7 +1979,7 @@ function todayWaiting(){
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!n.classroom||n.classroom===rm)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
     out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!n.classroom?"No class was named in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
-  // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
+  // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
       out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
@@ -2024,7 +2024,7 @@ function renderToday(){
   const recent=[...notices.values()].filter(n=>!room||n.classroom===room).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,3);
   const cal=todayCal.items;
   $("#main").innerHTML=`<section class="hello"><span class="eyebrow">${esc(fmtLong(new Date()))}</span><h2>${greet}${name&&!isShared(name)?", "+esc(name):""}</h2>
-    <div class="sub">${room?esc(room)+" classroom":isDirector()?"All classrooms":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
+    <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button class="qmain" data-newmoment="1"><b>Keep a moment</b><span>Words, a photo, or both. One minute.</span></button>
     <button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>
@@ -2070,7 +2070,7 @@ function renderWeekBoard(){
       ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
         :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom">Start the Classroom plan</button></div>`}
       ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${p.id}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
-      ${loose.length?`<div class="lbl" style="margin-top:6px">No classroom chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the classroom.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
+      ${loose.length?`<div class="lbl" style="margin-top:6px">No class chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the class.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
   </div>`;
 }
@@ -2087,7 +2087,7 @@ function renderWalls(){
   const ps=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
-    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" classroom":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
+    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -2315,7 +2315,7 @@ ${cur}`;
   if(currentId===P.id)rerenderCard(P,k);
 }
 function assistError(code,tail){
-  const m={rate_limited:"TREE is busy right now. Wait a minute and try again.",not_granted:"Claude assist was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Claude assist is turned off for this account or organization.",session_expired:"Your TREE session expired. Reload the page and try again.",refused:"TREE declined this one. Try rewording the entry.",empty_completion:"TREE returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"The answer came back garbled. Try again.",truncated:"TREE's answer was too long and got cut off. Choose a shorter range or one classroom, then try again."};
+  const m={rate_limited:"TREE is busy right now. Wait a minute and try again.",not_granted:"Claude assist was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Claude assist is turned off for this account or organization.",session_expired:"Your TREE session expired. Reload the page and try again.",refused:"TREE declined this one. Try rewording the entry.",empty_completion:"TREE returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"The answer came back garbled. Try again.",truncated:"TREE's answer was too long and got cut off. Choose a shorter range or one class, then try again."};
   return (m[code]||`That did not work (${code}). Try again in a moment.`)+(tail?" "+tail:"");
 }
 async function draftFromNotes(p,btn){
@@ -2469,9 +2469,9 @@ function layoutPlan(doc,p,pageAcc,countOnly){
 function metaRows(p){
   if(p.blank)return [["Week of",""],[p.type==="smallgroup"?"Group":"Classroom",""],[p.type==="classroom"?"Team":"Educator",""]];
   if(p.meta)return p.meta;
-  if(p.type==="story")return [["Classroom",p.metaA||""],["Timeline",p.metaB||""]];
+  if(p.type==="story")return [["Class",p.metaA||""],["Timeline",p.metaB||""]];
   const r=[["Week of",fmtDate(p.weekOf)]];
-  if(p.type==="smallgroup")r.push(["Group",[p.group,p.classroom].filter(Boolean).join(", ")]);else r.push(["Classroom",p.classroom||""]);
+  if(p.type==="smallgroup")r.push(["Group",[p.group,p.classroom].filter(Boolean).join(", ")]);else r.push(["Class",p.classroom||""]);
   r.push([p.type==="classroom"?"Team":"Educator",p.educator||""]);return r;
 }
 function headerFull(doc,p,A){
@@ -2746,8 +2746,8 @@ function nfKidsHtml(n){
   const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
   if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this classroom yet.":"Choose the classroom below to tag children."}</span>`}</div>
-    ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classrooms, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class below to tag children."}</span>`}</div>
+    ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classes, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
 function renderNoticeForm(){
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Notice and Wonder</h2>
@@ -2771,7 +2771,7 @@ function noticeFormCard(){
     <div class="fld-label">Languages children used, optional<div class="chips">${langList(n.languages).map(x=>`<button class="chip ${(n.languages||[]).includes(x)?"on":""}" data-nflang="${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div></div>
     <div class="actions">
       <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
-      <label class="cnt">Classroom <select id="nf-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
+      <label class="cnt">Class <select id="nf-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
       ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
@@ -2788,7 +2788,7 @@ function noticeBrowseHtml(){
 }
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" classroom":""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" class":""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
@@ -2804,7 +2804,7 @@ function noticeCard(n){
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
 let mGroup=LS.get("fps.mgroup","recent"), mRange=LS.get("fps.mrange","all"), mBusy=false;
-const MGROUPS=[["recent","Most recent first"],["classroom","By classroom"],["educator","By educator"],["month","By month"],["work","By project or thread"]];
+const MGROUPS=[["recent","Most recent first"],["classroom","By class"],["educator","By educator"],["month","By month"],["work","By project or thread"]];
 const MRANGES=[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","Everything kept"]];
 const MRANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"Everything kept"};
 const mGroupLabel=()=>(MGROUPS.find(g=>g[0]===mGroup)||MGROUPS[0])[1];
@@ -2822,7 +2822,7 @@ function momentGroups(list){
   const by=new Map();
   const put=(k,label,n)=>{if(!by.has(k))by.set(k,{key:k,label,items:[]});by.get(k).items.push(n)};
   for(const n of list){
-    if(mGroup==="classroom")put(n.classroom||"~",n.classroom?n.classroom+" classroom":"No classroom named",n);
+    if(mGroup==="classroom")put(n.classroom||"~",n.classroom?n.classroom+" class":"No class named",n);
     else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
     else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
     else{const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
@@ -2866,10 +2866,10 @@ function renderMoments(){
     <div class="stat"><b>${all.length}</b><span>moments in this view</span></div>
     <div class="stat"><b>${people}</b><span>educators keeping them</span></div>
     <div class="stat"><b>${open}</b><span>not yet claimed by a project or thread</span></div>
-    <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classrooms they came from</span></div>
+    <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classes they came from</span></div>
   </div>
   ${momentsReadHtml()}`;
-  if(!all.length)h+=`<div class="empty">${notices.size?"No moments kept in this view. Widen the classroom or the range.":"No moments kept yet. Press Keep a moment and write one in a minute."}</div>`;
+  if(!all.length)h+=`<div class="empty">${notices.size?"No moments kept in this view. Widen the class or the range.":"No moments kept yet. Press Keep a moment and write one in a minute."}</div>`;
   for(const g of gs){
     if(shown>=120)break;
     const items=g.items.slice(0,Math.max(0,120-shown));shown+=items.length;
@@ -2888,7 +2888,7 @@ async function momentsRead(){
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom;
-  const prompt=`You are reading Notice and Wonder moments kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" classroom"}. Each moment was written in the minute it happened. They span many weeks and they are not in any order of importance.
+  const prompt=`You are reading Notice and Wonder moments kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each moment was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
 ${STYLE}
@@ -2924,7 +2924,7 @@ function momentsDocs(long,cap){
     if(!items.length)continue;left-=items.length;
     if(g.label)blocks.push(dSub(g.label));
     else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Moments kept"));
-    for(const n of items){const credit=[pBy(n.by),n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", ");
+    for(const n of items){const credit=[pBy(n.by),n.classroom&&n.classroom+" class"].filter(Boolean).join(", ");
       // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
       if(n.photo&&long){blocks.push(dPhoto(n,230,false));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));continue}
       // a sheet of children's words gives its first child's line in the summary, with the child and the sheet named in the credit
@@ -2947,7 +2947,7 @@ function noticesClick(t){
   if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());if(!unfinished)noticeForm=newNotice();view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
-  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the classroom or the range.");return true}
+  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That moment is outside this view. Widen the class or the range.");return true}
   if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
     if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
     if(view==="moments")renderMain();else renderAll();return true}
@@ -3011,7 +3011,7 @@ document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photo"&&t.
 function photoPickHtml(id,label){return `<label class="btn small ghost" style="cursor:pointer">${label}<input type="file" id="${id}" accept="image/*" multiple hidden></label>`}
 
 /* ---------- Projects ----------
-   A project grows from a thread the team decides to follow further. It belongs to a classroom, other classrooms can join,
+   A project grows from a thread the team decides to follow further. It belongs to a class, other classes can join,
    and it can also begin school-wide. It holds hypotheses about where the inquiry could go, never steps or an end date.
    People start projects and add threads to them. TREE points out what looks related, rewords what educators wrote when asked,
    and drafts possible directions for the team to weigh. It never writes the team's reading. */
@@ -3025,7 +3025,7 @@ const pTimers={};
 function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
 function projectOfThread(tid){for(const x of projects.values())if((x.threads||[]).some(l=>l.id===tid))return x;return null}
 function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
-// Moments kept for this classroom, ready to drop into the plan without being written again.
+// Moments kept for this class, ready to drop into the plan without being written again.
 // They are never filed against a week, so this is every moment for the room, newest first.
 const NOTICE_TARGET={classroom:"observation",individual:"observation",smallgroup:"reflection"};
 let nwOpen="";
@@ -3035,7 +3035,7 @@ function noticeNoteHtml(p){
   const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id));
   if(!ns.length)return"";
   const k=NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
-  const head=`<b style="color:var(--sky)">${ns.length} moment${ns.length===1?"":"s"} from ${esc(p.classroom||"no classroom")}</b>
+  const head=`<b style="color:var(--sky)">${ns.length} moment${ns.length===1?"":"s"} from ${esc(p.classroom||"no class")}</b>
     <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
   if(nwOpen!==p.id)return `<section class="ref" style="background:var(--sky-soft)">${head}
     <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
@@ -3073,13 +3073,13 @@ function openProject(id){projId=id||"";LS.set("fps.proj",projId);projForm=null;v
 function projectStartForm(){
   const f=projForm,t=f.threadId&&threads.get(f.threadId);
   return `<section class="card" id="pform"><div class="lbl">${t?"Start a project from the thread "+esc(t.name):"Start a school-wide project"}</div>
-    <div class="hint">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. ${t?"":"A school-wide project has no home classroom. Each classroom that takes part joins it, and followed threads can be added as they appear."}</div>
+    <div class="hint">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. ${t?"":"A school-wide project has no home class. Each class that takes part joins it, and followed threads can be added as they appear."}</div>
     ${t?`<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">The thread it grows from</b><div>${esc(t.name)}</div>${t.question?`<div class="muted">The question the team is following there. ${esc(t.question)}</div>`:""}</div>`:""}
     <label class="fld-label">Project name<input type="text" id="pf-name" value="${esc(f.name)}" placeholder="The team's own name for the project. The thread keeps its name"></label>
     <label class="fld-label">The experience it grew from<textarea id="pf-exp" rows="2" placeholder="What happened, and what children felt or showed">${esc(f.experience||"")}</textarea></label>
     <label class="fld-label">What may lie underneath<textarea id="pf-under" rows="2" placeholder="The deeper question or understanding, as a hypothesis. Ex. Perhaps children are working out whether something can go away and still exist">${esc(f.underneath||"")}</textarea></label>
     <label class="fld-label">Our intent as educators<textarea id="pf-intent" rows="2" placeholder="What we hope children may come to understand, and what we want to learn ourselves">${esc(f.intent||"")}</textarea></label>
-    ${t?`<label class="fld-label">Home classroom<select id="pf-home">${CLASSROOMS.map(r=>`<option value="${r}" ${f.home===r?"selected":""}>${r}</option>`).join("")}<option value="" ${!f.home?"selected":""}>School-wide, no home classroom</option></select></label>`:""}
+    ${t?`<label class="fld-label">Home class<select id="pf-home">${CLASSROOMS.map(r=>`<option value="${r}" ${f.home===r?"selected":""}>${r}</option>`).join("")}<option value="" ${!f.home?"selected":""}>School-wide, no home class</option></select></label>`:""}
     <label class="fld-label">Who decided<input type="text" id="pf-who" value="${esc(f.who)}" placeholder="Ex. The West team at Monday planning"></label>
     <div id="pf-msg"></div>
     <div class="actions"><button class="btn" id="pf-go">Start the project</button><button class="linkbtn" id="pf-cancel">Cancel</button></div></section>`;
@@ -3088,7 +3088,7 @@ function projectCard(x){
   const ths=projThreads(x),ws=projWeeks(x);
   return `<article class="thread"><div class="secthead"><h3>${esc(x.name)}</h3><span class="status st-${x.status==="active"?"growing":x.status==="resting"?"resting":"closed"}">${PSTATUS[x.status]||"Active"}</span></div>
     ${projUnder(x)?`<div class="q">${esc(firstLine(projUnder(x),220))}</div>`:""}
-    <div class="cnt">${[x.home?x.home+" classroom":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
+    <div class="cnt">${[x.home?x.home+" class":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
     <div class="actions"><button class="btn small" data-popen="${x.id}">Open project</button></div></article>`;
 }
 function renderProjects(){
@@ -3096,10 +3096,10 @@ function renderProjects(){
   if(x&&!projForm){renderProject(x);return}
   const all=[...projects.values()].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   const live=all.filter(p=>p.status!=="closed"),closed=all.filter(p=>p.status==="closed");
-  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classrooms</span><h2 style="margin-top:4px">Projects</h2>
-    <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a classroom, and other classrooms can join. A thread can also stay a thread all year.</div></div></div></div>`;
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classes</span><h2 style="margin-top:4px">Projects</h2>
+    <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a class, and other classes can join. A thread can also stay a thread all year.</div></div></div></div>`;
   if(projForm)h+=projectStartForm();
-  else h+=`<div class="actions">${all.length?`${printTwo("projects","")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A classroom project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
+  else h+=`<div class="actions">${all.length?`${printTwo("projects","")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A class project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
   if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
   else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
@@ -3124,7 +3124,7 @@ function renderProject(x){
   const dt=x.decision&&x.decision.threadId&&threads.get(x.decision.threadId);
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-pback="1">All projects${projects.size>1?", "+projects.size:""}</button></div><div class="head"><div class="head-row"><div style="flex:1;min-width:0">
-      <div><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
+      <div><span class="eyebrow">Project · ${esc(x.home?x.home+" class":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
       <div class="actions">${printTwo("project",x.id)}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
@@ -3150,16 +3150,16 @@ function renderProject(x){
 
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's moments</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
-  h+=`<section class="card"><div class="lbl">Classrooms</div>
-    <div class="hint">${x.home?"The project belongs to its home classroom. Other classrooms can join, each by its own path.":"This is a school-wide project with no home classroom. Each classroom that takes part joins it."}</div>
-    <label class="cnt">Home classroom <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home classroom</option></select></label>
+  h+=`<section class="card"><div class="lbl">Classes</div>
+    <div class="hint">${x.home?"The project belongs to its home class. Other classes can join, each by its own path.":"This is a school-wide project with no home class. Each class that takes part joins it."}</div>
+    <label class="cnt">Home class <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home class</option></select></label>
     ${(x.classrooms||[]).map(c=>{const isHome=c.room===x.home;const used=ths.some(o=>o.t.classroom===c.room);
       return `<div class="proom"><div class="actions"><b>${esc(c.room)}</b>${isHome?`<span class="tag classroom">Home</span>`:""}
         <label class="cnt">${isHome?"Began":"Joined"} the week of <input type="date" data-pcw="${c.room}" value="${esc(c.week||"")}" style="width:auto"></label>
         ${isHome?"":`<label class="cnt">How it joined <select data-pch="${c.room}" style="width:auto"><option value="">Choose</option>${Object.entries(PJOIN).map(([k,v])=>`<option value="${k}" ${c.how===k?"selected":""}>${v}</option>`).join("")}</select></label>`}
         ${!isHome&&!used?`<button class="linkbtn" data-pcrm="${c.room}">Remove</button>`:""}</div>
-        <input type="text" data-pcn="${c.room}" value="${esc(c.note||"")}" placeholder="${isHome?"What began it here":"What brought this classroom in"}"></div>`}).join("")}
-    ${CLASSROOMS.filter(r=>!rooms.includes(r)).length?`<label class="tlink">Add a classroom<select data-pcadd="1"><option value="">Choose a classroom</option>${CLASSROOMS.filter(r=>!rooms.includes(r)).map(r=>`<option>${r}</option>`).join("")}</select></label>`:""}</section>`;
+        <input type="text" data-pcn="${c.room}" value="${esc(c.note||"")}" placeholder="${isHome?"What began it here":"What brought this class in"}"></div>`}).join("")}
+    ${CLASSROOMS.filter(r=>!rooms.includes(r)).length?`<label class="tlink">Add a class<select data-pcadd="1"><option value="">Choose a class</option>${CLASSROOMS.filter(r=>!rooms.includes(r)).map(r=>`<option>${r}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">Small groups carrying the project</div>
     <div class="hint">A few children do the close work, and it returns to the wider class.</div>
@@ -3181,10 +3181,10 @@ function renderProject(x){
     <div class="hint">Moments educators kept for this project, in the order they happened.</div>
     <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
-    <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each classroom's path is shown beside the others.":""}</div>
+    <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each class's path is shown beside the others.":""}</div>
     ${ths.length?`<div class="pcols">${cols.map(r=>{const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
-      return `<div class="pcol"><div class="chiprow-label">${r?esc(r)+" classroom":"No classroom set"}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+esc(PJOIN[c.how].toLowerCase()):""}</div>
-        ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this classroom yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
+      return `<div class="pcol"><div class="chiprow-label">${r?esc(r)+" class":"No class set"}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+esc(PJOIN[c.how].toLowerCase()):""}</div>
+        ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this class yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
     ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">People beyond the classrooms</div>
@@ -3224,7 +3224,7 @@ function addThreadToProject(x,t){
   const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
   x.threads=[...(x.threads||[]),{id:t.id,by,at:now,week:wk}];
   let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
-  saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} classroom has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
+  saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} class has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
 }
 /* TREE support on a project follows the same two patterns a plan has. Strengthen wording rewords what educators wrote
    and adds nothing. The directions draft reads what the project and its threads already say. Both show a suggestion first,
@@ -3400,8 +3400,8 @@ document.addEventListener("change",e=>{
   if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
   if(t.dataset.pstatus){x.status=t.value;saveProject(x);renderMain();return}
   if(t.dataset.wsinc){const sh=wallSheet(x,t.dataset.wsinc);if(sh){sh.include=t.checked;saveProject(x);renderMain()}return}
-  // a new home keeps the old home as a classroom that took part, so nothing it holds is lost
-  if(t.dataset.phome){const r=t.value;x.home=r;if(r&&!(x.classrooms||[]).some(c=>c.room===r))x.classrooms=[{room:r,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""},...(x.classrooms||[])];saveProject(x);renderMain();toast(r?`${r} is now the home classroom.`:"This is now a school-wide project.");return}
+  // a new home keeps the old home as a class that took part, so nothing it holds is lost
+  if(t.dataset.phome){const r=t.value;x.home=r;if(r&&!(x.classrooms||[]).some(c=>c.room===r))x.classrooms=[{room:r,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""},...(x.classrooms||[])];saveProject(x);renderMain();toast(r?`${r} is now the home class.`:"This is now a school-wide project.");return}
   if(t.dataset.pch){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pch);if(c){c.how=t.value;saveProject(x);renderMain()}return}
   if(t.dataset.pcw){const c=(x.classrooms||[]).find(c=>c.room===t.dataset.pcw);if(c&&t.value){c.week=mondayOf(parseIso(t.value));saveProject(x);renderMain()}return}
   if(t.dataset.pcadd){if(t.value&&!projRooms(x).includes(t.value)){x.classrooms=[...(x.classrooms||[]),{room:t.value,how:"",week:mondayOf(new Date()),by:whoAmI(),at:Date.now(),note:""}];saveProject(x);renderMain()}return}
@@ -3483,7 +3483,7 @@ function lensMoments(ps){
       }}}
   return out.sort((a,b)=>b.week.localeCompare(a.week)||(a.room||"").localeCompare(b.room||""));
 }
-function lensSrc(p,section){return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",section].filter(Boolean).map(esc).join(" · ")}</span>`}
+function lensSrc(p,section){return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class",section].filter(Boolean).map(esc).join(" · ")}</span>`}
 function lensLinks(p){
   const cs=planThreads(p);if(!cs.length)return"";
   return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${c.t.id}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
@@ -3516,16 +3516,16 @@ function renderLens(){
     <div class="stat"><b>${moments.length}</b><span>moments in educators' words</span></div>
     <div class="stat"><b>${marked.length}</b><span>plans marking a language of the lens</span></div>
     <div class="stat"><b>${new Set(moments.map(m=>m.week)).size}</b><span>of ${weeks.length} weeks with a moment</span></div>
-    <div class="stat"><b>${new Set(moments.map(m=>m.room).filter(Boolean)).size}</b><span>classrooms with a moment</span></div>
+    <div class="stat"><b>${new Set(moments.map(m=>m.room).filter(Boolean)).size}</b><span>classes with a moment</span></div>
   </div>`;
 
   // by classroom and week
-  if(weeks.length)h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>By classroom and week</h2><span class="cnt">Moments found, and plans marking a language of the lens</span></div>
-    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r||"No classroom set"}</th>`).join("")}</tr></thead><tbody>
+  if(weeks.length)h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>By class and week</h2><span class="cnt">Moments found, and plans marking a language of the lens</span></div>
+    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${rooms.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
     ${weeks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;
       return `<td>${n||k?`<span class="cnt"><b style="color:var(--moss);font-size:14px">${n}</b> moment${n===1?"":"s"}${k?` · ${k} marked`:""}</span>`:`<span class="cnt">None yet</span>`}</td>`}).join("")}</tr>`).join("")}
     </tbody></table></div>
-    <div class="lenscards">${weeks.map(w=>{const cells=rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;return n||k?`<span><b>${esc(r||"No classroom")}</b> ${n} moment${n===1?"":"s"}${k?`, ${k} marked`:""}</span>`:""}).filter(Boolean);
+    <div class="lenscards">${weeks.map(w=>{const cells=rooms.map(r=>{const n=moments.filter(m=>m.week===w&&m.room===r).length;const k=marked.filter(p=>p.weekOf===w&&(p.classroom||"")===r).length;return n||k?`<span><b>${esc(r||"No class")}</b> ${n} moment${n===1?"":"s"}${k?`, ${k} marked`:""}</span>`:""}).filter(Boolean);
       return `<div class="lenscard"><div class="cnt">Week of ${fmtDate(w)}</div>${cells.length?`<div class="lcells">${cells.join("")}</div>`:`<div class="cnt">None yet</div>`}</div>`}).join("")}</div></section>`;
 
   // moments
@@ -3563,7 +3563,7 @@ function renderLens(){
         <dl class="lans">${qs.map((q,i)=>`<dt>${esc(q)}</dt><dd>${(m.answers||[])[i]?esc(m.answers[i]):`<span class="muted">Not recorded in the plan</span>`}</dd>`).join("")}</dl></div>`}).join("")}</div>`;
     if((scan.gaps||[]).length)h+=`<div class="card"><div class="lbl">What the plans do not yet say</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.gaps.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
     if((scan.teamQuestions||[]).length)h+=`<div class="card"><div class="lbl">Questions for the team</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.teamQuestions.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
-  }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classrooms":"the "+esc(lRoom)+" classroom"}.</div>`;
+  }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classes":"the "+esc(lRoom)+" class"}.</div>`;
   h+=`</section>`;
   $("#main").innerHTML=h;
 }
@@ -3575,10 +3575,10 @@ function lensDigest(ps){
 async function lensRead(){
   if(lensBusy||!sample||!isDirector())return;
   const ps=lensPlans();const full=lensDigest(ps);const d=capDigest(full,170000);if(!d.length){toast("Save a few plans first.");return}
-  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one classroom to include older ones.`);
+  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   lensBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const n=LENS.questions.length;const room=lRoom,range=lRange;
-  const prompt=`You are reading saved curriculum plans from ${room==="All"?"all classrooms":"the "+room+" classroom"} at Fulton Community School & Farm through this year's lens.
+  const prompt=`You are reading saved curriculum plans from ${room==="All"?"all classes":"the "+room+" class"} at Fulton Community School & Farm through this year's lens.
 The lens is ${LENS.name}. ${LENS.description}
 The languages in this lens are ${LENS.languages.join(", ")}.
 Find up to 14 moments where children gave visible form to their thinking in one of these languages. Choose across classrooms and weeks, and prefer moments where a child or group returned to a mark or reworked an idea in another language.
@@ -3760,7 +3760,7 @@ function momentBody(n){const h=momentHeading(n);const t=String(n.noticed||"").tr
 // a moment's sheet: the photo, the words as they were written, each child's line as a quote, and the wonder in a box
 const NAMED_LINE=/^([A-Z][A-Za-z.'’]{0,24}(?:-[A-Za-z.'’]{1,24})?(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) ?[-–] (.{2,})$/;
 const momentPhotos=n=>n&&n.photo&&n.photo.w?[{key:n.id,src:photoSrc(n),w:n.photo.w,h:n.photo.h}]:[];
-const momentDetails=n=>[n.classroom?n.classroom+" classroom":"",longDate(iso(new Date(n.at||Date.now()))),pBy(n.by)];
+const momentDetails=n=>[n.classroom?n.classroom+" class":"",longDate(iso(new Date(n.at||Date.now()))),pBy(n.by)];
 function momentDoc(n,mode,focus){
   mode=mode||PRINT.names;const blocks=[];let buf=[];
   const all=String(n.noticed||"")+"\n"+String(n.wonder||"");
@@ -3801,11 +3801,11 @@ function threadDoc(t){
   if((t.languages||[]).length)blocks.push(dTags("Languages children are using",t.languages));
   if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.slice(0,4)));
   if(has(t.notes))blocks.push(dText("Team notes",t.notes));
-  const meta=[["Classroom",t.classroom||"All classrooms"],["Seen",weeksSpan([...(t.weeks||[]),...threadLinkedPlans(t).map(p=>p.weekOf)])]];if(pr)meta.push(["Project",pr.name]);
+  const meta=[["Class",t.classroom||"All classes"],["Seen",weeksSpan([...(t.weeks||[]),...threadLinkedPlans(t).map(p=>p.weekOf)])]];if(pr)meta.push(["Project",pr.name]);
   return {display:true,type:"report",acc:"smallgroup",title:t.name,meta,blocks};
 }
 function threadsOverviewDoc(tracked){
-  const blocks=tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return dItem(t.name,t.question||"",pr?"Part of the project "+pr.name:"",[t.classroom?t.classroom+" classroom":"All classrooms",weeksSpan(t.weeks)])}):[dText("","No threads are being followed in this view yet.")];
+  const blocks=tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return dItem(t.name,t.question||"",pr?"Part of the project "+pr.name:"",[t.classroom?t.classroom+" class":"All classes",weeksSpan(t.weeks)])}):[dText("","No threads are being followed in this view yet.")];
   return {display:true,type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Printed",shortDate(Date.now())]],blocks};
 }
 function threadsDocs(long){
@@ -3824,7 +3824,7 @@ function projTimeline(x){
   const ev=[];const add=(at,kind,text,extra)=>{if(at)ev.push(Object.assign({at,kind,text:String(text||"").trim()},extra||{}))};
   add(x.createdAt,"The project began",x.experience,{by:x.createdBy});
   for(const l of (x.threads||[])){const t=threads.get(l.id);if(t)add(l.at||parseIso(l.week||dayOf(x.createdAt)).getTime(),"A thread joined",t.name,{by:l.by,tsee:t.id})}
-  for(const c of (x.classrooms||[]))if(c.room!==x.home)add(c.at||(c.week?parseIso(c.week).getTime():0),"A classroom joined",c.room+(c.how&&PJOIN[c.how]?", "+PJOIN[c.how].toLowerCase():"")+(has(c.note)?". "+c.note:""),{by:c.by});
+  for(const c of (x.classrooms||[]))if(c.room!==x.home)add(c.at||(c.week?parseIso(c.week).getTime():0),"A class joined",c.room+(c.how&&PJOIN[c.how]?", "+PJOIN[c.how].toLowerCase():"")+(has(c.note)?". "+c.note:""),{by:c.by});
   for(const n of projNotices(x))add(n.at,"Notice and Wonder",momentBody(n).split("\n").filter(Boolean).slice(0,3).join("  "),{by:n.by,photo:n.photo?n:null,heading:momentHeading(n)});
   for(const pl of projPlans(x).filter(q=>!q.notice)){const f=pl.fields||{};const t=firstSentence(f.observation||f.remarks||f.reflection||"",220);
     add(parseIso(pl.weekOf).getTime()+864e5,FORMS[pl.type].name,t,{by:planWho(pl),open:pl.id,week:pl.weekOf})}
@@ -3937,7 +3937,7 @@ function wallSheetDoc(x,sh){
   const all=(sh.quotes||[]).map(q=>q.name+" - "+q.words).join("\n")+"\n"+(sh.text||"")+"\n"+ns.map(m=>m.noticed).join("\n");
   const blocks=[];if(has(sh.text))blocks.push({t:"box",text:displayText(sh.text,mode,all)});
   (sh.quotes||[]).forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
-  const details=n?momentDetails(n):[x.home?x.home+" classroom":"",weeksSpan(projWeeks(x))||""];
+  const details=n?momentDetails(n):[x.home?x.home+" class":"",weeksSpan(projWeeks(x))||""];
   return {centered:true,display:true,type:"report",acc:"story",title:displayText(sh.title||x.name,mode,all),details,photos:ns.flatMap(momentPhotos),blocks};
 }
 function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>wallSheetDoc(x,sh))}
@@ -3954,11 +3954,11 @@ function projectDoc(x,long){
   if(ths.length){blocks.push(dSub("Threads in this project"));
     for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
       const where=[c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
-      blocks.push(dItem(t.name,t.question||"",where?where[0].toUpperCase()+where.slice(1):"",[t.classroom?t.classroom+" classroom":"All classrooms"]));
+      blocks.push(dItem(t.name,t.question||"",where?where[0].toUpperCase()+where.slice(1):"",[t.classroom?t.classroom+" class":"All classes"]));
       const last=[...(t.evidence||[])].filter(e=>rec(e.planId)).sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
       if(last)blocks.push(dQuote(last.text,byLine(rec(last.planId))))}}
   if(long){const ns=projNotices(x);if(ns.length){blocks.push(dSub("Notice and Wonder"));
-    ns.slice(0,8).forEach(n=>blocks.push(dQuote(n.noticed,[n.by,n.classroom&&n.classroom+" classroom"].filter(Boolean).join(", "),shortDate(n.at))))}}
+    ns.slice(0,8).forEach(n=>blocks.push(dQuote(n.noticed,[n.by,n.classroom&&n.classroom+" class"].filter(Boolean).join(", "),shortDate(n.at))))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
   if(has(x.people))blocks.push(dText("People beyond the classrooms",x.people));
@@ -3968,7 +3968,7 @@ function projectDoc(x,long){
 function storyDoc(title,fields,meta){
   return {display:true,type:"report",acc:"story",title,meta,blocks:STORY.filter(([k])=>has(fields&&fields[k])).map(([k,l])=>dText(l,fields[k]))};
 }
-function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Classroom",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classrooms"],["Seen",weeksSpan(th.weeks)]])}
+function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Class",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classes"],["Seen",weeksSpan(th.weeks)]])}
 function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classrooms",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
 function lensDocs(long,cap){
   const ps=lensPlans();let moments=lensMoments(ps);
@@ -4546,11 +4546,11 @@ async function printsClick(t){
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no moments in this view to print.");return true}
-    const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classrooms":nRoom} ${mondayOf(new Date())}`;
+    const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classes":nRoom} ${mondayOf(new Date())}`;
     if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
-  if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classrooms":tRoom} ${mondayOf(new Date())}`);return true}
-  if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classrooms":lRoom} ${mondayOf(new Date())}`;
+  if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classes":tRoom} ${mondayOf(new Date())}`);return true}
+  if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classes":lRoom} ${mondayOf(new Date())}`;
     if(long){out(lensDocs(true),name);return true}
     await loadPrintFonts();out(await onePage(n=>lensDocs(false,n),5,3),name);return true}
   return false;
@@ -4634,7 +4634,7 @@ function renderThreads(){
   // Planning grid
   const wks=[...weeks].reverse();
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Ready for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
-   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No classroom set"}</th>`).join("")}</tr></thead><tbody>
+   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
    ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
      return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}<span class="cnt">${r||teams.length?"· ":""}${ni} individual · ${ns} small group</span>${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
    </tbody></table></div></section>`;
@@ -4681,7 +4681,7 @@ function sectionOf(p,text){
 function evSource(e){
   const p=rec(e.planId);
   if(!p)return `<span class="src">Week of ${fmtDate(e.week)}. This plan has since been deleted</span>`;
-  const bits=[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom",sectionOf(p,e.text)].filter(Boolean);
+  const bits=[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class",sectionOf(p,e.text)].filter(Boolean);
   return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${bits.map(esc).join(" · ")}</span>`;
 }
 function originHtml(t,isTracked){
@@ -4690,7 +4690,7 @@ function originHtml(t,isTracked){
   const first=ev[0];
   if(first){const p=rec(first.planId);
     let inPlan="";
-    if(p){const room=p.classroom?" in the "+esc(p.classroom)+" classroom":"";
+    if(p){const room=p.classroom?" in the "+esc(p.classroom)+" class":"";
       if(p.type==="classroom")inPlan=`, in the classroom team's Classroom Curriculum Plan${room}`;
       else{const g=p.type==="smallgroup"?p.group:(p.focus==="smallgroup"?(p.groups||[]).join(" and "):"");
         inPlan=`, in ${p.educator?esc(p.educator)+"'s":"an"} ${esc(FORMS[p.type].name)}${g?" for the "+esc(g)+" group":p.where?" about the "+esc(p.where):""}${room}`}}
@@ -4701,9 +4701,9 @@ function originHtml(t,isTracked){
     const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];
     const people=[...new Set(ps.flatMap(p=>p.type==="classroom"?[]:[p.educator,...(p.focus==="smallgroup"?(p.groups||[]).map(g=>g+" group"):[]),p.group&&p.group+" group"]).filter(Boolean))];
     const wks=new Set(ps.map(p=>p.weekOf)).size;
-    rows.push(`<div><b>Seen in</b>${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classrooms":" classroom"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
+    rows.push(`<div><b>Seen in</b>${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classes":" class"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
   if(isTracked){
-    const how=t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" classroom":" across all classrooms"}`:"";
+    const how=t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" class":" across all classes"}`:"";
     rows.push(`<div><b>Followed</b>${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
   }
   return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
@@ -4717,7 +4717,7 @@ let tEdit="";
 function threadEditHtml(t){return `<div class="tedit" style="display:grid;gap:8px">
     <label class="fld-label">Thread name<input type="text" id="te-name" value="${esc(t.name)}"></label>
     <label class="fld-label">The team's question<textarea id="te-q" rows="2" placeholder="Written as the educators' hypothesis">${esc(t.question||"")}</textarea></label>
-    <label class="cnt">Classroom <select id="te-room" style="width:auto"><option value="">No classroom</option>${CLASSROOMS.map(r=>`<option ${t.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
+    <label class="cnt">Class <select id="te-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${t.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
     <div class="actions"><button class="btn small" data-tesave="${t.id}">Save changes</button><button class="linkbtn" data-tecancel="1">Cancel</button></div></div>`}
 function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(isTracked&&t.id&&tEdit===t.id)return `<article class="thread" id="th-${t.id}">${threadEditHtml(t)}</article>`;
@@ -4726,10 +4726,10 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   let h=`<article class="thread"${isTracked&&t.id?` id="th-${t.id}"`:""}><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
   if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
   h+=originHtml(t,isTracked);
-  if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" classroom",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
+  if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" class",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
   h+=evidenceHtml(t);
-  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" classroom"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
+  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
@@ -4741,7 +4741,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
-      <button class="linkbtn" data-tedit="${t.id}">Change name or classroom</button>
+      <button class="linkbtn" data-tedit="${t.id}">Change name or class</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
     {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} moment${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
@@ -4788,7 +4788,7 @@ function threadsNoteHtml(p){
   const rest=[...threads.values()].filter(t=>t&&!t.unfollowed&&!on.has(t.id)).sort((a,b)=>((b.classroom===p.classroom)-(a.classroom===p.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
   let h=cs.map(({t,how,link})=>{
     const why=how==="started"?"This plan was started from the thread.":how==="quoted"?"The thread quotes this plan.":link.carried?"Carried forward from last week's plan.":`Connected by ${esc(link.by||"an educator")}${link.at?" on "+shortDate(link.at):""}.`;
-    const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} classroom.`:"";
+    const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} class.`:"";
     return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}
       ${(pr=>pr?`<div>Part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button></div>`:"")(projectOfThread(t.id))}
       ${(t.evidence||[]).filter(e=>e.planId!==p.id).slice(cs.length>1?-1:-3).map(e=>`<div class="muted">\u201c${esc(e.text)}\u201d ${fmtDate(e.week)}</div>`).join("")}
@@ -4871,7 +4871,7 @@ async function threadsClick(t){
   // A classroom writes one Classroom Plan a week, so a thread joins that plan. A new one is started only when the week has none yet.
   if(t.dataset.tcplan){const th=threads.get(t.dataset.tcplan);if(!th)return true;
     const room=th.classroom||(roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""));
-    if(!room){toast("This thread runs across classrooms. Choose a classroom on the Plans page first.");return true}
+    if(!room){toast("This thread runs across classes. Choose a class on the Plans page first.");return true}
     let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     const made=!cp;
     if(made){cp=newPlan("classroom",{classroom:room,threadId:th.id});plans.set(cp.id,cp);persist(cp)}
@@ -4907,11 +4907,11 @@ function digest(ps){
 function capDigest(d,max){const out=[];let n=0;for(const x of d){const l=JSON.stringify(x).length+1;if(n+l>max)break;out.push(x);n+=l}return out}
 async function findThreads(){
   const ps=rangePlans();const full=digest(ps);const d=capDigest(full,170000);if(!d.length){toast("Save a few plans with observations first.");return}
-  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one classroom to include older ones.`);
+  if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   scanBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
   const tracked=[...threads.values()].filter(t=>t.status!=="closed"&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question}));
-  const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classrooms":"the "+tRoom+" classroom"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
+  const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classes":"the "+tRoom+" class"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and Notice and Wonder entries, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
 Rules. Use only what the plans and entries say. Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single Notice and Wonder, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
@@ -4957,7 +4957,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
 async function familyUpdate(p,btn){
   if(!planContext(p)){toast("Fill in some of the plan first.");return}
   btn.disabled=true;btn.textContent="Writing";
-  const who=p.type==="individual"?((p.groups||[]).length?`families of the ${p.groups.join(" and ")} small group${p.groups.length>1?"s":""} in the ${p.classroom||""} classroom`:`families of the ${p.classroom||""} classroom, about the investigation${p.where?" in the "+p.where:""} an educator is following`):`families of the ${p.classroom||""} classroom`;
+  const who=p.type==="individual"?((p.groups||[]).length?`families of the ${p.groups.join(" and ")} small group${p.groups.length>1?"s":""} in the ${p.classroom||""} class`:`families of the ${p.classroom||""} class, about the investigation${p.where?" in the "+p.where:""} an educator is following`):`families of the ${p.classroom||""} class`;
   const prompt=`Write a short weekly note for ${who} at Fulton Community School & Farm, to post in Kaymbu. Base it only on this week's ${FORMS[p.type].name} below. 120 to 200 words. Warm and specific, in family-friendly language. Describe what children are wondering and investigating and how the environment is changing to support it. End with one open question families could ask their child at home, in the spirit of "Tell me about this" rather than "What is it". Do not name individual children. Do not invent anything the plan does not say. ${STYLE}
 Return only the note.
 
@@ -5026,8 +5026,8 @@ function renderImport(){
   if(!sample)h+=`<div class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">Transcription needs Claude assist</b><div>Open this page in the Claude app or claude.ai and allow Claude assist when asked.</div></div>`;
   h+=`<section class="card"><div class="lbl">How many plans?</div>
     <div class="seg" role="group" aria-label="Upload mode"><button data-imode="one" aria-pressed="${!batch}">One plan</button><button data-imode="batch" aria-pressed="${batch}">Batch, many plans</button></div>
-    <div class="hint">${batch?"For a whole-school scan, upload the scanned PDF from the copier, or a stack of photos, in any mix of classrooms and forms. Word files holding several weeks are split into separate plans too.":"Every file and photo you add is treated as pages of a single plan."}</div>
-    ${batch?`<label class="radio"><input type="checkbox" id="isort" ${importSort?"checked":""}> <span><b>Let TREE sort the pages into plans.</b> TREE looks at every page, finds where each plan starts, and files it under the right form, classroom, group, educator, and week. Turn this off to group pages yourself.</span></label>${!importSort?`<span class="nudge" style="justify-self:start">Sorting is off. Each file is read as one plan, and any plan longer than ${imgLimit||4} pages is sorted automatically.</span>`:""}`:""}</section>`;
+    <div class="hint">${batch?"For a whole-school scan, upload the scanned PDF from the copier, or a stack of photos, in any mix of classes and forms. Word files holding several weeks are split into separate plans too.":"Every file and photo you add is treated as pages of a single plan."}</div>
+    ${batch?`<label class="radio"><input type="checkbox" id="isort" ${importSort?"checked":""}> <span><b>Let TREE sort the pages into plans.</b> TREE looks at every page, finds where each plan starts, and files it under the right form, class, group, educator, and week. Turn this off to group pages yourself.</span></label>${!importSort?`<span class="nudge" style="justify-self:start">Sorting is off. Each file is read as one plan, and any plan longer than ${imgLimit||4} pages is sorted automatically.</span>`:""}`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Add ${batch?"the plans":"the plan"}</div>
     <label class="drop" id="drop" for="upfile"><b>Tap to take a photo or choose files</b><span class="muted" style="font-size:13.5px">Photos, PDF, Word (.docx), or text. ${batch?"Select as many as you like.":"Several pages are fine"+(imgLimit?`, up to ${imgLimit} images.`:".")} You can also drop files here.</span></label>
     <input type="file" id="upfile" multiple accept="image/*,.pdf,.docx,.txt" hidden>
@@ -5293,7 +5293,7 @@ Return JSON {"pages":[{"n": page number, "form": "classroom" or "individual" or 
 function schoolSummary(){
   const ps=jobs.flatMap(j=>j.planIds).map(id=>plans.get(id)).filter(Boolean);if(ps.length<2)return"";
   const rooms=[...CLASSROOMS,""].map(r=>{const rp=ps.filter(p=>(p.classroom||"")===r);if(!rp.length)return"";const c=k=>rp.filter(p=>p.type===k).length;
-    return `<div class="stat"><b>${rp.length}</b><span>${r?esc(r):"Classroom not found"}. ${c("classroom")} team, ${c("individual")} individual, ${c("smallgroup")} small group</span></div>`}).join("");
+    return `<div class="stat"><b>${rp.length}</b><span>${r?esc(r):"Class not found"}. ${c("classroom")} team, ${c("individual")} individual, ${c("smallgroup")} small group</span></div>`}).join("");
   const nodate=ps.filter(p=>p.importNoDate).length;
   return `<div class="stats">${rooms}</div>${nodate?`<span class="nudge" style="justify-self:start">${nodate} plan${nodate>1?"s have":" has"} no week written. They are filed under the week of ${fmtDate(week)} until you set the date.</span>`:""}`;
 }
@@ -5314,10 +5314,10 @@ function renderAllPlans(){
   const mine=!isDirector()&&me()?all.filter(p=>p.type!=="notice"&&isMine(p,me())):null;const base=mine||all;
   const c=k=>base.filter(p=>p.type!=="notice"&&(k==="done"?p.status==="ready"||p.status==="reviewed":p.status===k)).length;const yours=mine?" of yours":"";
   let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
-    <div class="sub">Every plan from every week and classroom. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
+    <div class="sub">Every plan from every week and class. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
     <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>moments kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
     <section class="card" style="gap:10px">
-      <div class="filters" style="margin:0">${[["All","All classrooms"],["West","West"],["North","North"],["South","South"],["none","No classroom"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
+      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
         <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Moments"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
@@ -5331,7 +5331,7 @@ function allListHtml(ps){
   if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
   return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${countShown(wp).replace(" shown","")}</div>
-    <div class="tablewrap"><table class="grid2 plist" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Classroom</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="grid2 plist" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Class</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
     ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="${p.type==="notice"?"Kept by":"Sections filled"}">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
@@ -5340,8 +5340,8 @@ function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.len
 function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=countShown(ps);$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="all")return;
   if(t.dataset.aroom){aRoom=t.dataset.aroom;renderAllPlans()}
-  if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.docx`);return}
-  if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classrooms":aRoom} ${mondayOf(new Date())}.pdf`)}});
+  if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.docx`);return}
+  if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.pdf`)}});
 document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
 document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.target.value;refreshAll()}});
 
@@ -5383,11 +5383,11 @@ function renderChildren(){
   let body="";
   for(const r of rooms){const rs=shown.filter(c=>c.classroom===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first));if(!rs.length)continue;
     body+=`<section style="display:grid;gap:8px"><div class="spread"><div class="lbl">${esc(r)}</div><span class="cnt">${rs.length} ${rs.length===1?"child":"children"}</span></div><div class="kids">${rs.map(card).join("")}</div></section>`}
-  const other=shown.filter(c=>!CLASSROOMS.includes(c.classroom));if(other.length)body+=`<section style="display:grid;gap:8px"><div class="lbl">No classroom chosen</div><div class="kids">${other.map(card).join("")}</div></section>`;
+  const other=shown.filter(c=>!CLASSROOMS.includes(c.classroom));if(other.length)body+=`<section style="display:grid;gap:8px"><div class="lbl">No class chosen</div><div class="kids">${other.map(card).join("")}</div></section>`;
   if(!body)body=`<div class="empty">${all.length?(kShow==="at"?"No children match.":"No former children yet. A child who leaves Fulton or moves on to kindergarten is kept here."):"The roster has not come in yet."}</div>`;
   const addHtml=dir?(kAdding?`<section class="card"><div class="lbl">Add a child</div><div class="kfields">
       <label>First name<input type="text" id="ka-first"></label><label>Last name<input type="text" id="ka-last"></label>
-      <label>Classroom<select id="ka-room">${CLASSROOMS.map(r=>`<option ${kRoom===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label>Class<select id="ka-room">${CLASSROOMS.map(r=>`<option ${kRoom===r?"selected":""}>${r}</option>`).join("")}</select></label>
       <label>Small group<select id="ka-group"><option value="">None</option>${GROUPS.map(g=>`<option>${esc(g.name)}</option>`).join("")}</select></label>
       <label>Birthday<input type="date" id="ka-dob"></label><label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
@@ -5457,13 +5457,13 @@ function renderChild(){
       ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
     body=`<section class="card"><div class="kgrid">
-        <div><span class="lbl">Classroom</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
+        <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
         <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
         <div class="cnt">Family details live on the conference record.</div></section>
-      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change classroom, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
+      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
   }
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" classroom",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
       <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At Fulton${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
       <span class="actions">${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
     <div class="tseg ktabs" role="tablist" aria-label="${esc(c.first)}'s page">${tabs.map(([k,l])=>`<button role="tab" data-ktab="${k}" aria-pressed="${kidTab===k}">${l}</button>`).join("")}</div>
@@ -5480,7 +5480,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
 function kidEditHtml(c){
   const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
   const hist=(c.treeHistory||[]).slice().reverse();
-  return `<div class="kfields"><label>Classroom<select data-kroomset="${esc(c.id)}">${CLASSROOMS.map(r=>`<option ${c.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
+  return `<div class="kfields"><label>Class<select data-kroomset="${esc(c.id)}">${CLASSROOMS.map(r=>`<option ${c.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
       <label>Small group<select data-kgroupset="${esc(c.id)}"><option value="">None</option>${[...new Set([...groupsFor(c.classroom),c.group].filter(Boolean))].map(g=>`<option ${c.group===g?"selected":""}>${esc(g)}</option>`).join("")}</select></label>
       <label>Next year<select data-knextset="${esc(c.id)}"><option value="">Not decided</option>${Object.entries(NEXTPLAN).map(([k,v])=>`<option value="${k}" ${kidNext(c)===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
     ${kidAt(c)?`<div class="lbl" style="margin-top:6px">Leaving Fulton</div><div class="kfields"><label>Last day<input type="date" id="kdate-${esc(c.id)}" value="${iso(new Date())}"></label></div>
@@ -5512,7 +5512,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
 });
 document.addEventListener("change",e=>{if((view!=="children"&&view!=="child")||!isDirector())return;const t=e.target;
   const set=(id,f)=>{const c=children.get(id);if(c){f(c);saveKid(c);renderMain()}};
-  if(t.dataset.kroomset)set(t.dataset.kroomset,c=>{const was=c.classroom;c.classroom=t.value;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.classroom))c.group="";kidNote(c,`Moved from ${was||"no classroom"} to ${c.classroom}`)});
+  if(t.dataset.kroomset)set(t.dataset.kroomset,c=>{const was=c.classroom;c.classroom=t.value;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.classroom))c.group="";kidNote(c,`Moved from ${was||"no class"} to ${c.classroom}`)});
   if(t.dataset.kgroupset)set(t.dataset.kgroupset,c=>{c.group=t.value;kidNote(c,c.group?`Joined ${c.group}`:"No small group")});
   if(t.dataset.knextset)set(t.dataset.knextset,c=>{c.transition=c.transition||{};const k=nextYearKey();if(t.value)c.transition[k]=Object.assign({},c.transition[k]||{},{plan:t.value});else delete c.transition[k];kidNote(c,t.value?NEXTPLAN[t.value]:"Next year not decided")});
 });
@@ -5608,14 +5608,14 @@ function signinsHtml(){
   const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
     <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director.</div>
-    ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Classroom</th><th>Director</th><th>Passcode</th><th></th></tr></thead><tbody>
+    ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
         <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`}</td>
         <td class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
-    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto"><option value="">Classroom</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
+    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
 }
@@ -5662,12 +5662,12 @@ function saveProgram(){
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
 function renderSettings(){
   if(!isDirector()){const nm=window.FP_NAME?window.FP_NAME():me();const rm=myRoom();
-    $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" classroom. ":""}Your lists open on your classroom. The director sets the program's lists, groups and classrooms.</div></div></div>
+    $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
     <section class="card" id="mypass"><div class="lbl">Change my passcode</div><div class="hint">Type the four numbers you use now, then four new ones twice.</div>
       <div class="kfields"><label>Passcode now<input type="password" inputmode="numeric" maxlength="4" id="mp-old" autocomplete="current-password"></label><label>New passcode<input type="password" inputmode="numeric" maxlength="4" id="mp-new" autocomplete="new-password"></label><label>New passcode again<input type="password" inputmode="numeric" maxlength="4" id="mp-again" autocomplete="new-password"></label></div>
       <div class="actions"><button class="btn small" id="mp-save">Save my new passcode</button><span class="cnt" id="mp-msg"></span></div></section>
-    <section class="card"><div class="lbl">My classroom</div><div class="hint">Lists open on ${rm?esc(rm):"all classrooms"}. Choosing another classroom on a list is remembered on this device.</div>
-      <div class="actions"><button class="btn small ghost" id="mp-roomreset">Open every list on ${rm?esc(rm):"my classroom"} again</button></div></section>`;return}
+    <section class="card"><div class="lbl">My class</div><div class="hint">Lists open on ${rm?esc(rm):"all classes"}. Choosing another class on a list is remembered on this device.</div>
+      <div class="actions"><button class="btn small ghost" id="mp-roomreset">Open every list on ${rm?esc(rm):"my class"} again</button></div></section>`;return}
   const names=rosterNames();
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
@@ -5686,8 +5686,8 @@ function renderSettings(){
       <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div>
     <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of moment sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
       <div class="seg" role="group" aria-label="Educators' names"><button data-pby="1" aria-pressed="${PRINT.by!==false}">On</button><button data-pby="0" aria-pressed="${PRINT.by===false}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's classroom and lead educator. An educator can lead more than one group.</div>
-    <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Classroom</th><th>Educator</th><th></th></tr></thead><tbody>
+  <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
+    <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
     ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
       <td><select data-ged="${i}"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
     </tbody></table></div>
