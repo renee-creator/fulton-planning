@@ -32,6 +32,12 @@ The email reaches TREE through a Google Apps Script in the school's Google Works
 
 Cards and lists show a small copy of each photo, about 640 pixels on its longest side, so a page of moments loads quickly on a phone. Slides, walls, portfolios, every printout and a photo opened on its own use the original, which is never changed or replaced. A photo kept in TREE gets its small copy as it is kept, a photo from Kaymbu keeps Kaymbu's own smaller copy, and photos kept before small copies existed get one from the director's browser, a few at a time, while TREE is open.
 
+## Plans that begin from evidence
+
+A plan can begin from a pattern in What these observations keep returning to, from a thread, or from a project. A project asks which of its threads the plan continues, or the project as a whole. Whatever the plan began from stays beside it in The evidence panel while it is written, with the project's reading and intent, the thread's question and last remarks, lines from the plans that followed the thread, and every observation with its photo and the children's words. Plans that follow a thread or took in observations show the same panel. It never prints.
+
+Only the director changes a project. Educators read it, add a thread to it, keep observations for it, and start plans from it. The server refuses any other change to a project from anyone else.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
