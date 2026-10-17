@@ -70,7 +70,9 @@
     return j;
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
-  window.FP_API=(path,body)=>api(path,body);
+  // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
+  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now"];
+  window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
@@ -150,7 +152,9 @@
   }
   function docRef(path){
     const [kind,id]=path.split("/");
-    const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra}); Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); return r.doc; };
+    // while the director sees TREE as an educator, nothing is sent to be saved
+    const write=async(op,extra)=>{ if(window.TREE_VIEW_AS){ if(!window.__vaSaid){ window.__vaSaid=1; try{ (window.toast||alert)("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."); }catch(e){} } return extra&&extra.data||Store.data[kind]?.[id]||null; }
+      const r=await api("/api/write",{op,kind,id,...extra}); Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); return r.doc; };
     return { id, path,
       async get(){ return snap(id, Store.data[kind]?.[id]); },
       onSnapshot(next){ const fire=()=>next(snap(id, Store.data[kind]?.[id])); Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
@@ -185,7 +189,7 @@
   const downloads={ async save({filename,data}){ const blob=data instanceof Blob? data : new Blob([data]); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); return {status:"saved"}; } };
   const caps={db,user,sample,downloads};
   // a photo kept with a moment is stored beside the records, and shown or printed from there
-  window.FP_KEEP_ORIGINAL=async function(blob,name){ const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data}); return j.id; };
+  window.FP_KEEP_ORIGINAL=async function(blob,name){ if(window.TREE_VIEW_AS) throw new Error("Nothing is saved while you see TREE as an educator."); const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data}); return j.id; };
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
   // a fresh key for photos, taken at once when one is refused
   window.FP_RENEW_KEY=async()=>{try{const j=await api("/api/data");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}if(j&&j.storage)window.FP_STORAGE=j.storage;}catch(e){}};
