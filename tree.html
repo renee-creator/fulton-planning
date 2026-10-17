@@ -958,7 +958,7 @@ async function boot(){
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
   renderAll();
@@ -1800,7 +1800,7 @@ function kidDrdpHtml(c){
       ${drdpCompareHtml(x.view||v,x.code,x.level,drdpEdit===x.id)}
       ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
       :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${x.id}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${x.id}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`}</div>`;
-  const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoSrc(n))}" alt="" loading="lazy">`:""};
+  const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoThumb(n))}" alt="" loading="lazy">`:""};
   const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${x.id}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${drdpCompareHtml(x.view||v,x.code,x.level,true)}<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
     :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${x.id}">Change</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`;
   const evLine=x=>`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
@@ -1913,7 +1913,7 @@ function renderSlides(){
   const ss=[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   if(deck)deck.ids=(deck.ids||[]).filter(id=>slides.has(id));
   const card=s=>{const ph=notices.get(slidePhotos(s)[0]);const k=deck?deck.ids.indexOf(s.id):-1;
-    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink);position:relative" ${deck?`data-deckpick="${s.id}" aria-pressed="${k>=0}"`:`data-slide="${s.id}"`}>${deck&&k>=0?`<span class="decknum">${k+1}</span>`:""}${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(slideTitle(s))}</b>${String(s.title||"").trim()?"":`<span class="cnt">No title yet</span>`}<span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.sq?" · square":(s.pos==="left"||s.pos==="right"||s.land)?" · landscape":""}</span></button>`};
+    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink);position:relative" ${deck?`data-deckpick="${s.id}" aria-pressed="${k>=0}"`:`data-slide="${s.id}"`}>${deck&&k>=0?`<span class="decknum">${k+1}</span>`:""}${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px">`:""}<b style="font-family:var(--display);font-size:17px">${esc(slideTitle(s))}</b>${String(s.title||"").trim()?"":`<span class="cnt">No title yet</span>`}<span class="cnt">${esc(s.by||"")} · ${shortDate(s.at)}${s.sq?" · square":(s.pos==="left"||s.pos==="right"||s.land)?" · landscape":""}</span></button>`};
   const deckBar=deck?`<section class="card" id="deckbar"><div class="secthead"><h3 style="font-size:17px">A deck of slides</h3><span class="cnt">${deck.ids.length} chosen</span></div>
       <div class="cnt">Tap slides in the order they should go. Tap again to take one out.</div>
       <label class="radio"><input type="checkbox" data-deckopt="numbers" ${deck.numbers!==false?"checked":""}><span>Number the slides at the foot</span></label>
@@ -1964,7 +1964,7 @@ function renderSlide(){
       <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="In the children's words, or the team's"></label>
         <div class="fld-label">Photos, up to three<span class="cnt" style="font-weight:400">The first chosen is the largest.</span>
           <div class="filters" style="margin:2px 0 6px">${["All",...CLASSROOMS].map(r=>`<button type="button" class="pill" aria-pressed="${r===sfPick.room}" data-sfroom="${r}">${r}</button>`).join("")}</div>
-          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoSrc(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
+          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Moment")+", "+shortDate(n.at))}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Moments with photos appear here. Keep a moment with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
 </section>
       <section class="card"><label class="fld-label">What the team understood<textarea data-sf="text" rows="4" placeholder="A few lines in the team's words">${esc(s.text||"")}</textarea></label>
         ${!String(s.text||"").trim()&&src.some(n=>momentText(n))?`<div class="actions"><button class="btn small ghost" data-sfmoment="${s.id}">Use what was noticed and wondered</button></div>`:""}
@@ -2135,7 +2135,7 @@ async function outboxSend(){
   if(outboxBusy||!outbox.length||!db||!navigator.onLine)return;outboxBusy=true;
   try{for(const n of outbox.slice()){
     try{
-      if(n.photo&&!n.photo.id&&n.photo.data&&window.FP_KEEP_ORIGINAL){const blob=await (await fetch(n.photo.data)).blob();n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");delete n.photo.data;delete n.photo.pending}
+      if(n.photo&&!n.photo.id&&n.photo.data&&window.FP_KEEP_ORIGINAL){const blob=await (await fetch(n.photo.data)).blob();n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");const th=await keepThumb(blob);if(th)n.photo.thumb=th;delete n.photo.data;delete n.photo.pending}
       await db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n)));
       notices.set(n.id,n);outbox=outbox.filter(x=>x.id!==n.id);outboxSave();
     }catch(e){break}}
@@ -2253,7 +2253,7 @@ function todayWaiting(){
 }
 // a moment in a few lines, for Today and a child's page. The whole moment is one tap away.
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
-  return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
+  return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
@@ -2342,7 +2342,7 @@ function renderWalls(){
   const ps=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
-    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
+    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the moments for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's moments.</div>`}`;
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -2917,6 +2917,27 @@ function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
    become several moments, opened one after another. --- */
 let nQueue=[];const nBlobs=new Map(),nPreview=new Map();
 const photoCache=new Map();
+/* Small copies. Cards and lists show a small copy of each photo, so a page of moments loads quickly on a phone. The
+   original is never changed or replaced, and slides, walls, portfolios and every printout use it. */
+const THUMB_EDGE=640;
+async function makeThumb(blob){
+  const bm=await createImageBitmap(blob,{imageOrientation:"from-image"});const k=Math.min(1,THUMB_EDGE/Math.max(bm.width,bm.height));
+  const cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(bm.width*k));cv.height=Math.max(1,Math.round(bm.height*k));
+  cv.getContext("2d").drawImage(bm,0,0,cv.width,cv.height);if(bm.close)bm.close();
+  return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("The small copy could not be made")),"image/jpeg",.82))}
+async function keepThumb(blob){try{if(!window.FP_KEEP_ORIGINAL)return"";return await window.FP_KEEP_ORIGINAL(await makeThumb(blob),"moment-thumb.jpg")}catch(e){console.warn("No small copy",e);return""}}
+function photoThumb(n){const ph=n&&n.photo;if(ph&&ph.thumb&&window.FP_ORIGINAL_URL&&!nPreview.get(n.id))return window.FP_ORIGINAL_URL(ph.thumb);return photoSrc(n)}
+// photos kept before small copies existed get one, a few at a time, from the director's browser while TREE is open
+let thumbRun=false;
+async function fillThumbs(){
+  if(thumbRun||!db||!window.FP_ORIGINAL_URL||!isDirector())return;thumbRun=true;
+  try{for(const n of [...notices.values()].filter(n=>n.photo&&n.photo.id&&!n.photo.thumb).sort((a,b)=>(b.at||0)-(a.at||0))){
+    if(!navigator.onLine)break;
+    try{const r=await fetch(window.FP_ORIGINAL_URL(n.photo.id));if(!r.ok)continue;const id=await keepThumb(await r.blob());if(!id)continue;
+      const cur=notices.get(n.id);if(!cur||!cur.photo||cur.photo.id!==n.photo.id)continue;cur.photo.thumb=id;
+      await db.doc("notices/"+n.id).update({photo:{thumb:id}})}catch(e){console.warn("Small copy skipped",e)}
+    await new Promise(r=>setTimeout(r,1500))}}
+  finally{thumbRun=false}}
 function photoSrc(n){const ph=n&&n.photo;if(!ph)return"";return nPreview.get(n.id)||ph.data||(ph.id&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(ph.id):"")}
 const MOMENT_PHOTO_PROMPT=`You are copying the writing in a photo taken in a classroom at Fulton Community School & Farm, a Reggio-inspired preschool. It is usually chart paper on which an educator wrote down what children said during a group conversation, a reflection, or a story they told together, with each child's name beside their words.
 Copy the writing exactly as it is written.
@@ -2959,7 +2980,7 @@ async function readMomentPhoto(n){
   try{
     // the photo is stored first, so the moment always has it even when the reading does not work
     if(!n.photo.id&&!n.photo.data){
-      if(window.FP_KEEP_ORIGINAL&&navigator.onLine)n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");
+      if(window.FP_KEEP_ORIGINAL&&navigator.onLine){n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");const th=await keepThumb(blob);if(th)n.photo.thumb=th}
       else{n.photo.data=await blobDataUrl(blob,1400);if(window.FP_KEEP_ORIGINAL)n.photo.pending=true}}
   }catch(e){if(e&&e.code==="unavailable"){n.photo.data=await blobDataUrl(blob,1400);n.photo.pending=true;n.photo.status="done";n.photo.error="";refreshPhotoDraft(n);return}
     n.photo.status="failed";n.photo.error=e?.message||"The photo could not be stored. Check your connection and press Try again.";refreshPhotoDraft(n);return}
@@ -3044,7 +3065,7 @@ function noticeBrowseHtml(){
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${n.classroom?" \u00b7 "+esc(n.classroom)+" class":""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
-    ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
+    ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this moment" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
@@ -3220,7 +3241,7 @@ function noticesClick(t){
     const when=sameDay?was.at:day&&day!==iso(new Date())?parseIso(day).getTime()+12*36e5:Date.now();
     if(editing){n.by=was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
     n.at=when;n.week=mondayOf(new Date(when));
-    if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
+    if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.thumb?{thumb:n.photo.thumb}:{}),...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
     delete n.day;delete n.fromClaude;
     // saving a moment from Kaymbu is the educator's check of its classroom and children
     if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure;delete n.kaymbu.suggest}
@@ -4106,7 +4127,7 @@ function projGrowHtml(x){
     <div class="hint">Everything the project holds, in the order it happened. The current reading and intent are above.</div>
     ${!all&&ev.length>show.length?`<div class="actions"><button class="linkbtn" data-pgrow="1">Show the ${ev.length-show.length} earlier</button></div>`:""}
     <ol class="grow">${show.map(e=>`<li><span class="gdate">${e.week?"Week of "+fmtDate(e.week).replace(/, \d{4}$/,""):shortDate(e.at)}</span><div><b>${esc(e.kind)}</b>${e.heading?` <span class="muted">${esc(e.heading)}</span>`:""}
-      ${e.photo?`<div class="nw-row" style="margin-top:4px"><a class="nw-thumb" href="${esc(photoSrc(e.photo))}" target="_blank" rel="noopener"><img src="${esc(photoSrc(e.photo))}" alt="Photo kept with this moment" loading="lazy"></a><div>${esc(e.text)}</div></div>`:has(e.text)?`<div>${esc(e.text)}</div>`:""}
+      ${e.photo?`<div class="nw-row" style="margin-top:4px"><a class="nw-thumb" href="${esc(photoSrc(e.photo))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(e.photo))}" alt="Photo kept with this moment" loading="lazy"></a><div>${esc(e.text)}</div></div>`:has(e.text)?`<div>${esc(e.text)}</div>`:""}
       <div class="cnt">${e.by?esc(e.by):""}${e.open?` <button class="linkbtn" data-open="${e.open}">Open the plan</button>`:""}${e.tsee?` <button class="linkbtn" data-tsee="${e.tsee}">See the thread</button>`:""}</div></div></li>`).join("")}</ol></section>`;
 }
 // a child's line is a named line copied from a sheet, or words an educator put in quotation marks
@@ -4170,7 +4191,7 @@ function projWallHtml(x){
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
       <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
-        ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}"><img src="${esc(photoSrc(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
+        ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Moment")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
         ${sample?(sg&&sg.status==="working"?`<div class="hint"><span class="spin"></span> Drafting from the team's writing</div>`
           :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${sh.id}">Use this</button><button class="btn small ghost" data-wsno="${sh.id}">Leave it</button></div></div>`
@@ -5745,7 +5766,7 @@ function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
   return `<div class="kmwrap">${kidMomentRow0(c,n,open)}${pfToggle(c,"notices",n.id,kidTagged(c,n))}</div>`}
 function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
-  :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoSrc(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
+  :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
     <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"A moment")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
@@ -5771,7 +5792,7 @@ function renderChild(){
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which moments"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
         <div class="cnt">Tap a moment to read it. The portfolio holds the moments and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
         ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No moments for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep a moment for ${esc(c.first)}</button></div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoSrc(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>

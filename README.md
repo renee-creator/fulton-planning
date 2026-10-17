@@ -28,6 +28,10 @@ Moments shared from Kaymbu by email to the TREE address become TREE moments. Sel
 
 The email reaches TREE through a Google Apps Script in the school's Google Workspace mailbox, kept in tools/kaymbu-apps-script.gs with its setup steps. It checks every ten minutes and sends each new Kaymbu email to the server's Kaymbu inbox, which only accepts emails that came from Kaymbu and carry the key saved on Render as `KAYMBU_INBOX_KEY`. An email the server could not finish, such as a photo Kaymbu did not send in time, is tried again on the next check.
 
+## Small copies of photos
+
+Cards and lists show a small copy of each photo, about 640 pixels on its longest side, so a page of moments loads quickly on a phone. Slides, walls, portfolios, every printout and a photo opened on its own use the original, which is never changed or replaced. A photo kept in TREE gets its small copy as it is kept, a photo from Kaymbu keeps Kaymbu's own smaller copy, and photos kept before small copies existed get one from the director's browser, a few at a time, while TREE is open.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
