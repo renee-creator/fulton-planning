@@ -234,6 +234,7 @@ async function doLoad() {
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
+    kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message));
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
