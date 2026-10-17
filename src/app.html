@@ -456,6 +456,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kids{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:10px}
 .kidc{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;color:var(--ink)}
 .kidc:hover{border-color:var(--moss)}
+.vabar{position:sticky;top:0;z-index:25;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--sun-soft);border-bottom:2px solid var(--marigold);padding:10px 16px;font-size:15px}
 .pflist{display:grid;gap:10px;margin-top:12px}.pfcard{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .pfhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:8px}.pfsum{margin-left:auto;font-size:14px;font-weight:600}
 .pfstrip{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
@@ -668,12 +669,18 @@ function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTi
 // Staff is a shared passcode, not a person. A plan should carry the name of the educator who wrote it.
 const SHARED_SIGNIN=["staff","team","shared","classroom","educator","teacher","admin"];
 const isShared=n=>SHARED_SIGNIN.includes(String(n||"").trim().toLowerCase());
-function me(){const v=$("#me").value.trim();return isShared(v)?"":v}
+/* Seeing TREE as an educator. The director can look at TREE the way an educator sees it, with their name and their class.
+   Nothing is saved while looking, and going back reloads TREE so nothing done while looking stays on screen. */
+const VIEW_AS=(()=>{try{const v=JSON.parse(sessionStorage.getItem("tree.viewas")||"null");return v&&v.name?v:null}catch(e){return null}})();
+window.TREE_VIEW_AS=VIEW_AS;
+function startViewAs(name,room){try{sessionStorage.setItem("tree.viewas",JSON.stringify({name,room:room||""}))}catch(e){}location.reload()}
+function endViewAs(){try{sessionStorage.removeItem("tree.viewas")}catch(e){}location.reload()}
+function me(){if(VIEW_AS)return VIEW_AS.name;const v=$("#me").value.trim();return isShared(v)?"":v}
 function needName(){if(me())return false;const el=$("#me");if(el){el.focus();el.scrollIntoView({block:"center"})}renderWho();toast("Add your name at the top first, so the plan carries it.");return true}
 function renderWho(){const el=$("#me"),w=$("#whoneed");if(!el||!w)return;const bad=!me();
   el.setAttribute("aria-invalid",bad?"true":"false");el.style.borderColor=bad?"var(--clay)":"";
   w.textContent=bad?"Add your name so plans carry it":"";w.style.color="var(--clay)";}
-function isDirector(){return window.FP_HOSTED?!!(window.FP_DIRECTOR&&window.FP_DIRECTOR()):true}
+function isDirector(){if(VIEW_AS)return false;return window.FP_HOSTED?!!(window.FP_DIRECTOR&&window.FP_DIRECTOR()):true}
 function blankWeb(){return{focus:"",branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}],connections:[],languages:[],questions:"",environment:""}}
 
 function newPlan(type,extra={}){
@@ -687,6 +694,9 @@ function newPlan(type,extra={}){
 
 document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]");if(j){const el=document.querySelector(`[data-card="${j.dataset.secjump}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
   const l=e.target.closest("section.card.filled[data-card]>.lbl");if(l&&window.innerWidth<=760){l.parentElement.classList.toggle("showall")}});
+document.addEventListener("click",e=>{const t=e.target.closest("#va-go,#vaend");if(!t)return;
+  if(t.id==="vaend"){endViewAs();return}
+  const sel=$("#va-who");if(!sel||!sel.value)return;const o=sel.options[sel.selectedIndex];startViewAs(sel.value,o&&o.dataset.room||"")});
 document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#mp-roomreset");if(!t)return;
   if(t.id==="mp-roomreset"){for(const k of ["fps.troom","fps.kroom","fps.lroom","fps.nroom"])try{localStorage.removeItem(k)}catch(x){}ownRoomDefaults();toast("Your lists open on your class again.");return}
   const m=$("#mp-msg");const v=id=>($("#"+id)||{}).value||"";
@@ -1958,6 +1968,8 @@ function goView(v,opts){
 function goSection(s){if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
 function renderTreeNav(){
   const cur=secOf(view);document.body.dataset.sec=cur;
+  if(VIEW_AS&&!document.getElementById("vabar")){const m=$("#main");if(m){const b=document.createElement("div");b.id="vabar";b.className="vabar";
+    b.innerHTML=`<span>Seeing TREE as <b>${esc(VIEW_AS.name)}</b>${myRoom()?", "+esc(myRoom())+" class":""}. Nothing is saved while you look.</span><button class="btn small" id="vaend">Back to my view</button>`;m.parentNode.insertBefore(b,m)}}
   const nav=$("#tnav");if(nav)nav.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
   const tb=$("#ttab");if(tb)tb.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
   const fab=$("#newnotice");if(fab)fab.hidden=view==="calendar"||view==="conferences"||(view==="moments"&&!!noticeForm);
@@ -1984,7 +1996,7 @@ function placeSubnav(){
 }
 new MutationObserver(()=>placeSubnav()).observe(document.getElementById("main"),{childList:true});
 // the director looks after every classroom, so no one classroom is theirs, whatever a plan last used on this device
-function myRoom(){if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
+function myRoom(){if(VIEW_AS){if(VIEW_AS.room)return VIEW_AS.room;const m=VIEW_AS.name.toLowerCase();const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
 const myGroups=()=>{const m=me().toLowerCase();return m?GROUPS.filter(g=>(g.educator||"").toLowerCase()===m):[]};
 const fmtLong=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 const tlabel=t=>{if(!t)return"";let [h,m]=String(t).split(":").map(Number);const ap=h>=12?"pm":"am";h=h%12||12;return h+(m?":"+String(m).padStart(2,"0"):"")+ap};
@@ -5744,6 +5756,13 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="plans")return
 /* ---------- Sign-ins. Each educator signs in with their first name and four numbers they choose the first time. ---------- */
 let signins={list:null,error:"",show:{},busy:false,adding:false};
 async function loadSignins(){if(!window.FP_API||!db)return;try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||[];signins.render=j.render||[];signins.error=""}catch(e){signins.error=e&&e.message||"The sign-ins could not be read."}if(view==="settings")renderSettings()}
+function viewAsHtml(){
+  const list=(signins.list||[]).filter(a=>!a.director).map(a=>({name:a.name,room:a.room||""}));
+  const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));
+  if(!people.length)return"";
+  return `<section class="card"><div class="lbl">See TREE as an educator</div><div class="hint">Look at TREE the way an educator sees it, with their name and their class, on Today, Observations, Plans and every other page. Nothing is saved while you look.</div>
+    <div class="actions"><select id="va-who" style="width:auto">${people.sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}" data-room="${esc(a.room)}">${esc(a.name)}${a.room?", "+esc(a.room):""}</option>`).join("")}</select>
+    <button class="btn small" id="va-go">See TREE as them</button></div></section>`}
 function signinsHtml(){
   if(!window.FP_HOSTED)return"";
   if(!signins.list&&!signins.error){loadSignins();return `<section class="card"><div class="lbl">Sign-ins</div><div class="empty"><span class="spin"></span> Reading the sign-ins</div></section>`}
@@ -5814,6 +5833,7 @@ function renderSettings(){
   const names=rosterNames();
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
+  ${viewAsHtml()}
   ${signinsHtml()}
   ${lensSettingsHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos and records are kept in the school's private records on GitHub, which asks for under 1 GB and strongly recommends under 5 GB. A deleted photo still counts, since the history is kept.</div>
