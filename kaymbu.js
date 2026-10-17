@@ -83,8 +83,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     return best;
   }
 
-  async function keepPhoto(buf, by) {
-    const id = crypto.randomBytes(6).toString('hex') + '-moment-kaymbu.jpg';
+  async function keepPhoto(buf, by, kind) {
+    const id = crypto.randomBytes(6).toString('hex') + (kind === 'thumb' ? '-moment-kaymbu-thumb.jpg' : '-moment-kaymbu.jpg');
     let r;
     // GitHub refuses a save that lands at the same moment as another, so it is tried again after a short wait
     for (let k = 0; k < 4; k++) {
@@ -187,7 +187,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       seen.add(k);
       try {
         let photo, p;
-        if (m.photo) { p = await bestPhoto(m.photo); if (!p) throw new Error('Kaymbu would not send the photo for "' + (m.title || 'a Moment').slice(0, 40) + '"'); photo = { id: await keepPhoto(p.buf, by), w: p.w, h: p.h }; }
+        if (m.photo) { p = await bestPhoto(m.photo); if (!p) throw new Error('Kaymbu would not send the photo for "' + (m.title || 'a Moment').slice(0, 40) + '"'); photo = { id: await keepPhoto(p.buf, by), w: p.w, h: p.h };
+          // Kaymbu's own smaller copy is kept for cards and lists. The original above is what slides and printouts use.
+          if (p.url !== m.photo) { try { const r = await getBuf(m.photo); const d = r.status === 200 && /^image\//.test(r.type) && r.buf.length < 600 * 1024 ? size(r.buf) : null; if (d) photo.thumb = await keepPhoto(r.buf, by, 'thumb'); } catch (e) {} } }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
         const kids = findChildren(noticed, sub.room);
         const group = (many.get(sameNote(m)) || 0) > 1 && kids.ids.length > 0;
