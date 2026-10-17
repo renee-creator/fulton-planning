@@ -102,6 +102,9 @@ function addTo(k,lines){const ta=document.querySelector('#conf-editor textarea[d
 function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;const id=ed.dataset.id;const cf=S.confs&&S.confs[id];if(!cf||!P.TREE_DRDP_FOR)return;
   // the period follows the conference date, so a new date draws the lists again
   const w=windowOf(cf);const key=id+"|"+w.from+"|"+w.to;
+  // an empty section TREE knows about fills itself once, also after Edit is tapped on a saved form
+  try{const f0=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};for(const k of Object.keys(f0)){if(!f0[k])continue;const ta=ed.querySelector('textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
+    if(ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,String(f0[k]).split("\n").filter(Boolean));try{localStorage.setItem(mark,"1")}catch(e){};const bx=ta.closest("[data-wrap]")?.querySelector(".tree-bring");if(bx&&/small group in TREE|From the observations/.test(bx.textContent))bx.remove()}}}catch(e){}
   if(ed.querySelector(".tree-bringall,.tree-bring-none")){if(ed.dataset.bringKey===key)return;ed.querySelectorAll(".tree-bringall,.tree-bring-none,.tree-bring").forEach(x=>x.remove())}
   ed.dataset.bringKey=key;const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
   const span="from "+long(w.from)+" to "+long(w.to);
@@ -112,12 +115,20 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   if(docs.length){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(wrap&&!wrap.querySelector(".tree-bring")){const box=document.createElement("div");box.className="tree-bring";
     const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. Pieces added to this section print after the form, in the PDF and as a second Word file. A piece not listed here does not print.</div>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields.documentation",dl);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}}
+  // what TREE knows about the child's small group, friends and interests. An empty section fills itself once. A section already written shows it to add.
+  const facts=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};const factKeys=Object.keys(facts).filter(k=>facts[k]);
+  const LBL={smallGroup:"The small group in TREE",friends:"From the observations",interests:"From the observations"};
+  for(const k of factKeys){const lines=String(facts[k]).split("\n").filter(Boolean);const ta=ed.querySelector('#conf-editor textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
+    if(ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,lines);try{localStorage.setItem(mark,"1")}catch(e){}continue}
+    const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring")||(ta&&lines.every(l=>ta.value.includes(l))))continue;
+    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>"+LBL[k]+"</b><ul>"+lines.map(l=>"<li>"+l.replace(/</g,"&lt;")+"</li>").join("")+"</ul>";
+    const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,lines);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
   const sec=[...ed.querySelectorAll(".sheet-sec")].find(x=>/Educator observations/.test(x.querySelector("h2")?.textContent||""));
   const bar=document.createElement("div");
-  if(!items.length&&!docs.length){bar.className="tree-bring-none";bar.style.display="none";ed.append(bar);return}
-  bar.className="tree-bringall";bar.innerHTML="<span>TREE holds "+items.length+" accepted DRDP level"+(items.length===1?"":"s")+" and "+docs.length+" piece"+(docs.length===1?"":"s")+" of documentation "+span+". Each shows under its section.</span>";
+  if(!items.length&&!docs.length&&!factKeys.length){bar.className="tree-bring-none";bar.style.display="none";ed.append(bar);return}
+  bar.className="tree-bringall";const what=[facts.smallGroup&&"the small group and its members",facts.friends&&"friends",facts.interests&&"threads and projects"].filter(Boolean);bar.innerHTML="<span>"+(what.length?"TREE brought in "+(what.length>1?what.slice(0,-1).join(", ")+" and "+what[what.length-1]:what[0])+". It also holds ":"TREE holds ")+items.length+" accepted DRDP level"+(items.length===1?"":"s")+" and "+docs.length+" piece"+(docs.length===1?"":"s")+" of documentation "+span+". Each shows under its section.</span>";
   const b=document.createElement("button");b.type="button";b.className="btn sm primary";b.textContent="Add them all";
-  b.onclick=()=>{let n=0;for(const [k,list] of Object.entries(per))if(list.length)n+=addTo("fields."+k,list.map(line));if(docs.length)n+=addTo("fields.documentation",docs.map(d=>d.title+", "+long(iso(d.at))));b.textContent=n?"Added":"Already here"};
+  b.onclick=()=>{let n=0;for(const [k,list] of Object.entries(per))if(list.length)n+=addTo("fields."+k,list.map(line));if(docs.length)n+=addTo("fields.documentation",docs.map(d=>d.title+", "+long(iso(d.at))));for(const k of factKeys)n+=addTo("fields."+k,String(facts[k]).split("\n").filter(Boolean));b.textContent=n?"Added":"Already here"};
   bar.append(b);if(sec){const t=sec.querySelector(".sheet-title");t?t.after(bar):sec.prepend(bar)}else ed.prepend(bar)}
 document.addEventListener("click",e=>{const a=e.target.closest("[data-treedoc]");if(!a)return;e.preventDefault();const [k,i]=a.dataset.treedoc.split("|");if(P.TREE_OPEN_DOC)P.TREE_OPEN_DOC(k,i)});
 // a conference's documentation prints after its form, and only the pieces listed in its Documentation Shared section,
@@ -135,7 +146,7 @@ if(typeof downloadPdf==="function"&&P.TREE_CONF_DOCS_FILE){const pdf0=downloadPd
   window.downloadDocx=async function(list,child){await docx0(list,child);if(!list||list.length!==1)return;
     try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids):null;
       if(extra)await saveFile(slug(childName(child))+"-conference-documentation-"+String(cf.term||"").toLowerCase()+"-"+(cf.schoolYear||"")+".docx",new Blob([new Uint8Array(await extra.arrayBuffer())],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}))}catch(e){console.error(e)}};}
-let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true});})();</script>
+let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["readonly","disabled"]});})();</script>
 """
 # the monthly portfolio checklist now lives in TREE under Children, so the Conferences page leaves out its Portfolios page
 NOPF = '<style>[data-go="portfolios"]{display:none!important}</style>\n'

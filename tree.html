@@ -1807,6 +1807,25 @@ document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.datas
   if(t&&t.dataset&&t.dataset.pftick){const [id,yr,m]=t.dataset.pftick.split("|");const c=children.get(id);if(c){kidDrdpPatch(c,{portfolio:{[yr]:{[m]:t.checked}}});const cell=t.closest(".pfm");if(cell)cell.classList.toggle("late",!t.checked&&pfMonthTimes(yr,PF_MONTHS.indexOf(m))[1]<Date.now())}}});
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
+// what TREE already knows that belongs on a child's conference form. Only facts from the records, never a judgement.
+window.TREE_CONF_FACTS=(childId,from,to)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+  const out={};const nameOf=k=>k.first+(k.last?" "+k.last[0]:"");const list=a=>a.length<3?a.join(" and "):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+  // the small group, its educator and its members, and what the group's latest plan says it is exploring
+  const g=GROUPS.find(x=>x.name===c.group&&(!x.room||!c.classroom||x.room===c.classroom))||GROUPS.find(x=>x.name===c.group);
+  if(c.group){const mates=kidsAt().filter(k=>k.id!==c.id&&k.group===c.group&&(!g||!g.room||k.classroom===g.room)).sort((a,b)=>a.first.localeCompare(b.first)).map(nameOf);
+    const ps=[...plans.values()].filter(p=>(p.type==="individual"||p.type==="smallgroup")&&((p.groups||[]).includes(c.group)||p.group===c.group)&&p.weekOf&&Date.parse(p.weekOf+"T00:00:00")<=t1).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
+    const p=ps.find(p=>has((p.fields||{}).area))||ps[0];const area=p?firstLine(String((p.fields||{}).area||"").trim(),220):"";
+    const th=p?(typeof planThreads==="function"?planThreads(p).map(x=>x.t&&x.t.name).filter(Boolean):[]):[];
+    out.smallGroup=[`${c.group} group${g&&g.educator?", with "+g.educator:""}.`,mates.length?`Members ${list(mates)}.`:"",area?`Current inquiry, week of ${fmtDate(p.weekOf)}. ${area}`:"",th.length?`Thread followed ${list(th)}.`:""].filter(Boolean).join("\n")}
+  // friends, from the observations that tag them together in the period
+  const ms=[...notices.values()].filter(n=>(n.children||[]).includes(c.id)&&(n.at||0)>=t0&&(n.at||0)<=t1);
+  const co={};for(const n of ms)for(const id of n.children||[])if(id!==c.id&&children.get(id))co[id]=(co[id]||0)+1;
+  const fr=Object.entries(co).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([id,n])=>`${nameOf(children.get(id))} (${n})`);
+  if(fr.length)out.friends=`In observations together most often with ${list(fr)}.`;
+  // the threads and projects the child's observations belong to
+  const tp=[...new Set(ms.flatMap(n=>[n.threadId&&threads.get(n.threadId)&&threads.get(n.threadId).name,n.projectId&&projects.get(n.projectId)&&projects.get(n.projectId).name]).filter(Boolean))];
+  if(tp.length)out.interests=`Threads and projects in ${c.first}'s observations, ${list(tp)}.`;
+  return out};
 // opens a piece of documentation from a conference form
 window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
   const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
