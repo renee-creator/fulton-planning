@@ -2266,9 +2266,9 @@ function renderToday(){
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button class="qmain" data-newmoment="1"><b>Keep a moment</b><span>Words, a photo, or both. One minute.</span></button>
+    <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from moments</span></button>
     <button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
-    <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from moments</span></button>
   </div>
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.length||"Nothing"}</span></div>
