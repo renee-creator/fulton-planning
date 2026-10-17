@@ -130,11 +130,13 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const set = (store.recs.settings.get('main') || {}).doc || {};
     const rooms = Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South'];
     const s = ' ' + words(subject) + ' ';
-    const room = rooms.find(r => s.includes(' ' + words(r) + ' ')) || '';
+    // a subject can name more than one class, since Fulton's classes mix
+    const inSubject = rooms.filter(r => s.includes(' ' + words(r) + ' '));
+    const room = inSubject[0] || '';
     const named = (list, key) => list.filter(x => x[key] && words(x[key]).length > 2 && s.includes(' ' + words(x[key]) + ' ')).sort((a, b) => String(b[key]).length - String(a[key]).length)[0];
     const project = named(live('projects').filter(p => p.status !== 'closed'), 'name');
     const thread = named(live('threads').filter(t => t.status !== 'stopped'), 'name');
-    return { room, projectId: project ? project.id : '', threadId: thread ? thread.id : '' };
+    return { room, rooms: inSubject, projectId: project ? project.id : '', threadId: thread ? thread.id : '' };
   }
 
   // the children a note names, read the same way Tag the children named does on the page. A first name shared by two
@@ -142,12 +144,17 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   function findChildren(text, room) {
     // a child's record has no id inside it, so the id is the name of its record
     const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
-    const pool = room ? kids.filter(c => c.classroom === room) : kids;
+    // the classes named are looked in first. A child from another class is found too, unless a child in a named class shares the first name
+    const rooms = Array.isArray(room) ? room : room ? [room] : [];
+    const inRooms = rooms.length ? kids.filter(c => rooms.includes(c.classroom)) : kids;
+    const pool = [...inRooms, ...kids.filter(c => !inRooms.includes(c) && !inRooms.some(k => k.first === c.first))];
     const found = [], unsure = [];
     for (const c of pool) {
       const re = new RegExp('(^|[^A-Za-z])' + String(c.first).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z])');
       if (!re.test(text)) continue;
-      if (pool.filter(k => k.first === c.first).length > 1) unsure.push(c.first); else found.push(c.id);
+      const same = pool.filter(k => k.first === c.first);
+      // two children who could be meant by this first name are left for an educator
+      if (same.length > 1) unsure.push(c.first); else found.push(c.id);
     }
     return { ids: found, unsure: [...new Set(unsure)] };
   }
@@ -191,9 +198,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
           // Kaymbu's own smaller copy is kept for cards and lists. The original above is what slides and printouts use.
           if (p.url !== m.photo) { try { const r = await getBuf(m.photo); const d = r.status === 200 && /^image\//.test(r.type) && r.buf.length < 600 * 1024 ? size(r.buf) : null; if (d) photo.thumb = await keepPhoto(r.buf, by, 'thumb'); } catch (e) {} } }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
-        const kids = findChildren(noticed, sub.room);
+        const kids = findChildren(noticed, sub.rooms);
         const group = (many.get(sameNote(m)) || 0) > 1 && kids.ids.length > 0;
-        const needs = group || !sub.room || !kids.ids.length || kids.unsure.length > 0;
+        const needs = group || !kids.ids.length || kids.unsure.length > 0;
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const doc = { id, noticed, wonder: '', classroom: sub.room, by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
@@ -206,7 +213,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       } catch (e) { problems.push(e.message); log('A Kaymbu Moment could not be kept', e.message); }
       finally { seen.delete(k); }
     }
-    log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.room ? ', class ' + sub.room : ', no class in the subject'}`);
+    log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.rooms.length ? ', class ' + sub.rooms.join(' and ') : ', no class in the subject'}`);
     // a Moment that could not be kept leaves the email waiting, so the Apps Script sends it again later and only that Moment is added
     if (more) { log(`Kaymbu batch from ${by}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
     if (problems.length) { reply(502, { error: (kept ? `${kept} moments were kept. ` : '') + 'Some could not be kept yet. ' + problems[0], kept }); return; }
@@ -233,7 +240,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         try { const res = await new Promise((ok, no) => { const q = https.request(src, { method: 'HEAD' }, x => { x.resume(); ok(x); }); q.setTimeout(20000, () => q.destroy(new Error('timeout'))); q.on('error', no); q.end(); });
           const mod = res.statusCode === 200 ? Date.parse(res.headers['last-modified'] || '') : 0; if (photoDay({ modified: mod }, d.at)) at = mod; } catch (e) {}
       }
-      const left = !d.classroom || !ids.length || kids.unsure.length > 0;
+      const left = !ids.length || kids.unsure.length > 0;
       const moved = at !== d.at;
       Object.assign(d, { children: ids, at, week: mondayOf(laDay(at)) });
       d.kaymbu = Object.assign({}, d.kaymbu, { v: 3, dated: moved ? 'photo' : (d.kaymbu.dated || 'sent'), check: d.kaymbu.check === false && d.kaymbu.checkedBy ? false : left });
