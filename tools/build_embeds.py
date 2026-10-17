@@ -33,6 +33,7 @@ shim = rep(shim, '''  const DEFAULT_SERVER="https://fulton-conferences.onrender.
   const SERVER= local? want : DEFAULT_SERVER;''', "  " + SERVER_JS)
 shim = shim.replace('"fc-token"', '"fp-token"').replace('"fc-name"', '"fp-name"')
 # signed out inside TREE, TREE's own sign-in takes over
+shim = rep(shim, 'const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra});', 'const write=async(op,extra)=>{ if(window.TREE_VA){ if(!window.__vaSaid){ window.__vaSaid=1; try{ toast("Nothing is saved while you see TREE as "+window.TREE_VA.name+"."); }catch(e){} } return (extra&&extra.data)||Store.data[kind]?.[id]||null; } const r=await api("/api/write",{op,kind,id,...extra});')
 shim = rep(shim, "if(!Auth.token) await showGate();", "if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return new Promise(()=>{}); } await showGate(); }")
 shim = shim.replace("Fulton conference server", "TREE server").replace("conference server", "TREE server")
 app = rep(app, '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">',
@@ -138,8 +139,10 @@ let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimati
 """
 # the monthly portfolio checklist now lives in TREE under Children, so the Conferences page leaves out its Portfolios page
 NOPF = '<style>[data-go="portfolios"]{display:none!important}</style>\n'
+# while the director sees TREE as an educator, these pages follow along and save nothing
+VA = '<script>window.TREE_VA=(()=>{try{return window.parent!==window&&window.parent.TREE_VIEW_AS||null}catch(e){return null}})();if(window.TREE_VA){const st=document.createElement("style");st.textContent=\'[data-go="settings"]{display:none!important}\';document.head.appendChild(st)}</script>\n'
 NODIR = '<script>try{if(localStorage.getItem("fp-director")!=="1"){const st=document.createElement("style");st.textContent=\'[data-go="settings"]{display:none!important}\';document.head.appendChild(st)}}catch(e){}</script>\n'
-out = head("Family Conferences, TREE") + TELL + NODIR + NOPF + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
+out = head("Family Conferences, TREE") + TELL + VA + NODIR + NOPF + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
 (root / "tree-conferences.html").write_text(out)
 print("tree-conferences.html", len(out), "bytes")
 
@@ -180,6 +183,8 @@ cal = rep(cal, '<button type="button" data-view="day" aria-pressed="false">Day</
 cal = rep(cal, 'function computeRange(){\n', 'function computeRange(){\n  if(S.view==="next") return {from:S.anchor, to:addDays(S.anchor,6)};\n')
 cal = rep(cal, 'function titleText(){\n', 'function titleText(){\n  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"short",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"short",day:"numeric"});\n')
 cal = rep(cal, '  if(S.view==="month") body=renderMonth(idx);\n', '  if(S.view==="next") body=renderNext(idx);\n  else if(S.view==="month") body=renderMonth(idx);\n')
+cal = rep(cal, "else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; }", "else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; if(window.TREE_VA){ S.me=window.TREE_VA.name; S.director=false; S.shared=false; } }")
+cal = rep(cal, "async function api(path, body){\n  if(PREVIEW) return PREVIEW.call(path, body||{});", "async function api(path, body){\n  if(PREVIEW) return PREVIEW.call(path, body||{});\n  if(window.TREE_VA && path!=='/api/view'){ const e=new Error('Nothing is saved while you see TREE as '+window.TREE_VA.name+'.'); e.code='view_as'; throw e; }")
 cal = rep(cal, 'function step(dir){\n', 'function step(dir){\n  if(S.view==="next"){ go(null,addDays(S.anchor,7*dir)); return; }\n')
 cal = rep(cal, 'function renderMonth(idx){', '''// today first, then the six days after it, each with everything on it
 function renderNext(idx){
@@ -213,6 +218,6 @@ function renderNext(idx){
 function renderMonth(idx){''')
 cal = cal.replace("<!--PREVIEW-->", "")
 cut = cal.index("<style>")
-out = head("Calendar, TREE") + TELL + cal[:cut].replace("<title>Fulton Calendar</title>", "") + cal[cut:] + "\n</body>\n</html>\n"
+out = head("Calendar, TREE") + TELL + VA + cal[:cut].replace("<title>Fulton Calendar</title>", "") + cal[cut:] + "\n</body>\n</html>\n"
 (root / "tree-calendar.html").write_text(out)
 print("tree-calendar.html", len(out), "bytes")
