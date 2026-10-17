@@ -289,6 +289,21 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .nf-photo{margin:0 0 10px;border-radius:10px;overflow:hidden;background:var(--bg);text-align:center}
 .nf-photo img{display:block;margin:0 auto;max-width:100%;max-height:520px;object-fit:contain}
 .nw-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start;margin-top:4px}
+/* the evidence a plan began from, beside the plan while it is written */
+#evbtn{position:fixed;right:18px;bottom:18px;z-index:40;box-shadow:var(--shadow)}
+#evpanel{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:45;background:var(--paper);border-left:1px solid var(--line);box-shadow:-4px 0 18px rgba(27,41,32,.12);display:flex;flex-direction:column}
+#evpanel .evhead{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+#evpanel .evbody{overflow:auto;padding:12px 14px 40px;display:grid;gap:12px;align-content:start}
+#evpanel .evsrc{background:var(--marigold-soft);border-radius:8px;padding:10px 12px;font-size:14.5px;display:grid;gap:4px}
+#evpanel .evob{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:6px;font-size:14.5px}
+#evpanel .evob .evrow{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start}
+#evpanel .evob img{width:84px;height:104px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
+#evpanel .evq{border-left:3px solid var(--marigold);padding-left:8px;font-style:italic}
+@media (min-width:1100px){body.evopen{padding-right:430px}}
+#evpanel .evclamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;cursor:pointer}
+#evpanel .evclamp.full{display:block}
+@media (max-width:760px){#evbtn{bottom:92px}#evpanel{top:auto;height:62vh;width:100vw;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}}
+@media print{#evbtn,#evpanel{display:none!important}}
 .nw-thumb img{display:block;width:120px;height:150px;object-fit:cover;border-radius:8px;background:var(--bg)}
 @media (max-width:520px){.nw-row{grid-template-columns:84px minmax(0,1fr)}.nw-thumb img{width:84px;height:110px}}
 .warnline{color:var(--clay)}
@@ -808,6 +823,7 @@ function askDelete2(wrap,id){
 
 /* ---------- Sidebar ---------- */
 function renderAll(){renderNav();renderWeek();renderFilters();renderList();renderMain()}
+{const inner=renderMain;renderMain=function(){inner();try{evSync()}catch(e){console.warn("Evidence panel",e)}}}
 function renderNav(){document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.view===view));if(typeof renderTreeNav==="function")renderTreeNav()}
 function renderWeek(){$("#wklabel").textContent=fmtDate(week)}
 function renderFilters(){
@@ -1289,7 +1305,7 @@ function lockKey(){
   return "";
 }
 function lockHasContent(k){const [kind,id]=k.split(":");
-  if(kind==="plan"){const p=plans.get(id);return !!p&&(Object.values(p.fields||{}).some(has)||Object.values(p.story||{}).some(has))}
+  if(kind==="plan"){const p=plans.get(id);if(p&&p.createdAt&&Date.now()-p.createdAt<15*60e3&&(p.educator===me()||!p.educator))return false;return !!p&&(Object.values(p.fields||{}).some(has)||Object.values(p.story||{}).some(has))}
   if(kind==="slide"){const s=slides.get(id);if(FRESH_SLIDES.has(id))return false;return !!s&&(has(s.title)||has(s.text)||(s.quotes||[]).length>0)}
   if(kind==="proj"){const x=projects.get(id);return !!x&&(has(x.name)||has(x.experience))}
   return true;
@@ -2947,10 +2963,24 @@ function patternRoom(ns){if(nRoom!=="All")return nRoom;const c={};for(const n of
 function planFromPattern(p){const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
   const np=newPlan("individual",{classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
   np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");
-  np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);
+  np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);np.source={kind:"pattern",name:p.name||"",ids:ns.map(n=>n.id),at:Date.now()};
   if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
   toast("The plan begins with these observations. Write the area and your intent in your own words.")}
+// a plan from a project. It continues one of the project's threads when one is chosen, and it keeps the project beside it
+function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNotices(x);
+  const room=(th&&th.classroom)||x.home||(ns.length?patternRoom(ns):"")||myRoom()||"";
+  const np=newPlan("individual",{classroom:room,projectId:x.id,source:{kind:"project",id:x.id,threadId:th?th.id:"",at:Date.now()}});
+  np.educator=me()||np.educator||"";
+  if(th){np.threadId=th.id;if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;
+    const first=[...(th.weeks||[])].sort()[0];if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, part of the project ${x.name}.`}
+  else{const ws=projWeeks(x);if(ws.length)np.fields.dates=`Continuing the project ${x.name}, seen in plans since the week of ${fmtDate(ws[0])}.`}
+  const last=th&&threadLastRemarks(th);
+  if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}
+  else{const pick=(th?threadNotices(th):ns).slice(0,6).reverse();
+    if(pick.length){np.fields.observation=pick.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");np.noticeAdded=pick.map(n=>n.id);np.noticeUsed=pick.map(n=>n.id)}}
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  toast(th?`The plan continues ${th.name}. The project's evidence is beside it.`:"The plan begins from the project. Its evidence is beside it.")}
 // the director follows a pattern as a thread, and its observations are kept for that thread
 function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
   const weeks=[...new Set(ns.map(n=>n.week||mondayOf(new Date(n.at||Date.now()))))].sort();
@@ -3173,7 +3203,55 @@ function noticeNoteHtml(p){
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
 const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
-function projPlans(x){const m=new Map();for(const n of projNotices(x))m.set(n.id,noticeAsPlan(n));for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=rec(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}return [...m.values()]}
+/* ---------- The evidence a plan began from ----------
+   A plan started from a pattern, a thread or a project keeps that evidence beside it while it is written. Plans that
+   follow a thread, or that took in observations, show theirs the same way. Nothing here changes the plan. */
+let evOpen=LS.get("fps.evopen",window.innerWidth>760?"1":"0")!=="0";
+function planEvidence(p){
+  if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return null;
+  const src=p.source||{},heads=[],seen=new Map();
+  const take=ns=>{for(const n of ns)if(n&&!seen.has(n.id))seen.set(n.id,n)};
+  const x=(src.kind==="project"&&projects.get(src.id))||(p.projectId&&projects.get(p.projectId));
+  if(x){heads.push({kind:"Project",name:x.name,open:`data-popen="${x.id}"`,lines:[projUnder(x)&&["What may lie underneath",projUnder(x)],projIntent(x)&&["Our intent as educators",projIntent(x)]].filter(Boolean)});take(projNotices(x))}
+  for(const {t} of planThreads(p)){const last=threadLastRemarks(t);
+    heads.push({kind:"Thread",name:t.name,open:`data-tsee="${t.id}"`,lines:[t.question&&["The question",t.question],last&&["Last written about it",last.text]].filter(Boolean),
+      from:(t.evidence||[]).filter((e,i,all)=>e.planId!==p.id&&has(e.text)&&all.findIndex(o=>String(o.text).trim()===String(e.text).trim())===i).sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,8)});take(threadNotices(t))}
+  if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
+  take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
+  const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
+  return heads.length||obs.length?{heads,obs}:null}
+function evObHtml(n,used){
+  const kids=(n.children||[]).map(id=>children.get(id)).filter(Boolean).map(c=>c.first);
+  const words=childLines(n.noticed||"",true).slice(0,3);
+  const text=`<div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}`;
+  return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${used.has(n.id)?" \u00b7 in this plan":""}</div>
+    ${n.photo?`<div class="evrow"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="min-width:0">${text}</div></div>`:text}
+    ${words.map(l=>`<div class="evq">${esc(l.words)}${l.name?` <span class="cnt">${esc(l.name)}</span>`:""}</div>`).join("")}
+    ${kids.length?`<div class="cnt">${esc(kids.join(", "))}</div>`:""}</div>`}
+function evSync(){
+  const p=view==="plans"&&currentId&&plans.get(currentId);const ev=p&&planEvidence(p);
+  let b=$("#evbtn"),pn=$("#evpanel");
+  if(!ev){if(b)b.remove();if(pn)pn.remove();document.body.classList.remove("evopen");return}
+  if(!b){b=document.createElement("button");b.id="evbtn";b.className="btn";document.body.appendChild(b)}
+  {const c=ev.obs.length+ev.heads.reduce((k,h)=>k+(h.from||[]).length,0);b.textContent=c?`The evidence, ${c}`:"The evidence"}b.hidden=evOpen;
+  document.body.classList.toggle("evopen",evOpen);
+  if(!evOpen){if(pn)pn.remove();return}
+  if(!pn){pn=document.createElement("aside");pn.id="evpanel";pn.setAttribute("aria-label","The evidence this plan began from");document.body.appendChild(pn)}
+  const used=new Set(p.noticeUsed||[]);
+  const key=p.id+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
+  if(pn.dataset.key===key)return;const top=pn.querySelector(".evbody")?.scrollTop||0;pn.dataset.key=key;
+  pn.innerHTML=`<div class="evhead"><b>The evidence this plan began from</b><button class="linkbtn" data-evshut="1">Close</button></div>
+    <div class="evbody">${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
+      ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
+      ${(h.from||[]).length?`<div><span class="cnt">From the plans that followed it</span>${h.from.map(e=>`<div style="margin-top:4px">${esc(e.text)} <span class="cnt">${e.week?"Week of "+esc(fmtDate(e.week).replace(/, \d{4}$/,"")):""}${plans.has(e.planId)?` <button class="linkbtn" data-open="${e.planId}">Open</button>`:""}</span></div>`).join("")}</div>`:""}</div>`).join("")}
+    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${ev.obs.slice(0,40).map(n=>evObHtml(n,used)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:`<div class="muted">No observations yet. They appear here as they are kept.</div>`}</div>`;
+  pn.querySelector(".evbody").scrollTop=top}
+document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
+document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
+  evOpen=t.id==="evbtn";LS.set("fps.evopen",evOpen?"1":"0");evSync()});
+document.addEventListener("click",e=>{const t=e.target.closest("#evpanel [data-popen],#evpanel [data-tsee]");if(t&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}});
+function projPlans(x){const m=new Map();for(const n of projNotices(x))m.set(n.id,noticeAsPlan(n));for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=rec(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}
+  for(const p of plans.values())if(p.projectId===x.id&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p);return [...m.values()]}
 function projWeeks(x){
   const s=new Set();for(const {t} of projThreads(x))(t.weeks||[]).forEach(w=>s.add(w));projPlans(x).forEach(p=>s.add(p.weekOf));
   const ws=[...s].filter(Boolean).sort();if(!ws.length)return[];const out=[];for(let w=ws[0];w<=ws[ws.length-1]&&out.length<60;w=addDays(w,7))out.push(w);return out;
@@ -3245,8 +3323,9 @@ function renderProject(x){
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-pback="1">All projects${projects.size>1?", "+projects.size:""}</button></div><div class="head"><div class="head-row"><div style="flex:1;min-width:0">
       <div><span class="eyebrow">Project · ${esc(x.home?x.home+" class":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
-      <div class="actions">${printTwo("project",x.id)}
+      <div class="actions"><button class="btn small" data-pplan="${x.id}">Start a plan from this project</button>${printTwo("project",x.id)}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
+    <div id="pplan-pick"></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
   if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea>${projStrHtml(x,"closure")}</section>`;
@@ -3326,7 +3405,7 @@ function renderProject(x){
   if(!isDirector())lockProjectPage();
 }
 // an educator reads a project, adds a thread to it, keeps observations for it and plans from it. Changing it is the director's.
-const PROJ_OPEN=["print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
+const PROJ_OPEN=["pplan","pplango","pplanno","print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
 function lockProjectPage(){const m=$("#main");if(!m)return;
   m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{el.readOnly=true;el.setAttribute("aria-readonly","true")});
   m.querySelectorAll("select").forEach(el=>{if(!el.dataset.ptadd)el.disabled=true});
@@ -5030,8 +5109,17 @@ async function threadsClick(t){
   if(t.dataset.tdel){$("#tdel-"+t.dataset.tdel).innerHTML=`<span class="confirm">Remove this thread and its quotes and notes for everyone? This cannot be undone. The plans themselves stay. <button class="btn warn small" data-tdelyes="${t.dataset.tdel}">Remove</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
   if(t.dataset.tdelno){renderMain();return true}
   if(t.dataset.tdelyes){const id=t.dataset.tdelyes;threads.delete(id);if(db)db.doc("threads/"+id).delete().catch(()=>{});else LS.set("fps.threads",[...threads.values()]);renderMain();return true}
+  if(t.dataset.pplan){const x=projects.get(t.dataset.pplan);if(!x)return true;const ths=projThreads(x);
+    if(ths.length<2){planFromProject(x,ths[0]?ths[0].t.id:"");return true}
+    const el=$("#pplan-pick");if(el)el.innerHTML=`<section class="ref" style="background:var(--marigold-soft)"><b>Which thread does this plan continue?</b>
+      <div class="muted">The plan's work flows back into that thread. Every observation in the project stays beside the plan while you write.</div>
+      <div class="actions" style="flex-wrap:wrap">${ths.map(o=>`<button class="btn small ghost" data-pplango="${x.id}|${o.t.id}">${esc(o.t.name)}${o.t.classroom?" \u00b7 "+esc(o.t.classroom):""}</button>`).join("")}
+      <button class="btn small ghost" data-pplango="${x.id}|">The project as a whole</button><button class="linkbtn" data-pplanno="1">Cancel</button></div></section>`;
+    return true}
+  if(t.dataset.pplango!=null){const [xid,tid]=t.dataset.pplango.split("|");const x=projects.get(xid);if(x)planFromProject(x,tid);return true}
+  if(t.dataset.pplanno){const el=$("#pplan-pick");if(el)el.innerHTML="";return true}
   if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
-    const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
+    const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
     // the thread's last reflection opens the observation, as last week's Final remarks do when a plan continues
     {const last=threadLastRemarks(th);if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}}
     plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
