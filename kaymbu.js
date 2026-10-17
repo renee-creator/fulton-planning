@@ -83,7 +83,13 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
 
   async function keepPhoto(buf, by) {
     const id = crypto.randomBytes(6).toString('hex') + '-moment-kaymbu.jpg';
-    const r = await gh('PUT', `/repos/${repo}/contents/originals/${id}`, { message: `Add moment photo from Kaymbu shared by ${by}`, content: buf.toString('base64'), branch: store.branch });
+    let r;
+    // GitHub refuses a save that lands at the same moment as another, so it is tried again after a short wait
+    for (let k = 0; k < 4; k++) {
+      if (k) await new Promise(ok => setTimeout(ok, 1500 * k));
+      r = await gh('PUT', `/repos/${repo}/contents/originals/${id}`, { message: `Add moment photo from Kaymbu shared by ${by}`, content: buf.toString('base64'), branch: store.branch });
+      if (r.status !== 409 && r.status !== 422 && r.status < 500) break;
+    }
     if (r.status !== 201 && r.status !== 200) throw new Error('GitHub answered ' + r.status + ' when keeping a Kaymbu photo');
     store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length }); cacheFile(id, buf);
     return id;
@@ -166,8 +172,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const sent = Date.parse(body.date) || Date.now(), onDay = subjectDay(body.subject, sent);
     const sub = readSubject(body.subject);
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
-    let kept = 0, again = 0, check = 0; const problems = [];
+    let kept = 0, again = 0, check = 0, more = 0; const problems = []; const t0 = Date.now();
     for (const [i, m] of moments.entries()) {
+      // Google waits a minute for an answer, so a large batch is kept in parts and the rest comes on the next check
+      if (Date.now() - t0 > 40000) { more = moments.length - i; break; }
       const k = m.photo ? (m.photo.split('/').pop().split('?')[0].replace(/_display(\.\w+)$/i, '$1')) : crypto.createHash('sha1').update(m.title + '\n' + m.note).digest('hex').slice(0, 16);
       if (have.has(k) || seen.has(k)) { again++; continue; }
       seen.add(k);
@@ -191,6 +199,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     }
     log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.room ? ', classroom ' + sub.room : ', no classroom in the subject'}`);
     // a Moment that could not be kept leaves the email waiting, so the Apps Script sends it again later and only that Moment is added
+    if (more) { log(`Kaymbu batch from ${by}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
     if (problems.length) { reply(502, { error: (kept ? `${kept} moments were kept. ` : '') + 'Some could not be kept yet. ' + problems[0], kept }); return; }
     reply(200, { ok: true, kept, again, check, classroom: sub.room, problems });
   }
