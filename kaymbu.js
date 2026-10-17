@@ -123,7 +123,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   const photoDay = (p, sent) => p && p.modified && p.modified <= sent + 36e5 && p.modified > sent - 400 * 864e5 ? p.modified : 0;
   const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
 
-  // the subject names the classroom, and can also name a project or a thread the moments belong to
+  // the subject names the class, as North or North Class, and can also name a project or a thread the moments belong to
   function readSubject(subject) {
     const set = (store.recs.settings.get('main') || {}).doc || {};
     const rooms = Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South'];
@@ -197,7 +197,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       } catch (e) { problems.push(e.message); log('A Kaymbu Moment could not be kept', e.message); }
       finally { seen.delete(k); }
     }
-    log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.room ? ', classroom ' + sub.room : ', no classroom in the subject'}`);
+    log(`Kaymbu email from ${by}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.room ? ', class ' + sub.room : ', no class in the subject'}`);
     // a Moment that could not be kept leaves the email waiting, so the Apps Script sends it again later and only that Moment is added
     if (more) { log(`Kaymbu batch from ${by}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
     if (problems.length) { reply(502, { error: (kept ? `${kept} moments were kept. ` : '') + 'Some could not be kept yet. ' + problems[0], kept }); return; }

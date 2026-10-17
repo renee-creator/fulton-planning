@@ -2163,9 +2163,9 @@ function todayWaiting(){
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write"});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
-  // moments shared from Kaymbu where TREE could not tell the classroom or the children, for that classroom's educators and the director
+  // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!n.classroom||n.classroom===rm)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
-    out.push({dot:"sky",t:"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),!n.classroom?"No classroom was in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+    out.push({dot:"sky",t:"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),!n.classroom?"No class was named in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
   // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
