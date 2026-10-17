@@ -1966,7 +1966,7 @@ function todayWaiting(){
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!n.classroom||n.classroom===rm)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
-    out.push({dot:"sky",t:"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),!n.classroom?"No class was named in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!n.classroom?"No class was named in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
   // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
@@ -1992,7 +1992,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu moment"?["kaymbu","Kaymbu moments to tag"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu moment"?["kaymbu","Kaymbu moments to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
   :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
@@ -2730,8 +2730,11 @@ function nfKidsHtml(n){
   // the classroom's own children come first. Children from other classrooms wait one tap away, and any already tagged stay in view.
   const kids=all.filter(c=>!n.classroom||c.classroom===n.classroom||on.has(c.id));const others=n.classroom?all.filter(c=>c.classroom!==n.classroom&&!on.has(c.id)):[];
   const chip=c=>`<button class="chip ${on.has(c.id)?"on":""}" data-nfkid="${esc(c.id)}" type="button">${esc(c.first)}${c.last?" "+esc(c.last[0])+".":""}</button>`;
+  // photos that came from Kaymbu with one shared note offer the children it names, to keep only those in this photo
+  const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
+  if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this classroom yet.":"Choose the classroom below to tag children."}</span>`}</div>
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this moment, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this classroom yet.":"Choose the classroom below to tag children."}</span>`}</div>
     ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classrooms, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
 function renderNoticeForm(){
@@ -2953,7 +2956,7 @@ function noticesClick(t){
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
     delete n.day;delete n.fromClaude;
     // saving a moment from Kaymbu is the educator's check of its classroom and children
-    if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure}
+    if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure;delete n.kaymbu.suggest}
     saveNotice(n);noticeForm=null;
     if(editing){if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
       renderAll();const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}toast("Changes saved.");return true}
