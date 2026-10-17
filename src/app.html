@@ -1633,12 +1633,13 @@ function saveSlideSoon(s){slides.set(s.id,s);clearTimeout(slideTimers[s.id]);sli
 // a slide with no title of its own is named from its moment, so no slide is ever called Untitled
 // what the educator noticed and wondered, for a slide's words. Each child's own line becomes a quote instead.
 // a photographed sheet of children's words is the children's, so only the educator's wondering comes across from it
-function momentText(n){if(!n)return"";if(momentHeading(n))return wonderLine(n.wonder);const said=momentBody(n).split("\n").map(l=>l.trim()).filter(l=>l&&!NAMED_LINE.test(l)).join(" ");return [said,wonderLine(n.wonder)].filter(Boolean).join("\n\n")}
+// what the educator noticed, without the lines that quote a child, which go to the children's words, and then what they wondered
+function momentText(n){if(!n)return"";const said=momentBody(n).split("\n").map(l=>l.trim()).filter(l=>l&&!NAMED_LINE.test(l)).join(" ");return [said,wonderLine(n.wonder)].filter(Boolean).join("\n\n")}
 // only the educators' own title is ever printed. On screen, a slide without one is listed as A slide.
 function slideTitle(s){return s&&String(s.title||"").trim()?s.title:"A slide"}
 function newSlide(n){
   if(needName())return null;
-  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:n?momentText(n):"",autoText:!!n,photos:n&&n.photo?[n.id]:[],land:false,
+  const s={id:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:n?momentHeading(n):"",text:n?momentText(n):"",autoText:!!(n&&momentText(n)),autoFilled:!!(n&&momentText(n)),photos:n&&n.photo?[n.id]:[],land:false,
     momentIds:n?[n.id]:[],children:n?[...(n.children||[])]:[],quotes:n?childLines(n.noticed,true).slice(0,2):[],measures:[],showMeasures:false,names:"",classroom:n?n.classroom||"":myRoom()};
   FRESH_SLIDES.add(s.id);saveSlide(s);slideOpen=s.id;LS.set("tree.slide",slideOpen);goView("slide");return s;
 }
@@ -1706,7 +1707,8 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="slides"||!dec
 });
 function renderSlide(){
   const s=slides.get(slideOpen);if(!s){$("#main").innerHTML=`<div class="empty">That slide is not here.</div>`;return}
-  if(!has(s.text)&&!s.autoText){const t=slideSources(s).map(momentText).filter(Boolean).join("\n\n");if(t){s.text=t;s.autoText=true;saveSlide(s)}}
+  // an empty slide takes its moments' words, unless those words were filled once already and an educator cleared them
+  if(!has(s.text)&&!s.autoFilled){const t=slideSources(s).map(momentText).filter(Boolean).join("\n\n");if(t){s.text=t;s.autoText=true;s.autoFilled=true;saveSlide(s)}}
   const mode=s.names||PRINT.names;const pool=[...notices.values()].filter(n=>n.photo&&n.photo.w).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,60);
   const sel=slidePhotos(s);const src=slideSources(s);const lines=[];const seen=new Set();for(const n of src)for(const l of childLines(n.noticed,true)){const k=l.words.toLowerCase();if(!seen.has(k)){seen.add(k);lines.push(l)}}
   const qs=new Set((s.quotes||[]).map(q=>q.words.toLowerCase()));const sg=slideSug[s.id];
@@ -1778,7 +1780,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.nwdrdp){nwDrdp[t.dataset.nwdrdp]=!nwDrdp[t.dataset.nwdrdp];renderMain();return}
   if(view!=="slide")return;
   const s=slides.get(slideOpen);if(!s)return;
-  if(t.dataset.sfph){const id=t.dataset.sfph;const cur=slidePhotos(s);if(cur.includes(id))s.photos=cur.filter(x=>x!==id);else if(cur.length>=3){toast("A slide holds up to three photos. Take one off first.");return}else{s.photos=[...cur,id];const n=notices.get(id);if(n&&!s.momentIds.includes(id))s.momentIds.push(id);if(n&&!s.classroom)s.classroom=n.classroom||"";if(n&&!has(s.title))s.title=momentHeading(n);if(n&&!has(s.text)){s.text=momentText(n);s.autoText=true}}
+  if(t.dataset.sfph){const id=t.dataset.sfph;const cur=slidePhotos(s);if(cur.includes(id))s.photos=cur.filter(x=>x!==id);else if(cur.length>=3){toast("A slide holds up to three photos. Take one off first.");return}else{s.photos=[...cur,id];const n=notices.get(id);if(n&&!s.momentIds.includes(id))s.momentIds.push(id);if(n&&!s.classroom)s.classroom=n.classroom||"";if(n&&!has(s.title))s.title=momentHeading(n);if(n&&!has(s.text)&&momentText(n)){s.text=momentText(n);s.autoText=true;s.autoFilled=true}}
     saveSlide(s);renderSlide();return}
   if(t.dataset.sfset){const k=t.dataset.sfset,v=t.dataset.v;if(k==="sq")s.sq=v==="1";else{s[k]=v;if(k==="pos")delete s.land}saveSlide(s);renderSlide();return}
   if(t.dataset.sfjpg){slideJpgSave(s);return}
