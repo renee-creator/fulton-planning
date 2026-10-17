@@ -40,7 +40,7 @@ Only the director changes a project. Educators read it, add a thread to it, keep
 
 ## Team inquiries
 
-Plans, then Inquiries. A team inquiry is where the team thinks through a question about children's development and its own practice, such as a child running from a request, kept apart from curriculum plans so a plan never becomes about a behavior. Everyone reads and writes in them. Each belongs to one class or to the whole school, and only the director removes one.
+Plans, then Inquiries. A team inquiry is where the team thinks through a question about children's development and its own practice, such as a child running from a request, kept beside the curriculum plans so a plan never becomes about a behavior. Everyone reads them. The director starts and writes each one with the team, the way a project works. Educators add observations and threads to it, write what happened when the team tried something, and start plans from it, and the server refuses any other change from them. Each belongs to one class or to the whole school. The director can draft any section from the inquiry's evidence, or strengthen the wording, using only what educators wrote.
 
 An inquiry holds what we see, when and where it happens, readings of what it might be telling us (set aside, never deleted, so the change in thinking stays visible), what we will try, what we will watch for, a date to look again, and each time the team looked again. It can be read through any lens, with a place to answer the lens questions.
 

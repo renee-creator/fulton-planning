@@ -571,6 +571,17 @@ async function handle(req, res) {
     if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
+    // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
+    if (kind === 'inquiries' && op !== 'delete' && !isDirector(me.name)) {
+      if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'Only the director starts a team inquiry.'); return; }
+      const OPEN = ['obs', 'threads', 'projects', 'tries', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
+      const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
+      const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
+      const keeps = k => (cur.doc[k] || []).every(v => (next[k] || []).includes(v));
+      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return a.length === b.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum); };
+      const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
+      if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
+    }
     if (kind === 'projects' && op !== 'create' && cur && !cur.deleted && !isDirector(me.name)) {
       const OPEN = ['threads', 'classrooms', 'updatedAt', 'updatedByName', 'savedAt'];
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
