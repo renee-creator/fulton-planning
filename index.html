@@ -164,6 +164,9 @@ textarea{resize:vertical;line-height:1.55;min-height:84px}
 .ref b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sky)}
 .webwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px}
 @media (max-width:1100px){.webwrap{grid-template-columns:minmax(0,1fr)}}
+/* the web form never grows past a phone screen */
+.webwrap>div{min-width:0;grid-template-columns:minmax(0,1fr)}
+.webwrap input,.webwrap textarea,.webwrap .fld-label{min-width:0;max-width:100%}
 .branch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
 .branch textarea{min-height:52px}
 .svgbox{border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
@@ -308,6 +311,11 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .nw-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start;margin-top:4px}
 .tconn{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:8px 12px;border-radius:8px;background:var(--marigold-soft);font-size:14.5px}
 #evpanel details>summary{cursor:pointer}
+.nwgroup{display:grid;gap:0}
+.nwgroup>article{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.nwmore{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);padding:10px 16px;background:var(--paper);display:grid;gap:8px}
+.nwstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.nwstrip img{width:72px;height:90px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
 .iqobs{display:grid;gap:10px}
 .iqob{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14.5px;background:var(--paper)}
 .iqob.nophoto{grid-template-columns:minmax(0,1fr)}
@@ -1540,6 +1548,8 @@ function lockHasContent(k){const [kind,id]=k.split(":");
 const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,.drev,[data-drback],#slideprev,[data-sfmoment],.prow,.lockbar,.ai,#deckbar,section.review";
 function applyLock(){
   const main=$("#main");if(!main)return;const k=lockKey();
+  // the evidence beside a plan offers its add buttons only while the plan is open to edit
+  queueMicrotask(()=>{try{if(typeof evSync==="function")evSync()}catch(e){}});
   if(k!==lockFor){lockFor=k;lockOn=!!k&&lockHasContent(k)}
   main.classList.toggle("locked",!!k&&lockOn);
   if(!k||!lockOn){const b=main.querySelector(".lockbar");if(b)b.remove();return}
@@ -2321,7 +2331,7 @@ function waitingHtml(list){
       rows.push(`<details class="tgroup"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(items.slice(0,2).map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):(x.s||x.t),56)).join(". "))}${items.length>2?", and more":""}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
     else rows.push(row(w))}
   const shown=todayAll?rows:rows.slice(0,5);
-  return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":`Show all ${rows.length}`}</button>`:""}`;
+  return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
 function renderToday(){
@@ -2431,7 +2441,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.newmoment){e.stopImmediatePropagation();document.getElementById("newnotice").click();return}
   if(t.dataset.newind!=null){e.stopImmediatePropagation();startIndividual(t.dataset.newind,t.dataset.room);return}
   if(t.dataset.tconf){e.stopImmediatePropagation();openConference(t.dataset.tconf);return}
-  if(t.dataset.mopen){e.stopImmediatePropagation();const n=notices.get(t.dataset.mopen);if(!n)return;nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}},80);return}
+  if(t.dataset.mopen){e.stopImmediatePropagation();const n=notices.get(t.dataset.mopen);if(!n)return;nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+n.id);if(el){const d=el.closest("details");if(d)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}},80);return}
   if(t.dataset.twall){e.stopImmediatePropagation();const x=projects.get(t.dataset.twall);if(!x)return;if(!x.wall){x.wall=wallProposal(x);saveProject(x)}wallOpen[x.id]=true;openProject(x.id);setTimeout(()=>{const el=$("#pwall");if(el)el.scrollIntoView({block:"start"})},60);return}
 },true);
 
@@ -3119,6 +3129,21 @@ function noticeBrowseHtml(){
     <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}</div>
     ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No observations kept for this view yet.</div>`}</section>`;
 }
+// a quote counts as a child's words when a child is named as saying it, or it is a statement in an observation.
+// An unnamed question in an observation is most often the educator's prompt.
+const childsWords=l=>!!l.name||(!l.title&&!/\?\s*$/.test(l.words));
+// photos that share one note are one story, so a list shows them together
+function shareGroups(list){const groups=[],by=new Map();
+  for(const n of list){const t=String(n.noticed||"").trim().toLowerCase();const k=n.photo&&t.length>=12?t+"|"+momentRooms(n).join("+"):"";
+    if(k&&by.has(k))by.get(k).push(n);else{const g=[n];groups.push(g);if(k)by.set(k,g)}}
+  return groups}
+// photos shared from Kaymbu with one note are one story. They show as one card with the other photos beside it, and each
+// photo keeps its own card, with its own buttons, one tap away.
+function noticeCards(list){const groups=shareGroups(list);
+  return groups.map(g=>{if(g.length===1)return noticeCard(g[0]);const [first,...more]=g;
+    return `<div class="nwgroup">${noticeCard(first)}
+      <div class="nwmore"><div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div><div class="nwstrip">${more.map(n=>`<a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Another photo with this note" loading="lazy"></a>`).join("")}</div>
+      <details><summary class="linkbtn">Each photo on its own, to tag children or change one</summary><div style="display:grid;gap:12px;margin-top:10px">${more.map(noticeCard).join("")}</div></details></div></div>`}).join("")}
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
@@ -3232,12 +3257,12 @@ function renderMoments(){
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
-    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">TREE reads the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
+    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   <div class="stats">
     <div class="stat"><b>${all.length}</b><span>observations in this view</span></div>
     <div class="stat"><b>${people}</b><span>educators keeping them</span></div>
-    <div class="stat"><b>${open}</b><span>not yet claimed by a project or thread</span></div>
-    <div class="stat"><b>${new Set(all.map(n=>n.classroom).filter(Boolean)).size}</b><span>classes they came from</span></div>
+    <div class="stat"><b>${all.length-open}</b><span>kept for a thread or project</span></div>
+    <div class="stat"><b>${new Set(all.flatMap(momentRooms)).size}</b><span>classes they came from</span></div>
   </div>
   ${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
@@ -3245,7 +3270,7 @@ function renderMoments(){
     if(shown>=120)break;
     const items=g.items.slice(0,Math.max(0,120-shown));shown+=items.length;
     h+=`<section class="card">${g.label?`<div class="secthead"><h3 style="font-size:17px">${esc(g.label)}</h3><span class="cnt">${g.items.length} observation${g.items.length>1?"s":""}</span></div>`:`<div class="secthead"><h3 style="font-size:17px">Observations kept</h3><span class="cnt">${all.length} in this view</span></div>`}
-      <div style="display:grid;gap:12px">${items.map(noticeCard).join("")}</div>
+      <div style="display:grid;gap:12px">${noticeCards(items)}</div>
       ${items.length<g.items.length?`<div class="cnt" style="margin-top:8px">${g.items.length-items.length} more in this group.</div>`:""}</section>`;
   }
   if(shown<all.length)h+=`<div class="cnt">Showing ${shown} of ${all.length}. Print the full set to read them all.</div>`;
@@ -3352,11 +3377,11 @@ function noticesClick(t){
   if(t.dataset.nwopen){nwOpen=t.dataset.nwopen;renderMain();return true}
   if(t.dataset.nwshut){nwOpen="";renderMain();return true}
   if(t.dataset.nwuse||t.dataset.nwskip){
-    const [pid,nid]=(t.dataset.nwuse||t.dataset.nwskip).split("|");
+    const [pid,nidList]=(t.dataset.nwuse||t.dataset.nwskip).split("|");const nids=String(nidList||"").split(",").filter(Boolean),nid=nids[0];
     const p=plans.get(pid),n=notices.get(nid);if(!p)return true;
     if(t.dataset.nwuse&&n){const k=NOTICE_TARGET[p.type];
-      if(k){const cur=String(p.fields[k]||"").trim();p.fields[k]=(cur?cur+"\n":"")+noticeText(n);p.noticeAdded=[...new Set([...(p.noticeAdded||[]),n.id])]}}
-    p.noticeUsed=[...new Set([...(p.noticeUsed||[]),nid])];persist(p);
+      if(k){const cur=String(p.fields[k]||"").trim();p.fields[k]=(cur?cur+"\n":"")+noticeText(n);p.noticeAdded=[...new Set([...(p.noticeAdded||[]),...nids])]}}
+    p.noticeUsed=[...new Set([...(p.noticeUsed||[]),...nids])];persist(p);
     // once there is nothing left to read, the offer folds itself away
     const left=new Set(p.noticeUsed);if(!noticesFor(p.classroom,0).some(x=>!left.has(x.id)))nwOpen="";
     renderMain();
@@ -3495,7 +3520,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></div></div>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`;
@@ -3649,7 +3674,6 @@ async function inquiriesClick(t){
     if(!f.name){$("#iqf-msg").innerHTML=`<span class="nudge">Name what the team is wondering about first.</span>`;return true}
     const t=(f.threads||[])[0]&&threads.get(f.threads[0]);
     if(t&&!(f.projects||[]).length){const pr=projectOfThread(t.id);if(pr)f.projects=[pr.id]}
-    if(!has(f.see)){const n=(f.obs||[])[0]&&notices.get(f.obs[0]);if(n)f.see=noticeText(n)}
     delete f.shown;iqForm=null;saveInquiry(f);openInquiry(f.id);toast("Started. Add what the team sees, and the readings, as you talk it through.");return true}
   const x=inqId&&inquiries.get(inqId);
   if(d.iqplan){const xx=inquiries.get(d.iqplan);if(!xx)return true;const el=$("#iqplan-pick");
@@ -3721,15 +3745,16 @@ function planEvidence(p){
   take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   return heads.length||obs.length?{heads,obs}:null}
-function evObHtml(n,used,p){
+function evObHtml(n,used,p,more){more=more||[];const ids=[n.id,...more.map(m=>m.id)].join(",");
   const k=p&&!$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
   const added=new Set((p&&p.noticeAdded)||[]);
-  const acts=p&&!used.has(n.id)&&f?`<div class="actions"><button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button><button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div>`:"";
+  const acts=p&&!used.has(n.id)&&f?`<div class="actions"><button class="btn small ghost" data-nwuse="${p.id}|${ids}">Add it to the ${esc(f.label.toLowerCase())}</button><button class="linkbtn" data-nwskip="${p.id}|${ids}">Not this one</button></div>`:"";
   const kids=(n.children||[]).map(id=>children.get(id)).filter(Boolean).map(c=>c.first);
-  const words=childLines(n.noticed||"",true).slice(0,3);
+  const words=childLines(n.noticed||"",true).filter(childsWords).slice(0,3);
   const text=`<div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}`;
   return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${added.has(n.id)?" \u00b7 in this plan":""}</div>
     ${n.photo?`<div class="evrow"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="min-width:0">${text}</div></div>`:text}
+    ${more.length?`<div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div><div class="nwstrip">${more.map(m=>`<a href="${esc(photoSrc(m))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(m))}" alt="Another photo with this note" loading="lazy"></a>`).join("")}</div>`:""}
     ${words.map(l=>`<div class="evq">${esc(l.words)}${l.name?` <span class="cnt">${esc(l.name)}</span>`:""}</div>`).join("")}
     ${kids.length?`<div class="cnt">${esc(kids.join(", "))}</div>`:""}${acts}</div>`}
 function evSync(){
@@ -3749,14 +3774,15 @@ function evSync(){
   const key=p.id+"|"+[...used].join(",")+"|"+more.length+"|"+$("#main")?.classList.contains("locked")+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
   if(pn.dataset.key===key)return;const top=pn.querySelector(".evbody")?.scrollTop||0;pn.dataset.key=key;
   const began=ev.heads.length||(p.source&&p.source.kind);
+  const lockedNow=$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type];
   pn.innerHTML=`<div class="evhead"><b>${began?"The evidence this plan began from":"Observations for this plan"}</b><button class="linkbtn" data-evshut="1">Close</button></div>
-    <div class="evbody">${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
+    <div class="evbody">${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
       ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
       ${(h.from||[]).length?`<div><span class="cnt">From the plans that followed it</span>${h.from.map(e=>`<div style="margin-top:4px">${esc(e.text)} <span class="cnt">${e.week?"Week of "+esc(fmtDate(e.week).replace(/, \d{4}$/,"")):""}${plans.has(e.planId)?` <button class="linkbtn" data-open="${e.planId}">Open</button>`:""}</span></div>`).join("")}</div>`:""}</div>`).join("")}
-    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${ev.obs.slice(0,40).map(n=>evObHtml(n,used,p)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:""}
+    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${shareGroups(ev.obs.slice(0,40)).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:""}
     ${more.length?`<details ${ev.obs.length||ev.heads.length?"":"open"}><summary class="chiprow-label">${ev.obs.length||ev.heads.length?"Other observations":"Observations"} from ${esc(p.classroom||"no class")}, ${more.length}</summary>
       <div class="muted" style="margin:6px 0">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>
-      <div style="display:grid;gap:12px">${more.slice(0,12).map(n=>evObHtml(n,used,p)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
+      <div style="display:grid;gap:12px">${shareGroups(more.slice(0,24)).slice(0,12).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
   pn.querySelector(".evbody").scrollTop=top}
 document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
 document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
@@ -4197,9 +4223,14 @@ function lensWordCheck(L){
 // moments are sentences from the plans themselves, so everything shown is in the educator's own words
 function lensMoments(ps){
   const re=lensRegex();const out=[];if(!re)return out;
-  for(const p of ps){const seen=new Set();
+  // a sentence cut inside a quotation, or a line that begins with a bullet, loses its stray marks. Photos that share one
+  // note are one observation, so a passage they share is shown once.
+  const tidy=t=>{let v=t.replace(/^[\s"“”‘’'•·\-–*]+/,"").replace(/[\s"“”‘’'•·\-–*]+$/,"").trim();
+    const opens=(v.match(/[“"]/g)||[]).length,closes=(v.match(/[”]/g)||[]).length;if(opens>closes&&/^[“"]/.test(v))v=v.slice(1);return v};
+  const seenObs=new Set();
+  for(const p of ps){const seen=p.type==="notice"?seenObs:new Set();
     for(const [label,text,pkey] of lensPlanParts(p)){
-      for(const raw of (text.match(/[^.!?\n]+[.!?]*/g)||[])){const sent=raw.trim();if(sent.length<12)continue;re.lastIndex=0;
+      for(const raw of (text.match(/[^.!?\n]+[.!?]*["”’]?/g)||[])){const sent=tidy(raw);if(sent.length<12)continue;re.lastIndex=0;
         const hits=[...new Set((sent.match(re)||[]).map(x=>x.toLowerCase()))];if(!hits.length)continue;
         const key=sent.toLowerCase();if(seen.has(key))continue;seen.add(key);
         out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,obs:OBSERVED_KEYS.has(pkey),text:sent.length>300?sent.slice(0,297)+"...":sent,hits});
@@ -4275,7 +4306,7 @@ function renderLens(){
   // a closer reading
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>A closer reading</h2>
     ${sample&&isDirector()?`<button class="btn small" id="lensread" ${lensBusy||!ps.length?"disabled":""}>${lensBusy?"Reading plans":"Read through the lens"}</button>`:""}</div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">${isDirector()?"TREE reads the saved plans in this range and answers the questions above for the moments the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask TREE to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">For reading the year through this lens and its questions. ${isDirector()?"TREE reads the saved plans in this range and answers the questions above for the moments the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask TREE to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
   if(scan&&(scan.moments||[]).length){
     h+=`<div class="chiprow-label">Read by TREE, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
@@ -4590,18 +4621,20 @@ function childLines(text,named){
     out.push({name:nm,words:m[1].trim().replace(/,$/,""),title:m.index===t.indexOf(first)&&first===m[0].trim()})}
   return out;
 }
-function projChildWords(x){
+function projChildWords(x){const childs=childsWords;
   const seen=new Set(),out=[];
   const push=(l,at,src)=>{const k=l.words.toLowerCase();if(seen.has(k))return;seen.add(k);out.push(Object.assign({at,src},l))};
-  for(const n of projNotices(x))childLines(n.noticed,true).forEach(l=>push(l,n.at,{moment:n.id}));
-  for(const pl of projPlans(x).filter(q=>!q.notice))for(const v of Object.values(pl.fields||{}))childLines(v,false).forEach(l=>push(l,parseIso(pl.weekOf).getTime()+864e5,{plan:pl.id}));
+  // a quote counts as a child's words when a child is named as saying it. An unnamed question in an observation is most
+  // often the educator's prompt, and an unnamed quote in a plan is most often the educators' own wording, so both stay out.
+  for(const n of projNotices(x))childLines(n.noticed,true).filter(childs).forEach(l=>push(l,n.at,{moment:n.id}));
+  for(const pl of projPlans(x).filter(q=>!q.notice))for(const v of Object.values(pl.fields||{}))childLines(v,false).filter(l=>l.name).forEach(l=>push(l,parseIso(pl.weekOf).getTime()+864e5,{plan:pl.id}));
   return out.sort((a,b)=>a.at-b.at);
 }
 function projWordsHtml(x){
   const ws=projChildWords(x);if(!ws.length)return"";
   const kids=new Set(ws.map(w=>w.name).filter(Boolean)).size;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px">In the children's words</h3><span class="cnt">${ws.length} line${ws.length>1?"s":""}${kids?`, from ${kids} child${kids>1?"ren":""}`:""}</span></div>
-    <div class="hint">Gathered from the moments and plans in this project, exactly as they were written down.</div>
+    <div class="hint">Gathered from the observations and plans in this project, exactly as they were written down. A line counts when a child is named as saying it, or it comes from an observation.</div>
     <div class="cwords">${ws.map(w=>`<div><span class="gdate">${shortDate(w.at)}</span><div>${w.name?`<b>${esc(w.name)}</b> `:""}“${esc(w.words)}”${w.src.plan?` <button class="linkbtn" data-open="${w.src.plan}">plan</button>`:""}</div></div>`).join("")}</div></section>`;
 }
 /* --- the wall: a run of sheets that hang in order --- */
@@ -5341,7 +5374,9 @@ function renderThreads(){
   const ps=rangePlans();const weeks=rangeWeeks(ps);
   const rooms=tRoom==="All"?CLASSROOMS:[tRoom];
   const cols=tRoom==="All"&&ps.some(p=>!p.classroom)?[...rooms,""]:rooms;
-  const waiting=ps.filter(p=>p.status==="ready").length;
+  // observations are read with the plans, and they are counted on their own, so a count of plans means plans
+  const realPs=ps.filter(p=>p.type!=="notice"),obsN=ps.length-realPs.length;
+  const waiting=realPs.filter(p=>p.status==="ready").length;
   const withTeam=new Set(ps.filter(p=>p.type==="classroom").map(p=>p.weekOf+p.classroom)).size;
   const inRoom=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom);
   const tracked=inRoom.filter(t=>!t.unfollowed).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
@@ -5350,11 +5385,12 @@ function renderThreads(){
   const stoppedNow=stopped.filter(t=>(t.unfollowed.at||0)>=yStart),stoppedOld=stopped.filter(t=>(t.unfollowed.at||0)<yStart);
   const scan=scans.get(tRoom);
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
-    <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following.</div></div></div>
+    <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following. A question about our own practice sits beside a thread, in a team inquiry.</div></div></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===tRoom}" data-troom="${r}">${r}</button>`).join("")}</div>
     <select id="trange" style="width:auto">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
   <div class="stats">
-    <div class="stat"><b>${ps.length}</b><span>plans saved in this range</span></div>
+    <div class="stat"><b>${realPs.length}</b><span>plans saved in this range</span></div>
+    <div class="stat"><b>${obsN}</b><span>observations kept in this range</span></div>
     <div class="stat"><b>${withTeam}</b><span>classroom team plans</span></div>
     <div class="stat"><b>${waiting}</b><span>waiting for director review</span></div>
     <div class="stat"><b>${tracked.filter(t=>t.status!=="closed").length}</b><span>threads being followed</span></div>
@@ -5363,7 +5399,7 @@ function renderThreads(){
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
     <span class="actions">${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads"}</button>`:""}</span></div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
+    <div class="hint muted" style="font-size:13.5px;max-width:72ch">For what children have pursued over several weeks. Find threads reads the plans and observations together. A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
@@ -6461,7 +6497,7 @@ function saveProgram(){
 }
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
 function renderSettings(){
-  if(!isDirector()){const nm=window.FP_NAME?window.FP_NAME():me();const rm=myRoom();
+  if(!isDirector()){const nm=VIEW_AS?VIEW_AS.name:(window.FP_NAME?window.FP_NAME():me());const rm=myRoom();
     $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
     <section class="card" id="mypass"><div class="lbl">Change my passcode</div><div class="hint">Type the four numbers you use now, then four new ones twice.</div>
       <div class="kfields"><label>Passcode now<input type="password" inputmode="numeric" maxlength="4" id="mp-old" autocomplete="current-password"></label><label>New passcode<input type="password" inputmode="numeric" maxlength="4" id="mp-new" autocomplete="new-password"></label><label>New passcode again<input type="password" inputmode="numeric" maxlength="4" id="mp-again" autocomplete="new-password"></label></div>

@@ -594,7 +594,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
         <span id="live-meta"><span class="small muted mono">${list.length} of ${tot.total}</span>
         ${list.length?`<button class="btn" data-act="pdf-list" title="One PDF with a two-page form for each child shown, ready to print">Print forms for these ${list.length} (PDF)</button>`:""}</span>
       </div>
-      <div id="live-list">${kids.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Room</th><th>Primary educator</th><th>Status</th><th>When</th><th>Filled</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No children match these filters.</td></tr>`}</tbody></table></div>`
+      <div id="live-list">${kids.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Class</th><th>Primary educator</th><th>Status</th><th>When</th><th>Filled</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No children match these filters.</td></tr>`}</tbody></table></div>`
       : `<div class="panel empty"><p>No children on the roster yet.</p><button class="btn primary" data-act="roster-import">Import the 1Core roster PDF</button> <button class="btn" data-act="child-new">Add a child</button></div>`}</div>
     </div>
     <aside class="stack">
@@ -647,7 +647,7 @@ function viewChildren(){
     ${eduSelect()}${sortSelect()}
     <span id="live-meta"><span class="small muted mono">${list.length} shown</span></span>
   </div>
-  <div id="live-list">${list.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Birthdate</th><th>Age</th><th>Room</th><th>Small group and educator</th><th>Family</th><th>Conferences</th></tr></thead><tbody>${rows}</tbody></table></div>`
+  <div id="live-list">${list.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Birthdate</th><th>Age</th><th>Class</th><th>Small group and educator</th><th>Family</th><th>Conferences</th></tr></thead><tbody>${rows}</tbody></table></div>`
   : `<div class="panel empty">No children here yet. ${canEdit()?`<button class="btn" data-act="child-new">Add a child</button>`:""}</div>`}</div>`;
 }
 
