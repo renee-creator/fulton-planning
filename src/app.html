@@ -289,6 +289,11 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .nf-photo{margin:0 0 10px;border-radius:10px;overflow:hidden;background:var(--bg);text-align:center}
 .nf-photo img{display:block;margin:0 auto;max-width:100%;max-height:520px;object-fit:contain}
 .nw-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start;margin-top:4px}
+.iqobs{display:grid;gap:10px}
+.iqob{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14.5px;background:var(--paper)}
+.iqob.nophoto{grid-template-columns:minmax(0,1fr)}
+.iqob img{width:84px;height:104px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
+.evclamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 /* the evidence a plan began from, beside the plan while it is written */
 #evbtn{position:fixed;right:18px;bottom:18px;z-index:40;box-shadow:var(--shadow)}
 #evpanel{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:45;background:var(--paper);border-left:1px solid var(--line);box-shadow:-4px 0 18px rgba(27,41,32,.12);display:flex;flex-direction:column}
@@ -740,6 +745,7 @@ async function boot(){
   for(const t of LS.get("fps.threads",[]))threads.set(t.id,t);
   for(const c of LS.get("fps.scans",[]))scans.set(c.room,c);
   for(const x of LS.get("fps.projects",[]))projects.set(x.id,x);
+  for(const x of LS.get("fps.inquiries",[]))inquiries.set(x.id,x);
   for(const n of LS.get("fps.notices",[]))notices.set(n.id,n);
   renderAll();renderWho();
   if(!window.claude||!window.claude.use){setConn("Saving on this device");return}
@@ -767,6 +773,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -913,6 +920,7 @@ function renderList(){
 function renderMain(){
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
+  if(view==="inquiries"){renderInquiries();return}
   if(view==="lens"){renderLens();return}
   if(view==="moments"){renderMoments();return}
   if(view==="import"){renderImport();return}
@@ -1884,7 +1892,7 @@ function portfolioItems(c){
   const onSlide=new Set(ss.flatMap(x=>slideSources(x.s).map(n=>n.id)));
   // photos that share one note are one story, so they share a page of up to three photos
   const groups=new Map();
-  for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!onSlide.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){
+  for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!onSlide.has(n.id)&&!inqHolds(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){
     const k=String(n.noticed||"").trim().toLowerCase()+"|"+(n.classroom||"");const g=groups.get(k);
     if(g&&n.photo&&g.n.photo)g.more.push(n);else groups.set(g?k+"|"+n.id:k,{kind:"notices",at:n.at||0,n,more:[]})}
   return [...groups.values(),...ss].sort((a,b)=>a.at-b.at);
@@ -1970,10 +1978,10 @@ setInterval(outboxSend,30000);
    so nothing is lost and nothing has to be found twice. The Keep a moment button is always one tap away. */
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
-const SUBS={plans:[["plans","This week"],["all","All plans"],["threads","Threads"],["projects","Projects"],["lens","Lens"]],
+const SUBS={plans:[["plans","This week"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
   docs:[["slides","Slides"],["walls","Walls"]],
   children:[["children","Children"],["conferences","Conferences"]]};
-const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",lens:"plans",import:"plans",
+const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
 const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>SECTION_OF[v]||"plans";
@@ -2056,6 +2064,9 @@ function todayWaiting(){
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
     out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+  // a team inquiry the team meant to look at again
+  {const rm=myRoom(),day=iso(new Date());for(const x of inqAll().filter(x=>x.status==="open"&&x.lookAgain&&x.lookAgain<=day&&(dir||!rm||!x.room||x.room===rm)).slice(0,4))
+    out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
@@ -2217,6 +2228,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.print){printsClick(t);return}
   if(noticesClick(t))return;
   if(lensClick(t))return;
+  if(await inquiriesClick(t))return;
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
@@ -2732,7 +2744,7 @@ function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(con
 const momentIn=(n,room)=>!room||room==="All"||momentRooms(n).includes(room);
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
-function noticeText(n){return [n.noticed,wonderLine(n.wonder)].filter(x=>String(x||"").trim()).join(" ")}
+function noticeText(n){const a=String(n.noticed||"").trim(),b=String(wonderLine(n.wonder)||"").trim();return a&&b?a+(/[.!?"”)]$/.test(a)?" ":". ")+b:a||b}
 // educators write the wonder as a fragment as often as a sentence, so the words join into one readable line either way
 function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
   if(/^i\s+wonder\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
@@ -2896,6 +2908,7 @@ function noticeCard(n){
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
+    ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
     ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
@@ -2905,7 +2918,7 @@ function noticeCard(n){
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
-    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${n.id}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${n.id}">DRDP</button><button class="linkbtn" data-nwedit="${n.id}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${n.id}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${n.id}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${n.id}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${n.id}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -3203,6 +3216,272 @@ function noticeNoteHtml(p){
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
 const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+/* ---------- Team inquiries ----------
+   A team inquiry is how the team thinks through a question about practice and development, such as a child running
+   from a request or a hard moment between two friends. It is kept apart from curriculum plans so a plan never becomes
+   about a behavior. It reads every kind of evidence TREE keeps and gives back to it. Observations, threads, projects,
+   the Lens and plans all feed it, and what the team decides to try in the curriculum sits beside the plans written
+   from it. Everyone can read and add. Removing one is the director's.
+   Observations kept for an inquiry stay out of portfolios and walls, since they are for the team. */
+let inquiries=new Map(), inqId=LS.get("fps.inq",""), iqRoom=LS.get("fps.iqroom","All"), iqForm=null;
+const ISTATUS={open:"Open",resting:"Resting",closed:"Closed"};
+function saveInquiry(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();inquiries.set(x.id,x);
+  if(db)db.doc("inquiries/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the inquiry. Check your connection."));
+  else LS.set("fps.inquiries",[...inquiries.values()])}
+const iqTimers={};
+function saveInquirySoon(x){inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>saveInquiry(x),700)}
+function newInquiry(extra){return Object.assign({id:uid(),name:"",room:myRoom()||"",status:"open",createdAt:Date.now(),createdBy:whoAmI(),
+  see:"",whenwhere:"",hyps:[],tries:[],watch:"",lookAgain:"",looks:[],obs:[],threads:[],projects:[],lensId:"",lensNotes:{}},extra||{})}
+const inqOf=x=>x&&!x.deleted;
+const inqAll=()=>[...inquiries.values()].filter(inqOf);
+// an inquiry's observations are its own, each connected thread's, and the observations those threads keep as evidence
+function inqNotices(x){const ts=new Set(x.threads||[]),own=new Set(x.obs||[]);
+  for(const id of ts){const t=threads.get(id);for(const e of (t&&t.evidence)||[])if(notices.has(e.planId))own.add(e.planId)}
+  return [...notices.values()].filter(n=>own.has(n.id)||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))}
+function inqHolds(id){for(const x of inquiries.values())if(inqOf(x)&&(x.obs||[]).includes(id))return x;return null}
+const inqsOfNotice=id=>inqAll().filter(x=>(x.obs||[]).includes(id));
+const inqsOfThread=id=>inqAll().filter(x=>(x.threads||[]).includes(id));
+const inqsOfProject=id=>inqAll().filter(x=>(x.projects||[]).includes(id));
+function inqPlans(x){const m=new Map();
+  for(const p of plans.values())if(p.id!=="example"&&PLAN_TYPES.includes(p.type)&&(p.inquiries||[]).includes(x.id))m.set(p.id,p);
+  for(const tid of x.threads||[]){const t=threads.get(tid);if(!t)continue;for(const p of threadLinkedPlans(t))if(PLAN_TYPES.includes(p.type))m.set(p.id,p);
+    for(const e of t.evidence||[]){const p=plans.get(e.planId);if(p&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p)}}
+  return [...m.values()].sort((a,b)=>b.weekOf.localeCompare(a.weekOf))}
+const inqLens=x=>x.lensId&&LENSES.find(l=>l.id===x.lensId);
+const inqOpenHyps=x=>(x.hyps||[]).filter(h=>!h.aside&&has(h.text));
+const inqCurric=x=>(x.tries||[]).filter(t=>t.curriculum&&has(t.text));
+const inqScope=x=>x.room?x.room+" class":"School-wide";
+function inqChildren(x){const s=new Set();for(const n of inqNotices(x))(n.children||[]).forEach(id=>s.add(id));return [...s].map(id=>children.get(id)).filter(Boolean)}
+// when it happens, read from the times the observations were kept. Shown only when the times say something.
+function inqWhen(ns){const parts={"Early morning":0,"Morning":0,"Midday":0,"Afternoon":0},days={};let timed=0;
+  for(const n of ns){if(!n.at)continue;const d=new Date(n.at),h=d.getHours(),m=d.getMinutes();if(h===0&&m===0)continue;timed++;
+    parts[h<9?"Early morning":h<11?"Morning":h<13?"Midday":"Afternoon"]++;const w=d.toLocaleDateString("en-US",{weekday:"long"});days[w]=(days[w]||0)+1}
+  if(timed<2)return "";
+  const p=Object.entries(parts).filter(e=>e[1]).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k.toLowerCase()} ${v}`).join(", ");
+  const d=Object.entries(days).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} ${v}`).join(", ");
+  return `Of ${timed} observation${timed===1?"":"s"} with a time, by time of day, ${p}. By day, ${d}.`}
+// the thinking in date order, so the team can see how its reading moved
+function inqTimeline(x){const out=[];
+  for(const h of x.hyps||[])if(has(h.text))out.push({at:h.at,by:h.by,what:h.aside?"A reading, later set aside":"A reading",text:h.text});
+  for(const t of x.tries||[]){if(has(t.text))out.push({at:t.at,by:t.by,what:t.curriculum?"Something to try, in the curriculum":"Something to try",text:t.text});if(has(t.result))out.push({at:t.resultAt||t.at,by:t.resultBy||t.by,what:"What happened when we tried it",text:t.result})}
+  for(const l of x.looks||[])if(has(l.text))out.push({at:l.at,by:l.by,what:"When we looked again",text:l.text});
+  return out.sort((a,b)=>(a.at||0)-(b.at||0))}
+
+function openInquiry(id){inqId=id||"";LS.set("fps.inq",inqId);iqForm=null;view="inquiries";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
+function startInquiry(extra){if(needName())return;const x=newInquiry(extra);iqForm=x;inqId="";view="inquiries";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
+
+function renderInquiries(){
+  const x=inqId&&inquiries.get(inqId);
+  if(x&&inqOf(x)&&!iqForm){renderInquiry(x);return}
+  const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+  const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></div></div>
+    <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
+  if(iqForm)h+=inqStartForm();
+  else h+=`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`;
+  if(live.length)h+=`<div class="threads">${live.map(inqCard).join("")}</div>`;
+  else if(!iqForm)h+=`<div class="empty">No team inquiries${iqRoom!=="All"?" here":""} yet.</div>`;
+  if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(inqCard).join("")}</div></details>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(iqForm){const el=$("#iqf-name");if(el&&!iqForm.shown){iqForm.shown=true;el.focus({preventScroll:true});formTop(el.closest("section,.card")||el)}}
+}
+function inqCard(x){const ns=inqNotices(x),hy=inqOpenHyps(x),last=[...(x.looks||[])].sort((a,b)=>(b.at||0)-(a.at||0))[0];
+  const due=x.status==="open"&&x.lookAgain&&x.lookAgain<=iso(new Date());
+  return `<article class="thread"><div class="secthead"><b>${esc(x.name||"Untitled inquiry")}</b><span class="status st-${x.status==="open"?"growing":x.status}">${ISTATUS[x.status]||"Open"}</span></div>
+    <div class="cnt">${esc(inqScope(x))} · started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""} · ${ns.length} observation${ns.length===1?"":"s"}</div>
+    ${hy.length?`<div class="muted">${esc(firstLine(hy[hy.length-1].text,180))}</div>`:has(x.see)?`<div class="muted">${esc(firstLine(x.see,180))}</div>`:""}
+    ${last?`<div class="cnt">Last looked at again ${shortDate(last.at)}</div>`:""}${due?`<div class="cnt warnline">Time to look again</div>`:""}
+    <div class="actions"><button class="btn small ghost" data-iqopen="${x.id}">Open</button></div></article>`}
+function inqStartForm(){const f=iqForm;const t=(f.threads||[])[0]&&threads.get(f.threads[0]);const n=(f.obs||[])[0]&&notices.get(f.obs[0]);
+  return `<section class="card"><div class="lbl">Start a team inquiry</div>
+    ${t?`<div class="ref" style="background:var(--marigold-soft)">From the thread <b>${esc(t.name)}</b>. Its observations and plans come with it.</div>`:""}
+    ${n?`<div class="ref" style="background:var(--sky-soft)">From the observation <b>${esc(firstLine(n.noticed,90))}</b></div>`:""}
+    <label class="fld-label">What the team is wondering about<input type="text" id="iqf-name" value="${esc(f.name||"")}" placeholder="Ex. Running when asked to go to lunch"></label>
+    <div class="hint">Name the question, so the inquiry stays about understanding. A child's name is better left out of the title.</div>
+    <label class="cnt">Belongs to <select id="iqf-room" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${f.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!f.room?"selected":""}>The whole school</option></select></label>
+    <div class="actions"><button class="btn small" data-iqmake="1">Start it</button><button class="linkbtn" data-iqcancel="1">Cancel</button><span id="iqf-msg"></span></div></section>`}
+
+function renderInquiry(x){
+  const ns=inqNotices(x),own=new Set(x.obs||[]),L=inqLens(x),ps=inqPlans(x),kids=inqChildren(x);
+  const ths=(x.threads||[]).map(id=>threads.get(id)).filter(Boolean),prs=(x.projects||[]).map(id=>projects.get(id)).filter(Boolean);
+  const when=inqWhen(ns);
+  const hy=(x.hyps||[]).filter(h=>!h.aside),aside=(x.hyps||[]).filter(h=>h.aside);
+  const pool=[...notices.values()].filter(n=>!own.has(n.id)&&(!x.room||momentIn(n,x.room))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,80);
+  const freeT=[...threads.values()].filter(t=>t&&!t.unfollowed&&!(x.threads||[]).includes(t.id)).sort((a,b)=>((b.classroom===x.room)-(a.classroom===x.room))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
+  const freeP=[...projects.values()].filter(p=>!(x.projects||[]).includes(p.id)&&p.status!=="closed");
+  const by=(o)=>`<span class="cnt">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}</span>`;
+  const obRow=n=>`<div class="iqob${n.photo?"":" nophoto"}">${n.photo?`<a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a>`:""}<div style="min-width:0">
+      <div class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${momentRoomsText(n)?" · "+esc(momentRoomsText(n)):""}${!own.has(n.id)&&n.threadId&&threads.get(n.threadId)?" · from the thread "+esc(threads.get(n.threadId).name):""}</div>
+      <div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}
+      ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>esc(l.name)).join(", ")}</div>`:""})()}
+      <div class="actions"><button class="linkbtn" data-mopen="${n.id}">See it in Observations</button>${own.has(n.id)?`<button class="linkbtn" data-iqobrm="${n.id}">Take out of the inquiry</button>`:""}</div></div></div>`;
+  let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-iqback="1">All team inquiries</button></div>
+  <div class="head"><div class="head-row"><div style="flex:1;min-width:0"><span class="eyebrow">Team inquiry · ${esc(inqScope(x))}</span></div>
+    <div class="actions"><button class="btn small" data-iqplan="${x.id}">Start a plan from it</button>${printTwo("inquiry",x.id)}
+      <label class="cnt">Status <select data-iqstatus="1" style="width:auto">${Object.entries(ISTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
+    <label class="fld-label">What the team is wondering about<input type="text" data-iqf="name" value="${esc(x.name||"")}" style="font-size:20px;font-family:var(--display)"></label>
+    <div class="actions"><label class="cnt">Belongs to <select data-iqroomset="1" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${x.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!x.room?"selected":""}>The whole school</option></select></label>
+      <span class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}. It stays with the team, and its observations stay out of portfolios and walls.</span></div>
+    <div id="iqplan-pick"></div></div>`;
+
+  h+=`<section class="card"><div class="lbl">What we see</div>
+    <div class="hint">Plainly, as it happens, without a judgment. The observations below hold the detail.</div>
+    <textarea data-iqf="see" rows="2">${esc(x.see||"")}</textarea>
+    ${kids.length?`<div class="cnt">Children in these observations, ${kids.map(c=>`<button class="linkbtn" data-kid="${esc(c.id)}">${esc(c.first)}</button>`).join(", ")}</div>`:""}
+    <div class="chiprow-label" style="margin-top:6px">Observations, ${ns.length}</div>
+    <div class="iqobs">${ns.slice(0,30).map(obRow).join("")||`<div class="empty" style="padding:10px">None yet. Add one below, or keep one for this inquiry from Observations.</div>`}</div>
+    ${ns.length>30?`<div class="cnt">Showing the 30 most recent.</div>`:""}
+    ${pool.length?`<label class="tlink">Add an observation<select data-iqaddobs="1"><option value="">Choose an observation</option>${pool.map(n=>`<option value="${n.id}">${esc(shortDate(n.at)+", "+firstLine(n.noticed,70))}</option>`).join("")}</select></label>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">When and where it happens</div>
+    <div class="hint">Who is asking, what the child is leaving, how far they go, who they look back at, and what comes just before.</div>
+    <textarea data-iqf="whenwhere" rows="2">${esc(x.whenwhere||"")}</textarea>
+    ${when?`<div class="cnt">${esc(when)}</div>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">What it might be telling us</div>
+    <div class="hint">Readings written from the child's side, held loosely. When the evidence moves the team's thinking, set a reading aside and write the new one, so the change stays visible.</div>
+    ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${o.id}" rows="2">${esc(o.text||"")}</textarea><div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${o.id}">Set aside</button></div></div>`).join("")}
+    <div class="actions"><button class="btn small ghost" data-iqhadd="1">Add a reading</button></div>
+    ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Readings set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${o.id}">Bring back</button></span></div>`).join("")}</div></details>`:""}
+    <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
+    ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
+      <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">What we will try</div>
+    <div class="hint">Changes to the transition, the space, the warning, the role a child is given, or who goes with them. Mark the ones that belong in the curriculum. Those sit beside every plan written from this inquiry, for the whole group, with no child named as the reason.</div>
+    ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>
+      <label class="cnt"><input type="checkbox" data-iqtcur="${o.id}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
+      <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
+      <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqtrm="${o.id}">Remove</button></div></div>`).join("")}
+    <div class="actions"><button class="btn small ghost" data-iqtadd="1">Add something to try</button></div></section>`;
+
+  h+=`<section class="card"><div class="lbl">What we will watch for</div>
+    <textarea data-iqf="watch" rows="2" placeholder="What would tell us the reading is right, or that it needs to change">${esc(x.watch||"")}</textarea>
+    <label class="cnt">Look again on <input type="date" data-iqf="lookAgain" value="${esc(x.lookAgain||"")}" style="width:auto"></label>
+    <div class="hint">On that day it appears on Today for the class, and for the director.</div></section>`;
+
+  const looks=[...(x.looks||[])].sort((a,b)=>(b.at||0)-(a.at||0));
+  h+=`<section class="card"><div class="lbl">When we looked again</div>
+    <div class="hint">What the team saw, at a staff meeting or after a week of trying. Each look is kept with its date.</div>
+    <textarea id="iq-look" rows="2" placeholder="What we saw this time"></textarea>
+    <div class="actions"><button class="btn small ghost" data-iqlook="1">Keep this look</button></div>
+    ${looks.length?`<div class="evid">${looks.map(o=>`<div style="white-space:pre-line">${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}</span></div>`).join("")}</div>`:""}
+    ${inqTimeline(x).length>2?`<details><summary class="chiprow-label" style="cursor:pointer">How our thinking has moved</summary><div class="evid" style="margin-top:8px">${inqTimeline(x).map(e=>`<div><span class="cnt">${esc(e.what)}</span><div style="white-space:pre-line">${esc(e.text)}</div><span class="src">${shortDate(e.at)}${e.by?" · "+esc(e.by):""}</span></div>`).join("")}</div></details>`:""}</section>`;
+
+  h+=`<section class="card"><div class="lbl">Connected work</div>
+    <div class="hint">What feeds this inquiry, and where it reaches.</div>
+    <div class="chiprow-label">Threads</div>
+    ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${t.id}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${t.id}">Take out</button></div>`).join(""):`<div class="cnt">None yet.</div>`}
+    ${freeT.length?`<label class="tlink">Add a thread<select data-iqaddth="1"><option value="">Choose a thread</option>${freeT.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}
+    <div class="chiprow-label" style="margin-top:8px">Projects</div>
+    ${prs.length?prs.map(p=>`<div class="ref" style="background:var(--marigold-soft)"><div class="actions"><button class="linkbtn" data-popen="${p.id}"><b>${esc(p.name)}</b></button><button class="linkbtn" data-iqprrm="${p.id}">Take out</button></div>
+      ${projUnder(p)?`<div><span class="cnt">What may lie underneath</span><div class="evclamp2">${esc(projUnder(p))}</div></div>`:""}</div>`).join(""):`<div class="cnt">None yet.</div>`}
+    ${freeP.length?`<label class="tlink">Add a project<select data-iqaddpr="1"><option value="">Choose a project</option>${freeP.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></label>`:""}
+    <div class="chiprow-label" style="margin-top:8px">Plans, ${ps.length}</div>
+    ${ps.length?`<div class="evid">${ps.slice(0,12).map(p=>{const k=AFTER_KEY[p.type],after=k&&has(p.fields?.[k])?p.fields[k]:"";
+      return `<div><button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
+        ${after?`<div class="muted" style="white-space:pre-line">${esc(firstLine(after,240))}</div>`:""}</div>`}).join("")}</div>`:`<div class="cnt">No plans yet. Start one from this inquiry, or connect a thread that plans follow.</div>`}</section>`;
+  if(isDirector())h+=`<div class="actions"><span id="iqdel"><button class="linkbtn" data-iqdel="1">Remove this inquiry</button></span></div>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+}
+
+// a plan from an inquiry. Its curriculum side is for the whole group, so the plan starts empty and the inquiry sits beside it.
+function planFromInquiry(x,kind){
+  const room=x.room||myRoom()||(roomFilter!=="All"?roomFilter:"");
+  if(kind==="classroom"){if(!room){toast("This inquiry is school-wide. Choose a class on the Plans page first.");return}
+    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    const made=!cp;if(made)cp=newPlan("classroom",{classroom:room});
+    cp.inquiries=[...new Set([...(cp.inquiries||[]),x.id])];plans.set(cp.id,cp);persist(cp);
+    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+    toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}. The inquiry is beside it.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return}
+  const np=newPlan("individual",{classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  toast("Write the plan for the whole group. The inquiry and its evidence are beside it.")}
+
+function inquiryDoc(x,long){
+  const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
+  const blocks=[];
+  if(has(x.see))blocks.push(dLead("What we see",x.see));
+  if(has(x.whenwhere))blocks.push(dText("When and where it happens",x.whenwhere));
+  if(hy.length)blocks.push(dList("What it might be telling us",hy.map(h=>h.text)));
+  if(tries.length)blocks.push(dList("What we will try",tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))));
+  if(has(x.watch))blocks.push(dText("What we will watch for",x.watch));
+  const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));if(a.length){blocks.push(dSub("Read through "+L.name));a.forEach(q=>blocks.push(dText(q,x.lensNotes[q])))}}
+  if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
+  const obs=long?ns:ns.slice(0,3);
+  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>blocks.push(dQuote(noticeText(n),n.by||"",shortDate(n.at),true)))}
+  if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",shortDate(e.at))))}}
+  const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
+  if(x.lookAgain)meta.push(["Look again",fmtDate(x.lookAgain)]);
+  const ths=(x.threads||[]).map(id=>threads.get(id)).filter(Boolean);if(ths.length)meta.push(["Threads",ths.map(t=>t.name).join(", ")]);
+  const prs=(x.projects||[]).map(id=>projects.get(id)).filter(Boolean);if(prs.length)meta.push(["Projects",prs.map(p=>p.name).join(", ")]);
+  if(!blocks.length)blocks.push(dText("","Nothing is written in this inquiry yet."));
+  return {display:true,type:"report",acc:"smallgroup",title:x.name||"Team inquiry",meta,blocks}}
+
+async function inquiriesClick(t){
+  const d=t.dataset;
+  if(d.iqopen){openInquiry(d.iqopen);return true}
+  if(d.iqback){openInquiry("");return true}
+  if(d.iqroom){iqRoom=d.iqroom;LS.set("fps.iqroom",iqRoom);renderMain();return true}
+  if(d.iqnew){startInquiry({});return true}
+  if(d.iqcancel){iqForm=null;renderMain();return true}
+  if(d.iqmake){const f=iqForm;if(!f)return true;f.name=($("#iqf-name")?.value||"").trim();f.room=$("#iqf-room")?.value||"";
+    if(!f.name){$("#iqf-msg").innerHTML=`<span class="nudge">Name what the team is wondering about first.</span>`;return true}
+    const t=(f.threads||[])[0]&&threads.get(f.threads[0]);
+    if(t&&!(f.projects||[]).length){const pr=projectOfThread(t.id);if(pr)f.projects=[pr.id]}
+    if(!has(f.see)){const n=(f.obs||[])[0]&&notices.get(f.obs[0]);if(n)f.see=noticeText(n)}
+    delete f.shown;iqForm=null;saveInquiry(f);openInquiry(f.id);toast("Started. Add what the team sees, and the readings, as you talk it through.");return true}
+  const x=inqId&&inquiries.get(inqId);
+  if(d.iqplan){const xx=inquiries.get(d.iqplan);if(!xx)return true;const el=$("#iqplan-pick");
+    if(el)el.innerHTML=`<section class="ref" style="background:var(--marigold-soft)"><b>Which plan?</b><div class="muted">The plan is written for the whole group. The inquiry, its readings, what the team will try in the curriculum, and its observations sit beside it while you write.</div>
+      <div class="actions"><button class="btn small ghost" data-iqplango="individual">An Individual Plan</button>${xx.room||myRoom()?`<button class="btn small ghost" data-iqplango="classroom">The ${esc(xx.room||myRoom())} Classroom Plan this week</button>`:""}<button class="linkbtn" data-iqplanno="1">Cancel</button></div></section>`;
+    return true}
+  if(d.iqplango&&x){planFromInquiry(x,d.iqplango);return true}
+  if(d.iqplanno){const el=$("#iqplan-pick");if(el)el.innerHTML="";return true}
+  if(!x)return false;
+  const now=Date.now(),by=whoAmI();
+  if(d.iqhadd){x.hyps=[...(x.hyps||[]),{id:uid(),text:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll("[data-iqh]");if(ts.length)ts[ts.length-1].focus();return true}
+  if(d.iqhaside){const o=(x.hyps||[]).find(h=>h.id===d.iqhaside);if(o){if(!has(o.text))x.hyps=x.hyps.filter(h=>h!==o);else{o.aside=true;o.asideAt=now;o.asideBy=by}saveInquiry(x);renderMain()}return true}
+  if(d.iqhback){const o=(x.hyps||[]).find(h=>h.id===d.iqhback);if(o){o.aside=false;saveInquiry(x);renderMain()}return true}
+  if(d.iqtadd){x.tries=[...(x.tries||[]),{id:uid(),text:"",by,at:now,curriculum:false,result:""}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll('[data-iqt$="|text"]');if(ts.length)ts[ts.length-1].focus();return true}
+  if(d.iqtrm){x.tries=(x.tries||[]).filter(o=>o.id!==d.iqtrm);saveInquiry(x);renderMain();return true}
+  if(d.iqlook){const v=($("#iq-look")?.value||"").trim();if(!v){toast("Write what the team saw first.");return true}x.looks=[...(x.looks||[]),{id:uid(),text:v,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
+  if(d.iqobrm){x.obs=(x.obs||[]).filter(id=>id!==d.iqobrm);saveInquiry(x);renderMain();return true}
+  if(d.iqthrm){x.threads=(x.threads||[]).filter(id=>id!==d.iqthrm);saveInquiry(x);renderMain();return true}
+  if(d.iqprrm){x.projects=(x.projects||[]).filter(id=>id!==d.iqprrm);saveInquiry(x);renderMain();return true}
+  if(d.iqdel){$("#iqdel").innerHTML=`<span class="confirm">Remove this inquiry for everyone? Its observations, threads and plans stay. <button class="btn warn small" data-iqdelyes="1">Remove</button><button class="linkbtn" data-iqdelno="1">Keep</button></span>`;return true}
+  if(d.iqdelno){renderMain();return true}
+  if(d.iqdelyes){inquiries.delete(x.id);if(db)db.doc("inquiries/"+x.id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.inquiries",[...inquiries.values()]);openInquiry("");return true}
+  return false}
+document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+  if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
+  if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
+  if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
+  if(d.iqlq!=null){const L=inqLens(x);if(L){x.lensNotes=x.lensNotes||{};x.lensNotes[L.questions[+d.iqlq]]=t.value;autoGrow(t);saveInquirySoon(x)}return}});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+  if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
+  if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqlens!=null){x.lensId=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqtcur){const o=(x.tries||[]).find(v=>v.id===d.iqtcur);if(o){o.curriculum=t.checked;saveInquiry(x)}return}
+  if(d.iqaddobs&&t.value){x.obs=[...new Set([...(x.obs||[]),t.value])];saveInquiry(x);renderMain();return}
+  if(d.iqaddth&&t.value){x.threads=[...new Set([...(x.threads||[]),t.value])];const pr=projectOfThread(t.value);if(pr&&!(x.projects||[]).includes(pr.id))x.projects=[...(x.projects||[]),pr.id];saveInquiry(x);renderMain();return}
+  if(d.iqaddpr&&t.value){x.projects=[...new Set([...(x.projects||[]),t.value])];saveInquiry(x);renderMain();return}});
+
+// the same inquiry seen from the other side, on an observation, a thread, a project, the Lens and Today
+function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||"Team inquiry"} ${list.map(x=>`<button class="linkbtn" data-iqopen="${x.id}">${esc(x.name||"Untitled")}</button>`).join(", ")}</div>`:""}
+function inqObsChooser(n){const open=inqAll().filter(x=>x.status!=="closed"&&!(x.obs||[]).includes(n.id)&&(!x.room||momentIn(n,x.room)||!momentRooms(n).length));
+  return `<span class="confirm">${open.length?`<select data-nwinqadd="${n.id}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${x.id}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
+    <button class="btn small ghost" data-nwinqnew="${n.id}">Start a team inquiry from it</button><button class="linkbtn" data-nwinqno="${n.id}">Cancel</button></span>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq]");if(!t)return;const d=t.dataset;
+  if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();const pr=projectOfThread(th.id);startInquiry({threads:[th.id],room:th.classroom||"",projects:pr?[pr.id]:[]});return}
+  if(d.nwinq){const el=document.getElementById("nwi-"+d.nwinq);const n=notices.get(d.nwinq);if(el&&n)el.innerHTML=inqObsChooser(n);e.stopImmediatePropagation();return}
+  if(d.nwinqno){const el=document.getElementById("nwi-"+d.nwinqno);if(el)el.innerHTML=`<button class="linkbtn" data-nwinq="${d.nwinqno}">Team inquiry</button>`;e.stopImmediatePropagation();return}
+  if(d.nwinqnew){const n=notices.get(d.nwinqnew);if(!n)return;e.stopImmediatePropagation();const rs=momentRooms(n);startInquiry({obs:[n.id],room:rs.length===1?rs[0]:"",threads:n.threadId&&threads.get(n.threadId)?[n.threadId]:[],projects:n.projectId&&projects.get(n.projectId)?[n.projectId]:[]});return}},true);
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nwinqadd||!t.value)return;const x=inquiries.get(t.value);if(!x)return;
+  x.obs=[...new Set([...(x.obs||[]),t.dataset.nwinqadd])];saveInquiry(x);toast(`Kept for the inquiry ${x.name}. It stays out of portfolios and walls.`);renderMain()});
+
 /* ---------- The evidence a plan began from ----------
    A plan started from a pattern, a thread or a project keeps that evidence beside it while it is written. Plans that
    follow a thread, or that took in observations, show theirs the same way. Nothing here changes the plan. */
@@ -3216,6 +3495,9 @@ function planEvidence(p){
   for(const {t} of planThreads(p)){const last=threadLastRemarks(t);
     heads.push({kind:"Thread",name:t.name,open:`data-tsee="${t.id}"`,lines:[t.question&&["The question",t.question],last&&["Last written about it",last.text]].filter(Boolean),
       from:(t.evidence||[]).filter((e,i,all)=>e.planId!==p.id&&has(e.text)&&all.findIndex(o=>String(o.text).trim()===String(e.text).trim())===i).sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,8)});take(threadNotices(t))}
+  for(const id of p.inquiries||[]){const q=inquiries.get(id);if(!q||!inqOf(q))continue;
+    heads.push({kind:"Team inquiry",name:q.name||"Untitled",open:`data-iqopen="${q.id}"`,lines:[has(q.see)&&["What we see",q.see],inqOpenHyps(q).length&&["What it might be telling us",inqOpenHyps(q).map(h=>h.text).join("\n")],
+      inqCurric(q).length&&["What we will try in the curriculum",inqCurric(q).map(t=>t.text+(has(t.result)?". What happened. "+t.result:"")).join("\n")],has(q.watch)&&["What we will watch for",q.watch]].filter(Boolean)});take(inqNotices(q))}
   if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
   take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
@@ -3249,7 +3531,7 @@ function evSync(){
 document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
 document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
   evOpen=t.id==="evbtn";LS.set("fps.evopen",evOpen?"1":"0");evSync()});
-document.addEventListener("click",e=>{const t=e.target.closest("#evpanel [data-popen],#evpanel [data-tsee]");if(t&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}});
+document.addEventListener("click",e=>{const t=e.target.closest("#evpanel [data-popen],#evpanel [data-tsee],#evpanel [data-iqopen]");if(t&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}});
 function projPlans(x){const m=new Map();for(const n of projNotices(x))m.set(n.id,noticeAsPlan(n));for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=rec(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}
   for(const p of plans.values())if(p.projectId===x.id&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p);return [...m.values()]}
 function projWeeks(x){
@@ -3379,6 +3661,9 @@ function renderProject(x){
   {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Observations</div>
     <div class="hint">Observations educators kept for this project, in the order they happened.</div>
     <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
+  {const iq=inqsOfProject(x.id);if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries alongside it</div>
+    <div class="hint">Questions about practice and development the team is thinking through with this project in mind.</div>
+    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${q.id}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span>${inqOpenHyps(q).length?`<div class="muted">${esc(firstLine(inqOpenHyps(q).slice(-1)[0].text,200))}</div>`:""}</div>`).join("")}</div></section>`}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
     <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each class's path is shown beside the others.":""}</div>
     ${ths.length?`<div class="pcols">${cols.map(r=>{const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
@@ -3405,7 +3690,7 @@ function renderProject(x){
   if(!isDirector())lockProjectPage();
 }
 // an educator reads a project, adds a thread to it, keeps observations for it and plans from it. Changing it is the director's.
-const PROJ_OPEN=["pplan","pplango","pplanno","print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
+const PROJ_OPEN=["iqopen","pplan","pplango","pplanno","print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
 function lockProjectPage(){const m=$("#main");if(!m)return;
   m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{el.readOnly=true;el.setAttribute("aria-readonly","true")});
   m.querySelectorAll("select").forEach(el=>{if(!el.dataset.ptadd)el.disabled=true});
@@ -3773,6 +4058,8 @@ function renderLens(){
     if((scan.teamQuestions||[]).length)h+=`<div class="card"><div class="lbl">Questions for the team</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.teamQuestions.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
   }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classes":"the "+esc(lRoom)+" class"}.</div>`;
   h+=`</section>`;
+  {const iq=inqAll().filter(q=>q.lensId===LENS.id&&(lRoom==="All"||!q.room||q.room===lRoom));if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries read through this lens</div>
+    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${q.id}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span></div>`).join("")}</div></section>`}
   $("#main").innerHTML=h;
 }
 function lensDigest(ps){
@@ -4089,7 +4376,7 @@ function projWordsHtml(x){
 }
 /* --- the wall: a run of sheets that hang in order --- */
 let wallPrev={};
-function wallPhotoMoments(x){return projNotices(x).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0))}
+function wallPhotoMoments(x){return projNotices(x).filter(n=>n.photo&&!inqHolds(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))}
 function wallProposal(x){
   const sid=()=>"w"+Math.random().toString(36).slice(2,8);
   const ms=wallPhotoMoments(x);const words=projChildWords(x);
@@ -4773,6 +5060,7 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
     const name=`Fulton Notice and Wonder ${nRoom==="All"?"all classes":nRoom} ${mondayOf(new Date())}`;
@@ -4966,7 +5254,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button>
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button><button class="linkbtn" data-tinq="${t.id}">Open a team inquiry with it</button>
       ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}

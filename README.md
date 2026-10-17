@@ -38,6 +38,14 @@ A plan can begin from a pattern in What these observations keep returning to, fr
 
 Only the director changes a project. Educators read it, add a thread to it, keep observations for it, and start plans from it. The server refuses any other change to a project from anyone else.
 
+## Team inquiries
+
+Plans, then Inquiries. A team inquiry is where the team thinks through a question about children's development and its own practice, such as a child running from a request, kept apart from curriculum plans so a plan never becomes about a behavior. Everyone reads and writes in them. Each belongs to one class or to the whole school, and only the director removes one.
+
+An inquiry holds what we see, when and where it happens, readings of what it might be telling us (set aside, never deleted, so the change in thinking stays visible), what we will try, what we will watch for, a date to look again, and each time the team looked again. It can be read through any lens, with a place to answer the lens questions.
+
+It takes in its own observations, every observation and plan of a connected thread, and connected projects. It gives back on each of them. Observations show the inquiry they are kept for, threads open one, projects list the inquiries alongside them, the Lens lists the inquiries read through it, Today shows an inquiry on its look-again date, and a plan started from an inquiry keeps it in The evidence panel, with the things to try that belong in the curriculum. Observations kept for an inquiry stay out of portfolios and walls. Prints come as a summary and a full PDF, each with Word.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
