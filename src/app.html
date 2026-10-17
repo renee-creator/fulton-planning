@@ -3816,7 +3816,10 @@ function momentDoc(n,mode,focus){
   mode=mode||PRINT.names;const blocks=[];let buf=[];
   const all=String(n.noticed||"")+"\n"+String(n.wonder||"");
   if(focus)n=Object.assign({},n,{noticed:focusText(n.noticed,focus,true),wonder:focusText(n.wonder,focus)});
-  const flush=()=>{if(buf.length)blocks.push({t:"para",text:displayText(buf.join("\n"),mode,all)});buf=[]};
+  // a child's words written inside the educator's paragraph also print as a quote with the child's name. In a child's
+  // portfolio only that child's own words are lifted out.
+  const lift=text=>childLines(text,false).filter(l=>l.name&&!l.title&&(!focus||l.name===focus.first));
+  const flush=()=>{if(buf.length){const raw=buf.join("\n");blocks.push({t:"para",text:displayText(raw,mode,all)});for(const l of lift(raw))blocks.push({t:"quote",words:displayText(l.words,mode,all),by:credit(l.name,mode)})}buf=[]};
   for(const raw of momentBody(n).split("\n")){const l=raw.trim();if(!l)continue;const m=l.match(NAMED_LINE);
     if(m){flush();blocks.push({t:"quote",words:displayText(m[2].trim(),mode,all),by:credit(m[1],mode)})}else buf.push(l)}
   flush();
@@ -3897,7 +3900,20 @@ function projGrowHtml(x){
 function childLines(text,named){
   const out=[];const t=String(text||"");
   if(named)for(const raw of t.split("\n")){const m=raw.trim().match(/^([A-Z][A-Za-z.'’-]{0,24}(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) - (.{2,})$/);if(m)out.push({name:m[1],words:m[2].trim()})}
-  for(const m of t.matchAll(/[“"]([^”"]{3,240})[”"]/g)){const before=t.slice(Math.max(0,m.index-40),m.index);const nm=before.match(/([A-Z][a-z]+)\s+(?:said|says|asked|told|added|wondered|shouted|whispered|explained|replied|called)[^“"]*$/);out.push({name:nm?nm[1]:"",words:m[1].trim()})}
+  // the speaker can come before the words, as in Adeline says "...", or after them, as in "...," said Ryley or "...," Ryley said
+  const SAY="said|says|asked|asks|told|tells|added|adds|wondered|wonders|shouted|shouts|whispered|whispers|explained|explains|replied|replies|called|calls|exclaimed|exclaims|yelled|sang|announced|answered|suggested|declared";
+  const notName=/^(She|He|They|We|I|You|It|Then|And|But|So|When|The|A|An|Teacher|Teachers|Everyone|Someone|Mom|Dad)$/;
+  const pick=v=>v&&!notName.test(v)?v:"";
+  const lines=t.split("\n");const first=(lines[0]||"").trim();
+  for(const m of t.matchAll(/[“"]([^”"]{3,240})[”"]/g)){
+    const before=t.slice(Math.max(0,m.index-40),m.index),after=t.slice(m.index+m[0].length,m.index+m[0].length+40);
+    let nm=pick((before.match(new RegExp("([A-Z][a-z]+)\\s+(?:"+SAY+")[^“\".!?]*$"))||[])[1]);
+    if(!nm)nm=pick((after.match(new RegExp("^[,.!?]?\\s*(?:"+SAY+")\\s+([A-Z][a-z]+)"))||[])[1]);
+    if(!nm)nm=pick((after.match(new RegExp("^[,.!?]?\\s*([A-Z][a-z]+)\\s+(?:"+SAY+")\\b"))||[])[1]);
+    // a title that is a child's words is credited to the one child the rest of the note names
+    if(!nm&&m.index===t.indexOf(first)&&first===m[0].trim()){const rest=lines.slice(1).join("\n");
+      const who=[...new Set(kidsAt().map(c=>c.first).filter(f=>new RegExp("(^|[^A-Za-z])"+f.replace(/[^A-Za-z'-]/g,"")+"(?![A-Za-z])").test(rest)))];if(who.length===1)nm=who[0]}
+    out.push({name:nm,words:m[1].trim().replace(/,$/,""),title:m.index===t.indexOf(first)&&first===m[0].trim()})}
   return out;
 }
 function projChildWords(x){
