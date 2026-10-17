@@ -306,6 +306,8 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .nf-photo{margin:0 0 10px;border-radius:10px;overflow:hidden;background:var(--bg);text-align:center}
 .nf-photo img{display:block;margin:0 auto;max-width:100%;max-height:520px;object-fit:contain}
 .nw-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start;margin-top:4px}
+.tconn{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:8px 12px;border-radius:8px;background:var(--marigold-soft);font-size:14.5px}
+#evpanel details>summary{cursor:pointer}
 .iqobs{display:grid;gap:10px}
 .iqob{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14.5px;background:var(--paper)}
 .iqob.nophoto{grid-template-columns:minmax(0,1fr)}
@@ -1179,7 +1181,7 @@ function renderMain(){
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
-  h+=noticeNoteHtml(p)+threadsNoteHtml(p);
+  h+=threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
   h+=dupHtml(p);
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words TREE could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
@@ -3719,16 +3721,23 @@ function planEvidence(p){
   take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   return heads.length||obs.length?{heads,obs}:null}
-function evObHtml(n,used){
+function evObHtml(n,used,p){
+  const k=p&&!$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
+  const added=new Set((p&&p.noticeAdded)||[]);
+  const acts=p&&!used.has(n.id)&&f?`<div class="actions"><button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button><button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div>`:"";
   const kids=(n.children||[]).map(id=>children.get(id)).filter(Boolean).map(c=>c.first);
   const words=childLines(n.noticed||"",true).slice(0,3);
   const text=`<div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}`;
-  return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${used.has(n.id)?" \u00b7 in this plan":""}</div>
+  return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${added.has(n.id)?" \u00b7 in this plan":""}</div>
     ${n.photo?`<div class="evrow"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="min-width:0">${text}</div></div>`:text}
     ${words.map(l=>`<div class="evq">${esc(l.words)}${l.name?` <span class="cnt">${esc(l.name)}</span>`:""}</div>`).join("")}
-    ${kids.length?`<div class="cnt">${esc(kids.join(", "))}</div>`:""}</div>`}
+    ${kids.length?`<div class="cnt">${esc(kids.join(", "))}</div>`:""}${acts}</div>`}
 function evSync(){
-  const p=view==="plans"&&currentId&&plans.get(currentId);const ev=p&&planEvidence(p);
+  const p=view==="plans"&&currentId&&plans.get(currentId);let ev=p&&planEvidence(p);
+  // the class's other observations wait in the same panel, so a plan shows its observations in one place
+  const usedAll=new Set((p&&p.noticeUsed)||[]);
+  const more=p&&!p.blank&&p.id!=="example"&&PLAN_TYPES.includes(p.type)?noticesFor(p.classroom,0).filter(n=>!usedAll.has(n.id)&&!(ev&&ev.obs.some(o=>o.id===n.id))):[];
+  if(p&&!ev&&more.length)ev={heads:[],obs:[]};
   let b=$("#evbtn"),pn=$("#evpanel");
   if(!ev){if(b)b.remove();if(pn)pn.remove();document.body.classList.remove("evopen");return}
   if(!b){b=document.createElement("button");b.id="evbtn";b.className="btn";document.body.appendChild(b)}
@@ -3737,13 +3746,17 @@ function evSync(){
   if(!evOpen){if(pn)pn.remove();return}
   if(!pn){pn=document.createElement("aside");pn.id="evpanel";pn.setAttribute("aria-label","The evidence this plan began from");document.body.appendChild(pn)}
   const used=new Set(p.noticeUsed||[]);
-  const key=p.id+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
+  const key=p.id+"|"+[...used].join(",")+"|"+more.length+"|"+$("#main")?.classList.contains("locked")+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
   if(pn.dataset.key===key)return;const top=pn.querySelector(".evbody")?.scrollTop||0;pn.dataset.key=key;
-  pn.innerHTML=`<div class="evhead"><b>The evidence this plan began from</b><button class="linkbtn" data-evshut="1">Close</button></div>
+  const began=ev.heads.length||(p.source&&p.source.kind);
+  pn.innerHTML=`<div class="evhead"><b>${began?"The evidence this plan began from":"Observations for this plan"}</b><button class="linkbtn" data-evshut="1">Close</button></div>
     <div class="evbody">${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
       ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
       ${(h.from||[]).length?`<div><span class="cnt">From the plans that followed it</span>${h.from.map(e=>`<div style="margin-top:4px">${esc(e.text)} <span class="cnt">${e.week?"Week of "+esc(fmtDate(e.week).replace(/, \d{4}$/,"")):""}${plans.has(e.planId)?` <button class="linkbtn" data-open="${e.planId}">Open</button>`:""}</span></div>`).join("")}</div>`:""}</div>`).join("")}
-    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${ev.obs.slice(0,40).map(n=>evObHtml(n,used)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:`<div class="muted">No observations yet. They appear here as they are kept.</div>`}</div>`;
+    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${ev.obs.slice(0,40).map(n=>evObHtml(n,used,p)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:""}
+    ${more.length?`<details ${ev.obs.length||ev.heads.length?"":"open"}><summary class="chiprow-label">${ev.obs.length||ev.heads.length?"Other observations":"Observations"} from ${esc(p.classroom||"no class")}, ${more.length}</summary>
+      <div class="muted" style="margin:6px 0">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>
+      <div style="display:grid;gap:12px">${more.slice(0,12).map(n=>evObHtml(n,used,p)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
   pn.querySelector(".evbody").scrollTop=top}
 document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
 document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
@@ -5538,11 +5551,11 @@ function threadsNoteHtml(p){
   let h=cs.map(({t,how,link})=>{
     const why=how==="started"?"This plan was started from the thread.":how==="quoted"?"The thread quotes this plan.":link.carried?"Carried forward from last week's plan.":`Connected by ${esc(link.by||"an educator")}${link.at?" on "+shortDate(link.at):""}.`;
     const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} class.`:"";
-    return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}${(t.weeks||[]).length?`<div class="cnt">Seen ${esc(weeksSpan(t.weeks))}</div>`:""}
-      ${(pr=>pr?`<div>Part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button></div>`:"")(projectOfThread(t.id))}
-      ${(t.evidence||[]).filter(e=>e.planId!==p.id).slice(cs.length>1?-1:-3).map(e=>`<div class="muted">\u201c${esc(e.text)}\u201d ${fmtDate(e.week)}</div>`).join("")}
-      <div class="muted">${why}${elsewhere}</div>
-      <div class="actions"><button class="linkbtn" data-tsee="${t.id}">See the thread</button><button class="linkbtn" data-tunlink="${t.id}">Disconnect from this plan</button></div></section>`}).join("");
+    // the thread's question, its words and its observations are in The evidence beside the plan, so this line only names the connection
+    const pr=projectOfThread(t.id);
+    return `<div class="tconn"><span><b>Following the thread</b> <button class="linkbtn" data-tsee="${t.id}">${esc(t.name)}</button>${pr?`, part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}</span>
+      <span class="cnt">${why}${elsewhere}</span><button class="linkbtn" data-tunlink="${t.id}">Disconnect from this plan</button></div>`}).join("");
+  for(const id of p.inquiries||[]){const q=inquiries.get(id);if(q&&inqOf(q))h+=`<div class="tconn"><span><b>Written with the team inquiry</b> <button class="linkbtn" data-iqopen="${q.id}">${esc(q.name||"Untitled")}</button></span><span class="cnt">Only what the team will try with the whole group is beside this plan.</span></div>`}
   if(rest.length)h+=`<label class="tlink">${cs.length?"Connect another thread we are following":"Connect this plan to a thread we are following"}<select id="m-thread"><option value="">Choose a thread</option>${rest.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" \u00b7 "+esc(t.classroom):""}</option>`).join("")}</select></label>`;
   return h;
 }
