@@ -761,6 +761,7 @@ function pruneEmpty(){for(const [id,p] of plans)if(id!==currentId&&id!=="example
 function persist(p){
   p.updatedAt=Math.max(Date.now(),(p.updatedAt||0)+1);plans.set(p.id,p);
   if(p.type==="individual")flowRemarks(p);
+  try{flowToThreads(p)}catch(e){console.warn("Could not bring the reflection to its thread",e)}
   if(isEmptyPlan(p)&&!serverIds.has(p.id)){setConn("Saves once you write something");return}
   pendingSaves.add(p.id);dirty=true;
   setConn("Saving");
@@ -1006,7 +1007,7 @@ Write it from the educators' Individual and small group plans for this week belo
 Return only the section text, with no preface.
 
 ${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
-${teamSourceText(src)}`;
+${teamSourceText(src)}${threadsForClaude(p)}`;
   try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\u2014/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
   catch(err){suggest[key]={status:"error",error:assistError(err?.code||"unknown","Your text is unchanged."),from:"ind"}}
   if(currentId===p.id)rerenderCard(p,"interests");
@@ -1052,7 +1053,7 @@ function fieldCard(p,f){
   return `<section class="card${String(v).trim()?" filled":""}" data-card="${f.k}">
     <label class="lbl" for="f-${f.k}">${f.label}${f.after?' <span class="muted" style="font-size:13px;font-family:var(--body)">end of week</span>':""}</label>
     <div class="hint">${f.hint}</div>
-    ${p.type==="individual"&&f.k==="observation"&&p.obsFrom&&v===p.obsFrom?`<span class="nudge" style="justify-self:start">Started from last week's Final remarks, the reflection that prompted continuing. Edit it into this week's rationale, or use Strengthen wording.</span>`:""}
+    ${f.k==="observation"&&p.obsFrom&&v===p.obsFrom?`<span class="nudge" style="justify-self:start">${p.obsFromThread&&threads.get(p.obsFromThread)?`Started from the last reflection on the thread ${esc(threads.get(p.obsFromThread).name)}.`:"Started from last week's Final remarks, the reflection that prompted continuing."} Edit it into this week's ${p.type==="classroom"?"observation":"rationale"}, or use Strengthen wording.</span>`:""}
     ${chips}
     <textarea id="f-${f.k}" data-f="${f.k}" rows="${f.rows}">${esc(v)}</textarea>
     ${suggestHtml(p,f)}
@@ -1103,7 +1104,13 @@ function webEditor(p){
 }
 const webSug={};
 // what TREE is told about the threads a plan follows. The question is the educators' hypothesis and the quotes are their own words.
-function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);return ths.length?"\n\nThreads this plan follows. Each question is the educators' hypothesis. Each quote is educators' own words from an earlier plan.\n"+ths.map(t=>JSON.stringify({name:t.name,question:t.question||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text)})).join("\n"):""}
+// what Claude reads about the threads a plan follows, the same for every kind of plan. All of it is educators' own words.
+const THREAD_GUIDE="\nThis plan follows the threads below. Keep the writing connected to them. Build on each thread's question, its moments and the last reflection on it, and name the connection where the plan's own words support it. Use only what is written here and in the plan. Never invent children, quotes, events or materials.";
+function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);if(!ths.length)return"";
+  return "\n\nThreads this plan follows. Each question is the educators' hypothesis, never the children's voice. Quotes, moments and reflections are educators' own words."+THREAD_GUIDE+"\n"+ths.map(t=>{const last=threadLastRemarks(t,p.id);
+    return JSON.stringify({name:t.name,question:t.question||"",seen:weeksSpan(t.weeks||[])||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text),
+      moments:threadNotices(t).slice(0,8).map(n=>[String(n.noticed||"").trim(),has(n.wonder)?"I wonder. "+String(n.wonder).trim():""].filter(Boolean).join(" ")),
+      last_reflection:last?last.text:""})}).join("\n")}
 function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
 function webSuggestHtml(p){
   if(!sample)return"";
@@ -2335,7 +2342,7 @@ Rewrite the educator's entry so it meets the standard. Keep every fact, name, qu
 Return only the rewritten text, with no preface.
 
 Other sections of this plan.
-${planContext(p)||"(none yet)"}
+${planContext(p)||"(none yet)"}${threadsForClaude(p)}
 
 Educator's entry.
 ${cur}`;
@@ -2365,7 +2372,7 @@ async function draftFromNotes(p,btn){
 Sort the educator's notes into the sections below. Use only what the notes say. Never invent observations, children, quotes, or materials. If the notes give nothing for a section, return an empty string for it. Sections marked as end-of-week reflection stay empty unless the notes clearly reflect back on the week. Plans document children's thinking, interpret why moments matter, and follow observation, provocation, reflection. ${STYLE}
 
 Return a JSON object with exactly these keys.
-${spec}${webSpec}
+${spec}${webSpec}${threadsForClaude(p)?threadsForClaude(p)+"\nThe threads are there to keep the sections connected. Sort only what the notes say into the sections, and name a thread where the notes point to it.":""}
 
 Educator's notes.
 ${notes}`;
@@ -3067,22 +3074,31 @@ let nwOpen="";
 function noticeNoteHtml(p){
   if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return"";
   const used=new Set(p.noticeUsed||[]);
-  const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id));
-  if(!ns.length)return"";
+  // a plan following a thread offers that thread's moments first, from any class. The class's other moments wait one tap away.
+  const tids=new Set(planThreads(p).map(c=>c.t.id));
+  const fromThread=tids.size?[...notices.values()].filter(n=>n.threadId&&tids.has(n.threadId)&&!used.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)):[];
+  const inThread=new Set(fromThread.map(n=>n.id));
+  const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id)&&!inThread.has(n.id));
+  if(!ns.length&&!fromThread.length)return"";
   const k=NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
-  const head=`<b style="color:var(--sky)">${ns.length} moment${ns.length===1?"":"s"} from ${esc(p.classroom||"no class")}</b>
-    <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
-  if(nwOpen!==p.id)return `<section class="ref" style="background:var(--sky-soft)">${head}
-    <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
   const one=n=>`<div class="nwrow"><div style="min-width:0">
       <div>${esc(n.noticed)}</div>
       ${has(n.wonder)?`<div class="muted" style="font-size:13.5px">I wonder. ${esc(n.wonder)}</div>`:""}
-      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}</span></div>
+      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}${n.classroom&&n.classroom!==p.classroom?" \u00b7 "+esc(n.classroom)+" class":""}</span></div>
     <div class="actions" style="justify-self:end">${f?`<button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button>`:""}<button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div></div>`;
-  return `<section class="ref" style="background:var(--sky-soft)">${head}
-    <div class="nwlist">${ns.slice(0,12).map(one).join("")}</div>
-    ${ns.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}
-    <div class="actions"><button class="linkbtn" data-nwshut="1">Close these</button></div></section>`;
+  let h="";
+  if(fromThread.length){const names=planThreads(p).map(c=>c.t.name).filter(Boolean);
+    h+=`<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${fromThread.length} moment${fromThread.length===1?"":"s"} from ${names.length===1?"the thread "+esc(names[0]):"the threads this plan follows"}</b>
+      <div class="nwlist">${fromThread.slice(0,12).map(one).join("")}</div>${fromThread.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</section>`}
+  if(ns.length){const head=`<b style="color:var(--sky)">${fromThread.length?"Other moments":ns.length+" moment"+(ns.length===1?"":"s")} from ${esc(p.classroom||"no class")}${fromThread.length?", "+ns.length:""}</b>
+    <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
+    if(nwOpen!==p.id)h+=`<section class="ref" style="background:var(--sky-soft)">${head}
+      <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
+    else h+=`<section class="ref" style="background:var(--sky-soft)">${head}
+      <div class="nwlist">${ns.slice(0,12).map(one).join("")}</div>
+      ${ns.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}
+      <div class="actions"><button class="linkbtn" data-nwshut="1">Close these</button></div></section>`}
+  return h;
 }
 // a project holds the moments kept for it and the moments kept for any thread it holds
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
@@ -4816,6 +4832,21 @@ function planThreads(p){
   for(const t of threads.values())if((t.evidence||[]).some(e=>e.planId===p.id))add(t,"quoted");
   return out;
 }
+// every plan that followed a thread, newest week first, whatever kind of plan it is
+function threadPlans(t){const ev=new Set((t.evidence||[]).map(e=>e.planId));
+  return [...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type)&&!(p.threadOff||[]).includes(t.id)&&(ev.has(p.id)||p.threadId===t.id||(p.threadLinks||[]).some(l=>l.id===t.id))).sort((a,b)=>String(b.weekOf).localeCompare(String(a.weekOf))||(b.updatedAt||0)-(a.updatedAt||0))}
+// the last reflection on a thread, from its most recent complete plan. An incomplete plan is never carried forward.
+function threadLastRemarks(t,notId){for(const p of threadPlans(t)){if(p.id===notId)continue;const k=AFTER_KEY[p.type];if(!k)continue;const v=String(p.fields?.[k]||"").trim();if(v&&!missingSections(p).length)return {p,text:v}}return null}
+// a plan's reflection joins the evidence of each thread it follows, and leaves a thread it no longer follows
+function flowToThreads(p){
+  if(!p||p.id==="example"||!PLAN_TYPES.includes(p.type))return;const k=AFTER_KEY[p.type];
+  const text=k?String(p.fields?.[k]||"").trim():"";const label=k?(FORMS[p.type].fields.find(f=>f.k===k)||{}).label:"";
+  const on=new Set(planThreads(p).filter(c=>c.how!=="quoted"||(c.t.evidence||[]).some(e=>e.planId===p.id&&e.auto)).map(c=>c.t.id));
+  for(const t of threads.values()){if(!t)continue;const ev=t.evidence||[];const i=ev.findIndex(e=>e.planId===p.id&&e.auto==="reflection");
+    if(on.has(t.id)&&text){const e={planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,obs:true,text:text.length>300?text.slice(0,297)+"...":text,auto:"reflection"};
+      if(i<0){t.evidence=[...ev,e];saveThreadSoon(t)}else if(ev[i].text!==e.text||ev[i].week!==e.week){t.evidence=ev.map((x,j)=>j===i?e:x);saveThreadSoon(t)}}
+    else if(i>=0){t.evidence=ev.filter((x,j)=>j!==i);saveThreadSoon(t)}}
+}
 // plans educators tied to a thread themselves, beyond the ones the thread already quotes
 function threadLinkedPlans(t){
   const ev=new Set((t.evidence||[]).map(e=>e.planId));
@@ -4829,7 +4860,7 @@ function threadsNoteHtml(p){
   let h=cs.map(({t,how,link})=>{
     const why=how==="started"?"This plan was started from the thread.":how==="quoted"?"The thread quotes this plan.":link.carried?"Carried forward from last week's plan.":`Connected by ${esc(link.by||"an educator")}${link.at?" on "+shortDate(link.at):""}.`;
     const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} class.`:"";
-    return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}
+    return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">Following the thread ${esc(t.name)}</b>${t.question?`<div>${esc(t.question)}</div>`:""}${(t.weeks||[]).length?`<div class="cnt">Seen ${esc(weeksSpan(t.weeks))}</div>`:""}
       ${(pr=>pr?`<div>Part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button></div>`:"")(projectOfThread(t.id))}
       ${(t.evidence||[]).filter(e=>e.planId!==p.id).slice(cs.length>1?-1:-3).map(e=>`<div class="muted">\u201c${esc(e.text)}\u201d ${fmtDate(e.week)}</div>`).join("")}
       <div class="muted">${why}${elsewhere}</div>
@@ -4907,6 +4938,8 @@ async function threadsClick(t){
   if(t.dataset.tdelyes){const id=t.dataset.tdelyes;threads.delete(id);if(db)db.doc("threads/"+id).delete().catch(()=>{});else LS.set("fps.threads",[...threads.values()]);renderMain();return true}
   if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
     const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
+    // the thread's last reflection opens the observation, as last week's Final remarks do when a plan continues
+    {const last=threadLastRemarks(th);if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}}
     plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
   // A classroom writes one Classroom Plan a week, so a thread joins that plan. A new one is started only when the week has none yet.
   if(t.dataset.tcplan){const th=threads.get(t.dataset.tcplan);if(!th)return true;
@@ -4914,7 +4947,7 @@ async function threadsClick(t){
     if(!room){toast("This thread runs across classes. Choose a class on the Plans page first.");return true}
     let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     const made=!cp;
-    if(made){cp=newPlan("classroom",{classroom:room,threadId:th.id});plans.set(cp.id,cp);persist(cp)}
+    if(made){cp=newPlan("classroom",{classroom:room,threadId:th.id});{const last=threadLastRemarks(th);if(last){cp.fields.observation=last.text;cp.obsFrom=last.text;cp.obsFromThread=th.id}}plans.set(cp.id,cp);persist(cp)}
     else if(!planThreads(cp).some(c=>c.t.id===th.id)){cp.threadLinks=(cp.threadLinks||[]).filter(l=>l.id!==th.id);cp.threadLinks.push({id:th.id,by:whoAmI(),at:Date.now()});if(cp.threadOff)cp.threadOff=cp.threadOff.filter(v=>v!==th.id);persist(cp)}
     currentId=cp.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}, following this thread.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return true}
