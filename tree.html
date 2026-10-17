@@ -2163,6 +2163,9 @@ function todayWaiting(){
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write"});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
+  // moments shared from Kaymbu where TREE could not tell the classroom or the children, for that classroom's educators and the director
+  {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!n.classroom||n.classroom===rm)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
+    out.push({dot:"sky",t:"Tag the children on a Kaymbu moment",s:[firstLine(n.noticed,50),!n.classroom?"No classroom was in the subject line.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].join(". "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
   // DRDP suggestions waiting for an educator, for the children in my classroom, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
@@ -2188,7 +2191,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu moment"?["kaymbu","Kaymbu moments to tag"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
   :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
@@ -3147,6 +3150,8 @@ function noticesClick(t){
     n.at=when;n.week=mondayOf(new Date(when));
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
     delete n.day;delete n.fromClaude;
+    // saving a moment from Kaymbu is the educator's check of its classroom and children
+    if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure}
     saveNotice(n);noticeForm=null;
     if(editing){if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
       renderAll();const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}toast("Changes saved.");return true}

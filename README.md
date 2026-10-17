@@ -22,6 +22,12 @@ Notice and Wonder is the school's observational frame and sits beside the plans 
 
 Children, at the end of the top menu, is the roster. It came in once from the Family Conferences records with each child's name, classroom, small group, first day and next year's plan, and from now on the roster is kept here. Each child is At Fulton, Left Fulton or Moved on to kindergarten. A child who leaves moves to Former children with the day they left, and nothing about them is removed. Their record stays until the director chooses how long records are kept. Every change is noted on the child with the day and who made it. Program settings has a Printing card with two switches for the school's name, one for display documentation and one for plans and records, and the starting choice for children's names on display pieces, first names, first name and last initial, initials, or no names. Names change only on the printout. The words in a moment never change. A moment sheet and each sheet of a wall print centred, with the photo taking at least the top two thirds of the page and more when the words are few, the title, then the classroom, the day and the educator under it, and the words set larger or smaller so the sheet holds one page. A wall sheet holds up to three photos, the first chosen the largest, and can be seen as it will print before printing. A moment keeps every word that was written, so a long one carries on to a second sheet. A wall sheet with more words than fit says so before printing. The Word file follows the PDF. The tree-icons folder holds the TREE icon for when the app takes the name TREE.
 
+## Moments from Kaymbu
+
+Moments shared from Kaymbu by email to the TREE address become TREE moments. Select the Moments in Kaymbu, send them to the TREE address, and put the classroom in the subject line, such as South. The subject can also name a project or a thread, such as South Kindness. Each Moment's title and the educator's note are kept word for word, the photo is kept in the records at the largest size Kaymbu gives, and the moment is credited to the educator who shared it. The children are tagged by the names written in the note, the same way Tag the children named works on the page. A moment where TREE could not tell the classroom or the children, or where two children share a first name, waits on Today as Tag the children on a Kaymbu moment, for that classroom's educators and the director. Saving it with Change is the check. A Moment sent twice is only kept once. The day is the day the email was sent, and can be changed on the moment.
+
+The email reaches TREE through a Google Apps Script in the school's Google Workspace mailbox, kept in tools/kaymbu-apps-script.gs with its setup steps. It checks every ten minutes and sends each new Kaymbu email to the server's Kaymbu inbox, which only accepts emails that came from Kaymbu and carry the key saved on Render as `KAYMBU_INBOX_KEY`. An email the server could not finish, such as a photo Kaymbu did not send in time, is tried again on the next check.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
@@ -40,6 +46,7 @@ This repository holds code only. It never holds plans, children's names, or keys
 | `ANTHROPIC_API_KEY` | The same key TREE uses |
 | `RECORDS_REPO` | Optional. Defaults to `renee-creator/fulton-planning-records` |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to use the server |
+| `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the Kaymbu Apps Script. Turns on Moments from Kaymbu |
 | `READS_PER_HOUR`, `CAREFUL_PER_HOUR` | Optional. Hourly Claude request limits, 800 and 400 by default, sized for a whole-school scan |
 
 ## Who can do what
