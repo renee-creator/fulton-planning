@@ -3307,7 +3307,7 @@ function renderProject(x){
   const free=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).sort((a,b)=>(rooms.includes(b.classroom)-rooms.includes(a.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
   const dt=x.decision&&x.decision.threadId&&threads.get(x.decision.threadId);
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
-  let h=`<div class="head"><div class="head-row"><div style="flex:1;min-width:0">
+  let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-pback="1">All projects${projects.size>1?", "+projects.size:""}</button></div><div class="head"><div class="head-row"><div style="flex:1;min-width:0">
       <div><span class="eyebrow">Project · ${esc(x.home?x.home+" classroom":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
       <div class="actions">${printTwo("project",x.id)}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
