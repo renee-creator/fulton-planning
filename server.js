@@ -208,7 +208,8 @@ async function doLoad() {
     store.branch = repo.json.default_branch || 'main';
     store.repoKb = Number(repo.json.size) || 0; store.repoKbAt = Date.now();
     await loadAccounts();
-    const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1`);
+    const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
+    if (tree.json && tree.json.truncated) log('GitHub listed only part of the records');
     if (tree.status === 409) { store.ready = true; store.loadedAt = Date.now(); return; }   // empty repository
     if (tree.status !== 200) throw new Error('GitHub answered ' + tree.status + ' when listing records.');
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
@@ -432,7 +433,12 @@ async function handle(req, res) {
     const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
     if (!checkFileKey(url.searchParams.get('t') || '')) { log('Photo refused, the key has expired or is not valid'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
-    const o = store.originals.get(id);
+    let o = store.originals.get(id);
+    // a photo saved while the list of records was being read can be missing from it, so the records are asked directly
+    if (!o && ID_RE.test(id) && store.ready) {
+      const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/originals/${encodeURIComponent(id)}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`);
+      if (r.status === 200 && r.json && r.json.sha) { o = { path: `originals/${id}`, sha: r.json.sha, size: r.json.size }; store.originals.set(id, o); log('Photo found in the records directly', id.slice(0, 60)); }
+    }
     if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60)); send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
