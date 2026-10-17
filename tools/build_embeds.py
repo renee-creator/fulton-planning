@@ -136,8 +136,10 @@ if(typeof downloadPdf==="function"&&P.TREE_CONF_DOCS_FILE){const pdf0=downloadPd
       if(extra)await saveFile(slug(childName(child))+"-conference-documentation-"+String(cf.term||"").toLowerCase()+"-"+(cf.schoolYear||"")+".docx",new Blob([new Uint8Array(await extra.arrayBuffer())],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}))}catch(e){console.error(e)}};}
 let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true});})();</script>
 """
+# the monthly portfolio checklist now lives in TREE under Children, so the Conferences page leaves out its Portfolios page
+NOPF = '<style>[data-go="portfolios"]{display:none!important}</style>\n'
 NODIR = '<script>try{if(localStorage.getItem("fp-director")!=="1"){const st=document.createElement("style");st.textContent=\'[data-go="settings"]{display:none!important}\';document.head.appendChild(st)}}catch(e){}</script>\n'
-out = head("Family Conferences, TREE") + TELL + NODIR + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
+out = head("Family Conferences, TREE") + TELL + NODIR + NOPF + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
 (root / "tree-conferences.html").write_text(out)
 print("tree-conferences.html", len(out), "bytes")
 
