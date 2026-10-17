@@ -1590,7 +1590,7 @@ function kidDrdpHtml(c){
     return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or a moment that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span></div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
       <div class="cnt">Levels here were accepted by an educator from documentation. They are not a DRDP rating, which is still entered in DRDPtech. Tap a measure to see its evidence.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
         <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
@@ -1872,10 +1872,12 @@ function portfolioDocs(c,mode,drdp){
   const band=keys=>{const latest={};for(const k of keys)for(const x of bySrc.get(k)||[]){placed.add(x.id);const t=x.reviewedAt||x.at||0;if(!latest[x.code]||t>(latest[x.code].reviewedAt||latest[x.code].at||0))latest[x.code]=x}
     const ls=Object.values(latest).sort((a,b)=>a.code.localeCompare(b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
     return ls.length?{t:"small",label:"Learning seen here",lines:ls}:null};
+  const bySrcHas=keys=>keys.some(k=>bySrc.has(k));
   const keysOf=x=>x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
   const page=x=>{const d=x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
     if(x.kind!=="slides"&&(x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);
-    if(x.kind==="slides")d.blocks=(d.blocks||[]).filter(b=>!(b.t==="small"&&/DRDP/.test(b.label||"")));
+    // within the moments, the slide's own list of measures gives way to the levels, so the measures are not named twice
+    if(x.kind==="slides"&&drdp==="within"&&bySrcHas(keysOf(x)))d.blocks=(d.blocks||[]).filter(b=>!(b.t==="small"&&/DRDP/.test(b.label||"")));
     const a=kidAgeAt(c,x.at);d.details=[longDate(iso(new Date(x.at))),a?"Age "+a:""];
     if(drdp==="within"){const b=band(keysOf(x));if(b)d.blocks=[...(d.blocks||[]),b]}
     return d};
@@ -4564,6 +4566,9 @@ async function printsClick(t){
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Notice and Wonder ${momentHeading(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
+  // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
+  if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
+    if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in a moment or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
