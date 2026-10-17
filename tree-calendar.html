@@ -9,6 +9,7 @@
 </head>
 <body>
 <script>window.TREE_TELL=m=>{try{if(window.parent!==window)window.parent.postMessage(Object.assign({},m),location.origin)}catch(e){}};</script>
+<script>window.TREE_VA=(()=>{try{return window.parent!==window&&window.parent.TREE_VIEW_AS||null}catch(e){return null}})();if(window.TREE_VA){const st=document.createElement("style");st.textContent='[data-go="settings"]{display:none!important}';document.head.appendChild(st)}</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -500,6 +501,7 @@ const $ = id => document.getElementById(id);
 function signOut(){ Auth.token=null; LS.set("fp-token",null); LS.set("fp-name",null); location.reload(); }
 async function api(path, body){
   if(PREVIEW) return PREVIEW.call(path, body||{});
+  if(window.TREE_VA && path!=='/api/view'){ const e=new Error('Nothing is saved while you see TREE as '+window.TREE_VA.name+'.'); e.code='view_as'; throw e; }
   let r;
   try{ r = await fetch(SERVER+path,{method:"POST",headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:JSON.stringify(body||{})}); }
   catch(e){ throw {code:"unavailable", message:"The calendar server could not be reached. Check your internet connection and try again."}; }
@@ -850,7 +852,7 @@ async function refresh(force){
     if(my!==seq) return;
     banner(j.saveError||j.saveWarn, !j.saveError); S.loadError="";
     if(j.unchanged){ if(S.data) S.data.calendarStatus=j.calendarStatus; }
-    else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; }
+    else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; if(window.TREE_VA){ S.me=window.TREE_VA.name; S.director=false; S.shared=false; } }
   }catch(e){ if(my!==seq) return; if(e.code==="session_expired") return; S.loadError=e.message||"The calendar could not be loaded."; }
   S.busy=false; render();
 }
