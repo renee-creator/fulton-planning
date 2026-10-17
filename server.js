@@ -176,7 +176,7 @@ function conferenceEvents(from, to) {
       const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
       const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
       if (day < from || day > to) continue;
-      events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' classroom' : ''}`, allDay: true, start: day, end: day });
+      events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
     }
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
