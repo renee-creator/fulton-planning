@@ -20,7 +20,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     .replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (m, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-    .replace(/[ \t]+\n/g, '\n').trim();
+    .replace(/[\uFFFC\u200B]/g, '').replace(/[ \t]+\n/g, '\n').trim();
 
   // each Moment in a Kaymbu email is a caption, a note and a photo, in that order
   function parseMoments(html) {
