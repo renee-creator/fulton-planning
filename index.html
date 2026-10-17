@@ -1517,6 +1517,8 @@ function applyLock(){
   if(k!==lockFor){lockFor=k;lockOn=!!k&&lockHasContent(k)}
   main.classList.toggle("locked",!!k&&lockOn);
   if(!k||!lockOn){const b=main.querySelector(".lockbar");if(b)b.remove();return}
+  // a project stays read for an educator, since only the director changes it, and lockProjectPage keeps adding open
+  if(k.startsWith("proj")&&!isDirector()){const b=main.querySelector(".lockbar");if(b)b.remove();lockProjectPage();return}
   const ctrls=[...main.querySelectorAll("textarea,input,select")].filter(el=>!el.closest(LOCK_KEEP)&&el.type!=="search");
   if(!ctrls.length)return;
   const zones=new Set();
@@ -3149,10 +3151,29 @@ function momentsReadHtml(){
   return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these observations keep returning to</h3>
     <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
-    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map(p=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(p.why)}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} observation${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}</div>`).join("")}</div>`:""}
+    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(p.why)}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} observation${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}
+      ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${isDirector()?(p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`):""}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
     <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
 }
+// a pattern's observations, newest last, in the educators' own words with their dates, for a plan's observation
+function patternMoments(p){return (p.ids||[]).map(id=>notices.get(id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0))}
+function patternRoom(ns){if(nRoom!=="All")return nRoom;const c={};for(const n of ns)for(const r of momentRooms(n))c[r]=(c[r]||0)+1;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||myRoom()||""}
+// a plan from what the observations keep returning to. The plan begins from the observations themselves, and the
+// pattern's name and TREE's reading stay out of it, so the educator writes the area and the intent.
+function planFromPattern(p){const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
+  const np=newPlan("individual",{classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
+  np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");
+  np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);
+  if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
+  toast("The plan begins with these observations. Write the area and your intent in your own words.")}
+// the director follows a pattern as a thread, and its observations are kept for that thread
+function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
+  const weeks=[...new Set(ns.map(n=>n.week||mondayOf(new Date(n.at||Date.now()))))].sort();
+  const nt={id:uid(),name:p.name,question:"",classroom:patternRoom(ns),groups:[],status:"emerging",weeks,lastWeek:weeks.slice(-1)[0]||"",evidence:[],languages:[],next:[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:"observations",at:s.createdAt}};
+  saveThread(nt);for(const n of ns)if(!n.threadId){n.threadId=nt.id;saveNotice(n)}
+  p.threadId=nt.id;saveScan(s);renderMain();toast("Following it as a thread. Write its question on the thread when the team is ready.")}
 function renderMoments(){
   const all=momentsIn();
   const gs=momentGroups(all);
@@ -3281,6 +3302,8 @@ function noticesClick(t){
     // the moment the educator just wrote should be the first thing they see, not an empty page
     if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
     renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
+  if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}
+  if(t.dataset.patthread!=null){if(!isDirector())return true;const sc=momentsScan();if(sc&&sc.patterns&&sc.patterns[+t.dataset.patthread])threadFromPattern(sc,+t.dataset.patthread);return true}
   if(t.dataset.nwopen){nwOpen=t.dataset.nwopen;renderMain();return true}
   if(t.dataset.nwshut){nwOpen="";renderMain();return true}
   if(t.dataset.nwuse||t.dataset.nwskip){
@@ -3429,7 +3452,7 @@ function projThreadCard(x,l,t,ws){
     ${ws.length?`<div class="tl" aria-label="Weeks this thread appears">${ws.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`:""}
     ${last?`<div class="evid"><div>“${esc(last.text)}”${evSource(last)}</div></div>`:""}
     <div class="cnt">Joined the project the week of ${fmtDate(l.week||mondayOf(new Date(l.at||Date.now())))}${l.by?" · added by "+esc(l.by):""}${t.unfollowed?" · no longer followed":""}</div>
-    <div class="actions"><button class="linkbtn" data-tsee="${t.id}">See the thread</button><button class="linkbtn" data-ptrm="${t.id}">Take out of the project</button></div></div>`;
+    <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start a plan from it</button><button class="linkbtn" data-tsee="${t.id}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${t.id}">Take out of the project</button>`:""}</div></div>`;
 }
 function renderProject(x){
   const ths=projThreads(x),ws=projWeeks(x),rooms=projRooms(x);
@@ -3515,8 +3538,17 @@ function renderProject(x){
       <div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-psf="${s.id}|${k}" rows="2">${esc(s.fields?.[k]||"")}</textarea></label>`).join("")}
       <div class="actions">${printBtns("pstory",s.id,"Story PDF",true)}<span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${s.id}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="pdel"><button class="linkbtn" data-pdel="1">Remove this project</button></span></div>`;
+  else h=`<div class="ref" style="background:var(--sky-soft);margin-bottom:10px">Only the director changes a project. You can add a thread we are following, keep observations for it, and start a plan from any of its threads.</div>`+h;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(!isDirector())lockProjectPage();
 }
+// an educator reads a project, adds a thread to it, keeps observations for it and plans from it. Changing it is the director's.
+const PROJ_OPEN=["print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
+function lockProjectPage(){const m=$("#main");if(!m)return;
+  m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{el.readOnly=true;el.setAttribute("aria-readonly","true")});
+  m.querySelectorAll("select").forEach(el=>{if(!el.dataset.ptadd)el.disabled=true});
+  m.querySelectorAll("button").forEach(b=>{if(b.closest("#tsubnav"))return;const keys=Object.keys(b.dataset);if(!keys.length||!keys.some(k=>PROJ_OPEN.includes(k)))b.hidden=true});
+  m.querySelectorAll("details.wsadd,.sugg").forEach(el=>el.hidden=true)}
 let projOpenStory="";
 function startProject(){
   const f=projForm;if(!f)return;const g=id=>($("#"+id)?.value||"").trim();

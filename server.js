@@ -570,6 +570,14 @@ async function handle(req, res) {
     }
     if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
+    // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
+    if (kind === 'projects' && op !== 'create' && cur && !cur.deleted && !isDirector(me.name)) {
+      const OPEN = ['threads', 'classrooms', 'updatedAt', 'updatedByName', 'savedAt'];
+      const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
+      const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
+      const shrank = k => (k === 'threads' || k === 'classrooms') && (next[k] || []).length < (cur.doc[k] || []).length;
+      if (changed.some(k => !OPEN.includes(k) || shrank(k))) { log('Project change refused for', me.name, id, changed.join(',')); err(req, res, 403, 'Only the director changes a project. You can add a thread to it and start a plan from its threads.'); return; }
+    }
     // director feedback on a plan is written only by the director; an educator's save keeps whatever the director last wrote
     if (kind === 'plans' && !isDirector(me.name)) {
       const keep = d => { for (const k of DIRECTOR_FIELDS) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'feedback') d[k] = ''; else delete d[k]; } };
