@@ -43,7 +43,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 3) { res.resume(); resolve(getBuf(new URL(res.headers.location, u).href, hops + 1)); return; }
         const chunks = []; let size = 0;
         res.on('data', c => { size += c.length; if (size > 15 * 1024 * 1024) req.destroy(new Error('too large')); else chunks.push(c); });
-        res.on('end', () => resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), buf: Buffer.concat(chunks) }));
+        res.on('end', () => resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), modified: Date.parse(res.headers['last-modified'] || '') || 0, buf: Buffer.concat(chunks) }));
         res.on('error', reject);
       });
       req.setTimeout(30000, () => req.destroy(new Error('Kaymbu did not answer in time')));
@@ -75,7 +75,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const tries = [url.replace(/_display(\.\w+)$/i, '$1'), url.replace(/_display(\.\w+)$/i, '_original$1'), url].filter((v, i, a) => a.indexOf(v) === i);
     let best = null;
     for (const t of tries) {
-      try { const r = await getBuf(t); const d = r.status === 200 && /^image\//.test(r.type) ? size(r.buf) : null; if (d && (!best || d.w * d.h > best.w * best.h)) best = Object.assign({ buf: r.buf, url: t }, d); }
+      try { const r = await getBuf(t); const d = r.status === 200 && /^image\//.test(r.type) ? size(r.buf) : null; if (d && (!best || d.w * d.h > best.w * best.h)) best = Object.assign({ buf: r.buf, url: t, modified: r.modified }, d); }
       catch (e) {}
     }
     return best;
@@ -92,6 +92,29 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   const laDay = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
   function mondayOf(day) { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); }
   const live = kind => [...store.recs[kind].values()].filter(r => !r.deleted).map(r => r.doc);
+  // Los Angeles wall time as a moment in time, so a day and hour from a subject or a photo land on the right day
+  function laTime(y, mo, d, h = 12, mi = 0) {
+    let t = Date.UTC(y, mo - 1, d, h, mi);
+    for (let k = 0; k < 2; k++) { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
+      t += Date.UTC(y, mo - 1, d, h, mi) - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute); }
+    return t;
+  }
+  // a date written in the subject, like 10/14, 10/14/26 or Oct 14, sets the day for the whole batch
+  const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  function subjectDay(subject, sent) {
+    const s = String(subject || '').toLowerCase(); let mo, d, y;
+    let m = s.match(/\b(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?\b/);
+    if (m) { mo = +m[1]; d = +m[2]; y = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : 0; }
+    else if ((m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/))) { mo = MONTHS.indexOf(m[1]) + 1; d = +m[2]; y = 0; }
+    if (!mo || mo > 12 || !d || d > 31) return 0;
+    const sentYear = +laDay(sent).slice(0, 4);
+    let t = laTime(y || sentYear, mo, d);
+    if (!y && t > sent + 864e5) t = laTime(sentYear - 1, mo, d);   // a December date sent in January
+    return t <= sent + 864e5 ? t : 0;
+  }
+  // the day a photo reached Kaymbu, which is the day it was taken when the Kaymbu app is used in class. Kaymbu removes
+  // the camera's own date from its photos.
+  const photoDay = (p, sent) => p && p.modified && p.modified <= sent + 36e5 && p.modified > sent - 400 * 864e5 ? p.modified : 0;
   const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
 
   // the subject names the classroom, and can also name a project or a thread the moments belong to
@@ -109,7 +132,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   // the children a note names, read the same way Tag the children named does on the page. A first name shared by two
   // children in the classroom is left for an educator.
   function findChildren(text, room) {
-    const kids = live('children').filter(c => c.first && (c.status || 'active') !== 'withdrawn');
+    // a child's record has no id inside it, so the id is the name of its record
+    const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
     const pool = room ? kids.filter(c => c.classroom === room) : kids;
     const found = [], unsure = [];
     for (const c of pool) {
@@ -139,7 +163,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const moments = parseMoments(body.html);
     if (!moments.length) { log('Kaymbu email held no Moments'); reply(200, { ok: true, kept: 0 }); return; }
     const name = from.replace(/<[^>]*>/, '').trim(), by = sharedBy(name, email);
-    const when = Date.parse(body.date) || Date.now(), day = laDay(when);
+    const sent = Date.parse(body.date) || Date.now(), onDay = subjectDay(body.subject, sent);
     const sub = readSubject(body.subject);
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
     let kept = 0, again = 0, check = 0; const problems = [];
@@ -148,15 +172,16 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       if (have.has(k) || seen.has(k)) { again++; continue; }
       seen.add(k);
       try {
-        let photo;
-        if (m.photo) { const p = await bestPhoto(m.photo); if (!p) throw new Error('Kaymbu would not send the photo for "' + (m.title || 'a Moment').slice(0, 40) + '"'); photo = { id: await keepPhoto(p.buf, by), w: p.w, h: p.h }; }
+        let photo, p;
+        if (m.photo) { p = await bestPhoto(m.photo); if (!p) throw new Error('Kaymbu would not send the photo for "' + (m.title || 'a Moment').slice(0, 40) + '"'); photo = { id: await keepPhoto(p.buf, by), w: p.w, h: p.h }; }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
         const kids = findChildren(noticed, sub.room);
         const needs = !sub.room || !kids.ids.length || kids.unsure.length > 0;
+        const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const doc = { id, noticed, wonder: '', classroom: sub.room, by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { key: k, subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
+          kaymbu: { v: 2, key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
@@ -170,5 +195,28 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     reply(200, { ok: true, kept, again, check, classroom: sub.room, problems });
   }
 
-  return { handle, parseMoments, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
+  // moments kept before the children and the date were read properly are put right once, after the records load
+  async function repair() {
+    let n = 0;
+    for (const [id, r] of store.recs.notices) {
+      const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 2) continue;
+      const kids = findChildren(d.noticed || '', d.classroom || '');
+      const ids = [...new Set([...(d.children || []).filter(Boolean), ...kids.ids])];
+      let at = d.at;
+      if (!d.kaymbu.dated && d.kaymbu.key && /^[0-9a-f]{4}/i.test(d.kaymbu.key)) {
+        const k = d.kaymbu.key, src = `https://d2k9f6tk478nyp.cloudfront.net/media/57b153851133e182c4001217/${laDay(d.at).slice(0, 4)}/moments/${k[0]}/${k[1]}/${k[2]}/${k[3]}/${k}`;
+        try { const res = await new Promise((ok, no) => { const q = https.request(src, { method: 'HEAD' }, x => { x.resume(); ok(x); }); q.setTimeout(20000, () => q.destroy(new Error('timeout'))); q.on('error', no); q.end(); });
+          const mod = res.statusCode === 200 ? Date.parse(res.headers['last-modified'] || '') : 0; if (photoDay({ modified: mod }, d.at)) at = mod; } catch (e) {}
+      }
+      const left = !d.classroom || !ids.length || kids.unsure.length > 0;
+      const moved = at !== d.at;
+      Object.assign(d, { children: ids, at, week: mondayOf(laDay(at)) });
+      d.kaymbu = Object.assign({}, d.kaymbu, { v: 2, dated: moved ? 'photo' : (d.kaymbu.dated || 'sent'), check: d.kaymbu.check === false && d.kaymbu.checkedBy ? false : left });
+      if (kids.unsure.length) d.kaymbu.unsure = kids.unsure; else delete d.kaymbu.unsure;
+      noteChange('notices', id); scheduleSave('notices', id); n++;
+    }
+    if (n) log('Kaymbu moments put right for their children and the day they were taken,', n);
+  }
+
+  return { handle, repair, subjectDay, parseMoments, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
 };
