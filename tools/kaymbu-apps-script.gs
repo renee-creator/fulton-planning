@@ -6,14 +6,16 @@
   not finish is tried again next time, and a Moment already in TREE is never added twice.
 
   Setup, once
-  1. Go to script.google.com while signed in to the school mailbox, choose New project, and paste this whole file.
+  0. In the Google Admin console, add tree@childfamilycommunity.com as an alternate email address on the account that
+     will run this script, so mail to it lands in that mailbox.
+  1. Go to script.google.com while signed in to that mailbox, choose New project, and paste this whole file.
   2. Fill in the three settings below. The key is the same one saved on Render as KAYMBU_INBOX_KEY.
   3. Choose the function setup in the toolbar and press Run. Allow the access Google asks for. This turns on the
      ten minute check.
   4. To test, share a Moment from Kaymbu to the TREE address, then run checkKaymbu and read the log.
 */
 
-const TREE_ADDRESS = 'renee+tree@childfamilycommunity.com';   // the address Kaymbu Moments are sent to
+const TREE_ADDRESS = 'tree@childfamilycommunity.com';   // the address Kaymbu Moments are sent to
 const TREE_SERVER = 'https://fulton-planning.onrender.com/inbound/kaymbu';
 const TREE_KEY = 'PASTE THE KEY HERE';
 
