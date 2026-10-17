@@ -10,6 +10,7 @@
 //   DIRECTOR_NAMES      names from TEACHER_PASSCODES who may change Program settings and delete plans, like  Renee
 //   ANTHROPIC_API_KEY   the same key TREE uses
 //   ALLOWED_ORIGINS     extra websites allowed to use this server, separated by commas (optional)
+//   KAYMBU_INBOX_KEY    a long secret shared with the Kaymbu Apps Script, which turns on the Kaymbu inbox (optional)
 //
 // Open this service's address in a browser to see a status page.
 
@@ -181,6 +182,8 @@ function conferenceEvents(from, to) {
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
 }
 const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+// Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
+const kaymbuInbox = require('./kaymbu.js')({ store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n) });
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';
 const SAVE_WAIT = 'Changes are taking longer than usual to reach GitHub. They are kept on the server and saving keeps trying, so keep working, and avoid closing the app for a few minutes.';
@@ -406,6 +409,7 @@ function statusPage(req, res) {
     [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. Director access for ${TEACHERS.filter(t => isDirector(t.name)).map(t => t.name).join(', ') || 'nobody yet, so set DIRECTOR_NAMES'}.` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like Hannah=maple garden 42.'],
   ];
   lines.push(calendar.statusLine());
+  lines.push(kaymbuInbox.statusLine());
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
@@ -442,6 +446,12 @@ async function handle(req, res) {
     return;
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
+  // the Kaymbu inbox is called by the school's Apps Script, not a page, so it carries its own key rather than a sign-in
+  if (path === '/inbound/kaymbu') {
+    let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
+    if (!store.ready) await loadAll();
+    await kaymbuInbox.handle(req, res, url, b, (status, obj) => json(req, res, status, obj)); return;
+  }
   const origin = String(req.headers.origin || '').replace(/\/+$/, '').toLowerCase();
   if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
 
