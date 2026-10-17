@@ -456,8 +456,14 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kids{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:10px}
 .kidc{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;color:var(--ink)}
 .kidc:hover{border-color:var(--moss)}
-.pftable td,.pftable th{padding:6px 5px}.pftable td.pflate{background:var(--clay-soft)}
-.pfn{min-width:26px;padding:2px 7px;border-radius:999px;border:0;background:var(--moss-soft);font-weight:700;cursor:pointer;font:inherit;font-weight:700}
+.pflist{display:grid;gap:10px;margin-top:12px}.pfcard{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.pfhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:8px}.pfsum{margin-left:auto;font-size:14px;font-weight:600}
+.pfstrip{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+.pfm{display:grid;justify-items:center;gap:3px;padding:4px 0 6px;border-radius:8px;min-width:0}.pfm>span{font-size:11px;color:var(--muted)}
+.pfm.late{background:var(--clay-soft)}.pfm.later{opacity:.45}.pfm i{width:6px;height:6px;border-radius:50%;background:var(--line);margin-top:8px}
+.pfm input{width:20px;height:20px;margin:0}
+.pfn{min-width:24px;height:24px;padding:0 5px;border-radius:999px;border:0;background:var(--moss-soft);font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+@media (max-width:420px){.pfm>span{font-size:10px}.pfn{min-width:22px;height:22px;font-size:13px}.pfm input{width:18px;height:18px}}
 .kidc b{font-family:var(--display);font-size:16px}
 .kidc span{font-size:12.5px;color:var(--muted)}
 .kidc{grid-template-columns:auto 1fr;column-gap:12px}.kidc>*:not(.kav){grid-column:2}.kidc .kav{grid-row:1/span 4;width:38px;height:38px;border-radius:50%;background:var(--moss-soft);color:var(--moss);display:grid;place-items:center;font-weight:700;font-size:14px;align-self:start}.kidc .ksoon{color:var(--marigold);font-weight:600}
@@ -1526,7 +1532,7 @@ window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only)=>{const c=children.g
   if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
   return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pfdrdp)LS.set("tree.pfdrdp",t.value);
-  if(t&&t.dataset&&t.dataset.pftick){const [id,yr,m]=t.dataset.pftick.split("|");const c=children.get(id);if(c){kidDrdpPatch(c,{portfolio:{[yr]:{[m]:t.checked}}});const td=t.closest("td");if(td)td.classList.toggle("pflate",!t.checked&&pfMonthTimes(yr,PF_MONTHS.indexOf(m))[1]<Date.now())}}});
+  if(t&&t.dataset&&t.dataset.pftick){const [id,yr,m]=t.dataset.pftick.split("|");const c=children.get(id);if(c){kidDrdpPatch(c,{portfolio:{[yr]:{[m]:t.checked}}});const cell=t.closest(".pfm");if(cell)cell.classList.toggle("late",!t.checked&&pfMonthTimes(yr,PF_MONTHS.indexOf(m))[1]<Date.now())}}});
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
 // opens a piece of documentation from a conference form
@@ -5405,14 +5411,17 @@ const kidSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9
 const PF_MONTHS=["Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul"];
 function pfMonthTimes(yr,i){const y0=+yr.slice(0,4);const m=(7+i)%12,y=y0+(i>=5?1:0);return [new Date(y,m,1).getTime(),new Date(y,m+1,1).getTime()-1]}
 function portfoliosHtml(list,yr){
-  const now=Date.now();const counts=new Map(list.map(c=>{const its=portfolioItems(c);return [c.id,PF_MONTHS.map((m,i)=>{const [a,b]=pfMonthTimes(yr,i);return its.filter(x=>x.at>=a&&x.at<=b).length})]}));
-  const rows=list.map(c=>{const pf=((c.portfolio||{})[yr])||{};const n=counts.get(c.id);const done=PF_MONTHS.map((m,i)=>n[i]>0||!!pf[m]);
-    const owed=PF_MONTHS.filter((m,i)=>pfMonthTimes(yr,i)[1]<now&&!done[i]).length;
-    return `<tr><td><button class="linkbtn" data-kid="${esc(c.id)}">${esc(kidName(c))}</button><div class="cnt">${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</div></td>${PF_MONTHS.map((m,i)=>{const late=pfMonthTimes(yr,i)[1]<now&&!done[i];
-      return `<td class="${late?"pflate":""}" style="text-align:center">${n[i]?`<button class="pfn" data-kid="${esc(c.id)}" data-kdocgo="1" title="${n[i]} in the portfolio for ${m}">${n[i]}</button>`:`<input type="checkbox" aria-label="${esc(kidName(c))} ${m}" data-pftick="${esc(c.id)}|${yr}|${m}" ${pf[m]?"checked":""}>`}</td>`}).join("")}
-      <td class="cnt">${done.filter(Boolean).length}${owed?` <span style="color:var(--clay)">${owed} behind</span>`:""}</td></tr>`}).join("");
-  return `<section class="card"><div class="cnt">Each month shows how many moments and slides in TREE are in the child's portfolio from that month. Tap a number to open the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</div>
-    <div style="overflow-x:auto;margin-top:10px"><table class="plist pftable"><thead><tr><th>Child</th>${PF_MONTHS.map(m=>`<th>${m}</th>`).join("")}<th>Months</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="cnt">No children in this view.</td></tr>`}</tbody></table></div></section>`;
+  // one small card per child, with the twelve months in a strip that fits a phone. Months still to come stay quiet.
+  const now=Date.now();
+  const cards=list.map(c=>{const its=portfolioItems(c);const pf=((c.portfolio||{})[yr])||{};
+    const cells=PF_MONTHS.map((m,i)=>{const [a,b]=pfMonthTimes(yr,i);const n=its.filter(x=>x.at>=a&&x.at<=b).length;const past=b<now,future=a>now;
+      return {m,n,tick:!!pf[m],past,future,done:n>0||!!pf[m]}});
+    const due=cells.filter(x=>!x.future),done=due.filter(x=>x.done).length,behind=due.filter(x=>x.past&&!x.done).length;
+    return `<div class="pfcard"><div class="pfhead"><button class="linkbtn" data-kid="${esc(c.id)}"><b>${esc(kidName(c))}</b></button><span class="cnt">${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>
+      <span class="pfsum">${done} of ${due.length}${behind?` <span style="color:var(--clay)">· ${behind} behind</span>`:""}</span></div>
+      <div class="pfstrip">${cells.map(x=>`<div class="pfm${x.past&&!x.done?" late":""}${x.future?" later":""}"><span>${x.m}</span>${x.n?`<button class="pfn" data-kid="${esc(c.id)}" data-kdocgo="1" aria-label="${x.n} in the portfolio for ${x.m}, open ${esc(c.first)}'s documentation">${x.n}</button>`:x.future?`<i aria-hidden="true"></i>`:`<input type="checkbox" aria-label="${esc(kidName(c))}, ${x.m}, a page made outside TREE" data-pftick="${esc(c.id)}|${yr}|${x.m}" ${x.tick?"checked":""}>`}</div>`).join("")}</div></div>`}).join("");
+  return `<section class="card"><div class="cnt">A number is the moments and slides in the child's portfolio that month, and opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</div>
+    <div class="pflist">${cards||`<div class="empty">No children in this view.</div>`}</div></section>`;
 }
 function renderChildren(){
   const all=kidList(),dir=isDirector();
