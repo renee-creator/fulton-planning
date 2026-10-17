@@ -34,13 +34,16 @@ function checkKaymbu() {
       const id = msg.getId();
       if (done.indexOf(id) >= 0) continue;
       if (!/kaymbu\.com/i.test(msg.getFrom()) || (msg.getTo() + ',' + msg.getCc()).toLowerCase().indexOf(TREE_ADDRESS.toLowerCase()) < 0) continue;
-      const res = UrlFetchApp.fetch(TREE_SERVER, {
-        method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() })
-      });
-      const code = res.getResponseCode();
-      console.log(msg.getSubject() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 300));
-      if (code === 200) done.push(id); else all = false;
+      // a slow or sleeping server is tried again on the next check, and the other emails still go this time
+      try {
+        const res = UrlFetchApp.fetch(TREE_SERVER, {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() })
+        });
+        const code = res.getResponseCode();
+        console.log(msg.getSubject() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 300));
+        if (code === 200) done.push(id); else all = false;
+      } catch (e) { console.log(msg.getSubject() + ', TREE did not answer in time, trying again next check'); all = false; }
     }
     if (all) thread.addLabel(label);
   }

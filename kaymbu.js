@@ -46,7 +46,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         res.on('end', () => resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), modified: Date.parse(res.headers['last-modified'] || '') || 0, buf: Buffer.concat(chunks) }));
         res.on('error', reject);
       });
-      req.setTimeout(30000, () => req.destroy(new Error('Kaymbu did not answer in time')));
+      req.setTimeout(15000, () => req.destroy(new Error('Kaymbu did not answer in time')));
       req.on('error', reject);
     });
   }
@@ -77,6 +77,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     for (const t of tries) {
       try { const r = await getBuf(t); const d = r.status === 200 && /^image\//.test(r.type) ? size(r.buf) : null; if (d && (!best || d.w * d.h > best.w * best.h)) best = Object.assign({ buf: r.buf, url: t, modified: r.modified }, d); }
       catch (e) {}
+      // a full-size original is as large as Kaymbu keeps, so the smaller copies are not fetched too
+      if (best && Math.max(best.w, best.h) >= 2000) break;
     }
     return best;
   }
@@ -179,7 +181,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     let kept = 0, again = 0, check = 0, more = 0; const problems = []; const t0 = Date.now();
     for (const [i, m] of moments.entries()) {
       // Google waits a minute for an answer, so a large batch is kept in parts and the rest comes on the next check
-      if (Date.now() - t0 > 40000) { more = moments.length - i; break; }
+      if (Date.now() - t0 > 30000) { more = moments.length - i; break; }
       const k = m.photo ? (m.photo.split('/').pop().split('?')[0].replace(/_display(\.\w+)$/i, '$1')) : crypto.createHash('sha1').update(m.title + '\n' + m.note).digest('hex').slice(0, 16);
       if (have.has(k) || seen.has(k)) { again++; continue; }
       seen.add(k);
