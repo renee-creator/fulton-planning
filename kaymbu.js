@@ -172,6 +172,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const sent = Date.parse(body.date) || Date.now(), onDay = subjectDay(body.subject, sent);
     const sub = readSubject(body.subject);
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
+    // photos sent with the same title and note may each show different children, so the named children are suggested
+    // for an educator to choose from, photo by photo, rather than tagged on every photo
+    const sameNote = m => (m.title + '\n' + m.note).trim().toLowerCase();
+    const many = new Map(); for (const m of moments) many.set(sameNote(m), (many.get(sameNote(m)) || 0) + 1);
     let kept = 0, again = 0, check = 0, more = 0; const problems = []; const t0 = Date.now();
     for (const [i, m] of moments.entries()) {
       // Google waits a minute for an answer, so a large batch is kept in parts and the rest comes on the next check
@@ -184,12 +188,13 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         if (m.photo) { p = await bestPhoto(m.photo); if (!p) throw new Error('Kaymbu would not send the photo for "' + (m.title || 'a Moment').slice(0, 40) + '"'); photo = { id: await keepPhoto(p.buf, by), w: p.w, h: p.h }; }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
         const kids = findChildren(noticed, sub.room);
-        const needs = !sub.room || !kids.ids.length || kids.unsure.length > 0;
+        const group = (many.get(sameNote(m)) || 0) > 1 && kids.ids.length > 0;
+        const needs = group || !sub.room || !kids.ids.length || kids.unsure.length > 0;
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
-        const doc = { id, noticed, wonder: '', classroom: sub.room, by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: kids.ids,
+        const doc = { id, noticed, wonder: '', classroom: sub.room, by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 2, key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
+          kaymbu: { v: 3, ...(group ? { suggest: kids.ids } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
@@ -208,7 +213,14 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   async function repair() {
     let n = 0;
     for (const [id, r] of store.recs.notices) {
-      const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 2) continue;
+      const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
+      if (d.kaymbu.v === 2) {
+        const twins = live('notices').filter(o => o !== d && o.kaymbu && (o.noticed || '').trim() === (d.noticed || '').trim() && o.classroom === d.classroom).length;
+        const ids = (d.children || []).filter(Boolean);
+        d.kaymbu = Object.assign({}, d.kaymbu, { v: 3 });
+        if (twins && ids.length && !d.kaymbu.checkedBy) { d.kaymbu.suggest = ids; d.children = []; d.kaymbu.check = true; }
+        noteChange('notices', id); scheduleSave('notices', id); n++; continue;
+      }
       const kids = findChildren(d.noticed || '', d.classroom || '');
       const ids = [...new Set([...(d.children || []).filter(Boolean), ...kids.ids])];
       let at = d.at;
@@ -220,7 +232,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       const left = !d.classroom || !ids.length || kids.unsure.length > 0;
       const moved = at !== d.at;
       Object.assign(d, { children: ids, at, week: mondayOf(laDay(at)) });
-      d.kaymbu = Object.assign({}, d.kaymbu, { v: 2, dated: moved ? 'photo' : (d.kaymbu.dated || 'sent'), check: d.kaymbu.check === false && d.kaymbu.checkedBy ? false : left });
+      d.kaymbu = Object.assign({}, d.kaymbu, { v: 3, dated: moved ? 'photo' : (d.kaymbu.dated || 'sent'), check: d.kaymbu.check === false && d.kaymbu.checkedBy ? false : left });
       if (kids.unsure.length) d.kaymbu.unsure = kids.unsure; else delete d.kaymbu.unsure;
       noteChange('notices', id); scheduleSave('notices', id); n++;
     }
