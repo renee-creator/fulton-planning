@@ -153,6 +153,36 @@ function gh(method, path, body) {
     req.end(data || undefined);
   });
 }
+// a photo read from GitHub as raw bytes, which takes a quarter of the memory of reading it as text. At most four are read
+// at once, and a photo asked for by several cards at the same moment is read only once.
+function ghRaw(path) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(GITHUB_API + path);
+    const lib = url.protocol === 'http:' ? http : https;
+    const req = lib.request({ method: 'GET', hostname: url.hostname, port: url.port || undefined, path: url.pathname + url.search, headers: {
+      'Authorization': 'Bearer ' + githubToken(), 'Accept': 'application/vnd.github.raw+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'fulton-planning' } }, res => {
+      const chunks = []; res.on('data', c => chunks.push(c));
+      res.on('end', () => { let buf = Buffer.concat(chunks);
+        // should GitHub ever answer with the usual wrapped form, the photo is unwrapped from it
+        if (buf[0] === 0x7b) { try { const j = JSON.parse(buf.toString('utf8')); if (j && j.content) buf = Buffer.from(j.content, 'base64'); } catch (e) {} }
+        resolve({ status: res.statusCode, buf }); });
+      res.on('error', reject);
+    });
+    req.setTimeout(60000, () => req.destroy(new Error('GitHub did not answer in time')));
+    req.on('error', reject);
+    req.end();
+  });
+}
+const photoReads = new Map(); let photoRunning = 0; const photoQueue = [];
+function readPhoto(sha) {
+  if (photoReads.has(sha)) return photoReads.get(sha);
+  const job = new Promise((resolve, reject) => {
+    const go = () => { photoRunning++; ghRaw(`/repos/${RECORDS_REPO}/git/blobs/${sha}`).then(resolve, reject).finally(() => { photoRunning--; photoReads.delete(sha); const next = photoQueue.shift(); if (next) next(); }); };
+    if (photoRunning < 4) go(); else photoQueue.push(go);
+  });
+  photoReads.set(sha, job);
+  return job;
+}
 // the calendar keeps its own part of the records, under calendar/
 const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
@@ -443,9 +473,9 @@ async function handle(req, res) {
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
     if (!buf) {
-      const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${o.sha}`);
+      const b = await readPhoto(o.sha);
       if (b.status !== 200) { log('Photo could not be read from GitHub', id.slice(0, 60), b.status); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the file from GitHub.'); return; }
-      buf = Buffer.from(b.json.content, 'base64'); cacheFile(id, buf);
+      buf = b.buf; cacheFile(id, buf);
     } else { fileCache.delete(id); fileCache.set(id, buf); }
     const ext = id.split('.').pop().toLowerCase();
     const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
