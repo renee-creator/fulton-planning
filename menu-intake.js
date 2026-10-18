@@ -63,48 +63,61 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
   }
 
   // the month's lunch and snack PDFs, kept in TREE so educators can open and print them from the calendar and Today
-  async function keepPdf(doc, f, buf) {
-    if (!keepFile || f.kind === 'none' || f.pdf) return;
-    const kind = f.kind === 'lunch' ? 'lunch' : 'snack';
-    const name = 'menu-' + doc.month + '-' + kind + '-' + require('crypto').randomBytes(4).toString('hex') + '.pdf';
-    try { await keepFile(name, buf, 'application/pdf', 'Add the ' + doc.month + ' ' + kind + ' menu'); f.pdf = name; doc.pdfs = Object.assign({}, doc.pdfs, { [kind]: name }); }
-    catch (e) { f.pdfTries = (f.pdfTries || 0) + 1; log('Menu PDF could not be kept,', doc.month, kind, e.message); }
+  // the record as it is now, after a wait, with its intake. A month removed or emptied meanwhile is left alone.
+  function current(id) { const r = store.recs.menus.get(id); if (!r || r.deleted || !r.doc || !r.doc.intake) return null; r.doc.days = r.doc.days || {}; r.doc.notes = r.doc.notes || {}; return r; }
+  const fileOf = (doc, url) => (doc.intake.files || []).find(f => f.url === url);
+  // gives the kept file's name, null when it could not be kept, and '' when there is nothing to keep
+  async function keepPdf(month, kind0, buf) {
+    if (!keepFile || kind0 === 'none') return '';
+    const kind = kind0 === 'lunch' ? 'lunch' : 'snack';
+    const name = 'menu-' + month + '-' + kind + '-' + require('crypto').randomBytes(4).toString('hex') + '.pdf';
+    try { await keepFile(name, buf, 'application/pdf', 'Add the ' + month + ' ' + kind + ' menu'); return name; }
+    catch (e) { log('Menu PDF could not be kept,', month, kind, e.message); return null; }
   }
-  async function backfill(id, r) {
-    const doc = r.doc;
-    for (const f of doc.intake.files || []) {
-      if (f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3) continue;
-      try { const g = await getFile(f.url); if (g.status !== 200 || g.buf.slice(0, 5).toString('latin1') !== '%PDF-') throw new Error('Kaymbu answered ' + g.status); await keepPdf(doc, f, g.buf); }
-      catch (e) { f.pdfTries = (f.pdfTries || 0) + 1; log('Menu PDF could not be opened again,', doc.month, f.label || '', e.message); }
+  async function backfill(id) {
+    const r0 = current(id); if (!r0) return;
+    for (const url of (r0.doc.intake.files || []).filter(f => !(f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3)).map(f => f.url)) {
+      let kept = null, label = '';
+      try { const g = await getFile(url); if (g.status !== 200 || g.buf.slice(0, 5).toString('latin1') !== '%PDF-') throw new Error('Kaymbu answered ' + g.status);
+        const f0 = current(id) && fileOf(current(id).doc, url); if (!f0) return; label = f0.label || ''; kept = await keepPdf(current(id).doc.month, f0.kind, g.buf); }
+      catch (e) { log('Menu PDF could not be opened again,', r0.doc.month, label, e.message); }
+      const r = current(id), f = r && fileOf(r.doc, url); if (!f) return;
+      if (kept) { f.pdf = kept; r.doc.pdfs = Object.assign({}, r.doc.pdfs, { [f.kind === 'lunch' ? 'lunch' : 'snack']: kept }); } else f.pdfTries = (f.pdfTries || 0) + 1;
+      r.local = true; noteChange('menus', id); scheduleSave('menus', id);
     }
-    r.local = true; noteChange('menus', id); scheduleSave('menus', id);
   }
 
   async function run() {
     if (running || !store.ready) return; if (!anthropicKey()) { last = 'Claude assist is not set up, so menus from the Kitchen Digest wait.'; return; }
     running = true;
     try {
-      for (const [id, r] of store.recs.menus) {
-        const doc = r.doc; if (r.deleted || !doc || !doc.intake) continue;
+      for (const id of [...store.recs.menus.keys()]) {
+        const r0 = store.recs.menus.get(id); const doc0 = r0 && r0.doc; if (!r0 || r0.deleted || !doc0 || !doc0.intake) continue;
         // a month read before its PDFs were kept gets them now, for educators to print
-        if (doc.intake.done) { if (keepFile && !(doc.intake.files || []).every(f => f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3)) await backfill(id, r); continue; }
-        if ((doc.intake.tries || 0) >= 3) continue;
-        doc.days = doc.days || {}; doc.notes = doc.notes || {}; const errors = [];
-        for (const f of doc.intake.files || []) {
-          if (f.done) continue;
+        if (doc0.intake.done) { if (keepFile && !(doc0.intake.files || []).every(f => f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3)) await backfill(id); continue; }
+        if ((doc0.intake.tries || 0) >= 3) continue;
+        const errors = [];
+        for (const url of (doc0.intake.files || []).filter(f => !f.done).map(f => f.url)) {
+          // Claude can take minutes, and the director may save the month meanwhile, so each answer goes into the month as it is now
+          const label0 = ((doc0.intake.files || []).find(f => f.url === url) || {}).label || '';
           try {
-            const g = await getFile(f.url);
+            const g = await getFile(url);
             if (g.status !== 200) throw new Error('Kaymbu answered ' + g.status);
             if (g.buf.slice(0, 5).toString('latin1') !== '%PDF-') throw new Error('Kaymbu sent ' + (g.type || 'something') + ' rather than a PDF');
             const o = await readPdf(g.buf);
-            if (o && o.kind === 'none') { f.done = true; f.kind = 'none'; log('Not a menu in the Kitchen Digest,', doc.month, f.label || ''); continue; }
-            const m = merge(doc, o, f.label || '');
+            let now = current(id), f = now && fileOf(now.doc, url); if (!f) break;
+            if (o && o.kind === 'none') { f.done = true; f.kind = 'none'; log('Not a menu in the Kitchen Digest,', now.doc.month, f.label || ''); continue; }
+            const m = merge(now.doc, o, f.label || '');
             f.done = true; f.kind = m.kind; f.days = m.n;
-            await keepPdf(doc, f, g.buf);
-            if (m.other) errors.push(`${f.label || m.kind} also listed ${m.other} day${m.other === 1 ? '' : 's'} outside ${doc.month}, left out`);
-            log('Menu read from the Kitchen Digest,', doc.month, f.label || m.kind + ',', m.n, 'entries');
-          } catch (e) { errors.push(`${f.label || 'A menu'} could not be read, ${e.message}`); log('Menu from the Kitchen Digest could not be read,', doc.month, f.label || '', e.message); }
+            now.local = true; noteChange('menus', id); scheduleSave('menus', id);
+            const kept = await keepPdf(now.doc.month, f.kind, g.buf);
+            now = current(id); f = now && fileOf(now.doc, url);
+            if (f) { if (kept) { f.pdf = kept; now.doc.pdfs = Object.assign({}, now.doc.pdfs, { [m.kind === 'lunch' ? 'lunch' : 'snack']: kept }); } else if (kept === null) f.pdfTries = (f.pdfTries || 0) + 1; }
+            if (m.other) errors.push(`${label0 || m.kind} also listed ${m.other} day${m.other === 1 ? '' : 's'} outside ${(now || r0).doc.month}, left out`);
+            log('Menu read from the Kitchen Digest,', (now || r0).doc.month, label0 || m.kind + ',', m.n, 'entries');
+          } catch (e) { errors.push(`${label0 || 'A menu'} could not be read, ${e.message}`); log('Menu from the Kitchen Digest could not be read,', doc0.month, label0, e.message); }
         }
+        const r = current(id); if (!r) continue; const doc = r.doc;
         doc.intake.tries = (doc.intake.tries || 0) + 1;
         doc.intake.notes = errors;
         if ((doc.intake.files || []).every(f => f.done)) doc.intake.done = Date.now();
