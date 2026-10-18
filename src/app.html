@@ -4540,7 +4540,7 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   const lines=[];
   if(!isDirector()){for(const x of kMonthLines[month]||[]){if(x.manual){if((x.kind&&x.kind!=="local"&&!kMill(x.producer))||!kLocal(x.producer))continue;const k=kName(x.item);if(k.food)lines.push({day:x.day,name:k.name,food:k.food,farm:x.producer||""});continue}
     const l=kLine({item:x.item,producer:x.producer,serve:x.serve},x.day);if(l)lines.push(l)}}
-  else for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
+  else for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){if(x.use==="education")continue;const l=kLine(x,day);if(l)lines.push(l)}}
   if(isDirector())for(const p of gList("purchases")){if(!p.date||p.date<addDays(from,-70)||p.date>to||(p.kind&&p.kind!=="local"&&!kMill(p.producer))||p.use==="education"||!kLocal(p.producer))continue;const k=kName(p.item);if(k.food)lines.push({day:p.date,name:k.name,food:k.food,farm:p.producer||""})}
   const inMonth=lines.filter(l=>l.day>=from);
   // the weeks of the month, Monday to Friday
@@ -4577,14 +4577,14 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   const mrec=menus.get(month)||{};const recipe=String(mrec.recipe||(mrec.intake&&mrec.intake.recipe)||"").trim();
   return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,fruits:[...fv.fruit].sort(),vegs:[...fv.veg].sort(),dishes:dishes.size,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
-  blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.fruits.length+F.vegs.length),"fruits and vegetables"],[String(F.dishes),"different dishes"],[String(F.lunches),"lunches made at school"]]));
+  blocks.push(dFigures([[String(F.farms.length),"local farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.fruits.length+F.vegs.length),"fruits and vegetables"],[String(F.dishes),"different dishes"],[String(F.lunches),"lunches made at school"]]));
   if(F.weeks.length){const fl=list=>list.map(f=>`${f.farm}, ${kList([...f.foods].slice(0,3))}`).join(". ")+".";
     const n=kNotesFor([month]),sn=n.some(x=>/fruit/i.test(x.snack||"")),sal=n.some(x=>/salad/i.test(x.lunch||"")),veg=n.some(x=>/vegetable/i.test(x.lunch||""));
     const note=[sn?"every snack comes with seasonal fruit":"",sal||veg?`every lunch with ${[sal?"a salad":"",veg?"seasonal vegetables":""].filter(Boolean).join(" and ")}`:""].filter(Boolean).join(", and ");
     blocks.push(dText("Week by week",note?kCap(note)+".":" "));
     blocks.push(dTable("",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),[w.farms.length?"In the dishes. "+fl(w.farms):"",w.sides.length?"On the side. "+fl(w.sides):""].filter(Boolean).join("\n")||"FEED's farms"]),{head:["Week of","Lunches","Snacks","Where the food came from"],widths:[.08,.31,.21,.4],muted:[0],noRule:true,small:true}))}
   if(F.fruits.length+F.vegs.length)blocks.push({t:"small",lines:[[F.fruits.length?`Fruits, ${kList(F.fruits)}.`:"",F.vegs.length?`Vegetables, ${kList(F.vegs)}.`:""].filter(Boolean).join(" ")]});
-  if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
+  if(F.farms.length)blocks.push(dTable("Local farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.staples.length)blocks.push(dTable("Our staples",F.staples.map(x=>[kCap(x.food),[x.maker,x.town].filter(has).join(", ")]),{cols:2,widths:[.42,.58],muted:[1]}));
   if(has(kNote()))blocks.push(dText("",kNote()));
   if(F.met)blocks.push(dText("",F.met));
@@ -4593,7 +4593,7 @@ function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
 // a wall sheet in large type, a few foods with the farm and town each came from
 function farmWallDoc(title,top,nFarms,nSonoma){const blocks=[];
   blocks.push(dTable("",top.slice(0,10).map(t=>[kCap(t.food),t.farm+(t.town?", "+t.town:"")]),{widths:[.36,.64],big:true,bold0:true}));
-  blocks.push(dLead("",`${nFarms} farm${nFarms===1?"":"s"} grew our food${nSonoma?`, ${nSonoma} of them here in Sonoma County`:""}.`));
+  blocks.push(dLead("",`${nFarms} local farm${nFarms===1?"":"s"} grew our food${nSonoma?`, ${nSonoma} of them here in Sonoma County`:""}.`));
   return {display:true,type:"report",acc:"smallgroup",title,meta:[],blocks}}
 function farmWallMonth(month){const F=farmMonthData(month);const d=farmWallDoc(`Where our food came from in ${F.name}`,F.top,F.farms.length,F.sonoma);
   // the range of tastes, in large type under the farms
@@ -4604,7 +4604,7 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
   const farms=[...new Set(w.items.map(i=>i.farm))];return farmWallDoc("This week our food came from",[...seen.values()],farms.length,farms.filter(f=>gTownCounty(farmTown(f))==="Sonoma").length)}
 // the newsletter's section, the same content in a few sentences
 function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.length)return "";
-  const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
+  const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
   if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes this month.`);
   if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,6).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
