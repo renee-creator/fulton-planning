@@ -1030,7 +1030,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -2464,7 +2464,7 @@ function renderWalls(){
    the director sees. Families see plain words about how children grow, a bonus for school, tips, reading, school and
    farm news, and what is coming up. Every issue is kept, so topics do not repeat in a school year, and every article
    added is kept in a library that comes back when its topic does. Only the director sees and changes this page. */
-let newsletters=new Map(),nlMonth=LS.get("tree.nlmonth",""),nlBusy={},nlEvents={},nlKaymbu=false;
+let nlDeleted=new Set(),newsletters=new Map(),nlMonth=LS.get("tree.nlmonth",""),nlBusy={},nlEvents={},nlKaymbu=false;
 const nlKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
 const nlName=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"})};
 const nlMonthOnly=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long"})};
@@ -2476,8 +2476,8 @@ const nlClean=s=>String(s??"").replace(/\s*—\s*/g,", ").replace(/\s+–\s+/g,"
 function nlCur(){if(!nlMonth){const d=new Date();nlMonth=nlKey(d.getDate()>=15?d:new Date(d.getFullYear(),d.getMonth()-1,1));if(!nlDoc(nlMonth)&&nlDoc(nlKey(d)))nlMonth=nlKey(d)}return nlMonth}
 const nlTimers={};
 function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
-  const go=()=>{if(db)db.doc("newsletters/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the newsletter. Check your connection."))};
-  if(now)go();else nlTimers[x.id]=setTimeout(go,700)}
+  const go=()=>{delete nlTimers[x.id];if(db)db.doc("newsletters/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the newsletter. Check your connection."))};
+  if(now){clearTimeout(nlTimers[x.id]);go()}else nlTimers[x.id]=setTimeout(go,700)}
 function nlNew(k){return {id:"nl-"+k,month:k,status:"draft",note:"",suggestions:[],topics:[],reading:[],school:[],schoolPhotos:[],coming:[],comingAdded:[],createdAt:Date.now(),by:me()}}
 
 // the month's observations, with the same words kept once and every photo that came with them
@@ -2492,7 +2492,8 @@ function nlObs(k){
     if(!o){o={ids:[],photos:[],room:n.classroom||"",date:iso(new Date(n.at)),noticed:text,wonder:String(n.wonder||"").trim(),kids:0};seen.set(key,o)}
     o.ids.push(n.id);if(n.photo&&n.photo.id)o.photos.push(n.id);o.kids=Math.max(o.kids,(n.children||[]).length);
   }
-  return [...seen.values()].map((o,i)=>Object.assign(o,{ref:"o"+(i+1)}));
+  // a very full month is read from its most recent 220 observations, each kept to a few sentences
+  return [...seen.values()].slice(-220).map((o,i)=>Object.assign(o,{ref:"o"+(i+1),noticed:o.noticed.length>700?o.noticed.slice(0,700)+"…":o.noticed}));
 }
 // how old the children in each class mostly are, so topics can say which ages they show up with
 function nlRoomAges(){
@@ -2831,7 +2832,7 @@ document.addEventListener("change",e=>{
 document.addEventListener("click",async e=>{
   if(view!=="newsletter")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;
   const k=nlCur();let x=nlDoc(k);
-  if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
+  if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlDeleted.delete(x.id);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
   if(d.nlopen){nlMonth=d.nlopen;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();jumpTop();return}
   if(!x)return;
   if(d.nlfind){nlFindTopics(x,t);return}
@@ -2865,7 +2866,7 @@ document.addEventListener("click",async e=>{
   if(d.nlsent){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length&&!confirm("A topic about a behavior names a child. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
   if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
   if(d.nldel){if(!confirm(`Delete the ${nlName(x.month)} newsletter? Its topics, tips and photos choices are removed. Articles stay in your library.`))return;
-    clearTimeout(nlTimers[x.id]);newsletters.delete(x.id);nlKaymbu=false;
+    clearTimeout(nlTimers[x.id]);delete nlTimers[x.id];nlDeleted.add(x.id);newsletters.delete(x.id);nlKaymbu=false;
     if(db)db.doc("newsletters/"+x.id).delete().then(()=>toast("The newsletter is deleted.")).catch(()=>toast("Could not delete the newsletter. Check your connection."));
     renderNewsletter();jumpTop();return}
 });
