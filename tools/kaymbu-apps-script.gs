@@ -52,34 +52,44 @@ function checkKaymbu() {
 }
 
 /*
-  FEED order confirmations, for the Farm to School grant records.
-  Forward FEED's order confirmations to tree@childfamilycommunity.com, one at a time or with a Gmail filter in the
-  office mailbox, and on each check this script sends them to TREE, which keeps every item with its producer for the
-  grant. Older confirmations can be forwarded too, from any time in the grant. An order sent twice is kept once.
+  Orders and invoices, for the Farm to School grant records.
+  Forward order emails and invoices to tree@childfamilycommunity.com, from any vendor and from any time in the grant.
+  An email can also carry other emails or PDF invoices as attachments. On each check this script sends them to TREE.
+  FEED's are read exactly. Any other vendor's waits on the grant page for the director to check it. Shipping notices,
+  newsletters and other mail are recognised and left out. An order sent twice is kept once.
 
   Setup, once
   1. Paste this updated file over the old one in the script project. Nothing else changes.
-  2. To forward them automatically, sign in as office@childfamilycommunity.com, open Gmail settings, then Forwarding
-     and POP/IMAP, and add tree@childfamilycommunity.com. Then make a filter with From ordering@feedsonoma.com and
-     choose Forward it to tree@childfamilycommunity.com.
 */
 function checkFeedOrders() {
   const server = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/feed-order');
   const label = GmailApp.getUserLabelByName('TREE order kept') || GmailApp.createLabel('TREE order kept');
-  // confirmations forwarded by hand come from the office address, so they are found by their subject
-  const threads = GmailApp.search('subject:"FEED Cooperative Confirmation" -label:"TREE order kept"', 0, 50);
+  // other mail is marked once, so each check only looks at what is new
+  const other = GmailApp.getUserLabelByName('TREE not an order') || GmailApp.createLabel('TREE not an order');
+  const threads = GmailApp.search('-from:kaymbu.com -label:"TREE order kept" -label:"TREE not an order" -label:"TREE kept" -in:spam -in:trash', 0, 40);
   for (const thread of threads) {
-    let all = true;
+    let all = true, any = false;
     for (const msg of thread.getMessages()) {
+      if (/kaymbu\.com/i.test(msg.getFrom())) continue;
+      const parts = [];
+      for (const a of msg.getAttachments({ includeInlineImages: false })) {
+        const type = a.getContentType() || '', name = a.getName() || 'attachment';
+        if (/message\/rfc822/i.test(type) || /\.eml$/i.test(name)) parts.push({ name: name, type: 'message/rfc822', raw: a.getDataAsString() });
+        else if (/pdf/i.test(type) || /\.pdf$/i.test(name)) parts.push({ name: name, type: 'application/pdf', data: Utilities.base64Encode(a.getBytes()) });
+      }
+      const subject = msg.getSubject() || '';
+      // only orders and invoices go to TREE, and emails that carry them as attachments
+      if (!parts.length && !/feed cooperative|invoice|order|receipt/i.test(subject)) continue;
+      any = true;
       try {
         const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-          payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() }) });
+          payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: subject, date: msg.getDate().toISOString(), html: parts.length && !/feed cooperative|invoice|order|receipt/i.test(subject) ? '' : msg.getBody(), parts: parts }) });
         const code = res.getResponseCode();
-        console.log(msg.getSubject() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
+        console.log((subject || '(no subject)') + ', ' + parts.length + ' attached, TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
         if (code !== 200 && code !== 400) all = false;
-      } catch (e) { console.log(msg.getSubject() + ', TREE did not answer in time, trying again next check'); all = false; }
+      } catch (e) { console.log((subject || '(no subject)') + ', TREE did not answer in time, trying again next check'); all = false; }
     }
-    if (all) thread.addLabel(label);
+    if (all && any) thread.addLabel(label); else if (!any) thread.addLabel(other);
   }
 }
 

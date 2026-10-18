@@ -14,8 +14,9 @@ function htmlOf(raw) {
   const s = String(raw || '');
   if (!/^[\w-]+:\s/m.test(s.slice(0, 400)) || /<table/i.test(s.slice(0, 2000))) return s;
   const parts = s.split(/\r?\n--[^\r\n]+\r?\n/);
-  for (const p of parts) {
-    if (!/content-type:\s*text\/html/i.test(p)) continue;
+  // the HTML part when there is one, otherwise the plain text part
+  const pick = parts.find(p => /content-type:\s*text\/html/i.test(p)) || parts.find(p => /content-type:\s*text\/plain/i.test(p));
+  for (const p of pick ? [pick] : []) {
     const i = p.search(/\r?\n\r?\n/); let body = i >= 0 ? p.slice(i).trim() : p;
     if (/content-transfer-encoding:\s*quoted-printable/i.test(p)) body = utf8(decodeQP(body));
     else if (/content-transfer-encoding:\s*base64/i.test(p)) body = Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8');
@@ -49,4 +50,6 @@ function parseOrder(raw) {
   return { order, placed, fulfilled, items, subtotal: after('Order Subtotal'), delivery: after('Delivery Fee'), total: after('Order Total'), distributor: 'FEED Cooperative' };
 }
 
-module.exports = { parseOrder };
+// the readable text of an email, for an order that is not from FEED
+function textOf(raw) { return plain(htmlOf(raw).replace(/<(br|\/p|\/tr|\/div|\/li|\/h\d)\b[^>]*>/gi, '\n').replace(/<\/t[dh]>/gi, ' | ')).replace(/[ \t]+/g, ' '); }
+module.exports = { parseOrder, textOf };

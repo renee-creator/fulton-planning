@@ -4060,7 +4060,7 @@ const gQ=()=>/^\d{4}-Q[1-4]$/.test(gQuarter)?gQuarter:quarterOf(iso(new Date()))
 const gOrders=()=>[...grantRecs.values()].filter(x=>x&&x.kind==="order").sort((a,b)=>(b.fulfilled||b.placed||"").localeCompare(a.fulfilled||a.placed||""));
 // every purchase line in a range, from FEED orders and purchases added by hand
 function gLines(from,to){const out=[];
-  for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<from||day>to)continue;(o.items||[]).forEach((x,i)=>out.push(Object.assign({},x,{day,order:o.order,distributor:"FEED Cooperative",src:o.id,i})))}
+  for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<from||day>to)continue;(o.items||[]).forEach((x,i)=>out.push(Object.assign({},x,{day,order:o.order,distributor:o.distributor||"FEED Cooperative",src:o.id,i,review:!!o.review})))}
   for(const p of gList("purchases")){if(!p.date||p.date<from||p.date>to)continue;out.push({day:p.date,item:p.item,producer:p.producer,unit:p.unit||"",qty:Number(p.qty)||1,price:Number(p.total)||0,total:Number(p.total)||0,use:p.use||"meals",distributor:p.distributor||"Direct",manual:p.id})}
   return out.sort((a,b)=>a.day.localeCompare(b.day))}
 const gOrganic=x=>/^\s*OG\b/.test(x.item||"")||!!gProducer(x.producer).organic;
@@ -4099,12 +4099,20 @@ function renderGrant(){
         ${/^feed cooperative/.test(p.key)?`<div class="cnt" style="flex:none;max-width:220px">The farms behind each bin are listed below.</div>`:`<div class="actions" style="flex:none">${p.town?"":`<input type="text" data-gptown="${esc(p.key)}" data-gpn="${esc(p.name)}" placeholder="Town" style="width:120px">`}${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(p.key)}" data-gpn="${esc(p.name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`}</div>`}).join("")}</div>
       <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for this quarter yet. Add a FEED order confirmation below.</div>`}
     ${lines.length?`<details style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
-      ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
+      ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}${x.review?` · <span class="warnline">to check</span>`:""}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
         <td><select data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
-    <div class="actions" style="margin-top:12px"><label class="btn small ghost" style="cursor:pointer">Add a FEED order confirmation<input type="file" id="g-order" accept=".eml,.html,.htm,.txt,message/rfc822" multiple hidden></label><button class="btn small ghost" data-gact="addbuy">Add a purchase by hand</button></div>
-    <div class="hint">Save the confirmation email as a file and add it here, or forward FEED's confirmations to the TREE mailbox and they arrive by themselves. A purchase from Petaluma Creamery, Next Generation Foods or any other producer can be added by hand.</div>
+    <div class="actions" style="margin-top:12px"><label class="btn small ghost" style="cursor:pointer">Add an order or invoice<input type="file" id="g-order" accept=".eml,.html,.htm,.txt,.pdf,message/rfc822,application/pdf" multiple hidden></label><button class="btn small ghost" data-gact="addbuy">Add a purchase by hand</button></div>
+    <div class="hint">Forward order emails and invoices to the TREE mailbox and they arrive by themselves, or add a saved email or PDF here. FEED's are read exactly. Any other vendor's waits under Orders to check. A purchase with no email can be added by hand.</div>
     ${gAdd?gAddHtml():""}</section>`;
 
+  // orders read by Claude wait here until the director checks them against the email
+  const rv=gOrders().filter(o=>o.review);
+  if(rv.length)h+=`<section class="card" style="border-color:var(--clay)"><div class="secthead"><h3 style="font-size:17px;margin:0">Orders to check</h3><span class="cnt">${rv.length}</span></div>
+    <div class="cnt" style="margin-bottom:8px">Read from emails that were not from FEED. Check each against its email, then mark it right. They count in the totals already, marked to check on the worksheet.</div>
+    ${rv.map(o=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(o.distributor||"Vendor")}</b> <span class="cnt">${o.order?"#"+esc(o.order)+" · ":""}${esc(o.fulfilled?fmtDate(o.fulfilled):"No date found")}${o.total!=null?" · "+gMoney(o.total):""}</span>
+      <div class="cnt">${(o.items||[]).map(x=>`${esc(x.item)}${x.qty?", "+esc(String(x.qty))+(x.unit?" "+esc(x.unit):""):""}${x.total!=null?", "+gMoney(x.total):""}${x.producer&&x.producer!==o.distributor?", from "+esc(x.producer):""}`).join("<br>")}</div>
+      ${o.from?`<div class="cnt">From the email ${esc(o.from)}</div>`:""}</div>
+      <div class="actions" style="flex:none"><button class="btn small" data-gok="${esc(o.id)}">It is right</button><button class="linkbtn" data-gdel="${esc(o.id)}">Take out</button></div></div>`).join("")}</section>`;
   // the farms behind the bins, farm-level data that a bin invoice does not show
   const bf=gBinFarms(from,to);
   if(bf.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Farms behind the FEED bins</h3><span class="cnt">${bf.length} farms</span></div>
@@ -4160,9 +4168,9 @@ async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try a
   try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
 
 function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
-  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];
+  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];const chk=(x,p)=>[x.review?"Order read from an email, not yet checked":"",p.check||""].filter(Boolean).join(". ");
   const yn=v=>v?"Yes":"";
-  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")]});
+  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate),chk(x,p),(p.sources||[]).join(" ")]});
   // the farms behind each bin, beneath its line
   const out=[head];for(const r of rows)out.push(r);
   const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"]);bf.forEach(f=>{const p=gProducer(f.name);out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; "),yn(p.organic),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")])})}
@@ -4203,7 +4211,10 @@ Return a JSON object with keys "progress", "successes" and "challenges".`;
 
 document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")return;
   if(t.id==="g-order"){const fs=[...t.files];t.value="";let n=0;
-    for(const f of fs){try{const raw=await f.text();const j=await window.FP_API("/api/grant/order",{raw});if(j&&j.doc){grantRecs.set(j.doc.id,j.doc);n++}}catch(err){toast(`${f.name}. ${(err&&err.message)||"It could not be read."}`)}}
+    if(fs.length)toast("Reading");
+    for(const f of fs){try{const pdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
+      const body=pdf?{name:f.name,type:"application/pdf",data:await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(String(rd.result).split(",")[1]);rd.readAsDataURL(f)})}:{name:f.name,raw:await f.text()};
+      const j=await window.FP_API("/api/grant/order",body);if(j&&j.doc){grantRecs.set(j.doc.id,j.doc);n++}}catch(err){toast(`${f.name}. ${(err&&err.message)||"It could not be read."}`)}}
     if(n)toast(`${n} order${n===1?"":"s"} kept`);renderGrant();return}
   if(t.dataset.guse!=null){const use=t.value;
     if(t.dataset.gman){await gWrite("purchases",{list:{[t.dataset.gman]:{use}}})}
@@ -4212,7 +4223,9 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
   if(t.dataset.gck){const q=gQ();await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+  if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
+  if(d.gdel){if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Take it out?";return}if(db)try{await db.doc("grant/"+d.gdel).delete();grantRecs.delete(d.gdel)}catch(err){toast("Could not take it out.")}renderGrant();return}
   if(d.gq){gQuarter=d.gq;LS.set("fps.gq",gQuarter);renderGrant();return}
   if(d.gpf){const cur=gProducer(d.gpn);await gWrite("producers",{list:{[d.gpk]:{name:d.gpn,[d.gpf]:!cur[d.gpf]}}},{id:"producers",list:{}});renderGrant();return}
   if(d.gfdel){await gWrite("families",{list:{[d.gfdel]:{__delete__:true}}});renderGrant();return}
