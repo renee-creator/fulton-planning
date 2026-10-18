@@ -571,6 +571,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .menutab{width:100%;border-collapse:collapse;font-size:14px}.menutab th{text-align:left;font-weight:600;padding:6px;font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .menutab td{padding:3px 4px;border-top:1px solid var(--line,#e4e2da)}.menutab input[type=text]{width:100%;min-width:140px}.menutab tr.closed td{opacity:.55}
 .gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
+.chip-btn[aria-pressed="true"]{background:var(--moss,#2f5a43);color:#fff;border-color:var(--moss,#2f5a43)}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -4048,7 +4049,9 @@ const gMoney=n=>"$"+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US",
 const gKey=s=>String(s||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").replace(/\s*(co|llc|inc)\.?$/,"").trim();
 // producers named in the school's own application, as the application describes them
 const G_KNOWN={"earthseed farm":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"l&n produce stand":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"singing frogs farm":{climate:true,note:"Named in the application for no till and rotational practices"},"green star farm":{climate:true,note:"Named in the application for sustainable practices"},"petaluma creamery":{town:"Petaluma",standing:"Cheese"},"next generation foods":{town:"West Sacramento",standing:"Beans and grains"}};
-function gProducer(name){const k=gKey(name);const own=((grantRecs.get("producers")||{}).list||{})[k]||{};const base=G_KNOWN[k]||{};
+function gProducer(name){const k=gKey(name);const L=(grantRecs.get("producers")||{}).list||{};
+  // FEED names a farm a little differently in different places, such as Devoto Gardens and Devoto Gardens & Orchards
+  const own=L[k]||Object.entries(L).find(([n])=>n.length>5&&(k.startsWith(n)||n.startsWith(k)))?.[1]||{};const base=G_KNOWN[k]||{};
   return Object.assign({name,town:farmTown(name)||base.town||""},base,own,{key:k})}
 function quarterOf(day){const [y,m]=day.split("-").map(Number);return y+"-Q"+(Math.floor((m-1)/3)+1)}
 function quarterRange(q){const [y,n]=q.split("-Q").map(Number);const m0=(n-1)*3;const from=iso(new Date(y,m0,1)),to=iso(new Date(y,m0+3,0));return {from,to}}
@@ -4092,7 +4095,7 @@ function renderGrant(){
     <div class="gstats">${[["For meals and snacks, 1a",sum(meals)],["For student education, 1b",sum(edu)],["Certified organic",cat(gOrganic)],["Small to midsize producers",cat(x=>gProducer(x.producer).smallmid)],["BIPOC, female, veteran or limited resource",cat(x=>gProducer(x.producer).sdlr)],["Climate smart practices",cat(x=>gProducer(x.producer).climate||gOrganic(x))]].map(([l,v])=>`<div class="gstat"><b>${gMoney(v)}</b><span>${l}</span></div>`).join("")}</div>
     <div class="cnt" style="margin:6px 0 10px">Since the start, ${gMoney(sum(all.filter(x=>x.use!=="education")))} of ${gMoney(S.b1a)} for meals and ${gMoney(sum(all.filter(x=>x.use==="education")))} of ${gMoney(S.b1b)} for student education, from the records kept here. FEED bins count as food for student education, and any line can be changed below.</div>
     ${pr.length?`<div class="lbl">Producers this quarter</div><div class="tlist">${pr.map(e=>{const p=e.p;const tags=[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
-      return `<div class="prow"><div style="min-width:0"><b>${esc(p.name)}</b>${p.town?` <span class="cnt">${esc(p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${esc([...e.items].slice(0,4).join(", "))}${e.items.size>4?", and more":""}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${p.note?`<div class="cnt">${esc(p.note)}</div>`:""}</div>
+      return `<div class="prow"><div style="min-width:0"><b>${esc(p.name)}</b>${p.town?` <span class="cnt">${esc(p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${esc([...e.items].slice(0,4).join(", "))}${e.items.size>4?", and more":""}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidence(p)}</div>
         ${/^feed cooperative/.test(p.key)?`<div class="cnt" style="flex:none;max-width:220px">The farms behind each bin are listed below.</div>`:`<div class="actions" style="flex:none">${p.town?"":`<input type="text" data-gptown="${esc(p.key)}" data-gpn="${esc(p.name)}" placeholder="Town" style="width:120px">`}${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(p.key)}" data-gpn="${esc(p.name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`}</div>`}).join("")}</div>
       <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for this quarter yet. Add a FEED order confirmation below.</div>`}
     ${lines.length?`<details style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
@@ -4106,7 +4109,8 @@ function renderGrant(){
   const bf=gBinFarms(from,to);
   if(bf.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Farms behind the FEED bins</h3><span class="cnt">${bf.length} farms</span></div>
     <div class="cnt" style="margin-bottom:8px">A bin is invoiced as FEED Cooperative. These are the farms FEED listed for each bin this quarter, for the farm-level data the agreement asks for.</div>
-    <div class="binlist">${bf.map(f=>`<div class="binitem"><b>${esc(f.name)}</b>${f.town?` <span class="cnt">${esc(f.town)}</span>`:""}<div class="cnt">${f.weeks.size} week${f.weeks.size===1?"":"s"} · ${esc([...f.items].slice(0,3).join(", "))}</div></div>`).join("")}</div></section>`;
+    <div class="tlist">${bf.map(f=>{const p=gProducer(f.name);const tags=gTags(p);return `<div class="prow"><div style="min-width:0"><b>${esc(f.name)}</b>${f.town?` <span class="cnt">${esc(f.town)}</span>`:""}<div class="cnt">${f.weeks.size} week${f.weeks.size===1?"":"s"} · ${esc([...f.items].slice(0,3).join(", "))}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidence(p)}</div>
+      <div class="actions" style="flex:none">${["smallmid","sdlr","climate","organic"].map(fl=>`<button class="chip-btn" data-gpf="${fl}" data-gpk="${esc(p.key)}" data-gpn="${esc(f.name)}" aria-pressed="${!!p[fl]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[fl]}</button>`).join("")}</div></div>`}).join("")}</div></section>`;
 
   // standing producers, named on the menus
   const mm=[...menus.values()].filter(m=>m&&m.month>=from.slice(0,7)&&m.month<=to.slice(0,7));
@@ -4140,6 +4144,9 @@ function renderGrant(){
     <div class="hint">The term end is the date asked for in the July extension request. Change it if CDFA approves another.</div></details>`;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
 }
+// what the producer's marks rest on, with its sources and anything still to confirm with the farm
+function gEvidence(p){return `${p.note?`<div class="cnt">${esc(p.note)}</div>`:""}${p.check?`<div class="cnt warnline">To check. ${esc(p.check)}</div>`:""}${(p.sources||[]).length?`<div class="cnt">${p.sources.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener">Source ${i+1}</a>`).join(" · ")}</div>`:""}`}
+const gTags=p=>[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
 function gAddHtml(){const f=gAdd;return `<div class="binadd"><div class="kfields">
   <label class="cnt">Day<input type="date" id="g-bdate" value="${esc(f.date||iso(new Date()))}"></label>
   <label class="cnt">Producer<input type="text" id="g-bprod" list="g-prods" value="${esc(f.producer||"")}" placeholder="Ex. Petaluma Creamery"></label>
@@ -4153,12 +4160,12 @@ async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try a
   try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
 
 function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
-  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart"];
+  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];
   const yn=v=>v?"Yes":"";
-  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate)]});
+  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")]});
   // the farms behind each bin, beneath its line
   const out=[head];for(const r of rows)out.push(r);
-  const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items"]);bf.forEach(f=>out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; ")]))}
+  const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"]);bf.forEach(f=>{const p=gProducer(f.name);out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; "),yn(p.organic),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")])})}
   return out.map(r=>r.map(v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(",")).join("\r\n")}
 
 function grantDoc(q){const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
