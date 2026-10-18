@@ -2226,6 +2226,8 @@ function todayWaiting(){
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
       out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
+  // order lines TREE is not sure were bought for meals, for the director to place
+  if(dir){let n=0;try{n=gUnsure().length}catch(e){}if(n)out.push({dot:"mari",t:`${n} order line${n===1?"":"s"} to place, meals or education`,s:"TREE is not sure these were bought for meals. Choose on the Farm to School page.",act:`data-tview="grant"`,b:"Place"})}
   {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   {const rm=myRoom();for(const c of kidsAt().filter(c=>(dir||!rm||c.classroom===rm)&&kidTurnsThree(c)).slice(0,3))
     out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new observations against the Preschool through Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
@@ -4166,6 +4168,7 @@ function renderGrant(){
       ${o.from?`<div class="cnt">From the email ${esc(o.from)}</div>`:""}</div>
       <div class="actions" style="flex:none">${r?`<button class="btn small" data-grevuse="${esc(o.id)}">Use this reading</button><button class="linkbtn" data-grevkeep="${esc(o.id)}">Keep what is there</button>`:`<button class="btn small" data-gok="${esc(o.id)}">It is right</button><button class="linkbtn" data-gdel="${esc(o.id)}">Take out</button>`}</div></div>`}).join("")}</div></details>`;
 
+  h+=gUnsureHtml();
   // objectives 1 to 4, what was bought and from whom
   h+=`${gCardO("food","California food bought, objectives 1 to 4",gMoney(sum(lines))+" from "+pr.length+" producer"+(pr.length===1?"":"s"))}
     <div class="gstats">${[["For meals and snacks, 1a",sum(meals)],["For student education, 1b",sum(edu)],["Certified organic",cat(gOrganic)],["Small to midsize producers",cat(x=>gProducer(x.producer).smallmid)],["BIPOC, female, veteran or limited resource",cat(x=>gProducer(x.producer).sdlr)],["Climate smart practices",cat(x=>gProducer(x.producer).climate||gOrganic(x))]].map(([l,v])=>`<div class="gstat"><b>${gMoney(v)}</b><span>${l}</span></div>`).join("")}</div>
@@ -4300,7 +4303,7 @@ async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try a
   try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
 
 function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
-  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];const chk=(x,p)=>[x.review?"Order read from an email, not yet checked":"",p.check||""].filter(Boolean).join(". ");
+  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];const uns=new Set(gUnsure().map(u=>u.o.id+"|"+u.i));const chk=(x,p)=>[x.review?"Order read from an email, not yet checked":"",uns.has(x.src+"|"+x.i)?"Meals or education to check":"",p.check||""].filter(Boolean).join(". ");
   const yn=v=>v?"Yes":"";
   const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate),chk(x,p),(p.sources||[]).join(" ")]});
   // the farms behind each bin, beneath its line
@@ -4360,12 +4363,12 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
     if(n)toast(`${n} order${n===1?"":"s"} kept`);renderGrant();return}
   if(t.dataset.guse!=null){const use=t.value;
     if(t.dataset.gman){await gWrite("purchases",{list:{[t.dataset.gman]:{use}}})}
-    else{const o=grantRecs.get(t.dataset.guse);if(!o)return;const items=(o.items||[]).map((x,i)=>i===+t.dataset.gi?Object.assign({},x,{use}):x);if(db)try{await db.doc("grant/"+o.id).update({items})}catch(err){toast("Could not save that.")}}
+    else{const o=grantRecs.get(t.dataset.guse);if(!o)return;const items=(o.items||[]).map((x,i)=>i===+t.dataset.gi?Object.assign({},x,{use,useSet:true}):x);if(db)try{await db.doc("grant/"+o.id).update({items})}catch(err){toast("Could not save that.")}}
     renderGrant();return}
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
   if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-gedu],[data-grevuse],[data-grevkeep]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-gedu],[data-grevuse],[data-grevkeep],[data-gplace]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
   if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,noDate:{__delete__:true},checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
   // the director counts an observation or plan for a food education goal, or sets it aside. Pressing the same choice again clears it.
   if(d.gedu){const [n,kind,id]=d.gedu.split("|");const v=d.gv==="1";const cur=gEduMark(n,kind,id);const key=gEduKey(n,kind,id);
@@ -4374,6 +4377,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
   if(d.grevuse){const o=grantRecs.get(d.grevuse),r=o&&o.revision;if(!r||!db)return;
     const patch={items:r.items||[],fulfilled:r.fulfilled||o.fulfilled||"",subtotal:r.subtotal??null,delivery:r.delivery??null,total:r.total??null,distributor:r.distributor||o.distributor||"",noDate:r.noDate?true:{__delete__:true},revision:{__delete__:true},review:!!r.noDate,checkedBy:whoAmI(),checkedAt:Date.now()};
     try{await db.doc("grant/"+o.id).update(patch);toast("The new reading is used.")}catch(err){toast("Could not save that.")}renderGrant();return}
+  // the director places a line, meals or education, and it is not asked again
+  if(d.gplace){const [id,i]=d.gplace.split("|");const o=grantRecs.get(id);if(!o||!db)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{use:d.gv,useSet:true}):x);
+    try{await db.doc("grant/"+id).update({items});toast(d.gv==="education"?"Counted for student education.":"Counted for meals.")}catch(err){toast("Could not save that.")}renderGrant();return}
   if(d.grevkeep){if(db)try{await db.doc("grant/"+d.grevkeep).update({revision:{__delete__:true}});toast("Kept as it was.")}catch(err){toast("Could not save that.")}renderGrant();return}
   if(d.gdel){if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Take it out?";return}if(db)try{await db.doc("grant/"+d.gdel).delete();grantRecs.delete(d.gdel)}catch(err){toast("Could not take it out.")}renderGrant();return}
   if(d.gq){gQuarter=d.gq;LS.set("fps.gq",gQuarter);renderGrant();return}
@@ -4474,6 +4480,43 @@ function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.leng
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
   if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,5).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
+/* ---------- Meals or education ----------
+   Each order line counts for meals unless it is a FEED bin, and TREE asks the director about a line it is unsure of,
+   one the menu does not use in the days after it came, or one whose food the team has been following lately. Until the
+   director places it, it counts where it is. Once placed it is never asked again, and a later reading keeps the choice. */
+const K_NOTVEG=/honey|egg|cheese|flour|bean|rice|milk|yogurt|bread|oil|vinegar|nut|jam|syrup|tortilla|pasta|noodle/i;
+const kPossessive=r=>r?r+"'s":"";
+// a food the team is following points to education. A thread, project or inquiry naming it is enough. A plan or an
+// observation that mentions it only counts when the menu does not use it, since children eat and talk about snack daily.
+function gEduHint(re,day,menuUsed){const t0=parseIso(addDays(day,-28)).getTime(),t1=parseIso(addDays(day,7)).getTime();const inR=ms=>(ms||0)>=t0&&(ms||0)<=t1;
+  for(const t of threads.values())if(t&&!t.unfollowed&&re.test([t.name,t.question].join(" "))&&inR(t.updatedAt||t.createdAt||Date.now()))return `${t.classroom?kPossessive(t.classroom)+" ":"the "}thread ${t.name}`;
+  for(const x of projects.values())if(x&&x.status!=="closed"&&re.test([x.name,projUnder(x)].join(" ")))return `the project ${x.name}`;
+  for(const x of inqAll())if(x.status==="open"&&re.test([x.name,x.see].join(" ")))return `the team inquiry ${x.name||""}`.trim();
+  if(menuUsed)return "";
+  for(const p of plans.values())if(p.id!=="example"&&p.weekOf>=addDays(day,-28)&&p.weekOf<=addDays(day,7)&&re.test(gTextOfPlan(p)))return `${p.classroom?kPossessive(p.classroom)+" ":"a "}plan for the week of ${shortWeek(p.weekOf)}`;
+  for(const n of notices.values())if(inR(n.at)&&re.test((n.noticed||"")+" "+(n.wonder||"")))return `an observation of ${shortDate(n.at)}`;
+  return ""}
+function gUnsure(){const out=[];
+  for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(!day)continue;
+    (o.items||[]).forEach((x,i)=>{if(x.useSet||/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim()))return;
+      const k=kName(x.item);if(!k.food)return;const l={day,food:k.food,farm:x.producer||""};if(kIsStaple(l))return;
+      const re=kFoodRe(k.food);const word=kCap(kPlural(k.food));
+      const back=kBack(k.food,x.producer),days=kMenuDays(day,addDays(day,back));
+      // the menu is only asked when the menus for those days are kept, so a month not read yet is never mistaken for food not served
+      // the menu's own note counts too, such as fruit with every snack, or a salad and seasonal vegetables with every lunch
+      const notes=[...new Set(days.map(o=>o.d.slice(0,7)))].map(m=>(menus.get(m)||{}).notes||{});
+      const byNote=K_FRUIT.test(k.food)?notes.some(n=>/fruit/i.test(n.snack||"")):!K_NOTVEG.test(k.food)&&notes.some(n=>/vegetable|salad/i.test(n.lunch||""));
+      const known=days.length>=3,used=known&&(byNote||kUses(k.food,days,x.producer).length>0);
+      const hint=re?gEduHint(re,day,used||!known):"";
+      const are=/s$/i.test(word)?"are":"is",they=/s$/i.test(word)?"they":"it";
+      let why=hint?`${word} ${are} in ${hint}`:known&&!used?`${word} ${are} not on the menu in the ${back} days after ${they} came`:"";
+      if(why)out.push({o,i,x,why})})}
+  return out}
+function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
+  return `${gCardO("mealsedu","Meals or education?",L.length+" line"+(L.length===1?"":"s")+" to place",true)}
+    <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>
+    ${gFold(L.map(u=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(kName(u.x.item).name)}</b> <span class="cnt">${esc(u.x.producer||"")} · ${esc(fmtDate(u.o.fulfilled||u.o.placed||""))}</span><div class="cnt">${esc(u.why)}.</div></div>
+      <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
 /* ---------- Staff birthdays ----------
    The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
    under Birthdays every year, and so on Today. Like the children's birthdays, they stay out of the newsletter. */
