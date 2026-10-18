@@ -11,7 +11,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
-module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor }) {
+module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive }) {
   const KEY = () => String(process.env.KAYMBU_INBOX_KEY || '').trim();
   const PHOTO_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
   const seen = new Set();   // Moments being kept right now, so a second copy of the same email waits its turn
@@ -85,6 +85,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
 
   async function keepPhoto(buf, by, kind) {
     const id = crypto.randomBytes(6).toString('hex') + (kind === 'thumb' ? '-moment-kaymbu-thumb.jpg' : '-moment-kaymbu.jpg');
+    if (keepInDrive && await keepInDrive(id, buf, 'image/jpeg')) return id;
     let r;
     // GitHub refuses a save that lands at the same moment as another, so it is tried again after a short wait
     for (let k = 0; k < 4; k++) {

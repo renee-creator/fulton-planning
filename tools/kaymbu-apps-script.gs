@@ -49,3 +49,50 @@ function checkKaymbu() {
   }
   props.setProperty('done', JSON.stringify(done.slice(-300)));
 }
+
+/*
+  TREE photos in Google Drive.
+  The same script also keeps TREE's photos in a folder called TREE photos in this account's Drive, so photos use the
+  school's Google storage. TREE's server sends each photo here and asks for it again when a page shows it.
+
+  Setup, once, after the Kaymbu setup above
+  1. Choose Deploy, then New deployment. Choose the gear beside Select type and choose Web app.
+  2. Execute as Me. Who has access, Anyone. Press Deploy and allow the access Google asks for.
+  3. Copy the Web app URL and send it to be saved on Render as DRIVE_PHOTOS_URL.
+  Anyone with the address still needs the key above, so no one else can read or add photos.
+*/
+const PHOTO_FOLDER = 'TREE photos';
+
+function photoFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('photoFolder');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  const found = DriveApp.getFoldersByName(PHOTO_FOLDER);
+  const folder = found.hasNext() ? found.next() : DriveApp.createFolder(PHOTO_FOLDER);
+  props.setProperty('photoFolder', folder.getId());
+  return folder;
+}
+
+function reply_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse(e.postData.contents); } catch (x) { return reply_({ error: 'The request could not be read' }); }
+  if (!body.key || body.key !== TREE_KEY) return reply_({ error: 'Not allowed' });
+  const folder = photoFolder_();
+  if (body.op === 'ping') return reply_({ ok: true, folder: folder.getName() });
+  if (body.op === 'put') {
+    const blob = Utilities.newBlob(Utilities.base64Decode(body.data), body.type || 'image/jpeg', String(body.name || 'photo.jpg'));
+    const file = folder.createFile(blob);
+    return reply_({ id: file.getId(), size: file.getSize() });
+  }
+  if (body.op === 'get') {
+    let file; try { file = DriveApp.getFileById(String(body.id || '')); } catch (x) { return reply_({ error: 'That photo is not in Drive' }); }
+    // only photos in the TREE photos folder are ever handed back
+    const parents = file.getParents(); let inFolder = false;
+    while (parents.hasNext()) if (parents.next().getId() === folder.getId()) inFolder = true;
+    if (!inFolder) return reply_({ error: 'That file is not a TREE photo' });
+    return reply_({ data: Utilities.base64Encode(file.getBlob().getBytes()), type: file.getMimeType() });
+  }
+  return reply_({ error: 'Unknown request' });
+}

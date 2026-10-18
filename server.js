@@ -213,7 +213,9 @@ function conferenceEvents(from, to) {
 }
 const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
-const kaymbuInbox = require('./kaymbu.js')({ store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n) });
+// photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
+const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
+const kaymbuInbox = require('./kaymbu.js')({ store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';
 const SAVE_WAIT = 'Changes are taking longer than usual to reach GitHub. They are kept on the server and saving keeps trying, so keep working, and avoid closing the app for a few minutes.';
@@ -226,7 +228,7 @@ let loading = null;
 // the history, so a deleted photo still counts. It is read again every six hours.
 async function readRepoSize() { try { const r = await gh('GET', `/repos/${RECORDS_REPO}?fresh=${Date.now()}`); if (r.status === 200) { store.repoKb = Number(r.json.size) || 0; store.repoKbAt = Date.now(); } } catch (e) {} }
 setInterval(readRepoSize, 6 * 3600e3).unref();
-function storageNow() { let photos = 0, bytes = 0; for (const o of store.originals.values()) { photos++; bytes += Number(o.size) || 0; } return { photos, photoBytes: bytes, repoBytes: Math.max((store.repoKb || 0) * 1024, bytes), at: store.repoKbAt || 0 }; }
+function storageNow() { let photos = 0, bytes = 0, inDrive = 0; for (const o of store.originals.values()) { if (o.drive) { inDrive++; continue; } photos++; bytes += Number(o.size) || 0; } return { photos, photoBytes: bytes, inDrive, driveOn: photosDrive.on(), repoBytes: Math.max((store.repoKb || 0) * 1024, bytes), at: store.repoKbAt || 0 }; }
 function loadAll() { if (!loading) loading = doLoad().finally(() => { loading = null; if (!store.ready && githubToken()) setTimeout(loadAll, 60000); }); return loading; }
 async function doLoad() {
   if (!githubToken()) { store.error = 'No GITHUB_TOKEN is saved on Render. Add it under Environment.'; log(store.error); return; }
@@ -249,7 +251,8 @@ async function doLoad() {
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
-      if (o) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
+      if (o && !(store.originals.get(o[1]) || {}).drive) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
+      if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
     }
     let i = 0;
     const worker = async () => {
@@ -266,6 +269,7 @@ async function doLoad() {
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message));
+    if (photosDrive.on()) setTimeout(() => photosDrive.moveAll().catch(e => log('Photos could not move to Google Drive', e.message)), 60000).unref();
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
@@ -442,6 +446,7 @@ function statusPage(req, res) {
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
+  { const st = storageNow(); lines.push(photosDrive.on() ? `Photos kept in Google Drive, ${st.inDrive}. Still in the records, ${st.photos}.` : 'Photos are kept in the records. Google Drive is not set up.'); }
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
@@ -472,6 +477,10 @@ async function handle(req, res) {
     if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60)); send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
+    if (!buf && o.drive) {
+      try { buf = await photosDrive.read(o); cacheFile(id, buf); }
+      catch (e) { log('Photo could not be read from Google Drive', id.slice(0, 60), e.message); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the photo from Google Drive.'); return; }
+    }
     if (!buf) {
       const b = await readPhoto(o.sha);
       if (b.status !== 200) { log('Photo could not be read from GitHub', id.slice(0, 60), b.status); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the file from GitHub.'); return; }
@@ -618,6 +627,7 @@ async function handle(req, res) {
     const buf = Buffer.from(body.data, 'base64');
     if (buf.length > 15 * 1024 * 1024) { err(req, res, 413, 'That file is larger than 15 MB. Save it smaller or as fewer pages.'); return; }
     const id = crypto.randomBytes(6).toString('hex') + '-' + name.replace(/^[^a-z0-9]+/, '');
+    if (await photosDrive.keep(id, buf, { pdf: 'application/pdf', png: 'image/png', webp: 'image/webp' }[ext] || 'image/jpeg')) { json(req, res, 200, { id, sizeBytes: buf.length }); return; }
     const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/originals/${id}`, { message: `Add ${/^moment/.test(name) ? 'moment photo' : 'original form'} by ${me.name}`, content: buf.toString('base64'), branch: store.branch });
     if (isRateLimit(r)) { err(req, res, 429, 'GitHub is busy. Wait a minute and try again.'); return; }
     if (r.status === 401 || r.status === 403) { store.saveError = r.status === 401 ? KEY_PROBLEM : KEY_NO_WRITE; err(req, res, 503, store.saveError); return; }
