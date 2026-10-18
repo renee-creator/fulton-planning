@@ -3939,6 +3939,7 @@ function renderGrant(){
     ${gAdd?gAddHtml():""}</section>`;
 
   h+=gLocalHtml(from,to,pw,q);
+  h+=gSavingsHtml(from,to,q);
   // orders read by Claude wait here until the director checks them against the email
   const rv=gOrders().filter(o=>o.review);
   if(rv.length)h+=`<section class="card" style="border-color:var(--clay)"><div class="secthead"><h3 style="font-size:17px;margin:0">Orders to check</h3><span class="cnt">${rv.length}</span></div>
@@ -3985,7 +3986,7 @@ function renderGrant(){
     h+=`<section class="card" id="g-check"><div class="secthead"><h3 style="font-size:17px;margin:0">Quarterly check-ins</h3><span class="cnt">${ins.length} quarter${ins.length===1?"":"s"}</span></div>
     ${ins.length?ins.map(([x,c])=>`<div class="binadd" style="margin-top:8px"><b>${esc(quarterName(x))}</b>${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>c[k]).map(([k,l])=>`<div class="lbl" style="margin-top:6px">${l}</div><div style="white-space:pre-wrap">${esc(c[k])}</div>`).join("")}</div>`).join(""):`<div class="empty">No check-ins written for these quarters yet. Choose a quarter to write one.</div>`}</section>`}
   h+=`<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Grant details</summary><div class="kfields" style="margin-top:8px">
-    ${[["agreement","Agreement number","text"],["start","Term began","date"],["end","Term ends","date"],["b1a","Food for meals and snacks, 1a","number"],["b1b","Food for student education, 1b","number"]].map(([k,l,t])=>`<label class="cnt">${l}<input type="${t}" data-gset="${k}" value="${esc(String(S[k]??""))}"></label>`).join("")}</div>
+    ${[["agreement","Agreement number","text"],["start","Term began","date"],["end","Term ends","date"],["b1a","Food for meals and snacks, 1a","number"],["b1b","Food for student education, 1b","number"],["enrolled","Children enrolled, for the family savings","number"]].map(([k,l,t])=>`<label class="cnt">${l}<input type="${t}" data-gset="${k}" value="${esc(String(S[k]??""))}"></label>`).join("")}</div>
     <div class="hint">The term end is the date asked for in the July extension request. Change it if CDFA approves another.</div></details>`;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
 }
@@ -4016,6 +4017,24 @@ function gLocalHtml(from,to,pw,q){const L=gLinesAll(from,to);if(!L.length)return
       <div class="cnt" style="margin-bottom:8px">Kept here so the full picture of the food is in one place. These are left out of the grant's California food totals.</div>
       <div class="tlist">${[...byP.values()].map(e=>`<div class="prow"><div style="min-width:0"><b>${esc(e.p.name)}</b>${e.p.town?` <span class="cnt">${esc(e.p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${e.n} line${e.n===1?"":"s"} · ${esc([...e.items].join(", "))}</div>${gEvidence(e.p)}</div></div>`).join("")}</div></section>`}
   return h}
+// what families do not have to provide, an estimate from the school days and meals on the menus and the children
+// enrolled, using public benchmarks. Groceries use USDA's food plans for ages 2 to 5, lunch and two snacks taken as
+// 40 to 50 percent of a day's food (a third to 40 percent on a morning snack only day), with 25 percent added at the
+// high end for organic and local. Time is 10 to 25 minutes a school day of shopping, packing and cleanup.
+const G_SAVE={low:2.38,lowShort:1.96,high:5.36,highShort:4.29,fed:7.36,fedShort:6.06,minLow:10,minHigh:25,wage:18.21};
+function gSchoolDays(from,to){let full=0,short=0;for(const m of menus.values()){if(!m||!m.days)continue;for(const [day,d] of Object.entries(m.days)){if(day<from||day>to||!d||d.closed||!(d.lunch||d.am))continue;
+  const mon=parseIso(day).getDay()===1;if(!mon&&String(d.pm||"").trim())full++;else short++}}return {full,short,days:full+short}}
+function gSavingsHtml(from,to,q){const S=gSet();const kids=Number(S.enrolled)||kidsAt().length||0;const {full,short,days}=gSchoolDays(from,to);
+  if(!days)return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">What families don't have to provide</h3></div><div class="empty">No monthly menus are kept for ${esc(periodName(q))}, so there are no school days to count yet.</div></section>`;
+  const lo=full*G_SAVE.low+short*G_SAVE.lowShort,hi=full*G_SAVE.high+short*G_SAVE.highShort,fed=full*G_SAVE.fed+short*G_SAVE.fedShort;
+  const hLo=days*G_SAVE.minLow/60,hHi=days*G_SAVE.minHigh/60;const meals=kids*(full*3+short*2);const r=n=>"$"+Math.round(n).toLocaleString("en-US");const hr=n=>Math.round(n).toLocaleString("en-US");
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">What families don't have to provide</h3><span class="cnt">${esc(periodName(q))}</span></div>
+    <div class="gstats">${[[hr(days),"school days with lunch and snacks"],[kids?hr(meals):"Add enrollment",kids?"meals and snacks offered to "+kids+" children":"in Grant details below"],[r(lo)+" to "+r(hi),"in groceries for each child"],[hr(hLo)+" to "+hr(hHi)+" hours","of shopping, packing and cleanup for each family"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
+    ${kids?`<div class="cnt" style="margin-top:8px">Across ${kids} children, that is about ${r(lo*kids)} to ${r(hi*kids)} in groceries families did not have to buy, and ${hr(hLo*kids)} to ${hr(hHi*kids)} hours they did not spend, worth ${r(hLo*kids*G_SAVE.wage)} to ${r(hHi*kids*G_SAVE.wage)} at the Santa Rosa minimum wage.</div>`:""}
+    <div class="cnt" style="margin-top:6px">For comparison, the federal child care food program pays centers ${r(fed)} per child for the same lunches and snacks over these days, a basic prepared meal with no allowance for organic food or baking from scratch. It describes the same meals another way, so it is never added to the grocery estimate.</div>
+    <div class="cnt" style="margin-top:6px">Every bread, dough and crust is made by hand, with organic and local food, a quality many families would find hard to match at home. Nationally, 19.5 percent of children lived in food insecure households in 2024, and 63 percent of lower income adults in Sonoma County were food insecure.</div>
+    <div class="hint">An estimate with its method shown. Groceries use USDA's food plans for ages 2 to 5, thrifty to liberal, with lunch and two snacks taken as 40 to 50 percent of a day's food, and 25 percent added at the high end for organic and local food. Time is 10 to 25 minutes a school day. School days come from the monthly menus, and enrollment from Grant details or the children in TREE. Children who attend part time or are absent save less.</div>
+    <div class="cnt">Sources, <a href="https://www.fns.usda.gov/research/cnpp/usda-food-plans/cost-food-monthly-reports" target="_blank" rel="noopener">USDA food plans</a>, <a href="https://www.fns.usda.gov/cacfp/fr-072726" target="_blank" rel="noopener">CACFP rates 2026 to 2027</a>, <a href="https://www.ers.usda.gov/amber-waves/2016/may/investigating-retail-price-premiums-for-organic-foods" target="_blank" rel="noopener">USDA organic price premiums</a>, <a href="https://www.bls.gov/tus/tables/a1-2025.pdf" target="_blank" rel="noopener">American Time Use Survey</a>, <a href="https://www.feedingamerica.org/sites/default/files/2026-08/Map%20the%20Meal%20Gap%202026%20Report.pdf" target="_blank" rel="noopener">Feeding America 2026</a>, <a href="https://www.nbcbayarea.com/news/local/food-insecurity-bay-area/4047203/" target="_blank" rel="noopener">California Health Interview Survey, reported 2026</a>.</div></section>`}
 // the share of food spending at large retailers, quarter by quarter
 function gRetailTrend(from,to){const rows=[];const qs=[...new Set(gLinesAll(from,to).map(x=>quarterOf(x.day)))].sort();
   for(const x of qs){const r=quarterRange(x),L=gLinesAll(r.from,r.to),t=L.reduce((a,y)=>a+(Number(y.total)||0),0),rt=L.filter(y=>y.kind==="retail").reduce((a,y)=>a+(Number(y.total)||0),0);rows.push([quarterName(x),rt,t])}
@@ -4048,6 +4067,8 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
   const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0};e.total+=Number(x.total)||0;prods.set(k,e)}
   const blocks=[];
   if(q==="all")blocks.push(dList("The grant's eight objectives",G_GOALS.map(g=>`${g.n}. ${g.goal}`)));
+  {const S=gSet(),kids=Number(S.enrolled)||kidsAt().length||0,sd=gSchoolDays(from,to);if(sd.days){const lo=sd.full*G_SAVE.low+sd.short*G_SAVE.lowShort,hi=sd.full*G_SAVE.high+sd.short*G_SAVE.highShort,r=n=>"$"+Math.round(n).toLocaleString("en-US");
+    blocks.push(dList("What families don't have to provide",[`${sd.days} school days with lunch and snacks`,`About ${r(lo)} to ${r(hi)} in groceries for each child`,`About ${Math.round(sd.days*G_SAVE.minLow/60)} to ${Math.round(sd.days*G_SAVE.minHigh/60)} hours of shopping, packing and cleanup for each family`].concat(kids?[`About ${r(lo*kids)} to ${r(hi*kids)} in groceries across ${kids} children`]:[])))}}
   blocks.push(dList("California food bought",[`For meals and snacks, ${gMoney(sum(lines.filter(x=>x.use!=="education")))}`,`For student education, ${gMoney(sum(lines.filter(x=>x.use==="education")))}`,`Certified organic, ${gMoney(sum(lines.filter(gOrganic)))}`,`From ${prods.size} producer${prods.size===1?"":"s"}`]));
   if(prods.size)blocks.push(dList("Producers",[...prods.values()].sort((a,b)=>b.total-a.total).map(e=>`${e.p.name}${e.p.town?", "+e.p.town:""}, ${gMoney(e.total)}`)));
   const bf=gBinFarms(from,to);if(bf.length)blocks.push(dList("Farms behind the FEED bins",bf.map(f=>`${f.name}${f.town?", "+f.town:""}`)));

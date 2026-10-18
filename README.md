@@ -53,6 +53,10 @@ Documentation, then Farm to School, for the director only. The page shows one qu
 - **Families, objective 8.** A short log of family meetings, parent participation and foods families brought.
 - **Quarterly check-in.** Claude drafts progress, successes and challenges from only the figures and educators' words on the page, and the director rewrites it. Quarter summary prints as a PDF and a Word file.
 
+## What families don't have to provide
+
+On the Farm to School page, an estimate of the groceries and time each family is spared, for the chosen quarter, year or whole grant. School days come from the monthly menus, a full day being lunch and two snacks and a Monday or short day lunch and one snack, and enrollment from Grant details or the children in TREE. Groceries use USDA's food plans for ages 2 to 5, thrifty to liberal, with lunch and two snacks taken as 40 to 50 percent of a day's food and 25 percent added at the high end for organic and local food. Time is 10 to 25 minutes a school day, valued at the Santa Rosa minimum wage. The federal child care food program's rate for the same meals is shown for comparison and never added. Sources are linked on the page, and the year and grant summaries print the figures.
+
 ## The grant's eight objectives
 
 The Farm to School page opens with the agreement's eight objectives from the scope of work (draft of March 20, 2025), folded under its heading. Each gives the planned activity, who carries it out, and where on the page its evidence is gathered. The whole grant summary prints them first.
