@@ -251,7 +251,7 @@ async function doLoad() {
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
-      if (o && !(store.originals.get(o[1]) || {}).drive) store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size });
+      if (o) { const cur = store.originals.get(o[1]); if (cur && cur.drive) cur.leftover = { path: f.path, sha: f.sha }; else store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size }); }
       if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
     }
     let i = 0;
