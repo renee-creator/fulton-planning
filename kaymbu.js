@@ -149,24 +149,37 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     return pick ? pick.date : '';
   }
 
+  // first names that are also everyday words, which a note can use at the start of a sentence or for the thing itself,
+  // such as River, Daisy or Peace. A child with one of these names is offered for an educator to check, never tagged outright.
+  const WORD_NAMES = new Set(('sage river june hunter rose daisy juniper aspen opal peace jack max lily ivy hazel willow rain sky sunny summer autumn ' +
+    'winter dawn hope faith joy grace ruby pearl jade iris poppy violet olive clover fern forest brook rowan robin wren jay hawk fox bear birch oak ash ' +
+    'cedar coral honey melody star storm ocean sea lake bay chase mark will bill frank art pat dean grant reed rush cliff gale glen april may august ' +
+    'love blue berry cherry ginger pepper basil maple meadow sparrow lark dove ray sun moon cloud snow gray grey fall spring ruth hero royal king ' +
+    'prince queen bliss harmony echo wolf lion tiger cotton holly heather angel bunny buddy bean penny dusty rusty sandy misty stormy rocky ' +
+    'stone flint marsh field fielding sterling page ember journey legend ryder wilder river').split(/\s+/));
+  const isWordName = first => WORD_NAMES.has(String(first || '').toLowerCase());
   // the children a note names, read the same way Tag the children named does on the page. A first name shared by two
-  // children in the classroom is left for an educator.
-  function findChildren(text, room) {
+  // children in the classroom is left for an educator. A name found only in the title, or a name that is also an everyday
+  // word, is offered to an educator to check.
+  function findChildren(text, room, title) {
     // a child's record has no id inside it, so the id is the name of its record
     const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
     // the classes named are looked in first. A child from another class is found too, unless a child in a named class shares the first name
     const rooms = Array.isArray(room) ? room : room ? [room] : [];
     const inRooms = rooms.length ? kids.filter(c => rooms.includes(c.classroom)) : kids;
     const pool = [...inRooms, ...kids.filter(c => !inRooms.includes(c) && !inRooms.some(k => k.first === c.first))];
-    const found = [], unsure = [];
+    const found = [], unsure = [], maybe = [];
     for (const c of pool) {
       const re = new RegExp('(^|[^A-Za-z])' + String(c.first).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z])');
-      if (!re.test(text)) continue;
+      const inNote = re.test(text), inTitle = !!title && re.test(title);
+      if (!inNote && !inTitle) continue;
       const same = pool.filter(k => k.first === c.first);
       // two children who could be meant by this first name are left for an educator
-      if (same.length > 1) unsure.push(c.first); else found.push(c.id);
+      if (same.length > 1) unsure.push(c.first);
+      else if (!inNote || isWordName(c.first)) maybe.push(c.id);
+      else found.push(c.id);
     }
-    return { ids: found, unsure: [...new Set(unsure)] };
+    return { ids: found, unsure: [...new Set(unsure)], maybe };
   }
 
   // the educator who shared it from Kaymbu, matched to their TREE sign-in by first name
@@ -218,15 +231,17 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
           // Kaymbu's own smaller copy is kept for cards and lists. The original above is what slides and printouts use.
           if (p.url !== m.photo) { try { const r = await getBuf(m.photo); const d = r.status === 200 && /^image\//.test(r.type) && r.buf.length < 600 * 1024 ? size(r.buf) : null; if (d) photo.thumb = await keepPhoto(r.buf, by, 'thumb'); } catch (e) {} } }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
-        const kids = findChildren(noticed, sub.rooms);
-        const group = (many.get(sameNote(m)) || 0) > 1 && kids.ids.length > 0;
-        const needs = group || !kids.ids.length || kids.unsure.length > 0;
+        const kids = findChildren(m.note || '', sub.rooms, m.title || '');
+        const group = (many.get(sameNote(m)) || 0) > 1 && (kids.ids.length + kids.maybe.length) > 0;
+        const needs = group || !kids.ids.length || kids.unsure.length > 0 || kids.maybe.length > 0;
+        // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
+        const offer = group ? [...kids.ids, ...kids.maybe] : kids.maybe;
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
         const doc = { id, noticed, wonder: '', classroom: sub.room, ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 3, ...(group ? { suggest: kids.ids } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
+          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);

@@ -121,7 +121,9 @@ module.exports = function feedBin({ store, log, noteChange, scheduleSave }) {
       cache.weeks = weeks; cache.at = Date.now(); cache.error = '';
       if (store.ready) { const n = keep(weeks, 'FEED'); if (n) log('FEED bin weeks kept or updated,', n); }
       log('FEED bin page read,', weeks.length, 'weeks listed');
-    } catch (e) { cache.error = e.message; log('Could not read the FEED bin', e.message); }
+    } catch (e) { log('Could not read the FEED bin', e.message);
+      // a network failure reads as a plain sentence for staff, and the technical reason stays in the server log
+      cache.error = /^(FEED Sonoma (answered|did not answer)|The FEED page was read)/.test(e.message) ? e.message : 'The FEED Sonoma page could not be reached just now. TREE tries again in a few hours, and the list can be added by hand.'; }
     cache.checkedAt = Date.now();
     return cache;
     })().finally(() => { cache.running = null; });
