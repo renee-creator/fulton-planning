@@ -1601,7 +1601,7 @@ function kidAgeAt(c,t){if(!c||!c.dob)return"";const b=parseIso(String(c.dob).sli
 const STORE_SOFT=1024**3,STORE_HARD=5*1024**3;
 function storageInfo(){const s=window.FP_STORAGE;if(!s||!s.repoBytes)return null;const mb=b=>b>=1024**3?(b/1024**3).toFixed(2)+" GB":Math.max(1,Math.round(b/1024**2))+" MB";
   const used=s.repoBytes,avg=s.photos?s.photoBytes/s.photos:900*1024,left=Math.max(0,STORE_SOFT-used);
-  return {used,usedText:mb(used),photos:s.photos,photoText:mb(s.photoBytes),pct:Math.min(100,Math.round(used/STORE_SOFT*100)),roomFor:Math.floor(left/avg),over:used>=STORE_SOFT,near:used>=STORE_SOFT/2}}
+  return {used,usedText:mb(used),photos:s.photos,photoText:mb(s.photoBytes),pct:Math.min(100,Math.round(used/STORE_SOFT*100)),roomFor:Math.floor(left/avg),over:used>=STORE_SOFT,near:s.driveOn?used>=STORE_SOFT*0.8:used>=STORE_SOFT/2,drive:!!s.driveOn,inDrive:s.inDrive||0}}
 // the day a child under three turns three, when no view was chosen and it falls within the next six weeks
 function kidTurnsThree(c){if(!c||!c.dob||(c.drdp||{}).view)return"";const d=String(c.dob).slice(0,10);const t=(Number(d.slice(0,4))+3)+d.slice(4);const day=t.endsWith("-02-29")?t.slice(0,5)+"02-28":t;
   const today=iso(new Date());return day>today&&day<=addDays(today,42)?day:""}
@@ -6618,7 +6618,10 @@ function renderSettings(){
   ${viewAsHtml()}
   ${signinsHtml()}
   ${lensSettingsHtml()}
-  ${(()=>{const si=storageInfo();if(!si)return"";return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos and records are kept in the school's private records on GitHub, which asks for under 1 GB and strongly recommends under 5 GB. A deleted photo still counts, since the history is kept.</div>
+  ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
+    <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
+      <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div></section>`;
+    return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos and records are kept in the school's private records on GitHub, which asks for under 1 GB and strongly recommends under 5 GB. A deleted photo still counts, since the history is kept.</div>
     <div class="prow"><div><b>${esc(si.usedText)} used of 1 GB</b><div class="cnt">${si.photos} photo${si.photos===1?"":"s"}, ${esc(si.photoText)}. ${si.over?"Past 1 GB.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size.`}</div></div>
       <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div>
     <div class="cnt">Today shows a note for the director at 500 MB and again at 1 GB.</div></section>`})()}
