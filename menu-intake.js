@@ -13,9 +13,11 @@ Use the weekday column headings and the day numbers to give each day its full da
 Copy the note at the top of the menu, about what is served with every meal, in plain sentences.
 Do not use colons or dashes in what you write.
 
+If the document is not a snack or lunch menu, return {"kind": "none"}.
+
 Return a JSON object with "kind", either "snack" or "lunch", "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false. Return only the JSON.`;
 
-module.exports = function menuIntake({ store, log, askClaude, anthropicKey, noteChange, scheduleSave }) {
+module.exports = function menuIntake({ store, log, askClaude, anthropicKey, noteChange, scheduleSave, keepFile }) {
   let running = false; let last = '';
 
   function getFile(url, hops = 0) {
@@ -60,12 +62,33 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     return { kind, n, other };
   }
 
+  // the month's lunch and snack PDFs, kept in TREE so educators can open and print them from the calendar and Today
+  async function keepPdf(doc, f, buf) {
+    if (!keepFile || f.kind === 'none' || f.pdf) return;
+    const kind = f.kind === 'lunch' ? 'lunch' : 'snack';
+    const name = 'menu-' + doc.month + '-' + kind + '-' + require('crypto').randomBytes(4).toString('hex') + '.pdf';
+    try { await keepFile(name, buf, 'application/pdf', 'Add the ' + doc.month + ' ' + kind + ' menu'); f.pdf = name; doc.pdfs = Object.assign({}, doc.pdfs, { [kind]: name }); }
+    catch (e) { f.pdfTries = (f.pdfTries || 0) + 1; log('Menu PDF could not be kept,', doc.month, kind, e.message); }
+  }
+  async function backfill(id, r) {
+    const doc = r.doc;
+    for (const f of doc.intake.files || []) {
+      if (f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3) continue;
+      try { const g = await getFile(f.url); if (g.status !== 200 || g.buf.slice(0, 5).toString('latin1') !== '%PDF-') throw new Error('Kaymbu answered ' + g.status); await keepPdf(doc, f, g.buf); }
+      catch (e) { f.pdfTries = (f.pdfTries || 0) + 1; log('Menu PDF could not be opened again,', doc.month, f.label || '', e.message); }
+    }
+    r.local = true; noteChange('menus', id); scheduleSave('menus', id);
+  }
+
   async function run() {
     if (running || !store.ready) return; if (!anthropicKey()) { last = 'Claude assist is not set up, so menus from the Kitchen Digest wait.'; return; }
     running = true;
     try {
       for (const [id, r] of store.recs.menus) {
-        const doc = r.doc; if (r.deleted || !doc || !doc.intake || doc.intake.done || (doc.intake.tries || 0) >= 3) continue;
+        const doc = r.doc; if (r.deleted || !doc || !doc.intake) continue;
+        // a month read before its PDFs were kept gets them now, for educators to print
+        if (doc.intake.done) { if (keepFile && !(doc.intake.files || []).every(f => f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3)) await backfill(id, r); continue; }
+        if ((doc.intake.tries || 0) >= 3) continue;
         doc.days = doc.days || {}; doc.notes = doc.notes || {}; const errors = [];
         for (const f of doc.intake.files || []) {
           if (f.done) continue;
@@ -73,8 +96,11 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
             const g = await getFile(f.url);
             if (g.status !== 200) throw new Error('Kaymbu answered ' + g.status);
             if (g.buf.slice(0, 5).toString('latin1') !== '%PDF-') throw new Error('Kaymbu sent ' + (g.type || 'something') + ' rather than a PDF');
-            const o = await readPdf(g.buf); const m = merge(doc, o, f.label || '');
+            const o = await readPdf(g.buf);
+            if (o && o.kind === 'none') { f.done = true; f.kind = 'none'; log('Not a menu in the Kitchen Digest,', doc.month, f.label || ''); continue; }
+            const m = merge(doc, o, f.label || '');
             f.done = true; f.kind = m.kind; f.days = m.n;
+            await keepPdf(doc, f, g.buf);
             if (m.other) errors.push(`${f.label || m.kind} also listed ${m.other} day${m.other === 1 ? '' : 's'} outside ${doc.month}, left out`);
             log('Menu read from the Kitchen Digest,', doc.month, f.label || m.kind + ',', m.n, 'entries');
           } catch (e) { errors.push(`${f.label || 'A menu'} could not be read, ${e.message}`); log('Menu from the Kitchen Digest could not be read,', doc.month, f.label || '', e.message); }
@@ -95,9 +121,16 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
   // lunch and snack PDFs. The month comes from the digest's own heading, or from when it was sent, since Kitchen sends
   // late in the month before or early in the month itself.
   const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-  function isDigest(html, subject) { return /kitchen digest/i.test(String(subject || '') + ' ' + String(html || '').slice(0, 20000)) && /fileAttachmentBlock/i.test(String(html || '')); }
+  // Kitchen's own Kaymbu sender, so a digest with a new subject line still counts
+  const MENU_SENDERS = ['usr607e05143ce31e01151a4305@inbox.kaymbu.com'];
+  function labelsOf(html) { return String(html || '').split(/data-block-id="fileAttachmentBlock"/i).slice(1).map(p => { const d = p.match(/data-id="description"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i); return d ? d[1].replace(/<[^>]+>/g, ' ') : ''; }).join(' '); }
+  function isDigest(html, subject, from) {
+    html = String(html || ''); if (!/fileAttachmentBlock/i.test(html)) return false;
+    const sender = String(from || '').toLowerCase();
+    return /kitchen digest|menus?\b/i.test(String(subject || '')) || /kitchen digest/i.test(html.slice(0, 20000)) || /lunch|snack|menu/i.test(labelsOf(html)) || MENU_SENDERS.some(a => sender.includes(a)) || /usr607e05143ce31e01151a4305/i.test(html);
+  }
   function fromDigest(body) {
-    const html = String(body.html || ''); if (!isDigest(html, body.subject)) return null;
+    const html = String(body.html || ''); if (!isDigest(html, body.subject, body.from)) return null;
     const files = [];
     for (const part of html.split(/data-block-id="fileAttachmentBlock"/i).slice(1)) {
       const a = part.match(/<a[^>]+href="([^"]+)"/i); if (!a) continue;

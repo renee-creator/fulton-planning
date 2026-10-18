@@ -227,14 +227,17 @@ function conferenceEvents(from, to) {
   // the month's snack and lunch, from the menus the director adds in TREE
   for (const [, r] of store.recs.menus) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
+    // the month's menu PDFs, for educators to open and print from the entry
+    const pdfs = m.pdfs || {}; const fk = (pdfs.lunch || pdfs.snack) ? makeFileKey() : '';
+    const printOf = first => [first, first === 'lunch' ? 'snack' : 'lunch'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? 'Lunch menu' : 'Snack menu', id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
       // a morning snack, lunch, and an afternoon snack after lunch, each at the time kept with the month's menu.
       // Monday has the morning snack only. A meal without a time shows across the day.
       const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim(), lunch = String(d.lunch || '').trim();
       const times = m.times || {}, note = m.notes || {};
-      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : '';
-        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
+      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : ''; const print = printOf(key === 'lunch' ? 'lunch' : 'snack');
+        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, print.length ? { print } : {}, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
       if (am) meal('am', 'Morning snack, ' + am, note.snack);
       if (lunch) meal('lunch', 'Lunch, ' + lunch, note.lunch);
       if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
@@ -249,7 +252,20 @@ const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
 // the month's menus, opened from the links in Kitchen's Kitchen Digest and read by Claude
-const menuIntake = require('./menu-intake.js')({ store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
+// a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
+async function keepOriginal(id, buf, type, message) {
+  if (photosDrive.on() && await photosDrive.keep(id, buf, type)) return id;
+  let r;
+  for (let k = 0; k < 4; k++) {
+    if (k) await new Promise(ok => setTimeout(ok, 1500 * k));
+    r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/originals/${id}`, { message: message || 'Add a file', content: buf.toString('base64'), branch: store.branch });
+    if (r.status !== 409 && r.status !== 422 && r.status < 500) break;
+  }
+  if (r.status !== 201 && r.status !== 200) throw new Error('GitHub answered ' + r.status);
+  store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length }); cacheFile(id, buf);
+  return id;
+}
+const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';

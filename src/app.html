@@ -2117,15 +2117,17 @@ async function loadTodayCal(force){
   try{const j=await window.FP_API("/api/view",{from:day,to:day});
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
-    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||""});
+    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||"",print:(e.print||[]).filter(x=>x&&x.id)});
     for(const b of j.bookings||[]){const sp=spaces[b.spaceId]||{};const mins=v=>typeof v==="number"?String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0"):"";
       out.push({kind:"space",start:b.week?"":mins(b.start),end:b.week?"":mins(b.end),week:!!b.week,title:sp.name||"A space",sub:[b.who||b.by,b.group||b.what].filter(Boolean).join(", ")})}
     out.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+    // the menus to print show once, with the day's first snack or lunch
+    {let shown=false;for(const x of out)if((x.print||[]).length){if(shown)x.print=[];shown=true}}
     todayCal={at:Date.now(),day,items:out,error:""};
   }catch(e){todayCal={at:Date.now(),day,items:null,error:e&&e.message||"The calendar could not be reached."}}
   if(view==="today")renderToday();
 }
-function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}</div>`}
+function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${(x.print||[]).length&&window.FP_ORIGINAL_URL?`<span class="cnt">${x.print.map(p=>`<a href="${esc(window.FP_ORIGINAL_URL(p.id))}" target="_blank" rel="noopener">Print the ${esc(String(p.label||"menu").toLowerCase())}</a>`).join(" · ")}</span>`:""}</div>`}
 function todayWaiting(){
   const out=[],m=me(),dir=isDirector(),wk=mondayOf(new Date());
   const all=[...plans.values()].filter(p=>p.id!=="example");
@@ -4071,7 +4073,7 @@ function menusHtml(){
     <div class="actions"><label class="btn small ghost" style="cursor:pointer">Add menus<input type="file" id="menu-files" accept="application/pdf,image/*" multiple hidden></label>${menuBusy?`<span class="cnt"><span class="spin"></span> Reading ${menuBusy} menu${menuBusy===1?"":"s"}</span>`:""}</div>`;
   if(menuDraft)h+=menuDraftHtml();
   if(kept.length)h+=`<div class="tlist" style="margin-top:10px">${kept.map(m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
-    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div></div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
+    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">${k==="lunch"?"Lunch":"Snack"} menu PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
   return h+`</section>`}
 function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
   return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
