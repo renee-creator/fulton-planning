@@ -53,31 +53,34 @@ function checkKaymbu() {
 
 /*
   FEED order confirmations, for the Farm to School grant records.
-  FEED sends its confirmations to the office address. A Gmail filter there forwards them here, and on each check this
-  script sends the new ones to TREE, which keeps every item with its producer for the grant.
+  Forward FEED's order confirmations to tree@childfamilycommunity.com, one at a time or with a Gmail filter in the
+  office mailbox, and on each check this script sends them to TREE, which keeps every item with its producer for the
+  grant. Older confirmations can be forwarded too, from any time in the grant. An order sent twice is kept once.
 
   Setup, once
-  1. Signed in as office@childfamilycommunity.com, open Gmail settings, then Forwarding and POP/IMAP, and add
-     tree@childfamilycommunity.com as a forwarding address. Confirm it from the TREE mailbox.
-  2. Still in the office mailbox, make a filter with From ordering@feedsonoma.com and Subject Confirmation, and choose
-     Forward it to tree@childfamilycommunity.com.
-  3. Paste this updated file over the old one in the script project. Nothing else changes.
+  1. Paste this updated file over the old one in the script project. Nothing else changes.
+  2. To forward them automatically, sign in as office@childfamilycommunity.com, open Gmail settings, then Forwarding
+     and POP/IMAP, and add tree@childfamilycommunity.com. Then make a filter with From ordering@feedsonoma.com and
+     choose Forward it to tree@childfamilycommunity.com.
 */
 function checkFeedOrders() {
-  const props = PropertiesService.getScriptProperties();
-  let done = []; try { done = JSON.parse(props.getProperty('feedDone') || '[]'); } catch (e) {}
   const server = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/feed-order');
-  const threads = GmailApp.search('from:ordering@feedsonoma.com subject:Confirmation newer_than:60d', 0, 50);
-  for (const thread of threads) for (const msg of thread.getMessages()) {
-    const id = msg.getId(); if (done.indexOf(id) >= 0 || !/feedsonoma\.com/i.test(msg.getFrom())) continue;
-    try {
-      const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() }) });
-      console.log(msg.getSubject() + ', TREE answered ' + res.getResponseCode());
-      if (res.getResponseCode() === 200 || res.getResponseCode() === 400) done.push(id);
-    } catch (e) { console.log(msg.getSubject() + ', TREE did not answer in time, trying again next check'); }
+  const label = GmailApp.getUserLabelByName('TREE order kept') || GmailApp.createLabel('TREE order kept');
+  // confirmations forwarded by hand come from the office address, so they are found by their subject
+  const threads = GmailApp.search('subject:"FEED Cooperative Confirmation" -label:"TREE order kept"', 0, 50);
+  for (const thread of threads) {
+    let all = true;
+    for (const msg of thread.getMessages()) {
+      try {
+        const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() }) });
+        const code = res.getResponseCode();
+        console.log(msg.getSubject() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
+        if (code !== 200 && code !== 400) all = false;
+      } catch (e) { console.log(msg.getSubject() + ', TREE did not answer in time, trying again next check'); all = false; }
+    }
+    if (all) thread.addLabel(label);
   }
-  props.setProperty('feedDone', JSON.stringify(done.slice(-300)));
 }
 
 /*
