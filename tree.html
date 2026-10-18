@@ -4622,7 +4622,7 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.lunches),"lunches made at school"]]));
-  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),w.lunches.map(kShortDish).join(" · "),w.snacks.slice(0,3).map(kShortDish).join(" · "),w.farms.length?w.farms.slice(0,4).map(f=>`${f.farm}, ${[...f.foods][0]}`).join(". "):"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.1,.36,.24,.3],muted:[0]}));
+  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.slice(0,4).map(f=>`${f.farm}, ${[...f.foods][0]}`).join(". "):"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.09,.38,.26,.27],muted:[0],small:true}));
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.met)blocks.push(dText("",F.met));
   blocks.push(dText("Recipe of the month",F.recipe||"________________________________"));
@@ -6492,7 +6492,8 @@ function displayAtoms(doc,p,A,s){
       // rows go down the first column and on into the next. A long table is set in bands, so a page break falls between bands.
       const rows=(b.rows||[]).filter(r=>r&&r.some(has)),cols=Math.max(1,Math.min(3,b.cols||1)),gut=cols>1?18:0,gw=(w-(cols-1)*gut)/cols;
       const nc=Math.max(1,...rows.map(r=>r.length),(b.head||[]).length);const wd=(b.widths&&b.widths.length===nc?b.widths:Array.from({length:nc},()=>1/nc)).map(f=>f*gw);
-      const al=b.align||[];const fs=b.big?18*s:Z.cell,lh=b.big?25*s:Z.clh,cp=b.big?8:5;
+      // a dense table, such as the farm sheet's weeks, is set a size smaller so every dish shows in full
+      const al=b.align||[];const fs=b.big?18*s:b.small?9*s:Z.cell,lh=b.big?25*s:b.small?12.2*s:Z.clh,cp=b.big?8:b.small?4:5;
       // a figure set to the right stays on one line
       const cellLines=(t,j,k)=>al[j]==="r"?[clean(String(t??"")).trim()]:wrap(String(t??""),k||(j===0&&b.bold0?"fs":"fr"),fs,wd[j]-cp*2);
       const drawRow=(r,x,y,rh,k)=>{let cx0=x;r.forEach((t,j)=>{const ls=cellLines(t,j,k);pfont(doc,k||(j===0&&b.bold0?"fs":"fr"),fs);doc.setTextColor(...(k?D_MUTED:j>0&&b.muted&&b.muted.includes(j)?D_MUTED:D_INK));
@@ -6897,7 +6898,7 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="table"){heading(b.label);
       const rows=(b.rows||[]).filter(r=>r&&r.some(has)),cols=Math.max(1,Math.min(3,b.cols||1)),gut=cols>1?300:0,gw=Math.floor((W-(cols-1)*gut)/cols);
       const nc=Math.max(1,...rows.map(r=>r.length),(b.head||[]).length);const fr=(b.widths&&b.widths.length===nc?b.widths:Array.from({length:nc},()=>1/nc));const wd=fr.map(f=>Math.floor(f*gw));wd[nc-1]+=gw-wd.reduce((a,c)=>a+c,0);
-      const al=b.align||[];const pt=(b.big?18:10.2)*s;
+      const al=b.align||[];const pt=(b.big?18:b.small?9:10.2)*s;
       const R=Math.ceil(rows.length/cols),nb=cols>1?Math.max(1,Math.ceil(R/(b.band||16))):1,Bn=cols>1?Math.ceil(R/nb):R;
       const colW=[];for(let c=0;c<cols;c++){if(c)colW.push(gut);colW.push(...wd)}
       const cellB=(bottom)=>({top:none,left:none,right:none,bottom:bottom||{style:BorderStyle.SINGLE,size:2,color:HAIRH}});
