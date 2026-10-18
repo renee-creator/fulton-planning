@@ -995,7 +995,7 @@ function viewConf(id){
             <div class="field"><label for="i-signup">Family sign-up${signupUrl()?` <a href="${esc(signupUrl())}" target="_blank" rel="noopener" class="small" style="font-weight:400;margin-left:6px">Open SignUpGenius</a>`:""}</label><select id="i-signup" data-k="signup" ${dis}>${SIGNUP.map(([v,l])=>`<option value="${v}" ${(cf.signup||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
             <div class="field"><label for="i-signupNote">Sign-up note</label><input id="i-signupNote" data-k="signupNote" value="${esc(cf.signupNote||"")}" ${dis} placeholder="Reminder sent in Kaymbu on 10/20"></div>
           </div>
-          <p class="small muted" style="margin:10px 0 0">Developmental areas follow the DRDP domains. Educators review the Family Questionnaire and current DRDP documentation before the conference.</p>
+          <p class="small muted" style="margin:10px 0 0">Educators review the Family Questionnaire and current DRDP documentation before the conference.</p>
         </div>
         <div class="sheet-sec">
           <div class="sheet-title"><h2>Educator observations</h2><span class="small muted mono" id="fill-count">${fc}/${TOTAL_FIELDS} sections filled</span></div>
@@ -1444,7 +1444,7 @@ async function downloadDocx(list, child){
       ...(info? [new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:[new D.TableRow({children:[new D.TableCell({borders:{top:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},bottom:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},left:{style:D.BorderStyle.SINGLE,size:24,color:"C9962A"},right:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"}},shading:{type:D.ShadingType.CLEAR,color:"auto",fill:"FDF3D8"},margins:{top:80,bottom:80,left:140,right:120},children:[
           new D.Paragraph({children:[new D.TextRun({text:info.text+" ",bold:true,size:19}),new D.TextRun({text:info.more,size:19})]}),
           new D.Paragraph({spacing:{before:60},children:[new D.TextRun({text:"Family's plan   ",bold:true,size:18}),...PLAN_BOXES.map(([v,l])=>new D.TextRun({text:`${info.plan===v?"\u2612":"\u2610"} ${l}     `,size:18}))]})]})]})]}), new D.Paragraph({spacing:{after:60},children:[]})] : []),
-      new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Developmental areas follow the DRDP domains. Educators review the Family Questionnaire and current DRDP documentation before the conference.",italics:true,size:16})]}),
+      new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Educators review the Family Questionnaire and current DRDP documentation before the conference.",italics:true,size:16})]}),
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows}),
       conf(CONF),
       title("Family Reflections", true),
@@ -1515,7 +1515,7 @@ async function buildFormsPdf(items){
       for(const [v,l] of PLAN_BOXES){ pg.drawRectangle({x,y:y-30,width:8,height:8,borderColor:INK,borderWidth:.7}); if(info.plan===v){ pg.drawLine({start:{x:x+1.5,y:y-26},end:{x:x+3.5,y:y-28.5},thickness:1.2,color:INK}); pg.drawLine({start:{x:x+3.5,y:y-28.5},end:{x:x+7,y:y-23},thickness:1.2,color:INK}); }
         pg.drawText(l,{x:x+11,y:y-29,size:8.5,font:F.r}); x+=11+F.r.widthOfTextAtSize(l,8.5)+16; }
       y-=fh+6; }
-    lines(pg,wrap("Developmental areas follow the DRDP domains. Educators review the Family Questionnaire and current DRDP documentation before the conference.",F.i,7.5,TW),M,y,F.i,7.5,GRAY); y-=13;
+    lines(pg,wrap("Educators review the Family Questionnaire and current DRDP documentation before the conference.",F.i,7.5,TW),M,y,F.i,7.5,GRAY); y-=13;
     const body=[]; for(let i=0;i<FIELDS.length;i++){ const f=FIELDS[i]; if(f.full) body.push({w:["strengths","documentation"].includes(f.k)?.8:1,full:f}); else { body.push({w:1,a:f,b:FIELDS[i+1]}); i++; } }
     if(cf.prevGoalsProgress) body.push({w:.8,full:{label:"Progress on earlier goals",k:"__prev"}});
     if((cf.otherSections||"").trim()) body.push({w:.8,full:{label:"Other sections from the original form",k:"__other"}});
@@ -2400,7 +2400,7 @@ const long=d=>new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",d
 function windowOf(cf){let from="";try{const pr=priorConf(cf);if(pr&&pr.confDate)from=pr.confDate}catch(e){}
   if(!from){const y=parseInt(cf.schoolYear,10);from=Number.isFinite(y)?y+"-08-01":""}
   const to=cf.confDate||iso(Date.now());return {from,to}}
-const line=x=>x.name+", "+x.level+(x.emerging?", emerging to the next level":"")+"."+(x.evidence?" "+x.evidence:"")+(x.title?" ("+x.title+", "+long(iso(x.at))+")":"");
+const line=x=>x.name+", evidence toward "+x.level+(x.emerging?", emerging to the next level":"")+", not a DRDP rating."+(x.evidence?" "+x.evidence:"")+(x.title?" ("+x.title+", "+long(iso(x.at))+")":"");
 function addTo(k,lines){const ta=document.querySelector('#conf-editor textarea[data-k="'+k+'"]');if(!ta||ta.readOnly||ta.disabled)return 0;
   const have=ta.value;const add=lines.filter(l=>!have.includes(l));if(!add.length)return 0;ta.value=(have.trim()?have.replace(/\s+$/,"")+"\n":"")+add.join("\n");
   ta.dispatchEvent(new Event("input",{bubbles:true}));ta.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return add.length}
@@ -2415,7 +2415,7 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   const span="from "+long(w.from)+" to "+long(w.to);
   const per={};for(const [k,doms] of Object.entries(MAP))per[k]=items.filter(x=>doms.includes(x.dom));
   for(const [k,list] of Object.entries(per)){if(!list.length)continue;const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))continue;
-    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>From the DRDP, "+span+"</b><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
+    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>DRDP evidence, "+span+"</b><div class=\"muted\">Evidence from our documentation, not a DRDP rating.</div><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", evidence toward <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,list.map(line));b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
   if(docs.length){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(wrap&&!wrap.querySelector(".tree-bring")){const box=document.createElement("div");box.className="tree-bring";
     const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. Pieces added to this section print after the form, in the PDF and as a second Word file. A piece not listed here does not print.</div>";

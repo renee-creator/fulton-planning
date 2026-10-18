@@ -465,8 +465,9 @@ function kitchenWeeks() {
 }
 
 /* ---------- DRDP (2025) definitions and level descriptors ----------
-   The official wording of each measure, read from the DRDP (2025) Infant and Toddler View and Preschool through
-   Kindergarten View. It is kept in the private records, never in the page, and added to a DRDP request here. */
+   The official wording of each measure, read from the DRDP (2025) Infant and Toddler View and Preschool Transitional
+   Kindergarten View, the editions of August 20, 2026. It is kept in the private records, never in the page, and added to
+   a DRDP request here. */
 const DRDP_PATH = 'drdp/descriptors.json';
 let drdpSha = '', DRDP_DESC = null;
 const DRDP_LV = { RE: 'Responding Earlier', RL: 'Responding Later', EE: 'Exploring Earlier', EM: 'Exploring Middle', EL: 'Exploring Later', BE: 'Building Earlier', BM: 'Building Middle', BL: 'Building Later', IE: 'Integrating Earlier', IM: 'Integrating Middle', IL: 'Integrating Later' };
@@ -478,7 +479,7 @@ async function loadDrdp() {
 function drdpBlock(view, codes) {
   const v = DRDP_DESC && DRDP_DESC[view]; if (!v) return '';
   const want = Array.isArray(codes) && codes.length ? new Set(codes.map(String)) : null;
-  const label = view === 'it' ? 'Infant and Toddler View' : 'Preschool through Kindergarten View';
+  const label = view === 'it' ? 'Infant and Toddler View' : 'Preschool Transitional Kindergarten View';
   let out = `Official DRDP (2025) ${label}. For each measure, its definition and the descriptor of each developmental level it uses, earliest to latest, word for word from the instrument.\n`;
   for (const [code, m] of Object.entries(v)) {
     if (want && !want.has(code)) continue;
