@@ -34,6 +34,10 @@ Plans, then Weekly bin. Each Class receives a standard FEED Sonoma bin, and on T
 
 Each item shows its farm and the farm's town, and whether it came before. The towns come from FEED's producer list, checked against CCOF and the farms' own pages, and any educator can correct one under Where the farms are. The team keeps an idea bank of questions to hold and simple ways to prepare the food, which anyone can add to. Claude can suggest some of each from the week's produce and what the class is following, and a suggestion joins the idea bank only when an educator keeps it. Suggestions treat the food as food, prepared, tasted and shared, never as an art or play material, with the scraps going to the compost or the animals. Each Class chooses which ideas to bring to the table, and those print on the bin sheet with the produce and farms, as a PDF and a Word file. Keep an observation on the page keeps it with that week's bin, and it goes on to plans, threads and documentation like any other. On Monday to Wednesday, Today shows the week's bin.
 
+## Monthly menus
+
+Settings, then Monthly menus, for the director. Add the month's snack and lunch menus as PDFs or photos. Claude reads each one into days, the morning and afternoon snack and the lunch, along with the note about what is served with every meal. The director checks every day against the menu before saving, and nothing shows until then. Saved menus are kept under menus/ in the records, one file a month, and show on the calendar as Snack and lunch, and so on Today. A month can be checked or changed again at any time. Only the director adds or changes menus, and the server enforces it.
+
 ## Small copies of photos
 
 Cards and lists show a small copy of each photo, about 640 pixels on its longest side, so a page of moments loads quickly on a phone. Slides, walls, portfolios, every printout and a photo opened on its own use the original, which is never changed or replaced. A photo kept in TREE gets its small copy as it is kept, a photo from Kaymbu keeps Kaymbu's own smaller copy, and photos kept before small copies existed get one from the director's browser, a few at a time, while TREE is open.

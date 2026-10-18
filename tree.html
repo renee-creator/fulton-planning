@@ -568,6 +568,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .binidea.on{background:var(--marigold-soft,#fbf1d9);margin:0 -10px;padding:10px}
 .binadd,.binsugg{margin-top:12px;padding:12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}
 @media (max-width:560px){.binidea{flex-direction:column}.binidea .actions{align-self:flex-start}}
+.menutab{width:100%;border-collapse:collapse;font-size:14px}.menutab th{text-align:left;font-weight:600;padding:6px;font-size:12.5px;color:var(--ink-soft,#6b6b62)}
+.menutab td{padding:3px 4px;border-top:1px solid var(--line,#e4e2da)}.menutab input[type=text]{width:100%;min-width:140px}.menutab tr.closed td{opacity:.55}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -1040,6 +1042,7 @@ async function boot(){
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -4027,6 +4030,75 @@ function noticeNoteHtml(p){
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
 const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+/* ---------- Monthly menus ----------
+   The director adds each month's snack and lunch menus. Claude reads the PDF or photo into days, the director
+   checks every day before saving, and the menus show on the calendar as Snack and lunch, and on Today. */
+let menus=new Map(), menuDraft=null, menuBusy=0;
+const MENU_MONTH=m=>{const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"})};
+function menuSchoolDays(month){const [y,mo]=month.split("-").map(Number);const out=[];const d=new Date(y,mo-1,1);while(d.getMonth()===mo-1){const w=d.getDay();if(w>0&&w<6)out.push(iso(d));d.setDate(d.getDate()+1)}return out}
+function menusHtml(){
+  const kept=[...menus.values()].filter(m=>m&&m.month).sort((a,b)=>b.month.localeCompare(a.month));
+  let h=`<section class="card" id="menus-card"><div class="lbl">Monthly menus</div>
+    <div class="hint">Add the month's snack and lunch menus as PDFs or photos. TREE reads them into days for you to check, then they show on the calendar as Snack and lunch, and on Today.</div>
+    <div class="actions"><label class="btn small ghost" style="cursor:pointer">Add menus<input type="file" id="menu-files" accept="application/pdf,image/*" multiple hidden></label>${menuBusy?`<span class="cnt"><span class="spin"></span> Reading ${menuBusy} menu${menuBusy===1?"":"s"}</span>`:""}</div>`;
+  if(menuDraft)h+=menuDraftHtml();
+  if(kept.length)h+=`<div class="tlist" style="margin-top:10px">${kept.map(m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
+    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div></div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
+  return h+`</section>`}
+function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
+  return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
+    ${(d.read||[]).length?`<div class="cnt" style="margin-bottom:8px">Read from ${d.read.map(esc).join(" and ")}.</div>`:""}
+    <div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Morning snack</th><th>Afternoon snack</th><th>Lunch</th><th>No school</th></tr></thead><tbody>
+    ${days.map(day=>{const x=d.days[day]||{};const lab=parseIso(day).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+      return `<tr${x.closed?' class="closed"':""}><td class="cnt" style="white-space:nowrap">${esc(lab)}</td>${["am","pm","lunch"].map(k=>`<td><input type="text" data-menuday="${day}" data-menuk="${k}" value="${esc(x[k]||"")}" ${x.closed?"disabled":""}></td>`).join("")}<td style="text-align:center"><input type="checkbox" data-menuday="${day}" data-menuk="closed" ${x.closed?"checked":""}></td></tr>`}).join("")}
+    </tbody></table></div>
+    <label class="fld-label" style="margin-top:10px">Note with the snack menu<textarea data-menunote="snack" rows="2">${esc((d.notes||{}).snack||"")}</textarea></label>
+    <label class="fld-label">Note with the lunch menu<textarea data-menunote="lunch" rows="2">${esc((d.notes||{}).lunch||"")}</textarea></label>
+    <div class="actions" style="margin-top:8px"><button class="btn small" data-menuact="save">Save ${esc(MENU_MONTH(d.month))}</button><button class="linkbtn" data-menuact="cancel">Cancel</button></div></div>`}
+
+const MENU_PROMPT=`This is a preschool's monthly menu, either the snack menu or the lunch menu. Read every school day on it.
+Use the weekday column headings and the day numbers to give each day its full date. Copy what is served exactly as the menu says, only putting it in sentence case. When a day's lunch is written on two or three lines, join them into one with "and" or commas, such as "Pinto beans, brown rice and cheese". On the snack menu, "Am" is the morning snack and "Pm" is the afternoon snack. A day marked No School is closed. Leave a field empty when the menu shows nothing for it. Never add an item that is not on the menu.
+Copy the note at the top of the menu, about what is served with every meal, in plain sentences.
+Do not use colons or dashes in what you write.
+
+Return a JSON object with "kind", either "snack" or "lunch", "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false.`;
+async function menuRead(f){
+  const name=f.name||"menu";const ext=(name.split(".").pop()||"").toLowerCase();const images=[];let text="";
+  if(ext==="pdf"||f.type==="application/pdf"){const lib=await pdfLib();const pdf=await lib.getDocument({data:await f.arrayBuffer()}).promise;
+    for(let i=1;i<=Math.min(pdf.numPages,4);i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();text+=tc.items.map(x=>x.str).join(" ")+"\n";
+      const vp0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.5,2000/Math.max(vp0.width,vp0.height))});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+      await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;images.push(await new Promise(r=>c.toBlob(r,"image/jpeg",0.9)))}}
+  else images.push(await shrinkImage(f));
+  const out=await askRead(MENU_PROMPT+(text.trim()?"\n\nThe text on the menu, in reading order, to help with spelling.\n"+text.slice(0,6000):""),{images,careful:true,purpose:"menu",maxSide:2000});
+  return {name,out}}
+function menuMerge(r){const o=r.out||{};const kind=o.kind==="lunch"?"lunch":"snack";
+  const month=/^\d{4}-\d{2}$/.test(o.month||"")?o.month:((o.days||[])[0]?.date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(month))return false;
+  if(!menuDraft||menuDraft.month!==month){const have=menus.get(month);menuDraft=have?JSON.parse(JSON.stringify(have)):{id:month,month,days:{},notes:{},files:{}};menuDraft.read=[]}
+  const clean=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,", ").replace(/\s+/g," ").trim();
+  for(const d of o.days||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(d?.date||"")||d.date.slice(0,7)!==month)continue;const x=menuDraft.days[d.date]=menuDraft.days[d.date]||{};
+    if(d.closed){x.closed=true;continue}
+    if(kind==="snack"){x.am=clean(d.am);x.pm=clean(d.pm)}else x.lunch=clean(d.lunch)}
+  if(has(o.note))menuDraft.notes[kind]=clean(o.note);
+  menuDraft.files=menuDraft.files||{};menuDraft.files[kind]=r.name;menuDraft.read=[...(menuDraft.read||[]),r.name];return true}
+document.addEventListener("change",async e=>{const t=e.target;
+  if(t.id==="menu-files"){const fs=[...t.files];t.value="";if(!fs.length)return;menuBusy+=fs.length;renderSettings();
+    for(const f of fs){try{const r=await menuRead(f);if(!menuMerge(r))toast(`TREE could not tell which month ${f.name} is for.`)}catch(err){toast(`${f.name} could not be read. ${assistError(err?.code||"unknown","")}`.trim())}
+      menuBusy--;if(view==="settings")renderSettings()}
+    document.getElementById("menus-card")?.scrollIntoView({block:"start"});return}
+  if(t.dataset&&t.dataset.menuday&&menuDraft){const x=menuDraft.days[t.dataset.menuday]=menuDraft.days[t.dataset.menuday]||{};
+    if(t.dataset.menuk==="closed"){if(t.checked)x.closed=true;else delete x.closed;renderSettings();document.getElementById("menus-card")?.scrollIntoView({block:"start"})}else x[t.dataset.menuk]=t.value.trim();return}
+  if(t.dataset&&t.dataset.menunote&&menuDraft){menuDraft.notes=menuDraft.notes||{};menuDraft.notes[t.dataset.menunote]=t.value.trim()}});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-menuact],[data-menuedit]");if(!t||view!=="settings")return;e.stopImmediatePropagation();
+  if(t.dataset.menuedit){const m=menus.get(t.dataset.menuedit);if(m){menuDraft=JSON.parse(JSON.stringify(m));menuDraft.read=[]}renderSettings();document.getElementById("menus-card")?.scrollIntoView({block:"start"});return}
+  if(t.dataset.menuact==="cancel"){menuDraft=null;renderSettings();return}
+  if(t.dataset.menuact==="save"&&menuDraft){document.querySelectorAll("#menus-card [data-menuday]").forEach(i=>{if(i.dataset.menuk!=="closed"&&!i.disabled){const x=menuDraft.days[i.dataset.menuday]=menuDraft.days[i.dataset.menuday]||{};x[i.dataset.menuk]=i.value.trim()}});
+    document.querySelectorAll("#menus-card [data-menunote]").forEach(i=>{menuDraft.notes[i.dataset.menunote]=i.value.trim()});
+    const doc=Object.assign({},menuDraft,{by:whoAmI(),updatedAt:Date.now()});delete doc.read;
+    for(const [k,v] of Object.entries(doc.days))if(!v||(!v.closed&&!has(v.am)&&!has(v.pm)&&!has(v.lunch)))delete doc.days[k];
+    if(!db){toast("TREE is not connected. Try again in a moment.");return}
+    try{t.disabled=true;await db.doc("menus/"+doc.month).set(doc);menus.set(doc.month,doc);menuDraft=null;toast(`${MENU_MONTH(doc.month)} is on the calendar`)}catch(err){toast((err&&err.message)||"The menus could not be saved.");t.disabled=false}
+    renderSettings()}},true);
+
 /* ---------- Weekly bin ----------
    Each Class receives a standard FEED Sonoma bin, and on Tuesday a small group the Class team chooses unboxes it.
    The server reads the list FEED posts ahead of delivery and keeps each week under bins/, so the year's record of
@@ -7361,6 +7433,7 @@ function renderSettings(){
   ${viewAsHtml()}
   ${signinsHtml()}
   ${lensSettingsHtml()}
+  ${menusHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
     <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
       <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div></section>`;
