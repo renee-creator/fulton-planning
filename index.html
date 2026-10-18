@@ -5017,11 +5017,14 @@ function kMenuData(month,which){const mrec=menus.get(month)||{},x=d=>((mrec.days
   const weeks=kWeeks(month).map(w=>[0,1,2,3,4].map(i=>{const d=addDays(w.m,i);if(d.slice(0,7)!==month)return null;const v=x(d);if(v.closed)return {d,closed:true,items:[]};
     return {d,items:meals.filter(k=>!(k==="pm"&&i===0)).map(k=>({k,dish:String(v[k]||"").trim(),side:kSideText(v[k+"Side"])})).filter(o=>o.dish)}}));
   return {weeks,meals,notes:mrec.notes||{},recipe:String(mrec.recipe||"").trim()}}
-async function kMonthMenu(month,which,word){which=which||"all";if(!isDirector())await kMonthFetch(month);
-  let farms=0;try{farms=farmMonthData(month).farms.length}catch(e){}
-  const D=kMenuData(month,which);const title=which==="lunch"?"Lunch menu":which==="snack"?"Snack menu":"Monthly menu";
+async function kMonthMenu(month,which,word){which=which||"all";const D=kMenuData(month,which);
+  // menus go home before the month starts, so until half its school days are past the line speaks of last month
+  const open=D.weeks.flat().filter(c=>c&&!c.closed).map(c=>c.d),today=iso(new Date());
+  const late=open.length&&open.filter(d=>d<today).length*2>=open.length;const [yy,mm]=month.split("-").map(Number);const prev=iso(new Date(yy,mm-2,1)).slice(0,7);
+  const fm=late?month:prev;if(!isDirector())await kMonthFetch(fm);
+  let farms=0;try{farms=farmMonthData(fm).farms.length}catch(e){}const title=which==="lunch"?"Lunch menu":which==="snack"?"Snack menu":"Monthly menu";
   const foot=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean);
-  const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:""].filter(Boolean);
+  const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?(late?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:`Last month our food came from ${farms} local farm${farms===1?"":"s"}.`):""].filter(Boolean);
   if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
 async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
   const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
