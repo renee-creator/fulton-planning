@@ -36,7 +36,7 @@ Each item shows its farm and the farm's town, and whether it came before. The to
 
 ## Monthly menus
 
-Settings, then Monthly menus, for the director. Add the month's snack and lunch menus as PDFs or photos. Claude reads each one into days, the morning and afternoon snack and the lunch, along with the note about what is served with every meal. The director checks every day against the menu before saving, and nothing shows until then. Saved menus are kept under menus/ in the records, one file a month, and show on the calendar as Snack and lunch, and so on Today. A month can be checked or changed again at any time. Only the director adds or changes menus, and the server enforces it.
+Settings, then Monthly menus, for the director. Add the month's snack and lunch menus as PDFs or photos. Claude reads each one into days, the morning and afternoon snack and the lunch, along with the note about what is served with every meal. The director checks every day against the menu before saving, and nothing shows until then. Saved menus are kept under menus/ in the records, one file a month, and show on the calendar as Snack and lunch, and so on Today. Each meal is its own entry, the morning snack, lunch, and the afternoon snack after lunch, at the times kept with the month's menu, which carry over from the month before and can be changed in the card. Monday has the morning snack only. A month can be checked or changed again at any time. Only the director adds or changes menus, and the server enforces it.
 
 ## Small copies of photos
 
