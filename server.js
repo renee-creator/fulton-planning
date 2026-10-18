@@ -99,8 +99,8 @@ function matchPasscode(given) {
 const wrongTries = new Map(); let wrongAll = [];
 // Render adds the visitor's real address as the last entry, and earlier entries can be made up by the sender
 function who(req) { const parts = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean); return parts[parts.length - 1] || (req.socket && req.socket.remoteAddress) || 'unknown'; }
-function blocked(ip) { const now = Date.now(); wrongAll = wrongAll.filter(t => t > now - 600000); if (wrongAll.length >= 60) return true; const t = wrongTries.get(ip); return !!t && t.until > now && t.count >= 10; }
-function noteWrong(ip) { const now = Date.now(); wrongAll.push(now); if (wrongTries.size > 5000) for (const [k, v] of wrongTries) if (v.until <= now) wrongTries.delete(k); const t = wrongTries.get(ip); if (!t || t.until <= now) wrongTries.set(ip, { count: 1, until: now + 600000 }); else t.count++; }
+function blocked(ip) { const now = Date.now(); const t = wrongTries.get(ip); return !!t && t.until > now && t.count >= 10; }
+function noteWrong(ip) { const now = Date.now(); if (wrongTries.size > 5000) for (const [k, v] of wrongTries) if (v.until <= now) wrongTries.delete(k); const t = wrongTries.get(ip); if (!t || t.until <= now) wrongTries.set(ip, { count: 1, until: now + 600000 }); else t.count++; }
 
 /* ---------- TREE sign-ins. Each educator signs in with their first name and a 4-digit passcode they set the first time.
    The director adds educators, can see their codes, and can clear a code so it is set again. The file lives under access/
@@ -111,7 +111,7 @@ const nameKey = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' 
 function accountFor(name) { const k = nameKey(name); return k ? accounts.list.find(a => nameKey(a.name) === k) : null; }
 async function loadAccounts() {
   const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`);
-  if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } }
+  if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } let gave = false; for (const a of accounts.list) if (!a.code && !a.start) { a.start = newStart(); gave = true; } if (gave) saveAccounts('TREE'); }
   else if (r.status !== 404) throw new Error('GitHub answered ' + r.status + ' when reading the sign-ins.');
   accounts.loaded = true;
 }
@@ -129,13 +129,20 @@ function saveAccounts(by) {
   return accounts.saving;
 }
 // a name that keeps getting the code wrong is held for fifteen minutes
+// a name that keeps getting the code wrong waits fifteen minutes, then twice as long after each further run of five, up to a day
 const nameTries = new Map();
-function nameBlocked(n) { const t = nameTries.get(nameKey(n)); return !!t && t.until > Date.now() && t.count >= 5; }
-function nameWrong(n) { const k = nameKey(n), now = Date.now(); const t = nameTries.get(k); if (!t || t.until <= now) nameTries.set(k, { count: 1, until: now + 15 * 60000 }); else t.count++; }
+function nameBlocked(n) { const t = nameTries.get(nameKey(n)); return !!t && t.until > Date.now(); }
+function nameWrong(n) { const k = nameKey(n), now = Date.now(); if (!k) return; if (nameTries.size > 5000) for (const [x, v] of nameTries) if (v.until <= now && now - v.last > 864e5) nameTries.delete(x);
+  const t = nameTries.get(k) || { count: 0, locks: 0, until: 0, last: 0 }; if (now - t.last > 864e5) { t.count = 0; t.locks = 0; }
+  t.count++; t.last = now; if (t.count >= 5) { t.until = now + Math.min(15 * 60000 * Math.pow(2, t.locks), 864e5); t.locks++; t.count = 0; } nameTries.set(k, t); }
+function waitWords(n) { const t = nameTries.get(nameKey(n)); const m = t ? Math.ceil((t.until - Date.now()) / 60000) : 15; return m >= 90 ? Math.round(m / 60) + ' hours' : m + ' minute' + (m === 1 ? '' : 's'); }
+// a new sign-in, or one whose code was cleared, starts with a six-number code the director hands to the educator
+const newStart = () => String(crypto.randomInt(100000, 1000000));
+const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); };
 const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
 function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
-function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, code: a.code || '', setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
@@ -373,7 +380,10 @@ Copy names and numbers exactly as written. Never invent a number, and use null w
   const vendor = String(o.vendor || 'Unknown vendor'); const date = /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : '';
   const slug = vendor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'vendor';
   const num = String(o.number || '').replace(/[^A-Za-z0-9]+/g, '').slice(0, 30) || crypto.createHash('sha1').update(vendor + date + JSON.stringify(items)).digest('hex').slice(0, 10);
-  const id = 'order-' + slug + '-' + num; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
+  // a FEED invoice read from a PDF is kept under the same name as its order email, so one order is never counted twice
+  const feed = /\bfeed\b/i.test(vendor) && /^\d+$/.test(num);
+  const id = feed ? 'order-' + num : 'order-' + slug + '-' + num; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
+  if (feed && was && was.readBy !== 'Claude') return { doc: was };
   if (was) { const uses = new Map((was.items || []).map(x => [x.item + '|' + x.unit, x.use])); items.forEach(x => { x.use = uses.get(x.item + '|' + x.unit) || x.use; }); }
   const doc = { id, kind: 'order', order: String(o.number || ''), fulfilled: date, placed: '', items, subtotal: o.subtotal == null ? null : Number(o.subtotal), delivery: o.delivery == null ? null : Number(o.delivery), total: o.total == null ? null : Number(o.total), distributor: vendor,
     review: was ? !!was.review : true, readBy: 'Claude', from: String(part.name || '').slice(0, 120), keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by };
@@ -390,6 +400,9 @@ function keepOrder(raw, by) {
   const doc = Object.assign({ id, kind: 'order' }, o, { keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by });
   store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
   noteChange('grant', id); scheduleSave('grant', id);
+  // an older copy of the same order read from its PDF invoice is removed, so the order counts once
+  const dup = store.recs.grant.get('order-feed-cooperative-' + o.order);
+  if (dup && !dup.deleted) { dup.deleted = true; dup.local = true; noteChange('grant', 'order-feed-cooperative-' + o.order); scheduleSave('grant', 'order-feed-cooperative-' + o.order); log('Removed a second copy of FEED order', o.order); }
   return { doc };
 }
 
@@ -636,39 +649,42 @@ async function handle(req, res) {
     const ip = who(req);
     if (blocked(ip)) { err(req, res, 429, 'Too many wrong passcodes. Wait ten minutes and try again.'); return; }
     const name = cleanName(body.name);
+    const NOPE = 'That name and passcode do not match. Check with Renee if you have forgotten your passcode.';
     if (name) {
       if (!store.ready) await loadAll();
-      const a = accountFor(name);
+      if (nameBlocked(name)) { err(req, res, 429, 'Too many wrong passcodes for that name. Wait ' + waitWords(name) + ' and try again, or ask Renee.'); return; }
+      let a = accountFor(name);
+      const given = String(body.passcode || '');
+      // two educators can share a first name, so a first name that starts several sign-ins asks for the full name
+      if (!a && given.length < 6) {
+        const near = accounts.list.filter(x => nameKey(x.name).split(' ')[0] === nameKey(name).split(' ')[0]);
+        if (near.length > 1) { noteWrong(ip); nameWrong(name); err(req, res, 400, 'Type your full name, the way Renee added it.'); return; }
+        if (near.length === 1) a = near[0];
+      }
       if (a) {
-        if (nameBlocked(name)) { err(req, res, 429, 'Too many wrong passcodes for ' + a.name + '. Wait fifteen minutes and try again, or ask Renee.'); return; }
         if (!a.code) {
-          // the first sign-in sets the passcode
+          // the first sign-in uses the starting code the director gave, then sets the educator's own four numbers
+          if (!a.start || !sameText(body.start != null ? body.start : given, a.start)) { noteWrong(ip); nameWrong(name); err(req, res, 403, NOPE); return; }
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
           if (String(body.again || '') !== c) { err(req, res, 400, 'The two passcodes are not the same. Type them again.'); return; }
           if (/^(\d)\1{3}$/.test(c) || ['1234', '4321', '0123', '9876'].includes(c)) { err(req, res, 400, 'That passcode is easy to guess. Choose four other numbers.'); return; }
-          a.code = c; a.setAt = Date.now(); a.v = (a.v || 0) + 1; a.lastAt = Date.now();
+          a.code = c; delete a.start; a.setAt = Date.now(); a.v = (a.v || 0) + 1; a.lastAt = Date.now(); nameTries.delete(nameKey(a.name));
           await saveAccounts(a.name);
           log('Passcode set by', a.name);
           json(req, res, 200, { token: makeSession(a.name, a.v), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
         }
-        const given = String(body.passcode || '');
-        const same = given.length === a.code.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(a.code));
-        if (!same) { noteWrong(ip); nameWrong(name); err(req, res, 403, 'That passcode is not right. Check with Renee if you have forgotten it.'); return; }
-        a.lastAt = Date.now(); log('Signed in', a.name);
+        if (!sameText(given, a.code)) { noteWrong(ip); nameWrong(name); err(req, res, 403, NOPE); return; }
+        a.lastAt = Date.now(); nameTries.delete(nameKey(name)); nameTries.delete(nameKey(a.name)); log('Signed in', a.name);
         json(req, res, 200, { token: makeSession(a.name, a.v || 0), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
       }
-      // two educators can share a first name, so a name that starts several sign-ins asks for the one that is theirs
-      const near = accounts.list.filter(x => nameKey(x.name).split(' ')[0] === nameKey(name).split(' ')[0]);
-      if (near.length > 1 && !(String(body.passcode || '').length >= 6)) { err(req, res, 400, `More than one educator is named ${near[0].name.split(" ")[0]}. Type ${near.map(x => x.name).join(' or ')}.`); return; }
-      if (near.length === 1 && !(String(body.passcode || '').length >= 6)) { json(req, res, 200, near[0].code ? { retry: near[0].name } : { setup: true, name: near[0].name }); return; }
       // a name with no TREE sign-in can still use a passcode set on Render
-      if (!/[^0-9]/.test(String(body.passcode || '')) || String(body.passcode || '').length < 6) { noteWrong(ip); err(req, res, 403, `${name} is not set up in TREE yet. Ask Renee to add you.`); return; }
+      if (given.length < 6 || !/[^0-9]/.test(given)) { noteWrong(ip); nameWrong(name); err(req, res, 403, NOPE); return; }
     }
     if (!TEACHERS.length) { err(req, res, 503, 'No educator passcodes are set on the server yet.'); return; }
     const t = matchPasscode(body.passcode);
-    if (!t) { noteWrong(ip); err(req, res, 403, 'That passcode is not right. Check with Renee if you have forgotten it.'); return; }
+    if (!t) { noteWrong(ip); if (name) nameWrong(name); err(req, res, 403, 'That name and passcode do not match. Check with Renee if you have forgotten your passcode.'); return; }
     log('Signed in', t.name);
     json(req, res, 200, { token: makeSession(t.name), name: t.name, director: isDirector(t.name), teachers: teacherNames() });
     return;
@@ -737,11 +753,11 @@ async function handle(req, res) {
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
-      map.set(id, { doc: Object.assign({}, body.data, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
+      map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
     else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
-      if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
-    else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; } deepMerge(cur.doc, body.patch || {}); cur.doc.updatedByName = me.name; }
+      if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
+    else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; } deepMerge(cur.doc, body.patch || {}); if ('id' in cur.doc) cur.doc.id = id; cur.doc.updatedByName = me.name; }
     else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; }
@@ -807,9 +823,10 @@ async function handle(req, res) {
     if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your new passcode.'); return; }
     if (String(body.again || '') !== c) { err(req, res, 400, 'The two new passcodes are not the same. Type them again.'); return; }
     if (/^(\d)\1{3}$/.test(c) || ['1234', '4321', '0123', '9876'].includes(c)) { err(req, res, 400, 'That passcode is easy to guess. Choose four other numbers.'); return; }
-    a.code = c; a.setAt = Date.now();
-    if (!(await saveAccounts(a.name))) { err(req, res, 502, 'The new passcode could not be saved. Try again.'); return; }
-    log('Passcode changed by', a.name); json(req, res, 200, { ok: true }); return;
+    const was = { code: a.code, v: a.v, setAt: a.setAt };
+    a.code = c; a.setAt = Date.now(); a.v = (a.v || 0) + 1;
+    if (!(await saveAccounts(a.name))) { Object.assign(a, was); err(req, res, 502, 'The new passcode could not be saved. Try again.'); return; }
+    log('Passcode changed by', a.name, 'and other devices signed out'); json(req, res, 200, { ok: true, token: makeSession(a.name, a.v), name: a.name }); return;
   }
   if (path.startsWith('/api/accounts')) {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director can see and change sign-ins.'); return; }
@@ -819,14 +836,14 @@ async function handle(req, res) {
       const name = cleanName(body.name), was = body.was ? accountFor(body.was) : null;
       if (!okName(name)) { err(req, res, 400, 'Type the educator\'s first name, letters only.'); return; }
       const other = accountFor(name); if (other && other !== was) { err(req, res, 409, name + ' already has a sign-in.'); return; }
-      const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', v: 0 };
+      const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', start: newStart(), v: 0 };
       if (was && a.name !== name) a.v = (a.v || 0) + 1;
       a.name = name; a.room = String(body.room || '').slice(0, 20); a.director = !!body.director;
       if (!was) accounts.list.push(a);
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved to the records. Try again.'); return; }
       log('Sign-in saved for', a.name, 'by', me.name); list(); return;
     }
-    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
+    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
     if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
     err(req, res, 404, 'Not found'); return;
   }

@@ -930,7 +930,7 @@ function renderFeedbackPanel(){
   panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
   $("#fbtitle").textContent=dir?"Replies to your feedback":"Feedback from the director";
   const label=p=>p.type==="classroom"?(p.classroom||"Classroom")+" team":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
-  el.innerHTML=list.slice(0,6).map(p=>`<button class="item" data-open="${p.id}" data-jump="fb"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${dir?", from "+esc(p.feedbackReply.by||"an educator"):""}</span></span><span class="status" style="color:var(--moss);border-color:var(--moss)">New</span></button>`).join("")+(list.length>6?`<div class="cnt">${list.length-6} more</div>`:"");
+  el.innerHTML=list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="fb"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${dir?", from "+esc(p.feedbackReply.by||"an educator"):""}</span></span><span class="status" style="color:var(--moss);border-color:var(--moss)">New</span></button>`).join("")+(list.length>6?`<div class="cnt">${list.length-6} more</div>`:"");
 }
 function feedbackHtml(p){
   const fb=String(p.feedback||"").trim();const rep=p.feedbackReply&&String(p.feedbackReply.text||"").trim()?p.feedbackReply:null;
@@ -954,7 +954,7 @@ function renderDue(){
   panel.hidden=!list.length;if(!list.length){el.innerHTML="";return}
   const label=p=>p.type==="smallgroup"?(p.group||"Small group")+" group":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
   el.innerHTML=`<div class="cnt">${mineOnly?"Your plans.":"All educators."} ${list.length>1?"These weeks have ended and the reflections are still empty.":"This week has ended and the reflection is still empty."}</div>`+
-    list.slice(0,6).map(p=>`<button class="item" data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span class="status" style="color:var(--clay);border-color:var(--clay)">Due</span></button>`).join("")+
+    list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="${AFTER_KEY[p.type]}"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span class="status" style="color:var(--clay);border-color:var(--clay)">Due</span></button>`).join("")+
     (list.length>6?`<button class="linkbtn" data-view="all" data-astatus="due">See all ${list.length}</button>`:"")+(mineOnly&&total>list.length?`<div class="cnt">${total-list.length} more for other educators</div>`:"");
 }
 function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||p.classroom===roomFilter))}
@@ -969,7 +969,7 @@ function renderList(){
     const rp=ps.filter(p=>(p.classroom||"")===r).sort((a,b)=>order[a.type]-order[b.type]||planTitle(a).localeCompare(planTitle(b)));
     if(!rp.length)continue;
     html+=`<div class="group-h">${r?esc(r):"No class chosen"}</div>`;
-    html+=rp.map(p=>`<button class="item" data-open="${p.id}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Ready":STATUS[p.status]}</span></button>`).join("");
+    html+=rp.map(p=>`<button class="item" data-open="${esc(p.id)}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Ready":STATUS[p.status]}</span></button>`).join("");
   }
   $("#list").innerHTML=html;
 }
@@ -1084,7 +1084,7 @@ function teamSourcesHtml(p){
   return `<details class="ref" ${src.length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans, ${esc(p.classroom)} class</b></summary>
     <div style="margin-top:6px">${line}</div>
     ${src.length?`<div style="display:grid;gap:8px;margin-top:8px">${src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");const f=x.fields||{};
-      return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${x.id}">Open</button></span>
+      return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${esc(x.id)}">Open</button></span>
         ${(f.area||f.thread)?`<span><span class="muted">${x.type==="smallgroup"?"Thread":"Area exploration"}.</span> ${cut(f.area||f.thread,200)}</span>`:""}
         ${f.observation?`<span><span class="muted">Observation rationale.</span> ${cut(f.observation,260)}</span>`:""}
         ${(f.intent||f.intention)?`<span><span class="muted">Intent.</span> ${cut(f.intent||f.intention,180)}</span>`:""}</div>`}).join("")}</div>`:`<div class="muted" style="margin-top:4px">None written yet for this week.</div>`}
@@ -1110,7 +1110,7 @@ ${teamSourceText(src)}${threadsForClaude(p)}`;
 function refCard(prev){
   const F=FORMS[prev.type];const keys={individual:["remarks","intent"],classroom:["brainstorm"],smallgroup:["reflection","thread"]}[prev.type];
   const bits=keys.map(k=>{const f=F.fields.find(x=>x.k===k);const v=prev.fields?.[k];return v?`<div><span class="muted">${f.label}.</span> ${esc(v)}</div>`:""}).join("");
-  return `<section class="ref"><b>From the week of ${fmtDate(prev.weekOf)}</b>${bits||'<div class="muted">Last week\'s plan has no reflection yet.</div>'}<div><button class="linkbtn" data-open="${prev.id}">Open last week's plan</button></div></section>`;
+  return `<section class="ref"><b>From the week of ${fmtDate(prev.weekOf)}</b>${bits||'<div class="muted">Last week\'s plan has no reflection yet.</div>'}<div><button class="linkbtn" data-open="${esc(prev.id)}">Open last week's plan</button></div></section>`;
 }
 function focusCard(p){
   const sg=p.focus!=="area";const room=p.classroom;const gs=[...GROUPS.filter(g=>room&&g.room===room),...GROUPS.filter(g=>!room||g.room!==room)];const sel=p.groups||[];
@@ -1595,7 +1595,7 @@ let nwDrdp={};
 function momentDrdpHtml(n){
   if(!nwDrdp[n.id]){const its=(n.drdp&&n.drdp.items)||[];const codes=[...new Set([...its.map(x=>x.code),...(n.measures||[]).filter(m=>m.kept).map(m=>m.code)])];
     return codes.length?`<div class="cnt">DRDP ${codes.map(k=>`<span class="chip on" style="cursor:default" title="${esc(DRDP[k]||"")}">${esc(k)}</span>`).join(" ")}</div>`:""}
-  return `<div class="pdir"><div class="secthead"><b>DRDP (2025)</b><button class="linkbtn" data-nwdrdp="${n.id}">Close</button></div>${drdpPanelHtml("notices",n)}</div>`;
+  return `<div class="pdir"><div class="secthead"><b>DRDP (2025)</b><button class="linkbtn" data-nwdrdp="${esc(n.id)}">Close</button></div>${drdpPanelHtml("notices",n)}</div>`;
 }
 // the measures a slide prints in its strip, codes and names only. Levels never go on a wall.
 function slideMeasureCodes(s){const its=(s.drdp&&s.drdp.items)||[];const keep=[];
@@ -1696,18 +1696,18 @@ function kidDrdpHtml(c){
   const legacy={};for(const [code,list] of kidEvidence(c))legacy[code]=list;
   const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
   const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-kmopen="${esc(x.src.id)}" data-ktab="docs"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
-  const levelSel=x=>`<select data-drlevel="${x.id}" aria-label="Level">${["",...drdpLevels(x.view||v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
+  const levelSel=x=>`<select data-drlevel="${esc(x.id)}" aria-label="Level">${["",...drdpLevels(x.view||v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
       <div class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</div>
-      <div data-drmean="${x.id}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
+      <div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
       ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}
       <div class="cnt">From ${srcBtn(x)}${x.by==="keywords"?", by keyword match":""}</div>
       ${drdpCompareHtml(x.view||v,x.code,x.level,drdpEdit===x.id)}
-      ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
-      :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${x.id}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${x.id}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`}</div>`;
+      ${drdpEdit===x.id?`<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${esc(x.id)}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${esc(x.id)}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
+      :`<div class="actions">${x.level?`<button class="btn small" data-draccept="${esc(x.id)}">Accept</button>`:""}<button class="btn small ghost" data-drchange="${esc(x.id)}">${x.level?"Change":"Choose a level"}</button><button class="linkbtn" data-draside="${esc(x.id)}">Set aside</button></div>`}</div>`;
   const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoThumb(n))}" alt="" loading="lazy">`:""};
-  const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${x.id}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${drdpCompareHtml(x.view||v,x.code,x.level,true)}<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${x.id}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${x.id}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
-    :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${x.id}">Change</button><button class="linkbtn" data-draside="${x.id}">Set aside</button></div>`;
+  const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${drdpCompareHtml(x.view||v,x.code,x.level,true)}<div class="actions">${levelSel(x)}<label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${esc(x.id)}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${esc(x.id)}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
+    :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${esc(x.id)}">Change</button><button class="linkbtn" data-draside="${esc(x.id)}">Set aside</button></div>`;
   const evLine=x=>`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
     const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[])];
@@ -1737,7 +1737,7 @@ function kidDrdpHtml(c){
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
         return `<details class="drset" data-drrow="__earlier" ${drdpOpen.has("__earlier")?"open":""}><summary class="cnt"><b>Levels in the ${DRDP_VIEW[ov]} View</b>, ${codes.length} measure${codes.length===1?"":"s"}, kept from before</summary>
           ${codes.map(k=>{const evs=ex.filter(x=>x.code===k).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));return `<div class="drrow" style="padding:8px 0"><div class="drcode"><b>${esc(k)}</b> ${esc(DRDP_M[ov][k].n)}</div><div class="drbody">${evs.map(evLine).join("")}</div></div>`}).join("")}</details>`})()}
-      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${x.id}">Review again</button></div>`).join("")}</details>`:""}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
     </section>`;
 }
 function drdpKid(){return children.get(kidOpen)}
@@ -1866,19 +1866,19 @@ function renderSlide(){
   const qs=new Set((s.quotes||[]).map(q=>q.words.toLowerCase()));const sg=slideSug[s.id];
   const kids=kidsAt().filter(c=>!s.classroom||c.classroom===s.classroom).sort((a,b)=>a.first.localeCompare(b.first));
   if(!PF.buf)loadPrintFonts().then(()=>{if(view==="slide")renderSlide()});
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation slide</span><h2 style="margin-top:4px">${esc(String(s.title||"").trim()?s.title:"A new slide")}</h2>${(()=>{const L=slideLinks(s);return L.projects.length||L.threads.length?`<div class="origin" style="margin-top:6px"><div>${L.projects.map(p=>`<b>Project</b><button class="linkbtn" data-popen="${p.id}">${esc(p.name)}</button>`).join(" ")}${L.threads.map(t=>` <b>Thread</b><button class="linkbtn" data-tsee="${t.id}">${esc(t.name)}</button>`).join("")}</div></div>`:""})()}</div>
-    <span class="actions">${printBtns("slide",s.id,"PDF",true)}<button class="linkbtn" data-sfjpg="${s.id}">JPG</button><span id="sdel"><button class="linkbtn" data-slidedel="${s.id}">Remove</button></span></span></div></div>
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation slide</span><h2 style="margin-top:4px">${esc(String(s.title||"").trim()?s.title:"A new slide")}</h2>${(()=>{const L=slideLinks(s);return L.projects.length||L.threads.length?`<div class="origin" style="margin-top:6px"><div>${L.projects.map(p=>`<b>Project</b><button class="linkbtn" data-popen="${esc(p.id)}">${esc(p.name)}</button>`).join(" ")}${L.threads.map(t=>` <b>Thread</b><button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div></div>`:""})()}</div>
+    <span class="actions">${printBtns("slide",s.id,"PDF",true)}<button class="linkbtn" data-sfjpg="${esc(s.id)}">JPG</button><span id="sdel"><button class="linkbtn" data-slidedel="${esc(s.id)}">Remove</button></span></span></div></div>
   <div class="tgrid2" style="margin-top:12px">
     <div style="display:grid;gap:14px;min-width:0">
       <section class="card"><label class="fld-label">Title<input type="text" data-sf="title" value="${esc(s.title||"")}" placeholder="In the children's words, or the team's"></label>
         <div class="fld-label">Photos, up to three<span class="cnt" style="font-weight:400">The first chosen is the largest.</span>
           <div class="filters" style="margin:2px 0 6px">${["All",...CLASSROOMS].map(r=>`<button type="button" class="pill" aria-pressed="${r===sfPick.room}" data-sfroom="${r}">${r}</button>`).join("")}</div>
-          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${n.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Observation")+", "+shortDate(n.at))}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Observations with photos appear here. Keep an observation with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
+          ${pool.length?`<div class="wsphs">${pool.map(n=>{const k=sel.indexOf(n.id);return `<button type="button" class="wsph" data-sfph="${esc(n.id)}" aria-pressed="${k>=0}" title="${esc((momentHeading(n)||"Observation")+", "+shortDate(n.at))}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:`<div class="cnt">Observations with photos appear here. Keep an observation with a photo first.</div>`}${morePh>0?`<div class="actions"><button type="button" class="linkbtn" data-sfmore="1">Show more photos, ${morePh} older</button></div>`:""}</div>
 </section>
       <section class="card"><label class="fld-label">What the team understood<textarea data-sf="text" rows="4" placeholder="A few lines in the team's words">${esc(s.text||"")}</textarea></label>
-        ${!String(s.text||"").trim()&&src.some(n=>momentText(n))?`<div class="actions"><button class="btn small ghost" data-sfmoment="${s.id}">Use what was noticed and wondered</button></div>`:""}
-        ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${s.id}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the observations on this slide.</span></div>`:""}
-        ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the observations</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${s.id}">Use this</button><button class="linkbtn" data-sfleave="${s.id}">Leave it</button></div></div>`:""}
+        ${!String(s.text||"").trim()&&src.some(n=>momentText(n))?`<div class="actions"><button class="btn small ghost" data-sfmoment="${esc(s.id)}">Use what was noticed and wondered</button></div>`:""}
+        ${sample&&src.length?`<div class="actions"><button class="btn small ghost" data-sfdraft="${esc(s.id)}" ${sg==="working"?"disabled":""}>${sg==="working"?'<span class="spin"></span> Drafting':"Draft from our words"}</button><span class="cnt">Uses only what educators wrote in the observations on this slide.</span></div>`:""}
+        ${sg&&sg!=="working"?`<div class="sugg"><b>Drafted from the observations</b><textarea id="sfsg" rows="3">${esc(sg)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-sfuse="${esc(s.id)}">Use this</button><button class="linkbtn" data-sfleave="${esc(s.id)}">Leave it</button></div></div>`:""}
         ${lines.length?`<div class="fld-label">The children's words on the slide<div class="chips">${lines.map((q,i)=>`<button class="chip ${qs.has(q.words.toLowerCase())?"on":""}" data-sfq="${i}" type="button">${q.name?esc(q.name)+", ":""}${esc(q.words.length>60?q.words.slice(0,57)+"...":q.words)}</button>`).join("")}</div></div>`:""}
         <div class="fld-label">Children on this slide, optional<div class="chips">${kids.map(c=>`<button class="chip ${(s.children||[]).includes(c.id)?"on":""}" data-sfkid="${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">The roster for this class appears here.</span>`}</div><span class="cnt">A tagged child finds this slide on their page and in their portfolio.</span></div></section>
       ${slideDesignHtml(s)}
@@ -1946,7 +1946,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.sfdraft){slideDraft(s);return}
   if(t.dataset.sfuse){const v=($("#sfsg")?.value||"").trim();if(v){s.text=v;saveSlide(s)}delete slideSug[s.id];renderSlide();return}
   if(t.dataset.sfleave){delete slideSug[s.id];renderSlide();return}
-  if(t.dataset.slidedel){$("#sdel").innerHTML=`<span class="confirm">Remove this slide for everyone? <button class="btn warn small" data-slidedelyes="${s.id}">Remove</button><button class="linkbtn" data-slidekeep="1">Keep it</button></span>`;return}
+  if(t.dataset.slidedel){$("#sdel").innerHTML=`<span class="confirm">Remove this slide for everyone? <button class="btn warn small" data-slidedelyes="${esc(s.id)}">Remove</button><button class="linkbtn" data-slidekeep="1">Keep it</button></span>`;return}
   if(t.dataset.slidekeep){renderSlide();return}
   if(t.dataset.slidedelyes){slides.delete(s.id);if(db)db.doc("slides/"+s.id).delete().catch(()=>toast("Could not remove it. Check your connection."));goView("slides");toast("Removed.");return}
 });
@@ -2173,7 +2173,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
-    <button class="linkbtn" data-mopen="${n.id}">Open</button></div>`}
+    <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
 const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
@@ -2240,14 +2240,14 @@ function renderWeekBoard(){
   <div class="tgrid2">
     <section class="card"><div class="lbl">Individual plans</div><div class="tlist">
       ${groups.map(g=>{const p=planFor(g);return `<button class="titem two press" ${p?`data-open="${p.id}"`:`data-newind="${esc(g.name)}" data-room="${esc(room)}"`}><div style="min-width:0"><b>${esc(g.name)} group</b><div class="cnt">${esc(p&&p.educator||g.educator||"")}${p&&has(p.fields?.observation)?" · "+esc(first(p.fields.observation)):""}</div></div>${statusPill(p)}</button>`}).join("")}
-      ${others.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}</div></div>${statusPill(p)}</button>`).join("")}
+      ${others.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}</div></div>${statusPill(p)}</button>`).join("")}
       ${!groups.length&&!others.length?`<div class="empty">No small groups are set for ${esc(room)} yet. They are added in Program settings.</div>`:""}</div>
       <div class="actions"><button class="linkbtn" data-newind="" data-room="${esc(room)}">Plan for an area of the classroom instead</button></div></section>
     <section class="card"><div class="lbl">Classroom Curriculum Plan</div>
-      ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
+      ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
         :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom">Start the Classroom plan</button></div>`}
-      ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${p.id}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
-      ${loose.length?`<div class="lbl" style="margin-top:6px">No class chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${p.id}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the class.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
+      ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
+      ${loose.length?`<div class="lbl" style="margin-top:6px">No class chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the class.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
   </div>`;
 }
@@ -2264,7 +2264,7 @@ function renderWalls(){
   const ps=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
-    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
+    return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${esc(x.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
 }
 
 /* ---------- The family newsletter, from the office ----------
@@ -2534,13 +2534,13 @@ function renderNewsletter(){
       ${s.drdp.length?`<p class="nlsmall"><b>DRDP.</b> ${s.drdp.map(c=>esc(c+" "+((DRDP_M.ptk[c]||DRDP_M.it[c]||{}).n||""))).join(", ")}</p>`:""}
       ${s.ages?`<p class="nlsmall"><b>Ages.</b> ${esc(s.ages)}</p>`:""}
       <p class="nlsmall">${s.notices.length} observation${s.notices.length===1?"":"s"}${s.behavior?". No child photo is offered for a topic about behavior.":s.photos.length?`, ${s.photos.length} photo${s.photos.length===1?"":"s"} to choose from`:""}</p>
-      ${used.has(s.id)?`<span class="chip">In this newsletter</span>`:`<button class="btn small" data-nluse="${s.id}">Use this topic</button>`}</div>`).join("")}</div>`:`<p class="muted">Press Find topics and TREE reads ${nlMonthOnly(k)}'s observations.</p>`}</section>`;
+      ${used.has(s.id)?`<span class="chip">In this newsletter</span>`:`<button class="btn small" data-nluse="${esc(s.id)}">Use this topic</button>`}</div>`).join("")}</div>`:`<p class="muted">Press Find topics and TREE reads ${nlMonthOnly(k)}'s observations.</p>`}</section>`;
 
   // 3. each topic, written for families
   (x.topics||[]).forEach((t,i)=>{
     const warn=t.behavior?nlNameWarn(nlTopicText(t)):[];
     const lib=nlLibFor(t).filter(r=>!(x.reading||[]).some(y=>y.url===r.url));
-    h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${t.id}">Remove topic</button></div>
+    h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${esc(t.id)}">Remove topic</button></div>
       ${warn.length?`<div class="nlwarn">This topic is about a behavior, and it mentions ${esc(warn.join(", "))}. Leave names out of it so no family can tell who it is about.</div>`:""}
       <label class="nll">Title<input data-nlf="topics.${i}.title" value="${esc(t.title)}"></label>
       <label class="nll">What happened this month<textarea class="nlta" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
@@ -2551,12 +2551,12 @@ function renderNewsletter(){
       <div class="nll">How it grows</div>
       ${(t.grows||[]).map((g,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.grows.${j}.age" value="${esc(g.age)}" aria-label="Age"><textarea class="nlta" rows="2" data-nlf="topics.${i}.grows.${j}.text" aria-label="What it looks like">${esc(g.text)}</textarea></div>`).join("")}
       <label class="nll nlbonus">Bonus for school<textarea class="nlta" rows="2" data-nlf="topics.${i}.bonus">${esc(t.bonus)}</textarea></label>
-      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Ideas to try at home</div><span><button class="btn small ghost" data-nltipdraft="${t.id}">${(t.tips||[]).length?"Draft new tips":"Draft tips for me"}</button> <button class="btn small ghost" data-nltipadd="${t.id}">Add a tip</button></span></div>
+      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Ideas to try at home</div><span><button class="btn small ghost" data-nltipdraft="${esc(t.id)}">${(t.tips||[]).length?"Draft new tips":"Draft tips for me"}</button> <button class="btn small ghost" data-nltipadd="${esc(t.id)}">Add a tip</button></span></div>
       ${t.tipsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
-      ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(p.lead)}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${t.id}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
-      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Reading for families</div><button class="btn small ghost" data-nlread="${t.id}">${(t.readingOffer||[]).length?"Search again":"Suggest reading"}</button></div>
-      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}</div><button class="btn small" data-nladdoffer="${t.id}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
-      ${lib.length?`<div class="nlsmall" style="margin-top:8px"><b>From your library</b></div>${lib.map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small" data-nladdlib="${r.id}" data-topic="${t.id}">Add</button></div>`).join("")}`:""}
+      ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(p.lead)}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${esc(t.id)}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
+      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Reading for families</div><button class="btn small ghost" data-nlread="${esc(t.id)}">${(t.readingOffer||[]).length?"Search again":"Suggest reading"}</button></div>
+      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}</div><button class="btn small" data-nladdoffer="${esc(t.id)}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
+      ${lib.length?`<div class="nlsmall" style="margin-top:8px"><b>From your library</b></div>${lib.map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small" data-nladdlib="${esc(r.id)}" data-topic="${esc(t.id)}">Add</button></div>`).join("")}`:""}
     </section>`;
   });
 
@@ -3432,8 +3432,8 @@ function photoStatusHtml(n){
   const ph=n.photo||{};const u=unsureCount(n.noticed);
   let t="",cls="hint";
   if(ph.status==="reading")t=`<span class="spin"></span> ${ph.id||ph.data?"Copying the children's words from the photo":"Keeping the photo"}. You can write what you wonder meanwhile.`;
-  else if(ph.status==="failed"){t=esc(ph.error)+` <button class="linkbtn" data-nfretry="${n.id}">Try again</button>`;cls="hint warnline"}
-  else if(ph.status==="unread"){t=`The photo is kept, but the words could not be copied. ${esc(ph.error)} <button class="linkbtn" data-nfretry="${n.id}">Try again</button>, or type them below.`;cls="hint warnline"}
+  else if(ph.status==="failed"){t=esc(ph.error)+` <button class="linkbtn" data-nfretry="${esc(n.id)}">Try again</button>`;cls="hint warnline"}
+  else if(ph.status==="unread"){t=`The photo is kept, but the words could not be copied. ${esc(ph.error)} <button class="linkbtn" data-nfretry="${esc(n.id)}">Try again</button>, or type them below.`;cls="hint warnline"}
   else if(ph.status==="empty")t="No writing was found on this photo. Write what you noticed below.";
   else if(ph.fromClaude)t=`Copied from the photo exactly as written. ${u?`Check the ${u} word${u>1?"s":""} marked [?] or [unclear] against the photo, then`:"Check it against the photo, then"} write what you wonder.`;
   return `<div class="${cls}" id="nf-pstatus" role="status">${t}</div>`;
@@ -3477,9 +3477,9 @@ function noticeFormCard(){
     <div class="actions">
       <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
       <label class="cnt">Class <select id="nf-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
-      ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
+      ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${esc(x.id)}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
       ${(()=>{const b=n.bin?binAll().find(x=>x.id===n.bin)||{id:n.bin,date:n.bin}:binForDay(n.day||iso(new Date(n.at||Date.now())));return b?`<button type="button" class="chip-btn" data-nfbin="${esc(b.id)}" aria-pressed="${n.bin===b.id}" title="Keep it with the weekly bin">From the bin, ${esc(fmtDate(b.date).replace(/, \d{4}$/,""))}</button>`:""})()}
-      ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
+      ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${esc(t.id)}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
     <div class="hint">A project or thread is optional. One can claim this observation later, whenever it grows.</div>
     <div class="actions"><button class="btn" id="nf-save" ${ph&&!(ph.id||ph.data)?"disabled":""}>${editing?"Save changes":"Keep this observation"}</button><button class="linkbtn" id="nf-cancel">${ph&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
@@ -3516,16 +3516,16 @@ function noticeCard(n){
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
-    ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${th.id}">${esc(th.name)}</button>`:""}</div></div>`:""}
+    ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${esc(th.id)}">${esc(th.name)}</button>`:""}</div></div>`:""}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
-        ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
-        ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
-        ...ws.map(x=>`the wall for <button class="linkbtn" data-popen="${x.id}">${esc(x.name)}</button>`)];
+        ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
+        ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
+        ...ws.map(x=>`the wall for <button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`)];
       return bits.length?`<div class="cnt">Used in ${bits.join(", ")}${ps.length>4?`, and ${ps.length-4} more plans`:""}</div>`:""})()}
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
-    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${n.id}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${n.id}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${n.id}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${n.id}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${n.id}">Remove</button></span></div></article>`;
+    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span></div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -3812,7 +3812,7 @@ function noticeNoteHtml(p){
   if(ns.length){const head=`<b style="color:var(--sky)">${fromThread.length?"Other observations":ns.length+" observation"+(ns.length===1?"":"s")} from ${esc(p.classroom||"no class")}${fromThread.length?", "+ns.length:""}</b>
     <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
     if(nwOpen!==p.id)h+=`<section class="ref" style="background:var(--sky-soft)">${head}
-      <div class="actions"><button class="btn small ghost" data-nwopen="${p.id}">Read them</button></div></section>`;
+      <div class="actions"><button class="btn small ghost" data-nwopen="${esc(p.id)}">Read them</button></div></section>`;
     else h+=`<section class="ref" style="background:var(--sky-soft)">${head}
       <div class="nwlist">${ns.slice(0,12).map(one).join("")}</div>
       ${ns.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}
@@ -3983,13 +3983,13 @@ function renderGrant(){
     <div class="cnt" style="margin-bottom:8px">Found by the words in the educators' own observations and plans ${pw}. Open any to check it.</div>
     ${ed.map(o=>`<details style="margin-top:6px"><summary style="cursor:pointer"><b>${o.n}.</b> ${esc(o.label)} <span class="cnt">· ${o.obs.length} observation${o.obs.length===1?"":"s"}, ${o.plans.length} plan${o.plans.length===1?"":"s"}</span></summary>
       ${o.obs.length?`<div class="tlist">${o.obs.slice(0,15).map(momentMini).join("")}</div>${o.obs.length>15?`<div class="cnt">And ${o.obs.length-15} more.</div>`:""}`:""}
-      ${o.plans.length?`<div class="tlist">${o.plans.slice(0,15).map(p=>`<button class="item" data-open="${p.id}"><span class="nm">${esc(planTitle(p))}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span></button>`).join("")}</div>`:""}</details>`).join("")}</section>`;
+      ${o.plans.length?`<div class="tlist">${o.plans.slice(0,15).map(p=>`<button class="item" data-open="${esc(p.id)}"><span class="nm">${esc(planTitle(p))}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span></button>`).join("")}</div>`:""}</details>`).join("")}</section>`;
 
   // objective 8, families
   const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Families and culturally relevant food, objective 8</h3><span class="cnt">${fam.length||"Nothing kept yet"}</span></div>
     <div class="cnt" style="margin-bottom:8px">The quarterly family meeting, weekly parent participation, and foods families brought or grew.</div>
-    ${fam.map(x=>`<div class="binidea"><div style="flex:1"><div>${esc(x.text)}</div><div class="cnt">${esc(fmtDate(x.date))}</div></div><button class="linkbtn" data-gfdel="${x.id}">Take out</button></div>`).join("")}
+    ${fam.map(x=>`<div class="binidea"><div style="flex:1"><div>${esc(x.text)}</div><div class="cnt">${esc(fmtDate(x.date))}</div></div><button class="linkbtn" data-gfdel="${esc(x.id)}">Take out</button></div>`).join("")}
     <div class="kfields" style="margin-top:8px"><label class="cnt">Day<input type="date" id="g-fdate" value="${esc(iso(new Date()))}"></label><label class="cnt" style="flex:1">What happened<input type="text" id="g-ftext" placeholder="Ex. Family meeting on foods from home. Three families brought recipes."></label></div>
     <div class="actions"><button class="btn small ghost" data-gact="fam">Keep it</button></div></section>`;
 
@@ -4319,7 +4319,7 @@ function renderBin(){
   const depth=list.filter(x=>x.date<b.date).length;
   h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">${esc(days)}</h3>
       <div class="cnt">${b.source==="hand"?"Added by hand":"As FEED listed it"}${b.date>=iso(new Date())?". FEED may still swap an item on packing day.":""}</div></div>
-      <div class="actions">${older?`<button class="linkbtn" data-binweek="${older.id}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${newer.id}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>
+      <div class="actions">${older?`<button class="linkbtn" data-binweek="${esc(older.id)}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${esc(newer.id)}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>
     <div class="binlist">${(b.items||[]).map(it=>{const prev=binBefore(b,it);const last=prev[0];
       const note=prev.length?`Came ${prev.length===1?"once":prev.length+" times"} before, last on ${esc(fmtDate(last.date).replace(/, \d{4}$/,""))}`:depth>=3?"New in the bin this year":"";
       return `<div class="binitem"><b>${esc(binName(it))}</b>${it.qty?` <span class="cnt">${esc(it.qty)}</span>`:""}<div class="cnt">${esc((it.farms||[]).map(farmWithTown).join(" or ")||"Farm not named")}</div>${note?`<div class="binnote${prev.length?"":" new"}">${note}</div>`:""}</div>`}).join("")}</div>
@@ -4348,7 +4348,7 @@ function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
   const atTable=ideas.filter(i=>held[i.id]);
   const ideaRow=i=>{const on=!!held[i.id];const mine=isDirector()||(i.by&&i.by===whoAmI())||(i.keptBy&&i.keptBy===whoAmI());
     return `<div class="binidea${on?" on":""}"><div style="flex:1;min-width:0"><div>${esc(i.text)}</div><div class="cnt">${i.from==="suggested"?"Kept by "+esc(i.keptBy||i.by||"an educator"):esc(i.by||"An educator")} · ${shortDate(i.at)}</div></div>
-      <div class="actions" style="flex:none"><button class="btn small${on?"":" ghost"}" data-binhold="${i.id}" aria-pressed="${on}">${on?"At the table":"Bring to the table"}</button>${mine?`<button class="linkbtn" data-binideadel="${i.id}">Take out</button>`:""}</div></div>`};
+      <div class="actions" style="flex:none"><button class="btn small${on?"":" ghost"}" data-binhold="${esc(i.id)}" aria-pressed="${on}">${on?"At the table":"Bring to the table"}</button>${mine?`<button class="linkbtn" data-binideadel="${esc(i.id)}">Take out</button>`:""}</div></div>`};
   const sug=binSugg&&binSugg.id===b.id&&binSugg.room===room?binSugg[kind]||[]:null;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${K.head}, ${esc(room)} class</h3><span class="cnt">${atTable.length?atTable.length+" at the table":"None chosen yet"}</span></div>
     <div class="cnt" style="margin-bottom:8px">${kind==="prep"?"The food here is for preparing, tasting and sharing, and someone will eat it. Anything left goes in the chicken buckets for the chickens and goats at the end of the day. ":""}The ones brought to the table print on the bin sheet.${kind==="question"?" The educator with the group decides what to follow once the children are in it.":""}</div>
@@ -4533,7 +4533,7 @@ function inqCard(x){const ns=inqNotices(x),hy=inqOpenHyps(x),last=[...(x.looks||
     <div class="cnt">${esc(inqScope(x))} · started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""} · ${ns.length} observation${ns.length===1?"":"s"}</div>
     ${hy.length?`<div class="muted">${esc(firstLine(hy[hy.length-1].text,180))}</div>`:has(x.see)?`<div class="muted">${esc(firstLine(x.see,180))}</div>`:""}
     ${last?`<div class="cnt">Last looked at again ${shortDate(last.at)}</div>`:""}${due?`<div class="cnt warnline">Time to look again</div>`:""}
-    <div class="actions"><button class="btn small ghost" data-iqopen="${x.id}">Open</button></div></article>`}
+    <div class="actions"><button class="btn small ghost" data-iqopen="${esc(x.id)}">Open</button></div></article>`}
 function inqStartForm(){const f=iqForm;const t=(f.threads||[])[0]&&threads.get(f.threads[0]);const n=(f.obs||[])[0]&&notices.get(f.obs[0]);
   return `<section class="card"><div class="lbl">Start a team inquiry</div>
     ${t?`<div class="ref" style="background:var(--marigold-soft)">From the thread <b>${esc(t.name)}</b>. Its observations and plans come with it.</div>`:""}
@@ -4556,10 +4556,10 @@ function renderInquiry(x){
       <div class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${momentRoomsText(n)?" · "+esc(momentRoomsText(n)):""}${!own.has(n.id)&&n.threadId&&threads.get(n.threadId)?" · from the thread "+esc(threads.get(n.threadId).name):""}</div>
       <div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}
       ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>esc(l.name)).join(", ")}</div>`:""})()}
-      <div class="actions"><button class="linkbtn" data-mopen="${n.id}">See it in Observations</button>${own.has(n.id)?`<button class="linkbtn" data-iqobrm="${n.id}">Take out of the inquiry</button>`:""}</div></div></div>`;
+      <div class="actions"><button class="linkbtn" data-mopen="${esc(n.id)}">See it in Observations</button>${own.has(n.id)?`<button class="linkbtn" data-iqobrm="${esc(n.id)}">Take out of the inquiry</button>`:""}</div></div></div>`;
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-iqback="1">All team inquiries</button></div>
   <div class="head"><div class="head-row"><div style="flex:1;min-width:0"><span class="eyebrow">Team inquiry · ${esc(inqScope(x))}</span></div>
-    <div class="actions"><button class="btn small" data-iqplan="${x.id}">Start a plan from it</button>${printTwo("inquiry",x.id)}
+    <div class="actions"><button class="btn small" data-iqplan="${esc(x.id)}">Start a plan from it</button>${printTwo("inquiry",x.id)}
       <label class="cnt">Status <select data-iqstatus="1" style="width:auto">${Object.entries(ISTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <label class="fld-label">What the team is wondering about<input type="text" data-iqf="name" value="${esc(x.name||"")}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="actions"><label class="cnt">Belongs to <select data-iqroomset="1" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${x.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!x.room?"selected":""}>The whole school</option></select></label>
@@ -4573,7 +4573,7 @@ function renderInquiry(x){
     <div class="chiprow-label" style="margin-top:6px">Observations, ${ns.length}</div>
     <div class="iqobs">${ns.slice(0,30).map(obRow).join("")||`<div class="empty" style="padding:10px">None yet. Add one below, or keep one for this inquiry from Observations.</div>`}</div>
     ${ns.length>30?`<div class="cnt">Showing the 30 most recent.</div>`:""}
-    ${pool.length?`<label class="tlink">Add an observation<select data-iqaddobs="1"><option value="">Choose an observation</option>${pool.map(n=>`<option value="${n.id}">${esc(shortDate(n.at)+", "+firstLine(n.noticed,70))}</option>`).join("")}</select></label>`:""}</section>`;
+    ${pool.length?`<label class="tlink">Add an observation<select data-iqaddobs="1"><option value="">Choose an observation</option>${pool.map(n=>`<option value="${esc(n.id)}">${esc(shortDate(n.at)+", "+firstLine(n.noticed,70))}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">When and where it happens</div>
     <div class="hint">The time of day and routine, such as arrival, meals, rest or a transition. The place, the people nearby, the materials, and how loud, bright or crowded it is. What comes just before, and what happens after.</div>
@@ -4582,9 +4582,9 @@ function renderInquiry(x){
 
   h+=`<section class="card"><div class="lbl">What we think is happening</div>
     <div class="hint">The team's best guesses about what the child may be communicating or needing. When new observations change your thinking, set the old guess aside and write a new one. The old one stays, so you can see how your thinking changed.</div>
-    ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${o.id}" rows="2">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"hyp:"+o.id)}<div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${o.id}">Set aside</button></div></div>`).join("")}
+    ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${esc(o.id)}" rows="2">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"hyp:"+o.id)}<div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${esc(o.id)}">Set aside</button></div></div>`).join("")}
     <div class="actions"><button class="btn small ghost" data-iqhadd="1">Add a guess</button></div>${iqAssistHtml(x,"hyp")}
-    ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${o.id}">Bring back</button></span></div>`).join("")}</div></details>`:""}
+    ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${esc(o.id)}">Bring back</button></span></div>`).join("")}</div></details>`:""}
     <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
       <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
@@ -4592,9 +4592,9 @@ function renderInquiry(x){
   h+=`<section class="card"><div class="lbl">What we will try</div>
     <div class="hint">Changes the adults will make, such as to a transition, the space, the warning, a role a child is given, or who goes with them. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div>
     ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"try:"+o.id)}
-      <label class="cnt"><input type="checkbox" data-iqtcur="${o.id}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
+      <label class="cnt"><input type="checkbox" data-iqtcur="${esc(o.id)}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
       <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
-      <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqtrm="${o.id}">Remove</button></div></div>`).join("")}
+      <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqtrm="${esc(o.id)}">Remove</button></div></div>`).join("")}
     <div class="actions"><button class="btn small ghost" data-iqtadd="1">Add something to try</button></div>${iqAssistHtml(x,"try")}</section>`;
 
   h+=`<section class="card"><div class="lbl">What we will watch for</div>
@@ -4614,15 +4614,15 @@ function renderInquiry(x){
   h+=`<section class="card"><div class="lbl">Connected work</div>
     <div class="hint">What feeds this inquiry, and where it reaches.</div>
     <div class="chiprow-label">Threads</div>
-    ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${t.id}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${t.id}">Take out</button></div>`).join(""):`<div class="cnt">None yet.</div>`}
-    ${freeT.length?`<label class="tlink">Add a thread<select data-iqaddth="1"><option value="">Choose a thread</option>${freeT.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}
+    ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${esc(t.id)}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${esc(t.id)}">Take out</button></div>`).join(""):`<div class="cnt">None yet.</div>`}
+    ${freeT.length?`<label class="tlink">Add a thread<select data-iqaddth="1"><option value="">Choose a thread</option>${freeT.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}
     <div class="chiprow-label" style="margin-top:8px">Projects</div>
-    ${prs.length?prs.map(p=>`<div class="ref" style="background:var(--marigold-soft)"><div class="actions"><button class="linkbtn" data-popen="${p.id}"><b>${esc(p.name)}</b></button><button class="linkbtn" data-iqprrm="${p.id}">Take out</button></div>
+    ${prs.length?prs.map(p=>`<div class="ref" style="background:var(--marigold-soft)"><div class="actions"><button class="linkbtn" data-popen="${esc(p.id)}"><b>${esc(p.name)}</b></button><button class="linkbtn" data-iqprrm="${esc(p.id)}">Take out</button></div>
       ${projUnder(p)?`<div><span class="cnt">What may lie underneath</span><div class="evclamp2">${esc(projUnder(p))}</div></div>`:""}</div>`).join(""):`<div class="cnt">None yet.</div>`}
-    ${freeP.length?`<label class="tlink">Add a project<select data-iqaddpr="1"><option value="">Choose a project</option>${freeP.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></label>`:""}
+    ${freeP.length?`<label class="tlink">Add a project<select data-iqaddpr="1"><option value="">Choose a project</option>${freeP.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></label>`:""}
     <div class="chiprow-label" style="margin-top:8px">Plans, ${ps.length}</div>
     ${ps.length?`<div class="evid">${ps.slice(0,12).map(p=>{const k=AFTER_KEY[p.type],after=k&&has(p.fields?.[k])?p.fields[k]:"";
-      return `<div><button class="linkbtn" data-open="${p.id}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
+      return `<div><button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
         ${after?`<div class="muted" style="white-space:pre-line">${esc(firstLine(after,240))}</div>`:""}</div>`}).join("")}</div>`:`<div class="cnt">No plans yet. Start one from this inquiry, or connect a thread that plans follow.</div>`}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="iqdel"><button class="linkbtn" data-iqdel="1">Remove this inquiry</button></span></div>`;
   else h=h.replace('<div id="iqplan-pick"></div></div>','<div id="iqplan-pick"></div></div><div class="ref" style="background:var(--sky-soft);margin-bottom:10px">The director writes this inquiry with the team. You can add observations and threads to it, write what happened when the team tried something, and start a plan from it.</div>');
@@ -4798,10 +4798,10 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqaddpr&&t.value){x.projects=[...new Set([...(x.projects||[]),t.value])];saveInquiry(x);renderMain();return}});
 
 // the same inquiry seen from the other side, on an observation, a thread, a project, the Lens and Today
-function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||"Team inquiry"} ${list.map(x=>`<button class="linkbtn" data-iqopen="${x.id}">${esc(x.name||"Untitled")}</button>`).join(", ")}</div>`:""}
+function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||"Team inquiry"} ${list.map(x=>`<button class="linkbtn" data-iqopen="${esc(x.id)}">${esc(x.name||"Untitled")}</button>`).join(", ")}</div>`:""}
 function inqObsChooser(n){const open=inqAll().filter(x=>x.status!=="closed"&&!(x.obs||[]).includes(n.id)&&(!x.room||momentIn(n,x.room)||!momentRooms(n).length));
-  return `<span class="confirm">${open.length?`<select data-nwinqadd="${n.id}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${x.id}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
-    ${isDirector()?`<button class="btn small ghost" data-nwinqnew="${n.id}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${n.id}">Cancel</button></span>`}
+  return `<span class="confirm">${open.length?`<select data-nwinqadd="${esc(n.id)}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${esc(x.id)}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
+    ${isDirector()?`<button class="btn small ghost" data-nwinqnew="${esc(n.id)}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${esc(n.id)}">Cancel</button></span>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq]");if(!t)return;const d=t.dataset;
   if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();const pr=projectOfThread(th.id);startInquiry({threads:[th.id],room:th.classroom||"",projects:pr?[pr.id]:[]});return}
   if(d.nwinq){const el=document.getElementById("nwi-"+d.nwinq);const n=notices.get(d.nwinq);if(el&&n)el.innerHTML=inqObsChooser(n);e.stopImmediatePropagation();return}
@@ -4910,7 +4910,7 @@ function projectCard(x){
   return `<article class="thread"><div class="secthead"><h3>${esc(x.name)}</h3><span class="status st-${x.status==="active"?"growing":x.status==="resting"?"resting":"closed"}">${PSTATUS[x.status]||"Active"}</span></div>
     ${projUnder(x)?`<div class="q">${esc(firstLine(projUnder(x),220))}</div>`:""}
     <div class="cnt">${[x.home?x.home+" class":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
-    <div class="actions"><button class="btn small" data-popen="${x.id}">Open project</button></div></article>`;
+    <div class="actions"><button class="btn small" data-popen="${esc(x.id)}">Open project</button></div></article>`;
 }
 function renderProjects(){
   const x=projId&&projects.get(projId);
@@ -4936,7 +4936,7 @@ function projThreadCard(x,l,t,ws){
     ${ws.length?`<div class="tl" aria-label="Weeks this thread appears">${ws.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`:""}
     ${last?`<div class="evid"><div>“${esc(last.text)}”${evSource(last)}</div></div>`:""}
     <div class="cnt">Joined the project the week of ${fmtDate(l.week||mondayOf(new Date(l.at||Date.now())))}${l.by?" · added by "+esc(l.by):""}${t.unfollowed?" · no longer followed":""}</div>
-    <div class="actions"><button class="btn small ghost" data-tplan="${t.id}">Start a plan from it</button><button class="linkbtn" data-tsee="${t.id}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${t.id}">Take out of the project</button>`:""}</div></div>`;
+    <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start a plan from it</button><button class="linkbtn" data-tsee="${esc(t.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${esc(t.id)}">Take out of the project</button>`:""}</div></div>`;
 }
 function renderProject(x){
   const ths=projThreads(x),ws=projWeeks(x),rooms=projRooms(x);
@@ -4946,7 +4946,7 @@ function renderProject(x){
   const cols=[...rooms,...(ths.some(o=>!o.t.classroom||!rooms.includes(o.t.classroom))?[""]:[])];
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-pback="1">All projects${projects.size>1?", "+projects.size:""}</button></div><div class="head"><div class="head-row"><div style="flex:1;min-width:0">
       <div><span class="eyebrow">Project · ${esc(x.home?x.home+" class":"School-wide")}${rooms.filter(r=>r!==x.home).length&&x.home?" · with "+esc(rooms.filter(r=>r!==x.home).join(" and ")):""}</span></div></div>
-      <div class="actions"><button class="btn small" data-pplan="${x.id}">Start a plan from this project</button>${printTwo("project",x.id)}
+      <div class="actions"><button class="btn small" data-pplan="${esc(x.id)}">Start a plan from this project</button>${printTwo("project",x.id)}
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <div id="pplan-pick"></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
@@ -4955,7 +4955,7 @@ function renderProject(x){
 
   const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span></div>`).join("")}</div></details>`:""};
   h+=`<section class="card"><div class="lbl">Where it came from</div>
-    ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${dt.id}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The question the team is following there. ${esc(dt.question)}</div>`:""}</div>`:""}
+    ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${esc(dt.id)}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The question the team is following there. ${esc(dt.question)}</div>`:""}</div>`:""}
     <label class="fld-label">The experience it grew from<textarea data-pf="experience" rows="2" placeholder="What happened, and what children felt or showed">${esc(x.experience||"")}</textarea></label>
     <div class="hint">A project usually begins in an experience that mattered to children.</div>${projStrHtml(x,"experience")}</section>
   <section class="card"><div class="lbl">What may lie underneath</div>
@@ -4970,17 +4970,17 @@ function renderProject(x){
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
-  {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${x.id}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
+  {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
   h+=`<section class="card"><div class="lbl">Classes</div>
     <div class="hint">${x.home?"The project belongs to its home class. Other classes can join, each by its own path.":"This is a school-wide project with no home class. Each class that takes part joins it."}</div>
     <label class="cnt">Home class <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home class</option></select></label>
     ${(x.classrooms||[]).map(c=>{const isHome=c.room===x.home;const used=ths.some(o=>o.t.classroom===c.room);
       return `<div class="proom"><div class="actions"><b>${esc(c.room)}</b>${isHome?`<span class="tag classroom">Home</span>`:""}
-        <label class="cnt">${isHome?"Began":"Joined"} the week of <input type="date" data-pcw="${c.room}" value="${esc(c.week||"")}" style="width:auto"></label>
-        ${isHome?"":`<label class="cnt">How it joined <select data-pch="${c.room}" style="width:auto"><option value="">Choose</option>${Object.entries(PJOIN).map(([k,v])=>`<option value="${k}" ${c.how===k?"selected":""}>${v}</option>`).join("")}</select></label>`}
-        ${!isHome&&!used?`<button class="linkbtn" data-pcrm="${c.room}">Remove</button>`:""}</div>
-        <input type="text" data-pcn="${c.room}" value="${esc(c.note||"")}" placeholder="${isHome?"What began it here":"What brought this class in"}"></div>`}).join("")}
+        <label class="cnt">${isHome?"Began":"Joined"} the week of <input type="date" data-pcw="${esc(c.room)}" value="${esc(c.week||"")}" style="width:auto"></label>
+        ${isHome?"":`<label class="cnt">How it joined <select data-pch="${esc(c.room)}" style="width:auto"><option value="">Choose</option>${Object.entries(PJOIN).map(([k,v])=>`<option value="${k}" ${c.how===k?"selected":""}>${v}</option>`).join("")}</select></label>`}
+        ${!isHome&&!used?`<button class="linkbtn" data-pcrm="${esc(c.room)}">Remove</button>`:""}</div>
+        <input type="text" data-pcn="${esc(c.room)}" value="${esc(c.note||"")}" placeholder="${isHome?"What began it here":"What brought this class in"}"></div>`}).join("")}
     ${CLASSROOMS.filter(r=>!rooms.includes(r)).length?`<label class="tlink">Add a class<select data-pcadd="1"><option value="">Choose a class</option>${CLASSROOMS.filter(r=>!rooms.includes(r)).map(r=>`<option>${r}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">Small groups carrying the project</div>
@@ -5004,13 +5004,13 @@ function renderProject(x){
     <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
   {const iq=inqsOfProject(x.id);if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries alongside it</div>
     <div class="hint">Questions about practice and development the team is thinking through with this project in mind.</div>
-    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${q.id}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span>${inqOpenHyps(q).length?`<div class="muted">${esc(firstLine(inqOpenHyps(q).slice(-1)[0].text,200))}</div>`:""}</div>`).join("")}</div></section>`}
+    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${esc(q.id)}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span>${inqOpenHyps(q).length?`<div class="muted">${esc(firstLine(inqOpenHyps(q).slice(-1)[0].text,200))}</div>`:""}</div>`).join("")}</div></section>`}
   h+=`<section class="card"><div class="lbl">Threads in this project</div>
     <div class="hint">Each thread keeps its own history. ${cols.length>1?"Each class's path is shown beside the others.":""}</div>
     ${ths.length?`<div class="pcols">${cols.map(r=>{const mine=ths.filter(o=>r?o.t.classroom===r:(!o.t.classroom||!rooms.includes(o.t.classroom)));const c=(x.classrooms||[]).find(c=>c.room===r);
       return `<div class="pcol"><div class="chiprow-label">${r?esc(r)+" class":"No class set"}${c&&r!==x.home&&c.week?", joined "+fmtDate(c.week):""}${c&&c.how&&PJOIN[c.how]?", "+esc(PJOIN[c.how].toLowerCase()):""}</div>
         ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this class yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
-    ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
+    ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">People beyond the classrooms</div>
     <textarea data-pf="people" rows="2" placeholder="Families, community members, or the people receiving the children's letters">${esc(x.people||"")}</textarea></section>
@@ -5024,7 +5024,7 @@ function renderProject(x){
       <button class="btn small ghost" id="pstory-blank">Start a blank story</button></div>
     ${stories.map(s=>`<details ${s.id===projOpenStory?"open":""}><summary class="chiprow-label" style="cursor:pointer">${esc(s.label||"Project story")}, ${shortDate(s.at)}${s.by?", "+esc(s.by):""}</summary>
       <div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-psf="${s.id}|${k}" rows="2">${esc(s.fields?.[k]||"")}</textarea></label>`).join("")}
-      <div class="actions">${printBtns("pstory",s.id,"Story PDF",true)}<span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${s.id}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
+      <div class="actions">${printBtns("pstory",s.id,"Story PDF",true)}<span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${esc(s.id)}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="pdel"><button class="linkbtn" data-pdel="1">Remove this project</button></span></div>`;
   else h=`<div class="ref" style="background:var(--sky-soft);margin-bottom:10px">Only the director changes a project. You can add a thread we are following, keep observations for it, and start a plan from any of its threads.</div>`+h;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
@@ -5322,10 +5322,10 @@ function lensMoments(ps){
       }}}
   return out.sort((a,b)=>b.week.localeCompare(a.week)||(a.room||"").localeCompare(b.room||""));
 }
-function lensSrc(p,section){return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class",section].filter(Boolean).map(esc).join(" · ")}</span>`}
+function lensSrc(p,section){return `<span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> · ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class",section].filter(Boolean).map(esc).join(" · ")}</span>`}
 function lensLinks(p){
   const cs=planThreads(p);if(!cs.length)return"";
-  return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${c.t.id}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
+  return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${esc(c.t.id)}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
 }
 function lensMomentHtml(m){
   const p=rec(m.planId);if(!p)return"";const mk=lensMarked(p);
@@ -5385,8 +5385,8 @@ function renderLens(){
   const prs=[...projects.values()].map(x=>({x,n:count(projPlans(x))})).filter(o=>o.n);
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).map(t=>({t,n:count([...(t.evidence||[]).map(e=>rec(e.planId)).filter(Boolean),...threadLinkedPlans(t)])})).filter(o=>o.n);
   if(prs.length||ths.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>In projects and threads</h2></div>
-    <div class="evid">${prs.map(o=>`<div><button class="linkbtn" data-popen="${o.x.id}">${esc(o.x.name)}</button> <span class="cnt">project · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}
-    ${ths.map(o=>`<div><button class="linkbtn" data-tsee="${o.t.id}">${esc(o.t.name)}</button> <span class="cnt">thread${o.t.classroom?" · "+esc(o.t.classroom):""} · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}</div></section>`;
+    <div class="evid">${prs.map(o=>`<div><button class="linkbtn" data-popen="${esc(o.x.id)}">${esc(o.x.name)}</button> <span class="cnt">project · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}
+    ${ths.map(o=>`<div><button class="linkbtn" data-tsee="${esc(o.t.id)}">${esc(o.t.name)}</button> <span class="cnt">thread${o.t.classroom?" · "+esc(o.t.classroom):""} · ${o.n} moment${o.n===1?"":"s"}</span></div>`).join("")}</div></section>`;
 
   // a closer reading
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>A closer reading</h2>
@@ -5405,7 +5405,7 @@ function renderLens(){
   }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classes":"the "+esc(lRoom)+" class"}.</div>`;
   h+=`</section>`;
   {const iq=inqAll().filter(q=>q.lensId===LENS.id&&(lRoom==="All"||!q.room||q.room===lRoom));if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries read through this lens</div>
-    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${q.id}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span></div>`).join("")}</div></section>`}
+    <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${esc(q.id)}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span></div>`).join("")}</div></section>`}
   $("#main").innerHTML=h;
 }
 function lensDigest(ps){
@@ -5744,20 +5744,20 @@ function projWallHtml(x){
   const sheetHtml=(sh,i)=>{const sel=wallPhotos(sh);const n=notices.get(sel[0]);const sg=wallSug[sh.id];
     const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
     return `<div class="wsheet${sh.include?"":" off"}"><div class="actions"><b>Sheet ${i+1}</b>
-        <label class="cnt"><input type="checkbox" data-wsinc="${sh.id}" ${sh.include?"checked":""}> Hang this sheet</label>
-        <button class="linkbtn" data-wsup="${sh.id}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${sh.id}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${sh.id}">Remove</button></div>
+        <label class="cnt"><input type="checkbox" data-wsinc="${esc(sh.id)}" ${sh.include?"checked":""}> Hang this sheet</label>
+        <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button></div>
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
       <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
         ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Observation")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
         ${sample?(sg&&sg.status==="working"?`<div class="hint"><span class="spin"></span> Drafting from the team's writing</div>`
-          :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${sh.id}">Use this</button><button class="btn small ghost" data-wsno="${sh.id}">Leave it</button></div></div>`
-          :sg&&sg.status==="error"?`<div class="hint warnline">${esc(sg.error)} <button class="linkbtn" data-wsdraft="${sh.id}">Try again</button></div>`
-          :`<div class="actions"><button class="btn small ghost" data-wsdraft="${sh.id}">Draft from our writing</button></div>`):""}
+          :sg&&sg.status==="ready"?`<div class="sugg"><b>Drafted from what the team wrote</b><textarea id="wsg-${sh.id}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Nothing changes until you choose Use this.</div><div class="actions"><button class="btn small" data-wsyes="${esc(sh.id)}">Use this</button><button class="btn small ghost" data-wsno="${esc(sh.id)}">Leave it</button></div></div>`
+          :sg&&sg.status==="error"?`<div class="hint warnline">${esc(sg.error)} <button class="linkbtn" data-wsdraft="${esc(sh.id)}">Try again</button></div>`
+          :`<div class="actions"><button class="btn small ghost" data-wsdraft="${esc(sh.id)}">Draft from our writing</button></div>`):""}
       </div></div>
       ${pool.length?`<div class="chiprow-label">The children's words on this sheet</div><div class="chips">${pool.map((q,k)=>`<button class="chip ${chosen.has(q.words.toLowerCase())?"on":""}" data-wsq="${sh.id}|${k}" type="button" title="${esc(shortDate(q.at))}">${q.name?esc(q.name)+", ":""}${esc(q.words.length>70?q.words.slice(0,67)+"...":q.words)}</button>`).join("")}</div>`:""}
-      <div class="actions"><button class="linkbtn" data-wsprev="${sh.id}">${wallPrev[sh.id]?"Hide how it prints":"See how it prints"}</button></div>
+      <div class="actions"><button class="linkbtn" data-wsprev="${esc(sh.id)}">${wallPrev[sh.id]?"Hide how it prints":"See how it prints"}</button></div>
       ${wallPrev[sh.id]?cPreview(wallSheetDoc(x,sh)):""}
     </div>`};
   return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
@@ -6526,7 +6526,7 @@ function renderSearch(){
   const el=$("#tresults");if(!el)return;const q=tSearch.trim();
   if(q.length<2){el.innerHTML="";return}
   const hits=[...plans.values()].filter(p=>p.id!=="example"&&(tRoom==="All"||p.classroom===tRoom)).map(p=>({p,t:planText(p)})).filter(x=>x.t.toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.p.weekOf.localeCompare(a.p.weekOf)).slice(0,40);
-  el.innerHTML=hits.length?`<span class="cnt">${hits.length}${hits.length===40?"+":""} plans mention “${esc(q)}”</span>`+hits.map(({p,t})=>`<button class="result" data-open="${p.id}"><span><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b> <span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span style="font-size:13.5px">${snippet(t.replace(/\s*\n\s*/g," "),q)}</span></button>`).join(""):`<div class="empty">No plans mention “${esc(q)}”.</div>`;
+  el.innerHTML=hits.length?`<span class="cnt">${hits.length}${hits.length===40?"+":""} plans mention “${esc(q)}”</span>`+hits.map(({p,t})=>`<button class="result" data-open="${esc(p.id)}"><span><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b> <span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span style="font-size:13.5px">${snippet(t.replace(/\s*\n\s*/g," "),q)}</span></button>`).join(""):`<div class="empty">No plans mention “${esc(q)}”.</div>`;
 }
 let tShowDismissed=false,tOpenStopped=false;
 function whoAmI(){const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";return me()||(isShared(s)?"":s)||"An educator"}
@@ -6552,7 +6552,7 @@ function evSource(e){
   const p=rec(e.planId);
   if(!p)return `<span class="src">Week of ${fmtDate(e.week)}. This plan has since been deleted</span>`;
   const bits=[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class",sectionOf(p,e.text)].filter(Boolean);
-  return `<span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> · ${bits.map(esc).join(" · ")}</span>`;
+  return `<span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> · ${bits.map(esc).join(" · ")}</span>`;
 }
 function originHtml(t,isTracked){
   const ev=[...(t.evidence||[])].sort((a,b)=>(a.week||"").localeCompare(b.week||""));
@@ -6588,7 +6588,7 @@ function threadEditHtml(t){return `<div class="tedit" style="display:grid;gap:8p
     <label class="fld-label">Thread name<input type="text" id="te-name" value="${esc(t.name)}"></label>
     <label class="fld-label">The team's question<textarea id="te-q" rows="2" placeholder="Written as the educators' hypothesis">${esc(t.question||"")}</textarea></label>
     <label class="cnt">Class <select id="te-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${t.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
-    <div class="actions"><button class="btn small" data-tesave="${t.id}">Save changes</button><button class="linkbtn" data-tecancel="1">Cancel</button></div></div>`}
+    <div class="actions"><button class="btn small" data-tesave="${esc(t.id)}">Save changes</button><button class="linkbtn" data-tecancel="1">Cancel</button></div></div>`}
 function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(isTracked&&t.id&&tEdit===t.id)return `<article class="thread" id="th-${t.id}">${threadEditHtml(t)}</article>`;
   const on=new Set(t.weeks||[]);
@@ -6599,26 +6599,26 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" class",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
   h+=evidenceHtml(t);
-  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${p.id}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
+  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
     const pr=projectOfThread(t.id);const openProjects=[...projects.values()].filter(x=>x.status!=="closed");
-    if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
-    h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${t.id}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
-      <textarea data-tnotes="${t.id}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${t.id}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${t.id}">Bring it into the Classroom Plan</button>${isDirector()?`<button class="linkbtn" data-tinq="${t.id}">Open a team inquiry with it</button>`:""}
-      ${pr?"":`<button class="btn small ghost" data-pstart="${t.id}">Start a project from it</button>${openProjects.length?`<select data-padd="${t.id}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
-      ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${t.id}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
-      ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${t.id}">Remove story</button></span>`:""}
-      <button class="linkbtn" data-tedit="${t.id}">Change name or class</button>
-      <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${t.id}">Stop following</button></span>
-      <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${t.id}">Undo follow</button></span></div>`;
+    if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
+    h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
+      <textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button><button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button>${isDirector()?`<button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button>`:""}
+      ${pr?"":`<button class="btn small ghost" data-pstart="${esc(t.id)}">Start a project from it</button>${openProjects.length?`<select data-padd="${esc(t.id)}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
+      ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${esc(t.id)}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
+      ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${esc(t.id)}">Remove story</button></span>`:""}
+      <button class="linkbtn" data-tedit="${esc(t.id)}">Change name or class</button>
+      <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${esc(t.id)}">Stop following</button></span>
+      <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${esc(t.id)}">Undo follow</button></span></div>`;
     {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
-    if(was&&was.unfollowed&&!was.undone)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${was.id}">Follow again</button></div>`;
+    if(was&&was.unfollowed&&!was.undone)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${esc(was.id)}">Follow again</button></div>`;
     else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
     else{const rp=t.relatedProject&&projects.get(t.relatedProject);
       if(rp)h+=`<span class="nudge" style="justify-self:start">TREE noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
@@ -6630,7 +6630,7 @@ function stoppedCard(t){
   return `<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="cnt">Stopped by ${esc(t.unfollowed.by||"an educator")} on ${shortDate(t.unfollowed.at)}</span></div>
     ${t.question?`<div class="q">${esc(t.question)}</div>`:""}${originHtml(t,true)}
     <details><summary class="chiprow-label" style="cursor:pointer">Quotes and notes</summary><div style="display:grid;gap:8px;margin-top:8px">${evidenceHtml(t)}${t.notes?`<div class="muted" style="font-size:13.5px">${esc(t.notes)}</div>`:""}</div></details>
-    <div class="actions"><button class="btn small" data-trefollow="${t.id}">Follow again</button><span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${t.id}">Remove permanently</button>`:""}</span></div></article>`;
+    <div class="actions"><button class="btn small" data-trefollow="${esc(t.id)}">Follow again</button><span id="tdel-${t.id}">${isDirector()?`<button class="linkbtn" data-tdel="${esc(t.id)}">Remove permanently</button>`:""}</span></div></article>`;
 }
 /* ---------- Plans connected to followed threads ---------- */
 // a plan is connected to a followed thread when it was started from it, when the thread quotes it, or when an educator connected it by hand
@@ -6676,10 +6676,10 @@ function threadsNoteHtml(p){
     const elsewhere=t.classroom&&p.classroom&&t.classroom!==p.classroom?` Followed in the ${esc(t.classroom)} class.`:"";
     // the thread's question, its words and its observations are in The evidence beside the plan, so this line only names the connection
     const pr=projectOfThread(t.id);
-    return `<div class="tconn"><span><b>Following the thread</b> <button class="linkbtn" data-tsee="${t.id}">${esc(t.name)}</button>${pr?`, part of the project <button class="linkbtn" data-popen="${pr.id}">${esc(pr.name)}</button>`:""}</span>
-      <span class="cnt">${why}${elsewhere}</span><button class="linkbtn" data-tunlink="${t.id}">Disconnect from this plan</button></div>`}).join("");
-  for(const id of p.inquiries||[]){const q=inquiries.get(id);if(q&&inqOf(q))h+=`<div class="tconn"><span><b>Written with the team inquiry</b> <button class="linkbtn" data-iqopen="${q.id}">${esc(q.name||"Untitled")}</button></span><span class="cnt">Only what the team will try with the whole group is beside this plan.</span></div>`}
-  if(rest.length)h+=`<label class="tlink">${cs.length?"Connect another thread we are following":"Connect this plan to a thread we are following"}<select id="m-thread"><option value="">Choose a thread</option>${rest.map(t=>`<option value="${t.id}">${esc(t.name)}${t.classroom?" \u00b7 "+esc(t.classroom):""}</option>`).join("")}</select></label>`;
+    return `<div class="tconn"><span><b>Following the thread</b> <button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>${pr?`, part of the project <button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>`:""}</span>
+      <span class="cnt">${why}${elsewhere}</span><button class="linkbtn" data-tunlink="${esc(t.id)}">Disconnect from this plan</button></div>`}).join("");
+  for(const id of p.inquiries||[]){const q=inquiries.get(id);if(q&&inqOf(q))h+=`<div class="tconn"><span><b>Written with the team inquiry</b> <button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button></span><span class="cnt">Only what the team will try with the whole group is beside this plan.</span></div>`}
+  if(rest.length)h+=`<label class="tlink">${cs.length?"Connect another thread we are following":"Connect this plan to a thread we are following"}<select id="m-thread"><option value="">Choose a thread</option>${rest.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" \u00b7 "+esc(t.classroom):""}</option>`).join("")}</select></label>`;
   return h;
 }
 function linkThread(p,id){
@@ -6738,7 +6738,7 @@ async function threadsClick(t){
   if(t.dataset.tstop){$("#tstop-"+t.dataset.tstop).innerHTML=`<span class="confirm">Stop following for the whole team? It moves to No longer following, where anyone can follow it again. <button class="btn warn small" data-tstopyes="${t.dataset.tstop}">Stop following</button><button class="linkbtn" data-tdelno="1">Keep</button></span>`;return true}
   if(t.dataset.tundo){const th=threads.get(t.dataset.tundo);if(!th)return true;const pr=projectOfThread(th.id);
     if(pr){toast(`This thread is part of the project ${pr.name}. Take it out of the project first.`);return true}
-    $("#tundo-"+th.id).innerHTML=`<span class="confirm">Followed by mistake? This puts it back among the threads TREE found, as it was before. <button class="btn warn small" data-tundoyes="${th.id}">Undo follow</button><button class="linkbtn" data-tdelno="1">Keep following</button></span>`;return true}
+    $("#tundo-"+th.id).innerHTML=`<span class="confirm">Followed by mistake? This puts it back among the threads TREE found, as it was before. <button class="btn warn small" data-tundoyes="${esc(th.id)}">Undo follow</button><button class="linkbtn" data-tdelno="1">Keep following</button></span>`;return true}
   if(t.dataset.tundoyes){undoFollow(threads.get(t.dataset.tundoyes));return true}
   if(t.dataset.tstopyes){const th=threads.get(t.dataset.tstopyes);if(th){th.unfollowed={by:whoAmI(),at:Date.now()};saveThread(th);tOpenStopped=true;toast("Stopped following. Find it under No longer following.")}renderMain();return true}
   if(t.dataset.trefollow){const th=threads.get(t.dataset.trefollow);if(th){delete th.unfollowed;th.refollowed={by:whoAmI(),at:Date.now()};saveThread(th);toast("Following this thread again.")}renderMain();return true}
@@ -6775,7 +6775,7 @@ async function threadsClick(t){
     currentId=cp.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}, following this thread.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return true}
   if(t.dataset.tstory){const th=threads.get(t.dataset.tstory);
-    if(th&&th.story&&!t.dataset.yes){const el=$("#tsrw-"+th.id);if(el){el.innerHTML=`<span class="confirm">Replace the current story? Download its PDF first to keep it. <button class="btn warn small" data-tstory="${th.id}" data-yes="1">Replace it</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}}
+    if(th&&th.story&&!t.dataset.yes){const el=$("#tsrw-"+th.id);if(el){el.innerHTML=`<span class="confirm">Replace the current story? Download its PDF first to keep it. <button class="btn warn small" data-tstory="${esc(th.id)}" data-yes="1">Replace it</button><button class="linkbtn" data-tdelno="1">Keep it</button></span>`;return true}}
     writeStory(th);return true}
 
   return false;
@@ -6899,17 +6899,17 @@ function jobLine(j){
   const st={waiting:'<span class="status">Waiting</span>',working:`<span class="status ready">${j.kind==="sort"?"Sorting":"Transcribing"}</span>`,done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
   const made=j.planIds.map(id=>plans.get(id)).filter(Boolean);
   return `<div class="result" style="cursor:default"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${st} <b>${esc(j.name)}</b></span>
-    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${p.id}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.dupOf&&plans.has(p.dupOf)?'<span class="nudge">May be a duplicate. Open it to choose which to keep</span>':""}</span>`).join("")}
+    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${esc(p.id)}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.dupOf&&plans.has(p.dupOf)?'<span class="nudge">May be a duplicate. Open it to choose which to keep</span>':""}</span>`).join("")}
     ${j.kind==="sort"&&j.progress?`<span class="cnt">${esc(j.progress)}</span>`:""}
     ${j.note&&j.status==="working"?`<span class="cnt">${esc(j.note)}</span>`:""}
-    ${j.status==="failed"?`<span class="cnt" style="color:var(--clay)">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${j.id}">${j.kind==="sort"&&j.next?"Try again from page "+(j.next+1):"Try again"}</button>`:""}
+    ${j.status==="failed"?`<span class="cnt" style="color:var(--clay)">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${esc(j.id)}">${j.kind==="sort"&&j.next?"Try again from page "+(j.next+1):"Try again"}</button>`:""}
     ${(j.aside||[]).length?asideHtml(j):""}</div>`;
 }
 function asideHtml(j){
   const why={blank:"Looked blank",other:"Did not look like a planning form"};
   return `<div class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${j.aside.length} page${j.aside.length===1?" was":"s were"} set aside and not transcribed</b><div>TREE judged ${j.aside.length===1?"this page":"these pages"} blank or not a plan. If ${j.aside.length===1?"it holds":"any hold"} planning writing, transcribe ${j.aside.length===1?"it":"them"} here.</div>
     <div class="thumbs">${j.aside.map((a,i)=>`<div class="thumb">${a.u.url?`<a href="${a.u.url}" target="_blank" rel="noopener" title="Open page ${a.n} full size"><img src="${a.u.url}" alt="Page ${a.n}"></a>`:`<div class="doc">Page</div>`}<span>Page ${a.n}. ${why[a.form]||""}</span><button class="thumbact" data-aside="${j.id}|${i}">Transcribe this page</button></div>`).join("")}</div>
-    ${j.aside.length>1?`<div><button class="btn small" data-asideall="${j.id}">Transcribe all ${j.aside.length} as one plan each</button></div>`:""}</div>`;
+    ${j.aside.length>1?`<div><button class="btn small" data-asideall="${esc(j.id)}">Transcribe all ${j.aside.length} as one plan each</button></div>`:""}</div>`;
 }
 function renderImport(){
   const target=importTarget&&plans.get(importTarget);
@@ -7105,10 +7105,10 @@ function isGroupPlan(p){return p.type==="smallgroup"||(p.type==="individual"&&(p
 function dupHtml(p){
   const o=p.dupOf&&plans.get(p.dupOf);
   if(!o)return"";
-  const card=(q,label)=>`<div style="display:grid;gap:3px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;min-width:0"><b>${label}</b><span>${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}</span><span class="cnt">Week of ${fmtDate(q.weekOf)}${q.classroom?", "+esc(q.classroom):""}. ${filledCount(q)} sections filled${q.importedFrom?". Uploaded":""}${q.updatedByName?" by "+esc(q.updatedByName):""}</span><span class="muted" style="overflow-wrap:anywhere">${esc(planText(q).replace(/\s+/g," ").slice(0,140))}${planText(q).length>140?"…":""}</span>${q.id!==p.id?`<button class="linkbtn" style="justify-self:start" data-open="${q.id}">Open it</button>`:""}</div>`;
+  const card=(q,label)=>`<div style="display:grid;gap:3px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;min-width:0"><b>${label}</b><span>${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}</span><span class="cnt">Week of ${fmtDate(q.weekOf)}${q.classroom?", "+esc(q.classroom):""}. ${filledCount(q)} sections filled${q.importedFrom?". Uploaded":""}${q.updatedByName?" by "+esc(q.updatedByName):""}</span><span class="muted" style="overflow-wrap:anywhere">${esc(planText(q).replace(/\s+/g," ").slice(0,140))}${planText(q).length>140?"…":""}</span>${q.id!==p.id?`<button class="linkbtn" style="justify-self:start" data-open="${esc(q.id)}">Open it</button>`:""}</div>`;
   return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">This may be a duplicate</b><div>Another plan looks the same. Keep one and delete the other, or mark this as not a duplicate.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">${card(p,"This plan")}${card(o,"The other plan")}</div>
-    <div class="actions" id="dupwrap"><button class="btn small" data-dupdel="${o.id}">Keep this one, delete the other</button><button class="btn small ghost" data-dupdel="${p.id}">Keep the other, delete this one</button><button class="linkbtn" id="dupok">This is not a duplicate</button></div></section>`;
+    <div class="actions" id="dupwrap"><button class="btn small" data-dupdel="${esc(o.id)}">Keep this one, delete the other</button><button class="btn small ghost" data-dupdel="${esc(p.id)}">Keep the other, delete this one</button><button class="linkbtn" id="dupok">This is not a duplicate</button></div></section>`;
 }
 function applyTranscript(out,target,type,j){
   const str=v=>typeof v==="string"?v.trim():"";
@@ -7228,7 +7228,7 @@ function allListHtml(ps){
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
   return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${countShown(wp).replace(" shown","")}</div>
     <div class="tablewrap"><table class="grid2 plist" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Class</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
-    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${p.id}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="${p.type==="notice"?"Kept by":"Sections filled"}">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${esc(p.id)}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="${p.type==="notice"?"Kept by":"Sections filled"}">${p.type==="notice"?esc(p.educator||""):filledCount(p)}</td><td>${p.type==="notice"?`<span class="cnt">${esc(shortDate(p.createdAt))}</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
 function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.length-n;
@@ -7339,7 +7339,7 @@ function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
   return `<div class="kmwrap">${kidMomentRow0(c,n,open)}${pfToggle(c,"notices",n.id,kidTagged(c,n))}</div>`}
 function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
-  :`<button class="kmrow" data-kmopen="${n.id}">${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
+  :`<button class="kmrow" data-kmopen="${esc(n.id)}">${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
     <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"An observation")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
@@ -7365,7 +7365,7 @@ function renderChild(){
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which observations"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
         <div class="cnt">Tap an observation to read it. The portfolio holds the observations and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
         ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${s.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${esc(s.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
@@ -7479,8 +7479,8 @@ function spaceCardHtml(p){
       <label>From<input type="time" data-spstart="1" value="${esc(sp.start)}" step="300"></label><label>Until<input type="time" data-spend="1" value="${esc(sp.end)}" step="300"></label></div>
     <div class="tseg" role="group" aria-label="Days">${SG_DAYS.map(([d,l])=>`<button data-spday="${d}" aria-pressed="${sp.days.includes(d)}">${l}</button>`).join("")}</div>
     ${space&&space.byWeek?`<div class="cnt">${esc(space.name)} is signed up for by the week, so it is held Monday to Friday.</div>`:""}
-    <div class="actions"><button class="btn small" data-spbook="${p.id}" ${busy||!sp.spaceId||!sp.days.length?"disabled":""}>${busy?'<span class="spin"></span> Signing up':"Sign up for these days"}</button>
-      ${sp.booked.length?`<button class="linkbtn" data-spundo="${p.id}" ${busy?"disabled":""}>Remove these sign-ups</button>`:""}</div>
+    <div class="actions"><button class="btn small" data-spbook="${esc(p.id)}" ${busy||!sp.spaceId||!sp.days.length?"disabled":""}>${busy?'<span class="spin"></span> Signing up':"Sign up for these days"}</button>
+      ${sp.booked.length?`<button class="linkbtn" data-spundo="${esc(p.id)}" ${busy?"disabled":""}>Remove these sign-ups</button>`:""}</div>
     ${sp.booked.length?`<div class="cnt">Signed up for ${esc(sp.spaceName||"the space")}, ${sp.booked.map(b=>esc(dayName(b.day))).join(", ")}, ${esc(tlabel(sp.bookedStart||sp.start))} to ${esc(tlabel(sp.bookedEnd||sp.end))}.</div>`:""}
     ${sp.skipped.length?`<div class="cnt warnline">${sp.skipped.map(x=>esc(x)).join(" ")}</div>`:""}</section>`;
 }
@@ -7530,12 +7530,12 @@ function signinsHtml(){
   if(signins.error)return `<section class="card"><div class="lbl">Sign-ins</div><div class="hint warnline">${esc(signins.error)}</div></section>`;
   const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
-    <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director.</div>
+    <div class="hint">Each educator signs in with their first name. A new educator, or one whose code was cleared, gets six starting numbers shown here. Give them those numbers, and the first time they sign in they choose four of their own. Codes are shown only here, to the director.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
-        <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`}</td>
+        <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:(a.start?`<span class="cnt">Starting code</span> <span style="font-variant-numeric:tabular-nums;letter-spacing:.12em">${signins.show[a.name]?esc(a.start):"\u2022\u2022\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`)}</td>
         <td class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
     <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
@@ -7546,11 +7546,11 @@ async function signinCall(path,body,msg){signins.busy=true;try{const j=await win
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
   if(t.dataset.sgshow){signins.show[t.dataset.sgshow]=!signins.show[t.dataset.sgshow];renderSettings();return}
-  if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} chooses a new code at their next sign-in.`);return}
+  if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} has new starting numbers. Show them in the list and give them to ${t.dataset.sgreset}.`);return}
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
   if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
-  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} can sign in now and choose a code.`);return}
+  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} is added. Show the starting numbers in the list and give them to ${n}.`);return}
   if(t.id==="sg-addall"){(async()=>{const known=new Set(signins.list.map(a=>a.name.toLowerCase()));for(const r of roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)))await signinCall("/api/accounts/save",{name:r.name,room:r.room||"",director:false});toast("Everyone on the educators list can sign in now.")})();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!signins.list)return;
