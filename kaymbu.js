@@ -137,7 +137,16 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const named = (list, key) => list.filter(x => x[key] && words(x[key]).length > 2 && s.includes(' ' + words(x[key]) + ' ')).sort((a, b) => String(b[key]).length - String(a[key]).length)[0];
     const project = named(live('projects').filter(p => p.status !== 'closed'), 'name');
     const thread = named(live('threads').filter(t => t.status !== 'stopped'), 'name');
-    return { room, rooms: inSubject, projectId: project ? project.id : '', threadId: thread ? thread.id : '' };
+    // the word bin keeps the moments with that week's FEED bin, as in South Bin
+    return { room, rooms: inSubject, projectId: project ? project.id : '', threadId: thread ? thread.id : '', bin: / bins? /.test(s) };
+  }
+
+  // the bin that arrived in the week of a day, up to six days before it
+  function binFor(day) {
+    const add = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const list = live('bins').filter(b => b && /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') && (b.items || []).length && b.date <= day && day <= add(b.date, 6));
+    const tue = list.filter(b => b.tuesday); const pick = (tue.length ? tue : list).sort((a, b) => b.date.localeCompare(a.date))[0];
+    return pick ? pick.date : '';
   }
 
   // the children a note names, read the same way Tag the children named does on the page. A first name shared by two
@@ -209,7 +218,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const needs = group || !kids.ids.length || kids.unsure.length > 0;
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
-        const doc = { id, noticed, wonder: '', classroom: sub.room, by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
+        const binId = sub.bin ? binFor(day) : '';
+        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
           kaymbu: { v: 3, ...(group ? { suggest: kids.ids } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
