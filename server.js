@@ -54,10 +54,10 @@ const TEACHERS = PASS_RAW.split(',').map(e => e.trim()).filter(Boolean).map(e =>
   const name = cut > 0 ? e.slice(0, cut).trim() : '';
   const code = normCode(cut > 0 ? e.slice(cut + 1) : e);
   return { name: /^[A-Za-z0-9 _.&'-]{1,40}$/.test(name) ? name : (cut > 0 ? '' : 'Staff'), code, hash: sha(code) };
-}).filter(t => t.name && t.code.length >= 6);
+}).filter(t => t.name && t.code.length >= 6 && t.name !== 'Staff');   // the shared Staff passcode is retired, so every educator signs in with their own name
 const DIRECTORS = String(process.env.DIRECTOR_NAMES || 'Renee').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 function isDirector(name) { if (DIRECTORS.includes(String(name || '').toLowerCase())) return true; const a = accountFor(name); return !!(a && a.director); }
-const SKIPPED_PASSCODES = PASS_RAW.split(',').filter(e => e.trim()).length - TEACHERS.length;
+const SKIPPED_PASSCODES = PASS_RAW.split(',').filter(e => e.trim() && !/^staff=/i.test(e.trim()) && e.includes('=')).length - TEACHERS.length;
 const SECRET = sha('fulton-planning|' + (process.env.SESSION_SECRET || '') + '|' + githubToken() + '|' + PASS_RAW);
 const SESSION_DAYS = 60;
 
@@ -796,6 +796,7 @@ process.on('SIGTERM', () => stop('SIGTERM')); process.on('SIGINT', () => stop('S
 server.listen(PORT, () => {
   log('TREE server on port', PORT, 'records in', RECORDS_REPO);
   log(TEACHERS.length + ' educator passcodes set');
+  log('Sign-ins set on Render for ' + (TEACHERS.map(t => t.name).join(', ') || 'no one'));
   log('GitHub key ' + (githubToken() ? 'saved' : 'MISSING') + ', Anthropic key ' + (anthropicKey() ? 'saved' : 'MISSING'));
   loadAll(); calendar.loadAll();
 });
