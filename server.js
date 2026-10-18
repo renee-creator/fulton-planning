@@ -456,7 +456,7 @@ function statusPage(req, res) {
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
   lines.push(feedBin.statusLine());
-  { const st = storageNow(); lines.push(photosDrive.on() ? `Photos kept in Google Drive, ${st.inDrive}. Still in the records, ${st.photos}.` : 'Photos are kept in the records. Google Drive is not set up.'); }
+  { const st = storageNow(); lines.push([true, photosDrive.on() ? `Photos kept in Google Drive, ${st.inDrive}. Still in the records, ${st.photos}.` : 'Photos are kept in the records. Google Drive is not set up.']); }
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
