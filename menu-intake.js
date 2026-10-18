@@ -151,7 +151,10 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     if (doc && doc.intake && (doc.intake.files || []).some(f => files.some(g => g.url === f.url))) return { ok: true, kept: 0, again: 'the ' + month + ' menus are already in TREE' };
     if (!doc) doc = { id: month, month, days: {}, notes: {}, files: {}, by: "Kitchen's Kitchen Digest", updatedByName: 'TREE' };
     if (!doc.times) { const last = [...store.recs.menus.values()].map(r => r.doc).filter(d => d && d.times && d.month < month).sort((a, b) => b.month.localeCompare(a.month))[0]; if (last) doc.times = Object.assign({}, last.times); }
-    doc.intake = { from: 'Kitchen Digest sent ' + sent.toISOString().slice(0, 10), files };
+    // links already in the month stay, so a second email for the same month only adds what is new
+    const before = (doc.intake && doc.intake.files) || [];
+    doc.intake = Object.assign({}, doc.intake, { from: 'Kitchen Digest sent ' + sent.toISOString().slice(0, 10), files: before.concat(files.filter(f => !before.some(b => b.url === f.url))), tries: 0 });
+    delete doc.intake.done;
     store.recs.menus.set(month, { doc, sha: cur && cur.sha, path: `menus/${month}.json`, local: true });
     noteChange('menus', month); scheduleSave('menus', month);
     log('Kitchen Digest arrived for', month + ',', files.length, 'menus to read');
