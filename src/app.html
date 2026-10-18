@@ -3844,7 +3844,16 @@ function gProducer(name){const k=gKey(name);const L=(grantRecs.get("producers")|
 function quarterOf(day){const [y,m]=day.split("-").map(Number);return y+"-Q"+(Math.floor((m-1)/3)+1)}
 function quarterRange(q){const [y,n]=q.split("-Q").map(Number);const m0=(n-1)*3;const from=iso(new Date(y,m0,1)),to=iso(new Date(y,m0+3,0));return {from,to}}
 const quarterName=q=>{const [y,n]=q.split("-Q").map(Number);const {from,to}=quarterRange(q);return parseIso(from).toLocaleDateString("en-US",{month:"long"})+" to "+parseIso(to).toLocaleDateString("en-US",{month:"long"})+" "+y};
-const gQ=()=>/^\d{4}-Q[1-4]$/.test(gQuarter)?gQuarter:quarterOf(iso(new Date()));
+const gQ=()=>/^\d{4}-Q[1-4]$|^\d{4}$|^all$/.test(gQuarter)?gQuarter:quarterOf(iso(new Date()));
+// the page can show a quarter, a year from July to June, the way the grant term and the school year run, or the whole grant
+const isQuarter=p=>/^\d{4}-Q[1-4]$/.test(p);
+const gYearOf=day=>{const [y,m]=day.split("-").map(Number);return String(m>=7?y:y-1)};
+function gStartDay(){const S=gSet();if(S.start)return S.start;const d=gLines("0000","9999").map(x=>x.day).filter(Boolean).sort()[0];return d||iso(new Date())}
+function periodRange(p){if(isQuarter(p))return quarterRange(p);if(/^\d{4}$/.test(p)){const y=Number(p);return {from:y+"-07-01",to:(y+1)+"-06-30"}}
+  const S=gSet();return {from:gStartDay(),to:S.end||iso(new Date())}}
+function periodName(p){if(isQuarter(p))return quarterName(p);if(/^\d{4}$/.test(p))return "July "+p+" to June "+(Number(p)+1);
+  const {from,to}=periodRange("all");return "Whole grant, "+parseIso(from).toLocaleDateString("en-US",{month:"long",year:"numeric"})+" to "+parseIso(to).toLocaleDateString("en-US",{month:"long",year:"numeric"})}
+const periodWord=p=>isQuarter(p)?"this quarter":/^\d{4}$/.test(p)?"this year":"across the grant";
 const gOrders=()=>[...grantRecs.values()].filter(x=>x&&x.kind==="order").sort((a,b)=>(b.fulfilled||b.placed||"").localeCompare(a.fulfilled||a.placed||""));
 // every purchase line in a range, from FEED orders and purchases added by hand
 function gLines(from,to){const out=[];
@@ -3866,26 +3875,29 @@ function gEducation(from,to){const inR=ms=>{const d=iso(new Date(ms||0));return 
 
 function renderGrant(){
   if(!isDirector()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept in the director's view.</div></div>`;return}
-  const S=gSet(),q=gQ(),{from,to}=quarterRange(q),lines=gLines(from,to),all=gLines("0000","9999");
+  const S=gSet(),q=gQ(),{from,to}=periodRange(q),lines=gLines(from,to),all=gLines("0000","9999");const pw=periodWord(q);
   const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
   const meals=lines.filter(x=>x.use!=="education"),edu=lines.filter(x=>x.use==="education");
-  const qs=[...new Set([q,quarterOf(iso(new Date())),...all.map(x=>quarterOf(x.day))])].sort().reverse();
+  const qs=[...new Set([isQuarter(q)?q:quarterOf(iso(new Date())),quarterOf(iso(new Date())),...all.map(x=>quarterOf(x.day))])].sort().reverse();
+  const ys=[...new Set([gYearOf(iso(new Date())),...qs.map(x=>gYearOf(quarterRange(x).from))])].sort().reverse();
   const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0,items:new Set()};e.total+=Number(x.total)||0;e.items.add(x.item);prods.set(k,e)}
   const pr=[...prods.values()].sort((a,b)=>b.total-a.total);
   const cat=f=>sum(lines.filter(x=>f(x)));
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">CDFA Farm to School Incubator Grant · ${esc(S.agreement)}</span><h2 style="margin-top:4px">Farm to School grant</h2>
-    <div class="sub" style="max-width:76ch">What TREE already holds, gathered by quarter against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
-    <div class="actions">${printBtns("grantq",q,"Quarter summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
-    <div class="filters" role="group" aria-label="Quarter">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div></div>`;
+    <div class="sub" style="max-width:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
+    <div class="actions">${printBtns("grantq",q,isQuarter(q)?"Quarter summary":/^\d{4}$/.test(q)?"Year summary":"Grant summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
+    <div class="filters" role="group" aria-label="Whole grant or a year"><button class="pill" aria-pressed="${q==="all"}" data-gq="all">Whole grant</button>${ys.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(periodName(x))}</button>`).join("")}</div>
+    <div class="filters" role="group" aria-label="Quarter" style="margin-top:6px">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div>
+    ${isQuarter(q)?"":`<div class="cnt" style="margin-top:8px">${esc(periodName(q))}</div>`}</div>`;
 
   // objectives 1 to 4, what was bought and from whom
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">California food bought, objectives 1 to 4</h3><span class="cnt">${lines.length} line${lines.length===1?"":"s"}</span></div>
     <div class="gstats">${[["For meals and snacks, 1a",sum(meals)],["For student education, 1b",sum(edu)],["Certified organic",cat(gOrganic)],["Small to midsize producers",cat(x=>gProducer(x.producer).smallmid)],["BIPOC, female, veteran or limited resource",cat(x=>gProducer(x.producer).sdlr)],["Climate smart practices",cat(x=>gProducer(x.producer).climate||gOrganic(x))]].map(([l,v])=>`<div class="gstat"><b>${gMoney(v)}</b><span>${l}</span></div>`).join("")}</div>
     <div class="cnt" style="margin:6px 0 10px">Since the start, ${gMoney(sum(all.filter(x=>x.use!=="education")))} of ${gMoney(S.b1a)} for meals and ${gMoney(sum(all.filter(x=>x.use==="education")))} of ${gMoney(S.b1b)} for student education, from the records kept here. FEED bins count as food for student education, and any line can be changed below.</div>
-    ${pr.length?`<div class="lbl">Producers this quarter</div><div class="tlist">${pr.map(e=>{const p=e.p;const tags=[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
+    ${pr.length?`<div class="lbl">Producers ${pw}</div><div class="tlist">${pr.map(e=>{const p=e.p;const tags=[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
       return `<div class="prow"><div style="min-width:0"><b>${esc(p.name)}</b>${p.town?` <span class="cnt">${esc(p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${esc([...e.items].slice(0,4).join(", "))}${e.items.size>4?", and more":""}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidence(p)}</div>
         ${/^feed cooperative/.test(p.key)?`<div class="cnt" style="flex:none;max-width:220px">The farms behind each bin are listed below.</div>`:`<div class="actions" style="flex:none">${p.town?"":`<input type="text" data-gptown="${esc(p.key)}" data-gpn="${esc(p.name)}" placeholder="Town" style="width:120px">`}${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(p.key)}" data-gpn="${esc(p.name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`}</div>`}).join("")}</div>
-      <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for this quarter yet. Add a FEED order confirmation below.</div>`}
+      <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for ${pw} yet. Add a FEED order confirmation below.</div>`}
     ${lines.length?`<details style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
       ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}${x.review?` · <span class="warnline">to check</span>`:""}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
         <td><select data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
@@ -3904,7 +3916,7 @@ function renderGrant(){
   // the farms behind the bins, farm-level data that a bin invoice does not show
   const bf=gBinFarms(from,to);
   if(bf.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Farms behind the FEED bins</h3><span class="cnt">${bf.length} farms</span></div>
-    <div class="cnt" style="margin-bottom:8px">A bin is invoiced as FEED Cooperative. These are the farms FEED listed for each bin this quarter, for the farm-level data the agreement asks for.</div>
+    <div class="cnt" style="margin-bottom:8px">A bin is invoiced as FEED Cooperative. These are the farms FEED listed for each bin ${pw}, for the farm-level data the agreement asks for.</div>
     <div class="tlist">${bf.map(f=>{const p=gProducer(f.name);const tags=gTags(p);return `<div class="prow"><div style="min-width:0"><b>${esc(f.name)}</b>${f.town?` <span class="cnt">${esc(f.town)}</span>`:""}<div class="cnt">${f.weeks.size} week${f.weeks.size===1?"":"s"} · ${esc([...f.items].slice(0,3).join(", "))}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidence(p)}</div>
       <div class="actions" style="flex:none">${["smallmid","sdlr","climate","organic"].map(fl=>`<button class="chip-btn" data-gpf="${fl}" data-gpk="${esc(p.key)}" data-gpn="${esc(f.name)}" aria-pressed="${!!p[fl]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[fl]}</button>`).join("")}</div></div>`}).join("")}</div></section>`;
 
@@ -3912,12 +3924,12 @@ function renderGrant(){
   const mm=[...menus.values()].filter(m=>m&&m.month>=from.slice(0,7)&&m.month<=to.slice(0,7));
   const menuDays=re=>mm.reduce((n,m)=>n+Object.values(m.days||{}).filter(d=>d&&!d.closed&&re.test(d.lunch||"")).length,0);
   const cheese=menuDays(/cheese|pizza|quesadilla/i),beans=menuDays(/bean|rice|lentil/i);
-  if(mm.length)h+=`<section class="card"><div class="lbl">From the lunch menus this quarter</div><div class="gstats"><div class="gstat"><b>${cheese}</b><span>lunches with cheese from Petaluma Creamery</span></div><div class="gstat"><b>${beans}</b><span>lunches with beans or rice from Next Generation Foods</span></div></div></section>`;
+  if(mm.length)h+=`<section class="card"><div class="lbl">From the lunch menus ${pw}</div><div class="gstats"><div class="gstat"><b>${cheese}</b><span>lunches with cheese from Petaluma Creamery</span></div><div class="gstat"><b>${beans}</b><span>lunches with beans or rice from Next Generation Foods</span></div></div></section>`;
 
   // objectives 5 to 7, hands-on food education
   const ed=gEducation(from,to);
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Hands-on food education, objectives 5 to 7</h3></div>
-    <div class="cnt" style="margin-bottom:8px">Found by the words in the educators' own observations and plans this quarter. Open any to check it.</div>
+    <div class="cnt" style="margin-bottom:8px">Found by the words in the educators' own observations and plans ${pw}. Open any to check it.</div>
     ${ed.map(o=>`<details style="margin-top:6px"><summary style="cursor:pointer"><b>${o.n}.</b> ${esc(o.label)} <span class="cnt">· ${o.obs.length} observation${o.obs.length===1?"":"s"}, ${o.plans.length} plan${o.plans.length===1?"":"s"}</span></summary>
       ${o.obs.length?`<div class="tlist">${o.obs.slice(0,15).map(momentMini).join("")}</div>${o.obs.length>15?`<div class="cnt">And ${o.obs.length-15} more.</div>`:""}`:""}
       ${o.plans.length?`<div class="tlist">${o.plans.slice(0,15).map(p=>`<button class="item" data-open="${p.id}"><span class="nm">${esc(planTitle(p))}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span></button>`).join("")}</div>`:""}</details>`).join("")}</section>`;
@@ -3930,11 +3942,14 @@ function renderGrant(){
     <div class="kfields" style="margin-top:8px"><label class="cnt">Day<input type="date" id="g-fdate" value="${esc(iso(new Date()))}"></label><label class="cnt" style="flex:1">What happened<input type="text" id="g-ftext" placeholder="Ex. Family meeting on foods from home. Three families brought recipes."></label></div>
     <div class="actions"><button class="btn small ghost" data-gact="fam">Keep it</button></div></section>`;
 
-  // the quarterly check-in
-  const ck=(grantRecs.get("q-"+q)||{}).checkin||{};
+  // the quarterly check-in. A year or the whole grant shows each quarter's check-in to read, for an annual or final report.
+  if(isQuarter(q)){const ck=(grantRecs.get("q-"+q)||{}).checkin||{};
   h+=`<section class="card" id="g-check"><div class="secthead"><h3 style="font-size:17px;margin:0">Quarterly check-in</h3><button class="btn small ghost" data-gact="draft" ${gBusy?"disabled":""}>${gBusy?"Drafting":"Draft it from this quarter"}</button></div>
     <div class="cnt" style="margin-bottom:8px">The draft uses only the figures and the educators' words on this page. Rewrite it in your own voice before it goes to CDFA.</div>
-    ${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].map(([k,l])=>`<label class="fld-label">${l}<textarea data-gck="${k}" rows="4">${esc(ck[k]||"")}</textarea></label>`).join("")}</section>`;
+    ${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].map(([k,l])=>`<label class="fld-label">${l}<textarea data-gck="${k}" rows="4">${esc(ck[k]||"")}</textarea></label>`).join("")}</section>`;}
+  else{const ins=qs.filter(x=>{const r=quarterRange(x);return r.from>=from&&r.to<=to}).sort().map(x=>[x,(grantRecs.get("q-"+x)||{}).checkin||{}]).filter(([,c])=>c.progress||c.successes||c.challenges);
+    h+=`<section class="card" id="g-check"><div class="secthead"><h3 style="font-size:17px;margin:0">Quarterly check-ins</h3><span class="cnt">${ins.length} quarter${ins.length===1?"":"s"}</span></div>
+    ${ins.length?ins.map(([x,c])=>`<div class="binadd" style="margin-top:8px"><b>${esc(quarterName(x))}</b>${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>c[k]).map(([k,l])=>`<div class="lbl" style="margin-top:6px">${l}</div><div style="white-space:pre-wrap">${esc(c[k])}</div>`).join("")}</div>`).join(""):`<div class="empty">No check-ins written for these quarters yet. Choose a quarter to write one.</div>`}</section>`}
   h+=`<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Grant details</summary><div class="kfields" style="margin-top:8px">
     ${[["agreement","Agreement number","text"],["start","Term began","date"],["end","Term ends","date"],["b1a","Food for meals and snacks, 1a","number"],["b1b","Food for student education, 1b","number"]].map(([k,l,t])=>`<label class="cnt">${l}<input type="${t}" data-gset="${k}" value="${esc(String(S[k]??""))}"></label>`).join("")}</div>
     <div class="hint">The term end is the date asked for in the July extension request. Change it if CDFA approves another.</div></details>`;
@@ -3964,7 +3979,7 @@ function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end
   const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"]);bf.forEach(f=>{const p=gProducer(f.name);out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; "),yn(p.organic),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")])})}
   return out.map(r=>r.map(v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(",")).join("\r\n")}
 
-function grantDoc(q){const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
+function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
   const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0};e.total+=Number(x.total)||0;prods.set(k,e)}
   const blocks=[];
   blocks.push(dList("California food bought",[`For meals and snacks, ${gMoney(sum(lines.filter(x=>x.use!=="education")))}`,`For student education, ${gMoney(sum(lines.filter(x=>x.use==="education")))}`,`Certified organic, ${gMoney(sum(lines.filter(gOrganic)))}`,`From ${prods.size} producer${prods.size===1?"":"s"}`]));
@@ -3972,8 +3987,10 @@ function grantDoc(q){const {from,to}=quarterRange(q);const lines=gLines(from,to)
   const bf=gBinFarms(from,to);if(bf.length)blocks.push(dList("Farms behind the FEED bins",bf.map(f=>`${f.name}${f.town?", "+f.town:""}`)));
   const ed=gEducation(from,to);blocks.push(dList("Hands-on food education",ed.map(o=>`${o.label}, ${o.obs.length} observations and ${o.plans.length} plans`)));
   const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>a.date.localeCompare(b.date));if(fam.length)blocks.push(dList("Families",fam.map(x=>`${fmtDate(x.date)}, ${x.text}`)));
-  const ck=(grantRecs.get("q-"+q)||{}).checkin||{};[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].forEach(([k,l])=>{if(has(ck[k]))blocks.push(dText(l,ck[k]))});
-  return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+quarterName(q),meta:[["Agreement",gSet().agreement],["Quarter",quarterName(q)]],blocks}}
+  if(isQuarter(q)){const ck=(grantRecs.get("q-"+q)||{}).checkin||{};[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].forEach(([k,l])=>{if(has(ck[k]))blocks.push(dText(l,ck[k]))})}
+  else{const qq=[...new Set(gLines(from,to).map(x=>quarterOf(x.day)))];for(let d=parseIso(from);iso(d)<=to;d.setMonth(d.getMonth()+3))qq.push(quarterOf(iso(d)));
+    [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
+  return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
 async function gDraft(q){if(!sample){toast("Claude assist is not available here.");return}
   gBusy=true;renderGrant();const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
@@ -4009,7 +4026,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
     else{const o=grantRecs.get(t.dataset.guse);if(!o)return;const items=(o.items||[]).map((x,i)=>i===+t.dataset.gi?Object.assign({},x,{use}):x);if(db)try{await db.doc("grant/"+o.id).update({items})}catch(err){toast("Could not save that.")}}
     renderGrant();return}
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
-  if(t.dataset.gck){const q=gQ();await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
+  if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
   if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
@@ -4026,7 +4043,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
     if(await gWrite("purchases",{list:{[p.id]:p}},{id:"purchases",list:{}})){gAdd=null;toast("Kept")}renderGrant();return}
   if(a==="fam"){const date=$("#g-fdate")?.value||"",text=($("#g-ftext")?.value||"").trim();if(!date||!text){toast("Add the day and what happened.");return}
     const id=uid();if(await gWrite("families",{list:{[id]:{id,date,text,by:whoAmI()}}},{id:"families",list:{}}))toast("Kept");renderGrant();return}
-  if(a==="draft"){gDraft(gQ());return}},true);
+  if(a==="draft"){if(isQuarter(gQ()))gDraft(gQ());return}},true);
 
 /* ---------- Staff birthdays ----------
    The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
@@ -6280,7 +6297,7 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
-  if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${quarterName(t.dataset.id)}`);return true}
+  if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
