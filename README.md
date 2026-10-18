@@ -53,6 +53,10 @@ Documentation, then Farm to School, for the director only. The page shows one qu
 - **Families, objective 8.** A short log of family meetings, parent participation and foods families brought.
 - **Quarterly check-in.** Claude drafts progress, successes and challenges from only the figures and educators' words on the page, and the director rewrites it. Quarter summary prints as a PDF and a Word file.
 
+## Local food, how far it travels and where the dollars go
+
+On the Farm to School page, each purchase is one of three kinds. California farms and food hubs are what the grant counts. A specialty supplier, such as Central Milling for organic whole wheat flour, is chosen for quality and kept outside the California totals. A large retailer, such as Trader Joe's or Costco, is recognised by name, or chosen when a purchase is added by hand. How far our food travels gives straight line miles from each farm's town to the school, weighted by what was spent, the share from Sonoma County and within 50 miles, and dollars by county. A FEED bin counts the farms FEED listed for it that week. Where the food dollars went shows California farms and food hubs, Sonoma County, specialty suppliers and large retailers, with the share at large retailers by quarter once any are kept, and the statewide context from the 2026 California Farm to School Evaluation, cited as context and never as a measure of this school's spending.
+
 ## Small copies of photos
 
 Cards and lists show a small copy of each photo, about 640 pixels on its longest side, so a page of moments loads quickly on a phone. Slides, walls, portfolios, every printout and a photo opened on its own use the original, which is never changed or replaced. A photo kept in TREE gets its small copy as it is kept, a photo from Kaymbu keeps Kaymbu's own smaller copy, and photos kept before small copies existed get one from the director's browser, a few at a time, while TREE is open.
