@@ -122,7 +122,9 @@ module.exports = function feedBin({ store, log, noteChange, scheduleSave }) {
 
   // read again every six hours, so the year's record fills in even on a week nobody opens the page
   setInterval(() => { if (store.ready) check(true).catch(() => {}); }, 6 * 3600e3).unref();
-  setTimeout(() => { if (store.ready) check(true).catch(() => {}); }, 120000).unref();
+  // the first read waits until the records have loaded, however long that takes after a restart
+  const first = () => { if (store.ready) check(true).catch(() => {}); else setTimeout(first, 60000).unref(); };
+  setTimeout(first, 60000).unref();
 
   async function handle(path, me, body, reply) {
     if (path !== '/api/feed-bin') return false;
