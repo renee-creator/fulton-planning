@@ -390,7 +390,8 @@ Copy names and numbers exactly as written. Never invent a number, and use null w
   const feed = /\bfeed\b/i.test(vendor) && /^\d+$/.test(num);
   const id = feed ? 'order-' + num : 'order-' + slug + '-' + num; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
   if (feed && was && was.readBy !== 'Claude') return { doc: was };
-  if (was) { const uses = new Map((was.items || []).map(x => [x.item + '|' + x.unit, x.use])); items.forEach(x => { x.use = uses.get(x.item + '|' + x.unit) || x.use; }); }
+  // a line the director already placed, meals or education, keeps that choice when the order is read again
+  if (was) { const uses = new Map((was.items || []).map(x => [x.item + '|' + x.unit, x])); items.forEach(x => { const u = uses.get(x.item + '|' + x.unit); if (u) { x.use = u.use || x.use; if (u.useSet) x.useSet = true; } }); }
   const fulfilled = date || (was && was.fulfilled) || laToday;
   const reading = { fulfilled, items, subtotal: o.subtotal == null ? null : Number(o.subtotal), delivery: o.delivery == null ? null : Number(o.delivery), total: o.total == null ? null : Number(o.total), distributor: vendor, ...(date ? {} : { noDate: true }) };
   // an order the director already checked keeps its lines, and the new reading waits beside it for the director to choose
@@ -420,8 +421,8 @@ function keepOrder(raw, by) {
   const o = parseOrder(raw);
   if (!o.order || !o.items.length) return { error: 'This does not look like a FEED order confirmation. No order number or items were found.' };
   const id = 'order-' + o.order; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
-  const uses = new Map(((was && was.items) || []).map(x => [x.item + '|' + x.unit + '|' + x.producer, x.use]));
-  o.items = o.items.map(x => Object.assign(x, { use: uses.get(x.item + '|' + x.unit + '|' + x.producer) || (/FEED Bin/i.test(x.item) ? 'education' : 'meals') }));
+  const uses = new Map(((was && was.items) || []).map(x => [x.item + '|' + x.unit + '|' + x.producer, x]));
+  o.items = o.items.map(x => { const u = uses.get(x.item + '|' + x.unit + '|' + x.producer); return Object.assign(x, { use: (u && u.use) || (/FEED Bin/i.test(x.item) ? 'education' : 'meals') }, u && u.useSet ? { useSet: true } : {}); });
   if (was && was.review === false) { const rd = Object.assign({}, o); if (!rd.fulfilled) rd.fulfilled = was.fulfilled || rd.placed || ''; return keepRevision(id, cur, rd, { order: o.order, readBy: 'FEED', from: '', by }); }
   const doc = Object.assign({ id, kind: 'order' }, o, { keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by });
   store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
