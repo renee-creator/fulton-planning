@@ -2520,7 +2520,7 @@ function nlDrdpWords(codes){
     parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
     return parts.join("\n")}).filter(Boolean).join("\n");
 }
-const nlRules=`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. Never name a child or describe a child so a family could tell who it is. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research.`;
+const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research.`;
 
 async function nlFindTopics(x,btn){
   const obs=nlObs(x.month);
@@ -2537,7 +2537,7 @@ Classes. ${Object.entries(ages).map(([r,a])=>r+", "+a).join(". ")}.
 Return a JSON object with one key "topics", an array of 3 or 4 objects with these keys.
 "title" a short, warm title families would read, 2 to 6 words.
 "happening" one or two sentences for the director saying what was observed, how often and in which classes.
-"quotes" an array of 1 to 3 short quotes copied word for word from the observations below, with every child's name replaced by "a child" or "a friend".
+"quotes" an array of 1 to 3 short quotes copied word for word from the observations below.
 "obs" an array of the references (like "o4") of every observation behind this topic.
 "photos" an array of up to 4 references of observations with a photo that fit the topic well, chosen for showing the work, the food, the place or the hands. Leave it empty when the topic is a behavior that is hard for parents.
 "behavior" true when the topic is a behavior or challenge, false otherwise.
@@ -2567,13 +2567,13 @@ async function nlUseTopic(x,s,btn){
   await loadDrdpTxt();
   const obs=s.notices.map(id=>notices.get(id)).filter(Boolean);
   const seen=new Set();const words=obs.filter(n=>{const k=String(n.noticed||"").slice(0,200);if(seen.has(k))return false;seen.add(k);return true}).map(n=>`${n.classroom||""}. ${String(n.noticed||"").replace(/\n+/g," / ")}${n.wonder?" Wondering. "+n.wonder:""}`).slice(0,25);
-  const prompt=`${nlRules}
+  const prompt=`${nlRules(s.behavior)}
 
 The director chose this topic for the ${nlName(x.month)} newsletter. ${s.title}. ${s.happening}
 
 Write the family-facing part. Return a JSON object with these keys.
 "title" the topic title for families, 2 to 6 words.
-"happening" 2 or 3 sentences telling families what children did or what educators noticed this month, drawn only from the observations below. Speak of classes or age groups, never of one child.
+"happening" 2 or 3 sentences telling families what children did or what educators noticed this month, drawn only from the observations below.${s.behavior?" Speak of classes or age groups, never of one child.":" Name children by first name where the educators did."}
 "why" 2 or 3 sentences on why this matters for a young child's growth, in plain words.
 "grows" an array of exactly 3 objects with "age" and "text", going from younger to older, using these ages "Twos", "Around three", "Fours and fives". Never use the word toddler. Each "text" is one sentence describing what this looks like at that age, written in plain words but keeping the meaning and order of the developmental descriptions below, so a family can see the steps.
 "bonus" 1 or 2 sentences naming how this connects to skills children use later in school, such as hand and shoulder strength for holding a pencil and writing, vocabulary, early math, following directions, or self-regulation.
@@ -2594,18 +2594,17 @@ ${words.join("\n")}`;
   }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
-// a photo's caption starts from the educator's own words, with children's names left out
+// a photo's caption starts from the educator's own words
 function nlCaption(n){
   if(!n)return"";let t=String(n.noticed||"").split(/\n+/).filter(Boolean);let s=(t.length>1&&t[0].length<60?t[1]:t[0])||"";
   s=s.split(/(?<=[.!?])\s+/)[0]||s;
-  for(const f of nlNameWarn(s))s=s.replace(new RegExp("\\b"+f+"\\b","g"),"A child").replace(/(\S)\s+A child/g,"$1 a child");
   return nlClean(s).slice(0,160);
 }
 
 async function nlDraftTips(x,t,btn){
   const obs=(t.notices||[]).map(id=>notices.get(id)).filter(Boolean);
   const wonders=[...new Set(obs.map(n=>String(n.wonder||"").trim()).filter(Boolean))].slice(0,5);
-  const prompt=`${nlRules}
+  const prompt=`${nlRules(t.behavior)}
 
 Draft 4 or 5 practical tips families can try at home for this newsletter topic. The director will rewrite them in her own voice.
 Topic. ${t.title}. ${t.happening} ${t.why}
@@ -2652,7 +2651,7 @@ function nlLibFor(t){const words=String(t.title||"").toLowerCase().split(/[^a-z]
 
 async function nlSuggestSchool(x,btn){
   const obs=nlObs(x.month);if(!obs.length){toast("No observations this month yet.");return}
-  const prompt=`${nlRules}
+  const prompt=`${nlRules(false)}
 
 From the observations below, choose 2 or 3 short pieces of whole-school or farm news for the newsletter, such as the animals, the garden, the creek, visitors, older and younger children together, or something every class shared. Leave out anything that reads as one class's weekly news.
 
@@ -2727,10 +2726,10 @@ function renderNewsletter(){
 
   // 3. each topic, written for families
   (x.topics||[]).forEach((t,i)=>{
-    const warn=nlNameWarn(nlTopicText(t));
+    const warn=t.behavior?nlNameWarn(nlTopicText(t)):[];
     const lib=nlLibFor(t).filter(r=>!(x.reading||[]).some(y=>y.url===r.url));
     h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${t.id}">Remove topic</button></div>
-      ${warn.length?`<div class="nlwarn">This mentions ${esc(warn.join(", "))}, ${warn.length>1?"children's names":"a child's name"}. Change it before it goes out.</div>`:""}
+      ${warn.length?`<div class="nlwarn">This topic is about a behavior, and it mentions ${esc(warn.join(", "))}. Leave names out of it so no family can tell who it is about.</div>`:""}
       <label class="nll">Title<input data-nlf="topics.${i}.title" value="${esc(t.title)}"></label>
       <label class="nll">What happened this month<textarea class="nlta" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
       <div class="nlphotos">${(t.offer||[]).map(id=>nlThumb(id,(t.photos||[]).some(p=>p.notice===id),`data-nltph="${t.id}" data-id="${id}"`)).join("")}</div>
@@ -2809,8 +2808,8 @@ function nlBlocks(x){
 function nlKaymbuHtml(x){
   const B=nlBlocks(x);
   if(!B.length)return `<p class="muted">Nothing written yet.</p>`;
-  const warn=nlNameWarn(B.map(b=>b.text+" "+(b.photos||[]).map(p=>p.cap).join(" ")).join(" "));
-  return `${warn.length?`<div class="nlwarn">The newsletter mentions ${esc(warn.join(", "))}. Check before copying.</div>`:""}${(x.topics||[]).some(t=>t.tipsDraft)?`<div class="nlwarn">Some tips are still TREE's draft.</div>`:""}
+  const warn=nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" "));
+  return `${warn.length?`<div class="nlwarn">A topic about a behavior mentions ${esc(warn.join(", "))}. Leave names out of it before copying.</div>`:""}${(x.topics||[]).some(t=>t.tipsDraft)?`<div class="nlwarn">Some tips are still TREE's draft.</div>`:""}
     ${B.map((b,j)=>`<div class="nlblock"><div class="head-row"><b>${esc(b.h)}</b><button class="btn small" data-nlcopy="${j}">Copy</button></div><textarea class="nlta" rows="5" readonly id="nlb-${j}">${esc(b.text)}</textarea>
     ${(b.photos||[]).length?`<div class="nlphotos">${b.photos.map(p=>{const n=notices.get(p.notice);return n?`<span class="nlphs"><img src="${esc(photoThumb(n))}" alt=""><button class="btn small ghost" data-nlsave="${p.notice}">Save photo</button></span>`:""}).join("")}</div>`:""}</div>`).join("")}`;
 }
@@ -2863,7 +2862,7 @@ document.addEventListener("click",async e=>{
       await downloads.save({filename:`Fulton newsletter ${nlMonthOnly(k)} photo ${n.photo.id.slice(0,6)}.jpg`,data:blob})}catch(err){toast("The photo could not be saved. Try again.")}return}
   if(d.nlword){nlWord(x);return}
   if(d.nlpdf){nlPdf(x);return}
-  if(d.nlsent){if(nlNameWarn(nlBlocks(x).map(b=>b.text).join(" ")).length&&!confirm("The newsletter mentions a child's name. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
+  if(d.nlsent){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length&&!confirm("A topic about a behavior names a child. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
   if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
   if(d.nldel){if(!confirm(`Delete the ${nlName(x.month)} newsletter? Its topics, tips and photos choices are removed. Articles stay in your library.`))return;
     clearTimeout(nlTimers[x.id]);newsletters.delete(x.id);nlKaymbu=false;
