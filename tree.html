@@ -2776,7 +2776,7 @@ function renderNewsletter(){
   // finish
   h+=`<section class="card nlcard"><div class="nlstep">${step+3}</div><h3>Send it</h3>
     <p class="muted nlhint">Copy each block into your Kaymbu template and add the photos. Word and PDF copies are for your records and the front entrance.</p>
-    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}</div>
+    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
     ${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
   h+=nlArchiveHtml(k);
   main.innerHTML=h;
@@ -2865,6 +2865,10 @@ document.addEventListener("click",async e=>{
   if(d.nlpdf){nlPdf(x);return}
   if(d.nlsent){if(nlNameWarn(nlBlocks(x).map(b=>b.text).join(" ")).length&&!confirm("The newsletter mentions a child's name. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
   if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
+  if(d.nldel){if(!confirm(`Delete the ${nlName(x.month)} newsletter? Its topics, tips and photos choices are removed. Articles stay in your library.`))return;
+    clearTimeout(nlTimers[x.id]);newsletters.delete(x.id);nlKaymbu=false;
+    if(db)db.doc("newsletters/"+x.id).delete().then(()=>toast("The newsletter is deleted.")).catch(()=>toast("Could not delete the newsletter. Check your connection."));
+    renderNewsletter();jumpTop();return}
 });
 
 // photos for the printed copies, at a size that prints well
