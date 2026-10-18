@@ -562,7 +562,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .kitchen>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.kitchen>summary::-webkit-details-marker{display:none}
 .kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
-.klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}
+.klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
 /* on a touch screen a text link gets a taller area to tap, without moving anything around it */
 @media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}}
 .setjump{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 14px;font-size:14px}.setjump .linkbtn{padding:2px 0}
@@ -2355,6 +2355,17 @@ function kUses(food,days,farm){const re=kFoodRe(food),e=kEntry(food,farm),fruit=
 const kShort=d=>parseIso(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
 const kDish=t=>{t=String(t||"").trim();return t?t[0].toLowerCase()+t.slice(1):""};
 const K_SHOW_MET=false;
+/* every snack comes with seasonal fruit and every lunch with a salad and seasonal vegetables, as the month's menu notes say,
+   so a food with no named dish still has a place at the table */
+const K_GREENS=/lettuce|little gem|\bgems?\b|arugula|greens|spinach|salad|mesclun|chicor|radicchio|endive|frisee|cress/i;
+const K_AROMA=/onion|garlic|celery|leek|shallot|ginger/i;
+function kNotesFor(months){return months.map(m=>(menus.get(m)||{}).notes||{})}
+function kSideUse(food,notes){food=String(food||"");const sn=notes.some(n=>/fruit/i.test(n.snack||"")),lf=notes.some(n=>/fruit/i.test(n.lunch||"")),sal=notes.some(n=>/salad/i.test(n.lunch||"")),veg=notes.some(n=>/vegetable/i.test(n.lunch||""));
+  if(K_FRUIT.test(food))return sn?(lf?"Fruit with snack and lunch":"Fruit with snack"):lf?"Fruit with lunch":"";
+  if(K_AROMA.test(food))return "Cooked into lunches this week";
+  if(K_GREENS.test(food))return sal?"Salad with lunch":veg?"Side vegetable with lunch":"";
+  if(K_NOTVEG.test(food)||(kEntry(food,"")||{}).prod)return "";
+  return veg?"Side vegetable with lunch":sal?"Salad with lunch":""}
 function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[];if(!re)return out;
   const food=String(it.food||"").toLowerCase(),cook=K_COOK.test(food),tom=/^tomato/.test(food);
   // where it goes this week, from the menus
@@ -2362,7 +2373,7 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
   const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"short"});
   let use="";const u=kUses(it.food||it.name,days,it.farm)[0];
   if(u)use=u.meal==="lunch"?`${wd(u.d)} lunch, ${kDish(u.dish)}`:`${wd(u.d)} snack`;
-  if(!use&&(cook||tom||(kEntry(food,it.farm)||{}).cook))use="Cooked into lunch";
+  if(!use)use=kSideUse(food,kNotesFor([...new Set(days.map(o=>o.d.slice(0,7)).concat(monday.slice(0,7)))]));
   if(use)out.push(use);
   // where the children met it before is kept for later, and not shown for now, since a word in an observation is not
   // always the food itself
@@ -2373,6 +2384,23 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
     if(n)out.push(`${/garden/i.test(n.noticed||"")?"Garden":"Seen"} ${kShort(iso(new Date(n.at)))}`)}
   // one short note, where it goes this week first
   return out.slice(0,1)}
+// who answers how a food is served, the director, or a kitchen account once there is one
+const kCanServe=()=>isDirector()||!!(window.FP_KITCHEN&&window.FP_KITCHEN());
+function kServeText(it,monday){const sv=it.serve||{};const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
+  const how=sv.side&&sv.cooked?"Side dish and cooked in":sv.side?"Side dish":"Cooked in";const u=sv.cooked?kUses(it.food||it.name,days,it.farm).find(x=>x.meal==="lunch")||kUses(it.food||it.name,days,it.farm)[0]:null;
+  return u?`${how}, ${parseIso(u.d).toLocaleDateString("en-US",{weekday:"short"})} ${u.meal} ${kDish(u.dish)}`:how}
+// the order lines behind a food on the card, matched by farm and food in that week
+function kLinesFor(name,farm,food,monday){const out=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<monday||day>addDays(monday,6))continue;
+  (o.items||[]).forEach((x,i)=>{if(String(x.producer||"").trim()!==farm)return;const k=kName(x.item);if(k.name===name||(food&&k.food===food))out.push({o,i})})}return out}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-kserve]");if(!t)return;e.stopImmediatePropagation();if(!db||VIEW_AS)return;
+  const d=t.dataset,L=kLinesFor(d.kname,d.kfarm,d.kfood,d.kmon);if(!L.length){toast("The order line for this food was not found.");return}
+  const now=!(t.getAttribute("aria-pressed")==="true");t.setAttribute("aria-pressed",String(now));
+  const byOrder=new Map();for(const {o,i} of L){if(!byOrder.has(o.id))byOrder.set(o.id,{o,idx:[]});byOrder.get(o.id).idx.push(i)}
+  try{for(const {o,idx} of byOrder.values()){const items=(o.items||[]).map((x,i)=>idx.includes(i)?Object.assign({},x,{serve:Object.assign({side:false,cooked:false},x.serve||{},{[d.kserve]:now})}):x);await kSaveServe(o.id,items)}
+    kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y)}catch(err){toast((err&&err.message)||"Could not save that.")}},true);
+// the director writes the order line through the normal write path. A kitchen account uses its own narrow path.
+async function kSaveServe(id,items){if(isDirector()){await db.doc("grant/"+id).update({items});return}
+  for(const [i,x] of items.entries())if(x.serve)await window.FP_API("/api/kitchen-serve",{order:id,i,serve:x.serve})}
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
@@ -2380,8 +2408,11 @@ function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.week
   const farms=new Set(w.items.map(i=>i.farm)).size,foods=new Set(w.items.map(i=>i.food||i.name)).size;const first=w.items.map(i=>i.day).filter(Boolean).sort()[0];
   const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}):"";
   return `<details class="card kitchen" style="margin-top:14px" ${kOpen?"open":""}><summary><h3>Produce coming</h3><span class="cnt">${foods} food${foods===1?"":"s"} from ${farms} farm${farms===1?"":"s"}${when?", "+esc(when):""}</span></summary>
-    <div class="klist">${w.items.map(it=>{const n=kitchenNotes(it,monday)[0];const town=farmTown(it.farm);
-      return `<div class="kitem"><b>${esc(it.name)}</b> <span class="cnt">${esc(it.farm)}${town?", "+esc(town):""}</span>${n?` <span class="knote">${esc(n)}</span>`:""}</div>`}).join("")}</div>
+    <div class="klist">${w.items.map(it=>{const town=farmTown(it.farm),sv=it.serve,ask=kCanServe();
+      // once someone has said how it is served, that replaces TREE's guess for everyone
+      const n=sv&&(sv.side||sv.cooked)?kServeText(it,monday):kitchenNotes(it,monday)[0];
+      return `<div class="kitem"><b>${esc(it.name)}</b> <span class="cnt">${esc(it.farm)}${town?", "+esc(town):""}</span>${n?` <span class="knote${sv&&(sv.side||sv.cooked)?" kset":""}">${esc(n)}</span>`:""}
+        ${ask?`<span class="kchips">${[["side","Side dish"],["cooked","Cooked in"]].map(([k,l])=>`<button class="chip-btn" type="button" data-kserve="${k}" data-kname="${esc(it.name)}" data-kfarm="${esc(it.farm)}" data-kfood="${esc(it.food||"")}" data-kmon="${esc(monday)}" aria-pressed="${!!(sv&&sv[k])}">${l}</button>`).join("")}</span>`:""}</div>`}).join("")}</div>
     ${today?`<div class="actions" style="margin-top:6px"><button class="linkbtn" data-tview="bin">See the weekly bin</button></div>`:""}${extra||""}</details>`}
 function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";const b=binAll().find(x=>mondayOf(parseIso(x.date))===mondayOf(new Date()));if(!b)return"";
   const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
@@ -4455,7 +4486,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for Kitchen's Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
    family newsletter. The farms beside each dish are found the same way Coming for lunch and snack finds them. */
-function kName(item){let t=String(item||"").replace(/^\s*OG\b\s*/i,"").replace(/\([^)]*\)/g,"").replace(/\s+/g," ").trim();const [main,dash]=t.split(/\s+-\s+/);
+function kName(item){let t=String(item||"").replace(/^\s*OG\b\s*/i,"").replace(/\([^)]*\)/g,"").replace(/\b\d+\s*-?\s*(cts?|count|lbs?|oz|#)(?![a-z])/gi,"").replace(/\s+/g," ").replace(/\s+,/g,",").trim();const [main,dash]=t.split(/\s+-\s+/);
   const [food,...vars]=String(main||"").split(",").map(x=>x.trim()).filter(Boolean);if(!food)return {name:t,food:""};const v=vars.join(" ");
   const name=(v?v+" "+food.toLowerCase():food)+(dash?", "+dash.trim():"");return {name:name[0].toUpperCase()+name.slice(1),food:food.toLowerCase()}}
 const K_MASS=/^(basil|honey|lettuce|garlic|kale|chard|corn|rice|cheese|flour|spinach|cilantro|parsley|celery|broccoli|cauliflower|milk|butter|bread|squash|fruit|mint|dill|arugula|asparagus|yogurt|oats)$/i;
@@ -4466,7 +4497,7 @@ const kList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length
 // California farms and food hubs, and Central Milling, whose flour goes into the breads. It is never counted as a farm.
 const kMill=farm=>/^central milling/i.test(String(farm||"").trim());
 const kLocal=farm=>kMill(farm)||gKindOf({producer:farm})==="local";
-const kLine=(x,day)=>{if(!kLocal(x.producer))return null;if(/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim())||/\bbox\b/i.test(x.item||""))return null;const k=kName(x.item);if(!k.food)return null;return {day,name:k.name,food:k.food,farm:String(x.producer||"").trim()}};
+const kLine=(x,day)=>{if(!kLocal(x.producer))return null;const _sv=x.serve;if(/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim())||/\bbox\b/i.test(x.item||""))return null;const k=kName(x.item);if(!k.food)return null;return Object.assign({day,name:k.name,food:k.food,farm:String(x.producer||"").trim()},_sv?{serve:_sv}:{})};
 const kMenuDays=(from,to)=>{const out=[];for(let d=from;d<=to;d=addDays(d,1)){const w=parseIso(d).getDay();if(w===0||w===6)continue;const x=((menus.get(d.slice(0,7))||{}).days||{})[d];if(x&&!x.closed&&(x.lunch||x.am||x.pm))out.push({d,x})}return out};
 const kShortDish=t=>{t=String(t||"").trim();const w=t.split(/\s+/);return w.length>4?w.slice(0,4).join(" ").replace(/[,;]$/,"").replace(/\s+(and|with|or)$/,"")+"…":t};
 /* Staples used all month, such as cheese, beans and rice, flour and rice cakes, are listed once under Our staples rather
@@ -4498,13 +4529,21 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   // the weeks of the month, Monday to Friday
   const weeks=[];for(let m=mondayOf(parseIso(from));m<=to;m=addDays(m,7)){const days=kMenuDays(m<from?from:m,addDays(m,4)>to?to:addDays(m,4));if(!days.length)continue;
     const near=lines.filter(l=>l.day>=addDays(m,-kBack(l.food,l.farm))&&l.day<=addDays(m,4));const farms=new Map();
-    for(const l of near)if(!kIsStaple(l)&&kUses(l.food,days,l.farm).length){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
-    weeks.push({monday:m,lunches:days.map(o=>o.x.lunch).filter(has),snacks:[...new Set(days.flatMap(o=>[o.x.am,o.x.pm]).filter(has))],farms:[...farms.values()]})}
+    const sides=new Map(),wn=kNotesFor([...new Set(days.map(o=>o.d.slice(0,7)))]);
+    for(const l of near){if(kIsStaple(l))continue;
+      const sv=l.serve&&(l.serve.side||l.serve.cooked)?l.serve:null;
+      if(sv){if(sv.cooked){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
+        if(sv.side&&l.day>=addDays(m,-2)){const e=sides.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));sides.set(l.farm,e)}}
+      else if(kUses(l.food,days,l.farm).length){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
+      // fruit, salad and side vegetables from that week's orders, as TREE guesses until someone says
+      else if(l.day>=addDays(m,-2)&&/^(Fruit|Salad|Side)/.test(kSideUse(l.food,wn))){const e=sides.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));sides.set(l.farm,e)}}
+    weeks.push({monday:m,lunches:days.map(o=>o.x.lunch).filter(has),snacks:[...new Set(days.flatMap(o=>[o.x.am,o.x.pm]).filter(has))],farms:[...farms.values()],sides:[...sides.values()]})}
   const fm=new Map();for(const l of inMonth.concat(lines.filter(l=>l.day<from&&weeks[0]&&l.day>=addDays(weeks[0].monday,-6)))){if(!l.farm||kMill(l.farm))continue;const e=fm.get(gKey(l.farm))||{farm:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||"",n:0};e.n++;fm.set(gKey(l.farm),e)}
   const farms=[...fm.values()].sort((a,b)=>a.farm.localeCompare(b.farm));const sonoma=farms.filter(f=>gTownCounty(f.town)==="Sonoma").length;
   // the foods served most, with the farm each came from
   const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6)&&!kMill(l.farm)&&!kIsStaple(l))){const k=kLabel(l.food,l.farm);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
-  for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length;
+  // a fruit or salad served on the side counts as used on the days it was ordered for
+  const mNotes=kNotesFor([month]);for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length||(/^(Fruit|Salad|Side)/.test(kSideUse(e.food,mNotes))?e.lines:0);
   const top=[...foods.values()].sort((a,b)=>b.uses-a.uses||b.lines-a.lines).map(e=>{const f=[...e.farms.entries()].sort((a,b)=>b[1]-a[1])[0][0];return {food:e.food,farm:f,town:farmTown(f)||gProducer(f).town||""}});
   // foods the children also met in a bin or the garden that month
   const binMet=[],gardenMet=[];for(const e of foods.values()){const re=kFoodRe(e.food);if(!re)continue;
@@ -4519,7 +4558,11 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.lunches),"lunches made at school"]]));
-  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.map(f=>`${f.farm}${kMill(f.farm)?", "+(gProducer(f.farm).town||"Petaluma"):""}, ${kList([...f.foods])}`).join(". ")+".":"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.08,.36,.25,.31],muted:[0]}));
+  if(F.weeks.length){const fl=list=>list.map(f=>`${f.farm}, ${kList([...f.foods].slice(0,3))}`).join(". ")+".";
+    const n=kNotesFor([month]),sn=n.some(x=>/fruit/i.test(x.snack||"")),sal=n.some(x=>/salad/i.test(x.lunch||"")),veg=n.some(x=>/vegetable/i.test(x.lunch||""));
+    const note=[sn?"every snack comes with seasonal fruit":"",sal||veg?`every lunch with ${[sal?"a salad":"",veg?"seasonal vegetables":""].filter(Boolean).join(" and ")}`:""].filter(Boolean).join(", and ");
+    blocks.push(dText("Week by week",note?kCap(note)+".":" "));
+    blocks.push(dTable("",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),[w.farms.length?"In the dishes. "+fl(w.farms):"",w.sides.length?"On the side. "+fl(w.sides):""].filter(Boolean).join("\n")||"FEED's farms"]),{head:["Week of","Lunches","Snacks","Where the food came from"],widths:[.08,.31,.21,.4],muted:[0],noRule:true,small:true}))}
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.staples.length)blocks.push(dTable("Our staples",F.staples.map(x=>[kCap(x.food),[x.maker,x.town].filter(has).join(", ")]),{cols:2,widths:[.42,.58],muted:[1]}));
   if(has(kNote()))blocks.push(dText("",kNote()));
@@ -6424,7 +6467,7 @@ function displayAtoms(doc,p,A,s){
         push({h,draw(y){cells.forEach((c,i)=>{const x=m+i*(cwid+g);doc.setFillColor(...A.t);doc.roundedRect(x,y,cwid,h,9,9,"F");
           pfont(doc,"bs",c.vf);doc.setTextColor(...D_INK);doc.text(c.v,x+pad,y+pad+c.vf*.85);
           pfont(doc,"fr",lf);doc.setTextColor(...D_MUTED);c.ll.forEach((l,k)=>doc.text(l,x+pad,y+pad+Math.max(...cells.map(z=>z.vf))*1.05+5+k*llh+lf*.85))})}});gap(4)}}
-    else if(b.t==="table"){heading(b.label);
+    else if(b.t==="table"){if(!b.noRule)heading(b.label);else gap(4);
       // rows go down the first column and on into the next. A long table is set in bands, so a page break falls between bands.
       const rows=(b.rows||[]).filter(r=>r&&r.some(has)),cols=Math.max(1,Math.min(3,b.cols||1)),gut=cols>1?18:0,gw=(w-(cols-1)*gut)/cols;
       const nc=Math.max(1,...rows.map(r=>r.length),(b.head||[]).length);const wd=(b.widths&&b.widths.length===nc?b.widths:Array.from({length:nc},()=>1/nc)).map(f=>f*gw);
@@ -6520,7 +6563,7 @@ function displayFit(doc,p,A){
   let s=1,F=displayFlow(doc,p,A,1);
   if(F.pages.length===1){const room=DG.bottom-F.top1;for(const t of [1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
   // a sheet made to be one page, such as the farm sheet for families, may be set a little smaller still
-  else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73,.7,.67]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
+  else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73,.7,.67,.64]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
   return {s,F};
 }
 function drawDisplay(doc,p,pageAcc){
@@ -6791,7 +6834,7 @@ async function displayDocx(ch,p,D,A){
   const ac=hex(A.c),tn=hex(A.t),dp=hex(deep(A.c)),INKH="1C2A22",MUT="606E65",HAIRH="D0D9D3";
   const F=k=>PF.buf?PF.word[k]:"Arial";const heavy=k=>!PF.buf&&(k==="bs"||k==="fs");
   // a short page is set a little larger, the way the PDF does it, with room kept for Word's own spacing
-  let s=1;try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(t);const f=displayFit(t,p,A).s;s=f>1?1+(f-1)*.55:p.onePage?f*.95:1}catch(e){}
+  let s=1;try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(t);const f=displayFit(t,p,A).s;s=f>1?1+(f-1)*.55:p.onePage?f*.88:1}catch(e){}
   const raw=(text,k,pt,color)=>new TextRun({text,font:F(k),bold:heavy(k),color:color||INKH,size:Math.round(pt*2)});
   const run=(text,k,pt,color)=>raw(clean(text),k,pt,color);
   const para=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[kids]},o||{}));
@@ -6833,14 +6876,14 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="figures"){if(has(b.label))heading(b.label);const its=(b.items||[]).filter(x=>x&&has(String(x[0])));if(its.length){const g=120,cw=Math.floor((W-(its.length-1)*g)/its.length);const cols=[];its.forEach((x,i)=>{if(i)cols.push(g);cols.push(cw)});
       ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:cols,layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({cantSplit:true,children:its.flatMap(([v,l],i)=>[...(i?[new TableCell({width:{size:g,type:WidthType.DXA},borders:noB,children:[para([])]})]:[]),
         new TableCell({width:{size:cw,type:WidthType.DXA},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:noB,margins:{top:130,bottom:130,left:150,right:120},children:[para(run(String(v),"bs",its.length>5?15:17),{spacing:{after:50}}),para(run(l,"fr",8.6,MUT),{spacing:{after:0,line:230,lineRule:"atLeast"}})]})])})]}));ch.push(spacer(120))}}
-    else if(b.t==="table"){heading(b.label);
+    else if(b.t==="table"){if(!b.noRule)heading(b.label);
       const rows=(b.rows||[]).filter(r=>r&&r.some(has)),cols=Math.max(1,Math.min(3,b.cols||1)),gut=cols>1?300:0,gw=Math.floor((W-(cols-1)*gut)/cols);
       const nc=Math.max(1,...rows.map(r=>r.length),(b.head||[]).length);const fr=(b.widths&&b.widths.length===nc?b.widths:Array.from({length:nc},()=>1/nc));const wd=fr.map(f=>Math.floor(f*gw));wd[nc-1]+=gw-wd.reduce((a,c)=>a+c,0);
       const al=b.align||[];const pt=(b.big?18:b.small?9:10.2)*s;
       const R=Math.ceil(rows.length/cols),nb=cols>1?Math.max(1,Math.ceil(R/(b.band||16))):1,Bn=cols>1?Math.ceil(R/nb):R;
       const colW=[];for(let c=0;c<cols;c++){if(c)colW.push(gut);colW.push(...wd)}
       const cellB=(bottom)=>({top:none,left:none,right:none,bottom:bottom||{style:BorderStyle.SINGLE,size:2,color:HAIRH}});
-      const mk=(r,k)=>Array.from({length:nc},(_,j)=>new TableCell({width:{size:wd[j],type:WidthType.DXA},borders:cellB(k?{style:BorderStyle.SINGLE,size:6,color:ac}:null),margins:{top:40,bottom:40,left:j===0?0:80,right:80},children:[cellP(r?r[j]:"",k||(j===0&&b.bold0?"fs":"fr"),pt,k||(b.muted||[]).includes(j)?MUT:INKH,al[j])]}));
+      const mk=(r,k)=>Array.from({length:nc},(_,j)=>new TableCell({width:{size:wd[j],type:WidthType.DXA},borders:cellB(k?{style:BorderStyle.SINGLE,size:6,color:ac}:null),margins:{top:40,bottom:40,left:j===0?0:80,right:80},children:String(r?r[j]??"":"").split("\n").map(t=>cellP(t,k||(j===0&&b.bold0?"fs":"fr"),pt,k||(b.muted||[]).includes(j)?MUT:INKH,al[j]))}));
       const blank=()=>new TableCell({width:{size:gut,type:WidthType.DXA},borders:noB,children:[para([])]});
       let start=0,firstBand=true;
       while(start<rows.length){const chunk=rows.slice(start,start+(cols>1?Bn*cols:rows.length));start+=chunk.length;const per=cols>1?Math.ceil(chunk.length/cols):chunk.length;
