@@ -4939,7 +4939,7 @@ function renderKitchen(){
     <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. Sally's pumpkin focaccia"></label>
     <div class="hint">The notes print on the menus, and the recipe of the month on the farm sheet for families.</div></section>`;
   h+=`<section class="card">${staplesHtml().replace('<div class="binadd" id="staples-card">','<div id="staples-card">')}</section>`;
-  h+=`<section class="card"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|lunch","Lunch menu",true)}${printBtns("kmenu",month+"|snack","Snack menu",true)}${printBtns("farmsheet",month,"Farm sheet for families")}${printBtns("farmwall",month,"Classroom display")}</div>
+  h+=`<section class="card"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("kmenu",month+"|lunch","Lunch only")}${printBtns("kmenu",month+"|snack","Snacks only")}${printBtns("farmsheet",month,"Farm sheet for families")}${printBtns("farmwall",month,"Classroom display")}</div>
     <div class="hint">One page each, ready to attach to the Kitchen Digest.</div></section>`;
   $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
   if(kSel){const el=document.querySelector(`[data-kday="${kSel.day}"][data-kk="${kSel.k}"]`);if(el)el.classList.add("ksel")}}
@@ -5004,6 +5004,102 @@ async function kMenuDocx(month,kind){let D;try{D=await loadScript("https://cdn.j
   ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[cw,cw,cw,cw,cw],rows:[head,...rows]}));
   const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School & Farm",title:`${kind==="lunch"?"Lunch":"Snack"} menu ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:640,bottom:640,left:720,right:720}}},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(docx),`${kind==="lunch"?"Lunch":"Snack"} menu ${name}.docx`)}
+/* the month's menu as families read it, one landscape page in TREE's colours. Each school day shows its meals in order,
+   each with a thin coloured rule, lunch a little stronger, the notes and the recipe of the month in a band at the foot,
+   and the number of farms when the month has orders. Type is set as large as the page allows, and only a month that
+   cannot fit at a readable size moves its last weeks to a second page. */
+const KM_COL={am:[168,104,8],lunch:[47,90,67],pm:[36,91,120]};
+const KM_TINT={am:[251,240,220],lunch:[220,233,222],pm:[217,233,242]};
+const KM_LABEL={am:"Morning snack",lunch:"Lunch",pm:"Afternoon snack"};
+// a side reads after "with", so it starts small unless it is a name like "Mary's bread"
+const kSideText=t=>{t=String(t||"").trim();return /^[A-Z][a-z]/.test(t)&&!/^[A-Z][a-z]+'s\b/.test(t)?t[0].toLowerCase()+t.slice(1):t};
+function kMenuData(month,which){const mrec=menus.get(month)||{},x=d=>((mrec.days||{})[d])||{};const meals=which==="lunch"?["lunch"]:which==="snack"?["am","pm"]:["am","lunch","pm"];
+  const weeks=kWeeks(month).map(w=>[0,1,2,3,4].map(i=>{const d=addDays(w.m,i);if(d.slice(0,7)!==month)return null;const v=x(d);if(v.closed)return {d,closed:true,items:[]};
+    return {d,items:meals.filter(k=>!(k==="pm"&&i===0)).map(k=>({k,dish:String(v[k]||"").trim(),side:kSideText(v[k+"Side"])})).filter(o=>o.dish)}}));
+  return {weeks,meals,notes:mrec.notes||{},recipe:String(mrec.recipe||"").trim()}}
+async function kMonthMenu(month,which,word){which=which||"all";if(!isDirector())await kMonthFetch(month);
+  let farms=0;try{farms=farmMonthData(month).farms.length}catch(e){}
+  const D=kMenuData(month,which);const title=which==="lunch"?"Lunch menu":which==="snack"?"Snack menu":"Monthly menu";
+  const foot=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean);
+  const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:""].filter(Boolean);
+  if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
+async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
+  const W=792,H=612,m=30,gw=W-2*m,gap=5,cw=(gw-4*gap)/5,INK=[28,42,34],MUT=[96,110,101],MOSS=[47,90,67],CREAM=[250,246,234],SOFT=[234,242,236];
+  const name=MENU_MONTH(month),tx=15,tw=cw-tx-7,numW=17;
+  // wrap a dish, the first line of a cell leaves room for the day number
+  const wrap=(t,w1)=>{t=clean(t);const f=doc.splitTextToSize(t,w1);if(f.length<2||w1===tw)return f;const rest=t.slice(f[0].length).trim();return [f[0],...doc.splitTextToSize(rest,tw)]};
+  const header=(small)=>{const y=m,hh=small?30:50;doc.setFillColor(...CREAM);doc.roundedRect(m,y,gw,hh,9,9,"F");
+    if(small){pfont(doc,"bs",13);doc.setTextColor(...MOSS);doc.text(`${name} ${title.toLowerCase()}, continued`,m+16,y+19.5);return y+hh+6}
+    pfont(doc,"bs",25);doc.setTextColor(...INK);doc.text(name,m+16,y+34);const nw=doc.getTextWidth(name);
+    pfont(doc,"fs",12.5);doc.setTextColor(...MOSS);doc.text(title,m+16+nw+12,y+34);
+    if(PRINT.schoolDocs){pfont(doc,"fs",8.5);doc.setTextColor(...MOSS);doc.text("FULTON COMMUNITY SCHOOL & FARM",m+gw-16,y+18,{align:"right",charSpace:.6})}
+    const ly=PRINT.schoolDocs?y+36:y+29;let lx=m+gw-16;pfont(doc,"fr",9);(D.meals.length>1?[...D.meals].reverse():[]).forEach(k=>{const t=KM_LABEL[k];lx-=doc.getTextWidth(t);doc.setTextColor(...INK);doc.text(t,lx,ly);lx-=8;doc.setFillColor(...KM_COL[k]);doc.roundedRect(lx,ly-8,3,10,1,1,"F");lx-=16});
+    return y+hh+6};
+  const fFs=9.2,lh=fFs*1.32;const fl=[];foot.forEach(t=>{pfont(doc,"fr",fFs);doc.splitTextToSize(clean(t),gw-28).forEach(l=>fl.push(["fr",l]))});extra.forEach(t=>{pfont(doc,"fs",fFs);doc.splitTextToSize(clean(t),gw-28).forEach(l=>fl.push(["fs",l]))});
+  const fh=fl.length?fl.length*lh+12:0;
+  const dayHead=y=>{pfont(doc,"fs",8.5);doc.setTextColor(...MOSS);["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach((d,i)=>doc.text(d.toUpperCase(),m+i*(cw+gap)+tx-6,y+8,{charSpace:.8}));return y+13};
+  // each meal set in its cell, measured and drawn by the same steps
+  const layout=(c,fs,ig)=>{ig=ig||5;const out=[];let h=7+fs*.8,first=true;for(const o of c.items){const lunch=o.k==="lunch";pfont(doc,lunch?"fs":"fr",lunch?fs+.5:fs);const ls=wrap(o.dish,first?tw-numW:tw);first=false;
+      let sl=[];if(o.side){pfont(doc,"fr",fs-1.3);sl=doc.splitTextToSize(clean("with "+o.side),tw)}out.push({o,ls,sl,y:h});h+=ls.length*fs*1.2+sl.length*(fs-1.3)*1.18+ig}return {out,h:h-ig+fs*.3+6}};
+  const cellH=(c,fs)=>!c||c.closed?0:layout(c,fs).h;
+  const plan=(weeks,top,bottom,min)=>{const avail=bottom-top-gap*(weeks.length-1);for(let fs=D.meals.length>1?11:13;fs>=min;fs-=.1){const need=Math.max(...weeks.map(r=>Math.max(...r.map(c=>cellH(c,fs)))));const rh=avail/weeks.length;
+    // spare room in the fullest day opens the space between meals a little
+    if(need<=rh)return {fs,rh,ig:Math.min(9,5+(rh-need)/3)}}return null};
+  const drawWeeks=(weeks,top,P)=>{weeks.forEach((r,ri)=>{const yy=top+ri*(P.rh+gap);r.forEach((c,i)=>{const x=m+i*(cw+gap);
+    if(!c)return;
+    doc.setFillColor(...(c.closed?SOFT:[255,255,255]));doc.setDrawColor(214,222,212);doc.setLineWidth(.7);doc.roundedRect(x,yy,cw,P.rh,7,7,c.closed?"F":"FD");
+    pfont(doc,"bs",10.5);doc.setTextColor(...(c.closed?MUT:MOSS));doc.text(String(Number(c.d.slice(8))),x+cw-8,yy+7+P.fs*.8,{align:"right"});
+    if(c.closed){pfont(doc,"bs",12);doc.setTextColor(...MUT);doc.text("No School",x+cw/2,yy+P.rh/2+4,{align:"center"});return}
+    const L=layout(c,P.fs,P.ig),fs=P.fs;for(const it of L.out){const lunch=it.o.k==="lunch";let ty=yy+it.y;const bh=it.ls.length*fs*1.2+it.sl.length*(fs-1.3)*1.18-fs*.2;
+      doc.setFillColor(...KM_COL[it.o.k]);doc.roundedRect(x+8,ty-fs*.82,lunch?3:2.4,bh,1,1,"F");
+      pfont(doc,lunch?"fs":"fr",lunch?fs+.5:fs);doc.setTextColor(...INK);it.ls.forEach((l,j)=>doc.text(l,x+tx,ty+j*fs*1.2));ty+=it.ls.length*fs*1.2;
+      if(it.sl.length){pfont(doc,"fr",fs-1.3);doc.setTextColor(...MUT);it.sl.forEach((l,j)=>doc.text(l,x+tx,ty+j*(fs-1.3)*1.18-fs*.2))}}})})};
+  const drawFoot=()=>{if(!fl.length)return;const y=H-m-fh;doc.setFillColor(...SOFT);doc.roundedRect(m,y,gw,fh,9,9,"F");let ty=y+6+fFs;
+    fl.forEach(([k,l])=>{pfont(doc,k,fFs);doc.setTextColor(...(k==="fs"?MOSS:INK));doc.text(l,m+14,ty);ty+=lh})};
+  const top=dayHead(header(false)),bottom=H-m-(fh?fh+6:0);const P=plan(D.weeks,top,bottom,9);
+  if(P){drawWeeks(D.weeks,top,P);drawFoot()}
+  else{// two pages, the first three weeks then the rest, both at one size
+    const a=D.weeks.slice(0,3),b=D.weeks.slice(3);doc.addPage("letter","landscape");const top2=dayHead(header(true));doc.setPage(1);
+    const Pa=plan(a,top,H-m,8.5),Pb=plan(b,top2,bottom,8.5);const fs=Math.min(Pa?Pa.fs:8.5,Pb?Pb.fs:8.5);
+    drawWeeks(a,top,{fs,rh:(H-m-top-gap*(a.length-1))/a.length});doc.setPage(2);drawWeeks(b,top2,{fs,rh:(bottom-top2-gap*(b.length-1))/Math.max(1,b.length)});drawFoot()}
+  await saveFile(doc.output("blob"),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.pdf`)}
+async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,PageOrientation,HeightRule}=X;
+  const F=k=>PF.buf?PF.word[k]:"Arial";const run=(t,k,pt,c,o)=>new TextRun(Object.assign({text:clean(t),font:F(k),size:Math.round(pt*2),color:c||"1C2A22",bold:(k==="bs"||k==="fs")&&!PF.buf},o||{}));
+  const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();const name=MENU_MONTH(month),W=14400,gapW=120,cw=Math.floor((W-4*gapW)/5);
+  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none};const line={style:BorderStyle.SINGLE,size:4,color:"D6DED4"};
+  const ch=[];
+  const hdr=[];if(PRINT.schoolDocs)hdr.push(new Paragraph({children:[run("FULTON COMMUNITY SCHOOL & FARM","fs",9,"2F5A43",{characterSpacing:12})]}));
+  hdr.push(new Paragraph({children:[run(name,"bs",26),run("   "+title,"fs",13,"2F5A43")]}));
+  // a coloured bar is a narrow shaded cell, which Word and LibreOffice both draw clearly
+  const bar=(k,w)=>new TableCell({width:{size:w,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:hx(KM_COL[k]),color:"auto"},children:[new Paragraph({children:[run(" ","fr",4)]})]});
+  const plain=(w,kids)=>new TableCell({width:{size:w,type:WidthType.DXA},borders:noB,margins:{left:110,right:40},children:kids});
+  const legW=[],legC=[];if(D.meals.length>1)D.meals.forEach((k,i)=>{if(i){legW.push(260);legC.push(plain(260,[new Paragraph({})]))}const lw=KM_LABEL[k].length*105+200;legW.push(50,lw);legC.push(bar(k,50),plain(lw,[new Paragraph({children:[run(KM_LABEL[k],"fr",9.5)]})]))});
+  if(legC.length){hdr.push(new Paragraph({spacing:{after:0,line:120},children:[run(" ","fr",4)]}));
+  hdr.push(new Table({width:{size:legW.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:legW,borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows:[new TableRow({height:{value:250,rule:HeightRule.EXACT},children:legC})]}))}hdr.push(new Paragraph({spacing:{after:0,line:120},children:[run(" ","fr",4)]}));
+  ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:"FAF6EA",color:"auto"},margins:{top:100,bottom:60,left:240,right:240},children:hdr})]})]}));
+  ch.push(new Paragraph({spacing:{after:60},children:[]}));
+  const colW=[];for(let i=0;i<5;i++){if(i)colW.push(gapW);colW.push(cw)}
+  const gapCell=()=>new TableCell({width:{size:gapW,type:WidthType.DXA},borders:noB,children:[new Paragraph({})]});
+  const head=new TableRow({tableHeader:true,children:["Monday","Tuesday","Wednesday","Thursday","Friday"].flatMap((d,i)=>[...(i?[gapCell()]:[]),new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[new Paragraph({children:[run(d.toUpperCase(),"fs",8.5,"2F5A43",{characterSpacing:16})]})]})])});
+  const cell=c=>{if(!c)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[new Paragraph({})]});
+    const kids=[new Paragraph({alignment:AlignmentType.RIGHT,spacing:{after:0,line:200,lineRule:"exact"},children:[run(String(Number(c.d.slice(8))),"bs",9.5,c.closed?"606E65":"2F5A43")]})];
+    if(c.closed)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:200},children:[run("No School","bs",11.5,"606E65")]}));
+    else if(c.items.length){const iw=cw-200,bw=55,rows=[];c.items.forEach((o,j)=>{const lunch=o.k==="lunch";
+        if(j)rows.push(new TableRow({height:{value:60,rule:HeightRule.EXACT},children:[plain(bw,[new Paragraph({})]),plain(iw-bw,[new Paragraph({})])]}));
+        const t=[new Paragraph({children:[run(o.dish,lunch?"fs":"fr",lunch?10:9.5)]})];if(o.side)t.push(new Paragraph({children:[run("with "+o.side,"fr",8,"606E65")]}));
+        rows.push(new TableRow({children:[bar(o.k,bw),plain(iw-bw,t)]}))});
+      kids.push(new Table({width:{size:iw,type:WidthType.DXA},columnWidths:[bw,iw-bw],borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows}));kids.push(new Paragraph({spacing:{after:0,line:120},children:[run(" ","fr",4)]}))}
+    return new TableCell({width:{size:cw,type:WidthType.DXA},borders:{top:line,bottom:line,left:line,right:line},shading:c.closed?{type:ShadingType.CLEAR,fill:"EAF2EC",color:"auto"}:undefined,margins:{top:50,bottom:30,left:90,right:90},children:kids})};
+  const rows=D.weeks.map(r=>new TableRow({cantSplit:true,height:{value:1150,rule:HeightRule.ATLEAST},children:r.flatMap((c,i)=>[...(i?[gapCell()]:[]),cell(c)])}));
+  ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:colW,borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:{style:BorderStyle.SINGLE,size:24,color:"FFFFFF"},insideVertical:none},rows:[head,...rows]}));
+  if(foot.length||extra.length){ch.push(new Paragraph({spacing:{after:60},children:[]}));
+    ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:"EAF2EC",color:"auto"},margins:{top:100,bottom:100,left:200,right:200},
+      children:[...foot.map(t=>new Paragraph({spacing:{after:20},children:[run(t,"fr",9.5)]})),...extra.map(t=>new Paragraph({spacing:{after:20},children:[run(t,"fs",9.5,"2F5A43")]}))]})]})]}))}
+  ch.push(new Paragraph({spacing:{before:0,after:0,line:40,lineRule:"exact"},children:[run(" ","fr",2)]}));
+  const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School & Farm",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await Packer.toBlob(docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
 /* ---------- Staff birthdays ----------
    The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
    under Birthdays every year, and so on Today. Like the children's birthdays, they stay out of the newsletter. */
@@ -7308,7 +7404,7 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
-  if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");if(word)await kMenuDocx(m,k);else await kMenuPdf(m,k);return true}
+  if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");await kMonthMenu(m,k,word);return true}
   if((kind==="farmsheet"||kind==="farmwall")&&!isDirector())await kMonthFetch(t.dataset.id);
   if(kind==="farmsheet"){await out([farmSheetDoc(t.dataset.id)],`What we ate ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="farmwall"){await out([farmWallMonth(t.dataset.id)],`Where our food came from ${MENU_MONTH(t.dataset.id)}`);return true}
