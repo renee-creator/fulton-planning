@@ -3882,6 +3882,20 @@ const gOrganic=x=>/^\s*OG\b/.test(x.item||"")||!!gProducer(x.producer).organic;
 // the farms behind each bin, from the weekly lists TREE keeps
 function gBinFarms(from,to){const m=new Map();for(const b of binAll())if(b.date>=from&&b.date<=to)for(const it of b.items||[])for(const f of it.farms||[]){const k=gKey(f);const e=m.get(k)||{name:f,town:farmTown(f),items:new Set(),weeks:new Set()};e.items.add(binName(it));e.weeks.add(b.date);m.set(k,e)}return [...m.values()].sort((a,b)=>b.weeks.size-a.weeks.size||a.name.localeCompare(b.name))}
 // hands-on food education, found by words in the educators' own observations and plans
+// the agreement's eight goals and planned activities, from the scope of work (draft of March 20, 2025), for reference
+const G_GOALS=[
+  {n:1,goal:"Increase procurement of California grown or produced, whole or minimally processed food for ECE meals and snacks.",plan:"Purchase California grown or produced food for the daily lunch program, with meals made from scratch on site. The nutrition coordinator's hours allow time to procure and prepare food from scratch rather than pre-prepared offerings.",by:"the kitchen",where:"California food bought"},
+  {n:2,goal:"Increase procurement from small to midsize food producers in California.",plan:"Purchase wholesale produce from a local aggregator for the lunch program, including FEED Sonoma, and a CSA box subscription for each classroom to prepare.",by:"the kitchen",where:"Producers and Farms behind the FEED bins"},
+  {n:3,goal:"Increase procurement from veteran, socially disadvantaged and limited resource food producers in California.",plan:"The fruit for snacks includes fruit from farmers with BIPOC and female representation, including Earthseed Farm in Sebastopol and L&N Produce Stand in Santa Rosa.",by:"the kitchen",where:"Producers"},
+  {n:4,goal:"Increase procurement from California producers using climate smart practices or production systems, such as certified organic or transitioning to organic.",plan:"All items are certified organic or chosen from local growers using sustainable practices such as no till and rotational farming, including Singing Frogs Farm and Green Star Farm in Sebastopol.",by:"the kitchen",where:"Producers"},
+  {n:5,goal:"Increase hands-on food education that complements the meal program's California food procurement.",plan:"Children gather, wash and deliver the fruit for snack to each classroom as part of daily engagement.",by:"an educator",where:"Hands-on food education"},
+  {n:6,goal:"Increase hands-on food education that is standards aligned.",plan:"Children prepare snacks and fruit through hands-on cooking with a qualified educator, planned and reviewed to meet the California Preschool Learning Foundations and Quality Counts guidelines, daily.",by:"an educator",where:"Hands-on food education"},
+  {n:7,goal:"Increase hands-on food education led by educators with a Child Development Teacher Permit.",plan:"Daily small groups in the classroom and garden, planting, harvesting, watering and measuring, with observation, documentation and reflection, led by educators at the Teacher Permit level or higher, who complete the curriculum plans and evaluation.",by:"an educator",where:"Hands-on food education"},
+  {n:8,goal:"Increase hands-on food education that is culturally relevant.",plan:"A quarterly family meeting to understand the cultural dynamics of families, families invited to grow or bring foods that are culturally relevant to them, and a weekly parent participation opportunity.",by:"an educator",where:"Families"}];
+function gGoalsHtml(open){return `<details class="card" ${open?"open":""} style="margin-top:14px"><summary class="secthead" style="cursor:pointer;list-style:none"><h3 style="font-size:17px;margin:0">The grant's eight objectives</h3><span class="cnt">Children's Sustainability Project · Track 3, Farm to Early Care and Education</span></summary>
+  <div class="cnt" style="margin:8px 0">From the scope of work in the agreement. Each shows the planned activity, who carries it out, and where this page gathers its evidence.</div>
+  <div class="tlist">${G_GOALS.map(g=>`<div class="prow" style="align-items:flex-start"><div style="min-width:0"><b>${g.n}. ${esc(g.goal)}</b><div class="cnt" style="margin-top:4px">${esc(g.plan)}</div><div class="cnt" style="margin-top:4px">${esc(g.by)} · Evidence under ${esc(g.where)}</div></div></div>`).join("")}</div>
+  <div class="hint">Taken from the draft scope of work of March 2025. If CDFA's executed agreement worded any of these differently, the agreement governs.</div></details>`}
 const G_OBJ=[
   {n:5,label:"Children gather, wash and deliver fruit for snack",re:/\b(wash|washed|washing|rinse|rins|deliver|carry|carried|gather|gathered|fruit|snack)\w*/i},
   {n:6,label:"Children prepare snacks and food with an educator",re:/\b(prepar|cook|bak|roast|peel|scrub|chop|cut|slic|tear|tore|mix|stir|spread|squeez|taste|tasting|tasted|recipe|kitchen)\w*/i},
@@ -3907,6 +3921,7 @@ function renderGrant(){
     <div class="filters" role="group" aria-label="Whole grant or a year"><button class="pill" aria-pressed="${q==="all"}" data-gq="all">Whole grant</button>${ys.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(periodName(x))}</button>`).join("")}</div>
     <div class="filters" role="group" aria-label="Quarter" style="margin-top:6px">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div>
     ${isQuarter(q)?"":`<div class="cnt" style="margin-top:8px">${esc(periodName(q))}</div>`}</div>`;
+  h+=gGoalsHtml(false);
 
   // objectives 1 to 4, what was bought and from whom
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">California food bought, objectives 1 to 4</h3><span class="cnt">${lines.length} line${lines.length===1?"":"s"}</span></div>
@@ -4032,6 +4047,7 @@ function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end
 function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
   const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0};e.total+=Number(x.total)||0;prods.set(k,e)}
   const blocks=[];
+  if(q==="all")blocks.push(dList("The grant's eight objectives",G_GOALS.map(g=>`${g.n}. ${g.goal}`)));
   blocks.push(dList("California food bought",[`For meals and snacks, ${gMoney(sum(lines.filter(x=>x.use!=="education")))}`,`For student education, ${gMoney(sum(lines.filter(x=>x.use==="education")))}`,`Certified organic, ${gMoney(sum(lines.filter(gOrganic)))}`,`From ${prods.size} producer${prods.size===1?"":"s"}`]));
   if(prods.size)blocks.push(dList("Producers",[...prods.values()].sort((a,b)=>b.total-a.total).map(e=>`${e.p.name}${e.p.town?", "+e.p.town:""}, ${gMoney(e.total)}`)));
   const bf=gBinFarms(from,to);if(bf.length)blocks.push(dList("Farms behind the FEED bins",bf.map(f=>`${f.name}${f.town?", "+f.town:""}`)));

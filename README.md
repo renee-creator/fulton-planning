@@ -53,6 +53,10 @@ Documentation, then Farm to School, for the director only. The page shows one qu
 - **Families, objective 8.** A short log of family meetings, parent participation and foods families brought.
 - **Quarterly check-in.** Claude drafts progress, successes and challenges from only the figures and educators' words on the page, and the director rewrites it. Quarter summary prints as a PDF and a Word file.
 
+## The grant's eight objectives
+
+The Farm to School page opens with the agreement's eight objectives from the scope of work (draft of March 20, 2025), folded under its heading. Each gives the planned activity, who carries it out, and where on the page its evidence is gathered. The whole grant summary prints them first.
+
 ## Local food, how far it travels and where the dollars go
 
 On the Farm to School page, each purchase is one of three kinds. California farms and food hubs are what the grant counts. A specialty supplier, such as Central Milling for organic whole wheat flour, is chosen for quality and kept outside the California totals. A large retailer, such as Trader Joe's or Costco, is recognised by name, or chosen when a purchase is added by hand. How far our food travels gives straight line miles from each farm's town to the school, weighted by what was spent, the share from Sonoma County and within 50 miles, and dollars by county. A FEED bin counts the farms FEED listed for it that week. Where the food dollars went shows California farms and food hubs, Sonoma County, specialty suppliers and large retailers, with the share at large retailers by quarter once any are kept, and the statewide context from the 2026 California Farm to School Evaluation, cited as context and never as a measure of this school's spending.
