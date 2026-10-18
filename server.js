@@ -28,9 +28,9 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
-const DIRECTOR_KINDS = ['newsletters'];
+const DIRECTOR_KINDS = ['newsletters', 'grant'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
@@ -229,7 +229,7 @@ function conferenceEvents(from, to) {
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -266,7 +266,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -298,13 +298,30 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
     try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[m[1]].set(m[2], { doc, sha: f.sha, path: f.path }); noteChange(m[1], m[2]); n++; } catch (e) {}
   }
   if (n) log('Read', n, 'records again that changed while the server was starting');
+}
+
+/* ---------- FEED orders, for the Farm to School grant ----------
+   Each confirmation becomes a record under grant/, one per order, with every item, its producer, unit, price and
+   quantity. Bins are counted as food for student education and everything else as food for meals, which the director
+   can change line by line. An order kept again keeps those choices. */
+const { parseOrder } = require('./feed-order.js');
+function keepOrder(raw, by) {
+  const o = parseOrder(raw);
+  if (!o.order || !o.items.length) return { error: 'This does not look like a FEED order confirmation. No order number or items were found.' };
+  const id = 'order-' + o.order; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
+  const uses = new Map(((was && was.items) || []).map(x => [x.item + '|' + x.unit + '|' + x.producer, x.use]));
+  o.items = o.items.map(x => Object.assign(x, { use: uses.get(x.item + '|' + x.unit + '|' + x.producer) || (/FEED Bin/i.test(x.item) ? 'education' : 'meals') }));
+  const doc = Object.assign({ id, kind: 'order' }, o, { keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by });
+  store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
+  noteChange('grant', id); scheduleSave('grant', id);
+  return { doc };
 }
 
 /* ---------- DRDP (2025) definitions and level descriptors ----------
@@ -524,6 +541,15 @@ async function handle(req, res) {
     if (!store.ready) await loadAll();
     await kaymbuInbox.handle(req, res, url, b, (status, obj) => json(req, res, status, obj)); return;
   }
+  if (path === '/inbound/feed-order') {
+    let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
+    const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
+    if (!key || cleanKey(b.key) !== key) { log('FEED order refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
+    if (!/feedsonoma\.com/i.test(String(b.from || ''))) { err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
+    if (!store.ready) await loadAll();
+    const r = keepOrder(b.html || b.text || '', 'mailbox'); if (r.error) { err(req, res, 400, r.error); return; }
+    log('FEED order kept from the mailbox', r.doc.order, r.doc.items.length + ' items'); json(req, res, 200, { ok: true, order: r.doc.order }); return;
+  }
   const origin = String(req.headers.origin || '').replace(/\/+$/, '').toLowerCase();
   if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
 
@@ -595,7 +621,7 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
-    if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log('Newsletter change refused for', me.name, id); err(req, res, 403, 'Only the director makes the family newsletter.'); return; }
+    if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
       const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
@@ -742,6 +768,11 @@ async function handle(req, res) {
       json(req, res, 200, { events: feedCache.data, checkedAt: new Date(feedCache.at).toISOString() });
     } catch (e) { err(req, res, 502, e.message); }
     return;
+  }
+  if (path === '/api/grant/order') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps the grant records.'); return; }
+    const r = keepOrder(body.raw || '', me.name); if (r.error) { err(req, res, 400, r.error); return; }
+    log('FEED order kept by', me.name, r.doc.order); json(req, res, 200, { ok: true, doc: r.doc }); return;
   }
   // the weekly FEED bin, read from FEED's page and kept by week
   if (await feedBin.handle(path, { name: me.name, director: isDirector(me.name) }, body, (status, obj) => json(req, res, status, obj))) return;
