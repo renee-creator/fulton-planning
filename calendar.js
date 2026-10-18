@@ -291,7 +291,7 @@ async function eventsFor(from, to) {
 }
 
 
-const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }];
+const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }];
 // the school calendar that is the family conference sign-up sheet, if there is one
 function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
@@ -314,7 +314,7 @@ async function handle(path, me, body, reply) {
       if (!DATE_RE.test(from || '') || !DATE_RE.test(to || '') || !Core.validDate(from) || !Core.validDate(to) || to < from || Core.dayNum(to) - Core.dayNum(from) > 100) { reply(400, { error: 'That date range is not valid.' }); return true; }
       const ev = await eventsFor(from, to);
       const who = me.shared ? text(body.who, 40) : '';
-      const stamp = [BOOT_ID, rev, feedRev, from, to, schoolToday(), crypto.createHash('sha1').update(who).digest('hex').slice(0, 8)].join('.');
+      const stamp = [BOOT_ID, rev, feedRev, opts.extraRev ? opts.extraRev() : 0, from, to, schoolToday(), crypto.createHash('sha1').update(who).digest('hex').slice(0, 8)].join('.');
       const base = { stamp, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, calendarStatus: ev.status };
       if (body.stamp === stamp) { reply(200, Object.assign(base, { unchanged: true })); return true; }
       reply(200, Object.assign(base, { me: me.name, director: me.director, today: schoolToday(), settings: settingsFor(me), bookings: core.view(from, to), events: ev.events, shared: me.shared || undefined, mine: me.shared ? (who ? core.mine(me.name, 8, who) : []) : core.mine(me.name, 8) }));

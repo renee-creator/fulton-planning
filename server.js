@@ -28,7 +28,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
@@ -186,7 +186,7 @@ function readPhoto(sha) {
   return job;
 }
 // the calendar keeps its own part of the records, under calendar/
-const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents });
+const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents, extraRev: () => rev });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
 function conferenceEvents(from, to) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
@@ -211,9 +211,19 @@ function conferenceEvents(from, to) {
       events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
     }
   }
-  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
+  // the month's snack and lunch, from the menus the director adds in TREE
+  for (const [, r] of store.recs.menus) {
+    const m = r.doc; if (r.deleted || !m || !m.days) continue;
+    for (const [day, d] of Object.entries(m.days)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
+      const snack = [d.am, d.pm].filter(x => x && String(x).trim());
+      if (snack.length) events.push({ id: 'tmenu.' + day + '.s', cal: 'tmenu', title: 'Snack, ' + snack.join(', then '), desc: [d.am ? 'Morning, ' + d.am + '.' : '', d.pm ? 'Afternoon, ' + d.pm + '.' : '', (m.notes && m.notes.snack) || ''].filter(Boolean).join(' '), allDay: true, start: day, end: day });
+      if (d.lunch && String(d.lunch).trim()) events.push({ id: 'tmenu.' + day + '.l', cal: 'tmenu', title: 'Lunch, ' + d.lunch, desc: (m.notes && m.notes.lunch) || '', allDay: true, start: day, end: day });
+    }
+  }
+  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -250,7 +260,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -282,7 +292,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -589,6 +599,8 @@ async function handle(req, res) {
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
     }
     if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    // the monthly snack and lunch menus are the director's to add and change
+    if (kind === 'menus' && !isDirector(me.name)) { err(req, res, 403, 'Only the director adds the monthly menus.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
     // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
