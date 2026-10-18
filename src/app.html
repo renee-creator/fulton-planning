@@ -560,7 +560,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .menutab{width:100%;border-collapse:collapse;font-size:14px}.menutab th{text-align:left;font-weight:600;padding:6px;font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .menutab td{padding:3px 4px;border-top:1px solid var(--line,#e4e2da)}.menutab input[type=text]{width:100%;min-width:140px}.menutab tr.closed td{opacity:.55}
 .gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
-.klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 18px}.kitem{padding:7px 0;border-top:1px solid var(--line)}.kitem b{font-size:15px}.knote{font-size:12.5px;color:var(--muted);margin-top:2px}
+.kitchen>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.kitchen>summary::-webkit-details-marker{display:none}
+.kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
+.klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}
+/* on a touch screen a text link gets a taller area to tap, without moving anything around it */
+@media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}}
 .setjump{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 14px;font-size:14px}.setjump .linkbtn{padding:2px 0}
 #main>section.card[id]{scroll-margin-top:96px}
 /* the Farm to School page, key figures first, then a card for each section with its main figure on the line that opens it */
@@ -2266,6 +2270,26 @@ function waitingHtml(list){
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
 // on Monday, Tuesday and Wednesday the week's bin is a tap away
+/* A plan from the weekly bin, for the bin's week and the class chosen on the page. It begins with what came in the bin,
+   the farms it came from, and the ideas the class chose from the idea bank, and it keeps the bin beside it. */
+function binPlanText(b,room){const held=binHeld(b,room),ideas=binIdeas().filter(i=>held[i.id]);
+  const items=(b.items||[]).map(it=>binName(it)+((it.farms||[]).length?" from "+it.farms.map(farmWithTown).join(" or "):""));
+  const qs=ideas.filter(i=>i.kind!=="prep").map(i=>i.text.trim()),ps=ideas.filter(i=>i.kind==="prep").map(i=>i.text.trim());
+  return [`The FEED bin of ${longDate(b.date)}. ${items.join(". ")}.`,qs.length?`Questions we are holding. ${qs.join(" ")}`:"",ps.length?`Ways we will prepare it. ${ps.join(" ")}`:""].filter(Boolean).join("\n")}
+function planFromBin(b,room,kind){const wk=mondayOf(parseIso(b.date)),text=binPlanText(b,room);
+  if(kind==="classroom"){let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===wk&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    const made=!cp;if(made)cp=newPlan("classroom",{classroom:room,weekOf:wk});cp.bin=b.id;
+    const cur=String(cp.fields.observation||"").trim();if(!cur.includes(text.split("\n")[0]))cp.fields.observation=cur?cur+"\n\n"+text:text;
+    week=wk;plans.set(cp.id,cp);persist(cp);currentId=cp.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
+    toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(wk)}, beginning with the bin.`:`The bin is added to the ${room} Classroom Plan for the week of ${fmtDate(wk)}.`);return}
+  if(needName())return;
+  const np=newPlan("individual",{classroom:room,weekOf:wk,bin:b.id,source:{kind:"bin",id:b.id,at:Date.now()}});np.educator=me()||np.educator||"";np.fields.observation=text;
+  week=wk;plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
+  toast("The plan begins with the bin. Write the area and your intent in your own words.")}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-binplan],[data-binplango],[data-pbin]");if(!t)return;e.stopImmediatePropagation();
+  if(t.dataset.pbin){binWeek=t.dataset.pbin;LS.set("fps.binweek",binWeek);goView("bin");return}
+  if(t.dataset.binplan){const el=document.getElementById("binplan");if(el)el.innerHTML=`<span class="confirm">A plan for ${esc(binRoomNow())} class <button class="btn small" data-binplango="${esc(t.dataset.binplan)}|individual">Individual plan</button><button class="btn small ghost" data-binplango="${esc(t.dataset.binplan)}|classroom">Classroom plan</button></span>`;return}
+  const [id,kind]=t.dataset.binplango.split("|");const b=binAll().find(x=>x.id===id);if(b)planFromBin(b,binRoomNow(),kind)},true);
 /* ---------- Coming for lunch and snack ----------
    The kitchen's order for the week, read by the server from the orders kept for the grant, with only the food, its farm
    and the day it comes. The food is for lunch and snacks, and the tasting happens at the meal. Each item says where it
@@ -2314,26 +2338,36 @@ function kUses(food,days,farm){const re=kFoodRe(food),e=kEntry(food,farm),fruit=
     else if(fruit&&sn.some(t=>/fruit/i.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>/fruit/i.test(t))})}
   return out}
 const kShort=d=>parseIso(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
-const kDish=t=>{t=String(t||"").trim();t=t.length>48?t.slice(0,46).replace(/\s+\S*$/,"")+"…":t;return t?t[0].toLowerCase()+t.slice(1):""};
+const kDish=t=>{t=String(t||"").trim();return t?t[0].toLowerCase()+t.slice(1):""};
+const K_SHOW_MET=false;
 function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[];if(!re)return out;
   const food=String(it.food||"").toLowerCase(),cook=K_COOK.test(food),tom=/^tomato/.test(food);
   // where it goes this week, from the menus
   const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
-  const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long"});
+  const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"short"});
   let use="";const u=kUses(it.food||it.name,days,it.farm)[0];
   if(u)use=u.meal==="lunch"?`${wd(u.d)} lunch, ${kDish(u.dish)}`:`${wd(u.d)} snack`;
-  if(!use&&(cook||tom||(kEntry(food,it.farm)||{}).cook))use="Cooked into lunches this week";
+  if(!use&&(cook||tom||(kEntry(food,it.farm)||{}).cook))use="Cooked into lunch";
   if(use)out.push(use);
-  // where the children met it before
+  // where the children met it before is kept for later, and not shown for now, since a word in an observation is not
+  // always the food itself
+  if(!K_SHOW_MET)return out.slice(0,1);
   const bin=binAll().filter(b=>b.date<monday&&(b.items||[]).some(x=>re.test(x.name||"")))[0];
-  if(bin)out.push(`In the bin, ${kShort(bin.date)}`);
+  if(bin)out.push(`Bin ${kShort(bin.date)}`);
   else{const since=parseIso(monday).getTime()-90*864e5;const n=[...notices.values()].filter(n=>(n.at||0)>=since&&(n.at||0)<parseIso(monday).getTime()+7*864e5&&re.test((n.noticed||"")+" "+(n.wonder||""))).sort((a,b)=>(b.at||0)-(a.at||0))[0];
-    if(n)out.push(`${/garden/i.test(n.noticed||"")?"In the garden, observed":"Observed"} ${kShort(iso(new Date(n.at)))}`)}
-  return out.slice(0,2)}
-function kitchenCardHtml(monday){kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
-  return `<section class="card kitchen" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">Coming for lunch and snack this week</h3><div class="cnt">Ordered from local farms for this week's meals and snacks.</div></div></div>
-    <div class="klist">${w.items.map(it=>{const ns=kitchenNotes(it,monday);const town=farmTown(it.farm);
-      return `<div class="kitem"><b>${esc(it.name)}</b> <span class="cnt">${esc(it.farm)}${town?", "+esc(town):""}</span>${ns.map(t=>`<div class="knote">${esc(t)}</div>`).join("")}</div>`}).join("")}</div></section>`}
+    if(n)out.push(`${/garden/i.test(n.noticed||"")?"Garden":"Seen"} ${kShort(iso(new Date(n.at)))}`)}
+  // one short note, where it goes this week first
+  return out.slice(0,1)}
+// Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
+let kOpen=LS.get("tree.kopen",false);
+document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
+function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
+  const farms=new Set(w.items.map(i=>i.farm)).size,foods=new Set(w.items.map(i=>i.food||i.name)).size;const first=w.items.map(i=>i.day).filter(Boolean).sort()[0];
+  const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}):"";
+  return `<details class="card kitchen" style="margin-top:14px" ${kOpen?"open":""}><summary><h3>Produce coming</h3><span class="cnt">${foods} food${foods===1?"":"s"} from ${farms} farm${farms===1?"":"s"}${when?", "+esc(when):""}</span></summary>
+    <div class="klist">${w.items.map(it=>{const n=kitchenNotes(it,monday)[0];const town=farmTown(it.farm);
+      return `<div class="kitem"><b>${esc(it.name)}</b> <span class="cnt">${esc(it.farm)}${town?", "+esc(town):""}</span>${n?` <span class="knote">${esc(n)}</span>`:""}</div>`}).join("")}</div>
+    ${today?`<div class="actions" style="margin-top:6px"><button class="linkbtn" data-tview="bin">See the weekly bin</button></div>`:""}${extra||""}</details>`}
 function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";const b=binAll().find(x=>mondayOf(parseIso(x.date))===mondayOf(new Date()));if(!b)return"";
   const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
   return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
@@ -2352,7 +2386,7 @@ function renderToday(){
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
   </div>
   ${todayBinHtml()}
-  ${kitchenCardHtml(planWeekNow())}
+  ${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)||"Nothing"}</span></div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
@@ -4455,7 +4489,8 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   const binMet=[],gardenMet=[];for(const e of foods.values()){const re=kFoodRe(e.food);if(!re)continue;
     if(binAll().some(b=>b.date>=from&&b.date<=to&&(b.items||[]).some(x=>re.test(x.name||""))))binMet.push(e.food);
     else if([...notices.values()].some(n=>{const d=iso(new Date(n.at||0));return d>=from&&d<=to&&/garden/i.test(n.noticed||"")&&re.test((n.noticed||"")+" "+(n.wonder||""))}))gardenMet.push(e.food)}
-  const met=[binMet.length?`The children also met ${kList(binMet.slice(0,6))} in a FEED bin this month`:"",gardenMet.length?`${binMet.length?"and":"The children also met"} ${kList(gardenMet.slice(0,4))} in the garden`:""].filter(Boolean).join(", ");
+  // the garden part is kept for later, and only the bin part is shown for now
+  const met=[binMet.length?`The children also met ${kList(binMet.slice(0,6))} in a FEED bin this month`:"",K_SHOW_MET&&gardenMet.length?`${binMet.length?"and":"The children also met"} ${kList(gardenMet.slice(0,4))} in the garden`:""].filter(Boolean).join(", ");
   // the staples list, with any staple from these orders the list does not name yet
   const staples=kStapleList().map(x=>({food:x.food,maker:x.maker||"",town:x.town||""}));
   for(const l of lines.filter(l=>l.day>=addDays(from,-70)&&kIsStaple(l))){if(staples.some(x=>gKey(x.maker)===gKey(l.farm)))continue;staples.push({food:kLabel(l.food,l.farm),maker:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||""})}
@@ -4674,7 +4709,7 @@ function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
     <div class="sub" style="max-width:74ch">Each Class receives a bin of produce from local farms, and on Tuesday a small group the Class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
-    ${b?`<div class="actions">${printBtns("bin",b.id,"Print the bin sheet",true)}</div>`:""}</div>
+    ${b?`<div class="actions">${printBtns("bin",b.id,"Print the bin sheet",true)}<span id="binplan"><button class="btn small ghost" data-binplan="${esc(b.id)}">Make a plan from this bin</button></span></div>`:""}</div>
     <div class="filters" role="group" aria-label="Class">${CLASSROOMS.map(r=>`<button class="pill" aria-pressed="${r===room}" data-binroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(!b){
     h+=binFeed.busy||!binFeed.at?`<div class="empty"><span class="spin"></span> Reading this week's list from FEED</div>`
@@ -4695,7 +4730,7 @@ function renderBin(){
 
   // the questions this Class is bringing to the table this week
   const held=binHeld(b,room);
-  {const km=mondayOf(parseIso(b.date));const kc=kitchenCardHtml(km);h+=kc?kc.replace('</div></section>',`</div><div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div></section>`):""}
+  {const km=mondayOf(parseIso(b.date));h+=kitchenCardHtml(km,false,`<div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div>`)}
   h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held);
   h+=binFarmsHtml(b);
   // what was kept from the unboxings
@@ -7091,6 +7126,7 @@ function threadLinkedPlans(t){
 function threadsLine(p){return planThreads(p).map(c=>{const pr=projectOfThread(c.t.id);return c.t.name?c.t.name+(pr&&pr.name?" (project "+pr.name+")":""):""}).filter(Boolean).join("  \u2022  ")}
 function threadsNoteHtml(p){
   if(!p||p.id==="example")return"";
+  const binNote=p.bin?`<div class="tconn"><span><b>From the bin</b> <button class="linkbtn" data-pbin="${esc(p.bin)}">${esc(fmtDate(p.bin).replace(/, \d{4}$/,""))}</button></span></div>`:"";
   const cs=planThreads(p);const on=new Set(cs.map(c=>c.t.id));
   const rest=[...threads.values()].filter(t=>t&&!t.unfollowed&&!on.has(t.id)).sort((a,b)=>((b.classroom===p.classroom)-(a.classroom===p.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
   let h=cs.map(({t,how,link})=>{
@@ -7102,7 +7138,7 @@ function threadsNoteHtml(p){
       <span class="cnt">${why}${elsewhere}</span><button class="linkbtn" data-tunlink="${esc(t.id)}">Disconnect from this plan</button></div>`}).join("");
   for(const id of p.inquiries||[]){const q=inquiries.get(id);if(q&&inqOf(q))h+=`<div class="tconn"><span><b>Written with the team inquiry</b> <button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button></span><span class="cnt">Only what the team will try with the whole group is beside this plan.</span></div>`}
   if(rest.length)h+=`<label class="tlink">${cs.length?"Connect another thread we are following":"Connect this plan to a thread we are following"}<select id="m-thread"><option value="">Choose a thread</option>${rest.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" \u00b7 "+esc(t.classroom):""}</option>`).join("")}</select></label>`;
-  return h;
+  return binNote+h;
 }
 function linkThread(p,id){
   const t=threads.get(id);if(!t||!p)return;
