@@ -28,7 +28,9 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters'];
+// records only the director sees and changes. The monthly family newsletter is made in the director's view.
+const DIRECTOR_KINDS = ['newsletters'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
@@ -211,7 +213,7 @@ function conferenceEvents(from, to) {
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -247,7 +249,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -279,7 +281,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -397,18 +399,24 @@ function postAnthropic(payload) {
     req.on('error', reject); req.end(body);
   });
 }
-async function askClaude(content, careful) {
+async function askClaude(content, careful, extra) {
   const lane = careful ? 'careful' : 'quick'; const list = careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {
     const model = list[modelAt[lane]];
     // careful requests (finding threads, project stories, scans) can write long answers, so they get more room
-    const payload = Object.assign({ model, max_tokens: careful ? 20000 : 8000, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {});
-    const r = await postAnthropic(payload);
+    const payload = Object.assign({ model, max_tokens: careful ? 20000 : 8000, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {}, extra || {});
+    let r = await postAnthropic(payload);
+    // a search that pauses part way is asked to carry on, a few times at most
+    for (let k = 0; k < 3 && r.status === 200; k++) { let m; try { m = JSON.parse(r.text); } catch (e) { break; } if (m.stop_reason !== 'pause_turn') break;
+      payload.messages = [{ role: 'user', content }, { role: 'assistant', content: m.content }]; r = await postAnthropic(payload); }
     let retired = false; try { retired = r.status === 404 && JSON.parse(r.text).error.type === 'not_found_error'; } catch (e) {}
     if (retired && modelAt[lane] < list.length - 1) { log('Model ' + model + ' is not available, switching'); modelAt[lane]++; continue; }
     return r;
   }
 }
+
+// sites the newsletter's suggested reading may come from
+const READING_SITES = ['developingchild.harvard.edu', 'earlychildhood.stanford.edu', 'reggiochildren.it', 'reggioalliance.org', 'healthychildren.org', 'aap.org', 'zerotothree.org', 'naeyc.org', 'cdc.gov', 'first5california.com', 'cde.ca.gov', 'extension.psu.edu', 'childmind.org', 'pbs.org', 'kidshealth.org', 'eatright.org', 'myplate.gov', 'janetlansbury.com', 'rie.org', 'understood.org'];
 
 /* ---------- HTTP ---------- */
 const ALLOWED_ORIGINS = ['https://renee-creator.github.io'].concat(String(process.env.ALLOWED_ORIGINS || '').split(',')).map(s => s.trim().replace(/\/+$/, '').toLowerCase()).filter(Boolean);
@@ -433,8 +441,8 @@ function readBody(req) {
 let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
-function snapshot() {
-  const out = {}; for (const k of KINDS) { out[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted) out[k][id] = r.doc; }
+function snapshot(director) {
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -555,10 +563,10 @@ async function handle(req, res) {
 
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot() }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const out = {}; for (const c of changeLog) if (c.rev > body.since) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -569,6 +577,7 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
+    if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log('Newsletter change refused for', me.name, id); err(req, res, 403, 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
       const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
@@ -638,6 +647,7 @@ async function handle(req, res) {
   if (path === '/api/read') {
     const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
     if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads with Claude.', 'thread search by an educator'); return; }
+    if ((body.purpose === 'newsletter' || body.purpose === 'newsletter-reading') && !isDirector(me.name)) { refuse(403, 'Only the director makes the family newsletter.', 'newsletter by an educator'); return; }
     if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can ask Claude to read through the lens.', 'lens reading by an educator'); return; }
     if (!anthropicKey()) { refuse(503, 'Claude assist is not set up. Add the Anthropic key on Render.', 'no key'); return; }
     const content = body.content;
@@ -656,7 +666,9 @@ async function handle(req, res) {
     }
     const kb = Math.round(JSON.stringify(content).length / 1024);
     try {
-      const r = await askClaude(content, !!body.careful);
+      // suggested reading for families is searched for on the web, only on sites families can trust
+      const extra = body.purpose === 'newsletter-reading' ? { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6, allowed_domains: READING_SITES }] } : null;
+      const r = await askClaude(content, !!body.careful || !!extra, extra);
       if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
