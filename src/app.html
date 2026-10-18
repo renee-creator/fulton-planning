@@ -813,14 +813,23 @@ async function boot(){
     plans=new Map();
     db.collection("plans").onSnapshot(snap=>{
       const next=new Map();serverIds=new Set(snap.docs.map(d=>d.id));
-      snap.docs.forEach(doc=>{const v=doc.data();if(!v||deletedIds.has(doc.id))return;const loc=plans.get(doc.id);
-        next.set(doc.id,(loc&&(pendingSaves.has(doc.id)||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});
+      const changedCur=[];let remoteCur=false;
+      snap.docs.forEach(doc=>{const v=doc.data();if(!v||deletedIds.has(doc.id))return;const loc=plans.get(doc.id),b=planBase.get(doc.id);
+        if(!loc||!b){next.set(doc.id,loc&&pendingSaves.has(doc.id)?loc:v);if(!loc||!pendingSaves.has(doc.id))planBase.set(doc.id,jclone(v));return}
+        const theirs=pdiff(b,v);if(theirs===undefined){next.set(doc.id,loc);return}
+        // someone else changed this plan. Their change goes under whatever this browser has not sent yet.
+        const mine=pdiff(b,loc);planBase.set(doc.id,jclone(v));
+        if(doc.id===currentId){for(const k of Object.keys(theirs))if(!["updatedAt","updatedByName","savedAt"].includes(k)&&JSON.stringify(v[k])!==JSON.stringify(loc[k]))remoteCur=true;
+          for(const k of Object.keys(theirs.fields||{}))if(JSON.stringify((v.fields||{})[k])!==JSON.stringify((loc.fields||{})[k]))changedCur.push(k)}
+        replaceInPlace(loc,papply(jclone(v),mine||{}));next.set(doc.id,loc)});
       for(const [id,loc] of plans)if(!next.has(id)&&!deletedIds.has(id)&&id!=="example"&&(id===currentId||pendingSaves.has(id)||Date.now()-(loc.updatedAt||0)<30000))next.set(id,loc);
       const before=currentId&&plans.get(currentId),after=currentId&&next.get(currentId);
-      const remoteChangedCurrent=!!(before&&after&&after!==before&&(after.updatedAt||0)>(before.updatedAt||0));
+      const remoteChangedCurrent=!!(before&&after&&after!==before&&(after.updatedAt||0)>(before.updatedAt||0))||(remoteCur&&view==="plans");
       plans=next;renderList();if(view==="all"&&$("#alist"))refreshAll();
       if(!dupSweepDone&&snap.docs.length){dupSweepDone=true;setTimeout(sweepDuplicates,1500)}
       if(remoteChangedCurrent&&!document.activeElement?.closest?.("#main"))renderMain();
+      // a section another educator changed is shown fresh, and the one being typed in is left alone
+      else if(changedCur.length&&view==="plans"&&plans.get(currentId)){const p=plans.get(currentId),typing=document.activeElement?.dataset?.f;for(const k of new Set(changedCur))if(k!==typing&&FORMS[p.type]?.fields.some(f=>f.k===k))try{rerenderCard(p,k)}catch(e){}}
     },()=>setConn("Offline. Changes stay on this device"));
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
@@ -841,6 +850,24 @@ async function boot(){
   renderAll();
 }
 const pendingSaves=new Set(),deletedIds=new Set();let serverIds=new Set();
+/* Two educators can write in the same plan at once. Each browser keeps the copy it last had from the server, and a save
+   sends only what changed since then, so one educator's section never writes over another's. A change from someone
+   else is laid under what this browser has not sent yet. */
+const planBase=new Map();
+const isObj=v=>v&&typeof v==="object"&&!Array.isArray(v);
+const jclone=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+function pdiff(a,b){
+  if(isObj(a)&&isObj(b)){const out={};let any=false;
+    for(const k of Object.keys(b)){if(b[k]===undefined)continue;const d=pdiff(a[k],b[k]);if(d!==undefined){out[k]=d;any=true}}
+    for(const k of Object.keys(a))if(a[k]!==undefined&&(!(k in b)||b[k]===undefined)){out[k]={__delete__:true};any=true}
+    return any?out:undefined}
+  return JSON.stringify(a)===JSON.stringify(b)?undefined:jclone(b);
+}
+function papply(t,patch){for(const [k,v] of Object.entries(patch||{})){if(k==="__proto__"||k==="constructor"||k==="prototype")continue;
+  if(isObj(v)&&v.__delete__===true){delete t[k];continue}
+  if(isObj(v)){if(!isObj(t[k]))t[k]={};papply(t[k],v)}else t[k]=jclone(v)}return t}
+// the plan object is kept, so anything holding it still writes into the plan on screen
+function replaceInPlace(o,n){for(const k of Object.keys(o))if(!(k in n))delete o[k];Object.assign(o,n);return o}
 function isEmptyPlan(p){
   if(Object.values(p.fields||{}).some(v=>String(v||"").trim()))return false;
   const w=p.web;if(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>(b.name||"").trim()||(b.materials||"").trim())||String(w.questions||"").trim()||String(w.environment||"").trim()))return false;
@@ -863,7 +890,16 @@ async function flushSaves(){
   if(!db){LS.set("fps.local",[...plans.values()].filter(x=>x.id!=="example"&&!isEmptyPlan(x)));ids.forEach(id=>pendingSaves.delete(id));dirty=false;setConn("Saved on this device");return}
   let ok=true;
   for(const id of ids){const p=plans.get(id);if(!p){pendingSaves.delete(id);continue}const stamp=p.updatedAt;
-    try{await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)));if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id)}catch(e){ok=false}}
+    try{const base=planBase.get(id);let doc;
+      if(base&&serverIds.has(id)){const patch=pdiff(base,p);
+        if(patch===undefined){if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id);continue}
+        const sent=papply(jclone(base),patch);
+        try{doc=await db.doc("plans/"+id).update(patch)}
+        catch(e){if(e&&e.status===404){doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)))}else throw e}
+        // what the server now holds, with anything typed since the save left laid on top
+        if(doc){const rest=pdiff(sent,p);planBase.set(id,jclone(doc));replaceInPlace(p,papply(jclone(doc),rest||{}))}}
+      else{doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)));if(doc){planBase.set(id,jclone(doc));serverIds.add(id)}}
+      if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id)}catch(e){ok=false}}
   dirty=pendingSaves.size>0;
   if(!ok){setConn("Not saved. Check your connection");clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,5000)}
   else if(dirty){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,300)}
@@ -2146,15 +2182,18 @@ function todayWaiting(){
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
-  {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8))
-    out.push({dot:"sky",t:(n.kaymbu.suggest||[]).length?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[firstLine(n.noticed,50),(n.kaymbu.suggest||[]).length?"The note names "+n.kaymbu.suggest.map(id=>(children.get(id)||{}).first).filter(Boolean).join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note."].map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),act:`data-nwedit="${n.id}"`,b:"Tag"})}
+  {const rm=myRoom();for(const n of [...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
+    const sug=(n.kaymbu.suggest||[]).map(id=>(children.get(id)||{}).first).filter(Boolean),maybe=!!n.kaymbu.maybe&&sug.length;
+    // the moment's own words, and the reason it waits, kept apart so a group of them shows the reason once
+    const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
+    out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag"})}}
   // a team inquiry the team meant to look at again
   {const rm=myRoom(),day=iso(new Date());for(const x of inqAll().filter(x=>x.status==="open"&&x.lookAgain&&x.lookAgain<=day&&(dir||!rm||!x.room||x.room===rm)).slice(0,4))
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
-      out.push({dot:"sky",t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
+      out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
   {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   {const rm=myRoom();for(const c of kidsAt().filter(c=>(dir||!rm||c.classroom===rm)&&kidTurnsThree(c)).slice(0,3))
     out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new moments against the Preschool through Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
@@ -2183,7 +2222,9 @@ function waitingHtml(list){
   const rows=[],seen=new Map();
   for(const w of list){const k=WAIT_KIND(w);const n=k?list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]).length:0;
     if(k&&n>1){if(seen.has(k[0]))continue;const items=list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]);seen.set(k[0],1);
-      rows.push(`<details class="tgroup"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(items.slice(0,2).map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):(x.s||x.t),56)).join(". "))}${items.length>2?", and more":""}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
+      const why=items.every(x=>x.why&&x.why===items[0].why)?items[0].why:"";
+      const gist=items.slice(0,2).map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):x.pv!=null?x.pv:(x.s||x.t),56).replace(/[.!?…]$/,"")).filter(Boolean).join(". ")+(items.length>2?", and more":"")+(why?". "+why:"");
+      rows.push(`<details class="tgroup"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
     else rows.push(row(w))}
   const shown=todayAll?rows:rows.slice(0,5);
   return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
@@ -2209,7 +2250,7 @@ function renderToday(){
   </div>
   ${todayBinHtml()}
   <div class="tgrid2" style="margin-top:14px">
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.length||"Nothing"}</span></div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)||"Nothing"}</span></div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Today</h3><button class="linkbtn" data-tview="calendar">Calendar</button></div>
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
@@ -3450,7 +3491,7 @@ function nfKidsHtml(n){
   const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
   if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>Who is in this photo?</b><div class="cnt">These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save.</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this observation, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class below to tag children."}</span>`}</div>
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>${n.kaymbu.maybe?"Is this child in the observation?":"Who is in this photo?"}</b><div class="cnt">${n.kaymbu.maybe?"This name is in the title, or is also an everyday word, so TREE did not tag it. Tap the children in this observation, then save.":"These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save."}</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}Children in this observation, optional${named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class below to tag children."}</span>`}</div>
     ${others.length?`<details class="nfother" ${nfOtherOpen?"open":""}><summary class="cnt">Children in other classes, ${others.length}</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
 function renderNoticeForm(){
@@ -3727,7 +3768,7 @@ function noticesClick(t){
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.thumb?{thumb:n.photo.thumb}:{}),...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
     delete n.day;delete n.fromClaude;
     // saving a moment from Kaymbu is the educator's check of its classroom and children
-    if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure;delete n.kaymbu.suggest}
+    if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure;delete n.kaymbu.suggest;delete n.kaymbu.maybe}
     saveNotice(n);noticeForm=null;
     if(editing){if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
       renderAll();const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}toast("Changes saved.");return true}

@@ -20,6 +20,8 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 30 * 1024 * 1024;
+const INBOUND_MAX_BYTES = 20 * 1024 * 1024;   // an email from the mailbox script, read before its key can be checked
+const LOGIN_MAX_BYTES = 64 * 1024;            // a sign-in is a name and a few numbers
 const FLUSH_DELAY_MS = Number(process.env.FLUSH_DELAY_MS) || 15000;   // typing is gathered into one GitHub save
 const UPSTREAM_TIMEOUT_MS = 300000;
 const READS_PER_HOUR = Number(process.env.READS_PER_HOUR) || 800;      // whole-school scans send one request per plan
@@ -342,6 +344,8 @@ async function recheckRecords() {
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
+    // a change made here while GitHub was answering is newer than what GitHub holds, so it stays
+    const now = store.recs[m[1]].get(m[2]); if (now && (now.local || now.deleted || now !== rec)) continue;
     try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[m[1]].set(m[2], { doc, sha: f.sha, path: f.path }); noteChange(m[1], m[2]); n++; } catch (e) {}
   }
   if (n) log('Read', n, 'records again that changed while the server was starting');
@@ -378,6 +382,8 @@ Copy names and numbers exactly as written. Never invent a number, and use null w
   const items = (Array.isArray(o.items) ? o.items : []).filter(x => x && x.item).map(x => ({ item: String(x.item), producer: String(x.producer || o.vendor || ''), unit: String(x.unit || ''), qty: Number(x.qty) || 0, price: x.price == null ? null : Number(x.price), total: x.total == null ? null : Number(x.total), use: 'meals' }));
   if (!items.length) return { skip: 'No food items were found.' };
   const vendor = String(o.vendor || 'Unknown vendor'); const date = /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : '';
+  // an order with no date it could read takes the day it was kept, so it still counts, and waits to be checked
+  const laToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const slug = vendor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'vendor';
   const num = String(o.number || '').replace(/[^A-Za-z0-9]+/g, '').slice(0, 30) || crypto.createHash('sha1').update(vendor + date + JSON.stringify(items)).digest('hex').slice(0, 10);
   // a FEED invoice read from a PDF is kept under the same name as its order email, so one order is never counted twice
@@ -385,11 +391,30 @@ Copy names and numbers exactly as written. Never invent a number, and use null w
   const id = feed ? 'order-' + num : 'order-' + slug + '-' + num; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
   if (feed && was && was.readBy !== 'Claude') return { doc: was };
   if (was) { const uses = new Map((was.items || []).map(x => [x.item + '|' + x.unit, x.use])); items.forEach(x => { x.use = uses.get(x.item + '|' + x.unit) || x.use; }); }
-  const doc = { id, kind: 'order', order: String(o.number || ''), fulfilled: date, placed: '', items, subtotal: o.subtotal == null ? null : Number(o.subtotal), delivery: o.delivery == null ? null : Number(o.delivery), total: o.total == null ? null : Number(o.total), distributor: vendor,
-    review: was ? !!was.review : true, readBy: 'Claude', from: String(part.name || '').slice(0, 120), keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by };
+  const fulfilled = date || (was && was.fulfilled) || laToday;
+  const reading = { fulfilled, items, subtotal: o.subtotal == null ? null : Number(o.subtotal), delivery: o.delivery == null ? null : Number(o.delivery), total: o.total == null ? null : Number(o.total), distributor: vendor, ...(date ? {} : { noDate: true }) };
+  // an order the director already checked keeps its lines, and the new reading waits beside it for the director to choose
+  if (was && was.review === false) return keepRevision(id, cur, reading, { order: String(o.number || ''), readBy: 'Claude', from: String(part.name || '').slice(0, 120), by });
+  const doc = Object.assign({ id, kind: 'order', order: String(o.number || ''), placed: '' }, reading, { noDate: !date || undefined,
+    review: !date || (was ? !!was.review : true), readBy: 'Claude', from: String(part.name || '').slice(0, 120), keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by });
+  if (!doc.noDate) delete doc.noDate;
   store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
   noteChange('grant', id); scheduleSave('grant', id);
   return { doc };
+}
+// the same lines read again change nothing. Different lines are kept as a revision the director uses or sets aside.
+const ORDER_FIELDS = ['fulfilled', 'items', 'subtotal', 'delivery', 'total', 'distributor'];
+function sameReading(a, b) { const lines = d => JSON.stringify((d.items || []).map(x => [x.item, x.unit, x.producer, Number(x.qty) || 0, x.price == null ? null : Number(x.price), x.total == null ? null : Number(x.total)])); return lines(a) === lines(b) && (a.total == null ? null : Number(a.total)) === (b.total == null ? null : Number(b.total)) && (!b.fulfilled || a.fulfilled === b.fulfilled || b.noDate); }
+function keepRevision(id, cur, reading, about) {
+  const was = cur.doc;
+  if (sameReading(was, reading)) { if (was.revision) { delete was.revision; cur.local = true; noteChange('grant', id); scheduleSave('grant', id); } return { doc: was, same: true }; }
+  const revision = {}; for (const k of ORDER_FIELDS) revision[k] = reading[k];
+  if (reading.noDate) revision.noDate = true;
+  Object.assign(revision, { order: about.order || was.order || '', readBy: about.readBy, from: about.from || '', at: Date.now(), by: about.by });
+  was.revision = revision; was.updatedByName = about.by; cur.local = true;
+  noteChange('grant', id); scheduleSave('grant', id);
+  log('Order', id, 'was already checked, so the new reading waits beside it');
+  return { doc: was, revision: true };
 }
 function keepOrder(raw, by) {
   const o = parseOrder(raw);
@@ -397,6 +422,7 @@ function keepOrder(raw, by) {
   const id = 'order-' + o.order; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
   const uses = new Map(((was && was.items) || []).map(x => [x.item + '|' + x.unit + '|' + x.producer, x.use]));
   o.items = o.items.map(x => Object.assign(x, { use: uses.get(x.item + '|' + x.unit + '|' + x.producer) || (/FEED Bin/i.test(x.item) ? 'education' : 'meals') }));
+  if (was && was.review === false) { const rd = Object.assign({}, o); if (!rd.fulfilled) rd.fulfilled = was.fulfilled || rd.placed || ''; return keepRevision(id, cur, rd, { order: o.order, readBy: 'FEED', from: '', by }); }
   const doc = Object.assign({ id, kind: 'order' }, o, { keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by });
   store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
   noteChange('grant', id); scheduleSave('grant', id);
@@ -546,10 +572,13 @@ function send(req, res, status, headers, body) {
 }
 function json(req, res, status, obj) { send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(obj)); }
 function err(req, res, status, message) { json(req, res, status, { error: message }); }
-function readBody(req) {
+function readBody(req, limit) {
+  const max = limit || MAX_BODY_BYTES;
   return new Promise((resolve, reject) => {
+    // a body the sender says is too large is refused before any of it is read
+    if (Number(req.headers['content-length']) > max) { reject(new Error('too_big')); req.resume(); return; }
     const chunks = []; let size = 0;
-    req.on('data', c => { size += c.length; if (size > MAX_BODY_BYTES) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
+    req.on('data', c => { size += c.length; if (size > max) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
     req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch (e) { reject(new Error('bad_json')); } });
     req.on('error', reject);
   });
@@ -618,14 +647,19 @@ async function handle(req, res) {
     return;
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
+  // the mailbox script's key, when it rides in a header or the address, is checked before a large email is read
+  if (path.startsWith('/inbound/')) {
+    const key = cleanKey(process.env.KAYMBU_INBOX_KEY); const early = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || '');
+    if (early && !(key && sameText(early, key))) { req.resume(); log('Inbox email refused before reading, the key is not right'); err(req, res, 403, 'Not allowed'); return; }
+  }
   // the Kaymbu inbox is called by the school's Apps Script, not a page, so it carries its own key rather than a sign-in
   if (path === '/inbound/kaymbu') {
-    let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
+    let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     if (!store.ready) await loadAll();
     await kaymbuInbox.handle(req, res, url, b, (status, obj) => json(req, res, status, obj)); return;
   }
   if (path === '/inbound/feed-order') {
-    let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
+    let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
     if (!key || cleanKey(b.key) !== key) { log('Order email refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
     if (!store.ready) await loadAll();
@@ -642,7 +676,7 @@ async function handle(req, res) {
   if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
 
   let body;
-  try { body = await readBody(req); }
+  try { body = await readBody(req, path === '/login' ? LOGIN_MAX_BYTES : MAX_BODY_BYTES); }
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   if (path === '/login') {
@@ -715,6 +749,8 @@ async function handle(req, res) {
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
+      // an educator keeps a child's details current. Adding a child to the roster is the director's.
+      if (!cur || cur.deleted) { log('New child refused for', me.name, id); err(req, res, 403, 'Only the director adds a child to the roster.'); return; }
       const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
       const keepSt = d => { for (const k of ST) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'status') d[k] = 'active'; else delete d[k]; } };
       if (op === 'delete') { err(req, res, 403, 'Only the director can remove a child.'); return; }
