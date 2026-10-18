@@ -3818,6 +3818,8 @@ function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)}))
    The director adds each month's snack and lunch menus. Claude reads the PDF or photo into days, the director
    checks every day before saving, and the menus show on the calendar as Snack and lunch, and on Today. */
 let menus=new Map(), menuDraft=null, menuBusy=0;
+// the times of the morning snack, lunch and afternoon snack, carried from the latest month kept
+function menuTimesLast(){const last=[...menus.values()].filter(m=>m&&m.times).sort((a,b)=>b.month.localeCompare(a.month))[0];return Object.assign({am:"",lunch:"",pm:""},last?last.times:{})}
 const MENU_MONTH=m=>{const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"})};
 function menuSchoolDays(month){const [y,mo]=month.split("-").map(Number);const out=[];const d=new Date(y,mo-1,1);while(d.getMonth()===mo-1){const w=d.getDay();if(w>0&&w<6)out.push(iso(d));d.setDate(d.getDate()+1)}return out}
 function menusHtml(){
@@ -3836,6 +3838,8 @@ function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
     ${days.map(day=>{const x=d.days[day]||{};const lab=parseIso(day).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       return `<tr${x.closed?' class="closed"':""}><td class="cnt" style="white-space:nowrap">${esc(lab)}</td>${["am","pm","lunch"].map(k=>{const mon=k==="pm"&&parseIso(day).getDay()===1;return `<td><input type="text" data-menuday="${day}" data-menuk="${k}" value="${esc(mon?"":x[k]||"")}" ${x.closed||mon?"disabled":""} ${mon?'placeholder="Morning only"':""}></td>`}).join("")}<td style="text-align:center"><input type="checkbox" data-menuday="${day}" data-menuk="closed" ${x.closed?"checked":""}></td></tr>`}).join("")}
     </tbody></table></div>
+    <div class="kfields" style="margin-top:10px">${[["am","Morning snack at"],["lunch","Lunch at"],["pm","Afternoon snack at"]].map(([k,l])=>`<label class="cnt">${l}<input type="time" data-menutime="${k}" value="${esc(((d.times||{})[k])||"")}"></label>`).join("")}</div>
+    <div class="hint">Each meal shows at its time on the calendar. Left empty, it shows across the day.</div>
     <label class="fld-label" style="margin-top:10px">Note with the snack menu<textarea data-menunote="snack" rows="2">${esc((d.notes||{}).snack||"")}</textarea></label>
     <label class="fld-label">Note with the lunch menu<textarea data-menunote="lunch" rows="2">${esc((d.notes||{}).lunch||"")}</textarea></label>
     <div class="actions" style="margin-top:8px"><button class="btn small" data-menuact="save">Save ${esc(MENU_MONTH(d.month))}</button><button class="linkbtn" data-menuact="cancel">Cancel</button></div></div>`}
@@ -3857,7 +3861,7 @@ async function menuRead(f){
   return {name,out}}
 function menuMerge(r){const o=r.out||{};const kind=o.kind==="lunch"?"lunch":"snack";
   const month=/^\d{4}-\d{2}$/.test(o.month||"")?o.month:((o.days||[])[0]?.date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(month))return false;
-  if(!menuDraft||menuDraft.month!==month){const have=menus.get(month);menuDraft=have?JSON.parse(JSON.stringify(have)):{id:month,month,days:{},notes:{},files:{}};menuDraft.read=[]}
+  if(!menuDraft||menuDraft.month!==month){const have=menus.get(month);menuDraft=have?JSON.parse(JSON.stringify(have)):{id:month,month,days:{},notes:{},files:{},times:menuTimesLast()};menuDraft.read=[]}
   const clean=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,", ").replace(/\s+/g," ").trim();
   for(const d of o.days||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(d?.date||"")||d.date.slice(0,7)!==month)continue;const x=menuDraft.days[d.date]=menuDraft.days[d.date]||{};
     if(d.closed){x.closed=true;continue}
@@ -3871,12 +3875,14 @@ document.addEventListener("change",async e=>{const t=e.target;
     document.getElementById("menus-card")?.scrollIntoView({block:"start"});return}
   if(t.dataset&&t.dataset.menuday&&menuDraft){const x=menuDraft.days[t.dataset.menuday]=menuDraft.days[t.dataset.menuday]||{};
     if(t.dataset.menuk==="closed"){if(t.checked)x.closed=true;else delete x.closed;renderSettings();document.getElementById("menus-card")?.scrollIntoView({block:"start"})}else x[t.dataset.menuk]=t.value.trim();return}
+  if(t.dataset&&t.dataset.menutime&&menuDraft){menuDraft.times=menuDraft.times||{};menuDraft.times[t.dataset.menutime]=t.value;return}
   if(t.dataset&&t.dataset.menunote&&menuDraft){menuDraft.notes=menuDraft.notes||{};menuDraft.notes[t.dataset.menunote]=t.value.trim()}});
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-menuact],[data-menuedit]");if(!t||view!=="settings")return;e.stopImmediatePropagation();
   if(t.dataset.menuedit){const m=menus.get(t.dataset.menuedit);if(m){menuDraft=JSON.parse(JSON.stringify(m));menuDraft.read=[]}renderSettings();document.getElementById("menus-card")?.scrollIntoView({block:"start"});return}
   if(t.dataset.menuact==="cancel"){menuDraft=null;renderSettings();return}
   if(t.dataset.menuact==="save"&&menuDraft){document.querySelectorAll("#menus-card [data-menuday]").forEach(i=>{if(i.dataset.menuk!=="closed"&&!i.disabled){const x=menuDraft.days[i.dataset.menuday]=menuDraft.days[i.dataset.menuday]||{};x[i.dataset.menuk]=i.value.trim()}});
     document.querySelectorAll("#menus-card [data-menunote]").forEach(i=>{menuDraft.notes[i.dataset.menunote]=i.value.trim()});
+    menuDraft.times=menuDraft.times||{};document.querySelectorAll("#menus-card [data-menutime]").forEach(i=>{menuDraft.times[i.dataset.menutime]=i.value});
     const doc=Object.assign({},menuDraft,{by:whoAmI(),updatedAt:Date.now()});delete doc.read;
     for(const [k,v] of Object.entries(doc.days))if(!v||(!v.closed&&!has(v.am)&&!has(v.pm)&&!has(v.lunch)))delete doc.days[k];
     if(!db){toast("TREE is not connected. Try again in a moment.");return}

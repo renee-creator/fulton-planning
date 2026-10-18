@@ -216,11 +216,15 @@ function conferenceEvents(from, to) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
-      // two snacks a day, one in the morning and one in the afternoon. Monday has the morning snack only.
-      const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim();
-      const snackTitle = am && pm ? `Snack, ${am} in the morning, ${pm} in the afternoon` : am ? 'Morning snack, ' + am : pm ? 'Afternoon snack, ' + pm : '';
-      if (snackTitle) events.push({ id: 'tmenu.' + day + '.s', cal: 'tmenu', title: snackTitle, desc: [am ? 'Morning, ' + am + '.' : '', pm ? 'Afternoon, ' + pm + '.' : '', (m.notes && m.notes.snack) || ''].filter(Boolean).join(' '), allDay: true, start: day, end: day });
-      if (d.lunch && String(d.lunch).trim()) events.push({ id: 'tmenu.' + day + '.l', cal: 'tmenu', title: 'Lunch, ' + d.lunch, desc: (m.notes && m.notes.lunch) || '', allDay: true, start: day, end: day });
+      // a morning snack, lunch, and an afternoon snack after lunch, each at the time kept with the month's menu.
+      // Monday has the morning snack only. A meal without a time shows across the day.
+      const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim(), lunch = String(d.lunch || '').trim();
+      const times = m.times || {}, note = m.notes || {};
+      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : '';
+        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
+      if (am) meal('am', 'Morning snack, ' + am, note.snack);
+      if (lunch) meal('lunch', 'Lunch, ' + lunch, note.lunch);
+      if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
     }
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
