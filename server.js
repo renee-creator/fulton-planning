@@ -144,7 +144,10 @@ const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.
 const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
 function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
-function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
+// a kitchen sign-in, such as Kitchen's, reaches the Kitchen page, Today and the calendar, and nothing about children or money
+const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
+const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
@@ -623,8 +626,8 @@ function readBody(req, limit) {
 let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
-function snapshot(director) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted) out[k][id] = r.doc; }
+function snapshot(director, kitchen) {
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -768,12 +771,19 @@ async function handle(req, res) {
   if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
+  // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
+  const kitchenOnly = isKitchen(me.name);
+  if (kitchenOnly) {
+    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const bad = !OPEN.includes(path) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
+    if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
+  }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name), kitchenOnly) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!kitchenOnly || kitchenSees(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -795,9 +805,9 @@ async function handle(req, res) {
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
     }
-    if (((kind === 'settings' && id !== 'educators' && id !== 'main') || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    if (((kind === 'settings' && id !== 'educators' && id !== 'main' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change
-    if (kind === 'menus' && !isDirector(me.name)) { err(req, res, 403, 'Only the director adds the monthly menus.'); return; }
+    if (kind === 'menus' && !isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen add the monthly menus.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
     // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
@@ -912,7 +922,7 @@ async function handle(req, res) {
       const other = accountFor(name); if (other && other !== was) { err(req, res, 409, name + ' already has a sign-in.'); return; }
       const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', start: newStart(), v: 0 };
       if (was && a.name !== name) a.v = (a.v || 0) + 1;
-      a.name = name; a.room = String(body.room || '').slice(0, 20); a.director = !!body.director;
+      a.name = name; a.room = String(body.room || '').slice(0, 20); a.director = !!body.director; if ('kitchen' in body) a.kitchen = !!body.kitchen && !a.director;
       if (!was) accounts.list.push(a);
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved to the records. Try again.'); return; }
       log('Sign-in saved for', a.name, 'by', me.name); list(); return;
@@ -942,6 +952,28 @@ async function handle(req, res) {
   // what the kitchen ordered for lunch and snack this week and next, for every educator. Only the food, its farm and the
   // day it comes. No prices, totals, order numbers or vendor details, and no FEED bin lines, since the bin has its own page.
   if (path === '/api/kitchen-week') { json(req, res, 200, { weeks: kitchenWeeks() }); return; }
+  // the director or the kitchen says how a food is served, a side dish, cooked in, or both. Only that one field changes.
+  if (path === '/api/kitchen-serve') {
+    if (!isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen answer this.'); return; }
+    // the food is named the way Produce coming names it, its farm and its week, so no order number is ever sent to a page
+    const mon = String(body.monday || ''), name = String(body.name || ''), farm = String(body.farm || '').trim(), field = body.field === 'side' ? 'side' : body.field === 'cooked' ? 'cooked' : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(mon) || !name || !farm || !field) { err(req, res, 400, 'That answer could not be read.'); return; }
+    let n = 0;
+    for (const [id, r] of store.recs.grant) { const o = r && !r.deleted && r.doc; if (!o || o.kind !== 'order') continue; const day = o.fulfilled || ''; if (day < mon || day > addDay(mon, 6)) continue;
+      (o.items || []).forEach(x => { if (String(x.producer || '').trim() !== farm || kitchenName(x.item).name !== name) return; x.serve = Object.assign({ side: false, cooked: false }, x.serve || {}, { [field]: !!body.value }); n++; });
+      if (n) { o.updatedByName = me.name; r.local = true; noteChange('grant', id); scheduleSave('grant', id); } }
+    if (!n) { err(req, res, 404, 'That food was not found on this week\'s orders.'); return; }
+    log('Served as', field, !!body.value, name, 'by', me.name); json(req, res, 200, { ok: true }); return;
+  }
+  // the month's food lines for the farm sheets, the food, its farm, the day and how it is served, never prices or order numbers
+  if (path === '/api/kitchen-month') {
+    const from = String(body.from || ''), to = String(body.to || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) { err(req, res, 400, 'That range is not valid.'); return; }
+    const lines = [];
+    for (const [, r] of store.recs.grant) { const o = r && !r.deleted && r.doc; if (!o) continue;
+      if (o.kind === 'order') { const day = o.fulfilled || o.placed || ''; if (day < from || day > to) continue; (o.items || []).forEach(x => { if (x.use === 'education') return; lines.push({ day, item: String(x.item || ''), producer: String(x.producer || ''), ...(x.serve ? { serve: { side: !!x.serve.side, cooked: !!x.serve.cooked } } : {}) }); }); }
+      if (o.id === 'purchases' && o.list) for (const p of Object.values(o.list)) { if (!p || !p.date || p.date < from || p.date > to || p.use === 'education') continue; lines.push({ day: p.date, item: String(p.item || ''), producer: String(p.producer || ''), kind: String(p.kind || ''), manual: true }); } }
+    json(req, res, 200, { lines }); return;
+  }
   if (path === '/api/grant/order') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps the grant records.'); return; }
     const r = await readOrderPart({ name: String(body.name || 'file'), raw: body.raw, data: body.data, type: String(body.type || '') }, me.name);
