@@ -42,16 +42,17 @@
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER= local? want : DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
+  const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1", kitchen:LS.get("fp-kitchen")==="1"};
   const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
   // a photo link carries a key that lasts twelve hours, so it is renewed only after six, and pictures already loaded are not fetched again
   function takeFileKey(k){ if(k && (!Store.fileKey || Date.now()-Store.fileKeyAt>6*36e5)){ Store.fileKey=k; Store.fileKeyAt=Date.now(); } }
   window.FP_HOSTED=true;
   window.FP_NAME=()=>Auth.name||"";
   window.FP_DIRECTOR=()=>!!Auth.director;
+  window.FP_KITCHEN=()=>!!Auth.kitchen;
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } }
-  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); location.reload(); }
+  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
   async function api(path, body, signal){
@@ -77,7 +78,7 @@
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -138,7 +139,7 @@
     setInterval(poll, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) noteActive(); });
     const top=document.querySelector(".who");
-    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":""); w.lastChild.onclick=signOut; top.append(w); }
+    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":Auth.kitchen?", kitchen":""); w.lastChild.onclick=signOut; top.append(w); }
   }
   Store.ready=start();
 

@@ -582,6 +582,16 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
 /* on a touch screen a text link gets a taller area to tap, without moving anything around it */
 @media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}}
+.kwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}.kmain{display:grid;gap:10px;min-width:0}
+.kweek{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.kday{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;gap:6px;min-width:0}.kday.closed{opacity:.6}
+.kdayh{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;align-items:center;font-size:13.5px}.kmeal{display:grid;gap:3px;font-size:11.5px;color:var(--muted);font-weight:600}
+.kmeal input{font-size:13.5px;padding:6px 7px;font-weight:400;color:var(--ink)}.kmeal input.kside{font-size:12px;padding:4px 7px;background:var(--bg)}.kmeal input.kdraft{color:var(--muted);font-style:italic;border-style:dashed}
+.kmeal input.ksel{outline:2px solid var(--moss);outline-offset:1px}.kaside{display:grid;gap:10px;position:sticky;top:96px}.klib{display:flex;flex-wrap:wrap;gap:6px;max-height:340px;overflow:auto}
+.kdish{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 10px;font-size:13px;cursor:pointer;text-align:left}.kdish .cnt{font-size:11px}.kly{display:grid;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
+.kdraftbar{background:var(--sun-soft);border:1px solid var(--marigold);border-radius:10px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin-bottom:10px}
+@media (max-width:1100px){.kwrap{grid-template-columns:1fr}.kaside{position:static}}
+@media (max-width:900px){.kweek{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
+@media (max-width:560px){.kweek{grid-template-columns:1fr}}
 .setjump{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 14px;font-size:14px}.setjump .linkbtn{padding:2px 0}
 #main>section.card[id]{scroll-margin-top:96px}
 /* the Farm to School page, key figures first, then a card for each section with its main figure on the line that opens it */
@@ -669,16 +679,17 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER= local? want : DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1"};
+  const Auth={token:LS.get("fp-token"), name:LS.get("fp-name"), director:LS.get("fp-director")==="1", kitchen:LS.get("fp-kitchen")==="1"};
   const Store={data:{plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", fileKeyAt:0, wroteAt:{}};
   // a photo link carries a key that lasts twelve hours, so it is renewed only after six, and pictures already loaded are not fetched again
   function takeFileKey(k){ if(k && (!Store.fileKey || Date.now()-Store.fileKeyAt>6*36e5)){ Store.fileKey=k; Store.fileKeyAt=Date.now(); } }
   window.FP_HOSTED=true;
   window.FP_NAME=()=>Auth.name||"";
   window.FP_DIRECTOR=()=>!!Auth.director;
+  window.FP_KITCHEN=()=>!!Auth.kitchen;
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } }
-  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); location.reload(); }
+  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
   async function api(path, body, signal){
@@ -704,7 +715,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -765,7 +776,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     setInterval(poll, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) noteActive(); });
     const top=document.querySelector(".who");
-    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":""); w.lastChild.onclick=signOut; top.append(w); }
+    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":Auth.kitchen?", kitchen":""); w.lastChild.onclick=signOut; top.append(w); }
   }
   Store.ready=start();
 
@@ -1085,7 +1096,7 @@ async function boot(){
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
-    db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
+    db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -1261,6 +1272,8 @@ function renderList(){
 
 /* ---------- Main editor ---------- */
 function renderMain(){
+  if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
+  if(view==="kitchen"){renderKitchen();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
   if(view==="inquiries"){renderInquiries();return}
@@ -2362,29 +2375,34 @@ setInterval(outboxSend,30000);
    so nothing is lost and nothing has to be found twice. The Keep a moment button is always one tap away. */
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
+// a kitchen sign-in sees the Kitchen, Today and the calendar
+const isKitchenUser=()=>!VIEW_AS&&!!(window.FP_KITCHEN&&window.FP_KITCHEN());
+const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
+const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
-  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"],["grant","Farm to School"]],
+  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"]]};
 const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",grant:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
-const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
-const secOf=v=>SECTION_OF[v]||"plans";
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
+const TICON={kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
+const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
+  if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
 }
-function goSection(s){if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
+function goSection(s){if(s==="kitchen")return goView("kitchen");if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
 function renderTreeNav(){
   const cur=secOf(view);document.body.dataset.sec=cur;
   // the band sits in the page above the header, so the header stays readable, and the header names the educator being viewed
   if(VIEW_AS&&!document.getElementById("vabar")){const hd=document.querySelector("header.ttop");if(hd){const b=document.createElement("div");b.id="vabar";b.className="vabar";
     b.innerHTML=`<span>Seeing TREE as <b>${esc(VIEW_AS.name)}</b>${myRoom()?", "+esc(myRoom())+" class":""}. Nothing is saved while you look.</span><button class="btn small" id="vaend">Back to my view</button>`;hd.parentNode.insertBefore(b,hd)}}
   if(VIEW_AS){const c=document.querySelector(".who-chip span");if(c&&c.dataset.va!=="1"){c.dataset.va="1";c.textContent="Seeing as "+VIEW_AS.name}}
-  const nav=$("#tnav");if(nav)nav.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
-  const tb=$("#ttab");if(tb)tb.innerHTML=SECTIONS.map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
-  const fab=$("#newnotice");if(fab)fab.hidden=view==="calendar"||view==="conferences"||(view==="moments"&&!!noticeForm);
+  const nav=$("#tnav");if(nav)nav.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
+  const tb=$("#ttab");if(tb){tb.style.gridTemplateColumns=`repeat(${navSections().length},minmax(0,1fr))`}if(tb)tb.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
+  const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||view==="calendar"||view==="conferences"||view==="kitchen"||(view==="moments"&&!!noticeForm);
   const st=$("#tsettings");if(st){st.hidden=!window.FP_HOSTED&&!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
@@ -2396,7 +2414,7 @@ function subnavHtml(){
   if(view==="slide")back=`<button class="chip-btn back" data-tview="slides">‹ All slides</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev)back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>(k!=="newsletter"&&k!=="grant")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>(k!=="newsletter"&&k!=="grant"&&k!=="kitchen")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -2539,7 +2557,7 @@ const K_TOMATO=/marinara|tomato|sauce|salsa|soup|pizza|chili|stew|lasagna|enchil
 const K_DISH=/soup|stew|chili|rice|beans|pasta|sauce|curry|stir|frittata|quiche|casserole|tacos?|burrito|enchilada|lasagna/i;
 /* which dishes a food goes into, shared by Coming for lunch and snack and the food sheets. A food is matched by its own
    word first, then by the dishes it is cooked into. Pantry and dairy bought less often are looked for further back. */
-const K_FRUIT=/\b(fruits?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|watermelons?|cantaloupes?|honeydews?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|pluots?|quinces?|pomegranates?)\b/i;
+const K_FRUIT=/\b(fruits?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|watermelons?|cantaloupes?|honeydews?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|pluots?|quinces?|pomegranates?|lemons?|limes?|grapefruits?|guavas?|mangos?|mangoes)\b/i;
 const K_MAP=[
   {food:/basil|herb|parsley|cilantro/i,dish:/pesto|sauce|soup|salad|pizza/i},
   {food:/lemon/i,dish:/pesto|dressing|lemon|lemonade|muffin/i},
@@ -2606,18 +2624,10 @@ const kCanServe=()=>isDirector()||!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 function kServeText(it,monday){const sv=it.serve||{};const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
   const how=sv.side&&sv.cooked?"Side dish and cooked in":sv.side?"Side dish":"Cooked in";const u=sv.cooked?kUses(it.food||it.name,days,it.farm).find(x=>x.meal==="lunch")||kUses(it.food||it.name,days,it.farm)[0]:null;
   return u?`${how}, ${parseIso(u.d).toLocaleDateString("en-US",{weekday:"short"})} ${u.meal} ${kDish(u.dish)}`:how}
-// the order lines behind a food on the card, matched by farm and food in that week
-function kLinesFor(name,farm,food,monday){const out=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<monday||day>addDays(monday,6))continue;
-  (o.items||[]).forEach((x,i)=>{if(String(x.producer||"").trim()!==farm)return;const k=kName(x.item);if(k.name===name||(food&&k.food===food))out.push({o,i})})}return out}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-kserve]");if(!t)return;e.stopImmediatePropagation();if(!db||VIEW_AS)return;
-  const d=t.dataset,L=kLinesFor(d.kname,d.kfarm,d.kfood,d.kmon);if(!L.length){toast("The order line for this food was not found.");return}
-  const now=!(t.getAttribute("aria-pressed")==="true");t.setAttribute("aria-pressed",String(now));
-  const byOrder=new Map();for(const {o,i} of L){if(!byOrder.has(o.id))byOrder.set(o.id,{o,idx:[]});byOrder.get(o.id).idx.push(i)}
-  try{for(const {o,idx} of byOrder.values()){const items=(o.items||[]).map((x,i)=>idx.includes(i)?Object.assign({},x,{serve:Object.assign({side:false,cooked:false},x.serve||{},{[d.kserve]:now})}):x);await kSaveServe(o.id,items)}
-    kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y)}catch(err){toast((err&&err.message)||"Could not save that.")}},true);
-// the director writes the order line through the normal write path. A kitchen account uses its own narrow path.
-async function kSaveServe(id,items){if(isDirector()){await db.doc("grant/"+id).update({items});return}
-  for(const [i,x] of items.entries())if(x.serve)await window.FP_API("/api/kitchen-serve",{order:id,i,serve:x.serve})}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-kserve]");if(!t)return;e.stopImmediatePropagation();if(!window.FP_API||VIEW_AS)return;
+  const d=t.dataset,now=!(t.getAttribute("aria-pressed")==="true");t.setAttribute("aria-pressed",String(now));
+  try{await window.FP_API("/api/kitchen-serve",{monday:d.kmon,name:d.kname,farm:d.kfarm,field:d.kserve,value:now});
+    kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y)}catch(err){t.setAttribute("aria-pressed",String(!now));toast((err&&err.message)||"Could not save that.")}},true);
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
@@ -2635,6 +2645,7 @@ function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";cons
   const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
   return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
 function renderToday(){
+  if(isKitchenUser()){renderKitchenToday();return}
   const h=new Date().getHours();const greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   const name=me()||(window.FP_NAME?window.FP_NAME():"");const room=myRoom();const mg=myGroups();
   const waiting=todayWaiting();
@@ -4734,14 +4745,21 @@ function staplesHtml(){const L=kStapleList();return `<div class="binadd" id="sta
   ${L.map((x,i)=>`<tr><td><input type="text" data-stf="${i}|food" value="${esc(x.food)}" aria-label="Food"></td><td><input type="text" data-stf="${i}|maker" value="${esc(x.maker||"")}" aria-label="Made by"></td><td><input type="text" data-stf="${i}|town" value="${esc(x.town||"")}" aria-label="Town"></td><td><button class="linkbtn" data-stdel="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div>
   <div class="actions"><button class="btn small ghost" data-stadd="1">Add a staple</button></div>
   <label class="fld-label">A note under the staples on the farm sheet<textarea data-stnote="1" rows="2">${esc(kNote())}</textarea></label></div>`}
-document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stnote||view!=="settings"||!isDirector())return;kStapleNote=t.value.trim();kSaveStaples()});
-document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stf||view!=="settings"||!isDirector())return;const [i,k]=t.dataset.stf.split("|");const L=kStapleList().map(x=>Object.assign({},x));if(!L[+i])return;L[+i][k]=t.value.trim();kStaples=L;kSaveStaples()});
-document.addEventListener("click",e=>{const t=e.target.closest("[data-stdel],[data-stadd]");if(!t||view!=="settings"||!isDirector())return;const L=kStapleList().map(x=>Object.assign({},x));
-  if(t.dataset.stadd){L.push({food:"New staple",maker:"",town:""})}else L.splice(+t.dataset.stdel,1);kStaples=L;kSaveStaples();renderSettings();document.getElementById("staples-card")?.scrollIntoView({block:"center"})});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stnote||!(view==="settings"||view==="kitchen")||!kCanEdit())return;kStapleNote=t.value.trim();kSaveStaples()});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stf||!(view==="settings"||view==="kitchen")||!kCanEdit())return;const [i,k]=t.dataset.stf.split("|");const L=kStapleList().map(x=>Object.assign({},x));if(!L[+i])return;L[+i][k]=t.value.trim();kStaples=L;kSaveStaples()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stdel],[data-stadd]");if(!t||!(view==="settings"||view==="kitchen")||!kCanEdit())return;const L=kStapleList().map(x=>Object.assign({},x));
+  if(t.dataset.stadd){L.push({food:"New staple",maker:"",town:""})}else L.splice(+t.dataset.stdel,1);kStaples=L;kSaveStaples();if(view==="kitchen")renderKitchen();else renderSettings();document.getElementById("staples-card")?.scrollIntoView({block:"center"})});
 // everything a month's sheets need. Orders count for a week when they arrive in it or in the days just before it.
+// for the kitchen, the month's food lines come from the server without prices, and the director reads the orders directly
+let kMonthLines={};
+async function kMonthFetch(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
+  try{const j=await window.FP_API("/api/kitchen-month",{from:addDays(from,-70),to});kMonthLines[month]=j.lines||[]}catch(e){kMonthLines[month]=[]}}
 function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
-  const lines=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
-  for(const p of gList("purchases")){if(!p.date||p.date<addDays(from,-70)||p.date>to||(p.kind&&p.kind!=="local"&&!kMill(p.producer))||p.use==="education"||!kLocal(p.producer))continue;const k=kName(p.item);if(k.food)lines.push({day:p.date,name:k.name,food:k.food,farm:p.producer||""})}
+  const lines=[];
+  if(!isDirector()){for(const x of kMonthLines[month]||[]){if(x.manual){if((x.kind&&x.kind!=="local"&&!kMill(x.producer))||!kLocal(x.producer))continue;const k=kName(x.item);if(k.food)lines.push({day:x.day,name:k.name,food:k.food,farm:x.producer||""});continue}
+    const l=kLine({item:x.item,producer:x.producer,serve:x.serve},x.day);if(l)lines.push(l)}}
+  else for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
+  if(isDirector())for(const p of gList("purchases")){if(!p.date||p.date<addDays(from,-70)||p.date>to||(p.kind&&p.kind!=="local"&&!kMill(p.producer))||p.use==="education"||!kLocal(p.producer))continue;const k=kName(p.item);if(k.food)lines.push({day:p.date,name:k.name,food:k.food,farm:p.producer||""})}
   const inMonth=lines.filter(l=>l.day>=from);
   // the weeks of the month, Monday to Friday
   const weeks=[];for(let m=mondayOf(parseIso(from));m<=to;m=addDays(m,7)){const days=kMenuDays(m<from?from:m,addDays(m,4)>to?to:addDays(m,4));if(!days.length)continue;
@@ -4771,15 +4789,19 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   // the staples list, with any staple from these orders the list does not name yet
   const staples=kStapleList().map(x=>({food:x.food,maker:x.maker||"",town:x.town||""}));
   for(const l of lines.filter(l=>l.day>=addDays(from,-70)&&kIsStaple(l))){if(staples.some(x=>gKey(x.maker)===gKey(l.farm)))continue;staples.push({food:kLabel(l.food,l.farm),maker:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||""})}
+  // the range of tastes, the different fruits and vegetables from the month's orders and the different dishes on the menu
+  const fv={fruit:new Set(),veg:new Set()};for(const l of lines.filter(l=>l.day>=addDays(from,-2)&&l.day<=to&&!kIsStaple(l)&&!kMill(l.farm))){const f=kLabel(l.food,l.farm);if(!f)continue;if(K_FRUIT.test(l.food))fv.fruit.add(f);else if(!K_NOTVEG.test(l.food))fv.veg.add(f)}
+  const dishes=new Set();for(const o of md)for(const k of ["am","lunch","pm"])if(has(o.x[k]))dishes.add(String(o.x[k]).trim().toLowerCase());
   const mrec=menus.get(month)||{};const recipe=String(mrec.recipe||(mrec.intake&&mrec.intake.recipe)||"").trim();
-  return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
+  return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,fruits:[...fv.fruit].sort(),vegs:[...fv.veg].sort(),dishes:dishes.size,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
-  blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.lunches),"lunches made at school"]]));
+  blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.fruits.length+F.vegs.length),"fruits and vegetables"],[String(F.dishes),"different dishes"],[String(F.lunches),"lunches made at school"]]));
   if(F.weeks.length){const fl=list=>list.map(f=>`${f.farm}, ${kList([...f.foods].slice(0,3))}`).join(". ")+".";
     const n=kNotesFor([month]),sn=n.some(x=>/fruit/i.test(x.snack||"")),sal=n.some(x=>/salad/i.test(x.lunch||"")),veg=n.some(x=>/vegetable/i.test(x.lunch||""));
     const note=[sn?"every snack comes with seasonal fruit":"",sal||veg?`every lunch with ${[sal?"a salad":"",veg?"seasonal vegetables":""].filter(Boolean).join(" and ")}`:""].filter(Boolean).join(", and ");
     blocks.push(dText("Week by week",note?kCap(note)+".":" "));
     blocks.push(dTable("",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),[w.farms.length?"In the dishes. "+fl(w.farms):"",w.sides.length?"On the side. "+fl(w.sides):""].filter(Boolean).join("\n")||"FEED's farms"]),{head:["Week of","Lunches","Snacks","Where the food came from"],widths:[.08,.31,.21,.4],muted:[0],noRule:true,small:true}))}
+  if(F.fruits.length+F.vegs.length)blocks.push({t:"small",lines:[[F.fruits.length?`Fruits, ${kList(F.fruits)}.`:"",F.vegs.length?`Vegetables, ${kList(F.vegs)}.`:""].filter(Boolean).join(" ")]});
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.staples.length)blocks.push(dTable("Our staples",F.staples.map(x=>[kCap(x.food),[x.maker,x.town].filter(has).join(", ")]),{cols:2,widths:[.42,.58],muted:[1]}));
   if(has(kNote()))blocks.push(dText("",kNote()));
@@ -4791,7 +4813,9 @@ function farmWallDoc(title,top,nFarms,nSonoma){const blocks=[];
   blocks.push(dTable("",top.slice(0,10).map(t=>[kCap(t.food),t.farm+(t.town?", "+t.town:"")]),{widths:[.36,.64],big:true,bold0:true}));
   blocks.push(dLead("",`${nFarms} farm${nFarms===1?"":"s"} grew our food${nSonoma?`, ${nSonoma} of them here in Sonoma County`:""}.`));
   return {display:true,type:"report",acc:"smallgroup",title,meta:[],blocks}}
-function farmWallMonth(month){const F=farmMonthData(month);return farmWallDoc(`Where our food came from in ${F.name}`,F.top,F.farms.length,F.sonoma)}
+function farmWallMonth(month){const F=farmMonthData(month);const d=farmWallDoc(`Where our food came from in ${F.name}`,F.top,F.farms.length,F.sonoma);
+  // the range of tastes, in large type under the farms
+  if(F.fruits.length+F.vegs.length||F.dishes)d.blocks.push(dText("",`${F.fruits.length+F.vegs.length} fruits and vegetables and ${F.dishes} different dishes this month.`));return d}
 // the week's wall sheet, from what the kitchen ordered for the week, which every educator can see
 function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w)return null;const seen=new Map();
   for(const it of w.items){const k=kPlural(it.food||it.name);if(!seen.has(k))seen.set(k,{food:k,farm:it.farm,town:farmTown(it.farm)})}
@@ -4800,6 +4824,7 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
 function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.length)return "";
   const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
+  if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes this month.`);
   if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,6).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Meals or education ----------
@@ -4839,6 +4864,146 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
     <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>
     ${gFold(L.map(u=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(kName(u.x.item).name)}</b> <span class="cnt">${esc(u.x.producer||"")} · ${esc(fmtDate(u.o.fulfilled||u.o.placed||""))}</span><div class="cnt">${esc(u.why)}.</div></div>
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
+/* ---------- Kitchen ----------
+   Where the kitchen makes the month's menu and everything around it. Each day has a morning snack, lunch and an
+   afternoon snack, Monday a morning snack only, and the sides served with each. Typing saves to the month's menu
+   record in the same form as before, so the calendar, Today, the farm sheets and the grant read it as they always have.
+   Past dishes are one tap away, the same week last year sits beside the month, and Fill this month drafts the month
+   from past menus for the kitchen to change and save. Fruit and vegetables are left to the kitchen to choose by season. */
+let kMonth=LS.get("tree.kmonth","")||"",kSel=null,kDraft=null,kLibQ="",kClosed={};
+const kMonthNow=()=>/^\d{4}-\d{2}$/.test(kMonth)?kMonth:iso(new Date()).slice(0,7);
+const kMonthShift=(m,n)=>{const [y,mo]=m.split("-").map(Number);return iso(new Date(y,mo-1+n,1)).slice(0,7)};
+const kMealsOf=d=>parseIso(d).getDay()===1?["am","lunch"]:["am","lunch","pm"];
+const K_MEAL={am:"Morning snack",lunch:"Lunch",pm:"Afternoon snack"};
+const kCanEdit=()=>isDirector()||isKitchenUser();
+// every dish ever on a menu, how often and when it was last served
+function kLibrary(){const m=new Map();for(const mn of menus.values())for(const [d,x] of Object.entries((mn&&mn.days)||{})){if(!x||x.closed)continue;
+  for(const k of ["am","lunch","pm"]){const t=String(x[k]||"").trim();if(!t)continue;const key=t.toLowerCase();const e=m.get(key)||{dish:t,n:0,last:"",kinds:new Set()};e.n++;if(d>e.last){e.last=d;e.dish=t}e.kinds.add(k==="lunch"?"lunch":"snack");m.set(key,e)}}
+  return [...m.values()].sort((a,b)=>b.n-a.n||a.dish.localeCompare(b.dish))}
+// days the school is closed, from the calendar's all-day events, so a draft leaves them empty
+async function kLoadClosed(month){if(kClosed[month]||!window.FP_API)return;kClosed[month]=new Set();const [y,mo]=month.split("-").map(Number);
+  try{const j=await window.FP_API("/api/view",{from:month+"-01",to:iso(new Date(y,mo,0))});
+    for(const e of j.events||[])if(/no school|closed|closure|holiday|break|in.?service|staff development|thanksgiving/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
+  if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()}
+const kLastYear=d=>addDays(d,-364);
+// a draft of the month from past menus, never saved until the kitchen saves it
+function kFill(month){const days=menuSchoolDays(month),lib=kLibrary(),have=(menus.get(month)||{}).days||{},closed=kClosed[month]||new Set();
+  const pool={lunch:lib.filter(e=>e.kinds.has("lunch")).map(e=>e.dish),snack:lib.filter(e=>e.kinds.has("snack")).map(e=>e.dish)};
+  const recent={lunch:[],snack:[]},keep={lunch:10,snack:18},draft={};let turn={lunch:0,snack:0};
+  for(const d of days){const x=have[d]||{};if(x.closed||closed.has(d))continue;const dd={};
+    for(const k of kMealsOf(d)){const kind=k==="lunch"?"lunch":"snack";if(has(x[k])){recent[kind].push(x[k].toLowerCase());continue}
+      const lyx=(((menus.get(kLastYear(d).slice(0,7))||{}).days)||{})[kLastYear(d)]||{};
+      const ok=t=>has(t)&&!recent[kind].slice(-keep[kind]).includes(String(t).toLowerCase());
+      let pick=ok(lyx[k])?lyx[k]:"";
+      // otherwise the most served dishes, taken in turn so the month has variety
+      for(let n=0;!pick&&n<pool[kind].length;n++){const t=pool[kind][(turn[kind]+n)%pool[kind].length];if(ok(t)){pick=t;turn[kind]=(turn[kind]+n+1)%pool[kind].length}}
+      if(pick){dd[k]=pick;recent[kind].push(pick.toLowerCase())}}
+    if(Object.keys(dd).length)draft[d]=dd}
+  kDraft={month,days:draft}}
+async function kWrite(month,patch){if(!db)throw new Error("TREE is not connected. Try again in a moment.");const have=menus.get(month);
+  if(!have){const doc=Object.assign({id:month,month,days:{},notes:Object.assign({},(menus.get(kMonthShift(month,-1))||{}).notes||{}),times:menuTimesLast(),by:whoAmI(),updatedAt:Date.now()});localMerge(doc,JSON.parse(JSON.stringify(patch)));await db.doc("menus/"+month).set(doc);menus.set(month,doc);return}
+  localMerge(have,JSON.parse(JSON.stringify(patch)));await db.doc("menus/"+month).update(Object.assign({},patch,{by:whoAmI(),updatedAt:Date.now()}))}
+const kTimers={};
+function kSaveSoon(month,day,k,val){const key=day+"|"+k;clearTimeout(kTimers[key]);kTimers[key]=setTimeout(()=>kWrite(month,{days:{[day]:{[k]:val}}}).then(()=>setConn("Menu saved")).catch(e=>toast((e&&e.message)||"Could not save the menu.")),600)}
+function kWeeks(month){const days=menuSchoolDays(month);const weeks=[];for(const d of days){const m=mondayOf(parseIso(d));let w=weeks.find(x=>x.m===m);if(!w){w={m,days:[]};weeks.push(w)}w.days.push(d)}return weeks}
+function kCellHtml(month,d){const x=(((menus.get(month)||{}).days)||{})[d]||{},dr=kDraft&&kDraft.month===month?(kDraft.days[d]||{}):{};const closed=!!x.closed;
+  const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});const shut=(kClosed[month]||new Set()).has(d);
+  return `<div class="kday${closed?" closed":""}"><div class="kdayh"><b>${esc(lab)}</b><label class="cnt"><input type="checkbox" data-kclosed="${d}" ${closed?"checked":""}> No school</label></div>
+    ${shut&&!closed?`<div class="cnt warnline">The calendar shows the school closed</div>`:""}
+    ${closed?"":kMealsOf(d).map(k=>{const v=x[k]||"",dv=!has(v)&&dr[k]?dr[k]:"";return `<label class="kmeal">${K_MEAL[k]}<input type="text" data-kday="${d}" data-kk="${k}" value="${esc(v||dv)}" class="${dv?"kdraft":""}" ${kSel&&kSel.day===d&&kSel.k===k?'data-ksel="1"':""}>
+      <input type="text" class="kside" data-kday="${d}" data-kk="${k}Side" value="${esc(x[k+"Side"]||"")}" placeholder="${k==="lunch"?"With salad and vegetable, such as":"With fruit, such as"}" aria-label="${K_MEAL[k]} sides"></label>`}).join("")}</div>`}
+function kLastYearHtml(month){const ref=kSel?kSel.day:(menuSchoolDays(month)[0]||month+"-01");const m=mondayOf(parseIso(ref));const days=[0,1,2,3,4].map(i=>addDays(m,i));
+  const rows=days.map(d=>{const ly=kLastYear(d),x=(((menus.get(ly.slice(0,7))||{}).days)||{})[ly]||{};return x.closed?`<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}))}</b><span class="cnt">No school</span></div>`:
+    `<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}))}</b>${["am","lunch","pm"].filter(k=>has(x[k])).map(k=>`<button class="kdish" type="button" data-kput="${esc(x[k])}" draggable="true">${esc(x[k])}</button>`).join("")||`<span class="cnt">No menu kept</span>`}</div>`}).join("");
+  return `<div class="card kside-card"><div class="lbl">The same week last year</div><div class="cnt">Week of ${esc(fmtDate(addDays(m,-364)))}. Tap a dish to put it in the chosen meal.</div>${rows}</div>`}
+function kLibraryHtml(){const want=kSel?(kSel.k==="lunch"?"lunch":"snack"):"";const q=kLibQ.toLowerCase();
+  const L=kLibrary().filter(e=>(!want||e.kinds.has(want))&&(!q||e.dish.toLowerCase().includes(q))).slice(0,60);
+  return `<div class="card kside-card"><div class="lbl">Past dishes${want?", "+(want==="lunch"?"lunches":"snacks"):""}</div>
+    <input type="search" id="klibq" placeholder="Find a dish" value="${esc(kLibQ)}" style="margin:6px 0">
+    <div class="klib">${L.map(e=>`<button class="kdish" type="button" data-kput="${esc(e.dish)}" draggable="true" title="Served ${e.n} time${e.n===1?"":"s"}, last on ${esc(fmtDate(e.last))}">${esc(e.dish)} <span class="cnt">${e.n} · ${esc(fmtDate(e.last).replace(/, (\d{4})$/," $1"))}</span></button>`).join("")||`<div class="cnt">No dish matches.</div>`}</div>
+    <div class="hint">${kSel?`Tap a dish to put it in ${esc(K_MEAL[kSel.k.replace("Side","")]||"the meal")} on ${esc(fmtDate(kSel.day))}, or drag it onto any meal.`:"Choose a meal in the month first, or drag a dish onto any meal."}</div></div>`}
+function renderKitchen(){
+  if(!kCanEdit()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">Kitchen</h2><div class="sub">The Kitchen page is for the kitchen and the director.</div></div>`;return}
+  const month=kMonthNow();kLoadClosed(month);const mrec=menus.get(month)||{};const notes=mrec.notes||(menus.get(kMonthShift(month,-1))||{}).notes||{};
+  const draftOn=kDraft&&kDraft.month===month&&Object.keys(kDraft.days).length;
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>
+      <div class="sub">Type in any meal and it is saved to the month's menu, which the calendar, Today and the family sheets read.</div></div>
+      <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button></div></div></div>
+    ${draftOn?`<div class="kdraftbar">This is a draft from past menus, in lighter type. Change anything, then save it. Fruit and vegetable sides are left for you to choose by season. <span class="actions"><button class="btn small" data-kdraftsave="1">Save the draft</button><button class="linkbtn" data-kdraftclear="1">Clear the draft</button></span></div>`:""}
+    <div class="kwrap"><div class="kmain">${kWeeks(month).map(w=>`<div class="kweek">${w.days.map(d=>kCellHtml(month,d)).join("")}</div>`).join("")||`<div class="empty">No school days in this month.</div>`}</div>
+      <div class="kaside">${kLibraryHtml()}${kLastYearHtml(month)}</div></div>`;
+  h+=kitchenCardHtml(planWeekNow(),false)||"";
+  h+=`<section class="card"><div class="lbl">The month's notes</div>
+    <label class="fld-label">With every snack<textarea data-knote="snack" rows="2">${esc(notes.snack||"")}</textarea></label>
+    <label class="fld-label">With every lunch<textarea data-knote="lunch" rows="2">${esc(notes.lunch||"")}</textarea></label>
+    <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. Kitchen's pumpkin focaccia"></label>
+    <div class="hint">The notes print on the menus, and the recipe of the month on the farm sheet for families.</div></section>`;
+  h+=`<section class="card">${staplesHtml().replace('<div class="binadd" id="staples-card">','<div id="staples-card">')}</section>`;
+  h+=`<section class="card"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|lunch","Lunch menu",true)}${printBtns("kmenu",month+"|snack","Snack menu",true)}${printBtns("farmsheet",month,"Farm sheet for families")}${printBtns("farmwall",month,"Classroom display")}</div>
+    <div class="hint">One page each, ready to attach to the Kitchen Digest.</div></section>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  if(kSel){const el=document.querySelector(`[data-kday="${kSel.day}"][data-kk="${kSel.k}"]`);if(el)el.classList.add("ksel")}}
+// Today for a kitchen sign-in, the produce coming and the week's menu
+function renderKitchenToday(){const wk=planWeekNow();const days=[0,1,2,3,4].map(i=>addDays(wk,i));const now=new Date();
+  const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+    return `<tr><td><b>${esc(lab)}</b></td>${x.closed?`<td colspan="3" class="cnt">No school</td>`:`<td>${esc(x.am||"")}</td><td>${esc(x.lunch||"")}</td><td>${parseIso(d).getDay()===1?"":esc(x.pm||"")}</td>`}</tr>`}).join("");
+  $("#main").innerHTML=`<div class="head"><span class="eyebrow">${esc(now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</span><h2 style="margin-top:4px">Good ${now.getHours()<12?"morning":now.getHours()<17?"afternoon":"evening"}, ${esc(me()||"")}</h2></div>
+    ${kitchenCardHtml(wk,false)}
+    <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">The week's menu</h3><button class="linkbtn" data-tview="kitchen">Open the Kitchen</button></div>
+      <div class="tablewrap"><table class="grid2" style="min-width:520px"><thead><tr><th>Day</th><th>Morning snack</th><th>Lunch</th><th>Afternoon snack</th></tr></thead><tbody>${rows}</tbody></table></div></section>`}
+document.addEventListener("focusin",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;document.querySelectorAll(".ksel").forEach(x=>x.classList.remove("ksel"));t.classList.add("ksel");
+  const was=kSel&&kSel.k.replace("Side","");kSel={day:t.dataset.kday,k:t.dataset.kk};const lib=document.querySelector(".kaside");
+  if(lib&&(!was||was!==kSel.k.replace("Side","")||true)){const q=document.getElementById("klibq");const keepFocus=document.activeElement===q;lib.innerHTML=kLibraryHtml()+kLastYearHtml(kMonthNow())}});
+document.addEventListener("input",e=>{const t=e.target;if(view!=="kitchen")return;
+  if(t.id==="klibq"){kLibQ=t.value;const box=t.closest(".kside-card");if(box){const n=document.createElement("div");n.innerHTML=kLibraryHtml();box.querySelector(".klib").replaceWith(n.querySelector(".klib"))}return}
+  if(t.dataset.kday){t.classList.remove("kdraft");kSaveSoon(kMonthNow(),t.dataset.kday,t.dataset.kk,t.value.trim())}});
+document.addEventListener("change",async e=>{const t=e.target;if(view!=="kitchen")return;const month=kMonthNow();
+  try{if(t.dataset.kclosed){await kWrite(month,{days:{[t.dataset.kclosed]:t.checked?{closed:true}:{closed:{__delete__:true}}}});renderKitchen();return}
+    if(t.dataset.knote){await kWrite(month,{notes:{[t.dataset.knote]:t.value.trim()}});setConn("Menu saved");return}
+    if(t.dataset.krecipe){await kWrite(month,{recipe:t.value.trim()});setConn("Menu saved");return}}catch(err){toast((err&&err.message)||"Could not save the menu.")}});
+function kPut(dish,day,k){const el=document.querySelector(`[data-kday="${day}"][data-kk="${k}"]`);if(!el)return;el.value=dish;el.classList.remove("kdraft");kSaveSoon(kMonthNow(),day,k,dish);el.focus()}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-kmon],[data-kfill],[data-kdraftsave],[data-kdraftclear],[data-kput]");if(!t||view!=="kitchen")return;e.stopImmediatePropagation();const month=kMonthNow();
+  if(t.dataset.kmon){kMonth=kMonthShift(month,+t.dataset.kmon);LS.set("tree.kmonth",kMonth);kSel=null;renderKitchen();return}
+  if(t.dataset.kfill){kFill(month);const n=Object.keys(kDraft.days).length;toast(n?`A draft for ${n} day${n===1?"":"s"}, from past menus. Save it when it looks right.`:"Every school day already has a menu.");renderKitchen();return}
+  if(t.dataset.kdraftclear){kDraft=null;renderKitchen();return}
+  if(t.dataset.kdraftsave&&kDraft){const days={};for(const [d,x] of Object.entries(kDraft.days)){const have=(((menus.get(month)||{}).days)||{})[d]||{};const add={};for(const [k,v] of Object.entries(x))if(!has(have[k]))add[k]=v;if(Object.keys(add).length)days[d]=add}
+    kWrite(month,{days}).then(()=>{kDraft=null;toast("The draft is saved to the menu.");renderKitchen()}).catch(err=>toast((err&&err.message)||"Could not save the menu."));return}
+  if(t.dataset.kput){if(!kSel){toast("Choose a meal in the month first.");return}const k=kSel.k.replace("Side","");kPut(t.dataset.kput,kSel.day,k);return}},true);
+document.addEventListener("dragstart",e=>{const t=e.target.closest&&e.target.closest("[data-kput]");if(t&&e.dataTransfer)e.dataTransfer.setData("text/plain",t.dataset.kput)});
+document.addEventListener("dragover",e=>{if(view==="kitchen"&&e.target.dataset&&e.target.dataset.kday)e.preventDefault()});
+document.addEventListener("drop",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;e.preventDefault();const v=e.dataTransfer&&e.dataTransfer.getData("text/plain");if(v)kPut(v,t.dataset.kday,t.dataset.kk.replace("Side",""))});
+/* the lunch and snack menus as families know them, a month in a weekly grid on one landscape page, with the notes */
+function kMenuGrid(month,kind){const weeks=kWeeks(month),x=d=>(((menus.get(month)||{}).days)||{})[d]||{};
+  return weeks.map(w=>[0,1,2,3,4].map(i=>{const d=addDays(w.m,i);if(d.slice(0,7)!==month)return null;const v=x(d);
+    if(v.closed)return {d,closed:true,lines:[]};
+    const lines=kind==="lunch"?[v.lunch||""].filter(has).concat(has(v.lunchSide)?["With "+v.lunchSide]:[]):[has(v.am)?["Morning",v.am+(has(v.amSide)?", with "+v.amSide:"")]:null,i>0&&has(v.pm)?["Afternoon",v.pm+(has(v.pmSide)?", with "+v.pmSide:"")]:null].filter(Boolean);
+    return {d,lines}}))}
+async function kMenuPdf(month,kind){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);const W=792,H=612,m=32,notes=((menus.get(month)||{}).notes||{})[kind]||"";
+  const name=MENU_MONTH(month);doc.setFillColor(255,252,214);doc.rect(m,m,W-2*m,92,"F");
+  if(PRINT.schoolDocs){pfont(doc,"fs",10);doc.setTextColor(96,110,101);doc.text("Fulton Community School & Farm",m+16,m+18)}
+  pfont(doc,"bs",34);doc.setTextColor(28,42,34);doc.text(name,m+16,m+54);pfont(doc,"bs",20);doc.text(kind==="lunch"?"Lunch":"Snack menu",m+16,m+80);
+  let y=m+92;if(has(notes)){pfont(doc,"fr",9);const ls=doc.splitTextToSize(clean(notes),W-2*m-24);const nh=ls.length*11.5+12;doc.setFillColor(118,118,118);doc.rect(m,y,W-2*m,nh,"F");doc.setTextColor(255,255,255);ls.forEach((l,i)=>doc.text(l,m+12,y+15+i*11.5));y+=nh}
+  y+=4;const cw=(W-2*m)/5;doc.setFillColor(222,222,222);doc.rect(m,y,W-2*m,16,"F");pfont(doc,"fr",9);doc.setTextColor(96,110,101);["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach((d,i)=>doc.text(d,m+i*cw+cw/2,y+11,{align:"center"}));y+=16;
+  const grid=kMenuGrid(month,kind);const rh=Math.min(92,(H-m-y)/Math.max(1,grid.length));doc.setDrawColor(190,190,190);doc.setLineWidth(.6);
+  grid.forEach((row,ri)=>{row.forEach((c,i)=>{const x=m+i*cw,yy=y+ri*rh;doc.rect(x,yy,cw,rh);if(!c)return;pfont(doc,"fr",8);doc.setTextColor(120,120,120);doc.text(String(Number(c.d.slice(8))),x+cw-6,yy+10,{align:"right"});
+    if(c.closed){pfont(doc,"bs",12);doc.setTextColor(28,42,34);doc.text("No School",x+cw/2,yy+rh/2+4,{align:"center"});return}
+    if(kind==="lunch"){let ty=yy+24;c.lines.forEach((l,k)=>{pfont(doc,k?"fr":"fs",k?8.5:10.5);doc.setTextColor(28,42,34);doc.splitTextToSize(clean(l),cw-14).slice(0,4).forEach(t=>{doc.text(t,x+cw/2,ty,{align:"center"});ty+=k?11:13})})}
+    else{let ty=yy+20;c.lines.forEach(([lab,t])=>{pfont(doc,"fs",7.5);doc.setTextColor(120,120,120);doc.text(lab,x+6,ty);ty+=10;pfont(doc,"fr",8.5);doc.setTextColor(28,42,34);doc.splitTextToSize(clean(t),cw-12).slice(0,3).forEach(s=>{doc.text(s,x+6,ty);ty+=10.5});ty+=4})}})});
+  await saveFile(doc.output("blob"),`${kind==="lunch"?"Lunch":"Snack"} menu ${name}.pdf`)}
+async function kMenuDocx(month,kind){let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,PageOrientation}=D;
+  const F=k=>PF.buf?PF.word[k]:"Arial";const run=(t,k,pt,c,b)=>new TextRun({text:clean(t),font:F(k),size:Math.round(pt*2),color:c||"1C2A22",bold:!!b&&!PF.buf});
+  const name=MENU_MONTH(month),notes=((menus.get(month)||{}).notes||{})[kind]||"",W=14400;const line={style:BorderStyle.SINGLE,size:4,color:"BEBEBE"};const bd={top:line,bottom:line,left:line,right:line};
+  const ch=[];if(PRINT.schoolDocs)ch.push(new Paragraph({children:[run("Fulton Community School & Farm","fs",10,"606E65")]}));
+  ch.push(new Paragraph({shading:{type:ShadingType.CLEAR,fill:"FFFCD6",color:"auto"},children:[run(name,"bs",32)]}),new Paragraph({shading:{type:ShadingType.CLEAR,fill:"FFFCD6",color:"auto"},spacing:{after:80},children:[run(kind==="lunch"?"Lunch":"Snack menu","bs",19)]}));
+  if(has(notes))ch.push(new Paragraph({shading:{type:ShadingType.CLEAR,fill:"767676",color:"auto"},spacing:{after:80},children:[run(notes,"fr",9,"FFFFFF")]}));
+  const cw=Math.floor(W/5);const head=new TableRow({tableHeader:true,children:["Monday","Tuesday","Wednesday","Thursday","Friday"].map(d=>new TableCell({width:{size:cw,type:WidthType.DXA},borders:bd,shading:{type:ShadingType.CLEAR,fill:"DEDEDE",color:"auto"},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[run(d,"fr",9,"606E65")]})]}))});
+  const rows=kMenuGrid(month,kind).map(r=>new TableRow({cantSplit:true,children:r.map(c=>new TableCell({width:{size:cw,type:WidthType.DXA},borders:bd,margins:{top:60,bottom:60,left:80,right:80},children:!c?[new Paragraph({})]:[new Paragraph({alignment:AlignmentType.RIGHT,children:[run(String(Number(c.d.slice(8))),"fr",8,"787878")]}),
+    ...(c.closed?[new Paragraph({alignment:AlignmentType.CENTER,children:[run("No School","bs",11)]})]:kind==="lunch"?c.lines.map((l,k)=>new Paragraph({alignment:AlignmentType.CENTER,children:[run(l,k?"fr":"fs",k?8.5:10.5)]})):c.lines.flatMap(([lab,t])=>[new Paragraph({children:[run(lab,"fs",7.5,"787878")]}),new Paragraph({spacing:{after:60},children:[run(t,"fr",8.5)]})]))]}))}));
+  ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[cw,cw,cw,cw,cw],rows:[head,...rows]}));
+  const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School & Farm",title:`${kind==="lunch"?"Lunch":"Snack"} menu ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:640,bottom:640,left:720,right:720}}},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await Packer.toBlob(docx),`${kind==="lunch"?"Lunch":"Snack"} menu ${name}.docx`)}
 /* ---------- Staff birthdays ----------
    The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
    under Birthdays every year, and so on Today. Like the children's birthdays, they stay out of the newsletter. */
@@ -7143,6 +7308,8 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");if(word)await kMenuDocx(m,k);else await kMenuPdf(m,k);return true}
+  if((kind==="farmsheet"||kind==="farmwall")&&!isDirector())await kMonthFetch(t.dataset.id);
   if(kind==="farmsheet"){await out([farmSheetDoc(t.dataset.id)],`What we ate ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="farmwall"){await out([farmWallMonth(t.dataset.id)],`Where our food came from ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="farmweek"){const d=farmWallWeek(t.dataset.id);if(!d){toast("The kitchen's order for this week has not arrived yet.");return true}await out([d],`Our food this week ${t.dataset.id}`);return true}
@@ -8269,11 +8436,12 @@ function signinsHtml(){
   if(signins.error)return `<section class="card"><div class="lbl">Sign-ins</div><div class="hint warnline">${esc(signins.error)}</div></section>`;
   const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
-    <div class="hint">Each educator signs in with their first name. A new educator, or one whose code was cleared, gets six starting numbers shown here. Give them those numbers, and the first time they sign in they choose four of their own. Codes are shown only here, to the director.</div>
-    ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Passcode</th><th></th></tr></thead><tbody>
+    <div class="hint">Each educator signs in with their first name. A new educator, or one whose code was cleared, gets six starting numbers shown here. Give them those numbers, and the first time they sign in they choose four of their own. Codes are shown only here, to the director. A Kitchen sign-in, such as Kitchen's, reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
+    ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
+        <td><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""} aria-label="${esc(a.name)} signs in for the kitchen"></td>
         <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:(a.start?`<span class="cnt">Starting code</span> <span style="font-variant-numeric:tabular-nums;letter-spacing:.12em">${signins.show[a.name]?esc(a.start):"\u2022\u2022\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`)}</td>
         <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
@@ -8293,9 +8461,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.id==="sg-addall"){(async()=>{const known=new Set(signins.list.map(a=>a.name.toLowerCase()));for(const r of roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)))await signinCall("/api/accounts/save",{name:r.name,room:r.room||"",director:false});toast("Everyone on the educators list can sign in now.")})();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!signins.list)return;
-  const a=signins.list.find(x=>x.name===(t.dataset.sgroom||t.dataset.sgdir));if(!a)return;
-  if(t.dataset.sgroom!=null)signinCall("/api/accounts/save",{was:a.name,name:a.name,room:t.value,director:a.director});
-  if(t.dataset.sgdir!=null)signinCall("/api/accounts/save",{was:a.name,name:a.name,room:a.room,director:t.checked});
+  const a=signins.list.find(x=>x.name===(t.dataset.sgroom||t.dataset.sgdir||t.dataset.sgkit));if(!a)return;
+  if(t.dataset.sgroom!=null)signinCall("/api/accounts/save",{was:a.name,name:a.name,room:t.value,director:a.director,kitchen:!!a.kitchen});
+  if(t.dataset.sgdir!=null)signinCall("/api/accounts/save",{was:a.name,name:a.name,room:a.room,director:t.checked,kitchen:t.checked?false:!!a.kitchen});
+  // a kitchen sign-in reaches the Kitchen page, Today and the calendar only
+  if(t.dataset.sgkit!=null)signinCall("/api/accounts/save",{was:a.name,name:a.name,room:a.room,director:a.director,kitchen:t.checked});
 });
 
 /* ---------- Program settings ---------- */
