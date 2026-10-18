@@ -545,7 +545,8 @@ async function handle(req, res) {
     let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
     if (!key || cleanKey(b.key) !== key) { log('FEED order refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
-    if (!/feedsonoma\.com/i.test(String(b.from || ''))) { err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
+    // a confirmation forwarded by hand comes from the office address, so the email itself is checked
+    if (!/feedsonoma\.com/i.test(String(b.from || '')) && !/FEED Cooperative/i.test(String(b.subject || '') + String(b.html || '').slice(0, 20000))) { err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
     if (!store.ready) await loadAll();
     const r = keepOrder(b.html || b.text || '', 'mailbox'); if (r.error) { err(req, res, 400, r.error); return; }
     log('FEED order kept from the mailbox', r.doc.order, r.doc.items.length + ' items'); json(req, res, 200, { ok: true, order: r.doc.order }); return;
