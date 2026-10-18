@@ -2281,7 +2281,7 @@ function nlObs(k){
 function nlRoomAges(){
   const out={};const now=Date.now();
   for(const c of children.values()){if(c.status&&c.status!=="active")continue;if(!c.dob||!c.classroom)continue;(out[c.classroom]=out[c.classroom]||[]).push((now-parseIso(c.dob).getTime())/(365.25*864e5))}
-  return Object.fromEntries(Object.entries(out).map(([r,a])=>{a.sort((x,y)=>x-y);const md=a[Math.floor(a.length/2)];return [r,md<2.5?"toddlers, mostly two-year-olds":md<3.5?"mostly three-year-olds":"mostly four- and five-year-olds"]}));
+  return Object.fromEntries(Object.entries(out).map(([r,a])=>{a.sort((x,y)=>x-y);const md=a[Math.floor(a.length/2)];return [r,md<2.5?"mostly two-year-olds":md<3.5?"mostly three-year-olds":"mostly four- and five-year-olds"]}));
 }
 // a child's first name in words families will read is shown to the director before anything goes out
 function nlNameWarn(text){
@@ -2303,7 +2303,7 @@ function nlDrdpWords(codes){
     parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
     return parts.join("\n")}).filter(Boolean).join("\n");
 }
-const nlRules=`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, or any code or abbreviation. Never name a child or describe a child so a family could tell who it is. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research.`;
+const nlRules=`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. Never name a child or describe a child so a family could tell who it is. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research.`;
 
 async function nlFindTopics(x,btn){
   const obs=nlObs(x.month);
@@ -2358,7 +2358,7 @@ Write the family-facing part. Return a JSON object with these keys.
 "title" the topic title for families, 2 to 6 words.
 "happening" 2 or 3 sentences telling families what children did or what educators noticed this month, drawn only from the observations below. Speak of classes or age groups, never of one child.
 "why" 2 or 3 sentences on why this matters for a young child's growth, in plain words.
-"grows" an array of exactly 3 objects with "age" and "text", going from younger to older, using these ages "Toddlers", "Around three", "Fours and fives". Each "text" is one sentence describing what this looks like at that age, written in plain words but keeping the meaning and order of the developmental descriptions below, so a family can see the steps.
+"grows" an array of exactly 3 objects with "age" and "text", going from younger to older, using these ages "Twos", "Around three", "Fours and fives". Never use the word toddler. Each "text" is one sentence describing what this looks like at that age, written in plain words but keeping the meaning and order of the developmental descriptions below, so a family can see the steps.
 "bonus" 1 or 2 sentences naming how this connects to skills children use later in school, such as hand and shoulder strength for holding a pencil and writing, vocabulary, early math, following directions, or self-regulation.
 
 Developmental descriptions for this topic, for your reference only. Never repeat their codes or names.
