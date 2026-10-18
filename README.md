@@ -38,6 +38,10 @@ Each item shows its farm and the farm's town, and whether it came before. The to
 
 Settings, then Monthly menus, for the director. Add the month's snack and lunch menus as PDFs or photos. Claude reads each one into days, the morning and afternoon snack and the lunch, along with the note about what is served with every meal. The director checks every day against the menu before saving, and nothing shows until then. Saved menus are kept under menus/ in the records, one file a month, and show on the calendar as Snack and lunch, and so on Today. Each meal is its own entry, the morning snack, lunch, and the afternoon snack after lunch, at the times kept with the month's menu, which carry over from the month before and can be changed in the card. Monday has the morning snack only. Months can also come from Sally's Kitchen Digest. A menus record holding only the digest's two Kaymbu links under intake is opened by the server (menu-intake.js), each PDF is read by Claude with the same instructions as Settings, and days the director already wrote are never replaced. The status page shows any month still waiting. A month can be checked or changed again at any time. Only the director adds or changes menus, and the server enforces it.
 
+## Staff birthdays
+
+Settings, then Staff birthdays, for the director. Each staff member's birthday is kept with the month and day only, in settings/staffbirthdays.json in the records, and shows on the calendar under Birthdays every year, and so on Today, as the name's birthday with Staff birthday beneath. No age is shown. Like the children's birthdays, they stay out of the newsletter.
+
 ## Farm to School grant
 
 Documentation, then Farm to School, for the director only. The server refuses grant records to anyone else. It gathers what TREE already holds, by quarter, against the eight objectives of the CDFA Farm to School Incubator grant.

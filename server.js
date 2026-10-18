@@ -211,6 +211,19 @@ function conferenceEvents(from, to) {
       events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
     }
   }
+  // staff birthdays, kept by the director in Settings with the month and day only, so no age is shown
+  const sb = store.recs.settings.get('staffbirthdays'), MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  for (const p of (sb && !sb.deleted && sb.doc && Array.isArray(sb.doc.people) ? sb.doc.people : [])) {
+    const name = String((p && p.name) || '').trim(), md = String((p && p.date) || '');
+    const mm = +md.slice(0, 2), dd = +md.slice(3);
+    if (!name || !/^\d{2}-\d{2}$/.test(md) || mm < 1 || mm > 12 || dd < 1 || dd > MONTH_DAYS[mm - 1]) continue;
+    for (let y = y0; y <= y1; y++) {
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+      const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
+      if (day < from || day > to) continue;
+      events.push({ id: 'tbday.staff.' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.' + y, cal: 'tbday', title: `${name}'s birthday`, desc: 'Staff birthday', allDay: true, start: day, end: day });
+    }
+  }
   // the month's snack and lunch, from the menus the director adds in TREE
   for (const [, r] of store.recs.menus) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;

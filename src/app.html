@@ -828,6 +828,7 @@ async function boot(){
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
+    db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
@@ -4024,6 +4025,36 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
   if(a==="fam"){const date=$("#g-fdate")?.value||"",text=($("#g-ftext")?.value||"").trim();if(!date||!text){toast("Add the day and what happened.");return}
     const id=uid();if(await gWrite("families",{list:{[id]:{id,date,text,by:whoAmI()}}},{id:"families",list:{}}))toast("Kept");renderGrant();return}
   if(a==="draft"){gDraft(gQ());return}},true);
+
+/* ---------- Staff birthdays ----------
+   The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
+   under Birthdays every year, and so on Today. Like the children's birthdays, they stay out of the newsletter. */
+let staffBdays=[];
+const SB_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SB_DAYS=[31,29,31,30,31,30,31,31,30,31,30,31];
+const sbFix=(m,d)=>String(m).padStart(2,"0")+"-"+String(Math.min(Math.max(1,+d||1),SB_DAYS[m-1])).padStart(2,"0");
+function sbSave(){staffBdays.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.name).localeCompare(String(b.name)));
+  if(db)db.doc("settings/staffbirthdays").set({people:JSON.parse(JSON.stringify(staffBdays)),updatedAt:Date.now()}).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save the staff birthdays. Check your connection."))}
+function sbSelects(i,date){const m=+String(date||"01-01").slice(0,2)||1,d=+String(date||"01-01").slice(3)||1;
+  return `<select data-sbmon="${i}" aria-label="Month">${SB_MONTHS.map((n,k)=>`<option value="${k+1}" ${k+1===m?"selected":""}>${n}</option>`).join("")}</select></td>
+    <td><select data-sbday="${i}" aria-label="Day">${Array.from({length:SB_DAYS[m-1]},(_,k)=>`<option ${k+1===d?"selected":""}>${k+1}</option>`).join("")}</select>`}
+function staffBdaysHtml(){
+  const rows=staffBdays.map((p,i)=>({p,i})).sort((a,b)=>String(a.p.date).localeCompare(String(b.p.date)));
+  return `<section class="card" id="sb-card"><div class="lbl">Staff birthdays</div>
+    <div class="hint">Each one shows on the calendar under Birthdays every year, and on Today that day. Only the month and day are kept, so no age is shown. Write the name the way the team knows it.</div>
+    ${rows.length?`<div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Name</th><th>Month</th><th>Day</th><th></th></tr></thead><tbody>
+    ${rows.map(({p,i})=>`<tr><td><input type="text" data-sbname="${i}" value="${esc(p.name||"")}" aria-label="Name"></td><td>${sbSelects(i,p.date)}</td><td><button class="linkbtn" data-sbdel="${i}">Remove</button></td></tr>`).join("")}
+    </tbody></table></div>`:`<div class="cnt">No staff birthdays yet.</div>`}
+    <div class="actions"><input type="text" id="sb-name" placeholder="Name" style="width:160px"><select id="sb-month" aria-label="Month" style="width:150px">${SB_MONTHS.map((n,k)=>`<option value="${k+1}">${n}</option>`).join("")}</select><select id="sb-day" aria-label="Day" style="width:80px">${Array.from({length:31},(_,k)=>`<option>${k+1}</option>`).join("")}</select><button class="btn small" id="sb-add">Add birthday</button></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!isDirector())return;
+  if(t.id==="sb-add"){const n=($("#sb-name")?.value||"").trim();if(!n){toast("Type a name first.");return}
+    staffBdays.push({name:n,date:sbFix(+$("#sb-month").value,+$("#sb-day").value)});sbSave();renderSettings();return}
+  if(t.dataset.sbdel!=null){staffBdays.splice(+t.dataset.sbdel,1);sbSave();renderSettings();return}});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!isDirector())return;
+  if(t.dataset.sbname!=null){const n=t.value.trim();if(!n){t.value=staffBdays[+t.dataset.sbname].name||"";return}staffBdays[+t.dataset.sbname].name=n;sbSave();return}
+  if(t.dataset.sbmon!=null){const p=staffBdays[+t.dataset.sbmon];p.date=sbFix(+t.value,+String(p.date).slice(3));sbSave();renderSettings();return}
+  if(t.dataset.sbday!=null){const p=staffBdays[+t.dataset.sbday];p.date=sbFix(+String(p.date).slice(0,2)||1,+t.value);sbSave();renderSettings();return}});
+document.addEventListener("keydown",e=>{if(view==="settings"&&e.key==="Enter"&&e.target.id==="sb-name"){e.preventDefault();$("#sb-add")?.click()}});
 
 /* ---------- Monthly menus ----------
    The director adds each month's snack and lunch menus. Claude reads the PDF or photo into days, the director
@@ -7437,6 +7468,7 @@ function renderSettings(){
   ${signinsHtml()}
   ${lensSettingsHtml()}
   ${menusHtml()}
+  ${staffBdaysHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
     <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
       <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div></section>`;
