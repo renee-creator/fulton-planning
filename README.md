@@ -59,7 +59,7 @@ On the Farm to School page, an estimate of the groceries and time each family is
 
 ## The grant's eight objectives
 
-The Farm to School page opens with the agreement's eight objectives from the scope of work (draft of March 20, 2025), folded under its heading. Each gives the planned activity, who carries it out, and where on the page its evidence is gathered. The whole grant summary prints them first.
+The Farm to School page opens with the agreement's eight objectives from the scope of work (draft of March 20, 2025), folded under its heading. Each gives the planned activity, who carries it out, and where on the page its evidence is gathered. Each goal shows where it stands for the chosen period, from the same figures the page gathers. Goal 1 adds the pace needed each month to use the rest of the food budget by the end of the term, against the last three months. Goal 4 counts certified organic and local farms using sustainable practices without certification separately, as the scope of work allows. The people are as they are now, Renee and Office for purchasing and Renee with the educators for food education. Every summary prints where each goal stands.
 
 ## Local food, how far it travels and where the dollars go
 
