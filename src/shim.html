@@ -72,7 +72,7 @@
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
   // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
-  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now"];
+  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week"];
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
@@ -138,7 +138,7 @@
     setInterval(poll, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) noteActive(); });
     const top=document.querySelector(".who");
-    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=(Auth.name||"")+(Auth.director?", director":""); w.lastChild.onclick=signOut; top.append(w); }
+    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":""); w.lastChild.onclick=signOut; top.append(w); }
   }
   Store.ready=start();
 

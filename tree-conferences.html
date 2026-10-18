@@ -14,7 +14,7 @@
 <style>[data-go="portfolios"]{display:none!important}</style>
 <title>Fulton Family Conferences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: a working ledger. Sticky header with tabs, one main column, editor with a side rail for prep and history. */
 :root{
@@ -202,7 +202,9 @@ details summary{cursor:pointer;font-weight:600}
 .sc-opt{display:inline-flex;gap:5px;align-items:center;font-size:.9rem;white-space:nowrap;cursor:pointer}
 /* inside TREE */
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#2b5a40;--accent-soft:#dce9de}}
-:root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif}
+:root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;--f-mono:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif}
+.mono,.date-tile,.qnum,.tl-when{font-variant-numeric:tabular-nums}
+.tl-when b{font-weight:700}
 h1,h2,h3{font-weight:700}
 header.top .brand,.who-chip{display:none!important}
 header.top{position:static!important;border-bottom:0!important;background:transparent!important}
@@ -220,7 +222,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
       <button data-go="children">Children</button>
       <button data-go="portfolios">Monthly pages</button>
       <button data-go="nextyear">Next year</button>
-      <button data-go="settings">Settings</button>
+      <button data-go="settings">Conference settings</button>
     </nav>
     <div class="top-actions">
       <button class="btn primary" data-act="import-form" id="btn-import-top">Fill from a completed form</button>
@@ -1158,7 +1160,7 @@ function syncEditor(){
 function viewSettings(){
   const s=S.settings;
   return `<div style="max-width:760px" class="stack">
-  <div><div class="eyebrow">Setup</div><h1>Settings</h1></div>
+  <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
     <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${canEdit()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
     <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${canEdit()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
@@ -1206,7 +1208,7 @@ function viewPortfolios(){
     ${MONTHS.map((m,i)=>`<td class="${late(i)&&!done[i]?"pf-late":""}" style="text-align:center">${pfCell(c,yr,m,i,dis)}</td>`).join("")}
     <td class="mono small">${n}${owed?` <span style="color:var(--danger)">${owed} behind</span>`:""}</td></tr>`; }).join("");
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Advocate educators</div><h1>Monthly portfolio pages</h1>
-    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">Each month fills itself with the number of moments and slides in TREE that tag the child, and a number opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</p></div>
+    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">Each month fills itself with the number of observations and slides in TREE that tag the child, and a number opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</p></div>
     <div class="filters"><select id="pf-year" aria-label="School year">${yrs.map(y=>`<option ${y===yr?"selected":""}>${esc(y)}</option>`).join("")}</select></div></div>
   <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}<span class="small muted mono">${list.length} ${list.length===1?"child":"children"}</span></div>
   <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th>${MONTHS.map(m=>`<th style="text-align:center">${m}</th>`).join("")}<th>Done</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="empty">No children match.</td></tr>`}</tbody></table></div>`;
@@ -1711,7 +1713,7 @@ function impStatus(html){ const el=$("#imp-status"); if(el) el.innerHTML=html; c
 async function runImport(file, opt={}){
   const ctx=S.importCtx; ctx.file=file; ctx.careful=!!opt.careful;
   const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
-  if(!S.sample){ impStatus(`<div class="notice">Reading forms needs Claude, which is not available in this view. You can still attach the file to a conference from its Original forms panel.</div>`); return; }
+  if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view. You can still attach the file to a conference from its Original forms panel.</div>`); return; }
   const ctl=new AbortController(); S.modalCtl=ctl;
   try{
     busy("Opening "+file.name+"…");
@@ -1733,7 +1735,7 @@ async function runImport(file, opt={}){
     ctx.result=res; showReview();
   }catch(e){
     if(e?.code==="cancelled") return;
-    const msg = e?.code==="not_granted"? "Claude was not allowed for this page, so the form could not be read."
+    const msg = e?.code==="not_granted"? "TREE was not allowed for this page, so the form could not be read."
       : e?.code==="rate_limited"? "TREE is busy right now. Wait a minute and try again."
       : e?.code==="image_rejected"? "That image could not be used. Try a smaller JPEG or PNG."
       : e?.code==="invalid_json"? "The reply could not be turned into form sections. Try again, or try a clearer photo."
@@ -1851,7 +1853,7 @@ function pageRange(pages){ return pages.length===1? `Page ${pages[0]}` : `Pages 
 async function runBatch(files, preread){
   const ctx=S.importCtx; const ctl=new AbortController(); S.modalCtl=ctl;
   const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
-  if(!S.sample){ impStatus(`<div class="notice">Reading forms needs Claude, which is not available in this view.</div>`); return; }
+  if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view.</div>`); return; }
   const limits=await S.sample.limits().catch(()=>null);
   const maxImg=Math.max(1, Math.min(limits?.images?.maxCount||4, 8));
   const B={source:files.length===1?files[0].name:`${files.length} photos`, pdf:null, file:files.length===1?files[0]:null, pages:[], forms:[], skipped:[]};
@@ -1943,7 +1945,7 @@ Reply with only JSON in this shape
   }
 }
 function readErr(e){
-  return e?.code==="not_granted"? "Claude was not allowed for this page."
+  return e?.code==="not_granted"? "TREE was not allowed for this page."
     : e?.code==="rate_limited"? "TREE is busy. Wait a minute and try this form again."
     : e?.code==="image_rejected"? "These pages could not be used as images."
     : e?.code==="invalid_json"? "The reply could not be turned into form sections."

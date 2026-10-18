@@ -199,7 +199,7 @@ details summary{cursor:pointer;font-weight:600}
       <button data-go="children">Children</button>
       <button data-go="portfolios">Portfolios</button>
       <button data-go="nextyear">Next year</button>
-      <button data-go="settings">Settings</button>
+      <button data-go="settings">Conference settings</button>
     </nav>
     <div class="top-actions">
       <button class="btn primary" data-act="import-form" id="btn-import-top">Fill from a completed form</button>
@@ -524,7 +524,7 @@ function render(){
   $$("#tabs [data-go]").forEach(b=>b.setAttribute("aria-current", (b.dataset.go===S.view.name || (S.view.name==="child"&&b.dataset.go==="children") || (S.view.name==="conf"&&b.dataset.go==="overview"))?"page":"false"));
   $("#btn-import-top").hidden = !canEdit();
   const app=$("#app");
-  if(S.dbState==="absent"){ app.innerHTML = `<div class="panel stack" style="max-width:640px;margin:40px auto"><h2>Open this page inside Claude</h2><p>Conference records are saved to a shared store that is available when this page is opened from Claude while signed in. Open it from your Claude artifacts to see the roster and conference records.</p></div>`; return; }
+  if(S.dbState==="absent"){ app.innerHTML = `<div class="panel stack" style="max-width:640px;margin:40px auto"><h2>Open this page inside TREE</h2><p>Conference records are saved to a shared store that is available when this page is opened from TREE while signed in. Open it from your TREE artifacts to see the roster and conference records.</p></div>`; return; }
   if(!S.loaded.children || !S.loaded.confs){ app.innerHTML = `<div class="empty"><span class="spinner" style="display:inline-block;vertical-align:middle"></span> Loading conferences and children…</div>`; return; }
   const v=S.view.name; checkFilters();
   const ae=document.activeElement, keepId = ae && app.contains(ae) && ae.id ? ae.id : null;
@@ -970,7 +970,7 @@ function syncEditor(){
 function viewSettings(){
   const s=S.settings;
   return `<div style="max-width:760px" class="stack">
-  <div><div class="eyebrow">Setup</div><h1>Settings</h1></div>
+  <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
     <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${canEdit()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
     <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${canEdit()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
@@ -1018,7 +1018,7 @@ function viewPortfolios(){
     ${MONTHS.map((m,i)=>`<td class="${late(i)&&!done[i]?"pf-late":""}" style="text-align:center">${pfCell(c,yr,m,i,dis)}</td>`).join("")}
     <td class="mono small">${n}${owed?` <span style="color:var(--danger)">${owed} behind</span>`:""}</td></tr>`; }).join("");
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Advocate educators</div><h1>Portfolios</h1>
-    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">Each month fills itself with the number of moments and slides in TREE that tag the child, and a number opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</p></div>
+    <p class="muted small" style="margin:.3em 0 0;max-width:62ch">Each month fills itself with the number of observations and slides in TREE that tag the child, and a number opens the child's documentation. Tick a month for a page made outside TREE. Past months with nothing are shaded.</p></div>
     <div class="filters"><select id="pf-year" aria-label="School year">${yrs.map(y=>`<option ${y===yr?"selected":""}>${esc(y)}</option>`).join("")}</select></div></div>
   <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}<span class="small muted mono">${list.length} ${list.length===1?"child":"children"}</span></div>
   <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th>${MONTHS.map(m=>`<th style="text-align:center">${m}</th>`).join("")}<th>Done</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="empty">No children match.</td></tr>`}</tbody></table></div>`;
@@ -1493,7 +1493,7 @@ function openImport(confId){
   const ctx = {confId, file:null, result:null};
   S.importCtx=ctx;
   openModal(`<div class="spread"><h2>Fill from a completed form</h2>${cf?`<span class="small muted">Into ${esc(childName(S.children[cf.childId]))}'s ${esc(confLabel(cf))} record</span>`:""}</div>
-    <p class="small muted" style="margin:0">Upload a photo or scan of a paper form, a PDF, or the Word version of the conference template. Claude reads it and fills in each section. You review everything before it is saved.${cf?"":" For several children at once, upload one PDF holding all the forms, or choose several photos together."}</p>
+    <p class="small muted" style="margin:0">Upload a photo or scan of a paper form, a PDF, or the Word version of the conference template. TREE reads it and fills in each section. You review everything before it is saved.${cf?"":" For several children at once, upload one PDF holding all the forms, or choose several photos together."}</p>
     <label class="drop" id="drop" for="imp-file"><b>Choose ${cf?"a file":"files"} or drop ${cf?"it":"them"} here</b><div class="small muted">JPEG, PNG, PDF, or DOCX</div></label>
     <input type="file" id="imp-file" ${cf?"":"multiple"} accept="image/*,.pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt" hidden>
     <div id="imp-status"></div>
@@ -1523,7 +1523,7 @@ function impStatus(html){ const el=$("#imp-status"); if(el) el.innerHTML=html; c
 async function runImport(file, opt={}){
   const ctx=S.importCtx; ctx.file=file; ctx.careful=!!opt.careful;
   const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
-  if(!S.sample){ impStatus(`<div class="notice">Reading forms needs Claude, which is not available in this view. You can still attach the file to a conference from its Original forms panel.</div>`); return; }
+  if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view. You can still attach the file to a conference from its Original forms panel.</div>`); return; }
   const ctl=new AbortController(); S.modalCtl=ctl;
   try{
     busy("Opening "+file.name+"…");
@@ -1539,17 +1539,17 @@ async function runImport(file, opt={}){
     else if(file.type.startsWith("text/")){ text=await file.text(); }
     else throw new Error("This file type cannot be read. Upload a photo, PDF, or DOCX.");
     if(images.length && !limits?.images){ throw new Error("Reading photos is not available in this view. Upload the Word or PDF version instead."); }
-    busy(images.length? "Claude is reading the handwriting. This can take up to a minute…" : "Claude is reading the form…");
+    busy(images.length? "TREE is reading the handwriting. This can take up to a minute…" : "TREE is reading the form…");
     const res=await S.sample.json(extractionPrompt(text), {signal:ctl.signal, ...(images.length?{images}:{}), modelTier:"default", ...(opt.careful?{careful:true}:{})});
     if(!res || typeof res!=="object") throw new Error("The form could not be read. Try a clearer photo.");
     ctx.result=res; showReview();
   }catch(e){
     if(e?.code==="cancelled") return;
-    const msg = e?.code==="not_granted"? "Claude was not allowed for this page, so the form could not be read."
-      : e?.code==="rate_limited"? "Claude is busy right now. Wait a minute and try again."
+    const msg = e?.code==="not_granted"? "TREE was not allowed for this page, so the form could not be read."
+      : e?.code==="rate_limited"? "TREE is busy right now. Wait a minute and try again."
       : e?.code==="image_rejected"? "That image could not be used. Try a smaller JPEG or PNG."
       : e?.code==="invalid_json"? "The reply could not be turned into form sections. Try again, or try a clearer photo."
-      : e?.code==="refused"? "Claude could not read this file. Check that it is a conference form."
+      : e?.code==="refused"? "TREE could not read this file. Check that it is a conference form."
       : e?.code? "The form could not be read this time. Try again in a moment."
       : (e?.message||"The form could not be read.");
     impStatus(`<div class="notice">${esc(msg)}</div>`);
@@ -1663,7 +1663,7 @@ function pageRange(pages){ return pages.length===1? `Page ${pages[0]}` : `Pages 
 async function runBatch(files, preread){
   const ctx=S.importCtx; const ctl=new AbortController(); S.modalCtl=ctl;
   const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
-  if(!S.sample){ impStatus(`<div class="notice">Reading forms needs Claude, which is not available in this view.</div>`); return; }
+  if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view.</div>`); return; }
   const limits=await S.sample.limits().catch(()=>null);
   const maxImg=Math.max(1, Math.min(limits?.images?.maxCount||4, 8));
   const B={source:files.length===1?files[0].name:`${files.length} photos`, pdf:null, file:files.length===1?files[0]:null, pages:[], forms:[], skipped:[]};
@@ -1755,11 +1755,11 @@ Reply with only JSON in this shape
   }
 }
 function readErr(e){
-  return e?.code==="not_granted"? "Claude was not allowed for this page."
-    : e?.code==="rate_limited"? "Claude is busy. Wait a minute and try this form again."
+  return e?.code==="not_granted"? "TREE was not allowed for this page."
+    : e?.code==="rate_limited"? "TREE is busy. Wait a minute and try this form again."
     : e?.code==="image_rejected"? "These pages could not be used as images."
     : e?.code==="invalid_json"? "The reply could not be turned into form sections."
-    : e?.code==="refused"? "Claude could not read these pages."
+    : e?.code==="refused"? "TREE could not read these pages."
     : (e?.message || "This form could not be read this time.");
 }
 function batchConflicts(){
@@ -1839,7 +1839,7 @@ actions["batch-check"]=a=>toggleBatchDetail(+a.dataset.i);
 actions["show-onboarding"]=()=>{ S.view.showOb=true; render(); };
 actions["visit-upload"]=a=>{
   const id=a.dataset.id;
-  openModal(`<h2>Read visit notes</h2><p class="small muted" style="margin:0">Upload a photo or PDF of the completed Garden Visit or home visit form. Claude writes out what it says, and the text is added to the visit notes for you to check.</p>
+  openModal(`<h2>Read visit notes</h2><p class="small muted" style="margin:0">Upload a photo or PDF of the completed Garden Visit or home visit form. TREE writes out what it says, and the text is added to the visit notes for you to check.</p>
     <label class="drop" for="vn-file"><b>Choose a file</b><div class="small muted">JPEG, PNG or PDF</div></label><input type="file" id="vn-file" accept="image/*,.pdf,application/pdf" hidden><div id="vn-status"></div>
     <div class="modal-foot"><button class="btn" data-act="close">Cancel</button></div>`);
   $("#vn-file").onchange=async e=>{
@@ -1928,7 +1928,7 @@ ${JSON.stringify(roster)}`, {modelTier:"quick"});
     const same=cf && cf.confDate===e.date && (cf.confTime||"")===(e.time||"");
     return `<tr><td class="mono small" style="white-space:nowrap">${esc(fmtDate(e.date))}<div class="muted">${esc(fmtT(e.time))}${e.end?" to "+esc(fmtT(e.end)):""}</div></td>
       <td class="small">${e.room? `<b>${esc(e.room)}</b> · ${esc(e.description.slice(0,160))}` : esc((e.summary+(e.description?" · "+e.description:"")).slice(0,160))}</td>
-      <td><select data-sug="${i}" aria-label="Child for this slot"><option value="">Not matched</option>${kids.map(k=>`<option value="${esc(k.id)}" ${k.id===e.childId?"selected":""}>${esc(childName(k))}</option>`).join("")}</select>${same?`<div class="small muted">Already filled in</div>`:""}${e.byClaude?`<div class="small muted">Matched by Claude, check it</div>`:""}${e.childId&&S.sug.filter(x=>x.childId===e.childId).length>1?`<div class="small" style="color:var(--danger)">Matched to more than one slot. Pick the right one.</div>`:""}</td></tr>`; }).join("");
+      <td><select data-sug="${i}" aria-label="Child for this slot"><option value="">Not matched</option>${kids.map(k=>`<option value="${esc(k.id)}" ${k.id===e.childId?"selected":""}>${esc(childName(k))}</option>`).join("")}</select>${same?`<div class="small muted">Already filled in</div>`:""}${e.byClaude?`<div class="small muted">Matched by TREE, check it</div>`:""}${e.childId&&S.sug.filter(x=>x.childId===e.childId).length>1?`<div class="small" style="color:var(--danger)">Matched to more than one slot. Pick the right one.</div>`:""}</td></tr>`; }).join("");
   openModal(`<h2>Conference times from SignUpGenius</h2>
     <p class="small muted" style="margin:0 0 10px">${S.sug.length} ${S.sug.length===1?"slot":"slots"} found, ${S.sug.filter(e=>e.childId).length} matched to a child. Each one is matched to a child by the names in the slot. Check the matches, pick a child for any that are blank, then fill them in. Open slots with no family stay blank and are skipped.</p>
     ${S.sug.length?`<div class="tbl-wrap" style="max-height:52vh;overflow:auto"><table class="list"><thead><tr><th>When</th><th>In SignUpGenius</th><th>Child</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p>No conference slots are in the calendar yet.</p>`}
