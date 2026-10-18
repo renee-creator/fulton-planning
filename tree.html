@@ -2694,14 +2694,16 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""
   if(view==="newsletter")renderNewsletter();
 }
 
-// what is coming up next month, from the school calendar. Birthdays and the staff calendar stay out.
+// what is coming up next month, from the school calendar. Only events and school closures go in, so the snack and
+// lunch menus, birthdays and the staff calendar stay out.
 async function nlLoadComing(k){
   const next=nlShift(k,1);if(nlEvents[next]&&nlEvents[next].at>Date.now()-10*60e3)return;
   const [y,m]=next.split("-").map(Number);const from=iso(new Date(y,m-1,1)),to=iso(new Date(y,m,0));
   try{const j=await window.FP_API("/api/view",{from,to});
     const cals=new Map(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c.name||""]));
     const by=new Map();
-    for(const e of (j.events||[])){if(e.cal==="tbday")continue;const cn=cals.get(e.cal)||"";if(/internal|staff/i.test(cn))continue;
+    for(const e of (j.events||[])){const eid=String(e.id||"");if(e.cal==="tbday"||e.cal==="tmenu"||/^t(bday|menu)\./.test(eid))continue;const cn=cals.get(e.cal)||"";if(/internal|staff|birthday|menu|snack|lunch/i.test(cn))continue;
+      if(/birthday|^((morning |afternoon )?snack|lunch),/i.test(String(e.title||e.summary||"").trim()))continue;
       const day=String(e.start||"").slice(0,10);if(!day)continue;
       const title=e.cal==="tconf"||/conference/i.test(cn)?"Family conferences":String(e.title||e.summary||"").trim();if(!title)continue;
       const key=day+"|"+title;if(!by.has(key))by.set(key,{date:day,text:title})}
