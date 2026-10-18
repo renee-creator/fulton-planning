@@ -542,6 +542,15 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .nlblock{border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
 .nlarch .item{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left}
 @media (max-width:640px){.nlrow{flex-wrap:wrap}.nlage{width:100%;flex:1 1 100%}.nlstep{left:-6px}}
+.binlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 18px;margin-top:12px}
+.binitem{padding:8px 0;border-top:1px solid var(--line,#e4e2da)}
+.binitem b{font-size:15.5px}
+.binnote{font-size:12.5px;margin-top:3px;color:var(--ink-soft,#6b6b62)}
+.binnote.new{color:var(--clay,#b5562f);font-weight:600}
+.binidea{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line,#e4e2da)}
+.binidea.on{background:var(--marigold-soft,#fbf1d9);margin:0 -10px;padding:10px}
+.binadd,.binsugg{margin-top:12px;padding:12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}
+@media (max-width:560px){.binidea{flex-direction:column}.binidea .actions{align-self:flex-start}}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -814,6 +823,7 @@ async function boot(){
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -962,6 +972,7 @@ function renderMain(){
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
   if(view==="inquiries"){renderInquiries();return}
+  if(view==="bin"){renderBin();return}
   if(view==="lens"){renderLens();return}
   if(view==="moments"){renderMoments();return}
   if(view==="import"){renderImport();return}
@@ -1310,7 +1321,7 @@ function renderWelcome(){
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",plans:"This week",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+const NAV_NAMES={today:"Today",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -2041,10 +2052,10 @@ setInterval(outboxSend,30000);
    so nothing is lost and nothing has to be found twice. The Keep a moment button is always one tap away. */
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
-const SUBS={plans:[["plans","This week"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
+const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
   docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"]],
   children:[["children","Children"],["conferences","Conferences"]]};
-const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",
+const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
 const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>SECTION_OF[v]||"plans";
@@ -2168,6 +2179,10 @@ function waitingHtml(list){
   return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
+// on Monday, Tuesday and Wednesday the week's bin is a tap away
+function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";const b=binAll().find(x=>mondayOf(parseIso(x.date))===mondayOf(new Date()));if(!b)return"";
+  const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
+  return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
 function renderToday(){
   const h=new Date().getHours();const greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   const name=me()||(window.FP_NAME?window.FP_NAME():"");const room=myRoom();const mg=myGroups();
@@ -2182,6 +2197,7 @@ function renderToday(){
     <button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
   </div>
+  ${todayBinHtml()}
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.length||"Nothing"}</span></div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
@@ -3438,6 +3454,7 @@ function noticeFormCard(){
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
     ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
+    ${n.bin?`<div class="ref" style="background:var(--marigold-soft)">From the weekly bin that arrived ${esc(fmtDate(n.bin))} <button class="linkbtn" data-nfbinrm="1">Not from the bin</button></div>`:""}
     ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
       :editing?"":`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the scene itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
         <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
@@ -3793,6 +3810,200 @@ function noticeNoteHtml(p){
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
 const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+/* ---------- Weekly bin ----------
+   Each Class receives a standard FEED Sonoma bin, and on Tuesday a small group the Class team chooses unboxes it.
+   The server reads the list FEED posts ahead of delivery and keeps each week under bins/, so the year's record of
+   what came grows by itself. The team keeps an idea bank of its own. Claude can suggest questions to hold, and a
+   suggestion is kept only when an educator chooses it. Nothing here asks an educator to fill anything in. */
+let bins=new Map(), binWeek=LS.get("fps.binweek",""), binRoom=LS.get("fps.binroom",""), binFeed={weeks:null,error:"",at:0,busy:false}, binSugg=null, binBusy=false, binAdd=null;
+const binOk=b=>b&&/^\d{4}-\d{2}-\d{2}$/.test(b.id||b.date||"")&&(b.items||[]).length;
+function binAll(){const m=new Map();for(const w of binFeed.weeks||[])m.set(w.date,Object.assign({id:w.date},w));for(const b of bins.values())if(binOk(b))m.set(b.id,b);
+  const all=[...m.values()].filter(binOk).sort((a,b)=>b.date.localeCompare(a.date));const t=all.filter(b=>b.tuesday);return t.length?t:all}
+function binCurrent(){const list=binAll();if(!list.length)return null;
+  if(binWeek){const b=list.find(x=>x.id===binWeek);if(b)return b}
+  const now=new Date(),today=iso(now),dw=now.getDay();
+  // from Saturday through Monday the coming bin is the one to plan for. Later in the week it is the one that came.
+  if(dw===0||dw===6||dw===1){const up=[...list].reverse().find(b=>b.date>=today);if(up)return up}
+  const wk=mondayOf(now);
+  return list.find(b=>mondayOf(parseIso(b.date))===wk)||[...list].reverse().find(b=>b.date>=today)||list[0]}
+// where each farm is. FEED names the farm, and the town comes from this list, which any educator can correct on the page.
+// from FEED's producer list, checked against CCOF and the farms' own pages (Oct 2026). Where a mailing address and the fields differ, the fields.
+const FARM_TOWNS={"allstar organics": "Nicasio", "bella ridge farm": "Occidental", "bernier farm": "Geyserville", "coastal hill farm": "Petaluma", "county line harvest": "Petaluma", "coyote family farm": "Penngrove", "devoto gardens": "Sebastopol", "dms ranch": "Sebastopol", "earthseed farm": "Sebastopol", "earthworker farm": "Bodega", "filigreen farm": "Boonville", "four oak farm": "Santa Rosa", "front porch farm": "Healdsburg", "gold ridge organic farm": "Sebastopol", "green star farm": "Sebastopol", "kibo farm": "Santa Rosa", "laguna farm": "Sebastopol", "longer table farm": "Santa Rosa", "los pelicanos farm": "Petaluma", "pelicanos farm": "Petaluma", "marin roots farm": "Petaluma", "new family farm": "Sebastopol", "paul's produce": "Sonoma", "pink barn farm": "Sebastopol", "radical family farm": "Sebastopol", "reyes farm": "Windsor", "russian river organics": "Healdsburg", "seven moons farm": "Kenwood", "suncatcher farm": "Petaluma", "tookey farm": "Healdsburg", "windrift farm": "Petaluma", "west county community farm": "Sebastopol", "winter sister farm": "Sebastopol", "oak hill farm": "Glen Ellen", "full belly farm": "Guinda", "noble goat farm": "Healdsburg", "srjc shone farm": "Forestville"};
+function farmTown(f){const k=String(f||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").trim();const own=((bins.get("farms")||{}).towns||{})[k];if(has(own))return own;
+  for(const [n,t] of Object.entries(FARM_TOWNS))if(k===n||k.startsWith(n)||n.startsWith(k))return t;return""}
+const farmWithTown=f=>{const t=farmTown(f);return t?`${f}, ${t}`:f};
+const farmKey=f=>String(f||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").trim();
+const binRoomNow=()=>CLASSROOMS.includes(binRoom)?binRoom:(myRoom()||CLASSROOMS[0]);
+// carrots and Nantes carrots are the same thing coming back
+const binKey=name=>String(name||"").toLowerCase().split(",")[0].replace(/[“”"'‘’]/g,"").replace(/\s+or\s+.*$/,"").replace(/\s+/g," ").trim().replace(/ies$/,"y").replace(/([^s])s$/,"$1");
+function binName(it){const n=String(it.name||"");const m=/\sor\s/i.test(n)?null:n.match(/^([^,]+),\s*[“"]([^”"]+)[”"]\s*$/);return (m?m[2]+" "+m[1].toLowerCase():n).replace(/\s+/g," ").trim()}
+function binBefore(b,it){const k=binKey(it.name);return binAll().filter(x=>x.date<b.date&&(x.items||[]).some(y=>binKey(y.name)===k))}
+const binIdeas=()=>Object.values((bins.get("ideas")||{}).list||{}).filter(i=>i&&has(i.text)).sort((a,b)=>(b.at||0)-(a.at||0));
+const binHeld=(b,room)=>((b&&b.held)||{})[room]||{};
+const binMoments=(room,id)=>[...notices.values()].filter(n=>n.bin&&(!id||n.bin===id)&&momentIn(n,room)).sort((a,b)=>(b.at||0)-(a.at||0));
+
+async function binLoad(fresh){
+  if(!window.FP_API||!db||binFeed.busy)return;
+  if(!fresh&&binFeed.at&&Date.now()-binFeed.at<30*60000)return;
+  binFeed.busy=true;
+  try{const j=await window.FP_API("/api/feed-bin",fresh?{fresh:true}:{});binFeed.weeks=j.weeks||[];binFeed.error=j.error||"";}
+  catch(e){binFeed.error=(e&&e.message)||"FEED's list could not be read just now."}
+  binFeed.at=Date.now();binFeed.busy=false;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderBin();
+}
+
+function renderBin(){
+  const b=binCurrent(),room=binRoomNow(),list=binAll();
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
+    <div class="sub" style="max-width:74ch">Each Class receives a bin of produce from local farms, and on Tuesday a small group the Class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
+    ${b?`<div class="actions">${printBtns("bin",b.id,"Print the bin sheet",true)}</div>`:""}</div>
+    <div class="filters" role="group" aria-label="Class">${CLASSROOMS.map(r=>`<button class="pill" aria-pressed="${r===room}" data-binroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
+  if(!b){
+    h+=binFeed.busy||!binFeed.at?`<div class="empty"><span class="spin"></span> Reading this week's list from FEED</div>`
+      :`<div class="empty">${binFeed.error?esc(binFeed.error):"No bin is listed yet."}</div>`;
+    h+=binHandHtml();$("#main").innerHTML=h;binLoad();return}
+  const ix=list.findIndex(x=>x.id===b.id),older=list[ix+1],newer=list[ix-1];
+  const days=b.date?parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
+  const keys=new Set((b.items||[]).map(it=>binKey(it.name)));
+  const depth=list.filter(x=>x.date<b.date).length;
+  h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">${esc(days)}</h3>
+      <div class="cnt">${b.source==="hand"?"Added by hand":"As FEED listed it"}${b.date>=iso(new Date())?". FEED may still swap an item on packing day.":""}</div></div>
+      <div class="actions">${older?`<button class="linkbtn" data-binweek="${older.id}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${newer.id}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>
+    <div class="binlist">${(b.items||[]).map(it=>{const prev=binBefore(b,it);const last=prev[0];
+      const note=prev.length?`Came ${prev.length===1?"once":prev.length+" times"} before, last on ${esc(fmtDate(last.date).replace(/, \d{4}$/,""))}`:depth>=3?"New in the bin this year":"";
+      return `<div class="binitem"><b>${esc(binName(it))}</b>${it.qty?` <span class="cnt">${esc(it.qty)}</span>`:""}<div class="cnt">${esc((it.farms||[]).map(farmWithTown).join(" or ")||"Farm not named")}</div>${note?`<div class="binnote${prev.length?"":" new"}">${note}</div>`:""}</div>`}).join("")}</div>
+    ${binFeed.error&&binFeed.at?`<div class="cnt warnline" style="margin-top:8px">${esc(binFeed.error)}</div>`:""}
+    <div class="actions" style="margin-top:10px"><button class="linkbtn" data-binact="fresh">${binFeed.busy?"Reading FEED":"Read FEED's list again"}</button></div></section>`;
+
+  // the questions this Class is bringing to the table this week
+  const held=binHeld(b,room);
+  h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held);
+  h+=binFarmsHtml(b);
+  // what was kept from the unboxings
+  const here=binMoments(room,b.id),before=binMoments(room).filter(n=>n.bin!==b.id);
+  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">From the unboxing</h3><button class="btn small" data-binact="moment">Keep an observation</button></div>
+    ${here.length?`<div class="tlist">${here.map(momentMini).join("")}</div>`:`<div class="empty">Nothing kept from this bin yet. An observation kept here stays with the bin, and goes on to plans, threads and documentation like any other.</div>`}
+    ${before.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">From earlier bins, ${before.length}</summary><div class="tlist">${before.slice(0,12).map(momentMini).join("")}</div></details>`:""}</section>`;
+  h+=binHandHtml();
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+  binLoad();
+}
+const BIN_KIND={question:{head:"Questions to hold",empty:"No questions in the idea bank yet. Add one the team wants to hold, or ask for suggestions.",add:"Add a question",ph:"Ex. Will they find the seeds inside the squash before it is cut open?",say:"A question the team wants to hold"},
+  prep:{head:"Simple ways to prepare it",empty:"No ways to prepare it yet. Add one the team has tried, or ask for suggestions.",add:"Add a way to prepare it",ph:"Ex. Tear the little gems by hand, rinse them, and share them with lemon and salt.",say:"A simple way to prepare and share it"}};
+const binKind=i=>i.kind==="prep"?"prep":"question";
+function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
+  const ideas=binIdeas().filter(i=>binKind(i)===kind);
+  const fits=ideas.filter(i=>(i.produce||[]).some(k=>keys.has(k))),rest=ideas.filter(i=>!fits.includes(i));
+  const atTable=ideas.filter(i=>held[i.id]);
+  const ideaRow=i=>{const on=!!held[i.id];const mine=isDirector()||(i.by&&i.by===whoAmI())||(i.keptBy&&i.keptBy===whoAmI());
+    return `<div class="binidea${on?" on":""}"><div style="flex:1;min-width:0"><div>${esc(i.text)}</div><div class="cnt">${i.from==="suggested"?"Kept by "+esc(i.keptBy||i.by||"an educator"):esc(i.by||"An educator")} · ${shortDate(i.at)}</div></div>
+      <div class="actions" style="flex:none"><button class="btn small${on?"":" ghost"}" data-binhold="${i.id}" aria-pressed="${on}">${on?"At the table":"Bring to the table"}</button>${mine?`<button class="linkbtn" data-binideadel="${i.id}">Take out</button>`:""}</div></div>`};
+  const sug=binSugg&&binSugg.id===b.id&&binSugg.room===room?binSugg[kind]||[]:null;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${K.head}, ${esc(room)} class</h3><span class="cnt">${atTable.length?atTable.length+" at the table":"None chosen yet"}</span></div>
+    <div class="cnt" style="margin-bottom:8px">${kind==="prep"?"The food here is for preparing, tasting and sharing, with every part used and the scraps going to the compost or the animals. ":""}The ones brought to the table print on the bin sheet.${kind==="question"?" The educator with the group decides what to follow once the children are in it.":""}</div>
+    ${fits.length?`<div class="lbl" style="margin-top:6px">From the team's idea bank, for this week's produce</div>${fits.map(ideaRow).join("")}`:""}
+    ${rest.length?`<details${fits.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:8px">${fits.length?"More from the idea bank, "+rest.length:"The team's idea bank, "+rest.length}</summary>${rest.map(ideaRow).join("")}</details>`:""}
+    ${!ideas.length?`<div class="empty">${K.empty}</div>`:""}
+    ${binAdd&&binAdd.kind===kind?binAddHtml(b):`<div class="actions" style="margin-top:10px"><button class="btn small ghost" data-binact="add" data-kind="${kind}">${K.add}</button><button class="btn small ghost" data-binact="suggest" ${binBusy?"disabled":""}>${binBusy?"Thinking":"Suggest some"}</button></div>`}
+    ${sug&&(sug.length||binSugg.none)?binSuggHtml(kind,sug):""}</section>`}
+function binFarmsHtml(b){const farms=[...new Set((b.items||[]).flatMap(it=>it.farms||[]))];if(!farms.length)return"";
+  return `<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Where the farms are</summary>
+    <div class="cnt" style="margin:8px 0">Change a town here and it changes everywhere the farm appears.</div>
+    ${farms.map(f=>`<label class="cnt" style="display:flex;gap:10px;align-items:center;margin:6px 0"><span style="min-width:180px">${esc(f)}</span><input type="text" data-farmtown="${esc(farmKey(f))}" value="${esc(farmTown(f))}" placeholder="Town" style="max-width:220px"></label>`).join("")}</details>`}
+function binAddHtml(b){const f=binAdd;
+  return `<div class="binadd"><label class="fld-label">${BIN_KIND[f.kind||"question"].say}<textarea id="bin-idea" rows="2" placeholder="${BIN_KIND[f.kind||"question"].ph}">${esc(f.text||"")}</textarea></label>
+    <div class="cnt" style="margin:6px 0 4px">It goes with (optional)</div><div class="chiprow">${(b.items||[]).map(it=>{const k=binKey(it.name);return `<button class="chip-btn" data-binpk="${esc(k)}" aria-pressed="${(f.produce||[]).includes(k)}">${esc(binName(it))}</button>`}).join("")}</div>
+    <div class="actions" style="margin-top:8px"><button class="btn small" data-binact="addsave">Add it</button><button class="linkbtn" data-binact="addcancel">Cancel</button></div></div>`}
+function binSuggHtml(kind,items){
+  return `<div class="binsugg"><div class="lbl">Suggestions to consider</div><div class="cnt" style="margin-bottom:6px">Drafted from this week's produce${kind==="question"?" and what the class is following":""}. Only the ones you keep join the idea bank.</div>
+    ${items.length?items.map((x,i)=>`<div class="binidea"><div style="flex:1;min-width:0">${esc(x.text)}</div><div class="actions" style="flex:none"><button class="btn small ghost" data-binkeep="${i}" data-kind="${kind}">Keep</button></div></div>`).join(""):`<div class="empty">No suggestions came back.</div>`}
+    <div class="actions"><button class="linkbtn" data-binact="suggclose">Close</button></div></div>`}
+function binHandHtml(){const d=binCurrent();const next=(()=>{const t=new Date();const add=(9-t.getDay())%7;t.setDate(t.getDate()+add);return iso(t)})();
+  return `<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Add a week's list by hand</summary>
+    <div class="cnt" style="margin:8px 0">For a week FEED's page could not be read. One item on each line, written the way FEED writes it, such as Fennel (1 ea) - Paul's Produce.</div>
+    <label class="cnt">The day it arrives <input type="date" id="bin-hdate" value="${esc(next)}" style="width:auto"></label>
+    <textarea id="bin-hlist" rows="6" style="margin-top:8px"></textarea>
+    <div class="actions" style="margin-top:8px"><button class="btn small ghost" data-binact="hand">Keep this list</button></div></details>`}
+
+async function binWrite(id,patch,base){if(!db){toast("TREE is not connected. Try again in a moment.");return false}
+  try{if(!bins.get(id))await db.doc("bins/"+id).create(base||{id});await db.doc("bins/"+id).update(patch);return true}
+  catch(e){toast("Could not save that. Check your connection.");return false}}
+
+async function binSuggest(b,room){
+  if(!sample){toast("Claude assist is not available here.");return}
+  binBusy=true;renderBin();
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&(!t.classroom||t.classroom===room)).slice(0,8);
+  const prs=[...projects.values()].filter(p=>p.status!=="closed"&&(p.classroom===room||(p.classrooms||[]).includes(room)||!p.classroom)).slice(0,6);
+  const past=binMoments(room).slice(0,8);
+  const counts=(b.items||[]).map(it=>{const n=binBefore(b,it).length;return n?`${binName(it)} has come ${n} time${n===1?"":"s"} before`:""}).filter(Boolean);
+  const prompt=`A small group of preschool children will open this week's farm bin together with an educator. The school is Reggio inspired and nature based. Children are seen as competent and capable co-constructors of knowledge, and the curriculum is co-constructed by children and educators. The school has its own farm garden, compost and animals.
+
+This week's bin, with the farm each item came from.
+${(b.items||[]).map(it=>`${binName(it)}${it.qty?" ("+it.qty+")":""}, from ${(it.farms||[]).join(" or ")||"a local farm"}`).join("\n")}
+${counts.length?"\nWhat has come before. "+counts.join(". ")+".":""}
+${ths.length?"\nThreads the "+room+" class is following, in the educators' own words.\n"+ths.map(t=>`${t.name}${t.question?". "+t.question:""}`).join("\n"):""}
+${prs.length?"\nProjects the class is part of.\n"+prs.map(p=>p.name).join("\n"):""}
+${past.length?"\nWhat educators noticed at earlier unboxings.\n"+past.map(n=>firstLine(n.noticed,240)).join("\n"):""}
+${binIdeas().length?"\nQuestions the team already holds. Do not repeat these.\n"+binIdeas().slice(0,20).map(i=>i.text).join("\n"):""}
+
+First, suggest 4 questions an educator could hold while the children explore the bin. Each question is the educator's own wondering about what the children might notice, test, compare or care about, written as an open question or a hypothesis, never in a child's voice and never as a lesson to deliver. After each question add one short sentence naming what might be set out on the table, using only this week's produce and simple tools such as a scale, magnifiers, paper and pencils, and a knife the educator handles. Connect a question to a thread, a project, the farms, the garden, the compost or the animals only where the connection is real. No seasonal themes, no crafts, no worksheets, no steps.
+
+Second, suggest 4 simple ways the small group could prepare and share some of this produce, in one or two sentences each. Use only what young children can do with real care, such as washing, scrubbing, tearing, peeling, snapping, shelling, scooping out seeds, cutting with a child-safe knife, or tasting the same food raw and cooked. Keep any cooking to what an educator can do simply, such as roasting squash or potatoes or warming greens, and keep added ingredients to a few, such as olive oil, salt or lemon. Each one ends in eating and sharing it together, with every part used where it can be and the scraps going to the compost or the animals.
+The food is treated with respect. It is never used as an art material, a stamp, a toy or a building material, and nothing is wasted for an activity.
+
+Write in plain, warm language. Do not use colons, em dashes, or analogies.
+
+Return a JSON object with two keys. "questions" is an array of objects with "text", the question followed by its sentence, and "produce", an array of the item names from the bin it uses. "prep" is an array of objects in the same form.`;
+  try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"bin"});
+    const clean=arr=>(Array.isArray(arr)?arr:[]).slice(0,6).map(x=>({text:String(x?.text||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").replace(/\s+/g," ").trim(),produce:(Array.isArray(x?.produce)?x.produce:[]).map(binKey).filter(k=>(b.items||[]).some(it=>binKey(it.name)===k))})).filter(x=>x.text);
+    binSugg={id:b.id,room,question:clean(out?.questions||out?.ideas),prep:clean(out?.prep)};binSugg.none=!binSugg.question.length&&!binSugg.prep.length;
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  binBusy=false;if(view==="bin")renderBin();
+}
+
+function binDoc(b,room){const held=binHeld(b,room);const on=binIdeas().filter(i=>held[i.id]);
+  const qs=on.filter(i=>binKind(i)==="question").map(i=>i.text),ps=on.filter(i=>binKind(i)==="prep").map(i=>i.text);
+  const blocks=[dList("From the farms",(b.items||[]).map(it=>`${binName(it)}${it.qty?" ("+it.qty+")":""}${(it.farms||[]).length?", from "+it.farms.map(farmWithTown).join(" or "):""}`))];
+  if(qs.length)blocks.push(dList("Questions to hold",qs));
+  if(ps.length)blocks.push(dList("Simple ways to prepare it",ps));
+  return {display:true,type:"report",acc:"smallgroup",title:"In this week's bin",meta:[["Class",room],["Arrives",b.date?parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):""]],blocks}}
+
+document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.farmtown==null)return;
+  if(await binWrite("farms",{towns:{[t.dataset.farmtown]:t.value.trim()||{__delete__:true}}},{id:"farms",towns:{}}))toast("Saved");if(view==="bin")renderBin()});
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("[data-binroom],[data-binweek],[data-binact],[data-binhold],[data-binideadel],[data-binkeep],[data-binpk],[data-nfbinrm]");if(!t)return;
+  const d=t.dataset;
+  if(d.nfbinrm){if(noticeForm){delete noticeForm.bin;renderMain()}return}
+  if(view!=="bin")return;e.stopImmediatePropagation();
+  const b=binCurrent(),room=binRoomNow();
+  if(d.binroom){binRoom=d.binroom;LS.set("fps.binroom",binRoom);binAdd=null;renderBin();return}
+  if(d.binweek){binWeek=d.binweek;LS.set("fps.binweek",binWeek);binAdd=null;binSugg=null;renderBin();jumpTop();return}
+  if(d.binpk&&binAdd){binAdd.text=$("#bin-idea")?.value||binAdd.text;const k=d.binpk;binAdd.produce=binAdd.produce||[];binAdd.produce=binAdd.produce.includes(k)?binAdd.produce.filter(x=>x!==k):[...binAdd.produce,k];renderBin();return}
+  const a=d.binact;
+  if(a==="fresh"){binLoad(true);renderBin();return}
+  if(a==="add"){binAdd={text:"",produce:[],kind:d.kind==="prep"?"prep":"question"};renderBin();$("#bin-idea")?.focus();return}
+  if(a==="addcancel"){binAdd=null;renderBin();return}
+  if(a==="addsave"){const text=($("#bin-idea")?.value||"").trim();if(!text){toast("Write the question first.");return}
+    if(!me()){needName();return}
+    const id=uid();if(await binWrite("ideas",{list:{[id]:{id,text,kind:binAdd.kind||"question",produce:binAdd.produce||[],by:whoAmI(),at:Date.now(),from:"team"}}},{id:"ideas",list:{}})){binAdd=null;toast("Added to the idea bank")}
+    renderBin();return}
+  if(a==="suggest"&&b){binSuggest(b,room);return}
+  if(a==="suggclose"){binSugg=null;renderBin();return}
+  if(d.binkeep&&binSugg){const kind=d.kind==="prep"?"prep":"question";const x=(binSugg[kind]||[])[+d.binkeep];if(!x)return;if(!me()){needName();return}
+    const id=uid();if(await binWrite("ideas",{list:{[id]:{id,text:x.text,kind,produce:x.produce||[],by:whoAmI(),keptBy:whoAmI(),at:Date.now(),from:"suggested"}}},{id:"ideas",list:{}})){binSugg[kind]=binSugg[kind].filter(y=>y!==x);toast("Kept in the idea bank")}
+    renderBin();return}
+  if(d.binhold&&b){const on=!!binHeld(b,room)[d.binhold];
+    const base={id:b.id,date:b.date,days:b.days||"",label:b.label||"",tuesday:!!b.tuesday,items:b.items||[],source:b.source||"feed"};
+    await binWrite(b.id,{held:{[room]:{[d.binhold]:on?{__delete__:true}:true}}},base);renderBin();return}
+  if(d.binideadel){const i=binIdeas().find(x=>x.id===d.binideadel);if(!i)return;
+    if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Take it out?";setTimeout(()=>{if(t.isConnected){t.dataset.sure="";t.textContent="Take out"}},4000);return}
+    await binWrite("ideas",{list:{[i.id]:{__delete__:true}}});renderBin();return}
+  if(a==="moment"&&b){noticeForm=Object.assign(newNotice(),{bin:b.id,classroom:room});view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return}
+  if(a==="hand"){const date=$("#bin-hdate")?.value||"",paste=$("#bin-hlist")?.value||"";if(!paste.trim()){toast("Add the list first, one item on each line.");return}
+    try{t.disabled=true;await window.FP_API("/api/feed-bin",{date,paste});binWeek=date;LS.set("fps.binweek",binWeek);toast("The list is kept")}catch(err){toast((err&&err.message)||"The list could not be kept.")}
+    t.disabled=false;renderBin();return}
+},true);
+
+
 /* ---------- Team inquiries ----------
    A team inquiry is how the team thinks through a question about practice and development, such as a child running
    from a request or a hard moment between two friends. It is kept apart from curriculum plans so a plan never becomes
@@ -5745,6 +5956,7 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
