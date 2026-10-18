@@ -4255,13 +4255,20 @@ function gLocalHtml(from,to,pw,q){const L=gLinesAll(from,to);if(!L.length)return
 // 40 to 50 percent of a day's food (a third to 40 percent on a morning snack only day), with 25 percent added at the
 // high end for organic and local. Time is 10 to 25 minutes a school day of shopping, packing and cleanup.
 const G_SAVE={low:2.38,lowShort:1.96,high:5.36,highShort:4.29,fed:7.36,fedShort:6.06,minLow:10,minHigh:25,wage:18.21};
+// a typical school week, Monday with a morning snack and four full days
+const gWeek=()=>{const lo=4*G_SAVE.low+G_SAVE.lowShort,hi=4*G_SAVE.high+G_SAVE.highShort,mLo=5*G_SAVE.minLow,mHi=5*G_SAVE.minHigh;return {lo,hi,mLo,mHi,vLo:mLo/60*G_SAVE.wage,vHi:mHi/60*G_SAVE.wage}};
+const gMins=m=>m<60?Math.round(m)+" minutes":(Math.round(m/60*10)/10).toString().replace(/\.0$/,"")+" hours";
 function gSchoolDays(from,to){let full=0,short=0;for(const m of menus.values()){if(!m||!m.days)continue;for(const [day,d] of Object.entries(m.days)){if(day<from||day>to||!d||d.closed||!(d.lunch||d.am))continue;
   const mon=parseIso(day).getDay()===1;if(!mon&&String(d.pm||"").trim())full++;else short++}}return {full,short,days:full+short}}
 function gSavingsHtml(from,to,q){const S=gSet();const kids=Number(S.enrolled)||kidsAt().length||0;const {full,short,days}=gSchoolDays(from,to);
   if(!days)return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">What families don't have to provide</h3></div><div class="empty">No monthly menus are kept for ${esc(periodName(q))}, so there are no school days to count yet.</div></section>`;
   const lo=full*G_SAVE.low+short*G_SAVE.lowShort,hi=full*G_SAVE.high+short*G_SAVE.highShort,fed=full*G_SAVE.fed+short*G_SAVE.fedShort;
   const hLo=days*G_SAVE.minLow/60,hHi=days*G_SAVE.minHigh/60;const meals=kids*(full*3+short*2);const r=n=>"$"+Math.round(n).toLocaleString("en-US");const hr=n=>Math.round(n).toLocaleString("en-US");
+  const w=gWeek();
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">What families don't have to provide</h3><span class="cnt">${esc(periodName(q))}</span></div>
+    <div class="lbl">In a typical school week, for each family</div>
+    <div class="gstats">${[["$"+Math.round(w.lo)+" to $"+Math.round(w.hi),"in groceries they don't buy"],[gMins(w.mLo)+" to "+gMins(w.mHi),"of shopping, packing and cleanup they get back"],["$"+Math.round(w.vLo)+" to $"+Math.round(w.vHi),"that time is worth at the Santa Rosa minimum wage"],["14","meals and snacks they don't plan, buy, cook or pack"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
+    <div class="lbl" style="margin-top:12px">${esc(periodName(q))}</div>
     <div class="gstats">${[[hr(days),"school days with lunch and snacks"],[kids?hr(meals):"Add enrollment",kids?"meals and snacks offered to "+kids+" children":"in Grant details below"],[r(lo)+" to "+r(hi),"in groceries for each child"],[hr(hLo)+" to "+hr(hHi)+" hours","of shopping, packing and cleanup for each family"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
     ${kids?`<div class="cnt" style="margin-top:8px">Across ${kids} children, that is about ${r(lo*kids)} to ${r(hi*kids)} in groceries families did not have to buy, and ${hr(hLo*kids)} to ${hr(hHi*kids)} hours they did not spend, worth ${r(hLo*kids*G_SAVE.wage)} to ${r(hHi*kids*G_SAVE.wage)} at the Santa Rosa minimum wage.</div>`:""}
     <div class="cnt" style="margin-top:6px">For comparison, the federal child care food program pays centers ${r(fed)} per child for the same lunches and snacks over these days, a basic prepared meal with no allowance for organic food or baking from scratch. It describes the same meals another way, so it is never added to the grocery estimate.</div>
@@ -4301,7 +4308,8 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
   const blocks=[];
   {const st=gGoalStatus(from,to);blocks.push(dList(isQuarter(q)?"Where each goal stands":"The grant's eight objectives",G_GOALS.map(g=>`${g.n}. ${g.goal} ${st[g.n]||""}`.trim())))}
   {const S=gSet(),kids=Number(S.enrolled)||kidsAt().length||0,sd=gSchoolDays(from,to);if(sd.days){const lo=sd.full*G_SAVE.low+sd.short*G_SAVE.lowShort,hi=sd.full*G_SAVE.high+sd.short*G_SAVE.highShort,r=n=>"$"+Math.round(n).toLocaleString("en-US");
-    blocks.push(dList("What families don't have to provide",[`${sd.days} school days with lunch and snacks`,`About ${r(lo)} to ${r(hi)} in groceries for each child`,`About ${Math.round(sd.days*G_SAVE.minLow/60)} to ${Math.round(sd.days*G_SAVE.minHigh/60)} hours of shopping, packing and cleanup for each family`].concat(kids?[`About ${r(lo*kids)} to ${r(hi*kids)} in groceries across ${kids} children`]:[])))}}
+    const w=gWeek();
+    blocks.push(dList("What families don't have to provide",[`Each week, about $${Math.round(w.lo)} to $${Math.round(w.hi)} in groceries and ${gMins(w.mLo)} to ${gMins(w.mHi)} of shopping, packing and cleanup for each family, 14 meals and snacks`,`${sd.days} school days with lunch and snacks`,`About ${r(lo)} to ${r(hi)} in groceries for each child`,`About ${Math.round(sd.days*G_SAVE.minLow/60)} to ${Math.round(sd.days*G_SAVE.minHigh/60)} hours of shopping, packing and cleanup for each family`].concat(kids?[`About ${r(lo*kids)} to ${r(hi*kids)} in groceries across ${kids} children`]:[])))}}
   blocks.push(dList("California food bought",[`For meals and snacks, ${gMoney(sum(lines.filter(x=>x.use!=="education")))}`,`For student education, ${gMoney(sum(lines.filter(x=>x.use==="education")))}`,`Certified organic, ${gMoney(sum(lines.filter(gOrganic)))}`,`From ${prods.size} producer${prods.size===1?"":"s"}`]));
   if(prods.size)blocks.push(dList("Producers",[...prods.values()].sort((a,b)=>b.total-a.total).map(e=>`${e.p.name}${e.p.town?", "+e.p.town:""}, ${gMoney(e.total)}`)));
   const bf=gBinFarms(from,to);if(bf.length)blocks.push(dList("Farms behind the FEED bins",bf.map(f=>`${f.name}${f.town?", "+f.town:""}`)));
