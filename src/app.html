@@ -553,6 +553,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 @media (max-width:560px){.binidea{flex-direction:column}.binidea .actions{align-self:flex-start}}
 .menutab{width:100%;border-collapse:collapse;font-size:14px}.menutab th{text-align:left;font-weight:600;padding:6px;font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .menutab td{padding:3px 4px;border-top:1px solid var(--line,#e4e2da)}.menutab input[type=text]{width:100%;min-width:140px}.menutab tr.closed td{opacity:.55}
+.gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -825,6 +826,7 @@ async function boot(){
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
@@ -988,6 +990,7 @@ function renderMain(){
   if(view==="slide"){renderSlide();return}
   if(view==="walls"){renderWalls();return}
   if(view==="newsletter"){renderNewsletter();return}
+  if(view==="grant"){renderGrant();return}
   if(view==="conferences"){renderEmbed("conferences");return}
   if(view==="calendar"){renderEmbed("calendar");return}
   const p=currentId&&plans.get(currentId);
@@ -1324,7 +1327,7 @@ function renderWelcome(){
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+const NAV_NAMES={today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -2056,10 +2059,10 @@ setInterval(outboxSend,30000);
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
-  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"]],
+  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"],["grant","Farm to School"]],
   children:[["children","Children"],["conferences","Conferences"]]};
 const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",grant:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
 const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -2087,7 +2090,7 @@ function subnavHtml(){
   if(view==="slide")back=`<button class="chip-btn back" data-tview="slides">‹ All slides</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev)back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k!=="newsletter"||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>(k!=="newsletter"&&k!=="grant")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -3814,6 +3817,192 @@ function noticeNoteHtml(p){
 const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
 const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+/* ---------- Farm to School grant ----------
+   The director's view of the CDFA Farm to School Incubator grant. It gathers what TREE already holds, by quarter,
+   against the agreement's eight objectives. FEED orders give the farm-level purchases for the food procurement
+   worksheet, the weekly bins give the farms behind each bin, the menus name the standing producers, and observations
+   and plans show the hands-on food education in the educators' own words. Counting is arithmetic on the school's own
+   records. Claude only drafts the quarterly check-in from them, and the director rewrites it. */
+let grantRecs=new Map(), gQuarter=LS.get("fps.gq",""), gBusy=false, gAdd=null;
+const G_DEFAULT={agreement:"24-0887-000-SG",end:"2027-06-30",start:"",award:200000,b1a:80000,b1b:10000};
+const gSet=()=>Object.assign({},G_DEFAULT,grantRecs.get("settings")||{});
+const gList=id=>Object.values((grantRecs.get(id)||{}).list||{}).filter(Boolean);
+const gMoney=n=>"$"+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const gKey=s=>String(s||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").replace(/\s*(co|llc|inc)\.?$/,"").trim();
+// producers named in the school's own application, as the application describes them
+const G_KNOWN={"earthseed farm":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"l&n produce stand":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"singing frogs farm":{climate:true,note:"Named in the application for no till and rotational practices"},"green star farm":{climate:true,note:"Named in the application for sustainable practices"},"petaluma creamery":{town:"Petaluma",standing:"Cheese"},"next generation foods":{town:"West Sacramento",standing:"Beans and grains"}};
+function gProducer(name){const k=gKey(name);const own=((grantRecs.get("producers")||{}).list||{})[k]||{};const base=G_KNOWN[k]||{};
+  return Object.assign({name,town:farmTown(name)||base.town||""},base,own,{key:k})}
+function quarterOf(day){const [y,m]=day.split("-").map(Number);return y+"-Q"+(Math.floor((m-1)/3)+1)}
+function quarterRange(q){const [y,n]=q.split("-Q").map(Number);const m0=(n-1)*3;const from=iso(new Date(y,m0,1)),to=iso(new Date(y,m0+3,0));return {from,to}}
+const quarterName=q=>{const [y,n]=q.split("-Q").map(Number);const {from,to}=quarterRange(q);return parseIso(from).toLocaleDateString("en-US",{month:"long"})+" to "+parseIso(to).toLocaleDateString("en-US",{month:"long"})+" "+y};
+const gQ=()=>/^\d{4}-Q[1-4]$/.test(gQuarter)?gQuarter:quarterOf(iso(new Date()));
+const gOrders=()=>[...grantRecs.values()].filter(x=>x&&x.kind==="order").sort((a,b)=>(b.fulfilled||b.placed||"").localeCompare(a.fulfilled||a.placed||""));
+// every purchase line in a range, from FEED orders and purchases added by hand
+function gLines(from,to){const out=[];
+  for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<from||day>to)continue;(o.items||[]).forEach((x,i)=>out.push(Object.assign({},x,{day,order:o.order,distributor:"FEED Cooperative",src:o.id,i})))}
+  for(const p of gList("purchases")){if(!p.date||p.date<from||p.date>to)continue;out.push({day:p.date,item:p.item,producer:p.producer,unit:p.unit||"",qty:Number(p.qty)||1,price:Number(p.total)||0,total:Number(p.total)||0,use:p.use||"meals",distributor:p.distributor||"Direct",manual:p.id})}
+  return out.sort((a,b)=>a.day.localeCompare(b.day))}
+const gOrganic=x=>/^\s*OG\b/.test(x.item||"")||!!gProducer(x.producer).organic;
+// the farms behind each bin, from the weekly lists TREE keeps
+function gBinFarms(from,to){const m=new Map();for(const b of binAll())if(b.date>=from&&b.date<=to)for(const it of b.items||[])for(const f of it.farms||[]){const k=gKey(f);const e=m.get(k)||{name:f,town:farmTown(f),items:new Set(),weeks:new Set()};e.items.add(binName(it));e.weeks.add(b.date);m.set(k,e)}return [...m.values()].sort((a,b)=>b.weeks.size-a.weeks.size||a.name.localeCompare(b.name))}
+// hands-on food education, found by words in the educators' own observations and plans
+const G_OBJ=[
+  {n:5,label:"Children gather, wash and deliver fruit for snack",re:/\b(wash|washed|washing|rinse|rins|deliver|carry|carried|gather|gathered|fruit|snack)\w*/i},
+  {n:6,label:"Children prepare snacks and food with an educator",re:/\b(prepar|cook|bak|roast|peel|scrub|chop|cut|slic|tear|tore|mix|stir|spread|squeez|taste|tasting|tasted|recipe|kitchen)\w*/i},
+  {n:7,label:"Small groups in the classroom and garden, planting, harvesting, watering, measuring",re:/\b(garden|plant|seed|harvest|water|watering|sprout|soil|grow|grew|measur|weigh|compost|chicken|goat|bin|farm)\w*/i}];
+function gTextOfPlan(p){return [Object.values(p.fields||{}).join(" "),p.web?[p.web.focus,(p.web.branches||[]).map(b=>b.name+" "+b.materials).join(" "),p.web.questions].join(" "):""].join(" ")}
+function gEducation(from,to){const inR=ms=>{const d=iso(new Date(ms||0));return d>=from&&d<=to};
+  const inq=new Set(inqAll().flatMap(x=>x.obs||[]));const obs=[...notices.values()].filter(n=>inR(n.at)&&!inq.has(n.id)),plans_=[...plans.values()].filter(p=>p.weekOf>=from&&p.weekOf<=to&&p.id!=="example");
+  return G_OBJ.map(o=>{const ob=obs.filter(n=>(o.n===7&&n.bin)||o.re.test((n.noticed||"")+" "+(n.wonder||"")));const pl=plans_.filter(p=>o.re.test(gTextOfPlan(p)));return Object.assign({},o,{obs:ob,plans:pl})})}
+
+function renderGrant(){
+  if(!isDirector()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept in the director's view.</div></div>`;return}
+  const S=gSet(),q=gQ(),{from,to}=quarterRange(q),lines=gLines(from,to),all=gLines("0000","9999");
+  const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
+  const meals=lines.filter(x=>x.use!=="education"),edu=lines.filter(x=>x.use==="education");
+  const qs=[...new Set([q,quarterOf(iso(new Date())),...all.map(x=>quarterOf(x.day))])].sort().reverse();
+  const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0,items:new Set()};e.total+=Number(x.total)||0;e.items.add(x.item);prods.set(k,e)}
+  const pr=[...prods.values()].sort((a,b)=>b.total-a.total);
+  const cat=f=>sum(lines.filter(x=>f(x)));
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">CDFA Farm to School Incubator Grant · ${esc(S.agreement)}</span><h2 style="margin-top:4px">Farm to School grant</h2>
+    <div class="sub" style="max-width:76ch">What TREE already holds, gathered by quarter against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
+    <div class="actions">${printBtns("grantq",q,"Quarter summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
+    <div class="filters" role="group" aria-label="Quarter">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div></div>`;
+
+  // objectives 1 to 4, what was bought and from whom
+  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">California food bought, objectives 1 to 4</h3><span class="cnt">${lines.length} line${lines.length===1?"":"s"}</span></div>
+    <div class="gstats">${[["For meals and snacks, 1a",sum(meals)],["For student education, 1b",sum(edu)],["Certified organic",cat(gOrganic)],["Small to midsize producers",cat(x=>gProducer(x.producer).smallmid)],["BIPOC, female, veteran or limited resource",cat(x=>gProducer(x.producer).sdlr)],["Climate smart practices",cat(x=>gProducer(x.producer).climate||gOrganic(x))]].map(([l,v])=>`<div class="gstat"><b>${gMoney(v)}</b><span>${l}</span></div>`).join("")}</div>
+    <div class="cnt" style="margin:6px 0 10px">Since the start, ${gMoney(sum(all.filter(x=>x.use!=="education")))} of ${gMoney(S.b1a)} for meals and ${gMoney(sum(all.filter(x=>x.use==="education")))} of ${gMoney(S.b1b)} for student education, from the records kept here. FEED bins count as food for student education, and any line can be changed below.</div>
+    ${pr.length?`<div class="lbl">Producers this quarter</div><div class="tlist">${pr.map(e=>{const p=e.p;const tags=[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
+      return `<div class="prow"><div style="min-width:0"><b>${esc(p.name)}</b>${p.town?` <span class="cnt">${esc(p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${esc([...e.items].slice(0,4).join(", "))}${e.items.size>4?", and more":""}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${p.note?`<div class="cnt">${esc(p.note)}</div>`:""}</div>
+        ${/^feed cooperative/.test(p.key)?`<div class="cnt" style="flex:none;max-width:220px">The farms behind each bin are listed below.</div>`:`<div class="actions" style="flex:none">${p.town?"":`<input type="text" data-gptown="${esc(p.key)}" data-gpn="${esc(p.name)}" placeholder="Town" style="width:120px">`}${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(p.key)}" data-gpn="${esc(p.name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`}</div>`}).join("")}</div>
+      <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for this quarter yet. Add a FEED order confirmation below.</div>`}
+    ${lines.length?`<details style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
+      ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
+        <td><select data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
+    <div class="actions" style="margin-top:12px"><label class="btn small ghost" style="cursor:pointer">Add a FEED order confirmation<input type="file" id="g-order" accept=".eml,.html,.htm,.txt,message/rfc822" multiple hidden></label><button class="btn small ghost" data-gact="addbuy">Add a purchase by hand</button></div>
+    <div class="hint">Save the confirmation email as a file and add it here, or forward FEED's confirmations to the TREE mailbox and they arrive by themselves. A purchase from Petaluma Creamery, Next Generation Foods or any other producer can be added by hand.</div>
+    ${gAdd?gAddHtml():""}</section>`;
+
+  // the farms behind the bins, farm-level data that a bin invoice does not show
+  const bf=gBinFarms(from,to);
+  if(bf.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Farms behind the FEED bins</h3><span class="cnt">${bf.length} farms</span></div>
+    <div class="cnt" style="margin-bottom:8px">A bin is invoiced as FEED Cooperative. These are the farms FEED listed for each bin this quarter, for the farm-level data the agreement asks for.</div>
+    <div class="binlist">${bf.map(f=>`<div class="binitem"><b>${esc(f.name)}</b>${f.town?` <span class="cnt">${esc(f.town)}</span>`:""}<div class="cnt">${f.weeks.size} week${f.weeks.size===1?"":"s"} · ${esc([...f.items].slice(0,3).join(", "))}</div></div>`).join("")}</div></section>`;
+
+  // standing producers, named on the menus
+  const mm=[...menus.values()].filter(m=>m&&m.month>=from.slice(0,7)&&m.month<=to.slice(0,7));
+  const menuDays=re=>mm.reduce((n,m)=>n+Object.values(m.days||{}).filter(d=>d&&!d.closed&&re.test(d.lunch||"")).length,0);
+  const cheese=menuDays(/cheese|pizza|quesadilla/i),beans=menuDays(/bean|rice|lentil/i);
+  if(mm.length)h+=`<section class="card"><div class="lbl">From the lunch menus this quarter</div><div class="gstats"><div class="gstat"><b>${cheese}</b><span>lunches with cheese from Petaluma Creamery</span></div><div class="gstat"><b>${beans}</b><span>lunches with beans or rice from Next Generation Foods</span></div></div></section>`;
+
+  // objectives 5 to 7, hands-on food education
+  const ed=gEducation(from,to);
+  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Hands-on food education, objectives 5 to 7</h3></div>
+    <div class="cnt" style="margin-bottom:8px">Found by the words in the educators' own observations and plans this quarter. Open any to check it.</div>
+    ${ed.map(o=>`<details style="margin-top:6px"><summary style="cursor:pointer"><b>${o.n}.</b> ${esc(o.label)} <span class="cnt">· ${o.obs.length} observation${o.obs.length===1?"":"s"}, ${o.plans.length} plan${o.plans.length===1?"":"s"}</span></summary>
+      ${o.obs.length?`<div class="tlist">${o.obs.slice(0,15).map(momentMini).join("")}</div>${o.obs.length>15?`<div class="cnt">And ${o.obs.length-15} more.</div>`:""}`:""}
+      ${o.plans.length?`<div class="tlist">${o.plans.slice(0,15).map(p=>`<button class="item" data-open="${p.id}"><span class="nm">${esc(planTitle(p))}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span></button>`).join("")}</div>`:""}</details>`).join("")}</section>`;
+
+  // objective 8, families
+  const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Families and culturally relevant food, objective 8</h3><span class="cnt">${fam.length||"Nothing kept yet"}</span></div>
+    <div class="cnt" style="margin-bottom:8px">The quarterly family meeting, weekly parent participation, and foods families brought or grew.</div>
+    ${fam.map(x=>`<div class="binidea"><div style="flex:1"><div>${esc(x.text)}</div><div class="cnt">${esc(fmtDate(x.date))}</div></div><button class="linkbtn" data-gfdel="${x.id}">Take out</button></div>`).join("")}
+    <div class="kfields" style="margin-top:8px"><label class="cnt">Day<input type="date" id="g-fdate" value="${esc(iso(new Date()))}"></label><label class="cnt" style="flex:1">What happened<input type="text" id="g-ftext" placeholder="Ex. Family meeting on foods from home. Three families brought recipes."></label></div>
+    <div class="actions"><button class="btn small ghost" data-gact="fam">Keep it</button></div></section>`;
+
+  // the quarterly check-in
+  const ck=(grantRecs.get("q-"+q)||{}).checkin||{};
+  h+=`<section class="card" id="g-check"><div class="secthead"><h3 style="font-size:17px;margin:0">Quarterly check-in</h3><button class="btn small ghost" data-gact="draft" ${gBusy?"disabled":""}>${gBusy?"Drafting":"Draft it from this quarter"}</button></div>
+    <div class="cnt" style="margin-bottom:8px">The draft uses only the figures and the educators' words on this page. Rewrite it in your own voice before it goes to CDFA.</div>
+    ${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].map(([k,l])=>`<label class="fld-label">${l}<textarea data-gck="${k}" rows="4">${esc(ck[k]||"")}</textarea></label>`).join("")}</section>`;
+  h+=`<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Grant details</summary><div class="kfields" style="margin-top:8px">
+    ${[["agreement","Agreement number","text"],["start","Term began","date"],["end","Term ends","date"],["b1a","Food for meals and snacks, 1a","number"],["b1b","Food for student education, 1b","number"]].map(([k,l,t])=>`<label class="cnt">${l}<input type="${t}" data-gset="${k}" value="${esc(String(S[k]??""))}"></label>`).join("")}</div>
+    <div class="hint">The term end is the date asked for in the July extension request. Change it if CDFA approves another.</div></details>`;
+  $("#main").innerHTML=h;$("#main").querySelectorAll("textarea").forEach(autoGrow);
+}
+function gAddHtml(){const f=gAdd;return `<div class="binadd"><div class="kfields">
+  <label class="cnt">Day<input type="date" id="g-bdate" value="${esc(f.date||iso(new Date()))}"></label>
+  <label class="cnt">Producer<input type="text" id="g-bprod" list="g-prods" value="${esc(f.producer||"")}" placeholder="Ex. Petaluma Creamery"></label>
+  <label class="cnt">What<input type="text" id="g-bitem" value="${esc(f.item||"")}" placeholder="Ex. Cheddar cheese, 10 lb"></label>
+  <label class="cnt">Total<input type="number" step="0.01" id="g-btotal" value="${esc(f.total||"")}"></label>
+  <label class="cnt">For<select id="g-buse"><option value="meals">Meals and snacks</option><option value="education">Student education</option></select></label></div>
+  <datalist id="g-prods"><option>Petaluma Creamery</option><option>Next Generation Foods</option></datalist>
+  <div class="actions" style="margin-top:8px"><button class="btn small" data-gact="buysave">Keep it</button><button class="linkbtn" data-gact="buycancel">Cancel</button></div></div>`}
+
+async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try again in a moment.");return false}
+  try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
+
+function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
+  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart"];
+  const yn=v=>v?"Yes":"";
+  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate)]});
+  // the farms behind each bin, beneath its line
+  const out=[head];for(const r of rows)out.push(r);
+  const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items"]);bf.forEach(f=>out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; ")]))}
+  return out.map(r=>r.map(v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(",")).join("\r\n")}
+
+function grantDoc(q){const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
+  const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0};e.total+=Number(x.total)||0;prods.set(k,e)}
+  const blocks=[];
+  blocks.push(dList("California food bought",[`For meals and snacks, ${gMoney(sum(lines.filter(x=>x.use!=="education")))}`,`For student education, ${gMoney(sum(lines.filter(x=>x.use==="education")))}`,`Certified organic, ${gMoney(sum(lines.filter(gOrganic)))}`,`From ${prods.size} producer${prods.size===1?"":"s"}`]));
+  if(prods.size)blocks.push(dList("Producers",[...prods.values()].sort((a,b)=>b.total-a.total).map(e=>`${e.p.name}${e.p.town?", "+e.p.town:""}, ${gMoney(e.total)}`)));
+  const bf=gBinFarms(from,to);if(bf.length)blocks.push(dList("Farms behind the FEED bins",bf.map(f=>`${f.name}${f.town?", "+f.town:""}`)));
+  const ed=gEducation(from,to);blocks.push(dList("Hands-on food education",ed.map(o=>`${o.label}, ${o.obs.length} observations and ${o.plans.length} plans`)));
+  const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>a.date.localeCompare(b.date));if(fam.length)blocks.push(dList("Families",fam.map(x=>`${fmtDate(x.date)}, ${x.text}`)));
+  const ck=(grantRecs.get("q-"+q)||{}).checkin||{};[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].forEach(([k,l])=>{if(has(ck[k]))blocks.push(dText(l,ck[k]))});
+  return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+quarterName(q),meta:[["Agreement",gSet().agreement],["Quarter",quarterName(q)]],blocks}}
+
+async function gDraft(q){if(!sample){toast("Claude assist is not available here.");return}
+  gBusy=true;renderGrant();const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
+  const prods=[...new Set(lines.map(x=>x.producer))];const ed=gEducation(from,to);const fam=gList("families").filter(x=>x.date>=from&&x.date<=to);
+  const words=ed.flatMap(o=>o.obs.slice(0,6).map(n=>`${o.label}. ${firstLine(n.noticed,220)}`)).slice(0,18);
+  const prompt=`Draft a quarterly check-in for a California Department of Food and Agriculture Farm to School Incubator grant, for an early childhood program, for ${quarterName(q)}. It has three parts, project progress, successes, and challenges.
+Use only what is below. Never add a number, a name or an event that is not here. Where something is missing, leave it out rather than guessing.
+
+The grant's objectives. 1 to 4, buy more California grown, whole or minimally processed food, from small to midsize producers, from BIPOC, female, veteran or limited resource producers, and from producers using climate smart or organic practices. 5 to 7, hands-on food education where children gather, wash and deliver fruit, prepare food with an educator, and work in small groups in the classroom and garden. 8, culturally relevant food education with families.
+
+Food bought this quarter. ${gMoney(sum(lines.filter(x=>x.use!=="education")))} for meals and snacks, ${gMoney(sum(lines.filter(x=>x.use==="education")))} for student education, ${gMoney(sum(lines.filter(gOrganic)))} certified organic, from ${prods.length} producers${prods.length?", "+prods.join(", "):""}.
+Farms behind the weekly FEED bins. ${gBinFarms(from,to).map(f=>f.name+(f.town?" in "+f.town:"")).join(", ")||"None recorded"}.
+Hands-on food education. ${ed.map(o=>`${o.label}, ${o.obs.length} observations and ${o.plans.length} plans`).join(". ")}.
+${words.length?"What educators wrote, in their own words.\n"+words.join("\n"):""}
+${fam.length?"Families.\n"+fam.map(x=>x.date+". "+x.text).join("\n"):""}
+
+Write in plain, warm, professional language, in the first person plural, a short paragraph for each part. Do not use colons, em dashes, or analogies.
+Return a JSON object with keys "progress", "successes" and "challenges".`;
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"grant"});const c=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();
+    await gWrite("q-"+q,{checkin:{progress:c(out?.progress),successes:c(out?.successes),challenges:c(out?.challenges),draftedAt:Date.now()}},{id:"q-"+q,checkin:{}});toast("Drafted. Rewrite it in your own voice.")}
+  catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  gBusy=false;if(view==="grant")renderGrant()}
+
+document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")return;
+  if(t.id==="g-order"){const fs=[...t.files];t.value="";let n=0;
+    for(const f of fs){try{const raw=await f.text();const j=await window.FP_API("/api/grant/order",{raw});if(j&&j.doc){grantRecs.set(j.doc.id,j.doc);n++}}catch(err){toast(`${f.name}. ${(err&&err.message)||"It could not be read."}`)}}
+    if(n)toast(`${n} order${n===1?"":"s"} kept`);renderGrant();return}
+  if(t.dataset.guse!=null){const use=t.value;
+    if(t.dataset.gman){await gWrite("purchases",{list:{[t.dataset.gman]:{use}}})}
+    else{const o=grantRecs.get(t.dataset.guse);if(!o)return;const items=(o.items||[]).map((x,i)=>i===+t.dataset.gi?Object.assign({},x,{use}):x);if(db)try{await db.doc("grant/"+o.id).update({items})}catch(err){toast("Could not save that.")}}
+    renderGrant();return}
+  if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
+  if(t.dataset.gck){const q=gQ();await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
+  if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+  if(d.gq){gQuarter=d.gq;LS.set("fps.gq",gQuarter);renderGrant();return}
+  if(d.gpf){const cur=gProducer(d.gpn);await gWrite("producers",{list:{[d.gpk]:{name:d.gpn,[d.gpf]:!cur[d.gpf]}}},{id:"producers",list:{}});renderGrant();return}
+  if(d.gfdel){await gWrite("families",{list:{[d.gfdel]:{__delete__:true}}});renderGrant();return}
+  const a=d.gact;
+  if(a==="csv"){const blob=new Blob(["﻿"+gWorksheetCsv()],{type:"text/csv"});const u=URL.createObjectURL(blob);const l=document.createElement("a");l.href=u;l.download=`Farm to School procurement ${iso(new Date())}.csv`;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return}
+  if(a==="addbuy"){gAdd={};renderGrant();return}
+  if(a==="buycancel"){gAdd=null;renderGrant();return}
+  if(a==="buysave"){const v=id=>($("#"+id)?.value||"").trim();const p={id:uid(),date:v("g-bdate"),producer:v("g-bprod"),item:v("g-bitem"),total:Number(v("g-btotal"))||0,use:v("g-buse")||"meals",distributor:"Direct",by:whoAmI(),at:Date.now()};
+    if(!p.date||!p.producer||!p.item||!p.total){toast("Add the day, the producer, what it was and the total.");return}
+    if(await gWrite("purchases",{list:{[p.id]:p}},{id:"purchases",list:{}})){gAdd=null;toast("Kept")}renderGrant();return}
+  if(a==="fam"){const date=$("#g-fdate")?.value||"",text=($("#g-ftext")?.value||"").trim();if(!date||!text){toast("Add the day and what happened.");return}
+    const id=uid();if(await gWrite("families",{list:{[id]:{id,date,text,by:whoAmI()}}},{id:"families",list:{}}))toast("Kept");renderGrant();return}
+  if(a==="draft"){gDraft(gQ());return}},true);
+
 /* ---------- Monthly menus ----------
    The director adds each month's snack and lunch menus. Claude reads the PDF or photo into days, the director
    checks every day before saving, and the menus show on the calendar as Snack and lunch, and on Today. */
@@ -3979,7 +4168,7 @@ function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
       <div class="actions" style="flex:none"><button class="btn small${on?"":" ghost"}" data-binhold="${i.id}" aria-pressed="${on}">${on?"At the table":"Bring to the table"}</button>${mine?`<button class="linkbtn" data-binideadel="${i.id}">Take out</button>`:""}</div></div>`};
   const sug=binSugg&&binSugg.id===b.id&&binSugg.room===room?binSugg[kind]||[]:null;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${K.head}, ${esc(room)} class</h3><span class="cnt">${atTable.length?atTable.length+" at the table":"None chosen yet"}</span></div>
-    <div class="cnt" style="margin-bottom:8px">${kind==="prep"?"The food here is for preparing, tasting and sharing, with every part used and the scraps going to the compost or the animals. ":""}The ones brought to the table print on the bin sheet.${kind==="question"?" The educator with the group decides what to follow once the children are in it.":""}</div>
+    <div class="cnt" style="margin-bottom:8px">${kind==="prep"?"The food here is for preparing, tasting and sharing, and someone will eat it. Anything left goes in the chicken buckets for the chickens and goats at the end of the day. ":""}The ones brought to the table print on the bin sheet.${kind==="question"?" The educator with the group decides what to follow once the children are in it.":""}</div>
     ${fits.length?`<div class="lbl" style="margin-top:6px">From the team's idea bank, for this week's produce</div>${fits.map(ideaRow).join("")}`:""}
     ${rest.length?`<details${fits.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:8px">${fits.length?"More from the idea bank, "+rest.length:"The team's idea bank, "+rest.length}</summary>${rest.map(ideaRow).join("")}</details>`:""}
     ${!ideas.length?`<div class="empty">${K.empty}</div>`:""}
@@ -4015,7 +4204,7 @@ async function binSuggest(b,room){
   const prs=[...projects.values()].filter(p=>p.status!=="closed"&&(p.classroom===room||(p.classrooms||[]).includes(room)||!p.classroom)).slice(0,6);
   const past=binMoments(room).slice(0,8);
   const counts=(b.items||[]).map(it=>{const n=binBefore(b,it).length;return n?`${binName(it)} has come ${n} time${n===1?"":"s"} before`:""}).filter(Boolean);
-  const prompt=`A small group of preschool children will open this week's farm bin together with an educator. The school is Reggio inspired and nature based. Children are seen as competent and capable co-constructors of knowledge, and the curriculum is co-constructed by children and educators. The school has its own farm garden, compost and animals.
+  const prompt=`A small group of preschool children will open this week's farm bin together with an educator. The school is Reggio inspired and nature based. Children are seen as competent and capable co-constructors of knowledge, and the curriculum is co-constructed by children and educators. The school has its own farm garden, chickens and goats. Food is eaten, and anything left goes in the chicken buckets for the chickens and goats at the end of the day, with the goats given only fruits and vegetables.
 
 This week's bin, with the farm each item came from.
 ${(b.items||[]).map(it=>`${binName(it)}${it.qty?" ("+it.qty+")":""}, from ${(it.farms||[]).join(" or ")||"a local farm"}`).join("\n")}
@@ -4025,9 +4214,9 @@ ${prs.length?"\nProjects the class is part of.\n"+prs.map(p=>p.name).join("\n"):
 ${past.length?"\nWhat educators noticed at earlier unboxings.\n"+past.map(n=>firstLine(n.noticed,240)).join("\n"):""}
 ${binIdeas().length?"\nQuestions the team already holds. Do not repeat these.\n"+binIdeas().slice(0,20).map(i=>i.text).join("\n"):""}
 
-First, suggest 4 questions an educator could hold while the children explore the bin. Each question is the educator's own wondering about what the children might notice, test, compare or care about, written as an open question or a hypothesis, never in a child's voice and never as a lesson to deliver. After each question add one short sentence naming what might be set out on the table, using only this week's produce and simple tools such as a scale, magnifiers, paper and pencils, and a knife the educator handles. Connect a question to a thread, a project, the farms, the garden, the compost or the animals only where the connection is real. No seasonal themes, no crafts, no worksheets, no steps.
+First, suggest 4 questions an educator could hold while the children explore the bin. Each question is the educator's own wondering about what the children might notice, test, compare or care about, written as an open question or a hypothesis, never in a child's voice and never as a lesson to deliver. After each question add one short sentence naming what might be set out on the table, using only this week's produce and simple tools such as a scale, magnifiers, paper and pencils, and a knife the educator handles. Connect a question to a thread, a project, the farms, the garden, the chickens or the goats only where the connection is real. No seasonal themes, no crafts, no worksheets, no steps.
 
-Second, suggest 4 simple ways the small group could prepare and share some of this produce, in one or two sentences each. Use only what young children can do with real care, such as washing, scrubbing, tearing, peeling, snapping, shelling, scooping out seeds, cutting with a child-safe knife, or tasting the same food raw and cooked. Keep any cooking to what an educator can do simply, such as roasting squash or potatoes or warming greens, and keep added ingredients to a few, such as olive oil, salt or lemon. Each one ends in eating and sharing it together, with every part used where it can be and the scraps going to the compost or the animals.
+Second, suggest 4 simple ways the small group could prepare and share some of this produce, in one or two sentences each. Use only what young children can do with real care, such as washing, scrubbing, tearing, peeling, snapping, shelling, scooping out seeds, cutting with a child-safe knife, or tasting the same food raw and cooked. Keep any cooking to what an educator can do simply, such as roasting squash or potatoes or warming greens, and keep added ingredients to a few, such as olive oil, salt or lemon. Each one ends in eating and sharing it together. Do not suggest composting, since what is left goes to the chickens and goats.
 The food is treated with respect. It is never used as an art material, a stamp, a toy or a building material, and nothing is wasted for an activity.
 
 Write in plain, warm language. Do not use colons, em dashes, or analogies.
@@ -6036,6 +6225,7 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${quarterName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}

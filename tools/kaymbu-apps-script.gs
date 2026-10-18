@@ -48,6 +48,36 @@ function checkKaymbu() {
     if (all) thread.addLabel(label);
   }
   props.setProperty('done', JSON.stringify(done.slice(-300)));
+  checkFeedOrders();
+}
+
+/*
+  FEED order confirmations, for the Farm to School grant records.
+  FEED sends its confirmations to the office address. A Gmail filter there forwards them here, and on each check this
+  script sends the new ones to TREE, which keeps every item with its producer for the grant.
+
+  Setup, once
+  1. Signed in as office@childfamilycommunity.com, open Gmail settings, then Forwarding and POP/IMAP, and add
+     tree@childfamilycommunity.com as a forwarding address. Confirm it from the TREE mailbox.
+  2. Still in the office mailbox, make a filter with From ordering@feedsonoma.com and Subject Confirmation, and choose
+     Forward it to tree@childfamilycommunity.com.
+  3. Paste this updated file over the old one in the script project. Nothing else changes.
+*/
+function checkFeedOrders() {
+  const props = PropertiesService.getScriptProperties();
+  let done = []; try { done = JSON.parse(props.getProperty('feedDone') || '[]'); } catch (e) {}
+  const server = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/feed-order');
+  const threads = GmailApp.search('from:ordering@feedsonoma.com subject:Confirmation newer_than:60d', 0, 50);
+  for (const thread of threads) for (const msg of thread.getMessages()) {
+    const id = msg.getId(); if (done.indexOf(id) >= 0 || !/feedsonoma\.com/i.test(msg.getFrom())) continue;
+    try {
+      const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() }) });
+      console.log(msg.getSubject() + ', TREE answered ' + res.getResponseCode());
+      if (res.getResponseCode() === 200 || res.getResponseCode() === 400) done.push(id);
+    } catch (e) { console.log(msg.getSubject() + ', TREE did not answer in time, trying again next check'); }
+  }
+  props.setProperty('feedDone', JSON.stringify(done.slice(-300)));
 }
 
 /*
