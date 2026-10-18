@@ -3834,14 +3834,14 @@ function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
     ${(d.read||[]).length?`<div class="cnt" style="margin-bottom:8px">Read from ${d.read.map(esc).join(" and ")}.</div>`:""}
     <div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Morning snack</th><th>Afternoon snack</th><th>Lunch</th><th>No school</th></tr></thead><tbody>
     ${days.map(day=>{const x=d.days[day]||{};const lab=parseIso(day).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-      return `<tr${x.closed?' class="closed"':""}><td class="cnt" style="white-space:nowrap">${esc(lab)}</td>${["am","pm","lunch"].map(k=>`<td><input type="text" data-menuday="${day}" data-menuk="${k}" value="${esc(x[k]||"")}" ${x.closed?"disabled":""}></td>`).join("")}<td style="text-align:center"><input type="checkbox" data-menuday="${day}" data-menuk="closed" ${x.closed?"checked":""}></td></tr>`}).join("")}
+      return `<tr${x.closed?' class="closed"':""}><td class="cnt" style="white-space:nowrap">${esc(lab)}</td>${["am","pm","lunch"].map(k=>{const mon=k==="pm"&&parseIso(day).getDay()===1;return `<td><input type="text" data-menuday="${day}" data-menuk="${k}" value="${esc(mon?"":x[k]||"")}" ${x.closed||mon?"disabled":""} ${mon?'placeholder="Morning only"':""}></td>`}).join("")}<td style="text-align:center"><input type="checkbox" data-menuday="${day}" data-menuk="closed" ${x.closed?"checked":""}></td></tr>`}).join("")}
     </tbody></table></div>
     <label class="fld-label" style="margin-top:10px">Note with the snack menu<textarea data-menunote="snack" rows="2">${esc((d.notes||{}).snack||"")}</textarea></label>
     <label class="fld-label">Note with the lunch menu<textarea data-menunote="lunch" rows="2">${esc((d.notes||{}).lunch||"")}</textarea></label>
     <div class="actions" style="margin-top:8px"><button class="btn small" data-menuact="save">Save ${esc(MENU_MONTH(d.month))}</button><button class="linkbtn" data-menuact="cancel">Cancel</button></div></div>`}
 
 const MENU_PROMPT=`This is a preschool's monthly menu, either the snack menu or the lunch menu. Read every school day on it.
-Use the weekday column headings and the day numbers to give each day its full date. Copy what is served exactly as the menu says, only putting it in sentence case. When a day's lunch is written on two or three lines, join them into one with "and" or commas, such as "Pinto beans, brown rice and cheese". On the snack menu, "Am" is the morning snack and "Pm" is the afternoon snack. A day marked No School is closed. Leave a field empty when the menu shows nothing for it. Never add an item that is not on the menu.
+Use the weekday column headings and the day numbers to give each day its full date. Copy what is served exactly as the menu says, only putting it in sentence case. When a day's lunch is written on two or three lines, join them into one with "and" or commas, such as "Pinto beans, brown rice and cheese". On the snack menu, "Am" is the morning snack and "Pm" is the afternoon snack. Monday has a morning snack only. A day marked No School is closed. Leave a field empty when the menu shows nothing for it. Never add an item that is not on the menu.
 Copy the note at the top of the menu, about what is served with every meal, in plain sentences.
 Do not use colons or dashes in what you write.
 

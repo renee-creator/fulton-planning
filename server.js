@@ -216,8 +216,10 @@ function conferenceEvents(from, to) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
-      const snack = [d.am, d.pm].filter(x => x && String(x).trim());
-      if (snack.length) events.push({ id: 'tmenu.' + day + '.s', cal: 'tmenu', title: 'Snack, ' + snack.join(', then '), desc: [d.am ? 'Morning, ' + d.am + '.' : '', d.pm ? 'Afternoon, ' + d.pm + '.' : '', (m.notes && m.notes.snack) || ''].filter(Boolean).join(' '), allDay: true, start: day, end: day });
+      // two snacks a day, one in the morning and one in the afternoon. Monday has the morning snack only.
+      const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim();
+      const snackTitle = am && pm ? `Snack, ${am} in the morning, ${pm} in the afternoon` : am ? 'Morning snack, ' + am : pm ? 'Afternoon snack, ' + pm : '';
+      if (snackTitle) events.push({ id: 'tmenu.' + day + '.s', cal: 'tmenu', title: snackTitle, desc: [am ? 'Morning, ' + am + '.' : '', pm ? 'Afternoon, ' + pm + '.' : '', (m.notes && m.notes.snack) || ''].filter(Boolean).join(' '), allDay: true, start: day, end: day });
       if (d.lunch && String(d.lunch).trim()) events.push({ id: 'tmenu.' + day + '.l', cal: 'tmenu', title: 'Lunch, ' + d.lunch, desc: (m.notes && m.notes.lunch) || '', allDay: true, start: day, end: day });
     }
   }
