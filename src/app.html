@@ -3457,7 +3457,7 @@ function noticeFormCard(){
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
     ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
-    ${n.bin?`<div class="ref" style="background:var(--marigold-soft)">From the weekly bin that arrived ${esc(fmtDate(n.bin))} <button class="linkbtn" data-nfbinrm="1">Not from the bin</button></div>`:""}
+
     ${ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
       :editing?"":`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the scene itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
         <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
@@ -3469,6 +3469,7 @@ function noticeFormCard(){
       <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
       <label class="cnt">Class <select id="nf-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
       ${open.length?`<label class="cnt">Project <select id="nf-proj" style="width:auto"><option value="">Not yet</option>${open.map(x=>`<option value="${x.id}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
+      ${(()=>{const b=n.bin?binAll().find(x=>x.id===n.bin)||{id:n.bin,date:n.bin}:binForDay(n.day||iso(new Date(n.at||Date.now())));return b?`<button type="button" class="chip-btn" data-nfbin="${esc(b.id)}" aria-pressed="${n.bin===b.id}" title="Keep it with the weekly bin">From the bin, ${esc(fmtDate(b.date).replace(/, \d{4}$/,""))}</button>`:""})()}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${t.id}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
     <div class="hint">A project or thread is optional. One can claim this observation later, whenever it grows.</div>
@@ -3905,6 +3906,7 @@ function farmTown(f){const k=String(f||"").toLowerCase().replace(/[’']/g,"'").
   for(const [n,t] of Object.entries(FARM_TOWNS))if(k===n||k.startsWith(n)||n.startsWith(k))return t;return""}
 const farmWithTown=f=>{const t=farmTown(f);return t?`${f}, ${t}`:f};
 const farmKey=f=>String(f||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").trim();
+function binForDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day||""))return null;return binAll().find(b=>b.date<=day&&day<=addDays(b.date,6))||null}
 const binRoomNow=()=>CLASSROOMS.includes(binRoom)?binRoom:(myRoom()||CLASSROOMS[0]);
 // carrots and Nantes carrots are the same thing coming back
 const binKey=name=>String(name||"").toLowerCase().split(",")[0].replace(/[“”"'‘’]/g,"").replace(/\s+or\s+.*$/,"").replace(/\s+/g," ").trim().replace(/ies$/,"y").replace(/([^s])s$/,"$1");
@@ -4042,9 +4044,9 @@ function binDoc(b,room){const held=binHeld(b,room);const on=binIdeas().filter(i=
 document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.farmtown==null)return;
   if(await binWrite("farms",{towns:{[t.dataset.farmtown]:t.value.trim()||{__delete__:true}}},{id:"farms",towns:{}}))toast("Saved");if(view==="bin")renderBin()});
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-binroom],[data-binweek],[data-binact],[data-binhold],[data-binideadel],[data-binkeep],[data-binpk],[data-nfbinrm]");if(!t)return;
+  const t=e.target.closest("[data-binroom],[data-binweek],[data-binact],[data-binhold],[data-binideadel],[data-binkeep],[data-binpk],[data-nfbin]");if(!t)return;
   const d=t.dataset;
-  if(d.nfbinrm){if(noticeForm){delete noticeForm.bin;renderMain()}return}
+  if(d.nfbin){if(noticeForm){const on=noticeForm.bin===d.nfbin;if(on)delete noticeForm.bin;else noticeForm.bin=d.nfbin;t.setAttribute("aria-pressed",String(!on))}e.stopImmediatePropagation();return}
   if(view!=="bin")return;e.stopImmediatePropagation();
   const b=binCurrent(),room=binRoomNow();
   if(d.binroom){binRoom=d.binroom;LS.set("fps.binroom",binRoom);binAdd=null;renderBin();return}
