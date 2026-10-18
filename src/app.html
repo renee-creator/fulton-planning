@@ -512,6 +512,36 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   .card .hint{font-size:14.5px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.nlcard{position:relative;margin:0 0 16px;padding:18px 20px 20px}
+.nlcard h3{font-family:var(--display);font-size:19px;margin:0 0 4px}
+.nlstep{position:absolute;left:-12px;top:16px;width:26px;height:26px;border-radius:50%;background:var(--moss);color:#fff;font:600 13px/26px var(--body);text-align:center}
+.nlhint{margin:2px 0 10px;font-size:14px}
+.nll{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 4px}
+.nll input,.nll select,.nll textarea{display:block;width:100%;margin-top:4px;font-weight:400;color:var(--ink)}
+.nlta{width:100%;resize:vertical;min-height:44px}
+.nlrow{display:flex;gap:8px;align-items:flex-start;margin:6px 0}.nlrow .nlta{flex:1}
+.nlage{width:150px;flex:0 0 150px;font-weight:600}
+.nlbonus textarea{background:#fbf3e4;border-left:3px solid var(--marigold)}
+.nlsugs{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.nlsug{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper)}
+.nlsug.used{border-color:var(--moss);background:color-mix(in srgb,var(--moss) 7%,var(--paper))}
+.nlsugt{font-family:var(--display);font-size:17px;display:block;margin-bottom:4px}
+.nlsug p{margin:6px 0}.nlsug blockquote{margin:6px 0;padding-left:10px;border-left:3px solid var(--moss);font-style:italic;font-size:14px}
+.nlsmall{font-size:13px;color:var(--muted)}
+.nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
+.nlph.on{border-color:var(--moss);opacity:1}.nlph img,.nlphs img{width:96px;height:96px;object-fit:cover;border-radius:6px;display:block}
+.nlphs{display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start}
+.nlres{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.nlres a{font-weight:600}
+.nlwarn{background:color-mix(in srgb,var(--clay) 12%,var(--paper));border-left:3px solid var(--clay);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
+.nldraft{font-size:13px;color:var(--marigold);font-weight:600;margin:4px 0}
+.nlsent{background:color-mix(in srgb,var(--moss) 8%,var(--paper))}
+.nlcheck{display:block;margin:6px 0}
+.nlown summary{cursor:pointer;font-weight:600;margin-top:10px}
+.nlblock{border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
+.nlarch .item{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left}
+@media (max-width:640px){.nlrow{flex-wrap:wrap}.nlage{width:100%;flex:1 1 100%}.nlstep{left:-6px}}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -783,6 +813,7 @@ async function boot(){
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -942,6 +973,7 @@ function renderMain(){
   if(view==="slides"){renderSlides();return}
   if(view==="slide"){renderSlide();return}
   if(view==="walls"){renderWalls();return}
+  if(view==="newsletter"){renderNewsletter();return}
   if(view==="conferences"){renderEmbed("conferences");return}
   if(view==="calendar"){renderEmbed("calendar");return}
   const p=currentId&&plans.get(currentId);
@@ -2010,10 +2042,10 @@ setInterval(outboxSend,30000);
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 const SUBS={plans:[["plans","This week"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
-  docs:[["slides","Slides"],["walls","Walls"]],
+  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"]],
   children:[["children","Children"],["conferences","Conferences"]]};
 const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
 const TICON={obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -2041,7 +2073,7 @@ function subnavHtml(){
   if(view==="slide")back=`<button class="chip-btn back" data-tview="slides">‹ All slides</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev)back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s];if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k!=="newsletter"||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -2207,6 +2239,501 @@ function renderWalls(){
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Walls</h2><div class="sub">Each project can become a run of sheets that hang in order, each with a photo, the children's words, and a few lines from the team.</div></div>
   ${ps.length?`<div class="tgrid3">${ps.map(x=>{const w=x.wall;const n=w?w.sheets.filter(s=>s.include).length:0;const ph=wallPhotoMoments(x)[0];
     return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${x.id}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
+}
+
+/* ---------- The family newsletter, from the office ----------
+   Once a month the director sends families a newsletter through the Kaymbu template. TREE reads the month's
+   observations and suggests topics, with the educators' own words and the DRDP connection behind each one, which only
+   the director sees. Families see plain words about how children grow, a bonus for school, tips, reading, school and
+   farm news, and what is coming up. Every issue is kept, so topics do not repeat in a school year, and every article
+   added is kept in a library that comes back when its topic does. Only the director sees and changes this page. */
+let newsletters=new Map(),nlMonth=LS.get("tree.nlmonth",""),nlBusy={},nlEvents={},nlKaymbu=false;
+const nlKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+const nlName=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"})};
+const nlMonthOnly=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long"})};
+const nlShift=(k,n)=>{const [y,m]=k.split("-").map(Number);return nlKey(new Date(y,m-1+n,1))};
+const nlSchoolYear=k=>{const [y,m]=k.split("-").map(Number);return m>=8?y:y-1};
+const nlDoc=k=>newsletters.get("nl-"+k)||null;
+const nlLib=()=>newsletters.get("library")||{id:"library",items:[]};
+const nlClean=s=>String(s??"").replace(/\s*—\s*/g,", ").replace(/\s+–\s+/g,", ").trim();
+function nlCur(){if(!nlMonth){const d=new Date();nlMonth=nlKey(d.getDate()>=15?d:new Date(d.getFullYear(),d.getMonth()-1,1));if(!nlDoc(nlMonth)&&nlDoc(nlKey(d)))nlMonth=nlKey(d)}return nlMonth}
+const nlTimers={};
+function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
+  const go=()=>{if(db)db.doc("newsletters/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the newsletter. Check your connection."))};
+  if(now)go();else nlTimers[x.id]=setTimeout(go,700)}
+function nlNew(k){return {id:"nl-"+k,month:k,status:"draft",note:"",suggestions:[],topics:[],reading:[],school:[],schoolPhotos:[],coming:[],comingAdded:[],createdAt:Date.now(),by:me()}}
+
+// the month's observations, with the same words kept once and every photo that came with them
+function nlObs(k){
+  const [y,m]=k.split("-").map(Number);const from=new Date(y,m-1,1).getTime(),to=new Date(y,m,1).getTime();
+  const seen=new Map();
+  for(const n of [...notices.values()].sort((a,b)=>(a.at||0)-(b.at||0))){
+    if(!(n.at>=from&&n.at<to))continue;
+    const text=String(n.noticed||"").trim();if(!text&&!n.wonder)continue;
+    const key=(n.classroom||"")+"|"+text.slice(0,200);
+    let o=seen.get(key);
+    if(!o){o={ids:[],photos:[],room:n.classroom||"",date:iso(new Date(n.at)),noticed:text,wonder:String(n.wonder||"").trim(),kids:0};seen.set(key,o)}
+    o.ids.push(n.id);if(n.photo&&n.photo.id)o.photos.push(n.id);o.kids=Math.max(o.kids,(n.children||[]).length);
+  }
+  return [...seen.values()].map((o,i)=>Object.assign(o,{ref:"o"+(i+1)}));
+}
+// how old the children in each class mostly are, so topics can say which ages they show up with
+function nlRoomAges(){
+  const out={};const now=Date.now();
+  for(const c of children.values()){if(c.status&&c.status!=="active")continue;if(!c.dob||!c.classroom)continue;(out[c.classroom]=out[c.classroom]||[]).push((now-parseIso(c.dob).getTime())/(365.25*864e5))}
+  return Object.fromEntries(Object.entries(out).map(([r,a])=>{a.sort((x,y)=>x-y);const md=a[Math.floor(a.length/2)];return [r,md<2.5?"toddlers, mostly two-year-olds":md<3.5?"mostly three-year-olds":"mostly four- and five-year-olds"]}));
+}
+// a child's first name in words families will read is shown to the director before anything goes out
+function nlNameWarn(text){
+  const t=" "+String(text||"")+" ";if(!t.trim())return[];
+  const skip=new Set([...GROUPS.map(g=>g.name.toLowerCase()),"north","south","west","east","may","june","april","summer","autumn","sky","rain"]);
+  const out=new Set();
+  for(const c of children.values()){const f=String(c.first||"").trim();if(f.length<3||skip.has(f.toLowerCase()))continue;
+    if(new RegExp("[^A-Za-z]"+f.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[^A-Za-z]").test(t))out.add(f)}
+  return [...out];
+}
+const nlTopicText=t=>[t.title,t.happening,t.why,(t.grows||[]).map(g=>g.text).join(" "),t.bonus,(t.tips||[]).map(x=>x.lead+" "+x.text).join(" "),(t.photos||[]).map(p=>p.cap).join(" ")].join(" ");
+function nlCodesList(){
+  const one=v=>Object.entries(DRDP_M[v]||{}).map(([c,m])=>c+" "+m.n).join("; ");
+  return "Preschool view. "+one("ptk")+"\nInfant and toddler view. "+one("it");
+}
+function nlDrdpWords(codes){
+  if(!DRDP_TXT)return"";
+  return (codes||[]).map(c=>{const parts=[];for(const v of ["it","ptk"]){const m=DRDP_TXT[v]&&DRDP_TXT[v][c];if(!m)continue;
+    parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
+    return parts.join("\n")}).filter(Boolean).join("\n");
+}
+const nlRules=`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, or any code or abbreviation. Never name a child or describe a child so a family could tell who it is. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research.`;
+
+async function nlFindTopics(x,btn){
+  const obs=nlObs(x.month);
+  if(!obs.length){toast(`No observations from ${nlMonthOnly(x.month)} yet. Topics come from what educators keep.`);return}
+  await loadDrdpTxt();
+  const year=nlSchoolYear(x.month);
+  const past=[...newsletters.values()].filter(d=>d.month&&d.id!==x.id&&nlSchoolYear(d.month)===year).flatMap(d=>(d.topics||[]).map(t=>t.title+" ("+nlName(d.month)+")"));
+  const ages=nlRoomAges();
+  const prompt=`You are helping the director of Fulton Community School & Farm choose topics for the monthly family newsletter. Read the educators' observations from ${nlName(x.month)} and find the 3 or 4 subjects that came up most, or that families would most want support with. Good topics are developmental things families also meet at home, such as a behavior that is hard for parents, language, friendships, food and growth, independence, feelings, or big physical skills. A subject seen across several classes, or several times, comes first. A smaller one can still matter when it is a common challenge for parents.
+${past.length?`Topics already used this school year, which you should not suggest again unless the observations are about something new. ${past.join("; ")}.`:""}
+
+Classes. ${Object.entries(ages).map(([r,a])=>r+", "+a).join(". ")}.
+
+Return a JSON object with one key "topics", an array of 3 or 4 objects with these keys.
+"title" a short, warm title families would read, 2 to 6 words.
+"happening" one or two sentences for the director saying what was observed, how often and in which classes.
+"quotes" an array of 1 to 3 short quotes copied word for word from the observations below, with every child's name replaced by "a child" or "a friend".
+"obs" an array of the references (like "o4") of every observation behind this topic.
+"photos" an array of up to 4 references of observations with a photo that fit the topic well, chosen for showing the work, the food, the place or the hands. Leave it empty when the topic is a behavior that is hard for parents.
+"behavior" true when the topic is a behavior or challenge, false otherwise.
+"drdp" an array of 1 to 3 codes from this list that the topic connects to. ${nlCodesList()}
+"ages" one sentence for the director on which ages it shows up with.
+
+Observations.
+${obs.map(o=>`${o.ref}. ${o.room||"No class"}, ${o.date}${o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}${o.wonder?" Wondering. "+o.wonder.replace(/\n+/g," / "):""}`).join("\n")}`;
+  nlBusy.topics=true;if(btn){btn.disabled=true;btn.textContent="Reading the month's observations"}
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter"});
+    const byRef=new Map(obs.map(o=>[o.ref,o]));
+    const ts=(Array.isArray(out?.topics)?out.topics:[]).slice(0,4).map((t,i)=>{
+      const refs=(Array.isArray(t.obs)?t.obs:[]).map(String).filter(r=>byRef.has(r));
+      const photoRefs=t.behavior?[]:(Array.isArray(t.photos)?t.photos:[]).map(String).filter(r=>byRef.has(r)&&byRef.get(r).photos.length);
+      return {id:"s"+Date.now().toString(36)+i,title:nlClean(t.title),happening:nlClean(t.happening),quotes:(Array.isArray(t.quotes)?t.quotes:[]).map(q=>nlClean(q)).filter(Boolean).slice(0,3),
+        notices:refs.flatMap(r=>byRef.get(r).ids),photos:[...new Set(photoRefs.flatMap(r=>byRef.get(r).photos))].slice(0,6),behavior:!!t.behavior,
+        drdp:(Array.isArray(t.drdp)?t.drdp:[]).map(String).filter(c=>(DRDP_M.ptk||{})[c]||(DRDP_M.it||{})[c]).slice(0,3),ages:nlClean(t.ages)}}).filter(t=>t.title&&t.notices.length);
+    x=nlDoc(x.month)||x;x.suggestions=ts;x.suggestedAt=Date.now();nlSave(x,true);
+    toast(ts.length?`${ts.length} topics from ${nlMonthOnly(x.month)}'s observations.`:"No topics came back. Try again in a moment.");
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  nlBusy.topics=false;if(view==="newsletter")renderNewsletter();
+}
+
+async function nlUseTopic(x,s,btn){
+  if((x.topics||[]).length>=2){toast("Two topics fit a newsletter best. Remove one to use this one.");return}
+  await loadDrdpTxt();
+  const obs=s.notices.map(id=>notices.get(id)).filter(Boolean);
+  const seen=new Set();const words=obs.filter(n=>{const k=String(n.noticed||"").slice(0,200);if(seen.has(k))return false;seen.add(k);return true}).map(n=>`${n.classroom||""}. ${String(n.noticed||"").replace(/\n+/g," / ")}${n.wonder?" Wondering. "+n.wonder:""}`).slice(0,25);
+  const prompt=`${nlRules}
+
+The director chose this topic for the ${nlName(x.month)} newsletter. ${s.title}. ${s.happening}
+
+Write the family-facing part. Return a JSON object with these keys.
+"title" the topic title for families, 2 to 6 words.
+"happening" 2 or 3 sentences telling families what children did or what educators noticed this month, drawn only from the observations below. Speak of classes or age groups, never of one child.
+"why" 2 or 3 sentences on why this matters for a young child's growth, in plain words.
+"grows" an array of exactly 3 objects with "age" and "text", going from younger to older, using these ages "Toddlers", "Around three", "Fours and fives". Each "text" is one sentence describing what this looks like at that age, written in plain words but keeping the meaning and order of the developmental descriptions below, so a family can see the steps.
+"bonus" 1 or 2 sentences naming how this connects to skills children use later in school, such as hand and shoulder strength for holding a pencil and writing, vocabulary, early math, following directions, or self-regulation.
+
+Developmental descriptions for this topic, for your reference only. Never repeat their codes or names.
+${nlDrdpWords(s.drdp)||"None available."}
+
+What the educators observed.
+${words.join("\n")}`;
+  if(btn){btn.disabled=true;btn.textContent="Writing it for families"}
+  try{
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter"});
+    const grows=(Array.isArray(out?.grows)?out.grows:[]).slice(0,3).map(g=>({age:nlClean(g?.age),text:nlClean(g?.text)})).filter(g=>g.text);
+    x=nlDoc(x.month)||x;
+    const photos=[];if(!s.behavior)for(const id of s.photos){const cap=nlCaption(notices.get(id));if(photos.some(p=>p.cap===cap))continue;photos.push({notice:id,cap});if(photos.length>=2)break}
+    x.topics=(x.topics||[]).concat([{id:"t"+Date.now().toString(36),from:s.id,title:nlClean(out?.title)||s.title,happening:nlClean(out?.happening),why:nlClean(out?.why),grows,bonus:nlClean(out?.bonus),tips:[],tipsDraft:false,photos,offer:s.photos,behavior:s.behavior,drdp:s.drdp,notices:s.notices}]);
+    nlSave(x,true);toast("Written in plain words for families. Read it and make it yours.");
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  if(view==="newsletter")renderNewsletter();
+}
+// a photo's caption starts from the educator's own words, with children's names left out
+function nlCaption(n){
+  if(!n)return"";let t=String(n.noticed||"").split(/\n+/).filter(Boolean);let s=(t.length>1&&t[0].length<60?t[1]:t[0])||"";
+  s=s.split(/(?<=[.!?])\s+/)[0]||s;
+  for(const f of nlNameWarn(s))s=s.replace(new RegExp("\\b"+f+"\\b","g"),"A child").replace(/(\S)\s+A child/g,"$1 a child");
+  return nlClean(s).slice(0,160);
+}
+
+async function nlDraftTips(x,t,btn){
+  const obs=(t.notices||[]).map(id=>notices.get(id)).filter(Boolean);
+  const wonders=[...new Set(obs.map(n=>String(n.wonder||"").trim()).filter(Boolean))].slice(0,5);
+  const prompt=`${nlRules}
+
+Draft 4 or 5 practical tips families can try at home for this newsletter topic. The director will rewrite them in her own voice.
+Topic. ${t.title}. ${t.happening} ${t.why}
+${wonders.length?"What the educators are wondering about. "+wonders.join(" / "):""}
+Each tip is something a parent can do this week, with no special materials. Where it helps, give a short example of what to say, in quotation marks.
+
+Return a JSON object with one key "tips", an array of objects with "lead", a short bold opening of 3 to 7 words ending with a period, and "text", one or two sentences.`;
+  if(btn){btn.disabled=true;btn.textContent="Drafting tips"}
+  try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
+    const tips=(Array.isArray(out?.tips)?out.tips:[]).slice(0,6).map(p=>({lead:nlClean(p?.lead),text:nlClean(p?.text)})).filter(p=>p.lead||p.text);
+    x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.tips=tips;tt.tipsDraft=true}nlSave(x,true);toast("Draft tips are in. Rewrite them in your own voice.");
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  if(view==="newsletter")renderNewsletter();
+}
+
+const NL_SITES=["developingchild.harvard.edu","earlychildhood.stanford.edu","reggiochildren.it","reggioalliance.org","healthychildren.org","aap.org","zerotothree.org","naeyc.org","cdc.gov","first5california.com","cde.ca.gov","extension.psu.edu","childmind.org","pbs.org","kidshealth.org","eatright.org","myplate.gov","janetlansbury.com","rie.org","understood.org"];
+const nlSiteOk=u=>{try{const h=new URL(u).hostname.replace(/^www\./,"");return NL_SITES.some(s=>h===s||h.endsWith("."+s))}catch(e){return false}};
+async function nlSuggestReading(x,t,btn){
+  const prompt=`Find 3 or 4 articles for families of young children about this topic, for a preschool's monthly newsletter. Search the web, and use only articles you actually found in your search results, with their exact web addresses. Weigh every site you can search equally, and choose the most credible and most up to date pages, preferring ones reviewed or updated in recent years. Prefer short, practical pages written for parents.
+Topic. ${t.title}. ${t.why||t.happening}
+
+Return only a JSON object with one key "items", an array of objects with "title" (the article's title, with any colon replaced by a comma), "url" (the exact address you found), "source" (the organization, such as "HealthyChildren.org, American Academy of Pediatrics"), and "why" (one short sentence on what families will find there).`;
+  if(btn){btn.disabled=true;btn.textContent="Searching trusted sites"}
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter-reading"});
+    const items=(Array.isArray(out?.items)?out.items:[]).map(i=>({title:nlClean(i?.title).replace(/:\s*/g,", "),url:String(i?.url||"").trim(),source:nlClean(i?.source),why:nlClean(i?.why)})).filter(i=>i.title&&/^https:\/\//.test(i.url)&&nlSiteOk(i.url)).slice(0,4);
+    x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.readingOffer=items}nlSave(x,true);
+    toast(items.length?`${items.length} articles found. Open each one before adding it.`:"No articles came back from trusted sites. Add your own instead.");
+  }catch(err){toast(err?.code==="truncated"||err?.code==="invalid_json"?"The search did not come back clearly. Try again, or add your own.":"Suggested reading is not available right now. Add your own article below.")}
+  if(view==="newsletter")renderNewsletter();
+}
+function nlAddReading(x,item,topicTitle){
+  if(!item.url||!/^https?:\/\//.test(item.url)){toast("Add the article's web address, starting with https.");return false}
+  x.reading=(x.reading||[]).filter(r=>r.url!==item.url).concat([{title:item.title||item.url,url:item.url,source:item.source||"",topic:topicTitle||""}]);
+  // every article added is kept in the library, tagged with its topic, to come back when the topic does
+  const lib=nlLib();const tag=String(topicTitle||"").toLowerCase();
+  const have=(lib.items||[]).find(i=>i.url===item.url);
+  if(have){if(tag&&!(have.tags||[]).includes(tag))have.tags=(have.tags||[]).concat([tag])}
+  else lib.items=(lib.items||[]).concat([{id:"r"+Date.now().toString(36),title:item.title||item.url,url:item.url,source:item.source||"",tags:tag?[tag]:[],addedAt:Date.now(),by:me()}]);
+  nlSave(lib,true);nlSave(x,true);return true;
+}
+// the library's articles that share a word with a topic's title
+function nlLibFor(t){const words=String(t.title||"").toLowerCase().split(/[^a-z]+/).filter(w=>w.length>3&&!["when","with","what","they","their","from","into","your","real"].includes(w));
+  return (nlLib().items||[]).filter(i=>(i.tags||[]).some(tag=>words.some(w=>tag.includes(w)))||words.some(w=>(i.title||"").toLowerCase().includes(w)))}
+
+async function nlSuggestSchool(x,btn){
+  const obs=nlObs(x.month);if(!obs.length){toast("No observations this month yet.");return}
+  const prompt=`${nlRules}
+
+From the observations below, choose 2 or 3 short pieces of whole-school or farm news for the newsletter, such as the animals, the garden, the creek, visitors, older and younger children together, or something every class shared. Leave out anything that reads as one class's weekly news.
+
+Return a JSON object with one key "items", an array of objects with "text", one or two sentences for families, and "obs", the reference (like "o4") it comes from.
+
+Observations.
+${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}`).join("\n")}`;
+  if(btn){btn.disabled=true;btn.textContent="Reading the month's observations"}
+  try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
+    const byRef=new Map(obs.map(o=>[o.ref,o]));
+    const items=(Array.isArray(out?.items)?out.items:[]).slice(0,4).map(i=>({text:nlClean(i?.text),notice:(byRef.get(String(i?.obs))||{}).photos?.[0]||""})).filter(i=>i.text);
+    x=nlDoc(x.month)||x;x.school=(x.school||[]).filter(s=>s.text.trim()).concat(items.map(i=>({text:i.text})));
+    const ph=items.map(i=>i.notice).filter(Boolean);x.schoolOffer=[...new Set(ph)];if(!(x.schoolPhotos||[]).length)x.schoolPhotos=ph.slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
+    nlSave(x,true);
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  if(view==="newsletter")renderNewsletter();
+}
+
+// what is coming up next month, from the school calendar. Birthdays and the staff calendar stay out.
+async function nlLoadComing(k){
+  const next=nlShift(k,1);if(nlEvents[next]&&nlEvents[next].at>Date.now()-10*60e3)return;
+  const [y,m]=next.split("-").map(Number);const from=iso(new Date(y,m-1,1)),to=iso(new Date(y,m,0));
+  try{const j=await window.FP_API("/api/view",{from,to});
+    const cals=new Map(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c.name||""]));
+    const by=new Map();
+    for(const e of (j.events||[])){if(e.cal==="tbday")continue;const cn=cals.get(e.cal)||"";if(/internal|staff/i.test(cn))continue;
+      const day=String(e.start||"").slice(0,10);if(!day)continue;
+      const title=e.cal==="tconf"||/conference/i.test(cn)?"Family conferences":String(e.title||e.summary||"").trim();if(!title)continue;
+      const key=day+"|"+title;if(!by.has(key))by.set(key,{date:day,text:title})}
+    nlEvents[next]={at:Date.now(),items:[...by.values()].sort((a,b)=>a.date.localeCompare(b.date))};
+  }catch(e){nlEvents[next]={at:Date.now(),items:[],failed:true}}
+  if(view==="newsletter")renderNewsletter();
+}
+const nlDay=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+
+function nlThumb(id,on,attr){const n=notices.get(id);if(!n||!n.photo)return"";
+  return `<button class="nlph${on?" on":""}" ${attr} aria-pressed="${on}" title="${on?"In the newsletter":"Add to the newsletter"}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"></button>`}
+
+function renderNewsletter(){
+  const main=$("#main");
+  if(!isDirector()){main.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Family newsletter</h2><div class="sub">The family newsletter is made in the director's view.</div></div>`;return}
+  const k=nlCur();const x=nlDoc(k);
+  if(!nlEvents[nlShift(k,1)])nlLoadComing(k);
+  const months=[...new Set([nlKey(new Date()),nlShift(nlKey(new Date()),-1),nlShift(nlKey(new Date()),1),...[...newsletters.values()].map(d=>d.month).filter(Boolean)])].sort().reverse();
+  let h=`<div class="head"><span class="eyebrow">Documentation</span><div class="head-row"><h2 style="margin-top:4px">Family newsletter</h2>
+    <select id="nlmonth" style="width:auto" aria-label="Month">${months.map(m=>`<option value="${m}" ${m===k?"selected":""}>${nlName(m)}${nlDoc(m)?.status==="sent"?", sent":nlDoc(m)?", draft":""}</option>`).join("")}</select></div>
+    <div class="sub">Once a month, from the office. TREE suggests topics from what educators observed, and you write the newsletter. Only you see this page.</div></div>`;
+  if(!x){
+    const n=nlObs(k).length;
+    h+=`<div class="card nlcard"><b style="font-family:var(--display);font-size:18px">${nlName(k)}</b><p class="muted" style="margin:6px 0 12px">${n?`${n} observation${n===1?"":"s"} kept so far this month. TREE reads them and suggests topics.`:"No observations kept this month yet."}</p>
+      <button class="btn" data-nlstart="${k}" ${n?"":"disabled"}>Start the ${nlMonthOnly(k)} newsletter</button></div>`;
+    h+=nlArchiveHtml(k);main.innerHTML=h;return;
+  }
+  const sent=x.status==="sent";
+  if(sent)h+=`<div class="card nlcard nlsent">Sent ${x.sentAt?fmtDate(iso(new Date(x.sentAt))):""}. It stays here to look back on, and its topics are not suggested again this school year. <button class="btn small ghost" data-nlunsend="1">Open it again</button></div>`;
+
+  // 1. the director's note
+  h+=`<section class="card nlcard"><div class="nlstep">1</div><h3>A note from you</h3><p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
+    <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea></section>`;
+
+  // 2. topics TREE noticed
+  const used=new Set((x.topics||[]).map(t=>t.from));
+  h+=`<section class="card nlcard"><div class="nlstep">2</div><div class="head-row"><h3>Topics TREE noticed</h3><button class="btn small ghost" data-nlfind="1" ${nlBusy.topics?"disabled":""}>${nlBusy.topics?"Reading the month's observations":(x.suggestions||[]).length?"Look again":"Find topics"}</button></div>
+    <p class="muted nlhint">Only you see this part. Each topic shows what educators observed and how it connects to the DRDP. Choose one or two.</p>
+    ${(x.suggestions||[]).length?`<div class="nlsugs">${x.suggestions.map(s=>`<div class="nlsug${used.has(s.id)?" used":""}">
+      <b class="nlsugt">${esc(s.title)}</b><p>${esc(s.happening)}</p>
+      ${s.quotes.length?s.quotes.map(q=>`<blockquote>${esc(q)}</blockquote>`).join(""):""}
+      ${s.drdp.length?`<p class="nlsmall"><b>DRDP.</b> ${s.drdp.map(c=>esc(c+" "+((DRDP_M.ptk[c]||DRDP_M.it[c]||{}).n||""))).join(", ")}</p>`:""}
+      ${s.ages?`<p class="nlsmall"><b>Ages.</b> ${esc(s.ages)}</p>`:""}
+      <p class="nlsmall">${s.notices.length} observation${s.notices.length===1?"":"s"}${s.behavior?". No child photo is offered for a topic about behavior.":s.photos.length?`, ${s.photos.length} photo${s.photos.length===1?"":"s"} to choose from`:""}</p>
+      ${used.has(s.id)?`<span class="chip">In this newsletter</span>`:`<button class="btn small" data-nluse="${s.id}">Use this topic</button>`}</div>`).join("")}</div>`:`<p class="muted">Press Find topics and TREE reads ${nlMonthOnly(k)}'s observations.</p>`}</section>`;
+
+  // 3. each topic, written for families
+  (x.topics||[]).forEach((t,i)=>{
+    const warn=nlNameWarn(nlTopicText(t));
+    const lib=nlLibFor(t).filter(r=>!(x.reading||[]).some(y=>y.url===r.url));
+    h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${t.id}">Remove topic</button></div>
+      ${warn.length?`<div class="nlwarn">This mentions ${esc(warn.join(", "))}, ${warn.length>1?"children's names":"a child's name"}. Change it before it goes out.</div>`:""}
+      <label class="nll">Title<input data-nlf="topics.${i}.title" value="${esc(t.title)}"></label>
+      <label class="nll">What happened this month<textarea class="nlta" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
+      <div class="nlphotos">${(t.offer||[]).map(id=>nlThumb(id,(t.photos||[]).some(p=>p.notice===id),`data-nltph="${t.id}" data-id="${id}"`)).join("")}</div>
+      ${(t.photos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="topics.${i}.photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
+      ${t.behavior?`<p class="muted nlhint">No child photo for a topic about behavior, so no family wonders whether it is about their child.</p>`:""}
+      <label class="nll">Why it matters<textarea class="nlta" rows="3" data-nlf="topics.${i}.why">${esc(t.why)}</textarea></label>
+      <div class="nll">How it grows</div>
+      ${(t.grows||[]).map((g,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.grows.${j}.age" value="${esc(g.age)}" aria-label="Age"><textarea class="nlta" rows="2" data-nlf="topics.${i}.grows.${j}.text" aria-label="What it looks like">${esc(g.text)}</textarea></div>`).join("")}
+      <label class="nll nlbonus">Bonus for school<textarea class="nlta" rows="2" data-nlf="topics.${i}.bonus">${esc(t.bonus)}</textarea></label>
+      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Ideas to try at home</div><span><button class="btn small ghost" data-nltipdraft="${t.id}">${(t.tips||[]).length?"Draft new tips":"Draft tips for me"}</button> <button class="btn small ghost" data-nltipadd="${t.id}">Add a tip</button></span></div>
+      ${t.tipsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
+      ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(p.lead)}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${t.id}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
+      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Reading for families</div><button class="btn small ghost" data-nlread="${t.id}">${(t.readingOffer||[]).length?"Search again":"Suggest reading"}</button></div>
+      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}</div><button class="btn small" data-nladdoffer="${t.id}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
+      ${lib.length?`<div class="nlsmall" style="margin-top:8px"><b>From your library</b></div>${lib.map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small" data-nladdlib="${r.id}" data-topic="${t.id}">Add</button></div>`).join("")}`:""}
+    </section>`;
+  });
+
+  // reading chosen, and the director's own
+  const step=3+(x.topics||[]).length;
+  h+=`<section class="card nlcard"><div class="nlstep">${step}</div><h3>For families who want to read more</h3>
+    ${(x.reading||[]).length?(x.reading||[]).map((r,j)=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small ghost" data-nlrmread="${j}" aria-label="Remove">×</button></div>`).join(""):`<p class="muted nlhint">Add articles from the topics above, or your own below. Open each one before it goes to families.</p>`}
+    <details class="nlown"><summary>Add your own article or handout</summary>
+      <label class="nll">Title<input id="nlrt"></label><label class="nll">Web address<input id="nlru" placeholder="https://"></label><label class="nll">Where it is from<input id="nlrs" placeholder="Such as Early Plate Project"></label>
+      <label class="nll">Topic<select id="nlrtopic"><option value="">No topic</option>${(x.topics||[]).map(t=>`<option>${esc(t.title)}</option>`).join("")}</select></label>
+      <button class="btn small" data-nladdown="1">Add it</button><p class="muted nlhint">It is kept in your library too, and comes back when its topic does.</p></details></section>`;
+
+  // school and farm
+  h+=`<section class="card nlcard"><div class="nlstep">${step+1}</div><div class="head-row"><h3>Around the school and farm</h3><button class="btn small ghost" data-nlschool="1">${(x.school||[]).length?"Suggest more":"Suggest from observations"}</button></div>
+    <p class="muted nlhint">Only what spans the school, such as the animals, the garden, staff news, events and policy updates.</p>
+    ${(x.school||[]).map((s,j)=>`<div class="nlrow"><textarea class="nlta" rows="2" data-nlf="school.${j}.text">${esc(s.text)}</textarea><button class="btn small ghost" data-nlrmschool="${j}" aria-label="Remove">×</button></div>`).join("")}
+    <button class="btn small ghost" data-nladdschool="1">Add a line</button>
+    ${(x.schoolOffer||[]).length?`<div class="nlphotos">${x.schoolOffer.map(id=>nlThumb(id,(x.schoolPhotos||[]).some(p=>p.notice===id),`data-nlsph="${id}"`)).join("")}</div>`:""}
+    ${(x.schoolPhotos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="schoolPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`;
+
+  // coming up
+  const ev=nlEvents[nlShift(k,1)];const chosen=new Set((x.coming||[]).map(c=>c.date+"|"+c.text));
+  h+=`<section class="card nlcard"><div class="nlstep">${step+2}</div><h3>Coming up in ${nlMonthOnly(nlShift(k,1))}</h3>
+    ${!ev?`<p class="muted">Reading the school calendar</p>`:ev.failed?`<p class="muted">The school calendar could not be read just now. Add dates yourself below.</p>`:ev.items.length?ev.items.map(e=>`<label class="nlcheck"><input type="checkbox" data-nlcome="${esc(e.date+"|"+e.text)}" ${chosen.has(e.date+"|"+e.text)?"checked":""}> <b>${esc(nlDay(e.date))}.</b> ${esc(e.text)}</label>`).join(""):`<p class="muted">Nothing on the school calendar for ${nlMonthOnly(nlShift(k,1))} yet.</p>`}
+    ${(x.coming||[]).filter(c=>c.own).map(c=>`<div class="nlres"><div><b>${esc(c.date?nlDay(c.date):"")}.</b> ${esc(c.text)}</div><button class="btn small ghost" data-nlrmcome="${esc(c.date+"|"+c.text)}" aria-label="Remove">×</button></div>`).join("")}
+    <div class="nlrow"><input type="date" id="nlcd" aria-label="Date"><input id="nlct" placeholder="What is happening"><button class="btn small ghost" data-nladdcome="1">Add</button></div></section>`;
+
+  // finish
+  h+=`<section class="card nlcard"><div class="nlstep">${step+3}</div><h3>Send it</h3>
+    <p class="muted nlhint">Copy each block into your Kaymbu template and add the photos. Word and PDF copies are for your records and the front entrance.</p>
+    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}</div>
+    ${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
+  h+=nlArchiveHtml(k);
+  main.innerHTML=h;
+  main.querySelectorAll("textarea.nlta").forEach(ta=>{try{autoGrow(ta)}catch(e){}});
+}
+function nlArchiveHtml(k){
+  const past=[...newsletters.values()].filter(d=>d.month&&d.month!==k).sort((a,b)=>b.month.localeCompare(a.month));
+  const lib=nlLib().items||[];
+  return `<section class="card nlcard nlarch"><h3>Past newsletters</h3>${past.length?past.map(d=>`<button class="item" data-nlopen="${d.month}"><span class="nm">${nlName(d.month)}</span><span class="cnt">${(d.topics||[]).map(t=>esc(t.title)).join(", ")||"No topics yet"}${d.status==="sent"?"":", draft"}</span></button>`).join(""):`<p class="muted">Each newsletter is kept here once it is started.</p>`}
+    <p class="muted nlhint" style="margin-top:10px">${lib.length} article${lib.length===1?"":"s"} in your library.</p></section>`;
+}
+
+// the newsletter as plain blocks, the way they go into the Kaymbu template
+function nlBlocks(x){
+  const B=[];
+  if((x.note||"").trim())B.push({h:"A note from the director",text:x.note.trim()});
+  for(const t of x.topics||[]){
+    const p=[t.title,"",t.happening,"","Why it matters",t.why,""];
+    if((t.grows||[]).length){p.push("How it grows");for(const g of t.grows)p.push(`${g.age}. ${g.text}`);p.push("")}
+    if(t.bonus)p.push("Bonus for school. "+t.bonus,"");
+    if((t.tips||[]).length){p.push("Ideas to try at home");for(const tp of t.tips)p.push(`${tp.lead} ${tp.text}`.trim())}
+    B.push({h:t.title,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
+  }
+  if((x.reading||[]).length)B.push({h:"For families who want to read more",text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
+  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
+  if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
+  if((x.coming||[]).length)B.push({h:"Coming up",text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${c.text}`).join("\n")});
+  return B;
+}
+function nlKaymbuHtml(x){
+  const B=nlBlocks(x);
+  if(!B.length)return `<p class="muted">Nothing written yet.</p>`;
+  const warn=nlNameWarn(B.map(b=>b.text+" "+(b.photos||[]).map(p=>p.cap).join(" ")).join(" "));
+  return `${warn.length?`<div class="nlwarn">The newsletter mentions ${esc(warn.join(", "))}. Check before copying.</div>`:""}${(x.topics||[]).some(t=>t.tipsDraft)?`<div class="nlwarn">Some tips are still TREE's draft.</div>`:""}
+    ${B.map((b,j)=>`<div class="nlblock"><div class="head-row"><b>${esc(b.h)}</b><button class="btn small" data-nlcopy="${j}">Copy</button></div><textarea class="nlta" rows="5" readonly id="nlb-${j}">${esc(b.text)}</textarea>
+    ${(b.photos||[]).length?`<div class="nlphotos">${b.photos.map(p=>{const n=notices.get(p.notice);return n?`<span class="nlphs"><img src="${esc(photoThumb(n))}" alt=""><button class="btn small ghost" data-nlsave="${p.notice}">Save photo</button></span>`:""}).join("")}</div>`:""}</div>`).join("")}`;
+}
+
+function nlSetPath(x,path,val){const ks=path.split(".");let o=x;for(let i=0;i<ks.length-1;i++){o=o[/^\d+$/.test(ks[i])?Number(ks[i]):ks[i]];if(o==null)return}o[ks[ks.length-1]]=val}
+document.addEventListener("input",e=>{
+  if(view!=="newsletter")return;const el=e.target;if(!el.dataset||!el.dataset.nlf)return;
+  const x=nlDoc(nlCur());if(!x)return;nlSetPath(x,el.dataset.nlf,el.value);
+  const m=el.dataset.nlf.match(/^topics\.(\d+)\.tips\./);if(m&&x.topics[+m[1]])x.topics[+m[1]].tipsDraft=false;
+  if(el.tagName==="TEXTAREA")try{autoGrow(el)}catch(err){}
+  nlSave(x);
+});
+document.addEventListener("change",e=>{
+  if(view!=="newsletter")return;const el=e.target;
+  if(el.id==="nlmonth"){nlMonth=el.value;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();return}
+  if(el.dataset&&el.dataset.nlcome){const x=nlDoc(nlCur());if(!x)return;const [date,...rest]=el.dataset.nlcome.split("|");const text=rest.join("|");
+    x.coming=(x.coming||[]).filter(c=>!(c.date===date&&c.text===text));if(el.checked)x.coming.push({date,text});nlSave(x)}
+});
+document.addEventListener("click",async e=>{
+  if(view!=="newsletter")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;
+  const k=nlCur();let x=nlDoc(k);
+  if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
+  if(d.nlopen){nlMonth=d.nlopen;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();jumpTop();return}
+  if(!x)return;
+  if(d.nlfind){nlFindTopics(x,t);return}
+  if(d.nluse){const s=(x.suggestions||[]).find(y=>y.id===d.nluse);if(s)nlUseTopic(x,s,t);return}
+  if(d.nlrmtopic){if(!confirm("Remove this topic from the newsletter?"))return;x.topics=x.topics.filter(y=>y.id!==d.nlrmtopic);nlSave(x,true);renderNewsletter();return}
+  if(d.nltph){const tp=x.topics.find(y=>y.id===d.nltph);if(!tp)return;const has=(tp.photos||[]).some(p=>p.notice===d.id);
+    if(has)tp.photos=tp.photos.filter(p=>p.notice!==d.id);else{if((tp.photos||[]).length>=2){toast("Two photos fit a topic best. Take one out first.");return}tp.photos=(tp.photos||[]).concat([{notice:d.id,cap:nlCaption(notices.get(d.id))}])}
+    nlSave(x);renderNewsletter();return}
+  if(d.nlsph){const has=(x.schoolPhotos||[]).some(p=>p.notice===d.nlsph);
+    if(has)x.schoolPhotos=x.schoolPhotos.filter(p=>p.notice!==d.nlsph);else{if((x.schoolPhotos||[]).length>=2){toast("Two photos fit this part best. Take one out first.");return}x.schoolPhotos=(x.schoolPhotos||[]).concat([{notice:d.nlsph,cap:nlCaption(notices.get(d.nlsph))}])}
+    nlSave(x);renderNewsletter();return}
+  if(d.nltipdraft){const tp=x.topics.find(y=>y.id===d.nltipdraft);if(!tp)return;if((tp.tips||[]).length&&!confirm("Replace these tips with a new draft?"))return;nlDraftTips(x,tp,t);return}
+  if(d.nltipadd){const tp=x.topics.find(y=>y.id===d.nltipadd);if(!tp)return;tp.tips=(tp.tips||[]).concat([{lead:"",text:""}]);nlSave(x);renderNewsletter();return}
+  if(d.nltiprm){const tp=x.topics.find(y=>y.id===d.nltiprm);if(!tp)return;tp.tips.splice(+d.j,1);nlSave(x);renderNewsletter();return}
+  if(d.nlread){const tp=x.topics.find(y=>y.id===d.nlread);if(tp)nlSuggestReading(x,tp,t);return}
+  if(d.nladdoffer){const tp=x.topics.find(y=>y.id===d.nladdoffer);const r=tp&&(tp.readingOffer||[]).find(y=>y.url===d.url);if(r&&nlAddReading(x,r,tp.title)){toast("Added, and kept in your library.");renderNewsletter()}return}
+  if(d.nladdlib){const r=(nlLib().items||[]).find(y=>y.id===d.nladdlib);const tp=x.topics.find(y=>y.id===d.topic);if(r&&nlAddReading(x,r,tp&&tp.title))renderNewsletter();return}
+  if(d.nladdown){const item={title:$("#nlrt").value.trim(),url:$("#nlru").value.trim(),source:$("#nlrs").value.trim()};if(!item.title){toast("Add the article's title.");return}if(nlAddReading(x,item,$("#nlrtopic").value)){toast("Added, and kept in your library.");renderNewsletter()}return}
+  if(t.hasAttribute("data-nlrmread")){x.reading.splice(+d.nlrmread,1);nlSave(x);renderNewsletter();return}
+  if(d.nlschool){nlSuggestSchool(x,t);return}
+  if(d.nladdschool){x.school=(x.school||[]).concat([{text:""}]);nlSave(x);renderNewsletter();return}
+  if(t.hasAttribute("data-nlrmschool")){x.school.splice(+d.nlrmschool,1);nlSave(x);renderNewsletter();return}
+  if(d.nladdcome){const date=$("#nlcd").value,text=$("#nlct").value.trim();if(!text){toast("Write what is happening.");return}x.coming=(x.coming||[]).concat([{date,text,own:true}]);nlSave(x);renderNewsletter();return}
+  if(d.nlrmcome){const [date,...rest]=d.nlrmcome.split("|");const text=rest.join("|");x.coming=x.coming.filter(c=>!(c.own&&c.date===date&&c.text===text));nlSave(x);renderNewsletter();return}
+  if(d.nlkaymbu){nlKaymbu=!nlKaymbu;renderNewsletter();if(nlKaymbu)setTimeout(()=>{const b=$(".nlblock");if(b)b.scrollIntoView({block:"start",behavior:"smooth"})},60);return}
+  if(t.hasAttribute("data-nlcopy")){copyText($("#nlb-"+d.nlcopy));return}
+  if(d.nlsave){const n=notices.get(d.nlsave);if(!n||!n.photo)return;try{const r=await fetchPhoto(window.FP_ORIGINAL_URL(n.photo.id));const blob=await r.blob();
+      await downloads.save({filename:`Fulton newsletter ${nlMonthOnly(k)} photo ${n.photo.id.slice(0,6)}.jpg`,data:blob})}catch(err){toast("The photo could not be saved. Try again.")}return}
+  if(d.nlword){nlWord(x);return}
+  if(d.nlpdf){nlPdf(x);return}
+  if(d.nlsent){if(nlNameWarn(nlBlocks(x).map(b=>b.text).join(" ")).length&&!confirm("The newsletter mentions a child's name. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
+  if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
+});
+
+// photos for the printed copies, at a size that prints well
+async function nlPhotos(x){
+  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
+  await loadPhotos([{photos:list.map(n=>({key:"nl:"+n.id,src:window.FP_ORIGINAL_URL(n.photo.id)}))}]);
+}
+const nlIm=p=>photoCache.get("nl:"+p.notice);
+async function nlWord(x){
+  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
+  toast("Preparing the Word file");await nlPhotos(x);
+  const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,ExternalHyperlink,Footer,LevelFormat}=D;
+  const MOSS="2B5A40",INK="1B2920",MUTED="5B6B61",LINE="C6D0C3",W=9360,F="Arial";
+  const r=(t,o)=>new TextRun(Object.assign({text:String(t??""),font:F,size:22,color:INK},o||{}));
+  const P=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[r(kids)],spacing:{after:140,line:300}},o||{}));
+  const H=(t,sz,o)=>new Paragraph(Object.assign({children:[r(t,{size:sz,bold:true,color:MOSS})],spacing:{before:280,after:120},keepNext:true},o||{}));
+  const sub=t=>new Paragraph({children:[r(t,{size:24,bold:true})],spacing:{before:160,after:80},keepNext:true});
+  const rule=()=>new Paragraph({children:[],spacing:{before:200,after:0},border:{top:{style:BorderStyle.SINGLE,size:4,color:LINE,space:8}}});
+  const bul=kids=>new Paragraph({children:kids,numbering:{reference:"dots",level:0},spacing:{after:90,line:290}});
+  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},nb={top:none,bottom:none,left:none,right:none};
+  const photoRow=ps=>{ps=ps.filter(p=>nlIm(p));if(!ps.length)return[];const col=Math.floor(W/ps.length);
+    const cell=p=>{const im=nlIm(p);const maxW=ps.length>1?290:420,maxH=ps.length>1?370:400;let w=maxW,h=w*im.h/im.w;if(h>maxH){h=maxH;w=h*im.w/im.h}
+      return new TableCell({width:{size:col,type:WidthType.DXA},borders:nb,margins:{right:160},children:[new Paragraph({children:[new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(w),height:Math.round(h)}})],spacing:{after:60}}),new Paragraph({children:[r(p.cap,{size:18,color:MUTED})],spacing:{after:160,line:260}})]})};
+    return [new Table({width:{size:col*ps.length,type:WidthType.DXA},columnWidths:ps.map(()=>col),borders:Object.assign({insideHorizontal:none,insideVertical:none},nb),rows:[new TableRow({children:ps.map(cell)})]})]};
+  const ch=[];
+  ch.push(P([r("FULTON COMMUNITY SCHOOL & FARM",{size:18,bold:true,color:MUTED,characterSpacing:40})],{spacing:{after:60}}));
+  ch.push(new Paragraph({children:[r("Family newsletter, "+nlName(x.month),{size:40,bold:true,color:MOSS})],spacing:{after:200}}));
+  if((x.note||"").trim()){ch.push(H("A note from the director",28));for(const para of x.note.trim().split(/\n\s*\n/))ch.push(P(para.replace(/\n/g," ")))}
+  for(const t of x.topics||[]){
+    ch.push(rule());ch.push(H(t.title,30,{before:120}));ch.push(...photoRow(t.photos||[]));
+    if(t.happening)ch.push(P(t.happening));
+    if(t.why){ch.push(sub("Why it matters"));ch.push(P(t.why))}
+    if((t.grows||[]).length){ch.push(sub("How it grows"));for(const g of t.grows)ch.push(bul([r(g.age+". ",{bold:true,color:MOSS}),r(g.text)]))}
+    if(t.bonus)ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},shading:{type:ShadingType.CLEAR,color:"auto",fill:"FBF3E4"},borders:{top:none,bottom:none,right:none,left:{style:BorderStyle.SINGLE,size:24,color:"9A5B07"}},margins:{top:140,bottom:140,left:240,right:240},children:[new Paragraph({children:[r("Bonus for school. ",{bold:true,color:"9A5B07"}),r(t.bonus)],spacing:{after:0,line:290}})]})]})]}));
+    if((t.tips||[]).length){ch.push(sub("Ideas to try at home"));for(const p of t.tips)ch.push(bul([r((p.lead||"")+" ",{bold:true}),r(p.text)]))}
+  }
+  if((x.reading||[]).length){ch.push(rule());ch.push(H("For families who want to read more",28,{before:120}));for(const it of x.reading)ch.push(bul([new ExternalHyperlink({link:it.url,children:[r(it.title,{color:"245B78",underline:{}})]}),r(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:"",{color:MUTED})]))}
+  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
+  if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
+  if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(c.text)]))}
+  const doc=new Document({creator:"Fulton Community School & Farm",title:"Family newsletter, "+nlName(x.month),styles:{default:{document:{run:{font:F,size:22}}}},
+    numbering:{config:[{reference:"dots",levels:[{level:0,format:LevelFormat.BULLET,text:"•",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:240}}}}]}]},
+    sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1300,bottom:1200,left:1440,right:1440}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School & Farm",{size:16,color:MUTED})]})]})},children:ch}]});
+  const blob=await Packer.toBlob(doc);
+  await downloads.save({filename:`Fulton family newsletter ${nlName(x.month)}.docx`,data:blob});
+}
+async function nlPdf(x){
+  if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
+  toast("Preparing the PDF");await nlPhotos(x);
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});
+  const L=54,R=PW-54,TW=R-L,BOT=PH-60;let y=60;
+  const ink=()=>doc.setTextColor(...C.ink),moss=()=>doc.setTextColor(...C.moss),mut=()=>doc.setTextColor(...C.muted);
+  const need=hh=>{if(y+hh>BOT){doc.addPage();y=60}};
+  const para=(t,o={})=>{doc.setFont("helvetica",o.bold?"bold":"normal");doc.setFontSize(o.size||10.5);(o.color||ink)();const lines=doc.splitTextToSize(clean(t),o.w||TW);const lh=(o.size||10.5)*1.42;
+    for(const ln of lines){need(lh);doc.text(ln,o.x||L,y+lh*.75);y+=lh}y+=o.after??7};
+  const head=(t,sz)=>{need(sz*2.4);y+=6;doc.setFont("helvetica","bold");doc.setFontSize(sz);moss();for(const ln of doc.splitTextToSize(clean(t),TW)){doc.text(ln,L,y+sz*.8);y+=sz*1.25}y+=5};
+  const sub=t=>{need(30);doc.setFont("helvetica","bold");doc.setFontSize(11.5);ink();doc.text(clean(t),L,y+10);y+=18};
+  const bullet=(lead,t)=>{doc.setFontSize(10.5);const lh=14.9;lead=clean(lead||"");const words=clean(t).split(/\s+/).filter(Boolean);
+    doc.setFont("helvetica","bold");const leadW=lead?doc.getTextWidth(lead+" "):0;doc.setFont("helvetica","normal");
+    let first="";while(words.length&&doc.getTextWidth((first?first+" ":"")+words[0])<=TW-14-leadW)first=(first?first+" ":"")+words.shift();
+    const rest=words.length?doc.splitTextToSize(words.join(" "),TW-14):[];
+    need(lh);doc.setFillColor(...C.moss);doc.circle(L+3,y+lh*.45,1.6,"F");
+    if(lead){doc.setFont("helvetica","bold");moss();doc.text(lead,L+14,y+lh*.75)}doc.setFont("helvetica","normal");ink();doc.text(first,L+14+leadW,y+lh*.75);y+=lh;
+    for(const ln of rest){need(lh);doc.text(ln,L+14,y+lh*.75);y+=lh}y+=4};
+  const rule=()=>{need(24);y+=8;doc.setDrawColor(...C.line);doc.setLineWidth(.6);doc.line(L,y,R,y);y+=10};
+  const photos=ps=>{ps=ps.filter(p=>nlIm(p));if(!ps.length)return;const gap=14,cw=ps.length>1?(TW-gap)/2:TW*.62,mh=ps.length>1?250:300;
+    const dims=ps.map(p=>{const im=nlIm(p);let w=cw,h=w*im.h/im.w;if(h>mh){h=mh;w=h*im.w/im.h}return {im,w,h,p}});const rowH=Math.max(...dims.map(d=>d.h));
+    need(rowH+34);let xx=L;let capH=0;
+    for(const dm of dims){doc.addImage(dm.im.url,"JPEG",xx,y,dm.w,dm.h);doc.setFont("helvetica","normal");doc.setFontSize(8.6);mut();const cl=doc.splitTextToSize(clean(dm.p.cap),cw);cl.slice(0,3).forEach((ln,i)=>doc.text(ln,xx,y+rowH+11+i*11));capH=Math.max(capH,Math.min(cl.length,3)*11);xx+=cw+gap}
+    y+=rowH+capH+16};
+  doc.setFont("helvetica","bold");doc.setFontSize(8.5);mut();doc.setCharSpace(1);doc.text("FULTON COMMUNITY SCHOOL & FARM",L,y);doc.setCharSpace(0);y+=10;
+  head("Family newsletter, "+nlName(x.month),22);
+  if((x.note||"").trim()){head("A note from the director",14);for(const pp of x.note.trim().split(/\n\s*\n/))para(pp.replace(/\n/g," "))}
+  for(const t of x.topics||[]){rule();head(t.title,17);photos(t.photos||[]);if(t.happening)para(t.happening);
+    if(t.why){sub("Why it matters");para(t.why)}
+    if((t.grows||[]).length){sub("How it grows");for(const g of t.grows)bullet(g.age+".",g.text)}
+    if(t.bonus){doc.setFontSize(10.5);const lines=doc.splitTextToSize(clean("Bonus for school. "+t.bonus),TW-30);const hh=lines.length*14.9+18;need(hh+6);y+=4;
+      doc.setFillColor(251,243,228);doc.rect(L,y,TW,hh,"F");doc.setFillColor(...C.marigold);doc.rect(L,y,3,hh,"F");
+      lines.forEach((ln,i)=>{if(i===0){doc.setFont("helvetica","bold");doc.setTextColor(154,91,7);doc.text("Bonus for school.",L+16,y+9+11);const bw=doc.getTextWidth("Bonus for school. ");doc.setFont("helvetica","normal");ink();doc.text(ln.replace(/^Bonus for school\.\s*/,""),L+16+bw,y+9+11)}else{doc.setFont("helvetica","normal");ink();doc.text(ln,L+16,y+9+11+i*14.9)}});y+=hh+10}
+    if((t.tips||[]).length){sub("Ideas to try at home");for(const p of t.tips)bullet(p.lead,p.text)}}
+  if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));doc.setFontSize(8.6);mut();doc.textWithLink(clean(it.url).slice(0,95),L+14,y+2,{url:it.url});y+=12}}
+  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
+  if(sch.length){rule();head("Around the school and farm",14);photos(x.schoolPhotos||[]);for(const s of sch)bullet("",s)}
+  if((x.coming||[]).length){rule();head("Coming up",14);for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))bullet(c.date?nlDay(c.date)+".":"",c.text)}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont("helvetica","normal");doc.setFontSize(7.6);mut();doc.text("Fulton Community School & Farm"+(n>1?`   ${i} of ${n}`:""),PW/2,PH-28,{align:"center"})}
+  await downloads.save({filename:`Fulton family newsletter ${nlName(x.month)}.pdf`,data:doc.output("blob")});
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
