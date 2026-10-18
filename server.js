@@ -28,7 +28,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
@@ -213,10 +213,11 @@ function conferenceEvents(from, to) {
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
+const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
 const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved. The GitHub token on Render has probably expired. Renew it on GitHub and paste the new one into GITHUB_TOKEN on Render.';
@@ -249,7 +250,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -281,7 +282,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -454,6 +455,7 @@ function statusPage(req, res) {
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
+  lines.push(feedBin.statusLine());
   { const st = storageNow(); lines.push(photosDrive.on() ? `Photos kept in Google Drive, ${st.inDrive}. Still in the records, ${st.photos}.` : 'Photos are kept in the records. Google Drive is not set up.'); }
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
@@ -723,6 +725,8 @@ async function handle(req, res) {
     } catch (e) { err(req, res, 502, e.message); }
     return;
   }
+  // the weekly FEED bin, read from FEED's page and kept by week
+  if (await feedBin.handle(path, { name: me.name, director: isDirector(me.name) }, body, (status, obj) => json(req, res, status, obj))) return;
   if (await calendar.handle(path, { name: me.name, director: isDirector(me.name), shared: me.name === 'Staff' }, body, (status, obj) => json(req, res, status, obj))) return;
   err(req, res, 404, 'Not found');
 }
