@@ -1079,7 +1079,7 @@ async function boot(){
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
-    db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
+    db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
@@ -2516,7 +2516,7 @@ const K_MAP=[
   {food:/\beggs?\b/i,dish:/\beggs?\b|fried rice|pancake|waffle|muffin|bread/i,back:14},
   {prod:/petaluma creamery/i,label:"cheese",food:/cheese/i,dish:/cheese|pizza|quesadilla|pesto/i,back:42},
   {prod:/next generation/i,dish:/\bbeans?\b|\brice\b|burrito/i,back:56},
-  {prod:/central milling/i,label:"flour",food:/flour/i,dish:/focaccia|pizza|bread|muffin|waffle|pancake|crust|dough/i,back:70}];
+  {prod:/central milling/i,label:"whole wheat flour",food:/flour/i,dish:/focaccia|pizza|bread|muffin|waffle|pancake|crust|dough/i,back:70}];
 const kEntry=(food,farm)=>K_MAP.find(e=>(e.prod&&e.prod.test(farm||""))||(e.food&&e.food.test(food||"")));
 // the word a family reads for a food, such as cheese or flour rather than the order's full line
 const kLabel=(food,farm)=>{const e=kEntry(food,farm);if(e&&e.prod)return /next generation/i.test(farm||"")?(/rice/i.test(food||"")?"rice":"beans"):e.label||"";return kPlural(food)};
@@ -4634,16 +4634,21 @@ const kShortDish=t=>{t=String(t||"").trim();const w=t.split(/\s+/);return w.leng
 /* Staples used all month, such as cheese, beans and rice, flour and rice cakes, are listed once under Our staples rather
    in every week. The director keeps the list in Settings, under Monthly menus, and staples found in a month's orders are
    added to it on that month's sheet. */
-const K_STAPLES0=[{food:"cheese",maker:"Petaluma Creamery",town:"Petaluma"},{food:"beans and rice",maker:"Next Generation Foods",town:"West Sacramento"},{food:"flour",maker:"Central Milling",town:"Petaluma"},{food:"organic rice cakes",maker:"Lundberg Family Farms",town:"Richvale"}];
+const K_STAPLES0=[{food:"cheese",maker:"Petaluma Creamery",town:"Petaluma"},{food:"beans and rice",maker:"Next Generation Foods",town:"West Sacramento"},{food:"organic whole wheat flour",maker:"Central Milling",town:"Petaluma"},{food:"organic rice cakes",maker:"Lundberg Family Farms",town:"Richvale"},{food:"organic olive oil",maker:"Costco",town:""},{food:"organic avocado oil",maker:"Costco",town:""}];
+const K_STAPLE_NOTE0="Sally makes our meals from scratch, including every bread, dough and crust. The only foods we buy ready made are the rice cakes, the corn tortillas from our local molino, and the pasta.";
+let kStapleNote=null;
+const kNote=()=>kStapleNote==null?K_STAPLE_NOTE0:kStapleNote;
 let kStaples=null;
 const kStapleList=()=>(Array.isArray(kStaples)?kStaples:K_STAPLES0).filter(x=>x&&has(x.food));
 const K_STAPLE_FOOD=/yogurt|\bmilk\b|butter|tortilla|granola|\boats\b|rice cakes?/i;
 const kIsStaple=l=>{const e=kEntry(l.food,l.farm);return !!(e&&e.prod)||K_STAPLE_FOOD.test(l.food||"")||kStapleList().some(x=>has(x.maker)&&gKey(x.maker)===gKey(l.farm))};
-function kSaveStaples(){if(!db||VIEW_AS)return;db.doc("settings/staples").set({list:JSON.parse(JSON.stringify(kStapleList())),updatedAt:Date.now()}).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save the staples. Check your connection."))}
+function kSaveStaples(){if(!db||VIEW_AS)return;db.doc("settings/staples").set({list:JSON.parse(JSON.stringify(kStapleList())),note:kNote(),updatedAt:Date.now()}).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save the staples. Check your connection."))}
 function staplesHtml(){const L=kStapleList();return `<div class="binadd" id="staples-card"><b>Our staples</b><div class="hint">Foods used all month, listed once on the farm sheet for families rather than in every week. Staples in a month's orders are added on that month's sheet.</div>
   <div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Food</th><th>Made by</th><th>Town</th><th></th></tr></thead><tbody>
   ${L.map((x,i)=>`<tr><td><input type="text" data-stf="${i}|food" value="${esc(x.food)}" aria-label="Food"></td><td><input type="text" data-stf="${i}|maker" value="${esc(x.maker||"")}" aria-label="Made by"></td><td><input type="text" data-stf="${i}|town" value="${esc(x.town||"")}" aria-label="Town"></td><td><button class="linkbtn" data-stdel="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div>
-  <div class="actions"><button class="btn small ghost" data-stadd="1">Add a staple</button></div></div>`}
+  <div class="actions"><button class="btn small ghost" data-stadd="1">Add a staple</button></div>
+  <label class="fld-label">A note under the staples on the farm sheet<textarea data-stnote="1" rows="2">${esc(kNote())}</textarea></label></div>`}
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stnote||view!=="settings"||!isDirector())return;kStapleNote=t.value.trim();kSaveStaples()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stf||view!=="settings"||!isDirector())return;const [i,k]=t.dataset.stf.split("|");const L=kStapleList().map(x=>Object.assign({},x));if(!L[+i])return;L[+i][k]=t.value.trim();kStaples=L;kSaveStaples()});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-stdel],[data-stadd]");if(!t||view!=="settings"||!isDirector())return;const L=kStapleList().map(x=>Object.assign({},x));
   if(t.dataset.stadd){L.push({food:"New staple",maker:"",town:""})}else L.splice(+t.dataset.stdel,1);kStaples=L;kSaveStaples();renderSettings();document.getElementById("staples-card")?.scrollIntoView({block:"center"})});
@@ -4678,6 +4683,7 @@ function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.map(f=>`${f.farm}${kMill(f.farm)?", "+(gProducer(f.farm).town||"Petaluma"):""}, ${kList([...f.foods])}`).join(". ")+".":"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.08,.36,.25,.31],muted:[0]}));
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.staples.length)blocks.push(dTable("Our staples",F.staples.map(x=>[kCap(x.food),[x.maker,x.town].filter(has).join(", ")]),{cols:2,widths:[.42,.58],muted:[1]}));
+  if(has(kNote()))blocks.push(dText("",kNote()));
   if(F.met)blocks.push(dText("",F.met));
   blocks.push(dText("Recipe of the month",F.recipe||"________________________________"));
   return {display:true,type:"report",acc:"smallgroup",onePage:true,title:`What we ate in ${F.name}, and where it came from`,meta:[],blocks}}
@@ -4695,7 +4701,7 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
 function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.length)return "";
   const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
-  if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,5).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
+  if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,6).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Meals or education ----------
    Each order line counts for meals unless it is a FEED bin, and TREE asks the director about a line it is unsure of,
