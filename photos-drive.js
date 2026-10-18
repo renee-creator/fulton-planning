@@ -23,7 +23,8 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
           if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 5) { res.resume(); go(new URL(res.headers.location, url).toString(), res.statusCode === 307 || res.statusCode === 308 ? method : 'GET', res.statusCode === 307 || res.statusCode === 308 ? data : null, hops + 1); return; }
           const chunks = []; res.on('data', c => chunks.push(c));
           res.on('end', () => { const t = Buffer.concat(chunks).toString('utf8'); let j = null; try { j = JSON.parse(t); } catch (e) {}
-            if (!j) { reject(new Error('Drive answered ' + res.statusCode + ' without a reply TREE can read')); return; }
+            if (!j) { const said = t.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+              reject(new Error('Drive answered ' + res.statusCode + ' from ' + u.hostname + ' without a reply TREE can read. It said ' + said)); return; }
             if (j.error) { reject(new Error('Drive said ' + j.error)); return; }
             resolve(j); });
           res.on('error', reject);
