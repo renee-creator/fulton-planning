@@ -546,9 +546,10 @@ async function handle(req, res) {
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
     if (!key || cleanKey(b.key) !== key) { log('FEED order refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
     // a confirmation forwarded by hand comes from the office address, so the email itself is checked
-    if (!/feedsonoma\.com/i.test(String(b.from || '')) && !/FEED Cooperative/i.test(String(b.subject || '') + String(b.html || '').slice(0, 20000))) { err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
+    log('FEED order email arrived from the mailbox,', String(b.subject || '').slice(0, 100));
+    if (!/feedsonoma\.com/i.test(String(b.from || '')) && !/FEED Cooperative/i.test(String(b.subject || '') + String(b.html || '').slice(0, 20000))) { log('FEED order email turned away, it does not look like a FEED confirmation'); err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
     if (!store.ready) await loadAll();
-    const r = keepOrder(b.html || b.text || '', 'mailbox'); if (r.error) { err(req, res, 400, r.error); return; }
+    const r = keepOrder(b.html || b.text || '', 'mailbox'); if (r.error) { log('FEED order email could not be read,', r.error); err(req, res, 400, r.error); return; }
     log('FEED order kept from the mailbox', r.doc.order, r.doc.items.length + ' items'); json(req, res, 200, { ok: true, order: r.doc.order }); return;
   }
   const origin = String(req.headers.origin || '').replace(/\/+$/, '').toLowerCase();
