@@ -123,22 +123,26 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
   const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
   // Kitchen's own Kaymbu sender, so a digest with a new subject line still counts
   const MENU_SENDERS = ['usr607e05143ce31e01151a4305@inbox.kaymbu.com'];
-  function labelsOf(html) { return String(html || '').split(/data-block-id="fileAttachmentBlock"/i).slice(1).map(p => { const d = p.match(/data-id="description"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i); return d ? d[1].replace(/<[^>]+>/g, ' ') : ''; }).join(' '); }
+  const plain = t => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  // each attached file is a link around Kaymbu's file icon, with its description after it. Kaymbu's own email marks
+  // the block, and a forward from Gmail keeps only the link, the icon and the words, so both are read the same way.
+  function fileLinks(html) {
+    html = String(html || ''); const out = [];
+    const re = /<a\b[^>]*href="([^"]+)"[^>]*>\s*<img[^>]*src="[^"]*\/file-icons\/[^"]*"[^>]*>\s*<\/a>/gi; const hits = []; let m;
+    while ((m = re.exec(html))) hits.push({ url: m[1].replace(/&amp;/g, '&'), end: re.lastIndex, start: m.index });
+    hits.forEach((h, i) => { const label = plain(html.slice(h.end, i + 1 < hits.length ? hits[i + 1].start : h.end + 3000)).slice(0, 80);
+      out.push({ url: h.url, label: label.split(/\s*(Email not displaying|View it in your browser|Create PDF|Do more with)/i)[0].trim().slice(0, 60) }); });
+    return out.slice(0, 4);
+  }
+  function labelsOf(html) { return fileLinks(html).map(f => f.label).join(' '); }
   function isDigest(html, subject, from) {
-    html = String(html || ''); if (!/fileAttachmentBlock/i.test(html)) return false;
+    html = String(html || ''); if (!fileLinks(html).length) return false;
     const sender = String(from || '').toLowerCase();
     return /kitchen digest|menus?\b/i.test(String(subject || '')) || /kitchen digest/i.test(html.slice(0, 20000)) || /lunch|snack|menu/i.test(labelsOf(html)) || MENU_SENDERS.some(a => sender.includes(a)) || /usr607e05143ce31e01151a4305/i.test(html);
   }
   function fromDigest(body) {
     const html = String(body.html || ''); if (!isDigest(html, body.subject, body.from)) return null;
-    const files = [];
-    for (const part of html.split(/data-block-id="fileAttachmentBlock"/i).slice(1)) {
-      const a = part.match(/<a[^>]+href="([^"]+)"/i); if (!a) continue;
-      const desc = part.match(/data-id="description"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i);
-      const label = desc ? desc[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
-      files.push({ label, url: a[1].replace(/&amp;/g, '&') });
-      if (files.length >= 4) break;
-    }
+    const files = fileLinks(html);
     if (!files.length) return { ok: true, kept: 0, skipped: 'a Kitchen Digest with no menus attached' };
     const sent = new Date(Date.parse(body.date) || Date.now());
     const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').slice(0, 4000).toLowerCase();
