@@ -236,6 +236,7 @@ function adoptName(calId, name) {
 const feedHash = body => crypto.createHash('sha1').update(body.replace(/^DTSTAMP[^\r\n]*\r?\n/gm, '')).digest('hex');
 const feeds = new Map();   // calendar id to { address, fetchedAt, parsed, error, hash, running }
 let feedRev = 0;
+function unreachable(address) { let genius = false; try { genius = isGenius(new URL(address).hostname); } catch (e) {} return (genius ? 'SignUpGenius' : 'Google Calendar') + ' could not be reached just now. TREE tries again in a few minutes.'; }
 function feedError(status, address) {
   let genius = false; try { genius = isGenius(new URL(address).hostname); } catch (e) {}
   if (genius) return status === 404 || status === 403 || status === 401 ? 'SignUpGenius would not share this calendar feed. Open the feed in SignUpGenius, choose Calendar Help, copy the webcal link again and paste it here.' : 'SignUpGenius answered ' + status + ' for this calendar feed. It will be tried again shortly.';
@@ -253,7 +254,9 @@ function loadFeed(calId) {
       const r = await fetchText(address);
       if (r.status !== 200) error = feedError(r.status, address);
       else { hash = feedHash(r.text); if (hash === f.hash && f.parsed) parsed = f.parsed; else parsed = parseFeed(r.text); }
-    } catch (e) { error = e.message === 'not a calendar' ? 'That address did not return a calendar. Copy the address again and paste it here.' : 'This calendar could not be read just now. ' + (e.message || ''); }
+    } catch (e) { if (e.message !== 'not a calendar') log('Calendar', calId, 'could not be reached,', e.message || e.code || 'no answer');
+      // the technical reason stays in the server log, and staff read a plain sentence
+      error = e.message === 'not a calendar' ? 'That address did not return a calendar. Copy the address again and paste it here.' : unreachable(address); }
     if (feeds.get(calId) !== f) return f;   // disconnected or replaced while loading
     const before = f.hash + '|' + f.error;
     f.fetchedAt = Date.now(); f.error = error;
@@ -332,7 +335,7 @@ async function handle(path, me, body, reply) {
       if (!address) { delete feedAddresses[cal.id]; feeds.delete(cal.id); }
       else {
         const r = await fetchText(address).catch(e => ({ status: 0, message: e.message }));
-        if (r.status !== 200) { reply(422, { error: r.status ? feedError(r.status, address) : 'The calendar could not be reached just now. ' + (r.message || '') + ' Try again in a minute.' }); return true; }
+        if (r.status !== 200) { if (!r.status) log('Calendar could not be reached while connecting,', r.message || 'no answer'); reply(422, { error: r.status ? feedError(r.status, address) : unreachable(address).replace('TREE tries again in a few minutes.', 'Try again in a minute.') }); return true; }
         let parsed; try { parsed = parseFeed(r.text); } catch (e) { reply(422, { error: 'That address did not return a calendar. Copy the address again and paste it here.' }); return true; }
         feedAddresses[cal.id] = address;
         feeds.set(cal.id, { address, fetchedAt: Date.now(), parsed, error: '', hash: feedHash(r.text), running: null });

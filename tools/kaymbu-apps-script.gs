@@ -37,7 +37,7 @@ function checkKaymbu() {
       // a slow or sleeping server is tried again on the next check, and the other emails still go this time
       try {
         const res = UrlFetchApp.fetch(TREE_SERVER, {
-          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'X-Tree-Key': TREE_KEY },
           payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() })
         });
         const code = res.getResponseCode();
@@ -68,7 +68,7 @@ function checkKitchenDigest() {
       const id = msg.getId();
       if (done.indexOf(id) >= 0) continue;
       try {
-        const res = UrlFetchApp.fetch(TREE_SERVER, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        const res = UrlFetchApp.fetch(TREE_SERVER, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'X-Tree-Key': TREE_KEY },
           payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: msg.getSubject(), date: msg.getDate().toISOString(), html: msg.getBody() }) });
         const code = res.getResponseCode();
         console.log(msg.getSubject() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
@@ -110,7 +110,7 @@ function checkFeedOrders() {
       if (!parts.length && !/feed cooperative|invoice|order|receipt/i.test(subject)) continue;
       any = true;
       try {
-        const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        const res = UrlFetchApp.fetch(server, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'X-Tree-Key': TREE_KEY },
           payload: JSON.stringify({ key: TREE_KEY, from: msg.getFrom(), subject: subject, date: msg.getDate().toISOString(), html: parts.length && !/feed cooperative|invoice|order|receipt/i.test(subject) ? '' : msg.getBody(), parts: parts }) });
         const code = res.getResponseCode();
         console.log((subject || '(no subject)') + ', ' + parts.length + ' attached, TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
