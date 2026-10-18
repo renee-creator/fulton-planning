@@ -4130,7 +4130,7 @@ function renderInquiry(x){
     ${pool.length?`<label class="tlink">Add an observation<select data-iqaddobs="1"><option value="">Choose an observation</option>${pool.map(n=>`<option value="${n.id}">${esc(shortDate(n.at)+", "+firstLine(n.noticed,70))}</option>`).join("")}</select></label>`:""}</section>`;
 
   h+=`<section class="card"><div class="lbl">When and where it happens</div>
-    <div class="hint">Who is asking, what the child is leaving, how far they go, who they look back at, and what comes just before.</div>
+    <div class="hint">The time of day and routine, such as arrival, meals, rest or a transition. The place, the people nearby, the materials, and how loud, bright or crowded it is. What comes just before, and what happens after.</div>
     <textarea data-iqf="whenwhere" rows="2">${esc(x.whenwhere||"")}</textarea>${iqAssistHtml(x,"whenwhere")}
     ${when?`<div class="cnt">${esc(when)}</div>`:""}</section>`;
 
@@ -4231,7 +4231,7 @@ function inquiryDoc(x,long){
 const iqSug={};
 const IQ_STD={
   see:["What we see","What the team sees, in plain factual sentences and without judgment. Who, what and when, as the observations record it."],
-  whenwhere:["When and where it happens","When and where it happens, what comes just before, who is asking, what the child is leaving, how far they go and who they look back at, only as the evidence records it."],
+  whenwhere:["When and where it happens","When and where it happens, only as the evidence records it. The time of day and routine (arrival, meals, rest, transitions, play), the place, the peers and adults nearby and what they were doing, the materials, the sensory conditions such as noise, light and crowding, what comes just before and what happens after. Include only what the evidence shows, and leave out any of these it does not mention."],
   hyp:["What we think is happening","One best guess about what the child may be communicating or needing, written from the child's side as a possibility, beginning with Perhaps. Grounded in the evidence. Never a diagnosis, a label, or a judgment of the child."],
   try:["What we will try","One change the adults could make, to a transition, the space, the warning, a role a child is given, or who goes with them. Practical, respectful of the child's agency, and written so it could be offered to the whole group with no child named as the reason."],
   watch:["What we will watch for","Signs the team could see in the coming days that would show whether the team's guesses fit or need to change."]};
