@@ -315,7 +315,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
       <div><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Calendar</h1></div>
     </div>
     <div class="spacer"></div>
-    <div class="who"><span id="who-name"></span><button class="btn small ghost" type="button" id="btn-settings" hidden>Settings</button><button class="btn small ghost" type="button" id="btn-signout">Sign out</button></div>
+    <div class="who"><span id="who-name"></span><button class="btn small ghost" type="button" id="btn-settings" hidden>Calendar settings</button><button class="btn small ghost" type="button" id="btn-signout">Sign out</button></div>
   </header>
 
   <div class="grid">
@@ -397,7 +397,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
 
 <dialog id="dlg-set" class="wide" aria-labelledby="set-title">
   <form class="dlg" id="set-form" novalidate>
-    <h2 id="set-title">Settings</h2>
+    <h2 id="set-title">Calendar settings</h2>
     <p class="hint">Only the director sees this page.</p>
     <div class="sect">
       <h3>School calendars, view only</h3>
@@ -481,6 +481,8 @@ const dayNum = s => { const p=s.split("-").map(Number); return Math.round(Date.U
 const fromDayNum = n => new Date(n*864e5).toISOString().slice(0,10);
 const addDays = (s,n) => fromDayNum(dayNum(s)+n);
 const dow = s => new Date(dayNum(s)*864e5).getUTCDay();
+// the school week starts on Monday, so weeks and months are laid out Monday first
+const mdow = s => (dow(s)+6)%7;
 const mondayOf = s => addDays(s, -((dow(s)+6)%7));
 const weekLabel = monday => "Week of "+fmt(monday,{weekday:"short",month:"short",day:"numeric"});
 const fmt = (s,o) => new Date(dayNum(s)*864e5).toLocaleDateString("en-US",Object.assign({timeZone:"UTC"},o));
@@ -500,10 +502,10 @@ const today = () => (S.data && S.data.today) || localToday();
 const settings = () => (S.data && S.data.settings) || {calendars:[],spaces:[],dayStart:420,dayEnd:1080,weekends:true};
 const weekendsOn = () => settings().weekends !== false;
 
-function weekDays(anchor){ const start=addDays(anchor,-dow(anchor)); const out=[]; for(let i=0;i<7;i++){ const d=addDays(start,i); if(weekendsOn() || (dow(d)!==0 && dow(d)!==6)) out.push(d); } return out; }
+function weekDays(anchor){ const start=addDays(anchor,-mdow(anchor)); const out=[]; for(let i=0;i<7;i++){ const d=addDays(start,i); if(weekendsOn() || (dow(d)!==0 && dow(d)!==6)) out.push(d); } return out; }
 function computeRange(){
-  if(S.view==="month"){ const first=S.anchor.slice(0,8)+"01"; const from=addDays(first,-dow(first)); return {from, to:addDays(from,41)}; }
-  const from=addDays(S.anchor,-dow(S.anchor)); return {from, to:addDays(from,6)};
+  if(S.view==="month"){ const first=S.anchor.slice(0,8)+"01"; const from=addDays(first,-mdow(first)); return {from, to:addDays(from,41)}; }
+  const from=addDays(S.anchor,-mdow(S.anchor)); return {from, to:addDays(from,6)};
 }
 
 /* ---------- small DOM helper. All names and titles are set as text, never as markup ---------- */
