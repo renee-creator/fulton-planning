@@ -11,7 +11,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
-module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive }) {
+module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive, digest }) {
   const KEY = () => String(process.env.KAYMBU_INBOX_KEY || '').trim();
   const PHOTO_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
   const seen = new Set();   // Moments being kept right now, so a second copy of the same email waits its turn
@@ -188,6 +188,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const given = String(body.key || url.searchParams.get('key') || '');
     if (!(given.length === key.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(key)))) { log('Kaymbu email refused, the key is not right'); reply(403, { error: 'Not allowed' }); return; }
     const from = String(body.from || ''); const email = (from.match(/<([^>]+)>/) || [, from])[1].trim().toLowerCase();
+    // Sally's monthly Kitchen Digest brings the snack and lunch menus, from Kaymbu or forwarded by someone at the school
+    if (digest && (/@([a-z0-9-]+\.)*kaymbu\.com$/.test(email) || /@childfamilycommunity\.com$/.test(email))) {
+      if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
+      const r = digest(body); if (r) { reply(200, r); return; }
+    }
     if (!/@([a-z0-9-]+\.)*kaymbu\.com$/.test(email)) { log('Kaymbu inbox skipped an email that did not come from Kaymbu', email.replace(/^[^@]+/, '…')); reply(200, { ok: true, kept: 0, skipped: 'not from Kaymbu' }); return; }
     if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
     const moments = parseMoments(body.html);

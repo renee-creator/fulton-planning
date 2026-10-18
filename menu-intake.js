@@ -91,5 +91,40 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     } finally { running = false; }
   }
 
-  return { run, statusLine: () => [!/not yet|not set up/.test(last), last || 'No menus are waiting from the Kitchen Digest.'] };
+  // Sally's Kitchen Digest, arriving in the TREE mailbox from Kaymbu or forwarded by staff. Its file blocks hold the
+  // lunch and snack PDFs. The month comes from the digest's own heading, or from when it was sent, since Sally sends
+  // late in the month before or early in the month itself.
+  const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  function isDigest(html, subject) { return /kitchen digest/i.test(String(subject || '') + ' ' + String(html || '').slice(0, 20000)) && /fileAttachmentBlock/i.test(String(html || '')); }
+  function fromDigest(body) {
+    const html = String(body.html || ''); if (!isDigest(html, body.subject)) return null;
+    const files = [];
+    for (const part of html.split(/data-block-id="fileAttachmentBlock"/i).slice(1)) {
+      const a = part.match(/<a[^>]+href="([^"]+)"/i); if (!a) continue;
+      const desc = part.match(/data-id="description"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i);
+      const label = desc ? desc[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
+      files.push({ label, url: a[1].replace(/&amp;/g, '&') });
+      if (files.length >= 4) break;
+    }
+    if (!files.length) return { ok: true, kept: 0, skipped: 'a Kitchen Digest with no menus attached' };
+    const sent = new Date(Date.parse(body.date) || Date.now());
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').slice(0, 4000).toLowerCase();
+    let month = '';
+    const named = text.match(new RegExp('\\b(' + MONTHS.join('|') + ')\\s+(20\\d\\d)\\b'));
+    if (named) month = named[2] + '-' + String(MONTHS.indexOf(named[1]) + 1).padStart(2, '0');
+    if (!month) { const la = new Date(sent.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })); let y = la.getFullYear(), m = la.getMonth() + 1; if (la.getDate() >= 20) { m++; if (m > 12) { m = 1; y++; } } month = y + '-' + String(m).padStart(2, '0'); }
+    const cur = store.recs.menus.get(month);
+    let doc = cur && !cur.deleted ? cur.doc : null;
+    if (doc && doc.intake && (doc.intake.files || []).some(f => files.some(g => g.url === f.url))) return { ok: true, kept: 0, again: 'the ' + month + ' menus are already in TREE' };
+    if (!doc) doc = { id: month, month, days: {}, notes: {}, files: {}, by: "Sally's Kitchen Digest", updatedByName: 'TREE' };
+    if (!doc.times) { const last = [...store.recs.menus.values()].map(r => r.doc).filter(d => d && d.times && d.month < month).sort((a, b) => b.month.localeCompare(a.month))[0]; if (last) doc.times = Object.assign({}, last.times); }
+    doc.intake = { from: 'Kitchen Digest sent ' + sent.toISOString().slice(0, 10), files };
+    store.recs.menus.set(month, { doc, sha: cur && cur.sha, path: `menus/${month}.json`, local: true });
+    noteChange('menus', month); scheduleSave('menus', month);
+    log('Kitchen Digest arrived for', month + ',', files.length, 'menus to read');
+    setTimeout(() => run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 1000).unref();
+    return { ok: true, menus: month, files: files.length };
+  }
+
+  return { run, fromDigest, isDigest, statusLine: () => [!/not yet|not set up/.test(last), last || 'No menus are waiting from the Kitchen Digest.'] };
 };

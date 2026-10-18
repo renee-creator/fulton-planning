@@ -247,7 +247,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
+const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
 // the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
 const menuIntake = require('./menu-intake.js')({ store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
