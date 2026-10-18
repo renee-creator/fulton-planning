@@ -1693,15 +1693,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-unlock]");
   const b=m.querySelector(".lockbar");if(b)b.remove();renderMain();const f=m.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})});
 
 /* ---------- DRDP (2025) ----------
-   Both views of the instrument, the Infant and Toddler View and the Preschool through Kindergarten View: every measure's
+   Both views of the instrument, the Infant and Toddler View and the Preschool Transitional Kindergarten View: every measure's
    name, its domain, the levels it uses from earliest to latest, whether it is conditional, and its keywords. Checked page
-   by page against the official View files (Infant and Toddler 08/20/2026, Preschool through Kindergarten 04/20/2026).
+   by page against the official View files (Infant and Toddler 08/20/2026, Preschool Transitional Kindergarten 08/20/2026).
    The official definitions and level descriptors are kept in the private records and the server adds them to each DRDP
    request. A level here is only ever a suggestion, and an educator accepts, changes or sets it aside on the child's page. */
 const DRDP_M={"ptk":{"ATL 1":{"n":"Engagement, Attention, and Persistence","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["attention","focus","persist","engaged","concentrate","sustained","extended","return","continue","complete","finish","work on","stay with","paying attention","focused"]},"ATL 2":{"n":"Curiosity, Interest, and Initiative","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["curious","interest","explore","investigate","wonder","question","ask","discover","try","initiate","seek","examine","wondering","exploring"]},"ATL 3":{"n":"Problem-Solving","d":"ATL","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["problem","solve","figure out","try different","strategy","solution","work through","overcome","challenge","figured out"]},"ATL 4":{"n":"Planning","d":"ATL","l":"EL BE BM BL IE IM IL","c":"","k":["plan","organize","prepare","step","sequence","order","goal","ahead","next","planning"]},"SED 1":{"n":"Self-Awareness","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["self","identity","preference","like","don't like","favorite","who I am","my","mine","myself"]},"SED 2":{"n":"Social Awareness","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["others","friend","peer","feeling","emotion","understand","perspective","empathy","notice","aware","noticed"]},"SED 3":{"n":"Relationships and Reciprocal Interactions with Familiar Adults","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["adult","teacher","parent","caregiver","trust","comfort","seek","relationship","bond","connection"]},"SED 4":{"n":"Relationships and Interactions with Peers","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["peer","friend","play together","share","turn","cooperate","collaborate","together","social","playing with"]},"SED 5":{"n":"Emotional Knowledge and Regulation","d":"SED","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["emotion","feeling","calm","regulate","control","manage","express","happy","sad","angry","frustrated","cope","self-regulation"]},"FLD 1":{"n":"Understanding Language (Receptive)","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["understand","listen","follow direction","comprehend","respond to","recognize word","listening"]},"FLD 2":{"n":"Using Language (Expressive)","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["speak","talk","communicate","express","tell","describe","explain","word","sentence","language","said","asked","told","describing"]},"FLD 3":{"n":"Shared Communication and Conversation","d":"FLD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["conversation","back and forth","dialogue","discuss","respond","reply","exchange","talking with"]},"FLD 4":{"n":"Foundational Literacy Skills","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["rhyme","sound","syllable","phoneme","letter sound","phonological"]},"FLD 5":{"n":"Alphabetics and Print Knowledge","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["letter","alphabet","print","book","read","word","text","writing","reading"]},"FLD 6":{"n":"Writing","d":"FLD","l":"EM EL BE BM BL IE IM IL","c":"","k":["write","draw","mark","scribble","letter","name","pencil","crayon","drawing","writing"]},"ELD 1":{"n":"Comprehension of English (Receptive English)","d":"ELD","l":"ELD","c":"eld","k":["home language","dual language","bilingual","learning english","understands english","english learner","in spanish"]},"ELD 2":{"n":"Self-Expression in English (Expressive English)","d":"ELD","l":"ELD","c":"eld","k":["speaks english","english words","says in english","in english","learning english","bilingual"]},"ELD 3":{"n":"Understanding and Responding to English Literacy Activities","d":"ELD","l":"ELD","c":"eld","k":["english book","story in english","song in english","english song","learning english"]},"MATH 1":{"n":"Spatial Thinking","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["spatial","shape","position","location","direction","above","below","beside","in front","behind","build","construct","building"]},"MATH 2":{"n":"Classification","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["sort","group","classify","category","same","different","match","compare","attribute","sorting"]},"MATH 3":{"n":"Number and Counting","d":"MATH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["count","number","how many","quantity","more","less","few","one","two","three","counting"]},"MATH 4":{"n":"Number Operations","d":"MATH","l":"EE EL BE BM BL IE IM IL","c":"","k":["add","subtract","combine","take away","plus","minus","total","altogether"]},"MATH 5":{"n":"Measurement","d":"MATH","l":"EE EL BE BM BL IE IM IL","c":"","k":["measure","size","big","small","long","short","tall","heavy","light","compare size"]},"SCI 1":{"n":"Cause and Effect","d":"SCI","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["cause","effect","because","if then","what happens","result","make happen","when I"]},"SCI 2":{"n":"Inquiry Through Observation and Investigation","d":"SCI","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["observe","notice","investigate","experiment","test","try","explore","discover","find out","watching","looking closely","observed"]},"SCI 3":{"n":"Documentation and Communication of Inquiry","d":"SCI","l":"EE EL BE BM BL IE IM IL","c":"","k":["document","record","share","explain finding","describe observation","tell about","draw what"]},"PD 1":{"n":"Perceptual-Motor Skills and Movement Concepts","d":"PD","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["body","movement","balance","coordinate","space","body awareness","control body"]},"PD 2":{"n":"Gross Locomotor Movement Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["walk","run","jump","hop","skip","climb","crawl","move","running","jumping","climbing"]},"PD 3":{"n":"Gross Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["throw","catch","kick","ball","strike","bounce","roll","throwing","catching"]},"PD 4":{"n":"Fine Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE BM BL IE IM IL","c":"","k":["fine motor","pinch","grasp","hold","manipulate","finger","hand","scissors","pencil grip","button","zip","cutting","holding"]},"HLTH 1":{"n":"Safety","d":"HLTH","l":"RE RL EE EL BE BM BL IE IM IL","c":"","k":["safe","safety","careful","danger","rule","protect"]},"HLTH 2":{"n":"Understanding of Health and Wellness","d":"HLTH","l":"EL BE BM BL IE IM IL","c":"","k":["health","healthy","body","nutrition","exercise","rest","sleep","food","eating"]},"HLTH 3":{"n":"Personal Care Routines: Hygiene","d":"HLTH","l":"RE RL EE EL BE BM BL IE","c":"iep","k":["wash hands","washing hands","washed","handwashing","soap","toilet","potty","brush teeth","toothbrush","tissue","hygiene"]},"HLTH 4":{"n":"Personal Care Routines: Feeding","d":"HLTH","l":"RE RL EE EL BE BL IE","c":"iep","k":["feed","feeding","spoon","fork","drink","snack","lunch","meal","eats","eating","chew"]},"HLTH 5":{"n":"Personal Care Routines: Self-Dressing","d":"HLTH","l":"RE RL EE EL BE BL IE","c":"iep","k":["dress","jacket","coat","shoes","boots","socks","zipper","sleeve","put on","take off"]}},"it":{"ATL 1":{"n":"Engagement, Attention, and Persistence","d":"ATL","l":"RE RL EE EL BE","c":"","k":["attention","focus","engaged","looking at","watching","interested in"]},"ATL 2":{"n":"Curiosity, Interest, and Initiative","d":"ATL","l":"RE RL EE EL BE","c":"","k":["curious","interest","explore","reaching","touching","examining"]},"ATL 3":{"n":"Problem-Solving","d":"ATL","l":"RE RL EE EL BE","c":"","k":["problem","solve","try","figure out"]},"SED 1":{"n":"Self-Awareness","d":"SED","l":"RE RL EE EL BE","c":"","k":["self","own","my","me"]},"SED 2":{"n":"Social Awareness","d":"SED","l":"RE RL EE EL BE","c":"","k":["others","peer","looking at others"]},"SED 3":{"n":"Relationships and Reciprocal Interactions with Familiar Adults","d":"SED","l":"RE RL EE EL BE","c":"","k":["adult","caregiver","comfort","trust","attachment"]},"SED 4":{"n":"Relationships and Interactions with Peers","d":"SED","l":"RE RL EE EL BE","c":"","k":["peer","other children","together"]},"SED 5":{"n":"Emotional Knowledge and Regulation","d":"SED","l":"RE RL EE EL BE","c":"","k":["emotion","calm","soothe","cry","comfort"]},"FLD 1":{"n":"Understanding Language (Receptive)","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["understand","respond","look when","turn toward"]},"FLD 2":{"n":"Using Language (Expressive)","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["babble","coo","vocalize","gesture","point","word"]},"FLD 3":{"n":"Shared Communication and Conversation","d":"FLD","l":"RE RL EE EM EL BE","c":"","k":["back and forth","respond","vocalize together"]},"COG 1":{"n":"Imitation","d":"COG","l":"RE RL EE EL BE","c":"","k":["imitate","copy","repeat","do what"]},"MATH 1":{"n":"Spatial Thinking","d":"COG","l":"RE RL EE EL BE","c":"","k":["spatial","where","in","out","under"]},"MATH 2":{"n":"Classification","d":"COG","l":"RE RL EE EL BE","c":"","k":["same","different","match","group"]},"MATH 3":{"n":"Number and Counting","d":"COG","l":"RE RL EE EL BE","c":"","k":["one","two","more","count"]},"SCI 1":{"n":"Cause and Effect","d":"COG","l":"RE RL EE EL BE","c":"","k":["cause","effect","when I","makes it"]},"SCI 2":{"n":"Inquiry Through Observation and Investigation","d":"COG","l":"RE RL EE EL BE","c":"","k":["observe","watch","look","explore"]},"PD 1":{"n":"Perceptual-Motor Skills and Movement Concepts","d":"PD","l":"RE RL EE EL BE","c":"","k":["body","reach","grasp","movement"]},"PD 2":{"n":"Gross Locomotor Movement Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["crawl","walk","move","sit","stand"]},"PD 3":{"n":"Gross Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["throw","roll","push","pull"]},"PD 4":{"n":"Fine Motor Manipulative Skills","d":"PD","l":"RE RL EE EM EL BE","c":"","k":["grasp","pinch","hold","finger"]},"HLTH 1":{"n":"Safety","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["safe","safety","careful","danger","rule","protect"]},"HLTH 3":{"n":"Personal Care Routines: Hygiene","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["wash hands","washing hands","washed","handwashing","soap","toilet","potty","brush teeth","toothbrush","tissue","hygiene"]},"HLTH 4":{"n":"Personal Care Routines: Feeding","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["feed","feeding","spoon","fork","drink","snack","lunch","meal","eats","eating","chew"]},"HLTH 5":{"n":"Personal Care Routines: Self-Dressing","d":"HLTH","l":"RE RL EE EL BE","c":"iep","k":["dress","jacket","coat","shoes","boots","socks","zipper","sleeve","put on","take off"]}}};
 const DRDP_LV={RE:"Responding Earlier",RL:"Responding Later",EE:"Exploring Earlier",EM:"Exploring Middle",EL:"Exploring Later",BE:"Building Earlier",BM:"Building Middle",BL:"Building Later",IE:"Integrating Earlier",IM:"Integrating Middle",IL:"Integrating Later"};
 const DRDP_ELD=["Discovering Language","Discovering English","Exploring English","Developing English","Building English","Integrating English"];
-const DRDP_VIEW={ptk:"Preschool through Kindergarten",it:"Infant and Toddler"};
+const DRDP_VIEW={ptk:"Preschool Transitional Kindergarten",it:"Infant and Toddler"};
 const DRDP_DOM={ATL:"Approaches to Learning",SED:"Social and Emotional Development",FLD:"Foundational Language Development",ELD:"English Language Development",COG:"Cognition",MATH:"Math",SCI:"Science",PD:"Physical Development",HLTH:"Health"};
 const DRDP=Object.assign({},...["it","ptk"].map(v=>Object.fromEntries(Object.entries(DRDP_M[v]).map(([k,m])=>[k,m.n]))));
 const drdpLevels=(v,code)=>{const m=DRDP_M[v]&&DRDP_M[v][code];if(!m)return[];return m.l==="ELD"?DRDP_ELD.slice():m.l.split(" ").map(k=>DRDP_LV[k])};
@@ -1712,6 +1712,15 @@ function drdpLevelOk(v,code,txt){
   return hit||"";
 }
 const drdpRank=(v,code,l)=>drdpLevels(v,code).indexOf(l);
+// the instrument's own order of measures, for lists and printouts
+const drdpOrder=(v,a,b)=>{const ks=Object.keys(DRDP_M[v]||DRDP_M.ptk);const i=k=>{const n=ks.indexOf(k);return n<0?999:n};return i(a)-i(b)};
+// emerging is allowed below a measure's last level, and at the last level only where the instrument allows it, Building
+// Earlier for every Infant and Toddler measure but COG 1, and Integrating Later for ATL 1 to 4 and SED 1 to 5 on the
+// Preschool Transitional Kindergarten View
+function drdpEmergeOk(v,code,lv){const L=drdpLevels(v,code),r=L.indexOf(lv);if(r<0)return false;if(r<L.length-1)return true;
+  return v==="it"?code!=="COG 1":/^(ATL [1-4]|SED [1-5])$/.test(code)}
+// the measures that begin above the first level, which can be marked Not yet
+const DRDP_NOTYET=new Set(["ATL 4","FLD 4","FLD 5","FLD 6","MATH 4","MATH 5","SCI 3","HLTH 2"]);
 function kidMonths(c){if(!c||!c.dob)return null;const b=parseIso(String(c.dob).slice(0,10)),n=new Date();let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;return m}
 // a child's age on a given day, in years and months, as it is written on portfolio pages
 function kidAgeAt(c,t){if(!c||!c.dob)return"";const b=parseIso(String(c.dob).slice(0,10)),n=new Date(t||Date.now());let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;if(m<0)return"";
@@ -1776,14 +1785,14 @@ function drdpPrompt(v,cs,S,ms,nPhotos){
 [[DRDP_DESCRIPTORS]]
 
 Measures to consider, each with the levels it uses from earliest to latest. Use only these codes, and for a level use only one of the levels listed for that measure.
-${ms.map(k=>`${k} ${DRDP_M[v][k].n}. ${drdpLevels(v,k).join(", ")}`).join("\n")}
+${ms.map(k=>`${k} ${DRDP_M[v][k].n}${DRDP_M[v][k].c==="iep"?", conditional, required for a child with an IEP or IFSP and optional for others":""}. ${drdpLevels(v,k).join(", ")}`).join("\n")}
 
 Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".":""} has the id ${c.id}${kidEld(c)?", and speaks a home language other than English and is learning English":""}${kidIep(c)?", and has an IEP or IFSP":""}`).join(". ")}.
 
 How to read it.
 Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
 child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
-level is the latest level whose descriptor the evidence shows the child has mastered. Give one level only, never a range. Use an empty string when the evidence does not show a level clearly.
+level is the latest level whose descriptor this evidence is consistent with. One piece of documentation is evidence toward a level, never a level the child has reached, since a DRDP rating rests on what a child shows consistently, over time and across situations. Give one level only, never a range. Use an empty string when the evidence does not show a level clearly.
 emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
 evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
 ${eld?"ELD measures apply only to the children described as learning English.\n":""}photo says in two sentences what the photos show, the actions, materials and interactions. Use an empty string when there are no photos.
@@ -1795,7 +1804,8 @@ The documentation.
 ${S.text}`;
 }
 async function drdpRead(v,cs,S){
-  const ms=Object.keys(DRDP_M[v]).filter(k=>{const m=DRDP_M[v][k];return (m.c!=="eld"||cs.some(kidEld))&&(m.c!=="iep"||cs.some(kidIep))});
+  // the conditional health measures are required with an IEP or IFSP and optional otherwise, so they are always read
+  const ms=Object.keys(DRDP_M[v]).filter(k=>{const m=DRDP_M[v][k];return m.c!=="eld"||cs.some(kidEld)});
   const imgs=await drdpPhotoBlobs(S.photos);
   const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
   const byId=new Map(cs.map(c=>[c.id,c]));const seen=new Set();const items=[];
@@ -1805,7 +1815,7 @@ async function drdpRead(v,cs,S){
     if(!c&&cs.length===1)c=cs[0];
     if(!c||!ms.includes(code)||(DRDP_M[v][code].c==="eld"&&!kidEld(c))||seen.has(code+"|"+c.id))continue;seen.add(code+"|"+c.id);
     const level=drdpLevelOk(v,code,m.level);
-    items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpRank(v,code,level)<drdpLevels(v,code).length-1),evidence:String(m.evidence||"").replace(/—/g,", ").trim().slice(0,600)});
+    items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:String(m.evidence||"").replace(/—/g,", ").trim().slice(0,600)});
   }
   const clean=t=>{t=String(t||"").replace(/—/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":t.slice(0,900)};
   return {items:items.slice(0,12),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
@@ -1813,7 +1823,7 @@ async function drdpRead(v,cs,S){
 // without TREE, or when an educator asks for it, keywords point to possible measures. They give no level.
 function drdpKeywords(v,cs,text){
   const t=" "+String(text||"").toLowerCase()+" ";
-  const ms=Object.entries(DRDP_M[v]).filter(([k,m])=>(m.c!=="eld"||cs.some(kidEld))&&(m.c!=="iep"||cs.some(kidIep)))
+  const ms=Object.entries(DRDP_M[v]).filter(([k,m])=>m.c!=="eld"||cs.some(kidEld))
     .map(([k,m])=>({k,score:(m.k||[]).filter(w=>kwHit(t,w)).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
   const out=[];for(const x of ms){const words=(DRDP_M[v][x.k].k||[]).filter(w=>kwHit(t,w)).slice(0,4);
     for(const c of cs)if(DRDP_M[v][x.k].c!=="eld"||kidEld(c))out.push({id:drdpId(),code:x.k,view:v,childId:c.id,level:"",emerging:false,evidence:"Words in the documentation that point to this measure, "+words.join(", ")+"."})}
@@ -1858,7 +1868,8 @@ function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c
   if(it.status==="aside")return {label:`Set aside by ${it.reviewedBy||"an educator"}`,cls:"muted"};
   return {label:"Waiting for an educator to review",cls:"wait",level:it.level,emerging:it.emerging};
 }
-const drdpLevelText=(l,em)=>l?l+(em?", emerging to the next level":""):"No level suggested";
+// a level from documentation is evidence toward it, never a level reached or a rating
+const drdpLevelText=(l,em)=>l?"Evidence toward "+l+(em?", emerging to the next level":""):"No level suggested";
 // the DRDP panel on a slide or a moment
 function drdpPanelHtml(kind,rec){
   const key=kind+":"+rec.id,busy=drdpBusy[key],d=rec.drdp;const S=drdpSource(kind,rec);
@@ -1887,7 +1898,7 @@ function momentDrdpHtml(n){
 function slideMeasureCodes(s){const its=(s.drdp&&s.drdp.items)||[];const keep=[];
   for(const x of its){const st=drdpStatusOf("slides",s.id,x);if(st.cls==="muted")continue;if(!keep.includes(x.code))keep.push(x.code)}
   for(const m of (s.measures||[]).filter(m=>m.kept))if(!keep.includes(m.code))keep.push(m.code);
-  return keep.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  return keep.sort((a,b)=>drdpOrder("ptk",a,b)||a.localeCompare(b,undefined,{numeric:true}));
 }
 // a page after the slide for educators and families, with every measure, the child, where the level stands and the evidence
 function drdpSummaryDoc(s,mode){
@@ -1980,7 +1991,8 @@ function kidDrdpHtml(c){
   const done=all.filter(x=>x.status==="accepted"||x.status==="changed");const aside=all.filter(x=>x.status==="aside");
   const marks=(c.drdp&&c.drdp.marks)||{};
   const legacy={};for(const [code,list] of kidEvidence(c))legacy[code]=list;
-  const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
+  // a measure's current evidence is the strongest reviewed level, and of those the most recent
+  const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>drdpRank(b.view||v,code,b.level)-drdpRank(a.view||v,code,a.level)||(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
   const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-kmopen="${esc(x.src.id)}" data-ktab="docs"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
   const levelSel=x=>`<select data-drlevel="${esc(x.id)}" aria-label="Level">${["",...drdpLevels(x.view||v,x.code)].map(l=>`<option value="${esc(l)}" ${l===(x.level||"")?"selected":""}>${l?esc(l):"Choose a level"}</option>`).join("")}</select>`;
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
@@ -1996,7 +2008,7 @@ function kidDrdpHtml(c){
     :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${esc(x.id)}">Change</button><button class="linkbtn" data-draside="${esc(x.id)}">Set aside</button></div>`;
   const evLine=x=>`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
-    const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[])];
+    const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[]),...(v==="ptk"&&DRDP_NOTYET.has(code)?[["notyet","Not yet, before the first level of this measure"]]:[])];
     return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
         <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">No level yet</span>`}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
       <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
@@ -2007,17 +2019,17 @@ function kidDrdpHtml(c){
   // a domain with nothing yet folds to one line, so the measures with evidence are easy to find
   const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;const busy=codes.some(k=>latest(k)||wait.some(x=>x.code===k)||(legacy[k]||[]).length||marks[k]);
     const key="dom:"+dm;const open=drdpOpen.has(key)||(busy&&!drdpShut.has(key));
-    return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with a level${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
+    return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with evidence${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
-      <div class="cnt">Levels here were accepted by an educator from documentation. They are not a DRDP rating, which is still entered in DRDPtech. Tap a measure to see its evidence.</div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with evidence toward a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
+      <div class="cnt">Each level here is evidence toward a level, read from documentation and reviewed by an educator. It supports the educator's DRDP rating, which is entered in DRDP Online, and is not a rating itself. Tap a measure to see its evidence.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
-        <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool through Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool through Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
+        <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool Transitional Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
         ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English. This adds ELD 1 to 3.</span></label>`:""}
         <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label></details>
-      ${(()=>{const t3=kidTurnsThree(c);return t3?`<div class="drnote"><b>${esc(c.first)} turns three on ${esc(longDate(t3))}.</b> From then TREE reads new observations against the Preschool through Kindergarten View. To keep ${esc(c.first)} in the ${DRDP_VIEW[v]} View for this rating period, choose it under The view and the measures that apply.</div>`:""})()}
+      ${(()=>{const t3=kidTurnsThree(c);return t3?`<div class="drnote"><b>${esc(c.first)} turns three on ${esc(longDate(t3))}.</b> From then TREE reads new observations against the Preschool Transitional Kindergarten View. To keep ${esc(c.first)} in the ${DRDP_VIEW[v]} View for this rating period, choose it under The view and the measures that apply.</div>`:""})()}
       ${doms.map(domBlock).join("")}
       ${(()=>{const ov=v==="ptk"?"it":"ptk";const ex=kidDrdpItems(c).filter(x=>x.view===ov&&(x.status==="accepted"||x.status==="changed")&&x.level);if(!ex.length)return"";
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
@@ -2029,7 +2041,7 @@ function kidDrdpHtml(c){
 function drdpKid(){return children.get(kidOpen)}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;const c=drdpKid();if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted. ${x.code} is on ${c.first}'s DRDP.`);renderMain();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted as evidence toward a level for ${x.code}.`);renderMain();return}
   if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");renderMain();return}
   if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested"}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
@@ -2037,8 +2049,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.drsave){const id=t.dataset.drsave,x=it(id);if(!x)return;const lv=document.querySelector(`[data-drlevel="${id}"]`)?.value||"";const em=!!document.querySelector(`[data-dremerg="${id}"]`)?.checked;
     if(!lv){toast("Choose a level, or set this aside.");return}
     const sug=x.suggested||{};const same=lv===sug.level&&em===!!sug.emerging;
-    kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpRank(x.view||drdpViewOf(c).v,x.code,lv)<drdpLevels(x.view||drdpViewOf(c).v,x.code).length-1,status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
-    drdpEdit="";toast(`Saved. ${x.code} is on ${c.first}'s DRDP.`);renderMain();return}
+    kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpEmergeOk(x.view||drdpViewOf(c).v,x.code,lv),status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
+    drdpEdit="";toast(`Saved as evidence toward a level for ${x.code}.`);renderMain();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return;const c=drdpKid();if(!c)return;
   if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
@@ -2268,9 +2280,12 @@ function portfolioItems(c){
 }
 // the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
 function portfolioDrdpDoc(c,mode,view){
-  const cur=drdpViewOf(c).v,v=view||cur;const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view===v||(!x.view&&v===cur)));if(!done.length)return null;
-  const latest={};for(const x of done){const t=x.src?.at||x.at||0;if(!latest[x.code]||t>(latest[x.code].src?.at||latest[x.code].at||0))latest[x.code]=x}
-  const blocks=[dText("About this page",`Each level was read from ${c.first}'s documentation and confirmed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
+  // this school year's evidence only, from the day the year began
+  const y0=parseIso(schoolYearStart()).getTime();
+  const cur=drdpViewOf(c).v,v=view||cur;const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view===v||(!x.view&&v===cur))&&(x.src?.at||x.at||x.reviewedAt||0)>=y0);if(!done.length)return null;
+  // the strongest reviewed level in the measure, and of those the most recent
+  const latest={};for(const x of done){const t=x.src?.at||x.at||0,cur=latest[x.code];const r=drdpRank(v,x.code,x.level),rc=cur?drdpRank(v,x.code,cur.level):-1;if(!cur||r>rc||(r===rc&&t>(cur.src?.at||cur.at||0)))latest[x.code]=x}
+  const blocks=[dText("About this page",`Each is evidence toward a level, read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View. Evidence from our documentation, not a DRDP rating.`)];
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
@@ -2295,8 +2310,8 @@ function portfolioDocs(c,mode,drdp){
   const bySrc=new Map();for(const x of done){const k=x.src.kind+"|"+x.src.id;if(!bySrc.has(k))bySrc.set(k,[]);bySrc.get(k).push(x)}
   const placed=new Set();
   const band=keys=>{const latest={};for(const k of keys)for(const x of bySrc.get(k)||[]){placed.add(x.id);const t=x.reviewedAt||x.at||0;if(!latest[x.code]||t>(latest[x.code].reviewedAt||latest[x.code].at||0))latest[x.code]=x}
-    const ls=Object.values(latest).sort((a,b)=>a.code.localeCompare(b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
-    return ls.length?{t:"small",label:"Learning seen here",lines:ls}:null};
+    const ls=Object.values(latest).sort((a,b)=>drdpOrder(a.view||drdpViewOf(c).v,a.code,b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
+    return ls.length?{t:"small",label:"Learning seen here",lines:[...ls,"Evidence from our documentation, not a DRDP rating."]}:null};
   const bySrcHas=keys=>keys.some(k=>bySrc.has(k));
   const keysOf=x=>x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
   const page=x=>{const d=x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
@@ -2451,7 +2466,7 @@ function todayWaiting(){
   if(dir){let n=0;try{n=gUnsure().length}catch(e){}if(n)out.push({dot:"mari",t:`${n} order line${n===1?"":"s"} to place, meals or education`,s:"TREE is not sure these were bought for meals. Choose on the Farm to School page.",act:`data-tview="grant"`,b:"Place"})}
   {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   {const rm=myRoom();for(const c of kidsAt().filter(c=>(dir||!rm||c.classroom===rm)&&kidTurnsThree(c)).slice(0,3))
-    out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new observations against the Preschool through Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
+    out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new observations against the Preschool Transitional Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
   const mineC=upcoming.filter(c=>{const k=children.get(c.childId);const t=(c.teacher||"").toLowerCase();return m&&t===m.toLowerCase()||(!dir&&room&&k.classroom===room)});
