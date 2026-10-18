@@ -1079,6 +1079,7 @@ async function boot(){
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
+    db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
@@ -4624,6 +4625,22 @@ const kLocal=farm=>kMill(farm)||gKindOf({producer:farm})==="local";
 const kLine=(x,day)=>{if(!kLocal(x.producer))return null;if(/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim())||/\bbox\b/i.test(x.item||""))return null;const k=kName(x.item);if(!k.food)return null;return {day,name:k.name,food:k.food,farm:String(x.producer||"").trim()}};
 const kMenuDays=(from,to)=>{const out=[];for(let d=from;d<=to;d=addDays(d,1)){const w=parseIso(d).getDay();if(w===0||w===6)continue;const x=((menus.get(d.slice(0,7))||{}).days||{})[d];if(x&&!x.closed&&(x.lunch||x.am||x.pm))out.push({d,x})}return out};
 const kShortDish=t=>{t=String(t||"").trim();const w=t.split(/\s+/);return w.length>4?w.slice(0,4).join(" ").replace(/[,;]$/,"").replace(/\s+(and|with|or)$/,"")+"…":t};
+/* Staples used all month, such as cheese, beans and rice, flour and rice cakes, are listed once under Our staples rather
+   in every week. The director keeps the list in Settings, under Monthly menus, and staples found in a month's orders are
+   added to it on that month's sheet. */
+const K_STAPLES0=[{food:"cheese",maker:"Petaluma Creamery",town:"Petaluma"},{food:"beans and rice",maker:"Next Generation Foods",town:"West Sacramento"},{food:"flour",maker:"Central Milling",town:"Petaluma"},{food:"organic rice cakes",maker:"Lundberg Family Farms",town:"Richvale"}];
+let kStaples=null;
+const kStapleList=()=>(Array.isArray(kStaples)?kStaples:K_STAPLES0).filter(x=>x&&has(x.food));
+const K_STAPLE_FOOD=/yogurt|\bmilk\b|butter|tortilla|granola|\boats\b|rice cakes?/i;
+const kIsStaple=l=>{const e=kEntry(l.food,l.farm);return !!(e&&e.prod)||K_STAPLE_FOOD.test(l.food||"")||kStapleList().some(x=>has(x.maker)&&gKey(x.maker)===gKey(l.farm))};
+function kSaveStaples(){if(!db||VIEW_AS)return;db.doc("settings/staples").set({list:JSON.parse(JSON.stringify(kStapleList())),updatedAt:Date.now()}).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save the staples. Check your connection."))}
+function staplesHtml(){const L=kStapleList();return `<div class="binadd" id="staples-card"><b>Our staples</b><div class="hint">Foods used all month, listed once on the farm sheet for families rather than in every week. Staples in a month's orders are added on that month's sheet.</div>
+  <div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Food</th><th>Made by</th><th>Town</th><th></th></tr></thead><tbody>
+  ${L.map((x,i)=>`<tr><td><input type="text" data-stf="${i}|food" value="${esc(x.food)}" aria-label="Food"></td><td><input type="text" data-stf="${i}|maker" value="${esc(x.maker||"")}" aria-label="Made by"></td><td><input type="text" data-stf="${i}|town" value="${esc(x.town||"")}" aria-label="Town"></td><td><button class="linkbtn" data-stdel="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div>
+  <div class="actions"><button class="btn small ghost" data-stadd="1">Add a staple</button></div></div>`}
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.stf||view!=="settings"||!isDirector())return;const [i,k]=t.dataset.stf.split("|");const L=kStapleList().map(x=>Object.assign({},x));if(!L[+i])return;L[+i][k]=t.value.trim();kStaples=L;kSaveStaples()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stdel],[data-stadd]");if(!t||view!=="settings"||!isDirector())return;const L=kStapleList().map(x=>Object.assign({},x));
+  if(t.dataset.stadd){L.push({food:"New staple",maker:"",town:""})}else L.splice(+t.dataset.stdel,1);kStaples=L;kSaveStaples();renderSettings();document.getElementById("staples-card")?.scrollIntoView({block:"center"})});
 // everything a month's sheets need. Orders count for a week when they arrive in it or in the days just before it.
 function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
   const lines=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
@@ -4632,12 +4649,12 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   // the weeks of the month, Monday to Friday
   const weeks=[];for(let m=mondayOf(parseIso(from));m<=to;m=addDays(m,7)){const days=kMenuDays(m<from?from:m,addDays(m,4)>to?to:addDays(m,4));if(!days.length)continue;
     const near=lines.filter(l=>l.day>=addDays(m,-kBack(l.food,l.farm))&&l.day<=addDays(m,4));const farms=new Map();
-    for(const l of near)if(kUses(l.food,days,l.farm).length){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
+    for(const l of near)if(!kIsStaple(l)&&kUses(l.food,days,l.farm).length){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
     weeks.push({monday:m,lunches:days.map(o=>o.x.lunch).filter(has),snacks:[...new Set(days.flatMap(o=>[o.x.am,o.x.pm]).filter(has))],farms:[...farms.values()]})}
   const fm=new Map();for(const l of inMonth.concat(lines.filter(l=>l.day<from&&weeks[0]&&l.day>=addDays(weeks[0].monday,-6)))){if(!l.farm||kMill(l.farm))continue;const e=fm.get(gKey(l.farm))||{farm:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||"",n:0};e.n++;fm.set(gKey(l.farm),e)}
   const farms=[...fm.values()].sort((a,b)=>a.farm.localeCompare(b.farm));const sonoma=farms.filter(f=>gTownCounty(f.town)==="Sonoma").length;
   // the foods served most, with the farm each came from
-  const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6)&&!kMill(l.farm))){const k=kLabel(l.food,l.farm);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
+  const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6)&&!kMill(l.farm)&&!kIsStaple(l))){const k=kLabel(l.food,l.farm);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
   for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length;
   const top=[...foods.values()].sort((a,b)=>b.uses-a.uses||b.lines-a.lines).map(e=>{const f=[...e.farms.entries()].sort((a,b)=>b[1]-a[1])[0][0];return {food:e.food,farm:f,town:farmTown(f)||gProducer(f).town||""}});
   // foods the children also met in a bin or the garden that month
@@ -4645,12 +4662,16 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
     if(binAll().some(b=>b.date>=from&&b.date<=to&&(b.items||[]).some(x=>re.test(x.name||""))))binMet.push(e.food);
     else if([...notices.values()].some(n=>{const d=iso(new Date(n.at||0));return d>=from&&d<=to&&/garden/i.test(n.noticed||"")&&re.test((n.noticed||"")+" "+(n.wonder||""))}))gardenMet.push(e.food)}
   const met=[binMet.length?`The children also met ${kList(binMet.slice(0,6))} in a FEED bin this month`:"",gardenMet.length?`${binMet.length?"and":"The children also met"} ${kList(gardenMet.slice(0,4))} in the garden`:""].filter(Boolean).join(", ");
+  // the staples list, with any staple from these orders the list does not name yet
+  const staples=kStapleList().map(x=>({food:x.food,maker:x.maker||"",town:x.town||""}));
+  for(const l of lines.filter(l=>l.day>=addDays(from,-70)&&kIsStaple(l))){if(staples.some(x=>gKey(x.maker)===gKey(l.farm)))continue;staples.push({food:kLabel(l.food,l.farm),maker:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||""})}
   const mrec=menus.get(month)||{};const recipe=String(mrec.recipe||(mrec.intake&&mrec.intake.recipe)||"").trim();
-  return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
+  return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.lunches),"lunches made at school"]]));
-  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.map(f=>`${f.farm}${kMill(f.farm)?", "+(gProducer(f.farm).town||"Petaluma"):""}, ${kList([...f.foods])}`).join(". ")+".":"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.08,.35,.22,.35],muted:[0],small:true}));
+  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.map(f=>`${f.farm}${kMill(f.farm)?", "+(gProducer(f.farm).town||"Petaluma"):""}, ${kList([...f.foods])}`).join(". ")+".":"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.08,.36,.25,.31],muted:[0]}));
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
+  if(F.staples.length)blocks.push(dTable("Our staples",F.staples.map(x=>[kCap(x.food),[x.maker,x.town].filter(has).join(", ")]),{cols:2,widths:[.42,.58],muted:[1]}));
   if(F.met)blocks.push(dText("",F.met));
   blocks.push(dText("Recipe of the month",F.recipe||"________________________________"));
   return {display:true,type:"report",acc:"smallgroup",onePage:true,title:`What we ate in ${F.name}, and where it came from`,meta:[],blocks}}
@@ -4668,7 +4689,7 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
 function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.length)return "";
   const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
-  if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
+  if(F.staples.length)lines.push("Our staples are "+kList(F.staples.slice(0,5).map(x=>x.food+(x.maker?" from "+x.maker:"")))+".");if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);return lines.join("\n\n")}
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Staff birthdays ----------
    The director keeps each staff member's birthday, the month and day only. The server shows them on the calendar
@@ -4716,7 +4737,7 @@ function menusHtml(){
   if(menuDraft)h+=menuDraftHtml();
   if(kept.length)h+=`<div class="tlist" style="margin-top:10px">${kept.map(m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
     return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">${k==="lunch"?"Lunch":"Snack"} menu PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button>${printBtns("farmsheet",m.month,"Farm sheet for families")}${printBtns("farmwall",m.month,"Classroom display")}</div></div>`}).join("")}</div>`;
-  return h+`</section>`}
+  return h+staplesHtml()+`</section>`}
 function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
   return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
     ${(d.read||[]).length?`<div class="cnt" style="margin-bottom:8px">Read from ${d.read.map(esc).join(" and ")}.</div>`:""}
