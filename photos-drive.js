@@ -38,7 +38,25 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
     });
   }
 
-  function seen(path) { const m = path.match(REF); if (!m) return false; store.originals.set(m[1], { drive: m[2], size: Number(m[3]) || 0, ref: path }); return true; }
+  function seen(path) {
+    const m = path.match(REF); if (!m) return false;
+    const cur = store.originals.get(m[1]);
+    // a copy still in the records from a move that did not finish is cleared on the next move
+    const leftover = cur && cur.sha ? { path: cur.path, sha: cur.sha } : (cur && cur.leftover);
+    store.originals.set(m[1], Object.assign({ drive: m[2], size: Number(m[3]) || 0, ref: path }, leftover ? { leftover } : {}));
+    return true;
+  }
+
+  // takes the records copy of a photo Drive already holds, trying again when the records are busy
+  async function drop(id, path, sha) {
+    for (let k = 0; k < 4; k++) {
+      if (k) await new Promise(ok => setTimeout(ok, 2000 * k));
+      const d = await gh('DELETE', `/repos/${repo}/contents/${path}`, { message: `Photo ${id} moved to Google Drive`, sha, branch: store.branch });
+      if (d.status === 200 || d.status === 404) return true;
+      if (d.status !== 409 && d.status < 500) break;
+    }
+    return false;
+  }
 
   async function mark(id, driveId, size) {
     const path = `photos/${id}~${driveId}~${size}.ref`;
@@ -76,6 +94,11 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
     if (!on() || moving || !store.ready) return; moving = true;
     let n = 0, failed = 0;
     try {
+      let cleared = 0;
+      for (const [id, o] of [...store.originals.entries()].filter(([, o]) => o.drive && o.leftover)) {
+        if (await drop(id, o.leftover.path, o.leftover.sha)) { delete o.leftover; cleared++; }
+      }
+      if (cleared) log(`${cleared} photos already in Google Drive were cleared from the records`);
       const left = [...store.originals.entries()].filter(([, o]) => o.sha && !o.drive);
       if (left.length) log(`Moving ${left.length} photos from the records to Google Drive`);
       for (const [id, o] of left) {
@@ -88,8 +111,7 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
           const ref = await mark(id, j.id, b.buf.length);
           store.originals.set(id, { drive: j.id, size: b.buf.length, ref });
           // only now that Drive holds it and the marker is saved does the photo leave the records
-          const d = await gh('DELETE', `/repos/${repo}/contents/${o.path}`, { message: `Photo ${id} moved to Google Drive`, sha: o.sha, branch: store.branch });
-          if (d.status !== 200 && d.status !== 404) log('A moved photo stays in the records for now', id.slice(0, 60), d.status);
+          if (!(await drop(id, o.path, o.sha))) { store.originals.get(id).leftover = { path: o.path, sha: o.sha }; log('A moved photo also stays in the records until the next move', id.slice(0, 60)); }
           n++;
         } catch (e) { failed++; log('A photo could not move to Google Drive yet', id.slice(0, 60), e.message); if (failed > 5) break; }
       }
