@@ -4170,7 +4170,13 @@ const gCardO=(id,title,fig,dflt)=>`<details class="card gsec" data-gsec="${id}" 
 const gFold=(items,n)=>{n=n||8;return items.length<=n+2?items.join(""):items.slice(0,n).join("")+`<details class="gmore"><summary class="linkbtn">Show all ${items.length}</summary>${items.slice(n).join("")}</details>`};
 const gMarks=(key,name,p)=>`<div class="gmarks">${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(key)}" data-gpn="${esc(name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`;
 
-function renderGrant(){
+// the grant page is drawn again after every choice, so each folded or open part, Show all lists included, and the place
+// on the page are kept as they were
+function gDetailsKeys(m){const seen={};return [...m.querySelectorAll("details")].map(d=>{const sec=d.closest(".gsec");const base=d.dataset.gsec||((sec?sec.dataset.gsec:"page")+">"+((d.querySelector(":scope>summary")||{}).textContent||"").trim().replace(/\s+/g," ").replace(/\d+/g,"#").slice(0,60));seen[base]=(seen[base]||0)+1;return [d,base+"#"+seen[base]]})}
+function renderGrant(){const m=$("#main");const was=m&&m.querySelector(".gsec")?new Map(gDetailsKeys(m).map(([d,k])=>[k,d.open])):null;const y=window.scrollY;
+  renderGrant0();
+  if(was&&view==="grant"){for(const [d,k] of gDetailsKeys($("#main")))if(was.has(k))d.open=was.get(k);window.scrollTo(0,y)}}
+function renderGrant0(){
   if(!isDirector()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept in the director's view.</div></div>`;return}
   const S=gSet(),q=gQ(),{from,to}=periodRange(q),lines=gLines(from,to),all=gLines("0000","9999");const pw=periodWord(q);
   const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
