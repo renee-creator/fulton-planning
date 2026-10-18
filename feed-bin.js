@@ -108,16 +108,24 @@ module.exports = function feedBin({ store, log, noteChange, scheduleSave }) {
 
   async function check(force) {
     if (!force && cache.weeks && Date.now() - cache.at < 30 * 60000) return cache;
+    if (cache.running) return cache.running;
+    log('Reading the FEED bin page');
+    cache.running = (async () => {
     try {
-      const r = await getPage(FEED_URL);
+      // the whole read has 30 seconds, however FEED's server answers
+      const r = await Promise.race([getPage(FEED_URL), new Promise((_, no) => setTimeout(() => no(new Error('FEED Sonoma did not answer in 30 seconds.')), 30000))]);
+      log('FEED bin page answered', r.status, r.text.length + ' characters');
       if (r.status !== 200) throw new Error('FEED Sonoma answered ' + r.status + '.');
       const weeks = parseBinPage(r.text, new Date());
       if (!weeks.length) throw new Error('The FEED page was read, but no week of produce was found on it. FEED may have changed its page. The list can be added by hand.');
       cache.weeks = weeks; cache.at = Date.now(); cache.error = '';
       if (store.ready) { const n = keep(weeks, 'FEED'); if (n) log('FEED bin weeks kept or updated,', n); }
+      log('FEED bin page read,', weeks.length, 'weeks listed');
     } catch (e) { cache.error = e.message; log('Could not read the FEED bin', e.message); }
     cache.checkedAt = Date.now();
     return cache;
+    })().finally(() => { cache.running = null; });
+    return cache.running;
   }
 
   // read again every six hours, so the year's record fills in even on a week nobody opens the page
