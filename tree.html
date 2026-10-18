@@ -2495,6 +2495,38 @@ const kFoodRe=f=>{const w=String(f||"").toLowerCase().replace(/[^a-z ]/g,"").tri
 const K_COOK=/^(onion|carrot|pepper|garlic|celery|leek|shallot|potato|squash|zucchini|chard|kale|collard|spinach|cabbage|broccoli|cauliflower|bean|corn|eggplant|mushroom|fennel|beet|green)/i;
 const K_TOMATO=/marinara|tomato|sauce|salsa|soup|pizza|chili|stew|lasagna|enchilada/i;
 const K_DISH=/soup|stew|chili|rice|beans|pasta|sauce|curry|stir|frittata|quiche|casserole|tacos?|burrito|enchilada|lasagna/i;
+/* which dishes a food goes into, shared by Coming for lunch and snack and the food sheets. A food is matched by its own
+   word first, then by the dishes it is cooked into. Pantry and dairy bought less often are looked for further back. */
+const K_FRUIT=/\b(fruits?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|watermelons?|cantaloupes?|honeydews?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|pluots?|quinces?|pomegranates?)\b/i;
+const K_MAP=[
+  {food:/basil|herb|parsley|cilantro/i,dish:/pesto|sauce|soup|salad|pizza/i},
+  {food:/lemon/i,dish:/pesto|dressing|lemon|lemonade|muffin/i},
+  {food:/garlic/i,dish:/pesto|sauce|soup|stir[ -]?fry/i},
+  {food:/kale|chard|greens?\b|spinach|collard/i,dish:/soup|minestrone|salad|pasta/i},
+  {food:/lettuce|little gem|\bgems?\b/i,dish:/salad/i},
+  {food:/squash|zucchini/i,dish:/soup|pasta|bread/i},
+  {food:/potato/i,dish:/soup|roasted/i},
+  {food:/cauliflower|broccoli/i,dish:/soup|roasted|pasta|stir[ -]?fry/i},
+  {food:/\bcorn\b/i,dish:/soup|quesadilla/i},
+  {food:/tomato/i,dish:/marinara|tomato|sauce|salsa|soup|pizza|chili|stew|lasagna|enchilada/i},
+  {food:/onion|carrot|pepper|celery|leek|shallot/i,dish:/soup|stew|chili|rice|beans|pasta|sauce|curry|stir|frittata|quiche|casserole|tacos?|burrito|enchilada|lasagna/i,cook:true},
+  {food:/\beggs?\b/i,dish:/\beggs?\b|fried rice|pancake|waffle|muffin|bread/i,back:14},
+  {prod:/petaluma creamery/i,label:"cheese",food:/cheese/i,dish:/cheese|pizza|quesadilla|pesto/i,back:42},
+  {prod:/next generation/i,dish:/\bbeans?\b|\brice\b|burrito/i,back:56},
+  {prod:/central milling/i,label:"flour",food:/flour/i,dish:/focaccia|pizza|bread|muffin|waffle|pancake|crust|dough/i,back:70}];
+const kEntry=(food,farm)=>K_MAP.find(e=>(e.prod&&e.prod.test(farm||""))||(e.food&&e.food.test(food||"")));
+// the word a family reads for a food, such as cheese or flour rather than the order's full line
+const kLabel=(food,farm)=>{const e=kEntry(food,farm);if(e&&e.prod)return /next generation/i.test(farm||"")?(/rice/i.test(food||"")?"rice":"beans"):e.label||"";return kPlural(food)};
+const kBack=(food,farm)=>(kEntry(food,farm)||{}).back||10;
+// the days and dishes a food goes into, the food's own word first
+function kUses(food,days,farm){const re=kFoodRe(food),e=kEntry(food,farm),fruit=K_FRUIT.test(food||"");const out=[];
+  for(const {d,x} of days){const sn=[x.am,x.pm].filter(has);
+    if(re&&re.test(x.lunch||""))out.push({d,meal:"lunch",dish:x.lunch});
+    else if(re&&sn.some(t=>re.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>re.test(t))});
+    else if(e&&e.dish.test(x.lunch||""))out.push({d,meal:"lunch",dish:x.lunch,cooked:true});
+    else if(e&&sn.some(t=>e.dish.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>e.dish.test(t)),cooked:true});
+    else if(fruit&&sn.some(t=>/fruit/i.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>/fruit/i.test(t))})}
+  return out}
 const kShort=d=>parseIso(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
 const kDish=t=>{t=String(t||"").trim();t=t.length>48?t.slice(0,46).replace(/\s+\S*$/,"")+"…":t;return t?t[0].toLowerCase()+t.slice(1):""};
 function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[];if(!re)return out;
@@ -2502,11 +2534,9 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
   // where it goes this week, from the menus
   const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
   const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long"});
-  let use="";
-  for(const {d,x} of days){if(re.test(x.lunch||"")){use=`${wd(d)} lunch, ${kDish(x.lunch)}`;break}if(re.test(x.am||"")||re.test(x.pm||"")){use=`${wd(d)} snack`;break}}
-  if(!use&&(cook||tom))for(const {d,x} of days){if((tom?K_TOMATO:K_DISH).test(x.lunch||"")){use=`${wd(d)} lunch, ${kDish(x.lunch)}`;break}}
-  if(!use&&!cook&&!tom)for(const {d,x} of days){if(/fruit/i.test((x.am||"")+" "+(x.pm||""))){use=`${wd(d)} snack`;break}}
-  if(!use&&(cook||tom))use="Cooked into lunches this week";
+  let use="";const u=kUses(it.food||it.name,days,it.farm)[0];
+  if(u)use=u.meal==="lunch"?`${wd(u.d)} lunch, ${kDish(u.dish)}`:`${wd(u.d)} snack`;
+  if(!use&&(cook||tom||(kEntry(food,it.farm)||{}).cook))use="Cooked into lunches this week";
   if(use)out.push(use);
   // where the children met it before
   const bin=binAll().filter(b=>b.date<monday&&(b.items||[]).some(x=>re.test(x.name||"")))[0];
@@ -4584,34 +4614,31 @@ function kName(item){let t=String(item||"").replace(/^\s*OG\b\s*/i,"").replace(/
   const [food,...vars]=String(main||"").split(",").map(x=>x.trim()).filter(Boolean);if(!food)return {name:t,food:""};const v=vars.join(" ");
   const name=(v?v+" "+food.toLowerCase():food)+(dash?", "+dash.trim():"");return {name:name[0].toUpperCase()+name.slice(1),food:food.toLowerCase()}}
 const K_MASS=/^(basil|honey|lettuce|garlic|kale|chard|corn|rice|cheese|flour|spinach|cilantro|parsley|celery|broccoli|cauliflower|milk|butter|bread|squash|fruit|mint|dill|arugula|asparagus|yogurt|oats)$/i;
-const kPlural=f=>{f=String(f||"").trim().toLowerCase();if(!f||K_MASS.test(f)||/s$/.test(f))return f;if(/[^aeiou]y$/.test(f))return f.slice(0,-1)+"ies";if(/(o|ch|sh)$/.test(f))return f+"es";return f+"s"};
+const kPlural=f=>{f=String(f||"").trim().toLowerCase();if(!f||K_MASS.test(f.split(" ").pop())||/s$/.test(f))return f;if(/[^aeiou]y$/.test(f))return f.slice(0,-1)+"ies";if(/(o|ch|sh)$/.test(f))return f+"es";return f+"s"};
 const kCap=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const kList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
 // a meal line from an order, for the food sheets. Bins and boxes are left out, since the bin has its own page.
-const kLocal=farm=>{const g=G_KNOWN[gKey(farm)];return gKindOf({producer:farm})==="local"&&!(g&&g.county&&g.county!=="Sonoma"&&!gTownInfo(g.county))&&!/^central milling/i.test(String(farm||"").trim())};
+// California farms and food hubs, and Central Milling, whose flour goes into the breads. It is never counted as a farm.
+const kMill=farm=>/^central milling/i.test(String(farm||"").trim());
+const kLocal=farm=>kMill(farm)||gKindOf({producer:farm})==="local";
 const kLine=(x,day)=>{if(!kLocal(x.producer))return null;if(/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim())||/\bbox\b/i.test(x.item||""))return null;const k=kName(x.item);if(!k.food)return null;return {day,name:k.name,food:k.food,farm:String(x.producer||"").trim()}};
-// which day and dish a food went into in a span of days, the same matching as Coming for lunch and snack
-function kUses(food,days){const re=kFoodRe(food);if(!re)return [];const f=String(food).toLowerCase(),cook=K_COOK.test(f),tom=/^tomato/.test(f);const out=[];
-  for(const {d,x} of days){if(re.test(x.lunch||""))out.push({d,meal:"lunch",dish:x.lunch});else if(re.test(x.am||""))out.push({d,meal:"snack",dish:x.am});else if(re.test(x.pm||""))out.push({d,meal:"snack",dish:x.pm});
-    else if((cook||tom)&&(tom?K_TOMATO:K_DISH).test(x.lunch||""))out.push({d,meal:"lunch",dish:x.lunch,cooked:true})}
-  return out}
 const kMenuDays=(from,to)=>{const out=[];for(let d=from;d<=to;d=addDays(d,1)){const w=parseIso(d).getDay();if(w===0||w===6)continue;const x=((menus.get(d.slice(0,7))||{}).days||{})[d];if(x&&!x.closed&&(x.lunch||x.am||x.pm))out.push({d,x})}return out};
 const kShortDish=t=>{t=String(t||"").trim();const w=t.split(/\s+/);return w.length>4?w.slice(0,4).join(" ").replace(/[,;]$/,"").replace(/\s+(and|with|or)$/,"")+"…":t};
 // everything a month's sheets need. Orders count for a week when they arrive in it or in the days just before it.
 function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
-  const lines=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-6)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
-  for(const p of gList("purchases")){if(!p.date||p.date<from||p.date>to||(p.kind&&p.kind!=="local")||p.use==="education"||!kLocal(p.producer))continue;const k=kName(p.item);if(k.food)lines.push({day:p.date,name:k.name,food:k.food,farm:p.producer||""})}
+  const lines=[];for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<addDays(from,-70)||day>to)continue;for(const x of o.items||[]){const l=kLine(x,day);if(l)lines.push(l)}}
+  for(const p of gList("purchases")){if(!p.date||p.date<addDays(from,-70)||p.date>to||(p.kind&&p.kind!=="local"&&!kMill(p.producer))||p.use==="education"||!kLocal(p.producer))continue;const k=kName(p.item);if(k.food)lines.push({day:p.date,name:k.name,food:k.food,farm:p.producer||""})}
   const inMonth=lines.filter(l=>l.day>=from);
   // the weeks of the month, Monday to Friday
   const weeks=[];for(let m=mondayOf(parseIso(from));m<=to;m=addDays(m,7)){const days=kMenuDays(m<from?from:m,addDays(m,4)>to?to:addDays(m,4));if(!days.length)continue;
-    const near=lines.filter(l=>l.day>=addDays(m,-6)&&l.day<=addDays(m,4));const farms=new Map();
-    for(const l of near)for(const u of kUses(l.food,days)){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kPlural(l.food));farms.set(l.farm,e)}
+    const near=lines.filter(l=>l.day>=addDays(m,-kBack(l.food,l.farm))&&l.day<=addDays(m,4));const farms=new Map();
+    for(const l of near)if(kUses(l.food,days,l.farm).length){const e=farms.get(l.farm)||{farm:l.farm,foods:new Set()};e.foods.add(kLabel(l.food,l.farm));farms.set(l.farm,e)}
     weeks.push({monday:m,lunches:days.map(o=>o.x.lunch).filter(has),snacks:[...new Set(days.flatMap(o=>[o.x.am,o.x.pm]).filter(has))],farms:[...farms.values()]})}
-  const fm=new Map();for(const l of inMonth.concat(lines.filter(l=>l.day<from&&weeks[0]&&l.day>=addDays(weeks[0].monday,-6)))){if(!l.farm)continue;const e=fm.get(gKey(l.farm))||{farm:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||"",n:0};e.n++;fm.set(gKey(l.farm),e)}
+  const fm=new Map();for(const l of inMonth.concat(lines.filter(l=>l.day<from&&weeks[0]&&l.day>=addDays(weeks[0].monday,-6)))){if(!l.farm||kMill(l.farm))continue;const e=fm.get(gKey(l.farm))||{farm:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||"",n:0};e.n++;fm.set(gKey(l.farm),e)}
   const farms=[...fm.values()].sort((a,b)=>a.farm.localeCompare(b.farm));const sonoma=farms.filter(f=>gTownCounty(f.town)==="Sonoma").length;
   // the foods served most, with the farm each came from
-  const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6))){const k=kPlural(l.food);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
-  for(const e of foods.values())e.uses=kUses(e.food,md).length;
+  const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6)&&!kMill(l.farm))){const k=kLabel(l.food,l.farm);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
+  for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length;
   const top=[...foods.values()].sort((a,b)=>b.uses-a.uses||b.lines-a.lines).map(e=>{const f=[...e.farms.entries()].sort((a,b)=>b[1]-a[1])[0][0];return {food:e.food,farm:f,town:farmTown(f)||gProducer(f).town||""}});
   // foods the children also met in a bin or the garden that month
   const binMet=[],gardenMet=[];for(const e of foods.values()){const re=kFoodRe(e.food);if(!re)continue;
@@ -4622,7 +4649,7 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   blocks.push(dFigures([[String(F.farms.length),"farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.lunches),"lunches made at school"]]));
-  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.slice(0,4).map(f=>`${f.farm}, ${[...f.foods][0]}`).join(". "):"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.09,.38,.26,.27],muted:[0],small:true}));
+  if(F.weeks.length)blocks.push(dTable("Week by week",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · "),w.snacks.slice(0,4).join(" · "),w.farms.length?w.farms.map(f=>`${f.farm}${kMill(f.farm)?", "+(gProducer(f.farm).town||"Petaluma"):""}, ${kList([...f.foods])}`).join(". ")+".":"FEED's farms"]),{head:["Week of","Lunches","Snacks","Farms in these meals"],widths:[.08,.35,.22,.35],muted:[0],small:true}));
   if(F.farms.length)blocks.push(dTable("Farms that fed us this month",F.farms.map(f=>[f.farm,f.town]),{cols:3,widths:[.6,.4],muted:[1]}));
   if(F.met)blocks.push(dText("",F.met));
   blocks.push(dText("Recipe of the month",F.recipe||"________________________________"));
@@ -6553,6 +6580,8 @@ function displayFlow(doc,p,A,s){
       // a heading, a side note, or the first lines of a quote never sit alone at the foot of a page
       const hm=x=>x.min||x.h;
       let need=hm(a);for(let k=i;atoms[k]&&(atoms[k].keep||atoms[k].gap)&&atoms[k+1];k++)need+=hm(atoms[k+1]);
+      // what must stay together never asks for more than a whole sheet, so a long run cannot push page after page
+      need=Math.min(need,(DG.bottom-topN)*.9);
       const cap=Math.min(DG.bottom,(pages.length===1?top1:topN)+room);
       // a heading group may claim a fresh sheet, but never at the cost of leaving a third of this one empty
       const whole=a.groupH&&y+a.groupH>cap&&topN+a.groupH<=DG.bottom&&(cap-y)<(DG.bottom-topN)*.33;
@@ -6582,7 +6611,7 @@ function displayFit(doc,p,A){
   let s=1,F=displayFlow(doc,p,A,1);
   if(F.pages.length===1){const room=DG.bottom-F.top1;for(const t of [1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
   // a sheet made to be one page, such as the farm sheet for families, may be set a little smaller still
-  else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
+  else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73,.7,.67]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
   return {s,F};
 }
 function drawDisplay(doc,p,pageAcc){
