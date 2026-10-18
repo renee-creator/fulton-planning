@@ -311,7 +311,43 @@ async function recheckRecords() {
    Each confirmation becomes a record under grant/, one per order, with every item, its producer, unit, price and
    quantity. Bins are counted as food for student education and everything else as food for meals, which the director
    can change line by line. An order kept again keeps those choices. */
-const { parseOrder } = require('./feed-order.js');
+const { parseOrder, textOf } = require('./feed-order.js');
+const orderQueue = []; let ordersRunning = false;
+async function runOrders() {
+  if (ordersRunning) return; ordersRunning = true;
+  try { while (orderQueue.length) { const j = orderQueue.shift(); try { const r = await readOrderPart(j.part, j.by); log(r.doc ? 'Order kept, ' + r.doc.id + (r.doc.review ? ', waiting to be checked' : '') : r.skip ? 'Not an order, ' + j.part.name.slice(0, 80) + '. ' + r.skip : 'Order could not be read, ' + j.part.name.slice(0, 80) + '. ' + r.error); } catch (e) { log('Order could not be read,', e.message); } } }
+  finally { ordersRunning = false; }
+}
+// FEED's confirmations and invoices are read exactly. Any other vendor's order is read by Claude and waits for the
+// director to check it on the grant page before it is trusted.
+async function readOrderPart(part, by) {
+  const raw = typeof part.raw === 'string' ? part.raw : '';
+  if (raw && /FEED Cooperative/i.test(raw.slice(0, 200000) + (part.subject || ''))) { const r = keepOrder(raw, by); if (!r.error) return r; }
+  if (!anthropicKey()) return { error: 'Claude assist is not set up, so only FEED orders can be read.' };
+  let content;
+  if (part.data && /pdf/i.test(part.type + part.name)) content = [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: part.data } }];
+  else if (part.data && /^image\//i.test(part.type)) content = [{ type: 'image', source: { type: 'base64', media_type: part.type, data: part.data } }];
+  else { const text = textOf(raw).slice(0, 40000); if (text.length < 40) return { skip: 'It was empty.' }; content = [{ type: 'text', text }]; }
+  content.push({ type: 'text', text: `The director of a California preschool forwarded this for its Farm to School grant records. If it is an order, invoice or receipt for food the school bought, read it. If it is anything else, such as a shipping notice, a newsletter, a marketing email or a message, return {"order": false, "why": "a few words"}.
+For an order, return a JSON object with "order": true, "vendor", who sold it, "number", the order or invoice number, "date", the delivery or invoice date as YYYY-MM-DD, "items", an array of objects with "item", "producer", the farm or company that grew or made it when the document names one, otherwise the vendor, "unit", "qty" as a number, "price" as a number and "total" as a number, and then "subtotal", "delivery" and "total" as numbers.
+Copy names and numbers exactly as written. Never invent a number, and use null when one is missing. Leave taxes, delivery and fees out of the items. Return only the JSON.` });
+  const r = await askClaude(content, true);
+  if (r.status !== 200) return { error: 'Claude answered ' + r.status + '.' };
+  let o; try { const t = (JSON.parse(r.text).content || []).filter(x => x.type === 'text').map(x => x.text).join(''); o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { return { error: 'The answer could not be read.' }; }
+  if (!o || o.order === false) return { skip: String((o && o.why) || '') };
+  const items = (Array.isArray(o.items) ? o.items : []).filter(x => x && x.item).map(x => ({ item: String(x.item), producer: String(x.producer || o.vendor || ''), unit: String(x.unit || ''), qty: Number(x.qty) || 0, price: x.price == null ? null : Number(x.price), total: x.total == null ? null : Number(x.total), use: 'meals' }));
+  if (!items.length) return { skip: 'No food items were found.' };
+  const vendor = String(o.vendor || 'Unknown vendor'); const date = /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : '';
+  const slug = vendor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'vendor';
+  const num = String(o.number || '').replace(/[^A-Za-z0-9]+/g, '').slice(0, 30) || crypto.createHash('sha1').update(vendor + date + JSON.stringify(items)).digest('hex').slice(0, 10);
+  const id = 'order-' + slug + '-' + num; const cur = store.recs.grant.get(id); const was = cur && !cur.deleted ? cur.doc : null;
+  if (was) { const uses = new Map((was.items || []).map(x => [x.item + '|' + x.unit, x.use])); items.forEach(x => { x.use = uses.get(x.item + '|' + x.unit) || x.use; }); }
+  const doc = { id, kind: 'order', order: String(o.number || ''), fulfilled: date, placed: '', items, subtotal: o.subtotal == null ? null : Number(o.subtotal), delivery: o.delivery == null ? null : Number(o.delivery), total: o.total == null ? null : Number(o.total), distributor: vendor,
+    review: was ? !!was.review : true, readBy: 'Claude', from: String(part.name || '').slice(0, 120), keptAt: (was && was.keptAt) || Date.now(), keptBy: (was && was.keptBy) || by, updatedByName: by };
+  store.recs.grant.set(id, { doc, sha: cur && cur.sha, path: `grant/${id}.json`, local: true });
+  noteChange('grant', id); scheduleSave('grant', id);
+  return { doc };
+}
 function keepOrder(raw, by) {
   const o = parseOrder(raw);
   if (!o.order || !o.items.length) return { error: 'This does not look like a FEED order confirmation. No order number or items were found.' };
@@ -544,13 +580,16 @@ async function handle(req, res) {
   if (path === '/inbound/feed-order') {
     let b; try { b = await readBody(req); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
-    if (!key || cleanKey(b.key) !== key) { log('FEED order refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
-    // a confirmation forwarded by hand comes from the office address, so the email itself is checked
-    log('FEED order email arrived from the mailbox,', String(b.subject || '').slice(0, 100));
-    if (!/feedsonoma\.com/i.test(String(b.from || '')) && !/FEED Cooperative/i.test(String(b.subject || '') + String(b.html || '').slice(0, 20000))) { log('FEED order email turned away, it does not look like a FEED confirmation'); err(req, res, 400, 'Only FEED order confirmations are kept here.'); return; }
+    if (!key || cleanKey(b.key) !== key) { log('Order email refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
     if (!store.ready) await loadAll();
-    const r = keepOrder(b.html || b.text || '', 'mailbox'); if (r.error) { log('FEED order email could not be read,', r.error); err(req, res, 400, r.error); return; }
-    log('FEED order kept from the mailbox', r.doc.order, r.doc.items.length + ' items'); json(req, res, 200, { ok: true, order: r.doc.order }); return;
+    // an email can carry other emails or PDF invoices forwarded as attachments, and each is read on its own
+    const parts = [];
+    if (b.html || b.text) parts.push({ name: String(b.subject || 'email'), raw: b.html || b.text, subject: String(b.subject || '') });
+    for (const a of Array.isArray(b.parts) ? b.parts.slice(0, 20) : []) if (a && (typeof a.raw === 'string' || typeof a.data === 'string')) parts.push({ name: String(a.name || 'attachment'), raw: a.raw, data: a.data, type: String(a.type || '') });
+    log('Order email arrived from the mailbox,', String(b.subject || '').slice(0, 100) + ',', parts.length, 'part' + (parts.length === 1 ? '' : 's'));
+    for (const part of parts) orderQueue.push({ part, by: 'mailbox' });
+    runOrders();
+    json(req, res, 200, { ok: true, queued: parts.length }); return;
   }
   const origin = String(req.headers.origin || '').replace(/\/+$/, '').toLowerCase();
   if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
@@ -773,8 +812,10 @@ async function handle(req, res) {
   }
   if (path === '/api/grant/order') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps the grant records.'); return; }
-    const r = keepOrder(body.raw || '', me.name); if (r.error) { err(req, res, 400, r.error); return; }
-    log('FEED order kept by', me.name, r.doc.order); json(req, res, 200, { ok: true, doc: r.doc }); return;
+    const r = await readOrderPart({ name: String(body.name || 'file'), raw: body.raw, data: body.data, type: String(body.type || '') }, me.name);
+    if (r.error) { err(req, res, 400, r.error); return; }
+    if (r.skip) { err(req, res, 400, 'This does not look like an order or invoice for food. ' + r.skip); return; }
+    log('Order kept by', me.name, r.doc.id); json(req, res, 200, { ok: true, doc: r.doc }); return;
   }
   // the weekly FEED bin, read from FEED's page and kept by week
   if (await feedBin.handle(path, { name: me.name, director: isDirector(me.name) }, body, (status, obj) => json(req, res, status, obj))) return;
