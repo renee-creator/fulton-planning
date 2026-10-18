@@ -109,7 +109,7 @@
   }
   Store.ready=start();
 
-  function snap(id,d){ return {id, exists:!!d, data:()=>d?JSON.parse(JSON.stringify(d)):undefined, metadata:{fromCache:false,hasPendingWrites:false}}; }
+  function snap(id,d){ return {id, exists:!!d, data:()=>{ if(!d) return undefined; const o=JSON.parse(JSON.stringify(d)); if(o&&typeof o==="object"&&"id" in o) o.id=id; return o; }, metadata:{fromCache:false,hasPendingWrites:false}}; }
   function query(kind){
     const q={ limit(){return q}, where(){return q}, orderBy(){return q},
       onSnapshot(next){ const fire=()=>{ const docs=Object.entries(Store.data[kind]||{}).map(([id,d])=>snap(id,d)); next({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}}); }; Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
