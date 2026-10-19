@@ -4571,7 +4571,7 @@ function kName(item){let t=String(item||"").replace(/^\s*OG\b\s*/i,"").replace(/
   if(/\//.test(String(main||"").split(",")[0])){if(dash){main=dash.split(",")[0].trim();dash=""}else main=main.split("/")[0].trim()}
   const [food,...vars]=String(main||"").split(",").map(x=>x.trim()).filter(Boolean);if(!food)return {name:t,food:""};const v=vars.join(" ");
   const name=(v?v+" "+food.toLowerCase():food)+(dash?", "+dash.trim():"");return {name:name[0].toUpperCase()+name.slice(1),food:food.toLowerCase()}}
-const K_MASS=/^(basil|honey|lettuce|garlic|kale|chard|corn|rice|cheese|flour|spinach|cilantro|parsley|celery|broccoli|cauliflower|milk|butter|bread|squash|fruit|mint|dill|arugula|asparagus|yogurt|oats)$/i;
+const K_MASS=/^(choy|choi|basil|honey|lettuce|garlic|kale|chard|corn|rice|cheese|flour|spinach|cilantro|parsley|celery|broccoli|cauliflower|milk|butter|bread|squash|fruit|mint|dill|arugula|asparagus|yogurt|oats)$/i;
 const kPlural=f=>{f=String(f||"").trim().toLowerCase();if(!f||K_MASS.test(f.split(" ").pop())||/s$/.test(f))return f;if(/[^aeiou]y$/.test(f))return f.slice(0,-1)+"ies";if(/(o|ch|sh)$/.test(f))return f+"es";return f+"s"};
 const kCap=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const kList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
@@ -4656,7 +4656,7 @@ function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
     blocks.push(dText("Week by week",note?kCap(note)+".":" "));
     // a light list of the week's lunches and snacks, at a size families can read
     blocks.push(dTable("",F.weeks.map(w=>[shortWeek(w.monday),[...new Set(w.lunches)].join(" · ")]),{head:["Week of","Lunches"],widths:[.11,.89],muted:[0],noRule:true}))}
-  if(F.fruits.length+F.vegs.length)blocks.push(dText("",[F.fruits.length?`Fruits, ${kList(F.fruits)}.`:"",F.vegs.length?`Vegetables, ${kList(F.vegs)}.`:""].filter(Boolean).join(" ")));
+  if(F.fruits.length+F.vegs.length)blocks.push(dText("",[F.fruits.length?`The fruits were ${kList(F.fruits)}.`:"",F.vegs.length?`The vegetables were ${kList(F.vegs)}.`:""].filter(Boolean).join(" ")));
   // the farms read as one paragraph, each with its town, so the page holds every week at a size families can read
   if(F.farms.length)blocks.push(dText("Local farms that fed us this month",F.farms.map(f=>f.farm+(f.town?", "+f.town:"")).join(" · ")));
   // staples from the same maker share one line, such as olive oil and avocado oil from Costco
