@@ -3738,6 +3738,8 @@ async function readMomentPhoto(n){
       else{n.photo.data=await blobDataUrl(blob,1400);if(window.FP_KEEP_ORIGINAL)n.photo.pending=true}}
   }catch(e){if(e&&e.code==="unavailable"){n.photo.data=await blobDataUrl(blob,1400);n.photo.pending=true;n.photo.status="done";n.photo.error="";refreshPhotoDraft(n);return}
     n.photo.status="failed";n.photo.error=e?.message||"The photo could not be stored. Check your connection and press Try again.";refreshPhotoDraft(n);return}
+  // the photo is kept, so the observation can be saved while the words are still being copied
+  refreshPhotoDraft(n);
   if(!sample){n.photo.status="done";refreshPhotoDraft(n);return}
   try{
     const out=await askRead(MOMENT_PHOTO_PROMPT,{images:[blob],careful:true,purpose:"moment-photo",maxSide:2000});
