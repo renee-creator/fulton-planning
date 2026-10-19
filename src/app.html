@@ -787,7 +787,7 @@ const isShared=n=>SHARED_SIGNIN.includes(String(n||"").trim().toLowerCase());
    Nothing is saved while looking, and going back reloads TREE so nothing done while looking stays on screen. */
 const VIEW_AS=(()=>{try{const v=JSON.parse(sessionStorage.getItem("tree.viewas")||"null");return v&&v.name?v:null}catch(e){return null}})();
 window.TREE_VIEW_AS=VIEW_AS;
-function startViewAs(name,room){try{sessionStorage.setItem("tree.viewas",JSON.stringify({name,room:room||""}));sessionStorage.setItem("tree.vatop","1")}catch(e){}LS.set("fps.view","today");location.reload()}
+function startViewAs(name,room,kitchen){try{sessionStorage.setItem("tree.viewas",JSON.stringify({name,room:room||"",kitchen:!!kitchen}));sessionStorage.setItem("tree.vatop","1")}catch(e){}LS.set("fps.view","today");location.reload()}
 // seeing TREE as an educator opens on Today, at the top of the page
 if(VIEW_AS){try{if(sessionStorage.getItem("tree.vatop")==="1"){sessionStorage.removeItem("tree.vatop");if("scrollRestoration" in history)history.scrollRestoration="manual";if(view!=="today"){view="today"}window.addEventListener("load",()=>window.scrollTo(0,0))}}catch(e){}}
 function endViewAs(){try{sessionStorage.removeItem("tree.viewas")}catch(e){}location.reload()}
@@ -812,7 +812,7 @@ document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]")
   const l=e.target.closest("section.card.filled[data-card]>.lbl");if(l&&window.innerWidth<=760){l.parentElement.classList.toggle("showall")}});
 document.addEventListener("click",e=>{const t=e.target.closest("#va-go,#vaend");if(!t)return;
   if(t.id==="vaend"){endViewAs();return}
-  const sel=$("#va-who");if(!sel||!sel.value)return;const o=sel.options[sel.selectedIndex];startViewAs(sel.value,o&&o.dataset.room||"")});
+  const sel=$("#va-who");if(!sel||!sel.value)return;const o=sel.options[sel.selectedIndex];startViewAs(sel.value,o&&o.dataset.room||"",o&&o.dataset.kitchen==="1")});
 document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#mp-roomreset");if(!t)return;
   if(t.id==="mp-roomreset"){for(const k of ["fps.troom","fps.kroom","fps.lroom","fps.nroom"])try{localStorage.removeItem(k)}catch(x){}ownRoomDefaults();toast("Your lists open on your class again.");return}
   const m=$("#mp-msg");const v=id=>($("#"+id)||{}).value||"";
@@ -2172,7 +2172,7 @@ setInterval(outboxSend,30000);
 // observations come first after Today, since they feed both the plans and the documentation
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 // a kitchen sign-in sees the Kitchen, Today and the calendar
-const isKitchenUser=()=>!VIEW_AS&&!!(window.FP_KITCHEN&&window.FP_KITCHEN());
+const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
@@ -8393,11 +8393,11 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="plans")return
 let signins={list:null,error:"",show:{},busy:false,adding:false};
 async function loadSignins(){if(!window.FP_API||!db)return;try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||[];signins.render=j.render||[];signins.error=""}catch(e){signins.error=e&&e.message||"The sign-ins could not be read."}if(view==="settings")renderSettings()}
 function viewAsHtml(){
-  const list=(signins.list||[]).filter(a=>!a.director).map(a=>({name:a.name,room:a.room||""}));
+  const list=(signins.list||[]).filter(a=>!a.director).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));
   if(!people.length)return"";
   return `<section class="card"><div class="lbl">See TREE as an educator</div><div class="hint">Look at TREE the way an educator sees it, with their name and their class, on Today, Observations, Plans and every other page. Nothing is saved while you look.</div>
-    <div class="actions"><select id="va-who" style="width:auto">${people.sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}" data-room="${esc(a.room)}">${esc(a.name)}${a.room?", "+esc(a.room):""}</option>`).join("")}</select>
+    <div class="actions"><select id="va-who" style="width:auto">${people.sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}" data-room="${esc(a.room)}" data-kitchen="${a.kitchen?"1":""}">${esc(a.name)}${a.kitchen?", kitchen":a.room?", "+esc(a.room):""}</option>`).join("")}</select>
     <button class="btn small" id="va-go">See TREE as them</button></div></section>`}
 function signinsHtml(){
   if(!window.FP_HOSTED)return"";
@@ -8405,13 +8405,13 @@ function signinsHtml(){
   if(signins.error)return `<section class="card"><div class="lbl">Sign-ins</div><div class="hint warnline">${esc(signins.error)}</div></section>`;
   const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
-    <div class="hint">Each educator signs in with their first name. A new educator, or one whose code was cleared, gets six starting numbers shown here. Give them those numbers, and the first time they sign in they choose four of their own. Codes are shown only here, to the director. A Kitchen sign-in, such as Sally's, reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
+    <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in, such as Sally's, reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
         <td><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""} aria-label="${esc(a.name)} signs in for the kitchen"></td>
-        <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:(a.start?`<span class="cnt">Starting code</span> <span style="font-variant-numeric:tabular-nums;letter-spacing:.12em">${signins.show[a.name]?esc(a.start):"\u2022\u2022\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`)}</td>
+        <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`}</td>
         <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
     <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
@@ -8422,11 +8422,11 @@ async function signinCall(path,body,msg){signins.busy=true;try{const j=await win
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
   if(t.dataset.sgshow){signins.show[t.dataset.sgshow]=!signins.show[t.dataset.sgshow];renderSettings();return}
-  if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} has new starting numbers. Show them in the list and give them to ${t.dataset.sgreset}.`);return}
+  if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} chooses a new code at their next sign-in.`);return}
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
   if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
-  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} is added. Show the starting numbers in the list and give them to ${n}.`);return}
+  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} can sign in now and choose a code.`);return}
   if(t.id==="sg-addall"){(async()=>{const known=new Set(signins.list.map(a=>a.name.toLowerCase()));for(const r of roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)))await signinCall("/api/accounts/save",{name:r.name,room:r.room||"",director:false});toast("Everyone on the educators list can sign in now.")})();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!signins.list)return;
