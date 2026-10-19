@@ -750,7 +750,26 @@ async function displayFeed() {
   const mon = mondayFor(today), sun = addDay(mon, 6);
   const binDoc = live('bins').filter(b => b.date >= mon && b.date <= sun && Array.isArray(b.items) && b.items.length).sort((a, b) => a.date.localeCompare(b.date))[0];
   const bin = binDoc ? { date: binDoc.date, label: trim(binDoc.label, 60), items: binDoc.items.map(i => ({ name: trim(i && i.name, 50), farm: trim(i && Array.isArray(i.farms) ? i.farms[0] : '', 50) })).filter(i => i.name).slice(0, 14) } : null;
-  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin };
+  // DRDP in practice. A level an educator reviewed and accepted from an observation, shown with that observation, the
+  // measure's official definition and the official wording of the level, so the team sees what a measure looks like in real
+  // play. It is always evidence from our documentation, never a DRDP rating. Observations kept for an inquiry stay out.
+  const drdp = []; const byId = new Map(notices.map(n => [n.id, n]));
+  const lvName = l => DRDP_LV[l] || String(l || '');
+  const lvKey = (levels, l) => { if (!levels) return ''; if (levels[l]) return l; const k = Object.keys(DRDP_LV).find(c => DRDP_LV[c] === l); return k && levels[k] ? k : ''; };
+  for (const c of kids.values()) {
+    for (const x of Object.values((c.drdp && c.drdp.items) || {})) {
+      if (!x || (x.status !== 'accepted' && x.status !== 'changed') || !x.level || !x.code || !x.src || x.src.kind !== 'notices') continue;
+      const n = byId.get(x.src.id); if (!n || held.has(n.id) || !photoOf(n)) continue;
+      const view = x.view === 'it' ? 'it' : 'ptk'; const m = DRDP_DESC && DRDP_DESC[view] && DRDP_DESC[view][x.code];
+      const k = m ? lvKey(m.levels, x.level) : '';
+      drdp.push({ id: n.id + '.' + x.code + '.' + c.id, at: x.reviewedAt || 0, code: x.code, measure: m ? trim(m.name, 90) : '', def: m ? trim(m.def, 260) : '',
+        level: lvName(x.level), emerging: !!x.emerging, descriptor: k ? trim(m.levels[k], 260) : '', view: view === 'it' ? 'Infant and Toddler View' : 'Preschool Transitional Kindergarten View',
+        child: String(c.first || '').trim(), rooms: roomsOf(n), photo: photoOf(n), noticed: trim(n.noticed, 200), seen: n.at || 0, by: String(x.reviewedBy || '').trim() });
+    }
+  }
+  // the most recently reviewed first, one to a measure, so the screens show a range of the instrument
+  const codes = new Set(); const drdpShown = drdp.sort((a, b) => b.at - a.at).filter(d => !codes.has(d.code) && codes.add(d.code)).slice(0, 6);
+  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown };
 }
 
 async function handle(req, res) {

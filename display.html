@@ -11,7 +11,7 @@
 @font-face{font-family:"Andika";src:url(fonts/Andika-Bold.ttf) format("truetype");font-weight:700;font-display:swap}
 :root{
   --bg:#edf0e8; --paper:#fbfcf8; --ink:#1b2920; --muted:#4f5f55; --line:#c6d0c3;
-  --moss:#2b5a40; --sky:#245b78; --clay:#984331; --marigold:#9a5b07; --sun:#7a5c00;
+  --moss:#2b5a40; --sky:#245b78; --clay:#984331; --marigold:#9a5b07; --sun:#7a5c00; --plum:#6a3d6b;
   --accent:var(--moss);
   --u:min(1vw,1.78vh);
 }
@@ -32,6 +32,18 @@ body.idle{cursor:none}
 .noticed{font-size:calc(var(--u)*2.6);line-height:1.42;margin-top:calc(var(--u)*2.4);white-space:pre-line;max-width:34ch}
 .wonder{font-size:calc(var(--u)*2);line-height:1.45;color:var(--muted);margin-top:calc(var(--u)*2);max-width:38ch;padding-left:calc(var(--u)*1.4);border-left:calc(var(--u)*.35) solid var(--line)}
 .kids{font-size:calc(var(--u)*1.6);color:var(--muted);margin-top:calc(var(--u)*2.4)}
+
+/* DRDP in practice, the moment beside the measure and the level it is evidence toward */
+.d .tx{justify-content:center}
+.d .meta{font-size:calc(var(--u)*1.5);color:var(--muted)}
+.d .noticed{font-size:calc(var(--u)*2.1);margin-top:calc(var(--u)*1.4);max-width:40ch}
+.d .measure{margin-top:calc(var(--u)*2.6);padding-top:calc(var(--u)*2);border-top:1px solid var(--line)}
+.d .measure h2{font-size:calc(var(--u)*2.6);line-height:1.2;margin:calc(var(--u)*.4) 0 0;color:var(--ink)}
+.d .measure p{font-size:calc(var(--u)*1.8);line-height:1.45;color:var(--muted);margin:calc(var(--u)*.8) 0 0;max-width:46ch}
+.d .lvl{margin-top:calc(var(--u)*2.2)}
+.d .lvl b{display:block;font-size:calc(var(--u)*2.1);color:var(--accent)}
+.d .lvl p{font-size:calc(var(--u)*1.9);line-height:1.45;margin:calc(var(--u)*.6) 0 0;max-width:44ch;color:var(--ink)}
+.d .fine{font-size:calc(var(--u)*1.35);color:var(--muted);margin-top:calc(var(--u)*2)}
 
 /* the program's thinking, a thread, a project, the lens, an inquiry */
 .t{flex-direction:row;background:var(--paper)}
@@ -108,7 +120,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
   const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ACC={moment:"var(--moss)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",week:"var(--moss)",food:"var(--moss)"};
+  const ACC={moment:"var(--moss)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",week:"var(--moss)",food:"var(--moss)"};
   let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
 
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -126,6 +138,14 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${m.noticed?`<div class="noticed">${esc(m.noticed)}</div>`:""}
       ${m.wonder?`<div class="wonder">${esc(m.wonder)}</div>`:""}
       ${m.children&&m.children.length?`<div class="kids">With ${esc(names(m.children))}</div>`:""}</div>`}
+  function drdpHtml(d){const p=d.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;
+    return `<div class="ph" style="width:${portrait?36:46}%">${img(p)}</div><div class="tx">
+      <div class="kind">DRDP in practice <span>${esc(d.view)}</span></div>
+      <div class="meta">${esc([d.child,roomsText(d.rooms),whenOf(d.seen)].filter(Boolean).join(", "))}</div>
+      ${d.noticed?`<div class="noticed">${esc(d.noticed)}</div>`:""}
+      <div class="measure"><div class="where">${esc(d.code)}</div><h2>${esc(d.measure||d.code)}</h2>${d.def?`<p>${esc(d.def)}</p>`:""}</div>
+      <div class="lvl"><b>Evidence toward ${esc(d.level)}${d.emerging?", emerging to the next level":""}</b>${d.descriptor?`<p>${esc(d.descriptor)}</p>`:""}</div>
+      <div class="fine">Evidence from our documentation${d.by?", reviewed by "+esc(d.by):""}. Never a DRDP rating on its own.</div></div>`}
   function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" class":"across the school")}</span></div>
       <h1>${esc(t.name)}</h1>${t.question?`<div class="q">${esc(t.question)}</div>`:""}
       ${t.words?`<div class="words">${esc(t.words)}</div>`:""}
@@ -159,7 +179,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const T=(feed.threads||[]).map(t=>({k:"thread",cls:"t",id:"t"+t.id,html:()=>threadHtml(t),src:t.photo&&t.photo.src}));
     const I=(feed.inquiries||[]).map(x=>({k:"inquiry",cls:"t",id:"i"+x.id,html:()=>inquiryHtml(x)}));
     // projects, threads and inquiries take turns so no one kind fills a stretch of the day
-    const n=Math.max(P.length,T.length,I.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(T[i])O.push(T[i]);if(I[i])O.push(I[i])}
+    const D=(feed.drdp||[]).slice(0,4).map(d=>({k:"drdp",id:"d"+d.id,cls:"m d",html:()=>drdpHtml(d),src:d.photo&&d.photo.src}));
+    const n=Math.max(P.length,T.length,I.length,D.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     if(!M.length)return O;
