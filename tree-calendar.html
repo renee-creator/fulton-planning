@@ -13,7 +13,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <style>
 /* Layout. The school's wall calendar. A narrow column of what is showing on the left, the calendar itself on the right.
    Filled entries are space sign-ups educators manage. Outlined entries come from the school's connected calendars and are view only. */
@@ -24,8 +24,8 @@
   --e-moss:#2a5440; --e-moss-bg:#dfeae1; --e-sky:#25607c; --e-sky-bg:#dcebf2; --e-marigold:#855300; --e-marigold-bg:#fbecd0;
   --e-clay:#94452d; --e-clay-bg:#f6e0d8; --e-plum:#6d3f79; --e-plum-bg:#eee0f1; --e-teal:#17635f; --e-teal-bg:#d9eeec;
   --e-rose:#9c3559; --e-rose-bg:#f8dfe8; --e-slate:#47566a; --e-slate-bg:#e3e8ee;
-  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --display:"Andika", "Segoe UI", system-ui, sans-serif;
+  --body:"Andika", "Segoe UI", system-ui, -apple-system, sans-serif;
   --r:10px; --hh:60px; --gutter:58px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -952,7 +952,7 @@ function openEventInfo(e, cal){
   if(e.allDay) when = e.start===e.end ? fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+"\nAll day" : fmt(e.start,{weekday:"short",month:"long",day:"numeric"})+" to "+fmt(e.end,{weekday:"short",month:"long",day:"numeric"});
   else { const sd=e.start.slice(0,10), ed=e.end.slice(0,10);
     when = sd===ed ? fmt(sd,{weekday:"long",month:"long",day:"numeric"})+"\n"+span(mins(e.start),mins(e.end)) : fmt(sd,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.start))+" to "+fmt(ed,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.end)); }
-  showInfo({ tag:"School calendar, view only", locked:true, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
+  showInfo({ tag:"School calendar, view only", locked:true, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:x.label||"Sally's original PDF",href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
 }
 function showInfo(o){
   const tag=$("info-tag"); tag.textContent=""; if(o.locked) tag.append(lock()); tag.append(o.tag);

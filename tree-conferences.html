@@ -14,16 +14,16 @@
 <style>[data-go="portfolios"]{display:none!important}</style>
 <title>Fulton Family Conferences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <style>
 /* Layout: a working ledger. Sticky header with tabs, one main column, editor with a side rail for prep and history. */
 :root{
   --bg:#F3F5F1; --surface:#FFFFFF; --surface-2:#EBEFEA; --ink:#1E2A23; --muted:#5C6A61; --line:#D8DFD8;
   --accent:#2E5B44; --accent-ink:#FFFFFF; --accent-soft:#E1EBE4;
   --ok:#2F7A4F; --ok-soft:#DDEFE3; --sched:#9A6A1C; --sched-soft:#F6EBD6; --prog:#3D6290; --prog-soft:#E1E9F4; --todo:#7E8983; --todo-soft:#ECEFEC; --danger:#A3392E; --danger-soft:#F7E2DF;
-  --f-display:"Young Serif", Georgia, "Times New Roman", serif;
-  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --f-display:"Andika", system-ui, "Segoe UI", sans-serif;
+  --f-body:"Andika", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"Andika", system-ui, sans-serif;
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -39,7 +39,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--f-body);font-size:15px;line-height:1.5}
-h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;margin:0;line-height:1.2}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0;line-height:1.2}
 h1{font-size:1.6rem} h2{font-size:1.3rem} h3{font-size:1.05rem}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--accent)}
@@ -202,7 +202,7 @@ details summary{cursor:pointer;font-weight:600}
 .sc-opt{display:inline-flex;gap:5px;align-items:center;font-size:.9rem;white-space:nowrap;cursor:pointer}
 /* inside TREE */
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#2b5a40;--accent-soft:#dce9de}}
-:root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;--f-mono:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif}
+:root{--f-display:"Andika","Segoe UI",system-ui,sans-serif;--f-body:"Andika","Segoe UI",system-ui,sans-serif;--f-mono:"Andika",system-ui,-apple-system,"Segoe UI",sans-serif}
 .mono,.date-tile,.qnum,.tl-when{font-variant-numeric:tabular-nums}
 .tl-when b{font-weight:700}
 h1,h2,h3{font-weight:700}
@@ -1392,17 +1392,27 @@ function exportAllCSV(){
 }
 
 /* ---------- Word export ---------- */
+/* Andika, the typeface of every TREE print, Regular for the words and Bold for labels and titles.
+   Without them the forms still print in the built-in faces. */
+let CF_FONTS=null;
+async function confFonts(){ if(CF_FONTS!==null) return CF_FONTS;
+  try{ const get=async f=>{ const r=await fetch("fonts/"+f); if(!r.ok) throw new Error("font"); return new Uint8Array(await r.arrayBuffer()); };
+    const [r,b]=await Promise.all(["Andika-Regular.ttf","Andika-Bold.ttf"].map(get)); CF_FONTS={r,s:b,b}; }
+  catch(e){ CF_FONTS=false; }
+  return CF_FONTS; }
 async function downloadDocx(list, child){
   if(!list.length){ toast("No conferences to include"); return; }
   toast("Preparing the Word file…");
-  try{ await loadScript("https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"); }catch(e){ toast("The Word builder could not load. Check your connection."); return; }
-  const D=window.docx;
+  try{ await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"); }catch(e){ toast("The Word builder could not load. Check your connection."); return; }
+  const FF=await confFonts();
+  // every run is Andika, embedded in the file so it looks the same on any computer, with bold kept for labels and titles
+  const D=Object.assign({},window.docx,{TextRun:class extends window.docx.TextRun{constructor(o){ if(FF&&o&&typeof o==="object"){ o=Object.assign({},o); o.font="Andika"; } super(o); }}});
   const GREEN="E4ECE6";
   const border={style:D.BorderStyle.SINGLE,size:4,color:"9AA79E"};
   const borders={top:border,bottom:border,left:border,right:border};
   const paras=(t,opts={})=>{ const lines=String(t||"").split(/\n/); return lines.map(l=>new D.Paragraph({spacing:{after:20},children:[new D.TextRun({text:l,size:18,...opts})]})); };
-  const labelCell=(label,hint,span=1)=>new D.TableCell({borders,columnSpan:span,shading:{type:D.ShadingType.CLEAR,color:"auto",fill:GREEN},width:{size:20,type:D.WidthType.PERCENTAGE},margins:{top:80,bottom:80,left:100,right:100},
-    children:[new D.Paragraph({children:[new D.TextRun({text:label,bold:true,size:20})]}), ...(hint?[new D.Paragraph({children:[new D.TextRun({text:hint,italics:true,size:16,color:"55625A"})]})]:[])]});
+  const labelCell=(label,hint,span=1)=>new D.TableCell({borders,columnSpan:span,shading:{type:D.ShadingType.CLEAR,color:"auto",fill:GREEN},width:{size:20,type:D.WidthType.PERCENTAGE},margins:{top:FF?50:80,bottom:FF?50:80,left:100,right:100},
+    children:[new D.Paragraph({children:[new D.TextRun({text:label,bold:true,size:FF?17:20})]}), ...(hint?[new D.Paragraph({children:[new D.TextRun({text:hint,italics:true,size:FF?12:16,color:"55625A"})]})]:[])]});
   const valCell=(t,span=1,w=30)=>new D.TableCell({borders,columnSpan:span,width:{size:w,type:D.WidthType.PERCENTAGE},margins:{top:80,bottom:80,left:100,right:100},children:paras(t)});
   const sections=[];
   // Rows get a minimum height so each table fills its letter page the way the paper form does.
@@ -1424,20 +1434,23 @@ async function downloadDocx(list, child){
     const scRow=side=>row(SCW,[labelCell(SC_SIDES[side],"Tick what fits"), new D.TableCell({borders,columnSpan:3,margins:{top:60,bottom:60,left:100,right:100},children:[
       ...SELF_CARE.map(r=>new D.Paragraph({spacing:{after:20},children:[new D.TextRun({text:r.label+"   ",bold:true,size:17}),...r.opts.map(([k,l])=>new D.TextRun({text:`${cf.selfCare?.[side]?.[r.k]?.[k]?"\u2612":"\u2610"} ${l}    `,size:17}))]})),
       new D.Paragraph({children:[new D.TextRun({text:"Notes   ",bold:true,size:17}),new D.TextRun({text:cf.selfCare?.[side+"Notes"]||"",size:17})]})]})]);
-    const PAGE1=(info? 9900 : 10700)-SCW, unit=(PAGE1-2*META)/bodyRows.reduce((s,r)=>s+r.w,0);
+    // Andika sets lines a little taller than Calibri, so the rows leave it that much room
+    const FIT=FF?0.74:1;
+    const PAGE1=((info? 9900 : 10700)-SCW)*FIT, unit=(PAGE1-2*META)/bodyRows.reduce((s,r)=>s+r.w,0);
     const rows=[
       row(META,[labelCell("Date"),valCell(fmtDate(cf.confDate)),labelCell("Child"),valCell(childName(child))]),
       row(META,[labelCell("Birthdate"),valCell(fmtDate(child?.dob)),labelCell("Age"),valCell(ageAt(child?.dob,cf.confDate||undefined))]),
       ...bodyRows.flatMap(r=>[row(unit*r.w, r.cells), ...(r.sc? [scRow("school")] : [])])];
-    const PAGE2=11300-SCW, qh=(PAGE2-2*META)/REFLECTIONS.length;
+    const PAGE2=(11300-SCW)*FIT, qh=(PAGE2-2*META)/REFLECTIONS.length;
     const refRows=[row(META,[labelCell("Child"),valCell(childName(child),1,30),labelCell("Family Members Present"),valCell(cf.familyPresent)]),
       row(META,[labelCell("Date"),valCell(fmtDate(cf.reflDate||cf.confDate),3,80)]),
       scRow("home"),
       ...REFLECTIONS.map((r,i)=>row(qh,[new D.TableCell({borders,columnSpan:4,margins:{top:80,bottom:100,left:100,right:100},children:[new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:`${i+1}. ${r.q}`,bold:true,size:20})]}),...paras(cf.reflections?.[r.k])]})]))];
     const title=(t,brk)=>new D.Paragraph({spacing:{after:120},pageBreakBefore:!!brk,children:[new D.TextRun({text:t,bold:true,size:30,font:"Georgia"})]});
-    const conf=(t)=>new D.Paragraph({spacing:{before:160},children:[new D.TextRun({text:t,italics:true,size:16})]});
+    const conf=(t)=>new D.Paragraph({spacing:{before:0},children:[new D.TextRun({text:t,italics:true,size:16})]});
     const CONF="Confidential. Kept in the child's file and shared only with the family and educators.";
-    sections.push({properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:[
+    // the confidentiality line sits in the page footer, on both pages, so it never pushes a table onto a third page
+    sections.push({properties:{page:{margin:{top:720,bottom:720,left:720,right:720,footer:360}}},footers:{default:new D.Footer({children:[conf(CONF)]})},children:[
       new D.Paragraph({children:[new D.TextRun({text:"Fulton Community School & Farm",size:18,color:"55625A"})]}),
       title(`Family Conference · ${confLabel(cf)}`),
       new D.Paragraph({spacing:{after:80},children:[new D.TextRun({text:"Conference Date and Time  ",bold:true,size:20}),new D.TextRun({text:[fmtDate(cf.confDate),fmtTime(cf.confTime),cf.format].filter(Boolean).join(", ")||"________________",size:20}),new D.TextRun({text:"     Educators  ",bold:true,size:20}),new D.TextRun({text:cf.teacher||"________________",size:20})]}),
@@ -1446,14 +1459,13 @@ async function downloadDocx(list, child){
           new D.Paragraph({spacing:{before:60},children:[new D.TextRun({text:"Family's plan   ",bold:true,size:18}),...PLAN_BOXES.map(([v,l])=>new D.TextRun({text:`${info.plan===v?"\u2612":"\u2610"} ${l}     `,size:18}))]})]})]})]}), new D.Paragraph({spacing:{after:60},children:[]})] : []),
       new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Educators review the Family Questionnaire and current DRDP documentation before the conference.",italics:true,size:16})]}),
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows}),
-      conf(CONF),
       title("Family Reflections", true),
       new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Completed together with the family during the conference. These questions build on the Family Questionnaire and focus on what has grown and changed since the start of the year.",size:18})]}),
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:refRows}),
-      conf(CONF),
     ]});
   }
-  const doc=new D.Document({creator:"Fulton Community School & Farm",title:"Family Conference",styles:{default:{document:{run:{font:"Calibri"}}}},sections});
+  const doc=new D.Document(Object.assign({creator:"Fulton Community School & Farm",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
+    FF?{fonts:[{name:"Andika",data:FF.r}]}:{}));
   const blob=await D.Packer.toBlob(doc);
   const base=slug(childName(child));
   await saveFile(list.length===1? `${base}-conference-${list[0].term.toLowerCase()}-${list[0].schoolYear}.docx` : `${base}-conference-record.docx`, blob);
@@ -1465,7 +1477,10 @@ async function buildFormsPdf(items){
   const {PDFDocument, StandardFonts, rgb}=window.PDFLib;
   const doc=await PDFDocument.create();
   doc.setTitle("Family Conference"); doc.setAuthor("Fulton Community School & Farm");
-  const F={r:await doc.embedFont(StandardFonts.Helvetica), b:await doc.embedFont(StandardFonts.HelveticaBold), i:await doc.embedFont(StandardFonts.HelveticaOblique), t:await doc.embedFont(StandardFonts.TimesRomanBold)};
+  let F=null;const FF=await confFonts();
+  if(FF){ try{ await loadScript("https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"); doc.registerFontkit(window.fontkit);
+      const r=await doc.embedFont(FF.r), b=await doc.embedFont(FF.s), t=await doc.embedFont(FF.b); F={r,b,i:r,t}; }catch(e){ F=null; } }
+  if(!F) F={r:await doc.embedFont(StandardFonts.Helvetica), b:await doc.embedFont(StandardFonts.HelveticaBold), i:await doc.embedFont(StandardFonts.HelveticaOblique), t:await doc.embedFont(StandardFonts.TimesRomanBold)};
   const charset=new Set(F.r.getCharacterSet());
   const clean=s=>String(s??"").replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,"-").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
   const INK=rgb(.13,.16,.14), GRAY=rgb(.36,.4,.37), LINE=rgb(.6,.65,.62), GREEN=rgb(.894,.925,.902), GOLD=rgb(.79,.59,.16), CREAM=rgb(.992,.953,.847);
