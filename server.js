@@ -241,17 +241,18 @@ function conferenceEvents(from, to) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
     // the month's menu PDFs, for educators to open and print from the entry
     const pdfs = m.pdfs || {}; const fk = (pdfs.lunch || pdfs.snack) ? makeFileKey() : '';
-    // Kitchen's own PDFs, named as hers so they are never mistaken for the menus TREE prints on the Kitchen page
-    const print = ['lunch', 'snack'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? "Kitchen's original lunch PDF" : "Kitchen's original snack PDF", id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
+    const printOf = first => [first, first === 'lunch' ? 'snack' : 'lunch'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? 'Lunch menu' : 'Snack menu', id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
-      // one line a day, so the meals never crowd out the day's events. The entry lists the morning snack, lunch and
-      // the afternoon snack in order. Monday has the morning snack only.
+      // a morning snack, lunch, and an afternoon snack after lunch, each at the time kept with the month's menu.
+      // Monday has the morning snack only. A meal without a time shows across the day.
       const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim(), lunch = String(d.lunch || '').trim();
-      if (!am && !lunch && !pm) continue;
-      const note = m.notes || {};
-      const desc = [am ? 'Morning snack, ' + am + '.' : '', lunch ? 'Lunch, ' + lunch + '.' : '', pm ? 'Afternoon snack, ' + pm + '.' : '', [note.snack, note.lunch].filter(Boolean).join(' ')].filter(Boolean).join('\n');
-      events.push(Object.assign({ id: 'tmenu.' + day, cal: 'tmenu', title: 'Snack and lunch' + (lunch ? ', ' + lunch : ''), desc }, print.length ? { print } : {}, { allDay: true, start: day, end: day }));
+      const times = m.times || {}, note = m.notes || {};
+      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : ''; const print = printOf(key === 'lunch' ? 'lunch' : 'snack');
+        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, print.length ? { print } : {}, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
+      if (am) meal('am', 'Morning snack, ' + am, note.snack);
+      if (lunch) meal('lunch', 'Lunch, ' + lunch, note.lunch);
+      if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
     }
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
