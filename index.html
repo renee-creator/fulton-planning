@@ -2463,7 +2463,7 @@ async function loadTodayCal(force){
   }catch(e){todayCal={at:Date.now(),day,items:null,error:e&&e.message||"The calendar could not be reached."}}
   if(view==="today")renderToday();
 }
-function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${(x.print||[]).length&&window.FP_ORIGINAL_URL?`<span class="cnt">${x.print.map(p=>`<a href="${esc(window.FP_ORIGINAL_URL(p.id))}" target="_blank" rel="noopener">${esc(p.label||"Sally's original PDF")}</a>`).join(" · ")}</span>`:""}</div>`}
+function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${(x.print||[]).length&&window.FP_ORIGINAL_URL?`<span class="cnt">${x.print.map(p=>`<a href="${esc(window.FP_ORIGINAL_URL(p.id))}" target="_blank" rel="noopener">Print the ${esc(String(p.label||"menu").toLowerCase())}</a>`).join(" · ")}</span>`:""}</div>`}
 function todayWaiting(){
   const out=[],m=me(),dir=isDirector(),wk=mondayOf(new Date());
   const all=[...plans.values()].filter(p=>p.id!=="example");
