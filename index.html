@@ -1099,6 +1099,7 @@ async function boot(){
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
+    db.doc("settings/backup").onSnapshot(snap=>{backupInfo=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()});
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
@@ -8679,6 +8680,14 @@ function saveProgram(){
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
+// the weekly backup to Google Drive, made by the mailbox script on Monday evenings, and when the last one arrived
+let backupInfo=null;
+function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
+  const when=at?new Date(at).toLocaleString("en-US",{weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+  const old=at&&Date.now()-at>9*86400000;
+  return `<section class="card"><div class="lbl">Backups</div>
+    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once Renee has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
+    <div class="hint">Every Monday evening the whole set of TREE's records is kept in Google Drive, and the newest 26 are kept. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
 function renderSettings(){
   if(!isDirector()){const nm=VIEW_AS?VIEW_AS.name:(window.FP_NAME?window.FP_NAME():me());const rm=myRoom();
     $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
@@ -8695,6 +8704,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
+  ${backupHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
     <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
       <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div></section>`;

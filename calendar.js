@@ -356,5 +356,7 @@ async function handle(path, me, body, reply) {
 // what the TREE server needs to see. Today's entries for the Today screen come from here too.
 async function today(me, from, to) { if (!store.ready) await loadAll(); if (!store.ready) return null; const ev = await eventsFor(from, to); return { bookings: core.view(from, to), events: ev.events, settings: settingsFor({ director: false }) }; }
 function statusLine() { if (!store.ready) return [false, store.error || 'The calendar is still loading.']; const connected = core.program.calendars.filter(c => feedAddresses[c.id]).length; return [true, `The calendar holds ${core.count()} sign-ups and ${core.program.spaces.length} spaces, with ${connected} school calendar${connected === 1 ? '' : 's'} connected.`]; }
-return { loadAll, handle, today, flushEverything, statusLine, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
+// every calendar file as the records keep it, for the weekly backup
+function dump() { const out = {}; if (!store.ready) return out; for (const p of new Set([PROGRAM_PATH, FEEDS_PATH, ...store.shas.keys(), ...dirtyPaths])) { if (p === PROGRAM_PATH || p === FEEDS_PATH || /^calendar\/bookings\/\d{4}-\d{2}\.json$/.test(p)) out[p] = docFor(p); } return out; }
+return { loadAll, handle, today, flushEverything, statusLine, dump, get ready() { return store.ready; }, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
 };

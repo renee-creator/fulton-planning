@@ -115,6 +115,22 @@ It takes in its own observations, every observation and plan of a connected thre
 
 This repository holds code only. It never holds plans, children's names, or keys.
 
+## Weekly backup to Google Drive
+
+Every Monday at 6 pm, Pacific time, the TREE mailbox's Apps Script asks the server for a backup. The server first writes any saves still waiting, then answers with one gzipped JSON file holding every record it keeps, plans, observations, threads, projects, settings, children, conferences, slides, inquiries, newsletters, bins, menus, the grant records, scans, the calendar's sign-ups and settings, and the DRDP descriptors. A manifest inside names the date, the number of records of each kind, the server version, and every photo by its id with its Google Drive id. Sign-ins, access/accounts.json, are left out because they hold passcodes. The script saves the file as TREE backup YYYY-MM-DD.json.gz in the TREE backups folder of the mailbox's Google Drive, keeps the newest 26, about six months, and moves older ones to the Drive trash. The request goes to /inbound/backup with the same key as the other mailbox routes, and a sleeping server is asked again after it wakes. Settings shows the director a Backups card with the time the last backup arrived. Photos already live in Google Drive, and every record also keeps its full history in GitHub.
+
+To set it up, open the TREE mailbox's Apps Script project, add a script file named weekly-backup, paste tools/weekly-backup.gs into it, run setupWeeklyBackup once and allow the access Google asks for. Run weeklyBackup once to test it. The web app needs no new deployment, since doPost is unchanged.
+
+## Restore
+
+1. Download the backup you want from TREE backups in the mailbox's Google Drive.
+2. Clone the records repository, or start an empty folder for a new one.
+3. Run node tools/restore-backup.js "TREE backup 2026-10-19.json.gz" path/to/records. Each record is written back as its own file, at the path it had, in the format the server writes.
+4. Commit and push the folder to the records repository, and restart the service on Render so it reads them.
+5. Sign-ins are not in a backup. If they were lost too, the director adds the educators again in Settings, Sign-ins, and each chooses a passcode at first sign-in.
+
+Photos are not inside the backup. Those moved to Google Drive stay in the TREE photos folder, and the markers that point TREE to them, photos/*.ref, are listed in the manifest with their Drive ids. Photos still in the records come back with the records repository itself.
+
 ## Server settings on Render
 
 | Setting | What it holds |
@@ -125,7 +141,7 @@ This repository holds code only. It never holds plans, children's names, or keys
 | `ANTHROPIC_API_KEY` | The same key TREE uses |
 | `RECORDS_REPO` | Optional. Defaults to `renee-creator/fulton-planning-records` |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to use the server |
-| `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the Kaymbu Apps Script. Turns on Observations from Kaymbu |
+| `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the mailbox Apps Script. Turns on Observations from Kaymbu, order emails and the weekly backup |
 | `READS_PER_HOUR`, `CAREFUL_PER_HOUR` | Optional. Hourly Claude request limits, 800 and 400 by default, sized for a whole-school scan |
 
 ## Who can do what
