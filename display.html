@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>TREE Staff Room</title>
+<link rel="icon" href="tree-icons/favicon-32.png" type="image/png">
+<style>
+@font-face{font-family:"Andika";src:url(fonts/Andika-Regular.ttf) format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"Andika";src:url(fonts/Andika-Bold.ttf) format("truetype");font-weight:700;font-display:swap}
+:root{
+  --bg:#edf0e8; --paper:#fbfcf8; --ink:#1b2920; --muted:#4f5f55; --line:#c6d0c3;
+  --moss:#2b5a40; --sky:#245b78; --clay:#984331; --marigold:#9a5b07; --sun:#7a5c00;
+  --accent:var(--moss);
+  --u:min(1vw,1.78vh);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Andika","Segoe UI",system-ui,sans-serif;overflow:hidden}
+body.idle{cursor:none}
+#stage{position:fixed;inset:0}
+.slide{position:absolute;inset:0;display:flex;opacity:0;transition:opacity 1.4s ease}
+.slide.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.slide{transition:none}}
+
+/* a moment, the photo first and the educators' words beside it */
+.m .ph{flex:0 0 auto;height:100%;background:#dfe5da;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.m .ph img{width:100%;height:100%;object-fit:contain;display:block}
+.m .tx{flex:1;min-width:0;background:var(--paper);display:flex;flex-direction:column;justify-content:center;padding:calc(var(--u)*5) calc(var(--u)*4.5) calc(var(--u)*8.5)}
+.where{font-size:calc(var(--u)*1.7);color:var(--accent);font-weight:700;line-height:1.3}
+.when{font-size:calc(var(--u)*1.5);color:var(--muted);margin-top:calc(var(--u)*.3)}
+.noticed{font-size:calc(var(--u)*2.6);line-height:1.42;margin-top:calc(var(--u)*2.4);white-space:pre-line;max-width:34ch}
+.wonder{font-size:calc(var(--u)*2);line-height:1.45;color:var(--muted);margin-top:calc(var(--u)*2);max-width:38ch;padding-left:calc(var(--u)*1.4);border-left:calc(var(--u)*.35) solid var(--line)}
+.kids{font-size:calc(var(--u)*1.6);color:var(--muted);margin-top:calc(var(--u)*2.4)}
+
+/* the program's thinking, a thread, a project, the lens, an inquiry */
+.t{flex-direction:row;background:var(--paper)}
+.t .body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:calc(var(--u)*5) calc(var(--u)*6) calc(var(--u)*8.5)}
+.t .side{flex:0 0 38%;height:100%;background:#dfe5da;overflow:hidden}
+.t .side img{width:100%;height:100%;object-fit:cover;display:block}
+.kind{font-size:calc(var(--u)*1.8);font-weight:700;color:var(--accent)}
+.kind span{font-weight:400;color:var(--muted)}
+h1{font-size:calc(var(--u)*5);line-height:1.12;margin:calc(var(--u)*1) 0 0;font-weight:700;max-width:22ch;color:var(--ink)}
+.q{font-size:calc(var(--u)*2.7);line-height:1.38;margin-top:calc(var(--u)*2.2);max-width:30ch;color:var(--accent)}
+.blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--u)*26),1fr));gap:calc(var(--u)*2.4) calc(var(--u)*4);margin-top:calc(var(--u)*3.2)}
+.blk h2{font-size:calc(var(--u)*1.6);color:var(--muted);font-weight:700;margin:0 0 calc(var(--u)*.6)}
+.blk p{font-size:calc(var(--u)*2.1);line-height:1.45;margin:0;max-width:40ch}
+.words{font-size:calc(var(--u)*2.2);line-height:1.45;margin-top:calc(var(--u)*3);max-width:40ch;padding-left:calc(var(--u)*1.6);border-left:calc(var(--u)*.45) solid var(--accent)}
+.small{font-size:calc(var(--u)*1.6);color:var(--muted);margin-top:calc(var(--u)*2.4)}
+ul.qs{list-style:none;padding:0;margin:calc(var(--u)*3) 0 0}
+ul.qs li{font-size:calc(var(--u)*2.3);line-height:1.4;margin:0 0 calc(var(--u)*1.2);padding-left:calc(var(--u)*2.2);position:relative;max-width:40ch}
+ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--u)*.9);height:calc(var(--u)*.9);border-radius:50%;background:var(--accent)}
+
+/* the week ahead and today's food */
+.days{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--u)*22),1fr));gap:calc(var(--u)*2.4) calc(var(--u)*4);margin-top:calc(var(--u)*3.2)}
+.day h2{font-size:calc(var(--u)*2.1);margin:0 0 calc(var(--u)*.8);color:var(--accent)}
+.day div{font-size:calc(var(--u)*1.9);line-height:1.35;margin-bottom:calc(var(--u)*.7)}
+.day b{font-weight:400;color:var(--muted);margin-right:calc(var(--u)*.6)}
+.meals{display:flex;flex-wrap:wrap;gap:calc(var(--u)*2.4) calc(var(--u)*6);margin-top:calc(var(--u)*3)}
+.meal h2{font-size:calc(var(--u)*1.7);color:var(--muted);margin:0 0 calc(var(--u)*.4)}
+.meal p{font-size:calc(var(--u)*2.8);line-height:1.3;margin:0;max-width:22ch}
+.bin{margin-top:calc(var(--u)*4)}
+.bin h2{font-size:calc(var(--u)*1.7);color:var(--muted);margin:0 0 calc(var(--u)*1)}
+.bin ul{list-style:none;margin:0;padding:0;columns:3;column-gap:calc(var(--u)*4)}
+.bin li{font-size:calc(var(--u)*1.9);line-height:1.35;margin-bottom:calc(var(--u)*.8);break-inside:avoid}
+.bin li span{display:block;font-size:calc(var(--u)*1.4);color:var(--muted)}
+
+/* a quiet screen for messages and evening rest */
+.note{background:var(--bg);align-items:center;justify-content:center;text-align:center;flex-direction:column}
+.note .big{font-size:calc(var(--u)*4.2);font-weight:700;color:var(--moss);max-width:28ch;line-height:1.2}
+.note .sub{font-size:calc(var(--u)*2);color:var(--muted);max-width:44ch;margin-top:calc(var(--u)*2);line-height:1.45}
+.rest .clock{font-size:calc(var(--u)*9);color:var(--moss);font-weight:700;letter-spacing:.02em}
+.rest .sub{margin-top:calc(var(--u)*1)}
+
+#foot{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;padding:0 calc(var(--u)*2.2);height:calc(var(--u)*5);font-size:calc(var(--u)*1.4);color:var(--muted);pointer-events:none;z-index:2}
+#foot span{background:rgba(251,252,248,.88);padding:calc(var(--u)*.3) calc(var(--u)*1);border-radius:999px}
+#foot .now{font-weight:700;color:var(--ink)}
+#bar{position:fixed;left:0;bottom:0;height:calc(var(--u)*.4);width:0;background:var(--accent);z-index:3;opacity:.7}
+#foot.away{display:none}
+#hint{position:fixed;top:calc(var(--u)*2);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:calc(var(--u)*1.6);padding:calc(var(--u)*1) calc(var(--u)*2.4);border-radius:999px;z-index:4;transition:opacity .6s}
+#hint.gone{opacity:0}
+#dot{position:fixed;top:calc(var(--u)*1.6);right:calc(var(--u)*1.6);width:calc(var(--u)*1.1);height:calc(var(--u)*1.1);border-radius:50%;background:var(--marigold);z-index:4;display:none}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="foot"><span>Observe Provoke Document Reflect Evolve</span><span class="now" id="now"></span></div>
+<div id="bar"></div>
+<div id="dot" title="The last update did not arrive. The display keeps showing what it has and tries again."></div>
+<div id="hint">Click once to fill the screen</div>
+<script>
+/* TREE in the staff room. A read-only screen that slowly turns through what is alive in the program, the moments
+   educators keep, the threads and projects the school follows, the year's lens, team inquiries the director shares,
+   the week ahead and today's food. It opens with the display link made in TREE Settings and asks nothing of anyone. */
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const want=(qs.get("server")||"").replace(/\/+$/,"");
+  const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+  const SERVER=local?want:"https://fulton-planning.onrender.com";
+  const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+  // the key arrives once in the link, is kept on this computer, and is taken out of the address so it never shows on screen
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get("k")){LS.set("tree-display-key",h.get("k"));history.replaceState(null,"",location.pathname+location.search)}
+  const KEY=LS.get("tree-display-key")||"";
+
+  const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
+  const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
+  const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const ACC={moment:"var(--moss)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",week:"var(--moss)",food:"var(--moss)"};
+  let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
+
+  const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const whenOf=t=>{const d=new Date(t),today=new Date();const same=(a,b)=>a.toDateString()===b.toDateString();const y=new Date();y.setDate(y.getDate()-1);
+    return same(d,today)?"Today":same(d,y)?"Yesterday":d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})};
+  const timeOf=s=>{const m=/T(\d{2}):(\d{2})/.exec(s);if(!m)return "";let hh=+m[1];const ap=hh<12?"AM":"PM";hh=hh%12||12;return m[2]==="00"?hh+" "+ap:hh+":"+m[2]+" "+ap};
+  const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" classes";
+  const names=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a.slice(-1);
+  const img=p=>p&&p.src?`<img src="${esc(SERVER+p.src)}" alt="">`:"";
+
+  /* each screen */
+  function momentHtml(m){const p=m.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;const w=portrait?40:p.w&&p.h&&p.w/p.h>1.6?66:60;
+    return `<div class="ph" style="width:${w}%">${img(p)}</div><div class="tx">
+      <div class="where">${esc(roomsText(m.rooms))}</div><div class="when">${esc(whenOf(m.at))}</div>
+      ${m.noticed?`<div class="noticed">${esc(m.noticed)}</div>`:""}
+      ${m.wonder?`<div class="wonder">${esc(m.wonder)}</div>`:""}
+      ${m.children&&m.children.length?`<div class="kids">With ${esc(names(m.children))}</div>`:""}</div>`}
+  function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" class":"across the school")}</span></div>
+      <h1>${esc(t.name)}</h1>${t.question?`<div class="q">${esc(t.question)}</div>`:""}
+      ${t.words?`<div class="words">${esc(t.words)}</div>`:""}
+      ${t.weeks>1?`<div class="small">Seen across ${t.weeks} weeks</div>`:""}</div>${t.photo?`<div class="side">${img(t.photo)}</div>`:""}`}
+  function projectHtml(x){const b=[["The experience it grew from",x.experience],["What may lie underneath",x.underneath],["Our intent as educators",x.intent]].filter(v=>v[1]).slice(0,x.photo?2:3);
+    return `<div class="body"><div class="kind">Project <span>${esc(roomsText(x.rooms))}</span></div><h1>${esc(x.name)}</h1>
+      <div class="blocks">${b.map(([k,v])=>`<div class="blk"><h2>${esc(k)}</h2><p>${esc(v)}</p></div>`).join("")}</div>
+      ${x.threads&&x.threads.length?`<div class="small">Threads in it, ${esc(names(x.threads))}</div>`:""}</div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
+  function lensHtml(l){return `<div class="body"><div class="kind">This year's lens</div><h1>${esc(l.name)}</h1>
+      ${l.description?`<div class="q">${esc(l.description)}</div>`:""}
+      ${l.questions.length?`<ul class="qs">${l.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}</div>`}
+  function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
+    return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
+      <div class="blocks">${b.map(([k,v])=>`<div class="blk"><h2>${esc(k)}</h2><p style="white-space:pre-line">${esc(v)}</p></div>`).join("")}</div>
+      ${x.lookAgain?`<div class="small">We look again ${esc(dayName(x.lookAgain))}</div>`:""}</div>`}
+  function weekHtml(w){const by={};for(const e of w){const d=e.start.slice(0,10);(by[d]=by[d]||[]).push(e)}
+    const days=Object.keys(by).sort().slice(0,6);
+    return `<div class="body"><div class="kind">The week ahead</div><h1>Coming up</h1><div class="days">${days.map(d=>`<div class="day"><h2>${esc(d===feed.today?"Today":dayName(d).split(",")[0])}</h2>
+      ${by[d].map(e=>`<div>${!e.allDay&&timeOf(e.start)?`<b>${esc(timeOf(e.start))}</b>`:""}${esc(e.title)}</div>`).join("")}</div>`).join("")}</div></div>`}
+  function foodHtml(m,b){const meals=m?[["Morning snack",m.am],["Lunch",m.lunch],["Afternoon snack",m.pm]].filter(v=>v[1]):[];
+    return `<div class="body"><div class="kind">Food at Fulton</div><h1>${meals.length?"Today's table":"This week's bin"}</h1>
+      ${meals.length?`<div class="meals">${meals.map(([k,v])=>`<div class="meal"><h2>${esc(k)}</h2><p>${esc(v)}</p></div>`).join("")}</div>`:""}
+      ${b&&b.items.length?`<div class="bin"><h2>${meals.length?"In this week's FEED bin":esc(b.label||"FEED bin")}</h2><ul>${b.items.map(i=>`<li>${esc(i.name)}${i.farm?`<span>${esc(i.farm)}</span>`:""}</li>`).join("")}</ul></div>`:""}</div>`}
+
+  /* the order. Moments carry the screen, and every third one the program's thinking takes a turn. */
+  function build(){
+    const M=(feed.moments||[]).map(m=>({k:"moment",cls:"m",id:"m"+m.id,html:()=>momentHtml(m),src:m.photo&&m.photo.src}));
+    const O=[];
+    (feed.lenses||[]).forEach(l=>O.push({k:"lens",cls:"t",id:"l"+l.name,html:()=>lensHtml(l)}));
+    const P=(feed.projects||[]).map(x=>({k:"project",cls:"t",id:"p"+x.id,html:()=>projectHtml(x),src:x.photo&&x.photo.src}));
+    const T=(feed.threads||[]).map(t=>({k:"thread",cls:"t",id:"t"+t.id,html:()=>threadHtml(t),src:t.photo&&t.photo.src}));
+    const I=(feed.inquiries||[]).map(x=>({k:"inquiry",cls:"t",id:"i"+x.id,html:()=>inquiryHtml(x)}));
+    // projects, threads and inquiries take turns so no one kind fills a stretch of the day
+    const n=Math.max(P.length,T.length,I.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(T[i])O.push(T[i]);if(I[i])O.push(I[i])}
+    if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
+    if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
+    if(!M.length)return O;
+    const out=[];let o=0;M.forEach((m,i)=>{out.push(m);if(i%3===2&&O.length)out.push(O[o++%O.length])});
+    // anything not reached in one turn through the moments still comes round
+    while(O.length&&o<O.length){out.splice(Math.min(out.length,(o+1)*4),0,O[o]);o++}
+    return out}
+
+  /* fit, so a long reading shrinks rather than runs off the screen */
+  function fit(el){const box=el.querySelector(".tx,.body");if(!box)return;let f=1;box.style.justifyContent="flex-start";
+    const over=()=>box.scrollHeight>box.clientHeight+2;
+    while(over()&&f>.6){f-=.04;el.style.setProperty("--u",`calc(min(1vw,1.78vh)*${f.toFixed(2)})`)}
+    box.style.justifyContent=""}
+
+  function show(item){
+    const el=document.createElement("div");el.className="slide "+item.cls;el.style.setProperty("--accent",ACC[item.k]||"var(--moss)");
+    el.innerHTML=item.html();stage.appendChild(el);bar.style.background=ACC[item.k]||"var(--moss)";
+    const go=()=>{fit(el);requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);old.forEach(c=>c.classList.remove("on"));setTimeout(()=>old.forEach(c=>c.remove()),1600)})};
+    const im=el.querySelector("img");if(im&&!im.complete){let done=false;const once=()=>{if(!done){done=true;go()}};im.onload=once;im.onerror=()=>{const ph=el.querySelector(".ph,.side");if(ph)ph.innerHTML="";once()};setTimeout(once,4000)}else go();
+    const ms=item.k==="moment"?MOMENT_MS:CARD_MS;
+    bar.style.transition="none";bar.style.width="0";requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition=`width ${ms}ms linear`;bar.style.width="100%"}));
+    // the next picture is fetched now, so it arrives already loaded
+    const nx=list[(pos+1)%list.length];if(nx&&nx.src){const p=new Image();p.src=SERVER+nx.src}
+    clearTimeout(timer);timer=setTimeout(next,ms)}
+  function next(){if(stopped||resting())return quiet();if(!list.length)return note("Nothing to show yet","Observations with photos, threads and projects appear here as educators keep them in TREE.");pos=(pos+1)%list.length;show(list[pos])}
+
+  function note(big,sub,cls){clearTimeout(timer);bar.style.transition="none";bar.style.width="0";
+    const el=document.createElement("div");el.className="slide note "+(cls||"");el.innerHTML=`<div class="big">${esc(big)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:""}`;stage.appendChild(el);
+    requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);setTimeout(()=>old.forEach(c=>c.remove()),1600)})}
+
+  /* evening rest, from seven at night to six in the morning, a slow clock so the screen is not holding one picture all night */
+  const resting=()=>{const h=new Date().getHours();return h>=19||h<6};
+  let restEl=null;
+  function quiet(){if(stopped)return;if(!resting()){restEl=null;foot.classList.remove("away");pos=-1;return next()}
+    foot.classList.add("away");
+    if(!restEl||!restEl.isConnected){note("","");restEl=stage.lastElementChild;restEl.classList.add("rest");restEl.innerHTML=`<div class="clock"></div><div class="sub">TREE rests until morning</div>`}
+    restEl.querySelector(".clock").textContent=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+    restEl.style.paddingTop=(Math.random()*30)+"vh";restEl.style.justifyContent="flex-start";
+    clearTimeout(timer);timer=setTimeout(quiet,60000)}
+
+  async function load(){
+    if(!KEY){stopped="key";note("This screen needs its display link","In TREE, open Settings, then Staff room display, and open the link on this computer.");return}
+    try{const r=await fetch(SERVER+"/display/feed",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:KEY})});
+      let j={};try{j=await r.json()}catch(e){}
+      if(r.status===403){stopped="key";note("This display link is no longer in use","In TREE, open Settings, then Staff room display, and open the current link on this computer.");return}
+      if(!r.ok)throw new Error(j.error||String(r.status));
+      const first=!feed;feed=j;lastOk=Date.now();dot.style.display="none";stopped="";
+      const cur=list[pos];list=build();
+      // keep going from where the screen was, so a refresh never restarts the turn
+      if(first){pos=-1;next()}else if(cur){const at=list.findIndex(x=>x.id===cur.id);pos=at>=0?at:Math.min(pos,list.length-1)}
+    }catch(e){if(Date.now()-lastOk>FETCH_MS*1.5)dot.style.display="block";if(!feed){note("TREE is waking up","The display tries again in a minute.");setTimeout(load,60000);return}}
+  }
+
+  /* the clock in the corner */
+  const nowEl=document.getElementById("now");
+  function tick(){nowEl.textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+"   "+new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}
+  tick();setInterval(tick,15000);
+
+  /* keep the screen awake, fill it on one click, and hide the pointer */
+  let lock=null;async function wake(){try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}}
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")wake()});wake();
+  const hint=document.getElementById("hint");setTimeout(()=>hint.classList.add("gone"),12000);
+  document.addEventListener("click",()=>{hint.classList.add("gone");const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{});wake()});
+  let idle;document.addEventListener("mousemove",()=>{document.body.classList.remove("idle");clearTimeout(idle);idle=setTimeout(()=>document.body.classList.add("idle"),3000)});
+  document.body.classList.add("idle");
+
+  load();setInterval(()=>{if(stopped!=="key")load()},FETCH_MS);
+  // a fresh start each night picks up any change to the display itself
+  setInterval(()=>{const d=new Date();if(d.getHours()===3&&d.getMinutes()<10)location.reload()},5*60000);
+})();
+</script>
+</body>
+</html>

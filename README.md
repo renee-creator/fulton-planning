@@ -107,6 +107,14 @@ An inquiry holds what we see, when and where it happens, readings of what it mig
 
 It takes in its own observations, every observation and plan of a connected thread, and connected projects. It gives back on each of them. Observations show the inquiry they are kept for, threads open one, projects list the inquiries alongside them, the Lens lists the inquiries read through it, Today shows an inquiry on its look-again date, and a plan started from an inquiry keeps it in The evidence panel, with the things to try that belong in the curriculum. Observations kept for an inquiry stay out of portfolios and walls. Prints come as a summary and a full PDF, each with Word.
 
+## Staff room display
+
+A screen in the staff room turns slowly through what is alive in TREE, read only. It shows recent observations with photos and the educators' words, the threads the school is following, open projects, the year's lenses, the team inquiries the director shares, the week ahead from the school calendars with birthdays, and today's snack and lunch with this week's FEED bin. Moments carry the screen, and every third one a thread, project, lens, inquiry or the week takes a turn. A long reading shrinks to fit rather than running off the screen. From 7 at night to 6 in the morning it rests on a slow clock.
+
+The page is `display.html`. The director makes its link in Settings, Staff room display, opens it once on the staff room computer, and clicks once to fill the screen. The link carries its own long key, kept on that computer and taken out of the address, and the key reaches only `/display/feed`, never a sign-in or any other record. Making a new link or turning the display off stops the old one at once. The key is kept in settings/display, which only the director's TREE receives. The display asks for new content every ten minutes and reloads itself each night to pick up changes to the page.
+
+Observations kept for a team inquiry stay off the display, as they stay off walls. Each open team inquiry has a switch on its page, the director's alone, and one whose observations name a single child stays off until she turns it on. Family conferences and children's details beyond first names never appear.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
