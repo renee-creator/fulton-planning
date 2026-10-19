@@ -102,7 +102,7 @@ function matchPasscode(given) {
 const wrongTries = new Map(); let wrongAll = [];
 // Render adds the visitor's real address as the last entry, and earlier entries can be made up by the sender
 function who(req) { const parts = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean); return parts[parts.length - 1] || (req.socket && req.socket.remoteAddress) || 'unknown'; }
-function blocked(ip) { const now = Date.now(); const t = wrongTries.get(ip); return !!t && t.until > now && t.count >= 10; }
+function blocked(ip) { const now = Date.now(); const t = wrongTries.get(ip); return !!t && t.until > now && t.count >= 40; }
 function noteWrong(ip) { const now = Date.now(); if (wrongTries.size > 5000) for (const [k, v] of wrongTries) if (v.until <= now) wrongTries.delete(k); const t = wrongTries.get(ip); if (!t || t.until <= now) wrongTries.set(ip, { count: 1, until: now + 600000 }); else t.count++; }
 
 /* ---------- TREE sign-ins. Each educator signs in with their first name and a 4-digit passcode they set the first time.
@@ -110,7 +110,7 @@ function noteWrong(ip) { const now = Date.now(); if (wrongTries.size > 5000) for
    in the records, never in what is sent to a browser, and only the director's Settings asks for it. ---------- */
 const ACCOUNTS_PATH = 'access/accounts.json';
 const accounts = { list: [], sha: null, loaded: false, saving: Promise.resolve() };
-const nameKey = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+const nameKey = n => String(n || '').normalize('NFKC').replace(/\./g, ' ').trim().replace(/\s+/g, ' ').toLowerCase();
 function accountFor(name) { const k = nameKey(name); return k ? accounts.list.find(a => nameKey(a.name) === k) : null; }
 async function loadAccounts() {
   const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`);
@@ -781,12 +781,11 @@ async function handle(req, res) {
       // two educators can share a first name, so a first name that starts several sign-ins asks for the full name
       if (!a && given.length < 6) {
         const near = accounts.list.filter(x => nameKey(x.name).split(' ')[0] === nameKey(name).split(' ')[0]);
-        if (near.length > 1) { noteWrong(ip); nameWrong(name); err(req, res, 400, 'Type your full name, the way Renee added it.'); return; }
+        if (near.length > 1) { err(req, res, 400, 'More than one person is named ' + near[0].name.split(' ')[0] + '. Type ' + near.map(x => x.name).join(' or ') + '.'); return; }
         if (near.length === 1) a = near[0];
       }
       if (a) {
         if (!a.code) {
-          // the first sign-in uses the starting code the director gave, then sets the educator's own four numbers
           // the first sign-in sets the educator's own four numbers, as Renee wants
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
