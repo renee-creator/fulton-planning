@@ -4150,7 +4150,7 @@ function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNoti
   if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}
   else{const pick=(th?threadNotices(th):ns).slice(0,6).reverse();
     if(pick.length){np.fields.observation=pick.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");np.noticeAdded=pick.map(n=>n.id);np.noticeUsed=pick.map(n=>n.id)}}
-  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
   toast(th?`The plan continues ${th.name}. The project's evidence is beside it.`:"The plan begins from the project. Its evidence is beside it.")}
 // the director follows a pattern as a thread, and its observations are kept for that thread
 function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
@@ -5660,10 +5660,10 @@ function planFromInquiry(x,kind){
     let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     const made=!cp;if(made)cp=newPlan("classroom",{classroom:room});
     cp.inquiries=[...new Set([...(cp.inquiries||[]),x.id])];plans.set(cp.id,cp);persist(cp);
-    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}. The inquiry is beside it.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return}
   const np=newPlan("individual",{classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
-  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>760;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
   toast("Write the plan for the whole group. The inquiry and its evidence are beside it.")}
 
 function inquiryDoc(x,long){
@@ -5828,7 +5828,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.datase
 /* ---------- The evidence a plan began from ----------
    A plan started from a pattern, a thread or a project keeps that evidence beside it while it is written. Plans that
    follow a thread, or that took in observations, show theirs the same way. Nothing here changes the plan. */
-let evOpen=LS.get("fps.evopen",window.innerWidth>760?"1":"0")!=="0";
+let evOpen=LS.get("fps.evopen",window.innerWidth>=1100?"1":"0")!=="0";
 function planEvidence(p){
   if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return null;
   const src=p.source||{},heads=[],seen=new Map();
