@@ -17,6 +17,7 @@
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 30 * 1024 * 1024;
@@ -338,6 +339,21 @@ async function doLoad() {
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
 
+// one bundle of every record, built once from what the server holds. Each file keeps its path in the records repository,
+// so tools/restore-backup.js can write the set back as it was.
+let lastBackup = null;
+function backupBundle(saved) {
+  const files = {}, counts = {};
+  for (const [kind, m] of Object.entries(store.recs)) { let n = 0; for (const [id, r] of m) { if (!r || r.deleted || !r.doc) continue; files[`${kind}/${id}.json`] = r.doc; n++; } counts[kind] = n; }
+  let cal = 0; try { for (const [p, d] of Object.entries(calendar.dump())) { files[p] = d; cal++; } } catch (e) { log('The calendar could not be added to the backup', e.message); }
+  counts.calendar = cal;
+  if (DRDP_DESC) { files[DRDP_PATH] = DRDP_DESC; counts.drdp = 1; }
+  const photos = [...store.originals.entries()].map(([id, o]) => Object.assign({ id, size: Number(o.size) || 0 }, o.drive ? { drive: o.drive, ref: o.ref } : { path: o.path }));
+  const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  return { manifest: { kind: 'TREE backup', date: day, at: new Date().toISOString(), version: process.env.RENDER_GIT_COMMIT || 'unknown', repo: RECORDS_REPO, branch: store.branch, files: Object.keys(files).length, counts, savedFirst: saved,
+      photos: { total: photos.length, inDrive: photos.filter(p => p.drive).length, list: photos },
+      left: 'Sign-ins, access/accounts.json, are not in the backup because they hold passcodes. Photos are listed by id and Drive id, and the photo files stay in Google Drive and the records.' }, files };
+}
 async function recheckRecords() {
   const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
   if (tree.status !== 200) return;
@@ -709,6 +725,27 @@ async function handle(req, res) {
     let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     if (!store.ready) await loadAll();
     await kaymbuInbox.handle(req, res, url, b, (status, obj) => json(req, res, status, obj)); return;
+  }
+  // the weekly backup, asked for by the mailbox script on Monday evenings. Waiting saves are written first, then every
+  // record kind comes back as one gzipped JSON bundle the script keeps in Google Drive. Sign-ins stay out, since they hold passcodes.
+  if (path === '/inbound/backup') {
+    let b = {}; try { b = await readBody(req, 64 * 1024); } catch (e) { b = {}; }
+    const key = cleanKey(process.env.KAYMBU_INBOX_KEY), given = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (b && b.key) || '');
+    if (!key || !given || !sameText(given, key)) { log('Backup refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
+    if (!store.ready) await loadAll();
+    if (!store.ready) { err(req, res, 503, 'The records could not be loaded, so there is nothing to back up yet.'); return; }
+    if (!calendar.ready) { try { await calendar.loadAll(); } catch (e) { log('The calendar could not be loaded for the backup', e.message); } }
+    const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)])).every(Boolean);
+    const bundle = backupBundle(saved);
+    const gz = zlib.gzipSync(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 9 });
+    lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
+    // the time is kept in the records too, so the director's Settings shows it after the server has slept
+    const cur = store.recs.settings.get('backup');
+    store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Weekly backup' } }));
+    noteChange('settings', 'backup'); scheduleSave('settings', 'backup');
+    log('Backup sent,', bundle.manifest.files, 'files,', Math.round(gz.length / 1024), 'KB');
+    send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store' }, gz);
+    return;
   }
   if (path === '/inbound/feed-order') {
     let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
