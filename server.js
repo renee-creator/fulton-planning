@@ -241,18 +241,17 @@ function conferenceEvents(from, to) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
     // the month's menu PDFs, for educators to open and print from the entry
     const pdfs = m.pdfs || {}; const fk = (pdfs.lunch || pdfs.snack) ? makeFileKey() : '';
-    const printOf = first => [first, first === 'lunch' ? 'snack' : 'lunch'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? 'Lunch menu' : 'Snack menu', id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
+    // Sally's own PDFs, named as hers so they are never mistaken for the menus TREE prints on the Kitchen page
+    const print = ['lunch', 'snack'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? "Sally's original lunch PDF" : "Sally's original snack PDF", id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
-      // a morning snack, lunch, and an afternoon snack after lunch, each at the time kept with the month's menu.
-      // Monday has the morning snack only. A meal without a time shows across the day.
+      // one line a day, so the meals never crowd out the day's events. The entry lists the morning snack, lunch and
+      // the afternoon snack in order. Monday has the morning snack only.
       const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim(), lunch = String(d.lunch || '').trim();
-      const times = m.times || {}, note = m.notes || {};
-      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : ''; const print = printOf(key === 'lunch' ? 'lunch' : 'snack');
-        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, print.length ? { print } : {}, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
-      if (am) meal('am', 'Morning snack, ' + am, note.snack);
-      if (lunch) meal('lunch', 'Lunch, ' + lunch, note.lunch);
-      if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
+      if (!am && !lunch && !pm) continue;
+      const note = m.notes || {};
+      const desc = [am ? 'Morning snack, ' + am + '.' : '', lunch ? 'Lunch, ' + lunch + '.' : '', pm ? 'Afternoon snack, ' + pm + '.' : '', [note.snack, note.lunch].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+      events.push(Object.assign({ id: 'tmenu.' + day, cal: 'tmenu', title: 'Snack and lunch' + (lunch ? ', ' + lunch : ''), desc }, print.length ? { print } : {}, { allDay: true, start: day, end: day }));
     }
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
@@ -451,24 +450,35 @@ function kitchenName(item) {
   const name = (v ? v + ' ' + food.toLowerCase() : food) + (dash ? ', ' + dash.trim() : '');
   return { name: name.charAt(0).toUpperCase() + name.slice(1), food: food.toLowerCase() };
 }
-function kitchenWeeks() {
-  const mon = mondayFor(laDayOf(Date.now())), weeks = [mon, addDay(mon, 7)].map(m => ({ monday: m, items: [] }));
+// a week's produce for the kitchen. One food from one farm is one line, so two lettuces from Longer Table Farm read
+// Lettuce, Little Gem Green and Little Gem Red. Food bought for education stays with the classes.
+function kitchenItemsFor(mon) {
+  const items = [];
   for (const [, r] of store.recs.grant) {
     const o = r && !r.deleted && r.doc; if (!o || o.kind !== 'order') continue;
-    const day = o.fulfilled || ''; const wk = weeks.find(w => day >= w.monday && day <= addDay(w.monday, 6)); if (!wk) continue;
+    const day = o.fulfilled || ''; if (!(day >= mon && day <= addDay(mon, 6))) continue;
     for (const x of o.items || []) {
-      if (/FEED\s*Bin/i.test(x.item || '') || /^feed cooperative/i.test(String(x.producer || '').trim()) || /\bbox\b/i.test(x.item || '')) continue;
+      if (x.use === 'education' || /FEED\s*Bin/i.test(x.item || '') || /^feed cooperative/i.test(String(x.producer || '').trim()) || /\bbox\b/i.test(x.item || '')) continue;
       const k = kitchenName(x.item); if (!k.name) continue;
       const farm = String(x.producer || '').trim();
       // how the kitchen serves it, a side dish, cooked into a dish, or both, once the director has said
       const serve = x.serve && typeof x.serve === 'object' ? { side: !!x.serve.side, cooked: !!x.serve.cooked } : null;
-      const have = wk.items.find(y => y.name === k.name && y.farm === farm);
-      if (!have) wk.items.push(Object.assign({ name: k.name, food: k.food, farm, day }, serve ? { serve } : {}));
-      else if (serve) have.serve = { side: !!(have.serve && have.serve.side) || serve.side, cooked: !!(have.serve && have.serve.cooked) || serve.cooked };
+      const have = items.find(y => y.food === k.food && y.farm === farm);
+      if (!have) items.push(Object.assign({ name: k.name, names: [k.name], food: k.food, farm, day }, serve ? { serve } : {}));
+      else { if (!have.names.includes(k.name)) have.names.push(k.name); if (serve) have.serve = { side: !!(have.serve && have.serve.side) || serve.side, cooked: !!(have.serve && have.serve.cooked) || serve.cooked }; }
     }
   }
-  weeks.forEach(w => w.items.sort((a, b) => a.food.localeCompare(b.food) || a.name.localeCompare(b.name)));
-  return weeks;
+  for (const it of items) if (it.names.length > 1) {
+    const re = new RegExp('\\s*\\b' + it.food.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?\\b', 'i');
+    const kinds = it.names.map(n => n.replace(re, '').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    it.name = it.food[0].toUpperCase() + it.food.slice(1) + (kinds.length ? ', ' + (kinds.length < 2 ? kinds[0] : kinds.slice(0, -1).join(', ') + ' and ' + kinds[kinds.length - 1]) : '');
+  }
+  items.sort((a, b) => a.food.localeCompare(b.food) || a.name.localeCompare(b.name));
+  return items;
+}
+function kitchenWeeks() {
+  const mon = mondayFor(laDayOf(Date.now()));
+  return [mon, addDay(mon, 7)].map(m => ({ monday: m, items: kitchenItemsFor(m).map(({ names, ...it }) => it) }));
 }
 
 /* ---------- DRDP (2025) definitions and level descriptors ----------
@@ -959,8 +969,10 @@ async function handle(req, res) {
     const mon = String(body.monday || ''), name = String(body.name || ''), farm = String(body.farm || '').trim(), field = body.field === 'side' ? 'side' : body.field === 'cooked' ? 'cooked' : '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mon) || !name || !farm || !field) { err(req, res, 400, 'That answer could not be read.'); return; }
     let n = 0;
+    // a line that joins two kinds of one food answers for both
+    const line = kitchenItemsFor(mon).find(it => it.farm === farm && (it.name === name || it.names.includes(name))); const names = line ? line.names : [name];
     for (const [id, r] of store.recs.grant) { const o = r && !r.deleted && r.doc; if (!o || o.kind !== 'order') continue; const day = o.fulfilled || ''; if (day < mon || day > addDay(mon, 6)) continue;
-      (o.items || []).forEach(x => { if (String(x.producer || '').trim() !== farm || kitchenName(x.item).name !== name) return; x.serve = Object.assign({ side: false, cooked: false }, x.serve || {}, { [field]: !!body.value }); n++; });
+      (o.items || []).forEach(x => { if (String(x.producer || '').trim() !== farm || !names.includes(kitchenName(x.item).name)) return; x.serve = Object.assign({ side: false, cooked: false }, x.serve || {}, { [field]: !!body.value }); n++; });
       if (n) { o.updatedByName = me.name; r.local = true; noteChange('grant', id); scheduleSave('grant', id); } }
     if (!n) { err(req, res, 404, 'That food was not found on this week\'s orders.'); return; }
     log('Served as', field, !!body.value, name, 'by', me.name); json(req, res, 200, { ok: true }); return;
