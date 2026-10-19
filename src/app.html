@@ -306,7 +306,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .iqob img{width:84px;height:104px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
 .evclamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 /* the evidence a plan began from, beside the plan while it is written */
-#evbtn{position:fixed;right:18px;bottom:18px;z-index:40;box-shadow:var(--shadow)}
+#evbtn{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:40;box-shadow:var(--shadow)}
 #evpanel{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:45;background:var(--paper);border-left:1px solid var(--line);box-shadow:-4px 0 18px rgba(27,41,32,.12);display:flex;flex-direction:column}
 #evpanel .evhead{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
 #evpanel .evbody{overflow:auto;padding:12px 14px 40px;display:grid;gap:12px;align-content:start}
@@ -318,7 +318,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 @media (min-width:1100px){body.evopen{padding-right:430px}}
 #evpanel .evclamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;cursor:pointer}
 #evpanel .evclamp.full{display:block}
-@media (max-width:760px){#evbtn{bottom:92px}#evpanel{top:auto;height:62vh;width:100vw;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}}
+@media (max-width:760px){#evbtn{bottom:calc(136px + env(safe-area-inset-bottom,0px))}#evpanel{top:auto;height:62vh;width:100vw;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}}
 @media print{#evbtn,#evpanel{display:none!important}}
 .nw-thumb img{display:block;width:120px;height:150px;object-fit:cover;border-radius:8px;background:var(--bg)}
 @media (max-width:520px){.nw-row{grid-template-columns:84px minmax(0,1fr)}.nw-thumb img{width:84px;height:110px}}
@@ -1105,7 +1105,7 @@ function renderMain(){
     </div>
     <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
     <div class="actions"><span class="muted" style="font-size:13px">Status</span>
-      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}">${v}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"Renee marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
     </div>
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
@@ -2257,7 +2257,7 @@ function todayWaiting(){
   if(dir)for(const p of all.filter(p=>p.status==="ready"&&p.weekOf>=addDays(wk,-14)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,6))
     out.push({dot:"sky",t:`Ready for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
   // the Individual plan comes first on Monday, so the team can write the Classroom plan from it
-  const mg=myGroups();if(!dir&&mg.length&&!all.some(p=>p.weekOf===wk&&(p.type==="individual"||p.type==="smallgroup")&&isMine(p,m)))
+  const mg=myGroups();if(!dir&&mg.length&&!all.some(p=>p.weekOf===planWeekNow()&&(p.type==="individual"||p.type==="smallgroup")&&isMine(p,m)))
     out.push({dot:"mari",t:"Your Individual plan for this week",s:"Monday is the day for Individual plans, so the team can write the Classroom plan from them.",act:`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`,b:"Start it"});
   for(const p of all.filter(p=>p.weekOf===wk&&p.status==="draft"&&m&&(p.educator||"").toLowerCase()===m.toLowerCase()).slice(0,3))
     out.push({dot:"mari",t:`Finish your ${FORMS[p.type].short} plan`,s:planTitle(p),act:`data-open="${p.id}"`,b:"Open"});
@@ -5150,7 +5150,7 @@ function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${K.head}, ${esc(room)} class</h3><span class="cnt">${atTable.length?atTable.length+" using this week":all.length?"None chosen yet":""}</span></div>
     <div class="cnt" style="margin-bottom:8px">${kind==="prep"?"The food here is for preparing, tasting and sharing, and someone will eat it. Anything left goes in the chicken buckets for the chickens and goats at the end of the day. ":""}The ones used this week print on the bin sheet for the table.${kind==="question"?" The educator with the group decides what to follow once the children are in it.":""}</div>
     ${fits.length?`<div class="lbl" style="margin-top:6px">${esc(room)}'s ideas for this week's produce</div>${fits.map(i=>ideaRow(i)).join("")}`:""}
-    ${rest.length?`<details${fits.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:8px">${fits.length?"More of ${esc(room)}'s ideas, "+rest.length:esc(room)+"'s ideas, "+rest.length}</summary>${rest.map(i=>ideaRow(i)).join("")}</details>`:""}
+    ${rest.length?`<details${fits.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:8px">${fits.length?"More of "+esc(room)+"'s ideas, "+rest.length:esc(room)+"'s ideas, "+rest.length}</summary>${rest.map(i=>ideaRow(i)).join("")}</details>`:""}
     ${others.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">From other classes, ${others.length}</summary>${others.map(i=>ideaRow(i,true)).join("")}</details>`:""}
     ${!all.length?`<div class="empty">${K.empty}</div>`:""}
     ${binAdd&&binAdd.kind===kind?binAddHtml(b):`<div class="actions" style="margin-top:10px"><button class="btn small ghost" data-binact="add" data-kind="${kind}">${K.add}</button><button class="btn small ghost" data-binact="suggest" ${binBusy?"disabled":""}>${binBusy?"Thinking":"Suggest some"}</button></div>`}
