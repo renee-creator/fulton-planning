@@ -654,7 +654,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && id === 'display'))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -676,6 +676,81 @@ function statusPage(req, res) {
     lines.map(([ok, t]) => `<p style="font-weight:600;color:${ok ? '#1a7f37' : '#b42318'}">${ok ? 'WORKING.' : 'NEEDS ATTENTION.'} ${t}</p>`).join('') +
     `<p style="color:#555;font-size:15px">Everyday model ${esc(QUICK_MODELS[modelAt.quick])}. Careful model ${esc(CAREFUL_MODELS[modelAt.careful])}.</p></body></html>`;
   send(req, res, 200, { 'Content-Type': 'text/html; charset=utf-8' }, html);
+}
+
+/* ---------- Staff room display ----------
+   A screen in the staff room shows what is alive in TREE through the day, read only. It opens with its own long key,
+   made by the director in Settings, and that key reaches nothing but this one picture of the program. Observations kept
+   for a team inquiry stay off it, as they stay off walls, and an inquiry shows only when the director lets it. An inquiry
+   whose observations name one child stays off until the director turns it on. */
+const displaySeen = { at: 0 };
+function displayDoc() { const r = store.recs.settings.get('display'); return r && !r.deleted && r.doc ? r.doc : null; }
+function displayKey() { const d = displayDoc(); return d && typeof d.key === 'string' ? d.key : ''; }
+function setDisplay(fields, by) {
+  const cur = store.recs.settings.get('display');
+  store.recs.settings.set('display', { doc: Object.assign({ id: 'display' }, fields, { updatedByName: by, savedAt: Date.now() }), sha: cur && cur.sha, path: 'settings/display.json', local: true });
+  noteChange('settings', 'display'); scheduleSave('settings', 'display');
+}
+function displayView() { const d = displayDoc() || {}; return { key: d.key || '', madeAt: d.madeAt || 0, madeBy: d.madeBy || '', seenAt: displaySeen.at || 0 }; }
+// an inquiry's children, read from its own observations and the observations of its threads, the way the inquiry page reads them
+function inquiryChildren(x, notices) {
+  const own = new Set(x.obs || []), ts = new Set(x.threads || []);
+  for (const tid of ts) { const t = store.recs.threads.get(tid); for (const e of (t && !t.deleted && t.doc.evidence) || []) if (e && e.planId) own.add(e.planId); }
+  const kids = new Set();
+  for (const n of notices) if (own.has(n.id) || (n.threadId && ts.has(n.threadId))) for (const c of n.children || []) kids.add(c);
+  return kids;
+}
+function inquiryShows(x, notices) { if (x.display === true) return true; if (x.display === false) return false; return inquiryChildren(x, notices).size !== 1; }
+async function displayFeed() {
+  const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };
+  const trim = (s, n) => { s = String(s || '').replace(/\s+\n/g, '\n').replace(/[ \t]+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n); const sp = cut.lastIndexOf(' '); return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;.\s]+$/, '') + '…'; };
+  const fk = makeFileKey();
+  const photoOf = n => (n && n.photo && typeof n.photo.id === 'string' && ID_RE.test(n.photo.id)) ? { src: '/original/' + encodeURIComponent(n.photo.id) + '?t=' + encodeURIComponent(fk), w: Number(n.photo.w) || 0, h: Number(n.photo.h) || 0 } : null;
+  const kids = new Map(live('children').filter(c => c.status !== 'withdrawn').map(c => [c.id, c]));
+  const roomsOf = n => { const r = []; if (n.classroom) r.push(n.classroom); for (const id of n.children || []) { const c = kids.get(id); if (c && c.classroom && !r.includes(c.classroom)) r.push(c.classroom); } return r; };
+  const notices = live('notices');
+  const inquiries = live('inquiries');
+  const held = new Set(); for (const x of inquiries) for (const id of x.obs || []) held.add(id);
+  const shown = notices.filter(n => !held.has(n.id) && photoOf(n)).sort((a, b) => (b.at || 0) - (a.at || 0));
+  const now = Date.now();
+  let recent = shown.filter(n => now - (n.at || 0) < 28 * 864e5);
+  if (recent.length < 10) recent = shown.slice(0, 10);
+  const moments = recent.slice(0, 36).map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
+    children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
+  const latestPhoto = test => { const n = shown.find(test); return n ? photoOf(n) : null; };
+  // threads the school is following now, with the last words that joined them
+  const threads = live('threads').filter(t => !t.unfollowed && ['emerging', 'growing', 'deepening'].includes(t.status || 'emerging'))
+    .sort((a, b) => String(b.lastWeek || '').localeCompare(String(a.lastWeek || '')) || (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 10)
+    .map(t => { const ev = (t.evidence || []).filter(e => e && String(e.text || '').trim()); const evIds = new Set(ev.map(e => e.planId));
+      return { id: t.id, name: trim(t.name, 80), question: trim(t.question, 220), room: t.classroom || '', weeks: (t.weeks || []).length, words: ev.length ? trim(ev[ev.length - 1].text, 220) : '',
+        photo: latestPhoto(n => n.threadId === t.id || evIds.has(n.id)) }; });
+  const projects = live('projects').filter(x => x.status !== 'closed').sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 8)
+    .map(x => { const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); const rooms = [...new Set([x.home, ...(x.classrooms || []).map(c => c && c.room)].filter(Boolean))];
+      return { id: x.id, name: trim(x.name, 80), experience: trim(x.experience, 260), underneath: trim(x.underneath, 260), intent: trim(x.intent != null ? x.intent : (x.decision && x.decision.why), 260), rooms,
+        threads: (x.threads || []).map(t => { const d = t && store.recs.threads.get(t.id); return d && !d.deleted ? trim(d.doc.name, 60) : ''; }).filter(Boolean).slice(0, 4),
+        photo: latestPhoto(n => n.projectId === x.id || (n.threadId && tids.has(n.threadId))) }; });
+  const prog = store.recs.settings.get('program'); const pv = prog && !prog.deleted && prog.doc ? prog.doc : {};
+  const lensList = Array.isArray(pv.lenses) && pv.lenses.length ? pv.lenses : pv.lens ? [Object.assign({ year: true }, pv.lens)] : [];
+  const lenses = lensList.filter(l => l && l.year && String(l.name || '').trim()).map(l => ({ name: trim(l.name, 80), description: trim(l.description, 320), questions: (Array.isArray(l.questions) ? l.questions : []).map(q => trim(q, 140)).filter(Boolean).slice(0, 3) }));
+  const inq = inquiries.filter(x => x.status !== 'closed' && x.status !== 'resting' && String(x.name || '').trim() && inquiryShows(x, notices))
+    .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 6)
+    .map(x => ({ id: x.id, name: trim(x.name, 120), room: x.room || '', see: trim(x.see, 260), watch: trim(x.watch, 200), lookAgain: /^\d{4}-\d{2}-\d{2}$/.test(x.lookAgain || '') ? x.lookAgain : '',
+      tries: (x.tries || []).filter(t => t && String(t.text || '').trim()).slice(-2).map(t => trim(t.text, 160)) }));
+  // the week ahead from the school's calendars, with birthdays. Family conferences and meals stay on their own screens.
+  const today = laDayOf(now), until = addDay(today, 6);
+  let week = [];
+  try { const c = await Promise.race([calendar.today({ director: false }, today, until), new Promise(r => setTimeout(() => r(null), 8000))]);
+    if (c && Array.isArray(c.events)) { const names = new Map(((c.settings && c.settings.calendars) || []).map(x => [x.id, x.name]));
+      week = c.events.filter(e => e && e.cal !== 'tconf' && e.cal !== 'tmenu').map(e => ({ title: trim(e.title, 90), start: String(e.start || ''), end: String(e.end || ''), allDay: !!e.allDay, birthday: e.cal === 'tbday', cal: names.get(e.cal) || '' }))
+        .sort((a, b) => a.start.localeCompare(b.start)).slice(0, 14); } } catch (e) { log('The display could not read the calendar', e.message); }
+  // today's food, from the month's menu, and this week's FEED bin
+  let menu = null;
+  for (const m of live('menus')) { const d = m.days && m.days[today]; if (d && !d.closed) { const monday = new Date(today + 'T12:00:00Z').getUTCDay() === 1;
+    menu = { am: trim(d.am, 120), lunch: trim(d.lunch, 160), pm: monday ? '' : trim(d.pm, 120) }; if (!menu.am && !menu.lunch && !menu.pm) menu = null; break; } }
+  const mon = mondayFor(today), sun = addDay(mon, 6);
+  const binDoc = live('bins').filter(b => b.date >= mon && b.date <= sun && Array.isArray(b.items) && b.items.length).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const bin = binDoc ? { date: binDoc.date, label: trim(binDoc.label, 60), items: binDoc.items.map(i => ({ name: trim(i && i.name, 50), farm: trim(i && Array.isArray(i.farms) ? i.farms[0] : '', 50) })).filter(i => i.name).slice(0, 14) } : null;
+  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin };
 }
 
 async function handle(req, res) {
@@ -812,6 +887,18 @@ async function handle(req, res) {
     return;
   }
 
+  // the staff room display opens with its own key, never a sign-in, and reads only what the display shows
+  if (path === '/display/feed') {
+    const ip = who(req);
+    if (blocked(ip)) { err(req, res, 429, 'Too many tries. Wait ten minutes.'); return; }
+    if (!store.ready) await loadAll();
+    if (!store.ready) { err(req, res, 503, 'TREE is still starting.'); return; }
+    const key = displayKey(), given = String(body.key || '');
+    if (!key || !sameText(given, key)) { noteWrong(ip); log('Display refused,', key ? 'the key is not right' : 'the display is turned off'); err(req, res, 403, key ? 'This display link is no longer in use. Open the new link from TREE Settings.' : 'The staff room display is turned off in TREE Settings.'); return; }
+    if (!displaySeen.at || Date.now() - displaySeen.at > 6 * 36e5) log('Staff room display checked in');
+    displaySeen.at = Date.now();
+    json(req, res, 200, await displayFeed()); return;
+  }
   // sign-ins are read with the records, so a server just woken never mistakes an educator for a stranger
   if (!accounts.loaded) { await loadAll(); if (!accounts.loaded) { err(req, res, 503, store.error || 'TREE is still starting. Try again in a moment.'); return; } }
   const me = readSession(req);
@@ -830,7 +917,7 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name), kitchenOnly) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!kitchenOnly || kitchenSees(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && c.id === 'display'))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -895,6 +982,13 @@ async function handle(req, res) {
     noteChange(kind, id); scheduleSave(kind, id);
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
+  }
+  // the director makes, renews or turns off the staff room display's link
+  if (path === '/api/display') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sets up the staff room display.'); return; }
+    if (body.action === 'new') { setDisplay({ key: b64u(crypto.randomBytes(18)), madeAt: Date.now(), madeBy: me.name }, me.name); log('Display link made by', me.name); }
+    else if (body.action === 'off') { setDisplay({ key: '', madeAt: 0, madeBy: '' }, me.name); log('Display turned off by', me.name); }
+    json(req, res, 200, displayView()); return;
   }
   if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
   if (path === '/api/original') {

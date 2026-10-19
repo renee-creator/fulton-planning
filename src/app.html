@@ -5286,6 +5286,8 @@ function inqPlans(x){const m=new Map();
     for(const e of t.evidence||[]){const p=plans.get(e.planId);if(p&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p)}}
   return [...m.values()].sort((a,b)=>b.weekOf.localeCompare(a.weekOf))}
 const inqLens=x=>x.lensId&&LENSES.find(l=>l.id===x.lensId);
+// the staff room display shows an open inquiry unless the director turns it off. One whose observations name a single child stays off until she turns it on.
+const inqOnDisplay=x=>x.display===true||(x.display!==false&&inqChildren(x).length!==1);
 const inqOpenHyps=x=>(x.hyps||[]).filter(h=>!h.aside&&has(h.text));
 const inqCurric=x=>(x.tries||[]).filter(t=>t.curriculum&&has(t.text));
 const inqScope=x=>x.room?x.room+" class":"School-wide";
@@ -5361,7 +5363,7 @@ function renderInquiry(x){
       <label class="cnt">Status <select data-iqstatus="1" style="width:auto">${Object.entries(ISTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <label class="fld-label">What the team is wondering about<input type="text" data-iqf="name" value="${esc(x.name||"")}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="actions"><label class="cnt">Belongs to <select data-iqroomset="1" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${x.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!x.room?"selected":""}>The whole school</option></select></label>
-      <span class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}. It stays with the team, and its observations stay out of portfolios and walls.</span></div>
+      <span class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}. It stays with the team, and its observations stay out of portfolios and walls.</span>${isDirector()?`<label class="cnt">Staff room display <select data-iqdisplay="1" style="width:auto"><option value="show" ${inqOnDisplay(x)?"selected":""}>Shows</option><option value="off" ${inqOnDisplay(x)?"":"selected"}>Stays off</option></select></label>`:""}</div>
     <div id="iqplan-pick"></div></div>`;
 
   h+=`<section class="card"><div class="lbl">What we see</div>
@@ -5589,6 +5591,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqdisplay!=null){x.display=t.value==="show";saveInquiry(x);renderMain();toast(x.display?"It shows on the staff room display while it is open.":"It stays off the staff room display.");return}
   if(d.iqlens!=null){x.lensId=t.value;saveInquiry(x);renderMain();return}
   if(d.iqtcur){const o=(x.tries||[]).find(v=>v.id===d.iqtcur);if(o){o.curriculum=t.checked;saveInquiry(x)}return}
   if(d.iqaddobs&&t.value){x.obs=[...new Set([...(x.obs||[]),t.value])];saveInquiry(x);renderMain();return}
@@ -8473,6 +8476,24 @@ function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastA
   return `<section class="card"><div class="lbl">Backups</div>
     <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once Renee has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
     <div class="hint">Every Monday evening the whole set of TREE's records is kept in Google Drive, and the newest 26 are kept. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
+/* the staff room display, a screen that turns slowly through what is alive in TREE. The director makes its link here,
+   opens it once on the staff room computer, and can make a new link or turn it off, which stops the old one at once. */
+let displayInfo=null,displayAsked=false;
+function displayLink(){return displayInfo&&displayInfo.key?new URL("display.html",location.href).href+"#k="+displayInfo.key:""}
+async function displayCall(action){try{displayInfo=await window.FP_API("/api/display",action?{action}:{});if(action==="new")toast("The display link is ready.");if(action==="off")toast("The staff room display is off.")}catch(e){toast(e&&e.message||"That did not work. Try again.")}if(view==="settings")renderSettings()}
+function displayHtml(){if(!isDirector()||!window.FP_API)return"";if(!displayAsked){displayAsked=true;displayCall("")}
+  const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?new Date(d.seenAt).toLocaleString("en-US",{weekday:"long",hour:"numeric",minute:"2-digit"}):"";
+  return `<section class="card" id="display-card"><div class="lbl">Staff room display</div>
+    <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div>
+    ${!d?`<div class="cnt">Checking…</div>`:link?`<div class="prow"><div style="min-width:0;flex:1"><b>The display is on</b><div class="cnt">Made ${esc(shortDate(d.madeAt))}${d.madeBy?" by "+esc(d.madeBy):""}.${seen?" The screen last checked in "+esc(seen)+".":" No screen has opened it yet."}</div>
+      <textarea id="display-link" rows="2" readonly style="margin-top:6px;font-size:13px">${esc(link)}</textarea></div></div>
+      <div class="actions"><button class="btn small" data-dispcopy="1">Copy the link</button><a class="btn small" href="${esc(link)}" target="_blank" rel="noopener">Open the display</a><button class="linkbtn" data-dispnew="1">Make a new link</button><button class="linkbtn" data-dispoff="1">Turn the display off</button></div>
+      <div class="hint">Open the link on the staff room computer, drag the window onto the TV, and click once to fill the screen. Turn off sleep on that computer. A new link stops the old one. Each team inquiry has its own switch for the display, and one whose observations name a single child stays off until you turn it on.</div>`
+    :`<div class="actions"><button class="btn small" data-dispnew="1">Make the display link</button></div>`}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-dispnew],[data-dispoff],[data-dispcopy]");if(!t||view!=="settings")return;
+  if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
+  if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
+  if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
 function renderSettings(){
   if(!isDirector()){const nm=VIEW_AS?VIEW_AS.name:(window.FP_NAME?window.FP_NAME():me());const rm=myRoom();
     $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
@@ -8489,6 +8510,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
+  ${displayHtml()}
   ${backupHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
     <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
