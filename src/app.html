@@ -429,7 +429,6 @@ body{margin:0}
   .tabbar button{font-size:9.8px;letter-spacing:-.02em;white-space:nowrap;min-width:0}
   .tabbar button[aria-current="page"]{color:var(--moss)}
   .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:12px 16px}
-  .fab span{display:none}
   /* room under the last content, so the round button never covers it */
   #main{padding-bottom:150px}
   .ttop .who .savestate#conn{display:none}
@@ -1487,7 +1486,7 @@ function applyLock(){
   for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
-    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved</span><button class="btn small" data-unlock="1">Edit</button>`;
+    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
 const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});
@@ -2186,6 +2185,8 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
+  // the newsletter, the grant and the kitchen are the director's and Kitchen's, so an educator who reaches one goes to Today
+  else if(!isKitchenUser()&&!isDirector()&&["newsletter","grant","kitchen"].includes(v))v="today";
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
@@ -7983,7 +7984,7 @@ function isGroupPlan(p){return p.type==="smallgroup"||(p.type==="individual"&&(p
 function dupHtml(p){
   const o=p.dupOf&&plans.get(p.dupOf);
   if(!o)return"";
-  const card=(q,label)=>`<div style="display:grid;gap:3px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;min-width:0"><b>${label}</b><span>${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}</span><span class="cnt">Week of ${fmtDate(q.weekOf)}${q.classroom?", "+esc(q.classroom):""}. ${filledCount(q)} sections filled${q.importedFrom?". Uploaded":""}${q.updatedByName?" by "+esc(q.updatedByName):""}</span><span class="muted" style="overflow-wrap:anywhere">${esc(planText(q).replace(/\s+/g," ").slice(0,140))}${planText(q).length>140?"…":""}</span>${q.id!==p.id?`<button class="linkbtn" style="justify-self:start" data-open="${esc(q.id)}">Open it</button>`:""}</div>`;
+  const card=(q,label)=>`<div style="display:grid;gap:3px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;min-width:0"><b>${label}</b><span>${esc(FORMS[q.type].name)}, ${esc(planTitle(q))}</span><span class="cnt">Week of ${fmtDate(q.weekOf)}${q.classroom?", "+esc(q.classroom):""}. ${filledCount(q)} sections filled${q.importedFrom?". Uploaded":""}${q.updatedByName&&!/claude/i.test(q.updatedByName)?" by "+esc(q.updatedByName):""}</span><span class="muted" style="overflow-wrap:anywhere">${esc(planText(q).replace(/\s+/g," ").slice(0,140))}${planText(q).length>140?"…":""}</span>${q.id!==p.id?`<button class="linkbtn" style="justify-self:start" data-open="${esc(q.id)}">Open it</button>`:""}</div>`;
   return `<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">This may be a duplicate</b><div>Another plan looks the same. Keep one and delete the other, or mark this as not a duplicate.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">${card(p,"This plan")}${card(o,"The other plan")}</div>
     <div class="actions" id="dupwrap"><button class="btn small" data-dupdel="${esc(o.id)}">Keep this one, delete the other</button><button class="btn small ghost" data-dupdel="${esc(p.id)}">Keep the other, delete this one</button><button class="linkbtn" id="dupok">This is not a duplicate</button></div></section>`;
