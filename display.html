@@ -191,11 +191,12 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);setTimeout(()=>old.forEach(c=>c.remove()),1600)})}
 
   /* evening rest, from seven at night to six in the morning, a slow clock so the screen is not holding one picture all night */
-  const resting=()=>{if(PREVIEW)return false;const h=new Date().getHours();return h>=19||h<6};
+  let wokeUntil=0;
+  const resting=()=>{if(PREVIEW||Date.now()<wokeUntil)return false;const h=new Date().getHours();return h>=19||h<6};
   let restEl=null;
   function quiet(){if(stopped)return;if(!resting()){restEl=null;foot.classList.remove("away");pos=-1;return next()}
     foot.classList.add("away");
-    if(!restEl||!restEl.isConnected){note("","");restEl=stage.lastElementChild;restEl.classList.add("rest");restEl.innerHTML=`<div class="clock"></div><div class="sub">TREE rests until morning</div>`}
+    if(!restEl||!restEl.isConnected){note("","");restEl=stage.lastElementChild;restEl.classList.add("rest");restEl.innerHTML=`<div class="clock"></div><div class="sub">TREE rests until morning. Click to see it now.</div>`}
     restEl.querySelector(".clock").textContent=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
     restEl.style.paddingTop=(Math.random()*30)+"vh";restEl.style.justifyContent="flex-start";
     clearTimeout(timer);timer=setTimeout(quiet,60000)}
@@ -222,7 +223,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   let lock=null;async function wake(){try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}}
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")wake()});wake();
   const hint=document.getElementById("hint");setTimeout(()=>hint.classList.add("gone"),12000);
-  document.addEventListener("click",()=>{hint.classList.add("gone");const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{});wake()});
+  document.addEventListener("click",()=>{hint.classList.add("gone");if(resting()){wokeUntil=Date.now()+30*60000;restEl=null;quiet()}const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{});wake()});
   let idle;document.addEventListener("mousemove",()=>{document.body.classList.remove("idle");clearTimeout(idle);idle=setTimeout(()=>document.body.classList.add("idle"),3000)});
   document.body.classList.add("idle");
 
