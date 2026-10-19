@@ -36,12 +36,10 @@ shim = shim.replace('"fc-token"', '"fp-token"').replace('"fc-name"', '"fp-name"'
 shim = rep(shim, 'const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra});', 'const write=async(op,extra)=>{ if(window.TREE_VA){ if(!window.__vaSaid){ window.__vaSaid=1; try{ toast("Nothing is saved while you see TREE as "+window.TREE_VA.name+"."); }catch(e){} } return (extra&&extra.data)||Store.data[kind]?.[id]||null; } const r=await api("/api/write",{op,kind,id,...extra});')
 shim = rep(shim, "if(!Auth.token) await showGate();", "if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return new Promise(()=>{}); } await showGate(); }")
 shim = shim.replace("Fulton conference server", "TREE server").replace("conference server", "TREE server")
-app = rep(app, '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">',
-          '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">')
 # TREE's colours and typefaces, and no second header inside TREE
 app = rep(app, '</style>\n\n<header class="top">', '''/* inside TREE */
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#edf0e8;--surface:#ffffff;--surface-2:#e6ebe2;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--accent:#2b5a40;--accent-soft:#dce9de}}
-:root{--f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;--f-mono:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif}
+:root{--f-display:"Andika","Segoe UI",system-ui,sans-serif;--f-body:"Andika","Segoe UI",system-ui,sans-serif;--f-mono:"Andika",system-ui,-apple-system,"Segoe UI",sans-serif}
 .mono,.date-tile,.qnum,.tl-when{font-variant-numeric:tabular-nums}
 .tl-when b{font-weight:700}
 h1,h2,h3{font-weight:700}
