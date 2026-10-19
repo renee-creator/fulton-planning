@@ -100,6 +100,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
   // the key arrives once in the link, is kept on this computer, and is taken out of the address so it never shows on screen
   const h=new URLSearchParams(location.hash.slice(1));
+  // a preview from Settings runs straight away, even in the evening, and only for this one opening
+  const PREVIEW=h.get("preview")==="1";
   if(h.get("k")){LS.set("tree-display-key",h.get("k"));history.replaceState(null,"",location.pathname+location.search)}
   const KEY=LS.get("tree-display-key")||"";
 
@@ -189,7 +191,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);setTimeout(()=>old.forEach(c=>c.remove()),1600)})}
 
   /* evening rest, from seven at night to six in the morning, a slow clock so the screen is not holding one picture all night */
-  const resting=()=>{const h=new Date().getHours();return h>=19||h<6};
+  const resting=()=>{if(PREVIEW)return false;const h=new Date().getHours();return h>=19||h<6};
   let restEl=null;
   function quiet(){if(stopped)return;if(!resting()){restEl=null;foot.classList.remove("away");pos=-1;return next()}
     foot.classList.add("away");
