@@ -749,7 +749,7 @@ async function handle(req, res) {
       if (a) {
         if (!a.code) {
           // the first sign-in uses the starting code the director gave, then sets the educator's own four numbers
-          if (!a.start || !sameText(body.start != null ? body.start : given, a.start)) { noteWrong(ip); nameWrong(name); err(req, res, 403, NOPE); return; }
+          // the first sign-in sets the educator's own four numbers, as Renee wants
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
