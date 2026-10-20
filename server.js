@@ -182,6 +182,29 @@ function gh(method, path, body) {
     req.end(data || undefined);
   });
 }
+/* When GitHub's hourly allowance for ordinary requests is spent, records are read through GitHub's GraphQL door instead,
+   which has its own allowance and reads a hundred files in one request. A restart then costs a handful of requests. */
+async function gql(query) { const r = await gh('POST', '/graphql', { query }); if (r.status !== 200 || !r.json || r.json.errors) throw new Error('GitHub GraphQL answered ' + r.status + (r.json && r.json.errors ? ' ' + JSON.stringify(r.json.errors).slice(0, 200) : '')); return r.json.data; }
+const gqlRepo = () => { const [o, n] = RECORDS_REPO.split('/'); return `repository(owner:${JSON.stringify(o)},name:${JSON.stringify(n)})`; };
+// every file the loader needs, listed folder by folder, in the same shape the tree listing gives
+async function gqlFiles(branch) {
+  const dirs = [...KINDS, 'originals', 'photos', 'drdp', 'access'];
+  const d = await gql(`query{${gqlRepo()}{${dirs.map((k, i) => `d${i}:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{entries{name oid type}}}`).join(' ')}}}`);
+  const repo = d.repository || {}, files = [];
+  dirs.forEach((k, i) => { for (const e of ((repo['d' + i] || {}).entries || [])) if (e.type === 'blob') files.push({ type: 'blob', path: k + '/' + e.name, sha: e.oid }); });
+  return files;
+}
+// the text of many files at once, by their ids
+async function gqlTexts(shas) {
+  const out = new Map();
+  for (let i = 0; i < shas.length; i += 90) {
+    const part = shas.slice(i, i + 90);
+    const d = await gql(`query{${gqlRepo()}{${part.map((s, j) => `b${j}:object(oid:${JSON.stringify(s)}){...on Blob{text isTruncated}}`).join(' ')}}}`);
+    part.forEach((s, j) => { const b = (d.repository || {})['b' + j]; if (b && typeof b.text === 'string' && !b.isTruncated) out.set(s, b.text); });
+  }
+  return out;
+}
+const restSpent = r => r && (r.status === 403 || r.status === 429);
 // a photo read from GitHub as raw bytes, which takes a quarter of the memory of reading it as text. At most four are read
 // at once, and a photo asked for by several cards at the same moment is read only once.
 function ghRaw(path) {
@@ -304,10 +327,36 @@ async function readRepoSize() { try { const r = await gh('GET', `/repos/${RECORD
 setInterval(readRepoSize, 6 * 3600e3).unref();
 function storageNow() { let photos = 0, bytes = 0, inDrive = 0; for (const o of store.originals.values()) { if (o.drive) { inDrive++; continue; } photos++; bytes += Number(o.size) || 0; } return { photos, photoBytes: bytes, inDrive, driveOn: photosDrive.on(), repoBytes: Math.max((store.repoKb || 0) * 1024, bytes), at: store.repoKbAt || 0 }; }
 function loadAll() { if (!loading) loading = doLoad().finally(() => { loading = null; if (!store.ready && githubToken()) setTimeout(loadAll, 60000); }); return loading; }
+async function doLoadGraph() {
+  log('GitHub allowance spent, reading the records through GraphQL');
+  const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`);
+  store.branch = ((d.repository || {}).defaultBranchRef || {}).name || 'main';
+  const files = await gqlFiles(store.branch);
+  const jobs = [];let accSha = '';
+  for (const f of files) {
+    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts)\/([^/]+)\.json$/);
+    if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
+    if (f.path === DRDP_PATH) drdpSha = f.sha;
+    if (f.path === ACCOUNTS_PATH) accSha = f.sha;
+    const o = f.path.match(/^originals\/([^/]+)$/);
+    if (o) { const cur = store.originals.get(o[1]); if (cur && cur.drive) cur.leftover = { path: f.path, sha: f.sha }; else store.originals.set(o[1], { path: f.path, sha: f.sha, size: 0 }); }
+    if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
+  }
+  const texts = await gqlTexts([...jobs.map(j => j.sha), ...(accSha ? [accSha] : []), ...(drdpSha ? [drdpSha] : [])]);
+  if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(texts.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
+  accounts.loaded = true;
+  for (const j of jobs) { const tx = texts.get(j.sha); if (tx == null) { log('Skipped unreadable record', j.path); continue; } try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (e) { log('Skipped unreadable record', j.path); } }
+  if (drdpSha) { try { DRDP_DESC = JSON.parse(texts.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
+  if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 15 * 60000); }
+  store.ready = true; store.error = ''; store.loadedAt = Date.now();
+  try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); }
+  log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
+}
 async function doLoad() {
   if (!githubToken()) { store.error = 'No GITHUB_TOKEN is saved on Render. Add it under Environment.'; log(store.error); return; }
   try {
     const repo = await gh('GET', `/repos/${RECORDS_REPO}`);
+    if (restSpent(repo)) { await doLoadGraph(); return; }
     if (repo.status === 404) throw new Error(`The records repository ${RECORDS_REPO} was not found, or the GitHub token cannot see it. Check RECORDS_REPO and give the token access to that repository.`);
     if (repo.status === 401) throw new Error('GitHub rejected the token. Make a new fine-grained token with Contents read and write on the records repository.');
     if (repo.status !== 200) throw new Error('GitHub answered ' + repo.status + ' when opening the records repository.');
@@ -333,12 +382,16 @@ async function doLoad() {
       while (i < jobs.length) {
         const j = jobs[i++];
         const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${j.sha}`);
+        if (restSpent(b)) { const e = new Error('spent'); e.spent = true; throw e; }
         if (b.status !== 200) throw new Error('GitHub answered ' + b.status + ' when reading ' + j.path);
         try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[j.kind].set(j.id, { doc, sha: j.sha, path: j.path }); }
         catch (e) { log('Skipped unreadable record', j.path); }
       }
     };
-    await Promise.all(Array.from({ length: 8 }, worker));
+    try { await Promise.all(Array.from({ length: 8 }, worker)); }
+    catch (e) { if (!e.spent) throw e; log('GitHub allowance spent while reading records, reading the rest through GraphQL');
+      const left = jobs.filter(j => !store.recs[j.kind].has(j.id)); const texts = await gqlTexts(left.map(j => j.sha));
+      for (const j of left) { const tx = texts.get(j.sha); if (tx == null) { log('Skipped unreadable record', j.path); continue; } try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (er) { log('Skipped unreadable record', j.path); } } }
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
