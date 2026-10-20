@@ -1213,7 +1213,7 @@ async function draftInterests(p){
   const f=FORMS.classroom.fields.find(x=>x.k==="interests");const key=p.id+"interests";
   suggest[key]={status:"working",text:"",from:"ind"};rerenderCard(p,"interests");
   const cur=String(p.fields.interests||"").trim();
-  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} classroom, week of ${fmtDate(p.weekOf)}.
+  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} Class, week of ${fmtDate(p.weekOf)}.
 The program's standard for this section. ${f.hint}
 Strong example. ${f.strong}
 Write it from the educators' Individual and small group plans for this week below. Keep it short, 3 to 5 sentences and under 100 words in all. Give one sentence per thread naming the educator or group and what children are wondering, then one sentence on how the threads meet each other or the classroom community. Leave out individual children's names, quotes, and lists of materials, since those live in the Individual plans. Use only what the plans say. Never invent children, quotes, events, or materials. ${cur?"Keep everything the team already wrote and weave it in.":""} ${STYLE}
@@ -3911,14 +3911,15 @@ function carryForward(p){
 
 /* ---------- Claude assist ---------- */
 const STYLE=PROGRAM+" Write in plain, warm, professional language an early childhood educator would use. Refer to adults as educators, never teachers. Never use em dashes. Never use colons except in clock times. Never use analogies or 'not X but Y' framing. Never mention DRDP measures or domains. Do not use theme language, activity-based language, or evaluative words like enjoyed or had fun. Outside exact quotes from the plans, avoid these words and phrases and reword around them while keeping every fact, theme, activity, enjoyed, had fun, learn about, talk about, set up, all children, worksheet, craft, and holiday names.";
-function planContext(p){const F=FORMS[p.type];return F.fields.filter(f=>p.fields[f.k]).map(f=>`${f.label}. ${p.fields[f.k]}`).join("\n")}
+// the plan's other sections, given for understanding. The section being worked on is left out so it is not read twice.
+function planContext(p,skip){const F=FORMS[p.type];return F.fields.filter(f=>f.k!==skip&&p.fields[f.k]).map(f=>`${f.label}. ${p.fields[f.k]}`).join("\n")}
 const suggest={};
 function suggestHtml(p,f){
   const sg=suggest[p.id+f.k];if(!sg)return"";
   if(sg.status==="working")return `<div class="sugg"><b>${sg.from==="ind"?"TREE is reading this week's Individual plans":"TREE is rewriting this section"}</b><div id="sg-${f.k}" class="muted">${esc(sg.text||"Reading your entry")}</div></div>`;
   const again=sg.from==="ind"?`data-inddraft="1"`:`data-strengthen="${f.k}"`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">${sg.from==="ind"?"The draft did not work":"Strengthen did not work"}</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" ${again}>Try again</button><button class="linkbtn" data-sgno="${f.k}">Close</button></div></div>`;
-  return `<div class="sugg"><b>${sg.from==="ind"?"Drafted from this week's Individual plans":"Suggested wording"}</b><textarea id="sgt-${f.k}" rows="${sg.from==="ind"?6:3}">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" ${again}>Try another version</button></div></div>`;
+  return `<div class="sugg"><b>${sg.from==="ind"?"Drafted from this week's Individual plans":"Suggested wording"}</b><textarea id="sgt-${f.k}" rows="${sg.from==="ind"?6:3}">${esc(sg.text)}</textarea><div class="cnt">${sg.base!=null&&String(p.fields[f.k]||"").trim()!==sg.base?"You changed this section after asking. Use this replaces your newer words, and Undo brings them back.":"Edit it here if you like. Your original stays until you choose Use this."}</div><div class="actions"><button class="btn small" data-sgyes="${f.k}">Use this</button><button class="btn small ghost" data-sgno="${f.k}">Keep mine</button><button class="linkbtn" ${again}>Try another version</button></div></div>`;
 }
 async function strengthen(p,k,btn){
   const f=FORMS[p.type].fields.find(x=>x.k===k);
@@ -3931,13 +3932,13 @@ The program's standard for this section. ${f.hint}
 Strong example. ${f.strong}
 Weak example. ${f.weak}
 Program expectations. Plans document children's thinking. Adult-directed activities are outside the approach. They are grounded in observation and interpretation and follow the cycle of observation, provocation, and reflection. Keep what children did separate from what the educator thinks it means.
-Rewrite the educator's entry so it meets the standard. Keep every fact, name, quote, and material from the entry. You may use facts from the other sections of this plan below. Add no new facts, children, quotes, or materials. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
+Rewrite the educator's entry so it meets the standard, improving only its wording and clarity. Keep every fact, name, quote, and material from the entry, and keep the educator's own meaning and interpretation. Use only the words in the entry. The other text below is there only so you understand the plan. Never copy, move or combine anything from it into this section, even when it fits, because each section is written by the educators separately. Add no new facts, children, quotes, materials, or ideas. Write about children as capable thinkers, and keep the curriculum something children and educators make together. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
 Return only the rewritten text, with no preface.
 
-Other sections of this plan.
-${planContext(p)||"(none yet)"}${threadsForClaude(p)}
+For understanding only, never to copy. The other sections of this plan.
+${planContext(p,k)||"(none yet)"}${threadsForClaude(p)}
 
-Educator's entry.
+Educator's entry for the "${f.label}" section, the only text to rewrite.
 ${cur}`;
   let out="",code="";
   for(let attempt=0;attempt<2&&!out;attempt++){
@@ -3946,7 +3947,7 @@ ${cur}`;
   }
   out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\u2014/g,", ").trim();
   const P=plans.get(p.id)||p;
-  suggest[key]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
+  suggest[key]=out?{status:"ready",text:out,base:cur}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
   if(currentId===P.id)rerenderCard(P,k);
 }
 function assistError(code,tail){
@@ -5874,7 +5875,20 @@ function binName(it){const n=String(it.name||"");const m=/\sor\s/i.test(n)?null:
 function binBefore(b,it){const k=binKey(it.name);return binAll().filter(x=>x.date<b.date&&(x.items||[]).some(y=>binKey(y.name)===k))}
 const binIdeas=()=>Object.values((bins.get("ideas")||{}).list||{}).filter(i=>i&&has(i.text)).sort((a,b)=>(b.at||0)-(a.at||0));
 const binHeld=(b,room)=>((b&&b.held)||{})[room]||{};
-const binMoments=(room,id)=>[...notices.values()].filter(n=>n.bin&&(!id||n.bin===id)&&momentIn(n,room)).sort((a,b)=>(b.at||0)-(a.at||0));
+// the photos kept as one with an observation, by their shared group, or for older Kaymbu posts the same words on the same day
+function binSiblings(n){if(!n)return [];if(n.group)return noteGroup(n);const k=String(n.noticed||"").replace(/\s+/g," ").trim().toLowerCase();if(!k)return [n];const d=iso(new Date(n.at||0));
+  return [...notices.values()].filter(x=>!x.group&&String(x.noticed||"").replace(/\s+/g," ").trim().toLowerCase()===k&&iso(new Date(x.at||0))===d)}
+const binPostKey=n=>n.group?"g|"+n.group:String(n.noticed||"").replace(/\s+/g," ").trim().toLowerCase()+"|"+iso(new Date(n.at||0));
+// one row for each observation, however many photos it holds, with the photos that came with it counted once
+function binPosts(ns){const m=new Map();for(const n of ns){const k=binPostKey(n);const e=m.get(k);if(e){e.n_+=1;continue}m.set(k,{n,n_:1})}return [...m.values()]}
+// an observation belongs to a bin when it or any photo kept with it was linked to that bin
+const binMoments=(room,id)=>{const linked=[...notices.values()].filter(n=>n.bin&&(!id||n.bin===id));const keys=new Set(linked.map(binPostKey));
+  return [...notices.values()].filter(n=>(n.bin?(!id||n.bin===id):keys.has(binPostKey(n)))&&momentIn(n,room)).sort((a,b)=>(b.at||0)-(a.at||0))};
+// observations from the bin's week that name something in it, offered to the team and never linked on their own
+function binMaybe(b,room){if(!b||!b.date)return [];const end=addDays(b.date,6);const wanted=[...new Set((b.items||[]).map(it=>binKey(it.name).split(" ").pop()).filter(w=>w&&w.length>2))];
+  if(!wanted.length)return [];const re=new RegExp("\\b("+wanted.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")","i");
+  const taken=new Set([...notices.values()].filter(n=>n.bin).map(binPostKey));
+  return [...notices.values()].filter(n=>{const d=iso(new Date(n.at||0));return d>=b.date&&d<=end&&!n.bin&&!taken.has(binPostKey(n))&&momentIn(n,room)&&re.test((n.noticed||"")+" "+(n.wonder||""))}).sort((a,b)=>(b.at||0)-(a.at||0))}
 
 async function binLoad(fresh){
   if(!window.FP_API||!db||binFeed.busy)return;
@@ -5916,10 +5930,16 @@ function renderBin(){
   {const n=binIdeas().filter(i=>held[i.id]).length;if(n)h+=`<div class="actions" style="margin:-4px 0 14px">${printBtns("bin",b.id,`Print for the table, ${n} idea${n===1?"":"s"}`,true)}</div>`}
   h+=binFarmsHtml(b);
   // what was kept from the unboxings
-  const here=binMoments(room,b.id),before=binMoments(room).filter(n=>n.bin!==b.id);
-  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">From the unboxing</h3></div>
-    ${here.length?`<div class="tlist">${here.map(momentMini).join("")}</div>`:`<div class="empty">Nothing kept from this bin yet. An observation kept from this page with Keep an observation stays with the bin, and goes on to plans, threads and documentation like any other.</div>`}
-    ${before.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">From earlier bins, ${before.length}</summary><div class="tlist">${before.slice(0,12).map(momentMini).join("")}</div></details>`:""}</section>`;
+  const here=binPosts(binMoments(room,b.id)),maybe=binPosts(binMaybe(b,room));
+  const lastBin=list.find(x=>x.date<b.date&&binMoments(room,x.id).length);const last=lastBin?binPosts(binMoments(room,lastBin.id)):[];
+  const before=binPosts(binMoments(room).filter(n=>{const k=binPostKey(n);return !here.some(p=>binPostKey(p.n)===k)&&!last.some(p=>binPostKey(p.n)===k)}));
+  const row=p=>momentMini(p.n).replace('<button class="linkbtn" data-mopen=',`${p.n_>1?`<span class="cnt">${p.n_} photos</span>`:""}<button class="linkbtn" data-mopen=`);
+  const coming=b.date>iso(new Date());const when=parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">From the unboxing</h3>${here.length?`<span class="cnt">${here.length}</span>`:""}</div>
+    ${here.length?`<div class="tlist">${here.map(row).join("")}</div>`:`<div class="empty">${coming?`This bin comes ${esc(when)}. What the children notice when they open it will show here.`:`Nothing from this bin yet. Use Keep an observation on this page, or put the word bin in the subject when sending from Kaymbu.`}</div>`}
+    ${maybe.length?`<div class="lbl" style="margin-top:10px">Might be from this bin</div><div class="cnt">These were kept the same week and name something in it.</div><div class="tlist">${maybe.map(p=>row(p).replace('<button class="linkbtn" data-mopen=',`<button class="btn small ghost" data-binlink="${esc(p.n.id)}">This is from the bin</button><button class="linkbtn" data-mopen=`)).join("")}</div>`:""}
+    ${last.length?`<details${here.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:10px">From the bin of ${esc(fmtDate(lastBin.date).replace(/, \d{4}$/,""))}, ${last.length}</summary><div class="tlist">${last.map(row).join("")}</div></details>`:""}
+    ${before.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">From earlier bins, ${before.length}</summary><div class="tlist">${before.slice(0,12).map(row).join("")}</div></details>`:""}</section>`;
   h+=binHandHtml();
   $("#main").innerHTML=h;sizeBoxes($("#main"));
   binLoad();
@@ -6013,12 +6033,14 @@ function binDoc(b,room){const held=binHeld(b,room);const on=binIdeas().filter(i=
 document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.farmtown==null)return;
   if(await binWrite("farms",{towns:{[t.dataset.farmtown]:t.value.trim()||{__delete__:true}}},{id:"farms",towns:{}}))toast("Saved");if(view==="bin")renderBin()});
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-binroom],[data-binweek],[data-binact],[data-binhold],[data-binideadel],[data-binkeep],[data-binpk],[data-nfbin]");if(!t)return;
+  const t=e.target.closest("[data-binroom],[data-binweek],[data-binact],[data-binhold],[data-binideadel],[data-binkeep],[data-binpk],[data-nfbin],[data-binlink]");if(!t)return;
   const d=t.dataset;
   if(d.nfbin){if(noticeForm){const on=noticeForm.bin===d.nfbin;if(on)delete noticeForm.bin;else noticeForm.bin=d.nfbin;t.setAttribute("aria-pressed",String(!on))}e.stopImmediatePropagation();return}
   if(view!=="bin")return;e.stopImmediatePropagation();
   const b=binCurrent(),room=binRoomNow();
   if(d.binroom){binRoom=d.binroom;LS.set("fps.binroom",binRoom);binAdd=null;renderBin();return}
+  // the team says an observation came from the unboxing, and every photo kept with it goes with the bin
+  if(d.binlink&&b){if(VIEW_AS){toast("Nothing is saved while you see TREE as another educator.");return}const n=notices.get(d.binlink);if(!n)return;for(const x of binSiblings(n))if(!x.bin)patchNotice(x.id,{bin:b.id});toast("Kept with this bin");renderBin();return}
   if(d.binweek){binWeek=d.binweek;LS.set("fps.binweek",binWeek);binAdd=null;binSugg=null;renderBin();jumpTop();return}
   if(d.binpk&&binAdd){binAdd.text=$("#bin-idea")?.value||binAdd.text;const k=d.binpk;binAdd.produce=binAdd.produce||[];binAdd.produce=binAdd.produce.includes(k)?binAdd.produce.filter(x=>x!==k):[...binAdd.produce,k];renderBin();return}
   const a=d.binact;
@@ -6314,13 +6336,13 @@ Return only the text, with no preface.
 
 The evidence.
 ${evid}`:`${head}
-Rewrite the team's entry so it meets the standard. Keep every fact, name and quote from the entry, and keep the team's own meaning. You may use facts from the evidence below. Add no new facts, children, quotes or events, no diagnosis or label, and no interpretation the team did not write. Keep it about the same length or up to twice as long. ${STYLE}
+Rewrite the team's entry so it meets the standard, improving only its wording and clarity. Keep every fact, name and quote from the entry, and keep the team's own meaning. Use only the words in the entry. The evidence below is there only so you understand the inquiry. Never copy, move or combine anything from it into the entry. Add no new facts, children, quotes or events, no diagnosis or label, and no interpretation the team did not write. Keep it about the same length or up to twice as long. ${STYLE}
 Return only the rewritten text, with no preface.
 
-The evidence.
+For understanding only, never to copy. The evidence.
 ${evid}
 
-The team's entry.
+The team's entry, the only text to rewrite.
 ${cur}`;
   let out="",code="";
   try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
@@ -6688,13 +6710,13 @@ async function projStrengthen(x,k){
   const rest=Object.keys(PSTD).filter(o=>o!==k&&projVal(x,o).trim()).map(o=>`${PSTD[o][0]}. ${projVal(x,o).trim()}`).join("\n");
   const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, word the "${PSTD[k][0]}" part of a project record.
 The standard for this part. ${PSTD[k][1]}
-Rewrite the educators' entry so it meets the standard. Keep every fact, name, quote, and material from the entry, and keep the educators' own meaning. You may use facts from the rest of the project below. Add no new facts, children, quotes, or materials, and add no interpretation the educators did not write. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
+Rewrite the educators' entry so it meets the standard. Keep every fact, name, quote, and material from the entry, and keep the educators' own meaning. Use only the words in the entry. The rest of the project below is there only so you understand it. Never copy, move or combine anything from it into this part. Add no new facts, children, quotes, or materials, and add no interpretation the educators did not write. If the entry lacks detail the standard asks for, keep it brief rather than inventing. Keep it about the same length or up to twice as long. ${STYLE}
 Return only the rewritten text, with no preface.
 
-Rest of the project.
+For understanding only, never to copy. The rest of the project.
 ${rest||"(none yet)"}
 
-Educators' entry.
+Educators' entry for "${PSTD[k][0]}", the only text to rewrite.
 ${cur}`;
   let out="",code="";
   try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
