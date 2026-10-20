@@ -89,7 +89,11 @@ input[type=checkbox]{accent-color:var(--accent)}
 .st-withdrawn{background:var(--danger-soft);color:var(--danger)}
 
 /* overview */
-.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start}
+.sched{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.sched-next{background:var(--sched-soft,#e8f0f7);border-radius:8px;padding:8px 10px;display:grid;gap:2px}.sched-next b{font-size:1.05rem}
+.sched-list{margin:4px 0 0;padding-left:1.2em;display:grid;gap:4px}.sched-list li{display:grid}.sched-list li.passed b{color:var(--danger)}
+ul.sched-list{list-style:none;padding-left:0}.sched-un{margin-top:8px}.sched-un summary{cursor:pointer}
 .room h3{display:flex;justify-content:space-between;align-items:baseline}
 .bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--todo-soft);margin:10px 0 8px}
 .bar i{display:block;height:100%}
@@ -632,13 +636,15 @@ function groupOf(c){ return c?.group ? groupsList().find(g=>g.name===c.group) : 
 function educatorOf(c){ return (c?.primaryEducator||"").trim() || groupOf(c)?.educator || ""; }
 function educatorsFor(room){ const e=S.settings.educators||{}; const g=groupsList().filter(x=>!room||x.room===room).map(x=>x.educator); return [...new Set([...(room? (e[room]||[]) : Object.values(e).flat()), ...g].filter(Boolean))]; }
 function eduFilter(list){ const f=S.filters.edu||"All"; return f==="All"? list : list.filter(c=>educatorOf(c)===f); }
-const SORTS=[["room","Class, then first name"],["last","Last name"],["first","First name"],["age","Oldest first"]];
+const SORTS=[["room","Class, then first name"],["when","Conference date and time"],["last","Last name"],["first","First name"],["age","Oldest first"]];
 function sortKids(list){
   const s=S.filters.sort||"room", by=(k)=>(x,y)=>(!x[k])-(!y[k]) || (x[k]||"").localeCompare(y[k]||"");
   const rooms=S.settings.classrooms||[], ri=c=>{ const i=rooms.indexOf(c.classroom); return i<0? 99 : i; };
   const cmp={room:(a,b)=>ri(a)-ri(b)||by("classroom")(a,b)||by("first")(a,b)||by("last")(a,b),
     last:(a,b)=>by("last")(a,b)||by("first")(a,b), first:(a,b)=>by("first")(a,b)||by("last")(a,b),
-    age:(a,b)=>(a.dob||"9999").localeCompare(b.dob||"9999")||by("last")(a,b)}[s]||((a,b)=>0);
+    age:(a,b)=>(a.dob||"9999").localeCompare(b.dob||"9999")||by("last")(a,b),
+    // the soonest conference first, then those with no date, by class and name
+    when:(a,b)=>{const w=c=>{const cf=periodConf(c.id);return cf&&cf.confDate?cf.confDate+" "+(cf.confTime||"99:99"):"9999"};return w(a).localeCompare(w(b))||ri(a)-ri(b)||by("first")(a,b)}}[s]||((a,b)=>0);
   return list.sort(cmp);
 }
 function sortSelect(){ const s=S.filters.sort||"room"; return `<select id="f-sort" aria-label="Sort by">${SORTS.map(([k,l])=>`<option value="${k}" ${s===k?"selected":""}>Sort by ${l.toLowerCase()}</option>`).join("")}</select>`; }
@@ -752,10 +758,25 @@ function viewOverview(){
   const rooms = S.settings.classrooms;
   const counts = r => { const k = kids.filter(c=>c.classroom===r); const by={complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}; k.forEach(c=>by[confStatus(periodConf(c.id)).key]++); return {total:k.length,...by}; };
 const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}; rooms.forEach(r=>{ const c=counts(r); for(const k in tot) tot[k]+=c[k]; });
+  const today0 = todayISO();
+  const when = cf => (cf.confDate||"")+" "+(cf.confTime||"99:99");
+  const whenText = cf => { const d=new Date(cf.confDate+"T12:00:00"); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+(cf.confTime?", "+fmtTime(cf.confTime):""); };
+  const sched = r => { const k=kids.filter(c=>c.classroom===r).map(c=>({c,cf:periodConf(c.id)}));
+    const up=k.filter(x=>x.cf&&x.cf.confDate&&x.cf.confDate>=today0&&x.cf.status!=="complete"&&!NO_SIGNUP[x.cf.signup]).sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
+    const passed=k.filter(x=>confStatus(x.cf).key==="held").sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
+    const unsched=k.filter(x=>["none","progress"].includes(confStatus(x.cf).key)).sort((a,b)=>childName(a.c).localeCompare(childName(b.c)));
+    const row=(x,cls)=>`<li class="${cls||""}"><a href="#" data-act="open-child-conf" data-id="${esc(x.c.id)}"><b>${esc(childName(x.c))}</b></a><span class="small muted">${esc([whenText(x.cf),x.cf.format,educatorOf(x.c)].filter(Boolean).join(" · "))}</span></li>`;
+    return `<div class="sched">
+      ${up.length?`<div class="sched-next"><span class="eyebrow">Next</span><a href="#" data-act="open-child-conf" data-id="${esc(up[0].c.id)}"><b>${esc(childName(up[0].c))}</b></a><div class="small">${esc([whenText(up[0].cf),up[0].cf.format,educatorOf(up[0].c)].filter(Boolean).join(" · "))}</div></div>`
+        :`<div class="small muted">No conference scheduled ahead.</div>`}
+      ${up.length>1?`<div class="small muted" style="margin-top:8px">Then, in order</div><ol class="sched-list">${up.slice(1).map(x=>row(x)).join("")}</ol>`:""}
+      ${passed.length?`<div class="small" style="margin-top:8px;color:var(--danger)">Date passed, not marked complete, ${passed.length}</div><ul class="sched-list">${passed.map(x=>row(x,"passed")).join("")}</ul>`:""}
+      ${unsched.length?`<details class="sched-un"><summary class="small"><b>Not scheduled yet, ${unsched.length}</b></summary><ul class="sched-list">${unsched.map(x=>`<li><a href="#" data-act="open-child-conf" data-id="${esc(x.c.id)}">${esc(childName(x.c))}</a><span class="small muted">${esc([confStatus(x.cf).label,educatorOf(x.c)].filter(Boolean).join(" · "))}</span></li>`).join("")}</ul></details>`:`<div class="small" style="margin-top:8px;color:var(--ok)">Every family in ${esc(r)} has a date or is done.</div>`}
+    </div>`; };
   const roomCard = r => { const c=counts(r); const pct=k=>c.total? (c[k]/c.total*100):0;
     return `<div class="panel room"><h3>${esc(r)} <span class="mono small muted">${c.complete}/${c.total} complete</span></h3>
       <div class="bar" role="img" aria-label="${c.complete} complete, ${c.held} date passed, ${c.scheduled} scheduled, ${c.progress} preparing, ${c.none} not started"><i style="width:${pct("complete")}%;background:var(--ok)"></i><i style="width:${pct("held")}%;background:var(--danger)"></i><i style="width:${pct("nosignup")}%;background:var(--muted);opacity:.55"></i><i style="width:${pct("scheduled")}%;background:var(--sched)"></i><i style="width:${pct("progress")}%;background:var(--prog)"></i></div>
-      <div class="legend"><span style="--c:var(--ok)">${c.complete} complete</span>${c.held?`<span style="--c:var(--danger)">${c.held} date passed</span>`:""}${c.nosignup?`<span style="--c:var(--muted)">${c.nosignup} did not sign up</span>`:""}<span style="--c:var(--sched)">${c.scheduled} scheduled</span><span style="--c:var(--prog)">${c.progress} preparing</span><span style="--c:var(--todo)">${c.none} not started</span></div></div>`; };
+      <div class="legend">${c.complete?`<span style="--c:var(--ok)">${c.complete} complete</span>`:""}${c.held?`<span style="--c:var(--danger)">${c.held} date passed</span>`:""}${c.nosignup?`<span style="--c:var(--muted)">${c.nosignup} did not sign up</span>`:""}${c.scheduled?`<span style="--c:var(--sched)">${c.scheduled} scheduled</span>`:""}${c.progress?`<span style="--c:var(--prog)">${c.progress} preparing</span>`:""}${c.none?`<span style="--c:var(--todo)">${c.none} not started</span>`:""}</div>${sched(r)}</div>`; };
   const f=S.filters;
   let list = eduFilter(kids.filter(c=> (f.room==="All"||c.classroom===f.room)));
   if(f.q) list = list.filter(c=>childName(c).toLowerCase().includes(f.q.toLowerCase()));
@@ -772,7 +793,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
     </tr>`; }).join("");
   // upcoming + follow-ups
   const today = todayISO();
-  const upcoming = Object.values(S.confs).filter(c=>c.confDate && c.confDate>=today && c.status!=="complete").sort(confSort).slice(0,8);
+  const upcoming = Object.values(S.confs).filter(c=>c.confDate && c.confDate>=today && c.status!=="complete" && !NO_SIGNUP[c.signup] && S.children[c.childId]).sort((a,b)=>((a.confDate||"")+(a.confTime||"99")).localeCompare((b.confDate||"")+(b.confTime||"99")));
   const soonD=new Date(Date.now()+14*864e5), soon=`${soonD.getFullYear()}-${String(soonD.getMonth()+1).padStart(2,"0")}-${String(soonD.getDate()).padStart(2,"0")}`;
   const follow = Object.values(S.confs).filter(c=>c.followUpDate && !c.followUpDone && c.followUpDate<=soon).sort((a,b)=>a.followUpDate.localeCompare(b.followUpDate)).slice(0,8);
   const li = (c, date, sub) => { const ch=S.children[c.childId]; const d=new Date(date+"T12:00:00");
@@ -799,7 +820,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
       : `<div class="panel empty"><p>No children on the roster yet.</p><button class="btn primary" data-act="roster-import">Import the 1Core roster PDF</button> <button class="btn" data-act="child-new">Add a child</button></div>`}</div>
     </div>
     <aside class="stack">
-      <div class="panel"><h3>Coming up</h3>
+      <div class="panel"><h3>Coming up, the whole school</h3>
         ${upcoming.length? `<ul class="list-plain">${upcoming.map(c=>li(c,c.confDate, esc([fmtTime(c.confTime), c.format, c.teacher].filter(Boolean).join(" · "))||"Time not set")).join("")}</ul>` : `<p class="small muted">No conferences scheduled yet. Open a child and set a date to see it here.</p>`}
         ${nonMonday? `<p class="small muted" style="margin-bottom:0">${nonMonday} upcoming ${nonMonday===1?"conference falls":"conferences fall"} on a day other than Monday. Monday mornings work best.</p>`:""}
       </div>
