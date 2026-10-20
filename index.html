@@ -2279,6 +2279,13 @@ function shareSources(){
   for(const x of [...projects.values()].filter(x=>x&&!x.deleted&&shareWallSheets(x).length).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)).slice(0,20))out.push(["wall:"+x.id,"Wall, "+x.name]);
   out.push(["recent:","The last two weeks, all classes"]);CLASSROOMS.forEach(r=>out.push(["recent:"+r,"The last two weeks, "+r+" Class"]));
   out.push(["bin:","From the weekly bin, the last six weeks"]);
+  // teaching posts, for families and for educators, words only
+  out.push(["own:","For families or educators, your own topic"]);
+  for(const x of [...newsletters.values()].filter(x=>x&&(x.topics||[]).length).sort((a,b)=>String(b.month||"").localeCompare(String(a.month||""))).slice(0,12))
+    for(const tp of x.topics)if(has(tp.title))out.push(["nl:"+x.id+"|"+tp.id,"For families, from the newsletter, "+tp.title]);
+  for(const x of [...projects.values()].filter(x=>x&&!x.deleted&&(has(x.underneath)||has(x.intent)||has(x.experience))).slice(0,20))out.push(["eduproj:"+x.id,"For families, the ideas under "+x.name]);
+  for(const x of inqAll().slice(0,30))out.push(["inq:"+x.id,"For families and educators, what we learned, "+shareScrub(x.name||"a team inquiry")]);
+  for(const l of LENSES)out.push(["edulens:"+l.id,"For educators, "+l.name]);
   [["week","What we ate and where it came from, this week"],["lastweek","What we ate and where it came from, last week"],["month","What we ate and where it came from, this month"],["lastmonth","What we ate and where it came from, last month"]].forEach(([k,l])=>out.push(["food:"+k,l]));
   return out;
 }
@@ -2335,7 +2342,46 @@ async function shareCheckFaces(){
   }
   shareBusy.faces=false;if(view==="share")renderShare();
 }
+async function shareDraftEdu(){
+  if(!sample){toast("TREE's reading help is not available right now.");return}
+  const A=shareEduAbout(shareSt.src);if(!A||!has(A.text)){toast(shareSplit(shareSt.src)[0]==="own"?"Write a few points about your topic first.":"There is nothing written there to draw on yet.");return}
+  const QS=SHQ(),aud=shAudience(shareSt.src);
+  const prompt=`${STYLE}
+
+The director is making a teaching post for the school's public Instagram account, ${aud.toLowerCase()}. TREE exists to make children's learning and thinking visible, and a teaching post shares how Fulton understands children and practice, so families and educators can look to the school as a resource.
+
+${A.kind==="inquiry"?`This post draws on a team inquiry, the educators' private study of a challenge. The post must never describe the situation, the child or children, the class, the day, the setting, or any detail that could let someone recognize who or what it was about, even indirectly. Write only the general understanding the team reached, such as why behavior like this is developmentally expected even when it is not yet socially acceptable, what need the behavior may be meeting, and how adults can respond with remedy and repair. Behavior is the means to meet a need, and the need is never one child's alone. Never use the words challenging, bad, naughty or problem for a child.
+
+`:""}The language standard.
+Every line is a complete, grammatical sentence with a subject and a verb. Never write fragments or clipped statements.
+The writing is intentional, purposeful and conceptually sophisticated, and it never talks down to the reader. Hold the image of the child as competent and capable. Never use generic educational language, filler, praise, sentimentality or lists of skills.
+Use only the ideas in the material below. Credit a source only when it is listed below, by its name, and never invent a study, a statistic or a quotation.
+
+Write these things.
+title is a short title for the first picture, two to six words.
+cards are three to five pictures of words only, in order. Each has h, a short heading of two to six words, and t, one to three complete sentences, at most 45 words, so each picture holds one idea a reader can take in at a glance. The first card names the idea, the middle cards say what is happening for children and why it matters, and the last card says what adults can do.
+caption is the post's words for Instagram, 80 to 160 words in two or three short paragraphs separated by a blank line, in the school's voice, using we. The first sentence is the line a reader sees before tapping more, so it names the idea in a way that draws the reader in. ${A.sources&&A.sources.length?"End with the sources by name. ":""}No emojis, no sales language and no exclamation marks.
+hashtags is one line of five to eight hashtags fitting a post ${aud.toLowerCase()}, such as #reggioinspired #earlychildhoodeducation #parentingtips #behaviorascommunication #childdevelopment #imageofthechild #teacherresearch.
+quote is the number of the one quote from the list below that best fits the idea.
+
+Return only JSON in this shape {"title":"","cards":[{"h":"","t":""}],"caption":"","hashtags":"","quote":1}.
+
+The material.
+${A.text}${A.sources&&A.sources.length?"\n\nSources the director chose.\n"+A.sources.join("\n"):""}
+
+The quotes.
+${QS.map((q,i)=>(i+1)+". "+q[0]+" ("+q[1]+")").join("\n")}`;
+  shareBusy.words=true;renderShare();
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"share"});
+    const tidy=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,", ").replace(/[ \t]+\n/g,"\n").trim();
+    if(Array.isArray(out&&out.cards)&&out.cards.length){shareSt.cards=out.cards.filter(c=>c&&has(c.t)).slice(0,6).map(c=>({h:tidy(c.h),t:tidy(c.t),on:true}));shareSt.cardsOn=true}
+    if(has(out&&out.title)){shareSt.title=tidy(out.title);shareSt.titleOn=true}
+    if(has(out&&out.caption))shareSt.caption=tidy(out.caption);if(has(out&&out.hashtags))shareSt.tags=String(out.hashtags).trim();
+    const qn=+(out&&out.quote);if(qn>=1&&qn<=QS.length)shareSt.quote=QS[qn-1][0];
+    shareSave();shStale()}catch(e){toast("The post could not be drafted. Try again.")}
+  shareBusy.words=false;if(view==="share")renderShare()}
 async function shareDraft(btn){
+  if(shareIsEdu())return shareDraftEdu();
   const ch=shareChosen();if(!ch.length&&!shareHasCards()){toast("Choose at least one photo first.");return}
   if(!sample){toast("TREE's reading help is not available right now.");return}
   const [k,id]=shareSplit(shareSt.src);let about="";
@@ -2399,6 +2445,20 @@ function shareCardsFrom(src){const [k,id]=shareSplit(src),c=[],add=(h,t)=>{t=shS
   if(k==="proj"||k==="wall"){const x=projects.get(id);if(x){add("How it began",x.experience);add("What may lie underneath",x.underneath);add("Our intent",x.intent)}}
   if(k==="lens"){const L=LENSES.find(l=>l.id===id);if(L){add("The lens we are reading through",L.description);if(L.questions.length)add("The questions we ask",L.questions.slice(0,3).join(" "))}}
   return c}
+const SH_EDU=/^(own|nl|eduproj|inq|edulens):/;
+const shareIsEdu=()=>!!shareSt&&SH_EDU.test(shareSt.src||"");
+const shAudience=src=>/^(edulens):/.test(src)?"For educators":/^inq:/.test(src)?"For families and educators":"For families";
+// what a teaching post is drawn from, with names and the details of any moment taken out first
+function shareEduAbout(src){const [k,id]=shareSplit(src);
+  if(k==="own")return {kind:"own",text:shareScrub(shareSt.ownText||"")};
+  if(k==="nl"){const [nid,tid]=id.split("|");const x=newsletters.get(nid);const tp=x&&(x.topics||[]).find(t=>t.id===tid);if(!tp)return null;
+    const reads=(x.reading||[]).filter(r=>!r.topic||r.topic===tp.title).slice(0,4).map(r=>[r.title,r.source].filter(Boolean).join(", "));
+    return {kind:"newsletter",text:shareScrub([tp.title,tp.happening,tp.why,(tp.grows||[]).map(g=>g.text).join(" "),(tp.tips||[]).map(t=>[t.lead,t.text].filter(Boolean).join(". ")).join("\n"),tp.bonus].filter(has).join("\n")),sources:reads}}
+  if(k==="eduproj"){const x=projects.get(id);if(!x)return null;return {kind:"project",text:shareScrub([`The school-wide work ${x.name}.`,has(x.experience)?"What it grew from. "+x.experience:"",has(x.underneath)?"What may lie underneath. "+x.underneath:"",has(x.intent)?"The educators' intent. "+x.intent:""].filter(Boolean).join("\n"))}}
+  if(k==="inq"){const x=inquiries.get(id);if(!x)return null;
+    return {kind:"inquiry",text:shareScrub([has(x.see)?"What the team saw. "+x.see:"",...inqOpenHyps(x).map(h=>"What the team thinks is happening. "+h.text),...(x.tries||[]).filter(t=>has(t.text)).map(t=>"What the team tried. "+t.text+(has(t.result)?" What happened. "+t.result:"")),has(x.watch)?"What the team watches for. "+x.watch:"",...(x.looks||[]).filter(l=>has(l.text)).slice(-3).map(l=>"When the team looked again. "+l.text)].filter(Boolean).join("\n"))}}
+  if(k==="edulens"){const L=LENSES.find(l=>l.id===id);if(!L)return null;return {kind:"lens",text:[`The school's lens, ${L.name}.`,L.description,L.questions.length?"The questions educators read with. "+L.questions.join(" "):""].filter(has).join("\n")}}
+  return null}
 const shareCardsOn=()=>shareSt&&shareSt.cardsOn?(shareSt.cards||[]).filter(c=>c.on&&has(c.t)):[];
 /* what we ate and where it came from. Only what the menus, bins and orders say, never prices. */
 function shareFoodRange(k){const now=new Date(),wk=mondayOf(now);
@@ -2513,7 +2573,8 @@ async function shareCanvas(o){
       if(sub){g.font=shFont(false,sm);g.fillStyle="#606e65";const sl=shWrap(g,sub,SH_W-200).slice(0,2);shText(g,sl,y+sm+6,sm*1.25);y+=sl.length*sm*1.25+6}y+=gap}
     if(I.foot){g.font=shFont(true,32);g.fillStyle=SH_ACC;g.fillText(I.foot,SH_W/2,Math.max(y+30,bottom-30))}
   }else if(o.card){
-    let y=o.title?shTitle(g,o.title,40):60;
+    let y=40;if(o.aud){g.font=shFont(true,24);g.fillStyle="#606e65";g.fillText(o.aud.toUpperCase().split("").join(String.fromCharCode(8202)),SH_W/2,74);y=90}
+    y=o.title?shTitle(g,o.title,y):y+20;
     g.font=shFont(true,34);g.fillStyle=SH_ACC;const hl=shWrap(g,o.card.h,SH_W-200);
     const len=o.card.t.length,size=len>260?40:len>160?46:54,lh=Math.round(size*1.36);g.font=shFont(false,size);const tl=shWrap(g,o.card.t,SH_W-220).slice(0,10);
     const block=hl.length*44+36+tl.length*lh+44;y=Math.max(y+20,y+(bottom-y-block)/2);
@@ -2562,7 +2623,7 @@ async function shareMake(){
   shareBusy.make=true;renderShare();await loadPrintFonts();
   const blobs=[];let missed=0;
   const title=()=>blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"";const cards=shareCardsOn();
-  const putCards=async()=>{for(const c of cards)blobs.push(await shareCanvas({card:c,title:title()}))};
+  const putCards=async()=>{for(const c of cards)blobs.push(await shareCanvas({card:c,title:title(),aud:shareIsEdu()?shAudience(shareSt.src):""}))};
   if(!ch.length)await putCards();
   for(let i=0;i<ch.length;i++){const n=ch[i];let im=null;try{im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){}
     if(im)blobs.push(await shareCanvas({photo:im,soft:(shareSt.soft||{})[n.id]||[],title:title(),words:shareSt.wordsOn!==false?String((shareSt.words||{})[n.id]||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}));else missed++;
@@ -2602,7 +2663,7 @@ function renderShare(){
         <b style="font-family:var(--display);font-size:17px">${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):", "+esc(shortDate(x.updatedAt||x.createdAt||Date.now()))}</span>
         <span class="cnt">${(x.pics||[]).length?x.pics.length+" picture"+(x.pics.length===1?"":"s")+(x.picsStale?", changed since made":""):"Pictures not made yet"}${has(x.caption)?" · caption":""}</span></button>`};
     h+=`<div class="actions" style="margin:4px 0 12px"><button class="btn" data-shmake1="1">Make a post</button></div>
-    ${shStarting?`<section class="card"><div class="lbl">A new post, starting from</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button><button class="linkbtn" data-shmake1="0">Cancel</button></div>
+    ${shStarting?`<section class="card"><div class="lbl">A new post, starting from</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${(()=>{const all=shareSources(),edu=all.filter(([v])=>SH_EDU.test(v)),doc=all.filter(([v])=>!SH_EDU.test(v));return `<optgroup label="Children's work">${doc.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup><optgroup label="Teaching posts">${edu.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`})()}</select><button class="btn small" data-shgather="1">Gather photos</button><button class="linkbtn" data-shmake1="0">Cancel</button></div>
       <div class="cnt">Observations kept with a team inquiry are never offered.</div></section>`:""}
     ${open.length?`<div class="secthead" style="margin-top:6px"><h3 style="font-size:17px">Posts waiting</h3><span class="cnt">${open.length}</span></div><div class="shlist">${open.map(card).join("")}</div>`:`<div class="empty">No posts waiting. Make a post and it is kept here, its pictures and caption ready to post.</div>`}
     ${done.length?`<details style="margin-top:14px"><summary class="secthead"><h3 style="font-size:17px;display:inline">Posted</h3> <span class="cnt">${done.length}</span></summary><div class="shlist" style="margin-top:8px">${done.map(card).join("")}</div></details>`:""}`;
@@ -2626,11 +2687,17 @@ function renderShare(){
     <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
     <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device, the finished pictures too.</div></section>`;
   const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
-  if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
+  if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length&&!shareIsEdu()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
   const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${shPostedIds().has(n.id)?`<span class="shposted">Posted before</span>`:""}${sf?`<span class="shwhy">${k>=0?"Faces softened":"Softened, tap to check"}</span>`:s!=="clear"&&(st.found||{})[n.id]===0?`<span class="shwhy">No face found, tap to look</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
-  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
+  if(shareIsEdu()){const own=shareSplit(st.src)[0]==="own",A=own?null:shareEduAbout(st.src);
+    h+=`<section class="card"><div class="lbl">${esc(shAudience(st.src))}, words only</div>
+      ${own?`<label class="fld-label">Your topic, in a few points<textarea id="shown" rows="6" placeholder="Such as why we say tell me about this and not what is it, and what children hear when we do">${esc(st.ownText||"")}</textarea></label>`
+        :`<div class="cnt">Drawn from what is already written there${shareSplit(st.src)[0]==="inq"?". Nothing about the child, the class or the moment goes into the post, only what the team came to understand":""}.</div>${A&&has(A.text)?`<details><summary class="cnt">What TREE reads</summary><div class="shcaption">${esc(A.text)}</div></details>`:""}`}
+      <div class="actions"><button class="btn small${(st.cards||[]).length?" ghost":""}" data-shdraft="1" ${shareBusy.words?"disabled":""}>${shareBusy.words?"Drafting":(st.cards||[]).length?"Draft again":"Draft the post"}</button></div>
+      <div class="cnt">Draft writes the pictures of words, the caption and the hashtags, and chooses the quote.</div></section>`}
+  else h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
     ${shareBusy.faces?`<div class="cnt"><b>Checking photos for faces and names, ${shareBusy.left} to go.</b></div>`:""}
     <div class="cnt">Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.</div>
     ${clear.length?`<div class="shgrid">${clear.map(tile).join("")}</div>`:shareBusy.faces?"":`<div class="cnt" style="margin-top:6px">No photo came through the check.</div>`}
@@ -2638,8 +2705,8 @@ function renderShare(){
     <div class="actions"><button class="btn small" data-shsoftall="1" ${shBatch?"disabled":""}>${shBatch?`Softening ${shBatch.done} of ${shBatch.of}`:"Soften faces in all of these"}</button></div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
     ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
-    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and words"}</button></div>
-    <div class="cnt">Drafted only from the educators' words, with children's names and words taken out first.</div>
+    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards()&&!shareIsEdu())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and words"}</button></div>
+    <div class="cnt">${shareIsEdu()?"Edit the caption here.":"Drafted only from the educators' words, with children's names and words taken out first."}</div>
     <label class="fld-label">Caption<textarea id="shcap" rows="6">${esc(st.caption||"")}</textarea></label>
     <label class="fld-label">Hashtags<input id="shtags" value="${esc(st.tags||"")}" placeholder="#reggioinspired #naturebasedlearning"></label>
     <div class="actions"><button class="btn small ghost" data-shcopy="1" ${has(st.caption)?"":"disabled"}>Copy the caption</button></div>
@@ -2673,7 +2740,7 @@ function shWarnHtml(){const w=shareWarn();return w.length?`<div class="cnt" styl
 document.addEventListener("click",async e=>{
   if(view!=="share")return;const t=e.target.closest("button");if(!t||!isDirector())return;const d=t.dataset;
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
-    const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
+    const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="nl"?(()=>{const [nid,tid]=id.split("|");const x=newsletters.get(nid);const tp=x&&(x.topics||[]).find(t=>t.id===tid);return tp?tp.title:""})():k==="eduproj"?((projects.get(id)||{}).name||""):k==="edulens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
     shView=false;shStarting=false;shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
     if(k==="wall"){const x=projects.get(id);for(const sh of shareWallSheets(x)){const pid=wallPhotos(sh)[0];if(pid&&has(sh.title)&&!shareSt.lines[pid])shareSt.lines[pid]=shareScrub(sh.title)}}
@@ -2715,6 +2782,7 @@ document.addEventListener("input",e=>{
   if(view!=="share"||!shareSt||!isDirector())return;const t=e.target;let hit=true;
   if(t.id==="shcap")shareSt.caption=t.value;else if(t.id==="shtags")shareSt.tags=t.value;else if(t.id==="shtitle")shareSt.title=t.value;
   else if(t.dataset&&t.dataset.shline){shareSt.lines=shareSt.lines||{};shareSt.lines[t.dataset.shline]=t.value}
+  else if(t.id==="shown")shareSt.ownText=t.value;
   else if(t.dataset&&t.dataset.shword){shareSt.words=shareSt.words||{};shareSt.words[t.dataset.shword]=t.value}
   else if(t.dataset&&t.dataset.shcard!=null){const c=(shareSt.cards||[])[+t.dataset.shcard];if(c)c.t=t.value}else hit=false;
   if(!hit)return;shareSave();if(shareMade&&t.id!=="shcap"&&t.id!=="shtags")shareMade.stale=true;const w=$("#shwarn");if(w)w.innerHTML=shWarnHtml();
