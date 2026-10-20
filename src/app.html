@@ -2705,7 +2705,12 @@ function storyStartOptions(){const g=(label,list)=>list.length?`<optgroup label=
   const room=myRoom(),mine=x=>isDirector()||!room||!x||x===room;
   const prs=[...projects.values()].filter(x=>x&&!x.deleted&&x.status!=="closed").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>["proj:"+x.id,x.name]);
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted&&mine(t.classroom)).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,25).map(t=>["thread:"+t.id,t.name+(t.classroom?", "+t.classroom+" Class":"")]);
-  const wk=mondayOf(new Date()),pls=[...plans.values()].filter(p=>p&&p.id!=="example"&&p.weekOf>=addDays(wk,-14)&&mine(p.classroom)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,20).map(p=>["plan:"+p.id,(p.classroom?p.classroom+" ":"")+(p.type==="classroom"?"Classroom plan":(p.group?p.group+" plan":"Individual plan"))+", week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,"")]);
+  const wk=mondayOf(new Date()),pls=[...plans.values()].filter(p=>p&&p.id!=="example"&&p.weekOf>=addDays(wk,-14)&&mine(p.classroom)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,30).map(p=>{const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");
+    // an Individual plan is named by its educator, its small group or area, and what it is about, so plans of the same week can be told apart
+    const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),70);
+    if(p.type==="classroom")return ["plan:"+p.id,`${p.classroom?p.classroom+" Class, ":""}Classroom plan, week of ${wk}`];
+    const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";
+    return ["plan:"+p.id,[p.educator||"An educator",foc,p.classroom?p.classroom+" Class":"","week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")]});
   const iqs=inqAll().filter(x=>mine(x.room)).slice(0,20).map(x=>["inq:"+x.id,x.name||"A team inquiry"]);
   const lns=LENSES.map(l=>["lens:"+l.id,l.name]);
   const bns=[...bins.values()].filter(b=>b&&b.date&&b.date>=addDays(wk,-21)).sort((a,b)=>b.date.localeCompare(a.date)).map(b=>["bin:"+b.id,"Weekly bin, "+fmtDate(b.date).replace(/, \d{4}$/,"")]);
