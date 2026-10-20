@@ -35,6 +35,43 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     return out;
   }
 
+  // a class newsletter, a Kaymbu Storyboard, is built from blocks. Its title names the class, each subtitle starts a part,
+  // usually a small group, and the photos and paragraphs under a subtitle belong to that part. The calendar dates and
+  // the words before the first part are for families and are not observations.
+  function parseStoryboard(html) {
+    html = String(html || '');
+    if (!/class="\s*block (?:subtitle|paragraph|banner)Block/i.test(html)) return null;
+    const re = /class="\s*block (\w+Block)"/gi, marks = []; let x;
+    while ((x = re.exec(html))) marks.push({ type: x[1], at: x.index });
+    const text = h => decode(String(h || '').replace(/<\/div>\s*<div[^>]*>/gi, '\n')).replace(/\n{3,}/g, '\n\n').trim();
+    const out = { title: '', dates: [], intro: [], sections: [] }; let cur = null;
+    marks.forEach((mk, i) => {
+      const part = html.slice(mk.at, i + 1 < marks.length ? marks[i + 1].at : html.indexOf('Storyboard Footer') > mk.at ? html.indexOf('Storyboard Footer') : html.length);
+      const t = mk.type;
+      if (t === 'bannerBlock') { const m = part.match(/class="[^"]*component text bannerTitle"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i); out.title = text(m && m[1]); return; }
+      if (/^calendar/i.test(t)) { const g = c => { const m = part.match(new RegExp('class="component-date ' + c + '"[^>]*>([^<]*)<', 'i')); return m ? m[1].trim() : ''; };
+        const d = part.match(/class="[^"]*component text description"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i); out.dates.push({ month: g('month'), day: g('day'), text: text(d && d[1]) }); return; }
+      if (t === 'subtitleBlock') { const m = part.match(/class="[^"]*component text subtitle"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i); cur = { heading: text(m && m[1]), photos: [], text: [] }; out.sections.push(cur); return; }
+      if (t === 'paragraphBlock') { const m = part.match(/class="[^"]*component text paragraph"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i); const w = text(m && m[1]); if (!w) return;
+        if (cur) cur.text.push(w); else out.intro.push(w); return; }
+      if (/image/i.test(t)) { const srcs = [...part.matchAll(/<img[^>]*src="([^"]+)"[^>]*>/gi)].map(m => m[1].replace(/&amp;/g, '&')).filter(u => /\/moments\//.test(u));
+        if (!srcs.length) return; if (!cur) { cur = { heading: '', photos: [], text: [] }; out.sections.push(cur); } cur.photos.push(...srcs); }
+    });
+    out.sections = out.sections.filter(sc => sc.photos.length || sc.text.length);
+    return out.sections.length ? out : null;
+  }
+
+  // a small group named in a newsletter heading, allowing one letter off, as Lavander for Lavender
+  function headingGroup(heading, rooms) {
+    const set = (store.recs.settings.get('main') || {}).doc || {};
+    const groups = (Array.isArray(set.groups) ? set.groups : []).filter(g => g && g.name && (!rooms.length || !g.room || rooms.includes(g.room)));
+    const ws = words(heading).replace(/\b(group|groups|small)\b/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const near = (a, b) => { if (a === b) return true; if (Math.abs(a.length - b.length) > 1 || a.length < 5) return false;
+      let i = 0, j = 0, d = 0; while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++d > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } } return d + (a.length - i) + (b.length - j) <= 1; };
+    const hit = groups.filter(g => { const gw = words(g.name); return gw.split(' ').length > 1 ? (' ' + ws.join(' ') + ' ').includes(' ' + gw + ' ') : ws.some(w => near(w, gw)); });
+    return hit.length === 1 ? hit[0] : null;
+  }
+
   function getBuf(url, hops = 0) {
     return new Promise((resolve, reject) => {
       let u; try { u = new URL(url); } catch (e) { reject(new Error('bad address')); return; }
@@ -222,26 +259,54 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
       const r = digest(body); if (r) { reply(200, r); return; }
     }
+    const board = parseStoryboard(body.html);
+    if (board && (/@([a-z0-9-]+\.)*kaymbu\.com$/.test(email) || (/@childfamilycommunity\.com$/.test(email) && /kaymbu\.com/i.test(body.html)))) {
+      if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
+      return keepMoments(board, body, from, email, reply);
+    }
     if (!/@([a-z0-9-]+\.)*kaymbu\.com$/.test(email)) { log('Kaymbu inbox skipped an email that did not come from Kaymbu', email.replace(/^[^@]+/, '…')); reply(200, { ok: true, kept: 0, skipped: 'not from Kaymbu' }); return; }
     if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
-    const moments = parseMoments(body.html);
+    return keepMoments(null, body, from, email, reply);
+  }
+
+  // Moments, or the parts of a newsletter, become observations the same way
+  async function keepMoments(board, body, from, email, reply) {
+    const subject = String(body.subject || '').replace(/^\s*((fwd?|fw|re)\s*:\s*)+/i, '');
+    let moments;
+    if (board) {
+      const rooms0 = readSubject(subject + ' ' + board.title).rooms;
+      moments = [];
+      for (const sc of board.sections) {
+        const g = headingGroup(sc.heading, rooms0), note = sc.text.join('\n\n');
+        const base = { title: sc.heading, note, newsletter: board.title || subject, ...(g ? { smallGroup: String(g.name), room: g.room || '', by: g.educator ? String(g.educator) : '' } : {}) };
+        if (sc.photos.length) for (const ph of sc.photos) moments.push(Object.assign({ photo: ph.replace(/\?.*$/, '') }, base)); else moments.push(Object.assign({ photo: '' }, base));
+      }
+    } else moments = parseMoments(body.html);
     if (!moments.length) { log('Kaymbu email held no Moments'); reply(200, { ok: true, kept: 0 }); return; }
     const name = from.replace(/<[^>]*>/, '').trim();
     const sent = Date.parse(body.date) || Date.now(), onDay = subjectDay(body.subject, sent);
-    const sub = readSubject(body.subject);
+    const sub = readSubject(board ? subject + ' ' + board.title : body.subject);
     // the educator named in the subject comes first, since the Kaymbu sign-in belongs to the class
-    const by = sub.educator || sharedBy(name, email);
+    // a newsletter is written by the class, so it carries an educator only from a small group or the subject, never from whoever forwarded it
+    const by = sub.educator || (board ? '' : sharedBy(name, email));
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
     // photos sent with the same title and note may each show different children, so the named children are suggested
     // for an educator to choose from, photo by photo, rather than tagged on every photo
     const sameNote = m => (m.title + '\n' + m.note).trim().toLowerCase();
     const many = new Map(); for (const m of moments) many.set(sameNote(m), (many.get(sameNote(m)) || 0) + 1);
-    let kept = 0, again = 0, check = 0, more = 0; const problems = []; const t0 = Date.now();
+    let kept = 0, again = 0, check = 0, more = 0, linked = 0; const problems = []; const t0 = Date.now();
     for (const [i, m] of moments.entries()) {
       // Google waits a minute for an answer, so a large batch is kept in parts and the rest comes on the next check
       if (Date.now() - t0 > 30000) { more = moments.length - i; break; }
       const k = m.photo ? (m.photo.split('/').pop().split('?')[0].replace(/_display(\.\w+)$/i, '$1')) : crypto.createHash('sha1').update(m.title + '\n' + m.note).digest('hex').slice(0, 16);
-      if (have.has(k) || seen.has(k)) { again++; continue; }
+      if (have.has(k) || seen.has(k)) {
+        // a photo already kept from its Moment keeps its own words. The newsletter adds only its small group and that it was shared.
+        if (board && have.has(k)) { const hit = [...store.recs.notices].find(([, r]) => !r.deleted && r.doc && r.doc.kaymbu && r.doc.kaymbu.key === k);
+          if (hit) { const [nid, r] = hit, d = r.doc; let ch = false;
+            if (m.smallGroup && !d.smallGroup) { d.smallGroup = m.smallGroup; ch = true; }
+            if (!d.kaymbu.newsletter) { d.kaymbu = Object.assign({}, d.kaymbu, { newsletter: m.newsletter }); ch = true; }
+            if (ch) { noteChange('notices', nid); scheduleSave('notices', nid); linked++; } } }
+        again++; continue; }
       seen.add(k);
       try {
         let photo, p;
@@ -249,7 +314,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
           // Kaymbu's own smaller copy is kept for cards and lists. The original above is what slides and printouts use.
           if (p.url !== m.photo) { try { const r = await getBuf(m.photo); const d = r.status === 200 && /^image\//.test(r.type) && r.buf.length < 600 * 1024 ? size(r.buf) : null; if (d) photo.thumb = await keepPhoto(r.buf, by, 'thumb'); } catch (e) {} } }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
-        const kids = findChildren(m.note || '', sub.rooms, m.title || '');
+        const rooms = m.room ? [m.room, ...sub.rooms.filter(r => r !== m.room)] : sub.rooms, room = m.room || sub.room, mBy = m.by || by;
+        const kids = findChildren(m.note || '', rooms, m.title || '');
         const group = (many.get(sameNote(m)) || 0) > 1 && (kids.ids.length + kids.maybe.length) > 0;
         const needs = group || !kids.ids.length || kids.unsure.length > 0 || kids.maybe.length > 0;
         // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
@@ -257,11 +323,12 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
-        const pg = photo ? postGroup(noticed, sub.room, day) : '';
-        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(sub.smallGroup ? { smallGroup: sub.smallGroup } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
+        const pg = photo ? postGroup(noticed, room, day) : '';
+        const sg = m.smallGroup || sub.smallGroup;
+        const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
-          updatedByName: by };
+          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter } : {}) },
+          updatedByName: mBy };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
         // a thread it might belong to is checked once for the whole post, a little after the last photo arrives
@@ -270,11 +337,12 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       } catch (e) { problems.push(e.message); log('A Kaymbu Moment could not be kept', e.message); }
       finally { seen.delete(k); }
     }
-    log(`Kaymbu email from ${by || "a class account"}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.rooms.length ? ', class ' + sub.rooms.join(' and ') : ', no class in the subject'}`);
+    if (board) log(`Kaymbu newsletter ${board.title || subject}: ${board.sections.length} parts, ${kept} observations kept${again ? `, ${again} photos already in TREE${linked ? `, ${linked} given their small group or newsletter` : ''}` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${board.dates.length ? `, ${board.dates.length} dates for families left out` : ''}`);
+    else log(`Kaymbu email from ${by || "a class account"}: ${kept} moments kept${again ? `, ${again} already in TREE` : ''}${check ? `, ${check} waiting for children to be tagged` : ''}${sub.rooms.length ? ', class ' + sub.rooms.join(' and ') : ', no class in the subject'}`);
     // a Moment that could not be kept leaves the email waiting, so the Apps Script sends it again later and only that Moment is added
     if (more) { log(`Kaymbu batch from ${by || "a class account"}: ${more} moments wait for the next check`); reply(502, { error: `${kept} moments were kept. ${more} more come on the next check.`, kept, more }); return; }
     if (problems.length) { reply(502, { error: (kept ? `${kept} moments were kept. ` : '') + 'Some could not be kept yet. ' + problems[0], kept }); return; }
-    reply(200, { ok: true, kept, again, check, classroom: sub.room, problems });
+    reply(200, { ok: true, kept, again, check, linked, classroom: sub.room, problems, ...(board ? { newsletter: board.title, dates: board.dates } : {}) });
   }
 
   // moments kept before the children and the date were read properly are put right once, after the records load
@@ -323,5 +391,5 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     if (g) log('Kaymbu photos given the group of their post,', g);
   }
 
-  return { handle, repair, postGroup, subjectDay, parseMoments, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
+  return { handle, repair, postGroup, subjectDay, parseMoments, parseStoryboard, headingGroup, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
 };
