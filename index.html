@@ -560,6 +560,10 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .shph{position:relative;padding:0;border:3px solid transparent;border-radius:10px;background:none;cursor:pointer;opacity:.45;aspect-ratio:4/5;overflow:hidden}
 .shph img{width:100%;height:100%;object-fit:cover;display:block}.shph.on{opacity:1;border-color:var(--moss)}
 .shph .decknum{position:absolute;top:4px;left:4px}.shwhy{position:absolute;left:0;right:0;bottom:0;background:rgba(27,41,32,.78);color:#fff;font-size:11px;padding:3px 4px;text-align:center}
+.shcell{display:grid;gap:2px;justify-items:center}.shcell .shph{width:100%}.shsoftbtn{font-size:13px}
+.shsoft{position:fixed;inset:0;z-index:200;background:rgba(18,24,20,.6);display:grid;place-items:center;padding:12px;overflow:auto}
+.shsoftbox{background:var(--paper);color:var(--ink);border-radius:14px;padding:16px;width:min(720px,100%);display:grid;gap:8px;max-height:calc(100vh - 24px);overflow:auto}
+.shsoftpic canvas{width:auto;max-width:100%;height:auto;max-height:62vh;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;display:block}
 .shmade img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.shaside{margin-top:8px}
 .nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
@@ -2376,6 +2380,57 @@ function shareFoodCards(k){
     const son=F.sources.filter(e=>e.county==="Sonoma").length;
     cards.push({title:"Where our food came from",rows,foot:son?`${son} of ${F.sources.length} from Sonoma County`:""})}
   return cards}
+/* softening faces. TREE finds faces on the device with a small model kept beside the page, nothing is sent anywhere,
+   and the director taps to add or clear a soft spot. A softened spot is the photo itself shrunk to a few pixels and
+   stretched back, so it works in every browser and cannot be undone in the picture that is made. */
+let shSoft=null;
+async function shFaceModel(){if(window.__shFace)return window.__shFace;window.__shFace=(async()=>{await loadScript("vendor/faceapi/face-api.js","faceapi");await faceapi.nets.ssdMobilenetv1.loadFromUri("vendor/faceapi");return faceapi})();
+  try{return await window.__shFace}catch(e){window.__shFace=null;throw e}}
+async function shFindFaces(im){const fa=await shFaceModel();const k=Math.min(1,1024/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+  const found=await fa.detectAllFaces(c,new fa.SsdMobilenetv1Options({minConfidence:0.3,maxResults:40}));const W=c.width,H=c.height,M=Math.max(W,H);
+  return found.map(d=>{const b=d.box||d.detection.box;return {x:(b.x+b.width/2)/W,y:(b.y+b.height/2)/H,r:Math.max(b.width,b.height)*0.78/M}})}
+// the photo drawn into a box, with each soft spot blurred
+function shDrawSoft(g,im,dx,dy,dw,dh,marks){
+  g.drawImage(im,dx,dy,dw,dh);const M=Math.max(im.width,im.height),sc=dw/im.width;
+  for(const m of marks||[]){const cx=m.x*im.width,cy=m.y*im.height,r=m.r*M,sx=Math.max(0,cx-r),sy=Math.max(0,cy-r),sw=Math.min(im.width,cx+r)-sx,sh=Math.min(im.height,cy+r)-sy;if(sw<=0||sh<=0)continue;
+    const a=document.createElement("canvas");a.width=6;a.height=6;const ag=a.getContext("2d");ag.imageSmoothingEnabled=true;ag.drawImage(im,sx,sy,sw,sh,0,0,6,6);
+    const b=document.createElement("canvas");b.width=40;b.height=40;const bg=b.getContext("2d");bg.imageSmoothingEnabled=true;bg.drawImage(a,0,0,40,40);
+    g.save();g.beginPath();g.arc(dx+cx*sc,dy+cy*sc,r*sc,0,Math.PI*2);g.clip();g.imageSmoothingEnabled=true;g.drawImage(b,dx+sx*sc,dy+sy*sc,sw*sc,sh*sc);g.restore()}}
+async function shSoftOpen(id){const n=notices.get(id);if(!n)return;
+  shSoft={id,im:null,marks:JSON.parse(JSON.stringify((shareSt.soft||{})[id]||[])),size:.08,busy:true,msg:"Opening the photo"};shSoftRender();
+  try{shSoft.im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){shSoft=null;shSoftRender();toast("The photo could not be opened. Try again.");return}
+  if(!shSoft.marks.length){shSoft.msg="Finding faces";shSoftRender();try{shSoft.marks=await shFindFaces(shSoft.im);shSoft.msg=shSoft.marks.length?`${shSoft.marks.length} face${shSoft.marks.length===1?"":"s"} found and softened.`:"No face was found. Tap any face to soften it."}catch(e){shSoft.msg="Faces could not be found on this device. Tap each face to soften it."}}
+  else shSoft.msg="";shSoft.busy=false;shSoftRender()}
+function shSoftRender(){
+  let el=document.getElementById("shsoft");if(!shSoft){if(el)el.remove();document.body.style.overflow="";return}
+  if(!el){el=document.createElement("div");el.id="shsoft";el.className="shsoft";document.body.append(el);document.body.style.overflow="hidden"}
+  el.innerHTML=`<div class="shsoftbox"><div class="secthead"><h3 style="font-size:18px">Soften faces</h3></div>
+    <div class="cnt">${esc(shSoft.msg||"")}</div>
+    <div class="shsoftpic">${shSoft.im?`<canvas id="shsoftcv"></canvas>`:`<div class="empty">${esc(shSoft.msg||"")}</div>`}</div>
+    <div class="cnt">Tap a face to soften it. Tap a softened spot to clear it. Look closely at every face before you use the photo.</div>
+    <label class="fld-label">Size of a new spot<input type="range" id="shsoftsize" min="3" max="20" value="${Math.round(shSoft.size*100)}"></label>
+    <div class="actions"><button class="btn small" data-shsoftuse="1" ${shSoft.busy?"disabled":""}>Use this photo</button><button class="btn small ghost" data-shsoftfind="1" ${shSoft.busy||!shSoft.im?"disabled":""}>Find faces again</button><button class="linkbtn" data-shsoftclear="1" ${shSoft.marks.length?"":"disabled"}>Clear every spot</button><button class="linkbtn" data-shsoftcancel="1">Cancel</button></div></div>`;
+  if(shSoft.im)shSoftDraw()}
+function shSoftDraw(){const cv=document.getElementById("shsoftcv");if(!cv||!shSoft||!shSoft.im)return;const im=shSoft.im,k=Math.min(1,1400/Math.max(im.width,im.height));
+  cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);const g=cv.getContext("2d");shDrawSoft(g,im,0,0,cv.width,cv.height,shSoft.marks);
+  const M=Math.max(cv.width,cv.height);g.strokeStyle="rgba(255,255,255,.9)";g.lineWidth=Math.max(2,M/300);g.setLineDash([M/90,M/120]);
+  for(const m of shSoft.marks){g.beginPath();g.arc(m.x*cv.width,m.y*cv.height,m.r*M,0,Math.PI*2);g.stroke()}}
+document.addEventListener("click",e=>{
+  if(!shSoft)return;const cv=e.target.closest&&e.target.closest("#shsoftcv");
+  if(cv&&shSoft.im&&!shSoft.busy){const R=cv.getBoundingClientRect(),x=(e.clientX-R.left)/R.width,y=(e.clientY-R.top)/R.height,ar=cv.width/cv.height,M=Math.max(cv.width,cv.height);
+    const hit=shSoft.marks.findIndex(m=>{const dx=(m.x-x)*cv.width,dy=(m.y-y)*cv.height;return Math.hypot(dx,dy)<=m.r*M});
+    if(hit>=0)shSoft.marks.splice(hit,1);else shSoft.marks.push({x,y,r:shSoft.size});shSoft.msg="";shSoftRender();return}
+  const t=e.target.closest("button");if(!t)return;const d=t.dataset;
+  if(d.shsoftcancel){shSoft=null;shSoftRender();return}
+  if(d.shsoftclear){shSoft.marks=[];shSoftRender();return}
+  if(d.shsoftfind){shSoft.busy=true;shSoft.msg="Finding faces";shSoftRender();shFindFaces(shSoft.im).then(f=>{const M=f.filter(a=>!shSoft.marks.some(b=>Math.hypot(a.x-b.x,a.y-b.y)<b.r));shSoft.marks.push(...M);shSoft.msg=M.length?`${M.length} more found.`:"No other face was found.";}).catch(()=>{shSoft.msg="Faces could not be found on this device. Tap each face to soften it."}).finally(()=>{shSoft.busy=false;shSoftRender()});return}
+  if(d.shsoftuse){const id=shSoft.id;shareSt.soft=shareSt.soft||{};if(shSoft.marks.length)shareSt.soft[id]=shSoft.marks;else delete shareSt.soft[id];
+    const chosen=shareChosen().some(n=>n.id===id);
+    if(!chosen){if(shareChosen().length>=SH_MAX){toast(`A post holds up to ${SH_MAX} pictures. Take one out first.`);return}
+      shareSt.off=(shareSt.off||[]).filter(x=>x!==id);if(shState(notices.get(id))!=="clear")shareSt.add=[...new Set([...(shareSt.add||[]),id])]}
+    shareSave();if(shareMade)shareMade.stale=true;shSoft=null;shSoftRender();renderShare();return}
+});
+document.addEventListener("input",e=>{if(shSoft&&e.target.id==="shsoftsize")shSoft.size=+e.target.value/100});
 /* the pictures */
 const SH_W=1080,SH_H=1350,SH_TINT="#f6ece6",SH_INK="#1b2920",SH_ACC="#7a4834",SH_MUTED="#6b5a50";
 const shFont=(b,px)=>PF.face?`${px}px PF${b?"bs":"fr"}`:`${b?"bold ":""}${px}px Helvetica, Arial, sans-serif`;
@@ -2407,7 +2462,7 @@ async function shareCanvas(o){
     g.font=shFont(true,62);const tl=o.title?shWrap(g,o.title,SH_W-160).slice(0,3):[];
     g.font=shFont(true,36);const ll=o.line?shWrap(g,o.line,SH_W-160).slice(0,2):[];
     if(full){
-      const r=Math.max(SH_W/im.width,SH_H/im.height);g.drawImage(im,(SH_W-im.width*r)/2,(SH_H-im.height*r)/2,im.width*r,im.height*r);
+      const r=Math.max(SH_W/im.width,SH_H/im.height);shDrawSoft(g,im,(SH_W-im.width*r)/2,(SH_H-im.height*r)/2,im.width*r,im.height*r,o.soft);
       if(tl.length||ll.length){const bh=60+tl.length*76+(ll.length?ll.length*48+(tl.length?20:0):0)+40;const gr=g.createLinearGradient(0,SH_H-bh-120,0,SH_H);
         gr.addColorStop(0,"rgba(20,26,22,0)");gr.addColorStop(.35,"rgba(20,26,22,.55)");gr.addColorStop(1,"rgba(20,26,22,.82)");g.fillStyle=gr;g.fillRect(0,SH_H-bh-120,SH_W,bh+120);
         let y=SH_H-bh+50;g.fillStyle="#ffffff";g.font=shFont(true,62);shText(g,tl,y,76);y+=tl.length*76+(tl.length?20:0);
@@ -2415,7 +2470,7 @@ async function shareCanvas(o){
     }else{
       const top=tl.length?70+tl.length*76:64,bot=ll.length?70+ll.length*48:64,m=56,availW=SH_W-m*2,availH=SH_H-top-bot;
       const r=Math.min(availW/im.width,availH/im.height),w=im.width*r,h=im.height*r,x=(SH_W-w)/2,y=top+(availH-h)/2;
-      g.drawImage(im,x,y,w,h);
+      shDrawSoft(g,im,x,y,w,h,o.soft);
       if(tl.length){g.font=shFont(true,62);g.fillStyle=SH_INK;shText(g,tl,y-30-(tl.length-1)*76,76)}
       if(ll.length){g.font=shFont(true,36);g.fillStyle=SH_ACC;shText(g,ll,y+h+62,48)}
     }
@@ -2430,7 +2485,7 @@ async function shareMake(){
   const blobs=[];let missed=0;
   for(let i=0;i<ch.length;i++){const n=ch[i];let im=null;try{im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){}
     if(!im){missed++;continue}
-    blobs.push(await shareCanvas({photo:im,title:blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}))}
+    blobs.push(await shareCanvas({photo:im,soft:(shareSt.soft||{})[n.id]||[],title:blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}))}
   const fk=shareFoodKey();if(fk)for(const info of shareFoodCards(fk))blobs.push(await shareCanvas({info}));
   const q=shareSt.quote&&SHARE_QUOTES.find(x=>x[0]===shareSt.quote);if(q&&blobs.length)blobs.push(await shareCanvas({quote:q}));
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));
@@ -2462,12 +2517,12 @@ function renderShare(){
   if(!ns.length&&!shareFoodKey()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
-  const tile=n=>{const k=ch.indexOf(n),s=shState(n);return `<button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button>`};
+  const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${sf?`<span class="shwhy">Faces softened</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
     ${shareBusy.faces?`<div class="cnt"><b>Checking photos for faces and names, ${shareBusy.left} to go.</b></div>`:""}
     <div class="cnt">Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.</div>
     ${clear.length?`<div class="shgrid">${clear.map(tile).join("")}</div>`:shareBusy.faces?"":`<div class="cnt" style="margin-top:6px">No photo came through the check.</div>`}
-    ${aside.length?`<details class="shaside" ${aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">Include one only after looking closely.</div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
+    ${aside.length?`<details class="shaside" ${aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">A great photo can still be used. Choose Soften faces under it, or include it only after looking closely.</div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
     ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
     <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and lines"}</button></div>
@@ -2507,8 +2562,10 @@ document.addEventListener("click",async e=>{
     shareSt.off=(shareSt.off||[]).filter(x=>x!==n.id);shareSt.add=(shareSt.add||[]).filter(x=>x!==n.id);
     if(on){if(clear)shareSt.off.push(n.id)}
     else{if(shareChosen().length>=SH_MAX){toast(`A post holds up to ${SH_MAX} pictures. Take one out first.`);return}
-      if(!clear){if(!confirm(`${SH_WHY[shState(n)]||"This photo was set aside"}. Include it only if no child can be recognized and no name can be read. Include it?`))return;shareSt.add.push(n.id)}}
+      if(!clear&&!((shareSt.soft||{})[n.id]||[]).length){shSoftOpen(n.id);return}
+      if(!clear)shareSt.add.push(n.id)}
     shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
+  if(d.shsoftopen){shSoftOpen(d.shsoftopen);return}
   if(d.shrecheck){for(const id of shareSt.ids)if(shareFaces[id]&&shareFaces[id].v==="?")delete shareFaces[id];shareCheckFaces();return}
   if(d.shdraft){shareDraft(t);return}
   if(d.shcopy){const txt=[shareSt.caption||"",shareSt.tags||""].filter(has).join("\n\n");try{await navigator.clipboard.writeText(txt);toast("The caption is copied.")}catch(err){toast("Copying is not available here. Select the caption and copy it.")}return}
