@@ -2492,14 +2492,29 @@ async function shareCanvas(o){
     g.font=shFont(false,size);g.fillStyle=SH_INK;shText(g,ql,y+size,lh);y+=ql.length*lh+30;
     g.font=shFont(true,34);g.fillStyle=SH_ACC;g.fillText(who,SH_W/2,y+30);
   }else{
-    const im=o.photo;let y=o.title?shTitle(g,o.title,30):56;
-    g.font=shFont(false,38);const wl=o.words?shWrap(g,o.words,SH_W-230).slice(0,5):[];
-    g.font=shFont(true,30);const ll=o.line?shWrap(g,o.line,SH_W-200).slice(0,2):[];
-    const textH=(wl.length?wl.length*50+44+28:0)+(ll.length?ll.length*40+14:0);
-    const availH=bottom-y-textH-(wl.length||ll.length?24:0),r=Math.min((SH_W-140)/im.width,availH/im.height),w=im.width*r,h=im.height*r;
-    shDrawSoft(g,im,(SH_W-w)/2,y,w,h,o.soft);y+=h+28;
-    if(wl.length){g.font=shFont(false,38);y=shBox(g,wl,y,38,50)+28}
-    if(ll.length){g.font=shFont(true,30);g.fillStyle=SH_ACC;shText(g,ll,y+30,40)}
+    // a photo keeps its words over it, the way the posts began
+    const im=o.photo,a=im.width/im.height,full=a>=0.62&&a<=0.95;
+    g.font=shFont(true,62);const tl=o.title?shWrap(g,o.title,SH_W-160).slice(0,3):[];
+    g.font=shFont(false,40);const wl=o.words?shWrap(g,o.words,SH_W-160).slice(0,4):[];
+    g.font=shFont(true,32);const ll=o.line?shWrap(g,o.line,SH_W-160).slice(0,2):[];
+    if(full){
+      const r=Math.max(SH_W/im.width,SH_H/im.height);shDrawSoft(g,im,(SH_W-im.width*r)/2,(SH_H-im.height*r)/2,im.width*r,im.height*r,o.soft);
+      if(tl.length||wl.length||ll.length){const bh=60+tl.length*76+(tl.length&&(wl.length||ll.length)?24:0)+wl.length*54+(wl.length&&ll.length?20:0)+ll.length*44+40;
+        const gr=g.createLinearGradient(0,SH_H-bh-140,0,SH_H);gr.addColorStop(0,"rgba(20,26,22,0)");gr.addColorStop(.3,"rgba(20,26,22,.55)");gr.addColorStop(1,"rgba(20,26,22,.86)");g.fillStyle=gr;g.fillRect(0,SH_H-bh-140,SH_W,bh+140);
+        let y=SH_H-bh+50;g.fillStyle="#ffffff";g.font=shFont(true,62);shText(g,tl,y,76);y+=tl.length*76+(tl.length&&(wl.length||ll.length)?24:0);
+        g.font=shFont(false,40);g.fillStyle="#ffffff";shText(g,wl,y,54);y+=wl.length*54+(wl.length&&ll.length?20:0);
+        g.font=shFont(true,32);g.fillStyle="#f6ece6";shText(g,ll,y,44)}
+    }else{
+      g.fillStyle=SH_TINT;g.fillRect(0,0,SH_W,SH_H);
+      const below=(wl.length?wl.length*54+20:0)+(ll.length?ll.length*44:0);
+      const top=tl.length?70+tl.length*76:64,bot=below?70+below:64,m=56,availW=SH_W-m*2,availH=SH_H-top-bot;
+      const r=Math.min(availW/im.width,availH/im.height),w=im.width*r,h=im.height*r,x=(SH_W-w)/2,y=top+(availH-h)/2;
+      shDrawSoft(g,im,x,y,w,h,o.soft);
+      if(tl.length){g.font=shFont(true,62);g.fillStyle=SH_INK;shText(g,tl,y-30-(tl.length-1)*76,76)}
+      let yy=y+h+62;if(wl.length){g.font=shFont(false,40);g.fillStyle=SH_INK;shText(g,wl,yy,54);yy+=wl.length*54+20}
+      if(ll.length){g.font=shFont(true,32);g.fillStyle=SH_ACC;shText(g,ll,yy,44)}
+    }
+    return await new Promise(r=>cv.toBlob(r,"image/jpeg",.92));
   }
   shFoot(g);
   return await new Promise(r=>cv.toBlob(r,"image/jpeg",.92));
@@ -2517,7 +2532,7 @@ async function shareMake(){
     if(im)blobs.push(await shareCanvas({photo:im,soft:(shareSt.soft||{})[n.id]||[],title:title(),words:shareSt.wordsOn!==false?String((shareSt.words||{})[n.id]||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}));else missed++;
     if(i===0)await putCards()}
   const fk=shareFoodKey();if(fk)for(const info of shareFoodCards(fk))blobs.push(await shareCanvas({info}));
-  const q=shareSt.quote&&shQuote(shareSt.quote);if(q&&blobs.length){const qn=shareSt.quotePhoto==="none"?null:shareSt.quotePhoto==="last"?ch[ch.length-1]:ch.find(n=>n.id===shareSt.quotePhoto);let qim=null;
+  const q=shareSt.quote&&shQuote(shareSt.quote);if(q&&blobs.length){const qn=!shareSt.quotePhoto||shareSt.quotePhoto==="none"?null:shareSt.quotePhoto==="last"?ch[ch.length-1]:ch.find(n=>n.id===shareSt.quotePhoto);let qim=null;
     if(qn){try{qim=await decodeImage(await (await fetchPhoto(photoSrc(qn))).blob())}catch(e){}}blobs.push(await shareCanvas({quote:q,photo:qim,soft:qn?(shareSt.soft||{})[qn.id]||[]:[]}))}
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));
   shareMade=blobs.length?{blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:false}:null;
@@ -2578,7 +2593,7 @@ function renderShare(){
     ${st.cardsOn?(st.cards||[]).map((c,i)=>`<div class="shcard"><label class="radio"><input type="checkbox" data-shcardon="${i}" ${c.on?"checked":""}><span><b>${esc(c.h)}</b></span></label><textarea data-shcard="${i}" rows="3">${esc(c.t)}</textarea></div>`).join(""):""}
     <div class="cnt">A post can be words only. Take out every photo and these pictures make the post.</div>`:""}
     <label class="fld-label">End with a quote<select id="shquote"><option value="">No closing quote</option>${SHQ().map(q=>`<option value="${esc(q[0])}" ${st.quote===q[0]?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0].replace(/[.]$/,""))}, ${esc(q[1])}</option>`).join("")}</select></label>
-    ${st.quote&&ch.length?`<label class="fld-label">Photo with the quote<select id="shqphoto"><option value="last" ${st.quotePhoto==="last"||!st.quotePhoto?"selected":""}>The last photo</option>${ch.map((n,i)=>`<option value="${esc(n.id)}" ${st.quotePhoto===n.id?"selected":""}>Photo ${i+1}</option>`).join("")}<option value="none" ${st.quotePhoto==="none"?"selected":""}>No photo</option></select></label>`:""}
+    ${st.quote&&ch.length?`<label class="fld-label">Photo with the quote<select id="shqphoto"><option value="none" ${st.quotePhoto==="none"||!st.quotePhoto?"selected":""}>No photo, white</option><option value="last" ${st.quotePhoto==="last"?"selected":""}>The last photo</option>${ch.map((n,i)=>`<option value="${esc(n.id)}" ${st.quotePhoto===n.id?"selected":""}>Photo ${i+1}</option>`).join("")}</select></label>`:""}
     <div class="cnt">Draft chooses the quote that fits these children's work best, from the full collection the Documentation Slides used.</div></section>`;
   h+=`<section class="card"><div class="lbl">The post</div>
     <div class="actions"><button class="btn small" data-shmake="1" ${(!ch.length&&!shareHasCards())||shareBusy.make?"disabled":""}>${shareBusy.make?"Drawing the pictures":shareMade?"Make the pictures again":"Make the pictures"}</button></div>
@@ -2593,7 +2608,7 @@ document.addEventListener("click",async e=>{
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
     const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
-    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"last",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
+    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
     if(k==="wall"){const x=projects.get(id);for(const sh of shareWallSheets(x)){const pid=wallPhotos(sh)[0];if(pid&&has(sh.title)&&!shareSt.lines[pid])shareSt.lines[pid]=shareScrub(sh.title)}}
     shareSave();renderShare();shareCheckFaces();return}
   if(d.shclear){if(!confirm("Start over? The photos chosen and the caption for this post are cleared."))return;shareSt=null;shareSave();if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;renderShare();return}
