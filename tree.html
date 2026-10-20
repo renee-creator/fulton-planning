@@ -5526,7 +5526,7 @@ function noticeCard(n){
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
 let mGroup=LS.get("fps.mgroup","recent"), mRange=LS.get("fps.mrange","all"), mBusy=false;
-const MGROUPS=[["recent","Most recent first"],["classroom","By class"],["educator","By educator"],["month","By month"],["work","By project or thread"]];
+const MGROUPS=[["recent","Most recent first"],["classroom","By class"],["educator","By educator"],["group","By small group"],["month","By month"],["work","By project or thread"]];
 const MRANGES=[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","Everything kept"]];
 const MRANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"Everything kept"};
 const mGroupLabel=()=>(MGROUPS.find(g=>g[0]===mGroup)||MGROUPS[0])[1];
@@ -5546,6 +5546,11 @@ function momentGroups(list){
   for(const n of list){
     if(mGroup==="classroom"){const r=momentRooms(n);put(r.length?r.join("+"):"~",r.length?momentRoomsText(n):"No class named",n)}
     else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
+    // by the small group of the children tagged in it, whoever kept it. An observation with children from two groups is under both.
+    else if(mGroup==="group"){const gs=[...new Set((n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||"")))];
+      if(!gs.length)put("~","No small group, since no child in a group is tagged",n);
+      for(const k of gs){const [name,room]=k.split("|");const g=GROUPS.find(x=>x.name===name&&(!x.room||!room||x.room===room))||GROUPS.find(x=>x.name===name);
+        put("g"+k,[name+" group",g&&g.educator,room?room+" Class":(g&&g.room?g.room+" Class":"")].filter(Boolean).join(", "),n)}}
     else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
     else{const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
       if(pr)put("p"+pr.id,"Project, "+pr.name,n);
@@ -5554,6 +5559,7 @@ function momentGroups(list){
   }
   const gs=[...by.values()];
   if(mGroup==="month")gs.sort((a,b)=>b.key.localeCompare(a.key));
+  else if(mGroup==="group"){const at=k=>{const [name,room]=k.slice(1).split("|");const i=GROUPS.findIndex(x=>x.name===name&&(!x.room||!room||x.room===room));return i<0?999:i};gs.sort((a,b)=>(a.key==="~")-(b.key==="~")||at(a.key)-at(b.key)||a.label.localeCompare(b.label))}
   else gs.sort((a,b)=>(a.key==="~")-(b.key==="~")||b.items.length-a.items.length||a.label.localeCompare(b.label));
   return gs;
 }
