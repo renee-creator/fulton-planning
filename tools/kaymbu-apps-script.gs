@@ -1,7 +1,8 @@
 /*
   TREE Kaymbu inbox, a Google Apps Script for the school's Google Workspace mailbox.
 
-  Moments shared from Kaymbu to the TREE address arrive in this mailbox. Every ten minutes this script finds the new ones
+  Moments shared from Kaymbu to the TREE address arrive in this mailbox, and so do class newsletters, Kaymbu Storyboards,
+  sent by Kaymbu or forwarded by anyone at the school. Every ten minutes this script finds the new ones
   and sends each email to the TREE server, which turns every Moment in it into a TREE moment. An email the server could
   not finish is tried again next time, and a Moment already in TREE is never added twice.
 
@@ -27,13 +28,16 @@ function checkKaymbu() {
   const props = PropertiesService.getScriptProperties();
   let done = []; try { done = JSON.parse(props.getProperty('done') || '[]'); } catch (e) {}
   const label = GmailApp.getUserLabelByName('TREE kept') || GmailApp.createLabel('TREE kept');
-  const threads = GmailApp.search('from:kaymbu.com to:' + TREE_ADDRESS + ' newer_than:7d', 0, 50);
+  // Moments and class newsletters from Kaymbu, and a newsletter someone at the school forwards to the TREE address
+  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d {from:kaymbu.com "Kaymbu for Families"}', 0, 50);
   for (const thread of threads) {
     let all = true;
     for (const msg of thread.getMessages()) {
       const id = msg.getId();
       if (done.indexOf(id) >= 0) continue;
-      if (!/kaymbu\.com/i.test(msg.getFrom()) || (msg.getTo() + ',' + msg.getCc()).toLowerCase().indexOf(TREE_ADDRESS.toLowerCase()) < 0) continue;
+      if ((msg.getTo() + ',' + msg.getCc()).toLowerCase().indexOf(TREE_ADDRESS.toLowerCase()) < 0) continue;
+      const fromKaymbu = /kaymbu\.com/i.test(msg.getFrom());
+      if (!fromKaymbu && !(/childfamilycommunity\.com/i.test(msg.getFrom()) && /block (subtitle|paragraph|banner)Block/.test(msg.getBody()))) continue;
       // a slow or sleeping server is tried again on the next check, and the other emails still go this time
       try {
         const res = UrlFetchApp.fetch(TREE_SERVER, {
