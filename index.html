@@ -303,7 +303,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
-.nfthreadline{overflow-wrap:anywhere}.nfthreadline .linkbtn{white-space:normal;text-align:left}
+.nfthreadline{overflow-wrap:anywhere}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -3139,6 +3139,10 @@ function todayWaiting(){
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag"})}}
+  // an observation TREE thinks might belong to a thread, one row for each post, folded together on Today
+  {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
+    const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
+    out.push({dot:"sky",t:"Might belong in a thread",s:`${firstLine(n.noticed,50)}${/[.!?…]$/.test(firstLine(n.noticed,50))?"":"."} The thread ${ss[0].t.name}.`,act:`data-nwedit="${n.id}"`,b:"Look"});if(seenG.size>=6)break}}
   // a team inquiry an educator opened from a thread, for the director to lead
   if(dir)for(const x of inqAll().filter(x=>x.startedBy&&!x.directorSeen).slice(0,4))
     out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
@@ -3175,7 +3179,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
   :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
@@ -4531,6 +4535,16 @@ function saveNotice(n,base){n.updatedAt=Date.now();
   if(db)(patch?db.doc("notices/"+n.id).update(patch).catch(e=>{if(e&&e.status===404)return whole();throw e}):whole()).catch(e=>{if(e&&(e.code==="unavailable"||e.code==="server_error")){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.")}else toast(e&&e.message||"Could not save. Check your connection.")});
   else LS.set("fps.notices",[...notices.values()]);}
 // one field of an observation, such as its thread or its DRDP reading, changed without sending the rest
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tsadd],[data-tsno]");if(!t||VIEW_AS)return;e.preventDefault();e.stopPropagation();
+  const [nid,tid]=String(t.dataset.tsadd||t.dataset.tsno).split("|");const n=notices.get(nid),th=threads.get(tid);if(!n||!th)return;const grp=noteGroup(n);
+  if(t.dataset.tsadd){
+    // added the way Find threads adds an observation, as evidence held by the thread, so every photo of the post comes with it
+    const lead=grp[0]||n,d=lead.day?parseIso(lead.day):new Date(lead.at||Date.now()),week=mondayOf(d),text=firstLine([lead.noticed,lead.wonder].filter(Boolean).join(" "),240);
+    if(!(th.evidence||[]).some(x=>x&&grp.some(g=>g.id===(x.planId||x.id)))){th.evidence=[...(th.evidence||[]),{planId:lead.id,week,text,by:whoAmI(),at:Date.now()}];th.weeks=[...new Set([...(th.weeks||[]),week])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";saveThread(th)}
+    for(const x of grp)if((x.threadSuggest||[]).length)patchNotice(x.id,{threadSuggest:(x.threadSuggest||[]).filter(s=>s.id!==tid)});
+    toast("Added to the thread "+(th.name||"")+".")}
+  else{for(const x of grp)patchNotice(x.id,{threadSuggest:(x.threadSuggest||[]).filter(s=>s.id!==tid),threadNo:[...new Set([...(x.threadNo||[]),tid])]});toast("This thread will not be suggested for it again.")}
+  obsIdx=null;renderMain()},true);
 function patchNotice(id,patch){const n=notices.get(id);if(!n||VIEW_AS)return;papply(n,jclone(patch));n.updatedAt=Date.now();
   if(!db){LS.set("fps.notices",[...notices.values()]);return}
   db.doc("notices/"+id).update(Object.assign(jclone(patch),{updatedAt:n.updatedAt})).catch(e=>{if(e&&e.status===404)return;toast(e&&e.message||"Could not save. Check your connection.")})}
@@ -4760,7 +4774,7 @@ function noticeFormCard(){
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
-    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>${threadLineHtml(notices.get(n.id)||n)}`:""}
+    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>${threadLineHtml(notices.get(n.id)||n)}${threadSuggestHtml(notices.get(n.id)||n)}`:""}
 
     ${many?`<div class="cnt" style="margin-bottom:6px">${formPhotos(n).length} photos in this observation. Tap the children in each photo below.</div>${photoStatusHtml(n)}`
       :ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
@@ -4819,7 +4833,7 @@ function noticeCard(n){
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
     ${pr?`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button></div></div>`:""}
-    ${threadLineHtml(n)}
+    ${threadLineHtml(n)}${threadSuggestHtml(n)}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
         ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
@@ -5148,6 +5162,12 @@ const threadLive=t=>!!t&&!t.unfollowed;
 function threadsOfNotice(n){if(!n)return [];const ix=obsIndex(),out=new Map();
   for(const x of noteGroup(n)){const own=x.threadId&&threads.get(x.threadId);if(threadLive(own))out.set(own.id,own);for(const t of ix.th.get(x.id)||[])out.set(t.id,t)}
   return [...out.values()]}
+// a thread TREE thinks an observation might belong to, kept on the observation by the server, for an educator to add with a tap or turn down
+function threadSuggestsOf(n){if(!n)return [];const grp=noteGroup(n),have=new Set(threadsOfNotice(n).map(t=>t.id)),no=new Set(grp.flatMap(x=>x.threadNo||[])),out=new Map();
+  for(const x of grp)for(const s of x.threadSuggest||[]){const t=threads.get(s.id);if(t&&threadLive(t)&&t.status!=="closed"&&!have.has(t.id)&&!no.has(t.id)&&!out.has(t.id))out.set(t.id,{t,why:s.why||""})}
+  return [...out.values()]}
+function threadSuggestHtml(n){if(VIEW_AS)return "";const ss=threadSuggestsOf(n);if(!ss.length)return "";
+  return ss.map(({t,why})=>`<div class="nfsuggest"><span>Might belong in the thread <b>${esc(t.name)}</b>.${why?" "+esc(/[.!?]$/.test(why)?why:why+"."):""}</span><span class="actions"><button class="btn small" data-tsadd="${esc(n.id)}|${esc(t.id)}">Add it</button><button class="linkbtn" data-tsno="${esc(n.id)}|${esc(t.id)}">Not this</button></span></div>`).join("")}
 function threadLineHtml(n,plain){const ts=threadsOfNotice(n);if(!ts.length)return "";
   const names=ts.map(t=>plain?esc(t.name):`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`);
   const list=names.length<3?names.join(" and "):names.slice(0,-1).join(", ")+" and "+names[names.length-1];
