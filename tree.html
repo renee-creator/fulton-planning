@@ -2305,7 +2305,7 @@ function shareGather(src){
   else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||n.classroom===id))}
   else if(k==="bin"){const t=Date.now()-42*864e5;ns=[...notices.values()].filter(n=>n.bin&&(n.at||0)>=t)}
   const inq=shareInquiryIds();
-  return ns.filter(n=>n&&n.photo&&(n.photo.id||n.photo.data)&&!n.deleted&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0)).slice(-24);
+  return ns.filter(n=>n&&n.photo&&(n.photo.id||n.photo.data)&&!n.deleted&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0)).slice(-300);
 }
 // the educators' words with every child's name and every child's own words taken out
 function shareScrub(t){
@@ -2314,9 +2314,11 @@ function shareScrub(t){
 }
 function shareObsText(n){return shareScrub([momentBody(n)||n.noticed||"",has(n.wonder)?"The educators wondered. "+String(n.wonder).trim():""].filter(Boolean).join("\n"))}
 function shState(n){const f=shareFaces[n.id];if(f&&f.v)return f.v;return shareBusy.faces?"wait":"?"}
+// a post keeps every photo it found, oldest first, and shows the newest, 24 more each time Show older photos is chosen
+const shareShownIds=()=>shareSt?shareSt.ids.slice(-(shareSt.showN||24)):[];
 function shareChosen(){
   if(!shareSt)return [];const off=new Set(shareSt.off||[]),add=new Set(shareSt.add||[]);
-  return shareSt.ids.map(id=>notices.get(id)).filter(Boolean).filter(n=>add.has(n.id)||(shState(n)==="clear"&&!off.has(n.id))).slice(0,SH_MAX);
+  return shareShownIds().map(id=>notices.get(id)).filter(Boolean).filter(n=>add.has(n.id)||(shState(n)==="clear"&&!off.has(n.id))).slice(0,SH_MAX);
 }
 const SHARE_FACE_PROMPT=k=>`You are checking ${k} photo${k>1?"s":""} from an early childhood program before the director considers them for the school's public Instagram account. The photos are numbered 1 to ${k} in the order given.
 For each photo decide two things.
@@ -2325,7 +2327,7 @@ name is true when a person's name, written or printed, can be read anywhere in t
 Return only JSON in this shape {"photos":[{"photo":1,"face":true,"name":false}]} with one entry for every photo.`;
 async function shareCheckFaces(){
   if(!shareSt||shareBusy.faces)return;
-  const todo=shareSt.ids.map(id=>notices.get(id)).filter(n=>n&&(!shareFaces[n.id]||shareFaces[n.id].v==="?"));if(!todo.length)return;
+  const todo=shareShownIds().map(id=>notices.get(id)).filter(n=>n&&(!shareFaces[n.id]||shareFaces[n.id].v==="?"));if(!todo.length)return;
   if(!sample){toast("TREE's reading help is not available right now, so every photo waits for you to choose.");return}
   shareBusy.faces=true;shareBusy.tried=true;shareBusy.left=todo.length;if(view==="share")renderShare();
   for(let i=0;i<todo.length;i+=4){
@@ -2507,7 +2509,7 @@ function shDrawSoft(g,im,dx,dy,dw,dh,marks){
 // every set-aside photo is softened in one go, then waits for the director to look at it and choose Use this photo
 let shBatch=null,shAsideOpen=false;
 document.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("shaside"))shAsideOpen=e.target.open},true);
-async function shSoftAll(){if(!shareSt||shBatch)return;const list=shareSt.ids.map(id=>notices.get(id)).filter(n=>n&&shState(n)!=="clear"&&!shareChosen().includes(n));if(!list.length)return;
+async function shSoftAll(){if(!shareSt||shBatch)return;const list=shareShownIds().map(id=>notices.get(id)).filter(n=>n&&shState(n)!=="clear"&&!shareChosen().includes(n));if(!list.length)return;
   shBatch={done:0,of:list.length};renderShare();shareSt.soft=shareSt.soft||{};shareSt.found=shareSt.found||{};
   try{await shFaceModel()}catch(e){shBatch=null;renderShare();toast("Faces could not be found on this device. Use Soften faces under each photo.");return}
   for(const n of list){try{const im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob());const f=await shFindFaces(im);shareSt.found[n.id]=f.length;if(f.length&&!(shareSt.soft[n.id]||[]).length)shareSt.soft[n.id]=f}catch(e){console.warn("Soften",n.id,e)}
@@ -2686,7 +2688,7 @@ function renderShare(){
     <div class="secthead"><h3 style="font-size:18px">${esc(shareName(st))}</h3></div>
     <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
     <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device, the finished pictures too.</div></section>`;
-  const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
+  const ns=shareShownIds().map(id=>notices.get(id)).filter(Boolean),older=Math.max(0,st.ids.length-ns.length);
   if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length&&!shareIsEdu()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
@@ -2703,7 +2705,8 @@ function renderShare(){
     ${clear.length?`<div class="shgrid">${clear.map(tile).join("")}</div>`:shareBusy.faces?"":`<div class="cnt" style="margin-top:6px">No photo came through the check.</div>`}
     ${aside.length?`<details class="shaside" ${shAsideOpen||shBatch||aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">A great photo can still be used. Soften every set-aside photo at once, then tap each one to check it.</div>
     <div class="actions"><button class="btn small" data-shsoftall="1" ${shBatch?"disabled":""}>${shBatch?`Softening ${shBatch.done} of ${shBatch.of}`:"Soften faces in all of these"}</button></div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
-    ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
+    ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}
+    ${older?`<div class="actions"><button class="btn small ghost" data-sholder="1">Show older photos</button><span class="cnt">${older} older, back to ${esc(shortDate((notices.get(st.ids[0])||{}).at||Date.now()))}</span></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
     <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards()&&!shareIsEdu())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and words"}</button></div>
     <div class="cnt">${shareIsEdu()?"Edit the caption here.":"Drafted only from the educators' words, with children's names and words taken out first."}</div>
@@ -2763,6 +2766,7 @@ document.addEventListener("click",async e=>{
     shareSave();shStale();renderShare();return}
   if(d.shsoftopen){shSoftOpen(d.shsoftopen);return}
   if(d.shsoftall){shSoftAll();return}
+  if(d.sholder){shareSt.showN=(shareSt.showN||24)+24;shareBusy.tried=false;shareSave();renderShare();shareCheckFaces();return}
   if(d.shrecheck){for(const id of shareSt.ids)if(shareFaces[id]&&shareFaces[id].v==="?")delete shareFaces[id];shareCheckFaces();return}
   if(d.shdraft){shareDraft(t);return}
   if(d.shcopy){const txt=[shareSt.caption||"",shareSt.tags||""].filter(has).join("\n\n");try{await navigator.clipboard.writeText(txt);toast("The caption is copied.")}catch(err){toast("Copying is not available here. Select the caption and copy it.")}return}
@@ -2805,6 +2809,7 @@ const ST_CLOSE={care:ST_CARE,ourwords:ST_OURWORDS,words:ST_WORDS,think:ST_THINK,
 const stClose=(st,k)=>Object.assign({},ST_CLOSE[k],st[k]||{});
 /* Fulton's frames, starting places for a story in Fulton's own words. A frame suggests a title and a focus. The pages still come
    only from the observations the team chooses, in the educators' words. Change a title or a line here to change the list. */
+let stFrameSaid="";
 const ST_FRAMES=[
   {k:"help",title:"Friends can help",line:"A child asks, a friend shows, an educator is near."},
   {k:"meal",title:"Sharing a meal together",line:"Food made by hand, treated with care, scraps for the chickens and goats."},
@@ -2931,10 +2936,11 @@ function renderStories(){
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No stories yet.</div>`}`;
 }
 // the photos a story can use, the ones it already has and others from the same project or class
+let stPickShow=60;
 function storyCandidates(st){
-  const pr=st.projectId&&projects.get(st.projectId);const have=new Set(st.sources||[]);
+  const pr=st.projectId&&projects.get(st.projectId);const have=new Set(st.sources||[]);storyCandidates.total=0;
   const pool=(pr?projNotices(pr):[...notices.values()].filter(n=>!st.classroom||n.classroom===st.classroom)).filter(n=>n.photo&&!have.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0));
-  return pool.slice(0,60);
+  storyCandidates.total=pool.length;return pool.slice(0,stPickShow);
 }
 const stThumb=(id,extra)=>{const n=notices.get(id);return n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" ${extra||""}>`:""};
 function stPhotoChoice(st,which,cur){
@@ -2969,7 +2975,7 @@ function renderStory(){
     <div class="seg" role="group" aria-label="Kind of story"><button data-stkind="happened" aria-pressed="${!stReady(st)}">What happened</button><button data-stkind="ready" aria-pressed="${stReady(st)}">Getting ready</button></div>
     <div class="cnt">${stReady(st)?"For something new, like a walk to the creek or coming to meeting. It tells what will happen, how friends may feel and what we can do.":"A moment the children lived, told again in our community's voice."} Both are told as we, with the children's first names.</div>
     <label class="fld-label" style="margin-top:8px">Story frame<select data-stf="frame"><option value="">No frame</option>${ST_FRAMES.map(f=>`<option value="${esc(f.k)}" ${f.k===st.frame?"selected":""}>${esc(f.title)}</option>`).join("")}</select></label>
-    ${fr?`<div class="cnt">${esc(fr.line)} The pages still come only from the observations below.</div>`:""}
+    ${fr?`<div class="cnt">${esc(fr.line)}</div><div class="nudge" style="margin-top:6px">${stFrameSaid===fr.k?"The frame set the title and turned on Words we can practice and Let's think together, below. ":""}Draft the pages to write the story with this frame in mind. The pages still come only from the observations.</div>`:""}
     ${LENSES.length?`<label class="fld-label" style="margin-top:8px">Read it through a lens<select data-stf="lensId"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${l.id===st.lensId?"selected":""}>${esc(l.name||"A lens")}</option>`).join("")}</select></label>`:""}
 </section>`;
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([st.from&&st.from.label?"From "+st.from.label:"",room?room+" Class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")+" after the cover",stReviewed(st)?"Reviewed":"Draft"].filter(Boolean).join(" · "))}</div></div>
@@ -2982,7 +2988,7 @@ function renderStory(){
     ${(st.sources||[]).length?`<div class="stchoose">${(st.sources||[]).map(id=>`<span class="stph keep">${stThumb(id)}<button class="linkbtn" data-stsrcrm="${esc(id)}" aria-label="Take this photo out">Take out</button></span>`).join("")}</div>`:`<div class="cnt">No photos yet.</div>`}
     <div class="actions"><button class="btn small ghost" data-stpick="1">${storyPick?"Done adding":"Add photos from "+(st.projectId?"this project":"this class")}</button><label class="btn small ghost" style="cursor:pointer">Add new photos<input type="file" accept="image/*" multiple hidden data-stupload="1"></label></div>
     <div class="cnt">A new photo is kept as an observation for this story, so tap the children in it from Observations and they are named.</div>
-    ${storyPick?(cand.length?`<div class="stchoose">${cand.map(n=>`<button class="stph" data-stsrcadd="${esc(n.id)}" title="${esc(firstLine(n.noticed,60)||"")}">${stThumb(n.id)}</button>`).join("")}</div>`:`<div class="cnt">No other photos in ${st.projectId?"this project":"this class"}.</div>`):""}</section>
+    ${storyPick?(cand.length?`<div class="stchoose">${cand.map(n=>`<button class="stph" data-stsrcadd="${esc(n.id)}" title="${esc(firstLine(n.noticed,60)||"")}">${stThumb(n.id)}</button>`).join("")}</div>${storyCandidates.total>cand.length?`<div class="actions"><button class="btn small ghost" data-stolder="1">Show older photos</button><span class="cnt">${storyCandidates.total-cand.length} older</span></div>`:""}`:`<div class="cnt">No other photos in ${st.projectId?"this project":"this class"}.</div>`):""}</section>
   <section class="card"><div class="secthead"><h3 style="font-size:17px">The pages</h3><span class="actions"><button class="btn small" data-stdraft="1" ${stBusy?"disabled":""}>${stBusy?"Drafting":"Draft the pages"}</button></span></div>
     <div class="cnt">TREE drafts short sentences to read aloud, only from what the educators wrote in these observations${fr?", with the frame "+esc(fr.title)+" in mind":""}. The team reads and changes every line.</div></section>
   ${draftBox}
@@ -3121,7 +3127,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.stphoto!==undefined){const w=t.dataset.stphoto,id=t.dataset.id||"";
     if(w==="cover")st.coverPhoto=id;else if(w==="care"){st.care=Object.assign({},ST_CARE,st.care||{});st.care.photo=id}else{const p=(st.pages||[]).find(x=>"page|"+x.id===w);if(p)p.photo=id}
     saveStory(st);renderStory();return}
-  if(t.dataset.stpick){storyPick=!storyPick;renderStory();return}
+  if(t.dataset.stpick){storyPick=!storyPick;stPickShow=60;renderStory();return}
+  if(t.dataset.stolder){const y=window.scrollY;stPickShow+=60;renderStory();window.scrollTo(0,y);return}
   if(t.dataset.stkind){st.kind=t.dataset.stkind==="ready"?"ready":"happened";saveStory(st);renderStory();return}
   if(t.dataset.stpal){st.pal=t.dataset.stpal==="story"?"":t.dataset.stpal;saveStory(st);renderStory();return}
   if(t.dataset.stbg!==undefined){st.bg=t.dataset.stbg||"";saveStory(st);renderStory();return}
@@ -3167,7 +3174,14 @@ document.addEventListener("input",e=>{const t=e.target;if(view!=="story"||!t.dat
   else st[a]=v;
   saveStorySoon(st);if(a==="title"){const h=document.querySelector("#main .head h2");if(h)h.textContent=stTitle(st)}});
 document.addEventListener("change",e=>{const t=e.target;if(view!=="story")return;const st=stories.get(storyOpen);if(!st)return;
-  if(t.dataset.stf&&t.tagName==="SELECT"){const k=t.dataset.stf;st[k]=t.value;if(k==="frame"){const f=stFrame(st);if(f&&!has(st.title))st.title=f.title;if(f&&!((st.words||{}).items||[]).some(w=>has(w.bold)||has(w.plain))){st.words=stClose(st,"words");st.words.items=[...storyQuotes(st).slice(0,2).map(q=>({bold:stQuoteMark(q.text),plain:q.child?q.child+" said this.":"A friend said this."})),...frameWords(f.k)]}}if(k==="classroom"&&st.group&&!GROUPS.some(g=>g.name===st.group&&g.room===t.value))st.group="";saveStory(st);renderStory();return}
+  if(t.dataset.stf&&t.tagName==="SELECT"){const k=t.dataset.stf;const was=stFrame(st);st[k]=t.value;if(k==="frame"){const f=stFrame(st);
+      // the title, the practice words and the questions follow the frame, unless the team has written its own
+      const wasWords=was?JSON.stringify(frameWords(was.k)):"",curWords=JSON.stringify(((st.words||{}).items||[]).filter(w=>!/said this\.$/.test(w.plain||"")));
+      if(f&&(!has(st.title)||(was&&st.title===was.title)))st.title=f.title;else if(!f&&was&&st.title===was.title)st.title="";
+      const ownWords=((st.words||{}).items||[]).some(w=>has(w.bold)||has(w.plain))&&curWords!==wasWords;
+      if(f&&!ownWords){st.words=stClose(st,"words");st.words.items=[...storyQuotes(st).slice(0,2).map(q=>({bold:stQuoteMark(q.text),plain:q.child?q.child+" said this.":"A friend said this."})),...frameWords(f.k)];st.words.on=true}
+      if(f){st.think=stClose(st,"think");st.think.on=true}
+      stFrameSaid=f?f.k:""}if(k==="classroom"&&st.group&&!GROUPS.some(g=>g.name===st.group&&g.room===t.value))st.group="";saveStory(st);renderStory();return}
   if(t.dataset.stonly){const k=t.dataset.stonly;if(!ST_CLOSE[k])return;st[k]=stClose(st,k);st[k].on=t.checked;
     if(k==="words"&&t.checked&&!(st.words.items||[]).some(w=>has(w.bold)||has(w.plain))){const fr=stFrame(st);st.words.items=[...storyQuotes(st).slice(0,2).map(q=>({bold:stQuoteMark(q.text),plain:q.child?q.child+" said this.":"A friend said this."})),...(fr?frameWords(fr.k):[])];if(!st.words.items.length)st.words.items=[{bold:"",plain:""}]}
     if(k==="ourwords"&&t.checked&&!(st.ourwords.items||[]).length)st.ourwords.items=storyQuotes(st);
