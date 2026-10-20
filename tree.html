@@ -2249,7 +2249,7 @@ const SH_MAX=10;
 const SH_WHY={face:"A face may show",name:"A name may show","?":"Not checked",wait:"Checking"};
 let shareSt=LS.get("tree.share",null)||null, shareFaces=LS.get("tree.sharefaces",{})||{}, shareBusy={faces:false,left:0,words:false,make:false,tried:false}, shareMade=null;
 function shareSave(){LS.set("tree.share",shareSt)}
-function shareInquiryIds(){const s=new Set();for(const x of inquiries.values())for(const id of evNoticeIds(x.evidence))s.add(id);return s}
+function shareInquiryIds(){const s=new Set();for(const x of inqAll()){for(const id of x.obs||[])s.add(id);for(const id of evNoticeIds(x.evidence))s.add(id)}return s}
 function shareSources(){
   const out=[];
   for(const x of [...projects.values()].filter(x=>x&&!x.deleted).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)).slice(0,20))out.push(["proj:"+x.id,"Project, "+x.name]);
@@ -2258,6 +2258,7 @@ function shareSources(){
   for(const s of [...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,20))out.push(["slide:"+s.id,"Slide, "+shareScrub(slideTitle(s))]);
   out.push(["recent:","The last two weeks, all classes"]);CLASSROOMS.forEach(r=>out.push(["recent:"+r,"The last two weeks, "+r+" Class"]));
   out.push(["bin:","From the weekly bin, the last six weeks"]);
+  [["week","What we ate and where it came from, this week"],["lastweek","What we ate and where it came from, last week"],["month","What we ate and where it came from, this month"],["lastmonth","What we ate and where it came from, last month"]].forEach(([k,l])=>out.push(["food:"+k,l]));
   return out;
 }
 const shareSplit=src=>{const i=String(src||"").indexOf(":");return [src.slice(0,i),src.slice(i+1)]};
@@ -2268,6 +2269,7 @@ function shareGather(src){
   else if(k==="thread"){const t=threads.get(id);if(t){const m=new Map();for(const n of threadNotices(t))m.set(n.id,n);for(const nid of evNoticeIds(t.evidence))m.set(nid,notices.get(nid));ns=[...m.values()]}}
   else if(k==="lens"){const L=LENSES.find(l=>l.id===id);const re=L&&lensRegex(L);const langs=new Set(((L&&L.languages)||[]).map(x=>x.toLowerCase()));const yr=yearFromTime(Date.now());
     if(L)ns=[...notices.values()].filter(n=>yearFromTime(n.at||Date.now())===yr&&((n.languages||[]).some(x=>langs.has(String(x).toLowerCase()))||(re&&(re.lastIndex=0,re.test(String(n.noticed||"")+" "+String(n.wonder||""))))))}
+  else if(k==="food"){const r=shareFoodRange(id),inR=n=>{const d=iso(new Date(n.at||0));return d>=r.from&&d<=r.to};ns=[...notices.values()].filter(n=>inR(n)&&(n.bin||G_OBJ.some(o=>o.re.test((n.noticed||"")+" "+(n.wonder||"")))))}
   else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||n.classroom===id))}
   else if(k==="bin"){const t=Date.now()-42*864e5;ns=[...notices.values()].filter(n=>n.bin&&(n.at||0)>=t)}
   const inq=shareInquiryIds();
@@ -2307,13 +2309,17 @@ async function shareCheckFaces(){
   shareBusy.faces=false;if(view==="share")renderShare();
 }
 async function shareDraft(btn){
-  const ch=shareChosen();if(!ch.length){toast("Choose at least one photo first.");return}
+  const ch=shareChosen();if(!ch.length&&!shareHasCards()){toast("Choose at least one photo first.");return}
   if(!sample){toast("TREE's reading help is not available right now.");return}
   const [k,id]=shareSplit(shareSt.src);let about="";
   if(k==="proj"){const x=projects.get(id);if(x)about=shareScrub([`The project, ${x.name}.`,has(x.experience)?"The experience it grew from. "+x.experience:"",has(x.underneath)?"What may lie underneath. "+x.underneath:"",has(x.intent)?"The educators' intent. "+x.intent:""].filter(Boolean).join("\n"))}
   else if(k==="slide"){const s=slides.get(id);if(s)about=shareScrub([s.title,s.text].filter(has).join(". "))}
   else if(k==="thread"){const t=threads.get(id);if(t)about=shareScrub([`A thread the educators are following, ${t.name}.`,has(t.question)?"The educators' question, their own hypothesis. "+t.question:"",...(t.evidence||[]).slice(-4).map(e=>"From the educators' plans. "+e.text),(t.languages||[]).length?"Languages children are using. "+t.languages.join(", "):""].filter(Boolean).join("\n"))}
   else if(k==="lens"){const L=LENSES.find(l=>l.id===id);if(L)about=[`These moments are read through the school's lens, ${L.name}.`,has(L.description)?"What the lens means. "+L.description:"",L.questions.length?"The questions the educators read with. "+L.questions.join(" "):"","Let the caption show how this lens helps the educators see children's thinking, using only what the documentation says."].filter(Boolean).join("\n")}
+  else if(k==="food"){const F=shareFood(id);about=[`What children ate at school ${F.range.label}, cooked from scratch in the school kitchen, and where the food came from.`,
+    F.days.length?"The menu. "+F.days.map(d=>SH_DOW(d.day)+", "+[d.am&&"morning snack "+d.am,d.lunch&&"lunch "+d.lunch,d.pm&&"afternoon snack "+d.pm].filter(Boolean).join(", ")).join(". "):"",
+    F.sources.length?"Where it came from. "+F.sources.slice(0,10).map(e=>[e.name,e.what.join(" and "),e.town,e.miles!=null?e.miles+" miles away":""].filter(Boolean).join(", ")).join(". "):"",
+    "Name the farms and producers only as listed here, and never mention prices, money or the grant."].filter(Boolean).join("\n")}
   else if(k==="bin")about="These moments come from the weekly produce bin, which a small group unboxes as part of the curriculum.";
   const pics=ch.map((n,i)=>({photo:i+1,class:n.classroom||"",educators_words:shareObsText(n),learning_noticed:(n.measures||[]).filter(m=>m.kept).map(m=>DRDP[m.code]).filter(Boolean)}));
   const prompt=`${STYLE}
@@ -2342,6 +2348,34 @@ ${JSON.stringify(pics)}`;
   shareBusy.words=false;if(view==="share")renderShare();
 }
 function shareWarn(){if(!shareSt)return [];const ch=shareChosen();return nlNameWarn([shareSt.caption||"",shareSt.title||"",...(shareSt.linesOn?ch.map(n=>(shareSt.lines||{})[n.id]||""):[])].join(" "))}
+/* what we ate and where it came from. Only what the menus, bins and orders say, never prices. */
+function shareFoodRange(k){const now=new Date(),wk=mondayOf(now);
+  if(k==="week")return {from:wk,to:addDays(wk,4),label:"this week"};
+  if(k==="lastweek"){const m=addDays(wk,-7);return {from:m,to:addDays(m,4),label:"last week"}}
+  const y=now.getFullYear(),m=now.getMonth(),first=k==="lastmonth"?new Date(y,m-1,1):new Date(y,m,1),last=new Date(first.getFullYear(),first.getMonth()+1,0);
+  return {from:iso(first),to:iso(last),label:first.toLocaleDateString("en-US",{month:"long"})}}
+function shareFood(k){
+  const r=shareFoodRange(k),days=[];
+  for(const m of menus.values()){if(!m||!m.days)continue;for(const [day,d] of Object.entries(m.days))if(day>=r.from&&day<=r.to&&d&&!d.closed&&(has(d.lunch)||has(d.am)))days.push({day,lunch:String(d.lunch||"").trim(),am:String(d.am||"").trim(),pm:String(d.pm||"").trim()})}
+  days.sort((a,b)=>a.day.localeCompare(b.day));
+  const src=new Map(),add=(name,town,what)=>{if(!has(name))return;const k2=gKey(name);if(/^feed( cooperative| sonoma)?$/.test(k2))return;const p=gProducer(name);const e=src.get(k2)||{name:p.name||name,town:town||p.town||"",what:new Set()};if(!e.town&&(town||p.town))e.town=town||p.town;if(has(what))e.what.add(String(what).replace(/^\s*OG\s+/,"").split(",")[0].trim());src.set(k2,e)};
+  for(const f of gBinFarms(r.from,r.to))for(const it of f.items)add(f.name,f.town,it);
+  for(const x of gLinesAll(r.from,r.to))if(x.kind!=="retail"&&!/FEED Bin/i.test(x.item||""))add(x.producer,"",x.item);
+  const lunches=days.map(d=>d.lunch).join(" ");
+  if(/cheese|pizza|quesadilla/i.test(lunches))add("Petaluma Creamery","Petaluma","cheese");
+  if(/bean|lentil|rice/i.test(lunches))add("Next Generation Foods","","beans and grains");
+  const list=[...src.values()].map(e=>Object.assign(e,{miles:e.town?gTownMiles(e.town):null,county:e.town?gTownCounty(e.town):"",what:[...e.what].filter(Boolean).slice(0,2)})).sort((a,b)=>(a.miles==null?999:a.miles)-(b.miles==null?999:b.miles));
+  return {range:r,days,sources:list}}
+const SH_DOW=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long"});
+function shareFoodCards(k){
+  const F=shareFood(k),cards=[];
+  if(shareSt.menuOn&&F.days.length){const week=F.days.length<=5;const rows=(week?F.days:F.days.filter((d,i,a)=>has(d.lunch)&&a.findIndex(x=>x.lunch.toLowerCase()===d.lunch.toLowerCase())===i).slice(0,6))
+      .map(d=>[has(d.lunch)?d.lunch:d.am,week?SH_DOW(d.day)+(has(d.lunch)?"":", morning snack"):""]);
+    if(rows.length)cards.push({title:week?"What we ate":"Some of what we ate in "+F.range.label,rows,foot:"Cooked from scratch in our kitchen"})}
+  if(shareSt.farmsOn&&F.sources.length){const rows=F.sources.slice(0,6).map(e=>[e.name,[(w=>w?w[0].toUpperCase()+w.slice(1):"")(e.what.join(" and ").toLowerCase()),e.town,e.miles!=null?e.miles+" miles away":""].filter(Boolean).join(" · ")]);
+    const son=F.sources.filter(e=>e.county==="Sonoma").length;
+    cards.push({title:"Where our food came from",rows,foot:son?`${son} of ${F.sources.length} from Sonoma County`:""})}
+  return cards}
 /* the pictures */
 const SH_W=1080,SH_H=1350,SH_TINT="#f6ece6",SH_INK="#1b2920",SH_ACC="#7a4834",SH_MUTED="#6b5a50";
 const shFont=(b,px)=>PF.face?`${px}px PF${b?"bs":"fr"}`:`${b?"bold ":""}${px}px Helvetica, Arial, sans-serif`;
@@ -2350,7 +2384,16 @@ function shText(g,lines,y,lh){lines.forEach((l,i)=>g.fillText(l,SH_W/2,y+i*lh))}
 async function shareCanvas(o){
   const cv=document.createElement("canvas");cv.width=SH_W;cv.height=SH_H;const g=cv.getContext("2d");
   g.fillStyle=SH_TINT;g.fillRect(0,0,SH_W,SH_H);g.textAlign="center";g.textBaseline="alphabetic";
-  if(o.quote){
+  if(o.info){
+    const I=o.info;g.font=shFont(true,64);const tl=shWrap(g,I.title,SH_W-200);let y=200;g.fillStyle=SH_ACC;shText(g,tl,y,78);y+=tl.length*78+40;
+    g.strokeStyle="#d9c8bd";g.lineWidth=2;g.beginPath();g.moveTo(320,y-20);g.lineTo(SH_W-320,y-20);g.stroke();y+=40;
+    const n=I.rows.length,big=n<=4?46:40,sm=n<=4?32:28,gap=n<=4?54:38;
+    for(const [main,sub] of I.rows){g.font=shFont(true,big);g.fillStyle=SH_INK;const ml=shWrap(g,main,SH_W-180).slice(0,2);shText(g,ml,y,big*1.2);y+=ml.length*big*1.2;
+      if(sub){g.font=shFont(false,sm);g.fillStyle=SH_MUTED;const sl=shWrap(g,sub,SH_W-200).slice(0,2);shText(g,sl,y+4,sm*1.25);y+=sl.length*sm*1.25+4}y+=gap}
+    if(I.foot){g.font=shFont(true,34);g.fillStyle=SH_ACC;g.fillText(I.foot,SH_W/2,Math.max(y+10,SH_H-150))}
+    g.strokeStyle="#d9c8bd";g.lineWidth=2;g.beginPath();g.moveTo(120,SH_H-96);g.lineTo(SH_W-120,SH_H-96);g.stroke();
+    g.font=shFont(false,24);g.fillStyle=SH_MUTED;g.fillText("Observe    Provoke    Document    Reflect    Evolve",SH_W/2,SH_H-56);
+  }else if(o.quote){
     const [words,who,src]=o.quote;const size=words.length>110?54:words.length>60?62:74;
     g.font=shFont(false,size);const ql=shWrap(g,"“"+words+"”",SH_W-220);const lh=Math.round(size*1.32);
     const block=ql.length*lh+40+46+(src?40:0);let y=(SH_H-block)/2+size*0.4;
@@ -2379,13 +2422,16 @@ async function shareCanvas(o){
   }
   return await new Promise(r=>cv.toBlob(r,"image/jpeg",.92));
 }
+const shareFoodKey=()=>{if(!shareSt)return "";const [k,id]=shareSplit(shareSt.src);return k==="food"?id:""};
+const shareHasCards=()=>{const fk=shareFoodKey();return !!fk&&shareFoodCards(fk).length>0};
 async function shareMake(){
-  const ch=shareChosen();if(!ch.length){toast("Choose at least one photo first.");return}
+  const ch=shareChosen();if(!ch.length&&!shareHasCards()){toast("Choose at least one photo first.");return}
   shareBusy.make=true;renderShare();await loadPrintFonts();
   const blobs=[];let missed=0;
   for(let i=0;i<ch.length;i++){const n=ch[i];let im=null;try{im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){}
     if(!im){missed++;continue}
     blobs.push(await shareCanvas({photo:im,title:blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}))}
+  const fk=shareFoodKey();if(fk)for(const info of shareFoodCards(fk))blobs.push(await shareCanvas({info}));
   const q=shareSt.quote&&SHARE_QUOTES.find(x=>x[0]===shareSt.quote);if(q&&blobs.length)blobs.push(await shareCanvas({quote:q}));
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));
   shareMade=blobs.length?{blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:false}:null;
@@ -2413,7 +2459,7 @@ function renderShare(){
   <div class="cnt">Observations kept with a team inquiry are never offered.</div></section>`;
   if(!st){main.innerHTML=h;return}
   const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
-  if(!ns.length){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
+  if(!ns.length&&!shareFoodKey()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
   const tile=n=>{const k=ch.indexOf(n),s=shState(n);return `<button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button>`};
@@ -2424,7 +2470,7 @@ function renderShare(){
     ${aside.length?`<details class="shaside" ${aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">Include one only after looking closely.</div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
     ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
-    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||!ch.length?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and lines"}</button></div>
+    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and lines"}</button></div>
     <div class="cnt">Drafted only from the educators' words, with children's names and words taken out first.</div>
     <label class="fld-label">Caption<textarea id="shcap" rows="6">${esc(st.caption||"")}</textarea></label>
     <label class="fld-label">Hashtags<input id="shtags" value="${esc(st.tags||"")}" placeholder="#reggioinspired #naturebasedlearning"></label>
@@ -2433,12 +2479,15 @@ function renderShare(){
   h+=`<section class="card"><div class="lbl">On the pictures</div>
     <label class="radio"><input type="checkbox" data-shopt="titleOn" ${st.titleOn?"checked":""}><span>A title on the first picture</span></label>
     ${st.titleOn?`<input id="shtitle" value="${esc(st.title||"")}" placeholder="A few words, such as Kindness in the garden">`:""}
+    ${shareFoodKey()?(()=>{const F=shareFood(shareFoodKey());return `<label class="radio"><input type="checkbox" data-shopt="menuOn" ${st.menuOn?"checked":""}><span>A picture of what we ate${F.days.length?`, ${F.days.length} day${F.days.length===1?"":"s"} on the menu`:", no menu kept for these days yet"}</span></label>
+    <label class="radio"><input type="checkbox" data-shopt="farmsOn" ${st.farmsOn?"checked":""}><span>A picture of where our food came from${F.sources.length?`, ${F.sources.length} farm${F.sources.length===1?"":"s"} and producer${F.sources.length===1?"":"s"}`:", none kept for these days yet"}</span></label>
+    <div class="cnt">Made from the menus, the weekly bins and the orders in TREE. Prices never show.</div>`})():""}
     <label class="radio"><input type="checkbox" data-shopt="linesOn" ${st.linesOn?"checked":""}><span>A line on each picture about the learning it shows</span></label>
     ${st.linesOn?`<div class="cnt">In family words, about children as a group. No codes, levels or DRDP.</div>${ch.map((n,i)=>`<label class="fld-label">Picture ${i+1}<input data-shline="${esc(n.id)}" value="${esc((st.lines||{})[n.id]||"")}" placeholder="Such as Early math, comparing and measuring"></label>`).join("")}`:""}
     <label class="fld-label">End with a quote<select id="shquote"><option value="">No closing quote</option>${SHARE_QUOTES.map(q=>`<option value="${esc(q[0])}" ${st.quote===q[0]?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0].replace(/[.]$/,""))}, ${esc(q[1])}</option>`).join("")}</select></label>
     <div class="cnt">Every quote here has a known source, and its source prints beneath it.</div></section>`;
   h+=`<section class="card"><div class="lbl">The post</div>
-    <div class="actions"><button class="btn small" data-shmake="1" ${!ch.length||shareBusy.make?"disabled":""}>${shareBusy.make?"Drawing the pictures":shareMade?"Make the pictures again":"Make the pictures"}</button></div>
+    <div class="actions"><button class="btn small" data-shmake="1" ${(!ch.length&&!shareHasCards())||shareBusy.make?"disabled":""}>${shareBusy.make?"Drawing the pictures":shareMade?"Make the pictures again":"Make the pictures"}</button></div>
     ${shareMade?`${shareMade.stale?`<div class="cnt"><b>Something changed since these were made. Make the pictures again to include it.</b></div>`:""}<div class="shgrid shmade">${shareMade.urls.map(u=>`<img src="${u}" alt="">`).join("")}</div>
     <div class="actions">${shareCanFiles()?`<button class="btn small" data-shsend="1">Save to Photos or send to Instagram</button>`:""}<button class="btn small ghost" data-shsave="1">Download the pictures</button><button class="btn small ghost" data-shword="1">Word</button></div>
     <div class="cnt">On a phone, choose Save Images, then start a post in Instagram and pick them in order. Instagram can also turn the same pictures into a reel with music.</div>`:""}</section>`;
@@ -2448,9 +2497,9 @@ function shWarnHtml(){const w=shareWarn();return w.length?`<div class="cnt" styl
 document.addEventListener("click",async e=>{
   if(view!=="share")return;const t=e.target.closest("button");if(!t||!isDirector())return;const d=t.dataset;
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
-    const title=k==="proj"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
+    const title=k==="proj"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
-    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:true,lines:{},quote:SHARE_QUOTES[Math.floor(Math.random()*SHARE_QUOTES.length)][0],caption:"",tags:"",at:Date.now()};
+    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHARE_QUOTES[Math.floor(Math.random()*SHARE_QUOTES.length)][0],caption:"",tags:"",at:Date.now()};
     shareSave();renderShare();shareCheckFaces();return}
   if(d.shclear){if(!confirm("Start over? The photos chosen and the caption for this post are cleared."))return;shareSt=null;shareSave();if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;renderShare();return}
   if(!shareSt)return;
