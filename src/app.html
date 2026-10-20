@@ -1984,6 +1984,7 @@ const slidePhotos=s=>(s.photos||[]).filter(id=>{const n=notices.get(id);return n
 var obsIdx=null;
 function obsIndex(){if(obsIdx)return obsIdx;const pl=new Map(),sl=new Map(),wl=new Map();const add=(m,k,v)=>{if(!k)return;const a=m.get(k);if(a){if(!a.includes(v))a.push(v)}else m.set(k,[v])};
   for(const p of plans.values())if(p.id!=="example"&&PLAN_TYPES.includes(p.type))for(const id of p.noticeAdded||[])add(pl,id,p);
+  for(const n of notices.values())if(n.planId){const p=plans.get(n.planId);if(p)add(pl,n.id,p)}
   for(const x of slides.values()){for(const id of x.photos||[])add(sl,id,x);for(const id of x.momentIds||[])add(sl,id,x)}
   for(const x of projects.values())for(const sh of (x.wall&&x.wall.sheets)||[])if(sh.include!==false)for(const id of sh.photos||[])add(wl,id,x);
   const th=new Map();for(const t of threads.values())if(threadLive(t))for(const e of t.evidence||[])add(th,e&&(e.planId||e.id),t);
@@ -5258,9 +5259,9 @@ function noticeFormCard(){
     <div class="actions" style="margin-top:2px"><label class="cnt">Class <select id="nf-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label></div>
     <div class="fld-label" id="nf-kids">${kidsAreaHtml(n)}</div>
     ${ph||many?`<div class="actions" style="margin-top:0">${addBtn}<span class="cnt">Another photo of the same moment joins this observation.</span></div>`:""}
-    ${(()=>{const day0=iso(new Date(editing&&n.at?n.at:Date.now())),set=(n.languages||[]).length+(n.projectId?1:0)+(n.threadId?1:0)+(n.bin?1:0)+(n.day&&n.day!==day0?1:0);
+    ${(()=>{const day0=iso(new Date(editing&&n.at?n.at:Date.now())),set=(n.languages||[]).length+(n.projectId?1:0)+(n.threadId?1:0)+(n.bin?1:0)+(n.smallGroup?1:0)+(n.planId?1:0)+(n.day&&n.day!==day0?1:0);
       // the rest is optional, folded under More so Keep stays close on a phone. It opens by itself when something is set.
-      return `<details class="nfmore" ${nfMoreOpen||set?"open":""}><summary class="cnt">More, languages, the day, a project or thread${set?`, ${set} set`:""}</summary>`})()}
+      return `<details class="nfmore" ${nfMoreOpen||set?"open":""}><summary class="cnt">More, languages, the day, a small group, a plan, a project or thread${set?`, ${set} set`:""}</summary>`})()}
     <div class="fld-label">Languages children used, optional<div class="chips">${langList(n.languages).map(x=>`<button class="chip ${(n.languages||[]).includes(x)?"on":""}" data-nflang="${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div></div>
     <div class="actions">
       <label class="cnt">Day it happened <input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}" style="width:auto"></label>
@@ -5268,7 +5269,8 @@ function noticeFormCard(){
       ${(()=>{const b=n.bin?binAll().find(x=>x.id===n.bin)||{id:n.bin,date:n.bin}:binForDay(n.day||iso(new Date(n.at||Date.now())));return b?`<button type="button" class="chip-btn" data-nfbin="${esc(b.id)}" aria-pressed="${n.bin===b.id}" title="Keep it with the weekly bin">From the bin, ${esc(fmtDate(b.date).replace(/, \d{4}$/,""))}</button>`:""})()}
       ${ths.length?`<label class="cnt">Thread <select id="nf-thread" style="width:auto"><option value="">Not yet</option>${ths.map(t=>`<option value="${esc(t.id)}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
     </div>
-    <div class="hint">A project or thread is optional. One can claim this observation later, whenever it grows.</div></details>
+    <div class="actions">${obsGroupPlanHtml(n)}</div>
+    <div class="hint">A small group, plan, project or thread is optional. One can claim this observation later, whenever it grows.</div></details>
     <div class="actions nfsave"><button class="btn" id="nf-save" ${!formStored(n)?"disabled":""}>${editing?"Save changes":"Keep this observation"}</button><button class="linkbtn" id="nf-cancel">${ph&&!many&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
   </section>`;
 }
@@ -5291,6 +5293,17 @@ function shareGroups(list){const groups=[],by=new Map();
   return groups}
 // photos shared from Kaymbu with one note are one story. They show as one card with the other photos beside it, and each
 // photo keeps its own card, with its own buttons, one tap away.
+// the small group an observation belongs to, and the curriculum plan it was kept for, chosen on the observation itself
+function obsPlanChoices(n){const day=n.day||iso(new Date(n.at||Date.now())),wk=mondayOf(parseIso(day));
+  return [...plans.values()].filter(p=>p&&p.id!=="example"&&(p.type==="individual"||p.type==="classroom"||p.type==="smallgroup")&&p.weekOf>=addDays(wk,-7)&&p.weekOf<=addDays(wk,7)&&(!n.classroom||!p.classroom||p.classroom===n.classroom||momentRooms(n).includes(p.classroom)))
+    .sort((a,b)=>(a.weekOf===wk?0:1)-(b.weekOf===wk?0:1)||b.weekOf.localeCompare(a.weekOf)||(a.type==="classroom")-(b.type==="classroom"))}
+function obsPlanLabel(p){const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");if(p.type==="classroom")return `${p.classroom?p.classroom+" Class, ":""}Classroom plan, week of ${wk}`;
+  const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),50);
+  return [p.educator||"",foc,"week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")}
+function obsGroupPlanHtml(n){const gs=GROUPS.filter(g=>!n.classroom||g.room===n.classroom||momentRooms(n).includes(g.room));const ps=obsPlanChoices(n);
+  if(n.planId&&!ps.some(p=>p.id===n.planId)){const p0=plans.get(n.planId);if(p0)ps.unshift(p0)}
+  return `<label class="cnt">Small group <select id="nf-sgroup" style="width:auto"><option value="">None</option>${gs.map(g=>`<option value="${esc(g.name)}" ${n.smallGroup===g.name?"selected":""}>${esc(g.name)}${g.educator?", "+esc(g.educator):""}</option>`).join("")}${n.smallGroup&&!gs.some(g=>g.name===n.smallGroup)?`<option selected>${esc(n.smallGroup)}</option>`:""}</select></label>
+    ${ps.length?`<label class="cnt">Plan <select id="nf-plan" style="width:auto;max-width:100%"><option value="">None</option>${ps.map(p=>`<option value="${esc(p.id)}" ${n.planId===p.id?"selected":""}>${esc(obsPlanLabel(p))}</option>`).join("")}</select></label>`:""}`}
 function noticeCards(list){const groups=shareGroups(list);
   return groups.map(g=>{if(g.length===1)return noticeCard(g[0]);const [first,...more]=g;
     return `<div class="nwgroup">${noticeCard(first)}
@@ -5298,7 +5311,7 @@ function noticeCards(list){const groups=shareGroups(list);
       <details><summary class="linkbtn">Each photo on its own, to tag children or change one</summary><div style="display:grid;gap:12px;margin-top:10px">${more.map(noticeCard).join("")}</div></details></div></div>`}).join("")}
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""} \u00b7 ${shortDate(n.at)}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${n.smallGroup?" \u00b7 "+esc(n.smallGroup)+" group":""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
@@ -5342,8 +5355,8 @@ function momentGroups(list){
     if(mGroup==="classroom"){const r=momentRooms(n);put(r.length?r.join("+"):"~",r.length?momentRoomsText(n):"No class named",n)}
     else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
     // by the small group of the children tagged in it, whoever kept it. An observation with children from two groups is under both.
-    else if(mGroup==="group"){const gs=[...new Set((n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||"")))];
-      if(!gs.length)put("~","No small group, since no child in a group is tagged",n);
+    else if(mGroup==="group"){const gs=[...new Set([...(n.smallGroup?[n.smallGroup+"|"+((GROUPS.find(g=>g.name===n.smallGroup)||{}).room||n.classroom||"")]:[]),...(n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||""))])];
+      if(!gs.length)put("~","No small group, since none is chosen and no child in a group is tagged",n);
       for(const k of gs){const [name,room]=k.split("|");const g=GROUPS.find(x=>x.name===name&&(!x.room||!room||x.room===room))||GROUPS.find(x=>x.name===name);
         put("g"+k,[name+" group",g&&g.educator,room?room+" Class":(g&&g.room?g.room+" Class":"")].filter(Boolean).join(", "),n)}}
     else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
@@ -5583,6 +5596,8 @@ document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-room"){noticeForm.classroom=t.value;for(const s of noticeForm.siblings||[])s.classroom=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
   else if(t.id==="nf-thread")noticeForm.threadId=t.value;
+  else if(t.id==="nf-sgroup"){noticeForm.smallGroup=t.value;for(const sb of noticeForm.siblings||[])sb.smallGroup=t.value}
+  else if(t.id==="nf-plan"){noticeForm.planId=t.value;for(const sb of noticeForm.siblings||[])sb.planId=t.value;const pl=plans.get(t.value);if(pl&&!noticeForm.smallGroup){const g=(pl.groups||[])[0]||pl.group;if(g){noticeForm.smallGroup=g;const el=$("#nf-sgroup");if(el)el.value=g}}}
   else if(t.id==="nf-day")noticeForm.day=t.value;});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photo"&&t.id!=="nf-photo2")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addMomentPhotos(fs)});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photoadd")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addPhotosToForm(fs)});
@@ -7229,6 +7244,7 @@ function planEvidence(p){
   {const b=p.bin&&binAll().find(x=>x.id===p.bin);if(b){const pcs=binPieces(b,p.classroom).filter(x=>(BIN_TO[p.type]||{})[x.kind]);
     heads.push({kind:"Weekly bin",name:"The FEED bin of "+fmtDate(b.date).replace(/, \d{4}$/,""),open:`data-pbin="${esc(b.id)}"`,lines:[],bin:pcs})}}
   take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
+  take([...notices.values()].filter(n=>n.planId===p.id));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   return heads.length||obs.length?{heads,obs}:null}
 function evObHtml(n,used,p,more){more=more||[];const ids=[n.id,...more.map(m=>m.id)].join(",");

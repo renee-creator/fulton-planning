@@ -136,7 +136,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const rooms = Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South'];
     const s = ' ' + words(subject) + ' ';
     // a subject can name more than one class, since Fulton's classes mix
-    const inSubject = rooms.filter(r => s.includes(' ' + words(r) + ' '));
+    let inSubject = rooms.filter(r => s.includes(' ' + words(r) + ' '));
+    // a small group in the subject, as in Peace-marigold, places the moments in that group's class and keeps the group
+    const groups = (Array.isArray(set.groups) ? set.groups : []).filter(g => g && g.name && words(g.name).length > 2);
+    const grp = groups.filter(g => s.includes(' ' + words(g.name) + ' ')).sort((a, b) => String(b.name).length - String(a.name).length)[0];
+    if (grp && grp.room && !inSubject.includes(grp.room)) inSubject = [grp.room, ...inSubject];
     const room = inSubject[0] || '';
     const named = (list, key) => list.filter(x => x[key] && words(x[key]).length > 2 && s.includes(' ' + words(x[key]) + ' ')).sort((a, b) => String(b[key]).length - String(a[key]).length)[0];
     const project = named(live('projects').filter(p => p.status !== 'closed'), 'name');
@@ -146,10 +150,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const kidFirsts = new Set(live('children').map(c => words(c.first || '')).filter(Boolean));
     const edus = [...new Set((educatorNames ? educatorNames() : []).map(String).filter(Boolean))];
     const eduHits = edus.filter(n => { const w = words(n); return w.length > 1 && s.includes(' ' + w + ' ') && !(kidFirsts.has(w) && !s.includes(' by ' + w + ' ')); });
-    const educator = eduHits.length === 1 ? eduHits[0] : eduHits.find(n => s.includes(' by ' + words(n) + ' ')) || '';
+    // with no educator named, the small group's educator shared it
+    const educator = (eduHits.length === 1 ? eduHits[0] : eduHits.find(n => s.includes(' by ' + words(n) + ' ')) || '') || (grp && !eduHits.length && grp.educator ? String(grp.educator) : '');
     if (eduHits.length > 1 && !educator) log('Kaymbu subject names more than one educator, so none is set', eduHits.join(', '));
     // the word bin keeps the moments with that week's FEED bin, as in South Bin
-    return { room, rooms: inSubject, educator, projectId: project ? project.id : '', threadId: thread ? thread.id : '', bin: / bins? /.test(s) };
+    return { room, rooms: inSubject, smallGroup: grp ? String(grp.name) : '', educator, projectId: project ? project.id : '', threadId: thread ? thread.id : '', bin: / bins? /.test(s) };
   }
 
   // the bin that arrived in the week of a day, up to six days before it
@@ -253,7 +258,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
         const pg = photo ? postGroup(noticed, sub.room, day) : '';
-        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
+        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(sub.smallGroup ? { smallGroup: sub.smallGroup } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
           kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
@@ -279,7 +284,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       const d0 = r.doc; if (!r.deleted && d0 && d0.kaymbu && d0.by && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
       // a moment kept before the subject's educator was read takes that educator, unless an educator has changed it since
       if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
-        const ed = readSubject(d0.kaymbu.subject).educator;
+        const rs = readSubject(d0.kaymbu.subject), ed = rs.educator;
+        // a moment whose subject named only a small group was kept with no class, and is placed in that group's class now
+        if (rs.smallGroup && !d0.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; noteChange('notices', id); scheduleSave('notices', id); n++; }
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
