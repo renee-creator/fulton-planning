@@ -1867,12 +1867,32 @@ function drdpSource(kind,rec){
 async function drdpPhotoBlobs(ns){const out=[];for(const n of ns.slice(0,3)){try{const u=photoSrc(n);if(!u)continue;const b=await (await fetchPhoto(u)).blob();if(b&&b.size)out.push(b)}catch(e){}}if(ns.length&&!out.length)toast("The photos could not be fetched, so this reading uses the words only.");return out}
 // a photo for a printout or a reading. Its address differs from the one a card shows, so Safari never hands back a
 // picture it kept for the page, which a printout is not allowed to read. A stale key is renewed and tried once more.
+/* Photos kept on this device. The first time a photo is needed for a printout, a preview, Share or a reading, a
+   print-size copy, 1600 pixels on its long side, is kept in this browser. After that it is read from the device, so it
+   opens at once and is not fetched from the server again. A photo's id never changes, so a kept copy never goes stale.
+   About 1,200 photos are kept, and the ones used longest ago make room for new ones. */
+const PHOTO_KEEP={db:null,max:1200,side:1600};
+function photoDb(){if(PHOTO_KEEP.db)return PHOTO_KEEP.db;PHOTO_KEEP.db=new Promise(res=>{try{const q=indexedDB.open("tree-photos",1);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains("p"))d.createObjectStore("p",{keyPath:"id"}).createIndex("at","at")};
+  q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null)}catch(e){res(null)}});return PHOTO_KEEP.db}
+async function photoKept(id){const d=await photoDb();if(!d)return null;return new Promise(res=>{try{const t=d.transaction("p","readwrite"),st=t.objectStore("p"),g=st.get(id);
+  g.onsuccess=()=>{const v=g.result;if(v&&v.blob){v.at=Date.now();try{st.put(v)}catch(e){}res(v.blob)}else res(null)};g.onerror=()=>res(null)}catch(e){res(null)}})}
+async function photoKeep(id,blob){try{const d=await photoDb();if(!d||!blob||!blob.size)return;
+    let small=blob;try{const bmp=await decodeImage(blob),w=bmp.width,h=bmp.height,k=Math.min(1,PHOTO_KEEP.side/Math.max(w,h));
+      if(k<1||blob.size>900000){const c=document.createElement("canvas");c.width=Math.round(w*k);c.height=Math.round(h*k);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);small=await new Promise(r=>c.toBlob(r,"image/jpeg",.9))||blob}}catch(e){}
+    await new Promise(res=>{const t=d.transaction("p","readwrite");t.objectStore("p").put({id,blob:small,at:Date.now()});t.oncomplete=res;t.onerror=res;t.onabort=res});
+    PHOTO_KEEP.puts=(PHOTO_KEEP.puts||0)+1;if(PHOTO_KEEP.puts%25===0)photoTrim()}catch(e){}}
+async function photoTrim(){try{const d=await photoDb();if(!d)return;const t=d.transaction("p","readwrite"),st=t.objectStore("p"),c=st.count();
+  c.onsuccess=()=>{let extra=c.result-PHOTO_KEEP.max;if(extra<=0)return;st.index("at").openCursor().onsuccess=e=>{const cur=e.target.result;if(cur&&extra>0){cur.delete();extra--;cur.continue()}}}}catch(e){}}
 async function fetchPhoto(u){
   if(/^(data|blob):/.test(u))return await fetch(u);
+  const m0=u.match(/\/original\/([^?]+)/),id=m0?decodeURIComponent(m0[1]):"",kept=id&&/\.(jpe?g|png|webp)$/i.test(id)?await photoKept(id):null;
+  if(kept)return new Response(kept,{headers:{"Content-Type":kept.type||"image/jpeg"}});
   const go=x=>fetch(x+(x.includes("?")?"&":"?")+"use=print",{cache:"no-store",mode:"cors"});
-  let r=await go(u);if(r.ok)return r;
-  if(r.status===403&&window.FP_RENEW_KEY){await window.FP_RENEW_KEY();const m=u.match(/\/original\/([^?]+)/);if(m&&window.FP_ORIGINAL_URL){r=await go(window.FP_ORIGINAL_URL(decodeURIComponent(m[1])));if(r.ok)return r}}
-  throw new Error("photo "+r.status);
+  let r=await go(u);
+  if(!r.ok&&r.status===403&&window.FP_RENEW_KEY){await window.FP_RENEW_KEY();if(id&&window.FP_ORIGINAL_URL)r=await go(window.FP_ORIGINAL_URL(id))}
+  if(!r.ok)throw new Error("photo "+r.status);
+  if(id&&/\.(jpe?g|png|webp)$/i.test(id)){const blob=await r.blob();photoKeep(id,blob);return new Response(blob,{headers:{"Content-Type":blob.type||"image/jpeg"}})}
+  return r;
 }
 // a picture on a card that does not load is asked for again once, with a fresh key
 document.addEventListener("error",e=>{const im=e.target;if(!(im instanceof HTMLImageElement)||!/\/original\//.test(im.src)||im.dataset.retried)return;im.dataset.retried="1";
