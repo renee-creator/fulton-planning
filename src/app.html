@@ -2914,6 +2914,9 @@ function todayWaiting(){
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag"})}}
+  // a team inquiry an educator opened from a thread, for the director to lead
+  if(dir)for(const x of inqAll().filter(x=>x.startedBy&&!x.directorSeen).slice(0,4))
+    out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
   // a team inquiry the team meant to look at again
   {const rm=myRoom(),day=iso(new Date());for(const x of inqAll().filter(x=>x.status==="open"&&x.lookAgain&&x.lookAgain<=day&&(dir||!rm||!x.room||x.room===rm)).slice(0,4))
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
@@ -6122,7 +6125,7 @@ function inqTimeline(x){const out=[];
   for(const l of x.looks||[])if(has(l.text))out.push({at:l.at,by:l.by,what:"When we looked again",text:l.text});
   return out.sort((a,b)=>(a.at||0)-(b.at||0))}
 
-function openInquiry(id){inqId=id||"";LS.set("fps.inq",inqId);iqForm=null;view="inquiries";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
+function openInquiry(id){inqId=id||"";{const x=id&&inquiries.get(id);if(x&&x.startedBy&&!x.directorSeen&&isDirector()){x.directorSeen=Date.now();saveInquiry(x)}}LS.set("fps.inq",inqId);iqForm=null;view="inquiries";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
 function startInquiry(extra){if(needName())return;const x=newInquiry(extra);iqForm=x;inqId="";view="inquiries";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}
 
 function renderInquiries(){
@@ -6418,8 +6421,17 @@ function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||
 function inqObsChooser(n){const open=inqAll().filter(x=>x.status!=="closed"&&!(x.obs||[]).includes(n.id)&&(!x.room||momentIn(n,x.room)||!momentRooms(n).length));
   return `<span class="confirm">${open.length?`<select data-nwinqadd="${esc(n.id)}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${esc(x.id)}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
     ${isDirector()?`<button class="btn small ghost" data-nwinqnew="${esc(n.id)}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${esc(n.id)}">Cancel</button></span>`}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq]");if(!t)return;const d=t.dataset;
-  if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();const pr=projectOfThread(th.id);startInquiry({threads:[th.id],room:th.classroom||"",projects:pr?[pr.id]:[]});return}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq],[data-tinqgo],[data-tinqno]");if(!t)return;const d=t.dataset;
+  if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();if(needName())return;const el=document.getElementById("tinq-"+th.id);
+    if(el){el.innerHTML=`<span class="confirm">Keep this as a curriculum thread too? <button class="btn small" data-tinqgo="${esc(th.id)}" data-keep="1">Yes, keep it</button><button class="btn small ghost" data-tinqgo="${esc(th.id)}" data-keep="0">No, the inquiry holds it now</button><button class="linkbtn" data-tinqno="${esc(th.id)}">Cancel</button></span>`;return}}
+  if(d.tinqno){renderMain();return}
+  if(d.tinqgo){const th=threads.get(d.tinqgo);if(!th)return;e.stopImmediatePropagation();const pr=projectOfThread(th.id),keep=d.keep==="1",dir=isDirector();
+    // an inquiry opened from a thread brings the thread, its class and project. An educator's opening waits on the director's Today, since inquiries are led by the director
+    const x=newInquiry({name:th.name||"",threads:[th.id],room:th.classroom||"",projects:pr?[pr.id]:[],fromThread:th.id,...(dir?{}:{startedBy:whoAmI(),display:false})});
+    saveInquiry(x);
+    if(!keep){th.unfollowed={by:whoAmI(),at:Date.now(),toInquiry:x.id};saveThread(th)}
+    toast(keep?"The team inquiry is open, and the thread stays in the curriculum.":"The team inquiry is open, and the thread is set aside from the curriculum.");
+    openInquiry(x.id);return}
   if(d.nwinq){const el=document.getElementById("nwi-"+d.nwinq);const n=notices.get(d.nwinq);if(el&&n)el.innerHTML=inqObsChooser(n);e.stopImmediatePropagation();return}
   if(d.nwinqno){const el=document.getElementById("nwi-"+d.nwinqno);if(el)el.innerHTML=`<button class="linkbtn" data-nwinq="${d.nwinqno}">Team inquiry</button>`;e.stopImmediatePropagation();return}
   if(d.nwinqnew){const n=notices.get(d.nwinqnew);if(!n)return;e.stopImmediatePropagation();const rs=momentRooms(n);startInquiry({obs:[n.id],room:rs.length===1?rs[0]:"",threads:n.threadId&&threads.get(n.threadId)?[n.threadId]:[],projects:n.projectId&&projects.get(n.projectId)?[n.projectId]:[]});return}},true);
@@ -8314,7 +8326,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button>${isDirector()?`<button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button>`:""}
+      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
       ${pr?"":`<button class="btn small ghost" data-pstart="${esc(t.id)}">Start a project from it</button>${openProjects.length?`<select data-padd="${esc(t.id)}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${esc(t.id)}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${esc(t.id)}">Remove story</button></span>`:""}
