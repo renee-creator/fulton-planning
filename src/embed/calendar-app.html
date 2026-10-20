@@ -1060,7 +1060,7 @@ async function wake(){
   const t0=Date.now(); let tries=0;
   while(Date.now()-t0<150000){
     try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } } }catch(e){}
-    tries++; gateMsg(tries<2? "Connecting…" : "Waking the server. The first visit after a quiet stretch takes about a minute.");
+    tries++; gateMsg(tries<2? "Connecting…" : "Still connecting. Check this device's internet connection.");
     await new Promise(r=>setTimeout(r, tries<3?2000:4000));
   }
   gateMsg("The server did not wake up. Try again in a minute.",true); return false;
@@ -1078,8 +1078,9 @@ async function start(){
   wire();
   if(PREVIEW){ PREVIEW.mount($("preview-bar"), ()=>{ S.stamp=""; refresh(true); }); }
   else if(!Auth.token) await showGate();
+  else if(window.parent!==window){ /* inside TREE, which is already connected */ }
   else { const g=$("gate"); g.hidden=false; $("gate-form").style.display="none"; const note=h("p",{style:"color:var(--muted)"}); g.append(note);
-    const t=setTimeout(()=>{ note.textContent="Waking the server. The first visit after a quiet stretch takes about a minute."; },2500);
+    const t=setTimeout(()=>{ note.textContent="Connecting to TREE…"; },2500);
     const ok=await wake(); clearTimeout(t);
     if(!ok){ note.textContent="The calendar server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; return; }
     g.hidden=true; $("gate-form").style.display=""; note.remove(); }
