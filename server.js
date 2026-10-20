@@ -1023,7 +1023,14 @@ async function handle(req, res) {
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
     // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
     if (kind === 'inquiries' && op !== 'delete' && !isDirector(me.name)) {
-      if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'Only the director starts a team inquiry.'); return; }
+      // an educator may open a team inquiry from a thread. It carries the thread, its class and project and nothing written yet, and the director leads it from there
+      const fromThreadOk = d => { if (!d || typeof d !== 'object') return false; const th = d.fromThread && store.recs.threads.get(d.fromThread); if (!th || th.deleted) return false;
+        const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
+        const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'fromThread', 'threads', 'projects', 'obs', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
+        return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && Array.isArray(d.threads) && d.threads.includes(d.fromThread) && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
+      if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromThreadOk(body.data)) { log('Team inquiry opened from a thread by', me.name, id); }
+      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'Only the director starts a team inquiry.'); return; }
+      else {
       const OPEN = ['obs', 'threads', 'projects', 'tries', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
       const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
@@ -1031,6 +1038,7 @@ async function handle(req, res) {
       const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return a.length === b.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum); };
       const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
       if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
+      }
     }
     // a story is shared beyond the team only once the director has reviewed it. An educator's save never marks it reviewed,
     // and an educator's change to the words of a reviewed story sends it back to draft for the team to look at again
