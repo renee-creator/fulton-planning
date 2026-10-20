@@ -125,6 +125,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   // the camera's own date from its photos.
   const photoDay = (p, sent) => p && p.modified && p.modified <= sent + 36e5 && p.modified > sent - 400 * 864e5 ? p.modified : 0;
   const words = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
+  // photos shared in one Kaymbu post carry one group, so TREE treats them as one observation with several photos. The
+  // group is worked out from the post's words, its class and its day, so photos of one post that arrive in two emails still meet
+  const postGroup = (noticed, room, day) => { const t = String(noticed || '').replace(/\s+/g, ' ').trim().toLowerCase(); return t.length >= 12 ? 'k' + crypto.createHash('sha1').update(t + '|' + (room || '') + '|' + day).digest('hex').slice(0, 14) : ''; };
+
 
   // the subject names the class, as North or North Class, and can also name a project or a thread the moments belong to
   function readSubject(subject) {
@@ -239,7 +243,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
-        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
+        const pg = photo ? postGroup(noticed, sub.room, day) : '';
+        const doc = { id, noticed, wonder: '', classroom: sub.room, ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
           kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}) },
           updatedByName: by };
@@ -285,7 +290,15 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       noteChange('notices', id); scheduleSave('notices', id); n++;
     }
     if (n) log('Kaymbu moments put right for their children and the day they were taken,', n);
+    // photos of one post kept before posts carried a group are given one now, once, by the same rule
+    let g = 0;
+    for (const [id, r] of store.recs.notices) {
+      const d = r.doc; if (r.deleted || !d || !d.kaymbu || !d.photo || d.group) continue;
+      const pg = postGroup(d.noticed, d.classroom, laDay(d.at)); if (!pg) continue;
+      d.group = pg; noteChange('notices', id); scheduleSave('notices', id); g++;
+    }
+    if (g) log('Kaymbu photos given the group of their post,', g);
   }
 
-  return { handle, repair, subjectDay, parseMoments, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
+  return { handle, repair, postGroup, subjectDay, parseMoments, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
 };
