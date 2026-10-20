@@ -1171,6 +1171,7 @@ async function handle(req, res) {
     const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
     if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads with Claude.', 'thread search by an educator'); return; }
     if ((body.purpose === 'newsletter' || body.purpose === 'newsletter-reading') && !isDirector(me.name)) { refuse(403, 'Only the director makes the family newsletter.', 'newsletter by an educator'); return; }
+    if (body.purpose === 'share' && !isDirector(me.name)) { refuse(403, 'Only the director makes posts.', 'share by an educator'); return; }
     if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can ask Claude to read through the lens.', 'lens reading by an educator'); return; }
     if (!anthropicKey()) { refuse(503, 'Claude assist is not set up. Add the Anthropic key on Render.', 'no key'); return; }
     const content = body.content;
