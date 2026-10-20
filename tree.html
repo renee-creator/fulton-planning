@@ -6785,7 +6785,7 @@ function projWallHtml(x){
         <label class="cnt"><input type="checkbox" data-wsinc="${esc(sh.id)}" ${sh.include?"checked":""}> Hang this sheet</label>
         <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button></div>
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
-      <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
+      <div class="wsgrid">${n?`<img src="${esc(photoThumb(n))}" alt="The first photo on this sheet" class="wsimg" loading="lazy">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
         ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Observation")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>
