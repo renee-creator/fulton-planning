@@ -5300,7 +5300,12 @@ function noticesClick(t){
     if(!unfinished){const fromBin=view==="bin"&&typeof binCurrent==="function"&&binCurrent();noticeForm=fromBin?Object.assign(newNotice(),{bin:fromBin.id,classroom:binRoomNow()}):newNotice()}view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
-  if(t.dataset.mjump){const el=document.getElementById("nw-"+t.dataset.mjump);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("That observation is outside this view. Widen the class or the range.");return true}
+  // an observation past the thirty shown, or outside the class and range, is brought into view rather than refused
+  if(t.dataset.mjump){const id=t.dataset.mjump,go=()=>{const el=document.getElementById("nw-"+id);if(!el)return false;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400);return true};
+    if(go())return true;if(!notices.has(id)){toast("That observation was removed.");return true}
+    const at=()=>{let k=0;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>n.id===id);if(i>=0)return k+i;k+=g.items.length}return -1};
+    let i=at();if(i<0){nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";LS.set("fps.mrange",mRange);i=at()}
+    if(i>=0&&i>=mShow)mShow=Math.ceil((i+1)/30)*30;renderMain();setTimeout(()=>{if(!go())toast("That observation could not be found on this page.")},60);return true}
   if(t.dataset.nfpick&&noticeForm&&noticeForm.pick){pickMomentPhotos(t.dataset.nfpick);return true}
   if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
     for(const x of [...((was&&was.pick)||[]),...((was&&was.siblings)||[])])if(!notices.has(x.id)){nBlobs.delete(x.id);nPreview.delete(x.id)}
