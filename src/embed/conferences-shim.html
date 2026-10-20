@@ -34,7 +34,7 @@
   window.CAREFUL_READ=true;
   window.BLOB_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
 
-  function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } }
+  function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
   function signOut(){ Auth.token=null; Auth.name=null; LS.set("fc-token",null); LS.set("fc-name",null); location.reload(); }
   window.FC_SIGN_OUT=signOut;
   window.FC_SIGNUP_FEED=(fresh,link)=>api("/api/signup-feed",{fresh:!!fresh,link:link||""});
@@ -83,7 +83,7 @@
   async function wake(){
     const t0=Date.now(); let tries=0, loading=false;
     while(Date.now()-t0<150000){
-      try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } loading=true; } }catch(e){}
+      try{ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);const r=await fetch(SERVER+"/health",{cache:"no-store",signal:ac.signal}).finally(()=>clearTimeout(tm)); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } loading=true; } }catch(e){}
       tries++; gateMsg(tries<2? "Connecting…" : (loading? "Opening the school's records. This takes a moment after TREE is updated." : "Still connecting. Check this device's internet connection."));
       await new Promise(r=>setTimeout(r, tries<3?2000:4000));
     }

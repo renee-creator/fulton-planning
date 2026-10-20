@@ -51,7 +51,7 @@
   window.FP_DIRECTOR=()=>!!Auth.director;
   window.FP_KITCHEN=()=>!!Auth.kitchen;
 
-  function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } }
+  function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
   function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
@@ -109,14 +109,14 @@
   async function wake(){
     const t0=Date.now(); let tries=0, loading=false;
     while(Date.now()-t0<150000){
-      try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } loading=true; } }catch(e){}
+      try{ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);const r=await fetch(SERVER+"/health",{cache:"no-store",signal:ac.signal}).finally(()=>clearTimeout(tm)); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } loading=true; } }catch(e){}
       tries++; gateMsg(tries<2? "Connecting…" : (loading? "Opening the school's records. This takes a moment after TREE is updated." : "Still connecting. Check this device's internet connection."));
       await new Promise(r=>setTimeout(r, tries<3?2000:4000));
     }
     gateMsg("The server did not wake up. Try again in a minute.",true); return false;
   }
   // used by the app to wake the server quietly before retrying a Claude request
-  window.FP_WAKE=async function(){ const t0=Date.now(); while(Date.now()-t0<120000){ try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; } }catch(e){} await new Promise(r=>setTimeout(r,4000)); } return false; };
+  window.FP_WAKE=async function(){ const t0=Date.now(); while(Date.now()-t0<120000){ try{ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);const r=await fetch(SERVER+"/health",{cache:"no-store",signal:ac.signal}).finally(()=>clearTimeout(tm)); if(r.ok){ const j=await r.json(); if(j.ready) return true; } }catch(e){} await new Promise(r=>setTimeout(r,4000)); } return false; };
   function showGate(){
     const g=document.getElementById("gate"); g.hidden=false;
     const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code"), n=document.getElementById("gate-name");
