@@ -2925,9 +2925,9 @@ function renderStories(){
   const card=st=>{const ph=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
     return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink)" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px" loading="lazy">`:""}<b style="font-family:var(--display);font-size:17px">${esc(stTitle(st))}</b>${has(st.cover)?`<span class="cnt">${esc(st.cover)}</span>`:""}<span class="cnt">${stReviewed(st)?"Reviewed":"Draft"} · ${stReady(st)?"Getting ready · ":""}${(st.pages||[]).length} page${(st.pages||[]).length===1?"":"s"} · ${esc(st.by||"")} · ${shortDate(st.at)}</span></button>`};
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Stories</h2><div class="sub">Stories to read aloud with children, made from observations. Each page has one photo and a few short sentences written to the children, and every word comes from what the educators saw.</div></div>
-    <span class="actions"><button class="btn" data-storystart="1">Make a story</button></span></div><div class="cnt">Start from a project, a thread, a lens, a plan, a team inquiry or the weekly bin, or open an observation and choose Make a story.</div></div>
-  ${stStarting?`<section class="card" style="margin-top:12px"><div class="lbl">A new story, starting from</div><div class="actions"><select id="ststart" style="width:auto;max-width:100%">${storyStartOptions()}</select><button class="btn small" data-storygo="1">Make the story</button><button class="linkbtn" data-storystart="0">Cancel</button></div>
-    <div class="cnt">The story brings in the photos and the educators' words from where it starts.</div></section>`:""}
+</div>
+    <div class="actions" style="margin-top:8px"><select id="ststart" style="width:auto;max-width:100%" aria-label="Where the story starts">${storyStartOptions()}</select><button class="btn" data-storygo="1">Make a story</button></div>
+    <div class="cnt">It brings in the photos and the educators' words from where it starts.</div></div>
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No stories yet.</div>`}`;
 }
 // the photos a story can use, the ones it already has and others from the same project or class
@@ -2950,14 +2950,14 @@ function renderStory(){
   const kids=storyKids(st).map(id=>children.get(id)).filter(Boolean);
   const others=[...stories.values()].filter(x=>x.id!==st.id&&((st.projectId&&x.projectId===st.projectId)||(!st.projectId&&x.classroom===st.classroom))&&((x.words&&(x.words.items||[]).length)||(x.think&&has(x.think.questions))||(x.care&&has(x.care.lines))||(x.practice&&has(x.practice.ideas))||(x.families&&has(x.families.text))||(x.draw&&x.draw.on)||(x.community&&x.community.on)));
   const cand=storyPick?storyCandidates(st):[];
-  const pageCard=(p,i)=>`<section class="card stpage" data-stpage="${esc(p.id)}"><div class="secthead"><h3 style="font-size:16px">Page ${i+2}</h3><span class="actions"><button class="iconbtn" data-stmove="${esc(p.id)}|-1" aria-label="Move up" ${i?"":"disabled"}>‹</button><button class="iconbtn" data-stmove="${esc(p.id)}|1" aria-label="Move down" ${i<st.pages.length-1?"":"disabled"}>›</button><button class="linkbtn" data-stdelpage="${esc(p.id)}">Remove</button></span></div>
+  const pageCard=(p,i)=>`<section class="card stpage" data-stpage="${esc(p.id)}"><div class="secthead"><h3 style="font-size:16px">Page ${i+1}</h3><span class="actions"><button class="iconbtn" data-stmove="${esc(p.id)}|-1" aria-label="Move up" ${i?"":"disabled"}>‹</button><button class="iconbtn" data-stmove="${esc(p.id)}|1" aria-label="Move down" ${i<st.pages.length-1?"":"disabled"}>›</button><button class="linkbtn" data-stdelpage="${esc(p.id)}">Remove</button></span></div>
       <label class="fld-label">Heading at the top of the page<input data-stf="page|${esc(p.id)}|heading" value="${esc(p.heading||"")}" placeholder="At the climbing trees"></label>
       <div class="lbl" style="margin-top:6px">Photo</div>${stPhotoChoice(st,"page|"+p.id,p.photo)}${p.photo&&stKidNames(p.photo).length?`<div class="cnt">In this photo, ${esc(stKidNames(p.photo).join(", "))}</div>`:""}
       <label class="fld-label">Words, one short sentence on each line<textarea rows="3" data-stf="page|${esc(p.id)}|lines">${esc(p.lines||"")}</textarea></label></section>`;
   const draftBox=storyDraft&&storyDraft.id===st.id?`<section class="card stdraft"><div class="secthead"><h3 style="font-size:17px">Drafted pages</h3><span class="cnt">Not kept yet</span></div>
       <div class="cnt">Drafted from the educators' words in this story's observations. Read each page, then keep them and make every line your own.</div>
       ${storyDraft.title?`<div class="cnt" style="margin-top:6px"><b>Title</b> ${esc(storyDraft.title)}</div>`:""}
-      ${storyDraft.pages.map((p,i)=>`<div class="stdpage">${p.photo?stThumb(p.photo,'class="stdth"'):""}<div><b>${esc(p.heading||"Page "+(i+2))}</b>${p.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}
+      ${storyDraft.pages.map((p,i)=>`<div class="stdpage">${p.photo?stThumb(p.photo,'class="stdth"'):""}<div><b>${esc(p.heading||"Page "+(i+1))}</b>${p.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}
       ${(storyDraft.questions||[]).length?`<div class="stdpage"><div><b>Let's think together</b>${storyDraft.questions.map(q=>`<div>${esc(q)}</div>`).join("")}</div></div>`:""}
       ${has(storyDraft.families)?`<div class="stdpage"><div><b>For families</b><div>${esc(storyDraft.families)}</div></div></div>`:""}
       <div class="actions"><button class="btn small" data-stdraftkeep="replace">${(st.pages||[]).some(p=>has(p.lines))?"Keep these in place of my pages":"Keep these pages"}</button>${(st.pages||[]).some(p=>has(p.lines))?`<button class="btn small ghost" data-stdraftkeep="add">Add them after my pages</button>`:""}<button class="linkbtn" data-stdraftdrop="1">Set them aside</button></div></section>`:"";
@@ -2968,25 +2968,14 @@ function renderStory(){
   const kindBox=`<section class="card"><div class="lbl">What kind of story</div>
     <div class="seg" role="group" aria-label="Kind of story"><button data-stkind="happened" aria-pressed="${!stReady(st)}">What happened</button><button data-stkind="ready" aria-pressed="${stReady(st)}">Getting ready</button></div>
     <div class="cnt">${stReady(st)?"For something new, like a walk to the creek or coming to meeting. It tells what will happen, how friends may feel and what we can do.":"A moment the children lived, told again in our community's voice."} Both are told as we, with the children's first names.</div>
-    <label class="fld-label" style="margin-top:8px">Start from a frame<select data-stf="frame"><option value="">No frame</option>${ST_FRAMES.map(f=>`<option value="${esc(f.k)}" ${f.k===st.frame?"selected":""}>${esc(f.title)}</option>`).join("")}</select></label>
+    <label class="fld-label" style="margin-top:8px">Story frame<select data-stf="frame"><option value="">No frame</option>${ST_FRAMES.map(f=>`<option value="${esc(f.k)}" ${f.k===st.frame?"selected":""}>${esc(f.title)}</option>`).join("")}</select></label>
     ${fr?`<div class="cnt">${esc(fr.line)} The pages still come only from the observations below.</div>`:""}
     ${LENSES.length?`<label class="fld-label" style="margin-top:8px">Read it through a lens<select data-stf="lensId"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${l.id===st.lensId?"selected":""}>${esc(l.name||"A lens")}</option>`).join("")}</select></label>`:""}
-    ${st.from&&st.from.label?`<div class="cnt" style="margin-top:8px">Started from ${esc(st.from.label)}.</div>`:""}
-    <div style="margin-top:10px">${reviewBox}</div>
-    <div style="margin-top:8px">${isDirector()?`<label class="radio"><input type="checkbox" data-stoff="1" ${st.offShare?"checked":""}><span>Keep it off the staff room display and the newsletter</span></label>`:st.offShare?`<div class="cnt">The director keeps this story off the staff room display and the newsletter.</div>`:""}</div></section>`;
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([room?room+" class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")].filter(Boolean).join(" · "))}</div></div>
-    <span class="actions">${printBtns("story",st.id,"Book PDF",true)}${printBtns("storysmall",st.id,"Small book PDF")}</span></div><div class="hint">The small book prints on letter paper. Print on both sides, flip on the short edge, then fold the stack in half. The Word file keeps the pages in order for changing words.</div></div>
+</section>`;
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([st.from&&st.from.label?"From "+st.from.label:"",room?room+" Class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")+" after the cover",stReviewed(st)?"Reviewed":"Draft"].filter(Boolean).join(" · "))}</div></div>
+    <span class="actions">${printBtns("story",st.id,"Book PDF",true)}${printBtns("storysmall",st.id,"Small book PDF")}</span></div><div class="hint">The book prints one page to a sheet. The small book prints on letter paper, both sides, flipped on the short edge, then folded in half.</div></div>
   ${kindBox}
-  <section class="card"><div class="lbl">The cover</div>
-    <label class="fld-label">Title<input data-stf="title" value="${esc(st.title||"")}" placeholder="We Are a Community of Kindness"></label>
-    <label class="fld-label">Line under the photo<input data-stf="cover" value="${esc(st.cover||"")}" placeholder="Rhea and the Lavender Group"></label>
-    <div class="lbl" style="margin-top:6px">Cover photo</div>${stPhotoChoice(st,"cover",st.coverPhoto)}
-    <div class="tgrid2" style="margin-top:8px"><label class="fld-label">Class<select data-stf="classroom"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${r}</option>`).join("")}</select></label>
-      <label class="fld-label">Group<select data-stf="group"><option value="">No group</option>${groups.map(g=>`<option ${g.name===st.group?"selected":""}>${esc(g.name)}</option>`).join("")}${st.group&&!groups.some(g=>g.name===st.group)?`<option selected>${esc(st.group)}</option>`:""}</select></label></div>
-    <label class="fld-label">Project<select data-stf="projectId"><option value="">No project</option>${prs.map(x=>`<option value="${esc(x.id)}" ${x.id===st.projectId?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
-    <div class="cnt">${kids.length?`In this story, ${esc(kids.map(c=>c.first).join(", "))}. A child's portfolio has the story only when they are in one of its photos.`:"Tag children in the observations' photos, and the story names them here."}</div></section>
-  ${storyDesignHtml(st)}
-  <section class="card"><div class="lbl">In our own words</div>
+  <section class="card"><div class="lbl">What the story tells, in our own words</div>
     <label class="fld-label">What we want to tell${stReady(st)?", and what will happen":""}<textarea rows="4" data-stf="about" placeholder="${stReady(st)?"On Friday we will walk to the creek together. We will stay with our group and stop at the big rock.":"What happened, in the team's own words. TREE drafts the pages only from these words and the observations below."}">${esc(st.about||"")}</textarea></label>
     <div class="cnt">TREE drafts only from these words and the observations below. Name a child here only when they belong in the story.</div></section>
   <section class="card"><div class="secthead"><h3 style="font-size:17px">Photos for this story</h3><span class="cnt">${(st.sources||[]).length}</span></div>
@@ -3035,7 +3024,18 @@ function renderStory(){
       <label class="fld-label">A few sentences for families, why we made this story and one or two ways to talk about it at home<textarea rows="5" data-talk="1" data-stf="families|text" placeholder="Our group made this story together after a morning at the climbing trees. At home, look at the photos together and say what you notice, or invite your child with Tell me about this story.">${esc(families.text||"")}</textarea></label>
       <div class="cnt">This page prints on the back of the small book only.</div></div>`:""}
   </section>
-  <section class="card"><div class="actions"><span id="stdel"><button class="linkbtn" data-stdel="1">Remove this story</button></span></div></section>`;
+  <section class="card"><div class="lbl">The cover</div>
+    <label class="fld-label">Title<input data-stf="title" value="${esc(st.title||"")}" placeholder="We Are a Community of Kindness"></label>
+    <label class="fld-label">Line under the photo<input data-stf="cover" value="${esc(st.cover||"")}" placeholder="Rhea and the Lavender Group"></label>
+    <div class="lbl" style="margin-top:6px">Cover photo</div>${stPhotoChoice(st,"cover",st.coverPhoto)}
+    <div class="tgrid2" style="margin-top:8px"><label class="fld-label">Class<select data-stf="classroom"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label class="fld-label">Group<select data-stf="group"><option value="">No group</option>${groups.map(g=>`<option ${g.name===st.group?"selected":""}>${esc(g.name)}</option>`).join("")}${st.group&&!groups.some(g=>g.name===st.group)?`<option selected>${esc(st.group)}</option>`:""}</select></label></div>
+    <label class="fld-label">Project<select data-stf="projectId"><option value="">No project</option>${prs.map(x=>`<option value="${esc(x.id)}" ${x.id===st.projectId?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
+    <div class="cnt">${kids.length?`In this story, ${esc(kids.map(c=>c.first).join(", "))}. A child's portfolio has the story only when they are in one of its photos.`:"Tag children in the observations' photos, and the story names them here."}</div></section>
+  ${storyDesignHtml(st)}
+  <section class="card"><div class="lbl">Review and sharing</div><div>${reviewBox}</div>
+    <div style="margin-top:8px">${isDirector()?`<label class="radio"><input type="checkbox" data-stoff="1" ${st.offShare?"checked":""}><span>Keep it off the staff room display and the newsletter</span></label>`:st.offShare?`<div class="cnt">The director keeps this story off the staff room display and the newsletter.</div>`:""}</div>
+    <div class="actions" style="margin-top:10px"><span id="stdel"><button class="linkbtn" data-stdel="1">Remove this story</button></span></div></section>`;
 }
 // new photos for a story, each kept as an observation for the story, stored like any observation's photo
 async function storyUpload(st,files){
