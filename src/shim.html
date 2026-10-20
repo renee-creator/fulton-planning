@@ -55,7 +55,7 @@
   function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
-  async function api(path, body, signal){
+  async function api(path, body, signal, retried){
     let r;
     const payload=JSON.stringify(body||{});
     // while the page is closing, let the last save finish in the background
@@ -63,7 +63,11 @@
     try{ r=await fetch(SERVER+path,{method:"POST",signal,keepalive,headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:payload}); }
     catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The TREE server could not be reached. Check your internet connection and try again."}; }
     let j={}; try{ j=await r.json(); }catch(e){}
-    if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
+    // one refused request never signs anyone out. TREE asks once more with the newest sign-in on this device, and only
+    // a second refusal ends the sign-in, with a note on the sign-in screen saying why
+    if(r.status===401 && path!=="/login"){
+      if(!retried){ await new Promise(ok=>setTimeout(ok,1200)); const t=LS.get("fp-token"); if(t) Auth.token=t; return api(path, body, signal, true); }
+      LS.set("fp-signout-why", j.error||"Your sign-in ended. Sign in again to keep going."); signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
     if(r.status===413) throw {code:"too_big", status:413, message:j.error};
@@ -84,6 +88,8 @@
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
   function noteActive(){ lastActive=Date.now(); if(idle){ idle=false; poll(); } }
   ["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,noteActive,{passive:true,capture:true}));
+  // a page inside TREE that was refused asks TREE to check its own sign-in, which signs out only if TREE is refused too
+  window.addEventListener("message",e=>{ if(e.origin===location.origin && e.data && e.data.treeAuthCheck && Auth.token) poll(); });
   async function poll(){
     if(Date.now()-lastActive>IDLE_MS){ idle=true; return; }
     if(document.hidden || !Auth.token || polling) return;
@@ -116,6 +122,7 @@
     const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code"), n=document.getElementById("gate-name");
     const nv=document.getElementById("gate-new"), ag=document.getElementById("gate-again"), s1=document.getElementById("gate-step1"), s2=document.getElementById("gate-step2");
     n.value=LS.get("fp-last-name")||""; setTimeout(()=>(n.value?c:n).focus(),50);
+    const why=LS.get("fp-signout-why"); if(why){ LS.set("fp-signout-why",null); gateMsg(why,true); }
     let setting="", startCode="";
     return new Promise(resolve=>{
       const done=j=>{ Auth.token=j.token; Auth.name=j.name; Auth.director=!!j.director; LS.set("fp-token",j.token); LS.set("fp-name",j.name); LS.set("fp-director",j.director?"1":null); LS.set("fp-last-name",j.name); g.hidden=true; resolve(); };

@@ -273,7 +273,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
   window.FC_SIGN_OUT=signOut;
   window.FC_SIGNUP_FEED=(fresh,link)=>api("/api/signup-feed",{fresh:!!fresh,link:link||""});
 
-  async function api(path, body, signal){
+  async function api(path, body, signal, retried){
     let r;
     const payload=JSON.stringify(body||{});
     // while the page is closing, let the last save finish in the background
@@ -281,7 +281,11 @@ header.top{position:static!important;border-bottom:0!important;background:transp
     try{ r=await fetch(SERVER+path,{method:"POST",signal,keepalive,headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:payload}); }
     catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The TREE server could not be reached. Check your internet connection and try again."}; }
     let j={}; try{ j=await r.json(); }catch(e){}
-    if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
+    // inside TREE the sign-in is TREE's. A refusal asks once more with the newest sign-in on this device, then lets TREE decide
+    if(r.status===401 && path!=="/login"){
+      if(!retried){ await new Promise(ok=>setTimeout(ok,1200)); const t=LS.get("fp-token"); if(t) Auth.token=t; return api(path, body, signal, true); }
+      if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} throw {code:"session_expired", message:j.error}; }
+      signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(!r.ok) throw {status:r.status, message:j.error||("The server answered "+r.status+".")};
     return j;

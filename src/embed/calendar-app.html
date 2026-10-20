@@ -465,13 +465,16 @@ const Auth = { token:LS.get("fc-token"), name:LS.get("fc-name") };
 const $ = id => document.getElementById(id);
 
 function signOut(){ Auth.token=null; LS.set("fc-token",null); LS.set("fc-name",null); location.reload(); }
-async function api(path, body){
+async function api(path, body, retried){
   if(PREVIEW) return PREVIEW.call(path, body||{});
   let r;
   try{ r = await fetch(SERVER+path,{method:"POST",headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:JSON.stringify(body||{})}); }
   catch(e){ throw {code:"unavailable", message:"The calendar server could not be reached. Check your internet connection and try again."}; }
   let j={}; try{ j=await r.json(); }catch(e){}
-  if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
+  if(r.status===401 && path!=="/login"){
+    if(!retried){ await new Promise(ok=>setTimeout(ok,1200)); const t=LS.get("fc-token"); if(t) Auth.token=t; return api(path, body, true); }
+    if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} throw {code:"session_expired", message:j.error}; }
+    signOut(); throw {code:"session_expired", message:j.error}; }
   if(!r.ok) throw {status:r.status, message:j.error||("The server answered "+r.status+".")};
   return j;
 }
