@@ -793,12 +793,12 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     }catch(e){} finally{ polling=false; }
   }
 
-  /* wake the server, which sleeps after 15 quiet minutes on Render's free plan */
+  /* make sure the server is answering and has the school's records open. The TREE server is on a paid plan and does not sleep. */
   async function wake(){
-    const t0=Date.now(); let tries=0;
+    const t0=Date.now(); let tries=0, loading=false;
     while(Date.now()-t0<150000){
-      try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } } }catch(e){}
-      tries++; gateMsg(tries<2? "Connecting…" : "Waking the server. The first visit after a quiet stretch takes about a minute.");
+      try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } loading=true; } }catch(e){}
+      tries++; gateMsg(tries<2? "Connecting…" : (loading? "Opening the school's records. This takes a moment after TREE is updated." : "Still connecting. Check this device's internet connection."));
       await new Promise(r=>setTimeout(r, tries<3?2000:4000));
     }
     gateMsg("The server did not wake up. Try again in a minute.",true); return false;
@@ -827,7 +827,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   async function start(){
     if(!Auth.token) await showGate();
     else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);
-      const t=setTimeout(()=>{ note.textContent="Waking the server. The first visit after a quiet stretch takes about a minute."; },2500);
+      const t=setTimeout(()=>{ note.textContent="Connecting to TREE…"; },2500);
       const ok=await wake(); clearTimeout(t); if(!ok){ note.textContent="The TREE server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; throw new Error("down"); }
       g.hidden=true; document.getElementById("gate-form").style.display=""; note.remove(); }
     await loadAll();
