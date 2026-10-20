@@ -597,6 +597,24 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .gdated>span.cnt{flex:none;width:96px}
 @media (max-width:560px){.gkey .gstat b{font-size:20px}.gstats{grid-template-columns:repeat(2,minmax(0,1fr))}.gstat b{font-size:17px}.gedu{flex-direction:column}.gdated{flex-wrap:wrap}}
 .chip-btn[aria-pressed="true"]{background:var(--moss,#2f5a43);color:#fff;border-color:var(--moss,#2f5a43)}
+
+.evstory{display:block;border:0;padding:0;background:none;cursor:pointer;margin:4px 0}.evstory img{width:100%;max-height:140px;object-fit:cover;border-radius:8px;display:block}
+.nlstories{display:grid;gap:8px;margin:6px 0 10px}.nlstory{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line,#d6ded4);border-radius:10px;background:none;padding:6px;cursor:pointer;color:inherit}.nlstory img{width:72px;height:54px;object-fit:cover;border-radius:6px;flex:none}.nlstory.on{border:2px solid var(--moss,#2f5a43)}.nlstory b{display:block}
+/* stories */
+.stchoose{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.stph{border:2px solid transparent;border-radius:10px;padding:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.stph img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block}
+.stph[aria-pressed="true"]{border-color:var(--moss,#2f5a43)}
+.stph.none{width:84px;height:64px;justify-content:center;font-size:13px;color:var(--muted,#606e65);border:1px dashed var(--line,#d6ded4)}
+.stph.none[aria-pressed="true"]{border:2px solid var(--moss,#2f5a43)}
+.stph.keep{cursor:default}
+.stword{display:grid;grid-template-columns:1fr 1.4fr auto;gap:6px;align-items:center;margin:6px 0}
+.stword input{width:100%}
+.stclose{margin:4px 0 12px 28px}
+.stdraft{border:1px dashed var(--moss,#2f5a43)}
+.stdpage{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line,#d6ded4)}
+.stdth{width:72px;height:56px;object-fit:cover;border-radius:6px;flex:none}
+@media (max-width:760px){.stword{grid-template-columns:1fr}.stclose{margin-left:4px}}
 </style>
 
 <header class="ttop"><div class="ttop-in">
@@ -892,6 +910,7 @@ async function boot(){
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
   }else setConn("Saving on this device");
@@ -1082,6 +1101,8 @@ function renderMain(){
   if(view==="slides"){renderSlides();return}
   if(view==="slide"){renderSlide();return}
   if(view==="walls"){renderWalls();return}
+  if(view==="stories"){renderStories();return}
+  if(view==="story"){renderStory();return}
   if(view==="newsletter"){renderNewsletter();return}
   if(view==="grant"){renderGrant();return}
   if(view==="conferences"){renderEmbed("conferences");return}
@@ -1419,11 +1440,12 @@ function renderWelcome(){
    Every screen opened is remembered with how far down it was scrolled. Back, at the top of the page or the phone's own
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
-function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,storyOpen:view==="story"?storyOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
+const NAV_NAMES={today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",stories:"Stories",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
+  if(s.view==="story"){const x=stories.get(s.storyOpen);return x&&x.title?x.title:"the story"}
   if(s.view==="plans"&&s.currentId){const p=plans.get(s.currentId);return p?planTitle(p):"the plan"}
   if(s.view==="projects"&&s.projId){const x=projects.get(s.projId);return x?x.name:"the project"}
   return NAV_NAMES[s.view]||"the last page"}
@@ -1432,13 +1454,13 @@ function navTrack(){if(!$("#main"))return;const s=navState(),k=JSON.stringify(s)
   if(k!==navCur.k){NAVS.push(navCur);if(NAVS.length>40)NAVS.shift();navCur={s,k,y:0};try{history.pushState({tree:1},"")}catch(e){}}
   drawBack()}
 // Back shows on a page opened from somewhere, a plan, a child, a slide or a project. A section page has the tab bar instead.
-const navDetail=()=>{const s=navState();return !!(s.currentId||s.kidOpen||s.slideOpen||s.projId)};
+const navDetail=()=>{const s=navState();return !!(s.currentId||s.kidOpen||s.slideOpen||s.storyOpen||s.projId)};
 function drawBack(){const m=$("#main");if(!m)return;placeSubnav();let b=m.querySelector(":scope>.navback");const prev=NAVS[NAVS.length-1];
   if(!prev||!navDetail()||m.querySelector("#tsubnav [data-navback]")){if(b)b.remove();return}
   const t="‹ Back to "+navLabel(prev.s);if(b){if(b.textContent!==t)b.textContent=t;return}
   b=document.createElement("button");b.className="navback";b.type="button";b.textContent=t;b.onclick=()=>{try{history.back()}catch(e){navBack()}};m.prepend(b)}
 function navBack(){const prev=NAVS.pop();if(!prev)return false;const s=prev.s;
-  view=s.view;LS.set("fps.view",view);currentId=s.currentId;if(s.slideOpen){slideOpen=s.slideOpen;LS.set("tree.slide",slideOpen)}
+  view=s.view;LS.set("fps.view",view);currentId=s.currentId;if(s.slideOpen){slideOpen=s.slideOpen;LS.set("tree.slide",slideOpen)}if(s.storyOpen){storyOpen=s.storyOpen;LS.set("tree.story",storyOpen);storyDraft=null}
   if(s.kidOpen){kidOpen=s.kidOpen;LS.set("tree.kid",kidOpen);kidTab=s.kidTab||"overview";kidOpenMoment=s.kidMoment||""}
   if(s.view==="projects"){projId=s.projId||"";projForm=null}
   if(s.view==="conferences"||s.view==="calendar")embedGo[s.view]=false;
@@ -1737,9 +1759,9 @@ window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
 window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
   // with a list, only those pieces print, the ones listed on the conference form
   const want=Array.isArray(only)?new Set(only):null;
-  const its=portfolioItems(c).filter(x=>want?want.has(x.kind+"|"+(x.kind==="slides"?x.s.id:x.n.id)):x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
+  const its=portfolioItems(c).filter(x=>want?want.has(x.kind+"|"+pfItemId(x)):x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
   const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
-  const docs=its.map(x=>aged(x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
+  const docs=its.map(x=>aged(x.kind==="stories"?storyPortfolioDoc(x.st,mode,c):x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
   if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
   return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pfdrdp)LS.set("tree.pfdrdp",t.value);
@@ -1766,10 +1788,10 @@ window.TREE_CONF_FACTS=(childId,from,to)=>{const c=children.get(childId);if(!c)r
   if(tp.length)out.interests=`Threads and projects in ${c.first}'s observations, ${list(tp)}.`;
   return out};
 // opens a piece of documentation from a conference form
-window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
+window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="stories"&&stories.has(id)){storyOpen=id;LS.set("tree.story",id);storyDraft=null;goView("story");return}if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
   const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
-  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,id:x.kind==="slides"?x.s.id:x.n.id,at:x.at,title:x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"An observation")}))};
+  return portfolioItems(c).filter(x=>x.at>=t0&&x.at<=t1).map(x=>({kind:x.kind,id:pfItemId(x),at:x.at,title:x.kind==="stories"?stTitle(x.st):x.kind==="slides"?slideTitle(x.s):(momentHeading(x.n)||firstLine(x.n.noticed,60)||"An observation")}))};
 
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
@@ -1948,6 +1970,255 @@ function renderSlides(){
   ${deckBar}
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No slides yet.</div>`}`;
 }
+/* ---------- Stories ----------
+   A social story the team reads aloud with children, made from observations. Each page has one photo and two or three
+   short sentences written to the children. TREE can draft the sentences, only from what the educators wrote, and nothing
+   drafted is kept until an educator keeps it. A story prints as a book, one landscape page per sheet. */
+let stories=new Map(), storyOpen=LS.get("tree.story",""), storyTimers={}, storyDraft=null, stBusy=false, storyPick=false;
+const ST_CARE={heading:"We care for our community",lines:"",photo:""};
+const ST_WORDS={heading:"Words we can practice",items:[]};
+const ST_THINK={heading:"Let's think together",questions:"",refrain:""};
+const stId=()=>"st"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const stPageId=()=>"p"+Math.random().toString(36).slice(2,8);
+const stTitle=st=>st&&String(st.title||"").trim()?st.title:"A story";
+// the children in a story are the children tagged in the photos it uses, so a child who is not in a photo is never in it
+function storyPhotoIds(st){const ids=[st.coverPhoto,...(st.pages||[]).map(p=>p.photo),st.care&&st.care.photo].filter(Boolean);return [...new Set(ids)].filter(id=>{const n=notices.get(id);return n&&n.photo})}
+function storyKids(st){const s=new Set();for(const id of storyPhotoIds(st)){const n=notices.get(id);for(const c of (n&&n.children)||[])s.add(c)}return [...s]}
+function storySources(st){return (st.sources||[]).map(id=>notices.get(id)).filter(Boolean)}
+function saveStory(st){st.updatedAt=Date.now();st.children=storyKids(st);stories.set(st.id,st);if(db)db.doc("stories/"+st.id).set(JSON.parse(JSON.stringify(st))).catch(()=>toast("Could not save the story. Check your connection."))}
+function saveStorySoon(st){st.updatedAt=Date.now();stories.set(st.id,st);clearTimeout(storyTimers[st.id]);storyTimers[st.id]=setTimeout(()=>{delete storyTimers[st.id];saveStory(stories.get(st.id)||st)},700)}
+const kidStories=c=>[...stories.values()].filter(st=>storyKids(st).includes(c.id));
+const projStories=x=>[...stories.values()].filter(st=>st.projectId===x.id).sort((a,b)=>(b.at||0)-(a.at||0));
+const storiesWith=id=>[...stories.values()].filter(st=>(st.sources||[]).includes(id)||storyPhotoIds(st).includes(id));
+function storyFoot(st){return ["Fulton Community School & Farm",st.classroom?st.classroom+" Class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
+function newStory(o){
+  if(needName())return null;o=o||{};const n=o.from||null;
+  const grp=n?noteGroup(n).filter(x=>x.photo):[];const th=n&&n.threadId&&threads.get(n.threadId);
+  const pr=o.project||(n&&n.projectId&&projects.get(n.projectId))||(th&&projectOfThread(th.id))||null;
+  const room=(n&&n.classroom)||(pr&&(pr.classrooms||[])[0])||myRoom()||"";
+  // the group the children in the photos belong to, so the footer names their group
+  const gc={};for(const x of grp)for(const id of x.children||[]){const c=children.get(id);if(c&&c.group)gc[c.group]=(gc[c.group]||0)+1}
+  const gName=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0];const g=gName?{name:gName[0]}:n&&GROUPS.find(x=>x.room===room&&(x.educator||"").toLowerCase()===String(n.by||"").toLowerCase());
+  const st={id:stId(),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:"",cover:"",classroom:room,group:g?g.name:"",projectId:pr?pr.id:"",
+    sources:grp.map(x=>x.id),coverPhoto:grp[0]?grp[0].id:"",pages:grp.map(x=>({id:stPageId(),heading:"",photo:x.id,lines:""})),
+    care:Object.assign({},ST_CARE,{on:false}),words:Object.assign({},ST_WORDS,{on:false,items:[]}),think:Object.assign({},ST_THINK,{on:false})};
+  saveStory(st);storyOpen=st.id;LS.set("tree.story",st.id);storyDraft=null;goView("story");return st;
+}
+function renderStories(){
+  const ss=[...stories.values()].sort((a,b)=>(b.at||0)-(a.at||0));
+  const card=st=>{const ph=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
+    return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink)" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px" loading="lazy">`:""}<b style="font-family:var(--display);font-size:17px">${esc(stTitle(st))}</b>${has(st.cover)?`<span class="cnt">${esc(st.cover)}</span>`:""}<span class="cnt">${(st.pages||[]).length} page${(st.pages||[]).length===1?"":"s"} · ${esc(st.by||"")} · ${shortDate(st.at)}</span></button>`};
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Stories</h2><div class="sub">Stories to read aloud with children, made from observations. Each page has one photo and a few short sentences written to the children, and every word comes from what the educators saw.</div></div>
+    <span class="actions"><button class="btn" data-storynew="1">Make a story</button></span></div><div class="cnt">Or open an observation or a project and choose Make a story.</div></div>
+  ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No stories yet.</div>`}`;
+}
+// the photos a story can use, the ones it already has and others from the same project or class
+function storyCandidates(st){
+  const pr=st.projectId&&projects.get(st.projectId);const have=new Set(st.sources||[]);
+  const pool=(pr?projNotices(pr):[...notices.values()].filter(n=>!st.classroom||n.classroom===st.classroom)).filter(n=>n.photo&&!have.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0));
+  return pool.slice(0,60);
+}
+const stThumb=(id,extra)=>{const n=notices.get(id);return n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" ${extra||""}>`:""};
+function stPhotoChoice(st,which,cur){
+  const ids=(st.sources||[]).filter(id=>{const n=notices.get(id);return n&&n.photo});
+  if(!ids.length)return `<div class="cnt">Add photos to the story first.</div>`;
+  return `<div class="stchoose">${ids.map(id=>`<button class="stph" data-stphoto="${esc(which)}" data-id="${esc(id)}" aria-pressed="${id===cur}" title="Use this photo">${stThumb(id)}</button>`).join("")}${which!=="cover"?`<button class="stph none" data-stphoto="${esc(which)}" data-id="" aria-pressed="${!cur}">No photo</button>`:""}</div>`;
+}
+function stKidNames(id){const n=notices.get(id);return ((n&&n.children)||[]).map(c=>children.get(c)).filter(Boolean).map(c=>c.first)}
+function renderStory(){
+  const st=stories.get(storyOpen);
+  if(!st){$("#main").innerHTML=`<div class="empty">That story is not here. <button class="linkbtn" data-tview="stories">All stories</button></div>`;return}
+  const room=st.classroom||"";const groups=GROUPS.filter(g=>!room||g.room===room);const prs=[...projects.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const kids=storyKids(st).map(id=>children.get(id)).filter(Boolean);
+  const others=[...stories.values()].filter(x=>x.id!==st.id&&((st.projectId&&x.projectId===st.projectId)||(!st.projectId&&x.classroom===st.classroom))&&((x.words&&(x.words.items||[]).length)||(x.think&&has(x.think.questions))||(x.care&&has(x.care.lines))));
+  const cand=storyPick?storyCandidates(st):[];
+  const pageCard=(p,i)=>`<section class="card stpage" data-stpage="${esc(p.id)}"><div class="secthead"><h3 style="font-size:16px">Page ${i+2}</h3><span class="actions"><button class="iconbtn" data-stmove="${esc(p.id)}|-1" aria-label="Move up" ${i?"":"disabled"}>‹</button><button class="iconbtn" data-stmove="${esc(p.id)}|1" aria-label="Move down" ${i<st.pages.length-1?"":"disabled"}>›</button><button class="linkbtn" data-stdelpage="${esc(p.id)}">Remove</button></span></div>
+      <label class="fld-label">Heading at the top of the page<input data-stf="page|${esc(p.id)}|heading" value="${esc(p.heading||"")}" placeholder="At the climbing trees"></label>
+      <div class="lbl" style="margin-top:6px">Photo</div>${stPhotoChoice(st,"page|"+p.id,p.photo)}${p.photo&&stKidNames(p.photo).length?`<div class="cnt">In this photo, ${esc(stKidNames(p.photo).join(", "))}</div>`:""}
+      <label class="fld-label">Words, one short sentence on each line<textarea rows="3" data-stf="page|${esc(p.id)}|lines">${esc(p.lines||"")}</textarea></label></section>`;
+  const draftBox=storyDraft&&storyDraft.id===st.id?`<section class="card stdraft"><div class="secthead"><h3 style="font-size:17px">Drafted pages</h3><span class="cnt">Not kept yet</span></div>
+      <div class="cnt">Drafted from the educators' words in this story's observations. Read each page, then keep them and make every line your own.</div>
+      ${storyDraft.title?`<div class="cnt" style="margin-top:6px"><b>Title</b> ${esc(storyDraft.title)}</div>`:""}
+      ${storyDraft.pages.map((p,i)=>`<div class="stdpage">${p.photo?stThumb(p.photo,'class="stdth"'):""}<div><b>${esc(p.heading||"Page "+(i+2))}</b>${p.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}
+      <div class="actions"><button class="btn small" data-stdraftkeep="replace">${(st.pages||[]).some(p=>has(p.lines))?"Keep these in place of my pages":"Keep these pages"}</button>${(st.pages||[]).some(p=>has(p.lines))?`<button class="btn small ghost" data-stdraftkeep="add">Add them after my pages</button>`:""}<button class="linkbtn" data-stdraftdrop="1">Set them aside</button></div></section>`:"";
+  const words=st.words||ST_WORDS,think=st.think||ST_THINK,care=st.care||ST_CARE;
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([room?room+" class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")].filter(Boolean).join(" · "))}</div></div>
+    <span class="actions">${printBtns("story",st.id,"Book PDF",true)}</span></div></div>
+  <section class="card"><div class="lbl">The cover</div>
+    <label class="fld-label">Title<input data-stf="title" value="${esc(st.title||"")}" placeholder="We Are a Community of Kindness"></label>
+    <label class="fld-label">Line under the photo<input data-stf="cover" value="${esc(st.cover||"")}" placeholder="Ione and the Lavender Group"></label>
+    <div class="lbl" style="margin-top:6px">Cover photo</div>${stPhotoChoice(st,"cover",st.coverPhoto)}
+    <div class="tgrid2" style="margin-top:8px"><label class="fld-label">Class<select data-stf="classroom"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label class="fld-label">Group<select data-stf="group"><option value="">No group</option>${groups.map(g=>`<option ${g.name===st.group?"selected":""}>${esc(g.name)}</option>`).join("")}${st.group&&!groups.some(g=>g.name===st.group)?`<option selected>${esc(st.group)}</option>`:""}</select></label></div>
+    <label class="fld-label">Project<select data-stf="projectId"><option value="">No project</option>${prs.map(x=>`<option value="${esc(x.id)}" ${x.id===st.projectId?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
+    <div class="cnt">${kids.length?`In this story, ${esc(kids.map(c=>c.first).join(", "))}. A child's portfolio has the story only when they are in one of its photos.`:"Tag children in the observations' photos, and the story names them here."}</div></section>
+  <section class="card"><div class="secthead"><h3 style="font-size:17px">Photos for this story</h3><span class="cnt">${(st.sources||[]).length}</span></div>
+    ${(st.sources||[]).length?`<div class="stchoose">${(st.sources||[]).map(id=>`<span class="stph keep">${stThumb(id)}<button class="linkbtn" data-stsrcrm="${esc(id)}" aria-label="Take this photo out">Take out</button></span>`).join("")}</div>`:`<div class="cnt">No photos yet.</div>`}
+    <div class="actions"><button class="btn small ghost" data-stpick="1">${storyPick?"Done adding":"Add photos from "+(st.projectId?"this project":"this class")}</button></div>
+    ${storyPick?(cand.length?`<div class="stchoose">${cand.map(n=>`<button class="stph" data-stsrcadd="${esc(n.id)}" title="${esc(firstLine(n.noticed,60)||"")}">${stThumb(n.id)}</button>`).join("")}</div>`:`<div class="cnt">No other photos in ${st.projectId?"this project":"this class"}.</div>`):""}</section>
+  <section class="card"><div class="secthead"><h3 style="font-size:17px">The pages</h3><span class="actions"><button class="btn small" data-stdraft="1" ${stBusy?"disabled":""}>${stBusy?"Drafting":"Draft the pages"}</button></span></div>
+    <div class="cnt">TREE drafts short sentences to read aloud, only from what the educators wrote in these observations. The team reads and changes every line.</div></section>
+  ${draftBox}
+  ${(st.pages||[]).map(pageCard).join("")}
+  <div class="actions" style="margin:4px 0 12px"><button class="btn small ghost" data-staddpage="1">Add a page</button></div>
+  <section class="card"><div class="secthead"><h3 style="font-size:17px">Closing pages</h3>${others.length?`<label class="fld-label" style="margin:0">Copy them from<select data-stcopy="1"><option value="">Another story</option>${others.map(x=>`<option value="${esc(x.id)}">${esc(stTitle(x))}</option>`).join("")}</select></label>`:""}</div>
+    <label class="radio"><input type="checkbox" data-stonly="care" ${care.on?"checked":""}><span>A page about our community</span></label>
+    ${care.on?`<div class="stclose"><label class="fld-label">Heading<input data-stf="care|heading" value="${esc(care.heading||"")}"></label>
+      <label class="fld-label">Words, one on each line<textarea rows="3" data-stf="care|lines" placeholder="We are a community of kindness.">${esc(care.lines||"")}</textarea></label>
+      <div class="lbl">Photo</div>${stPhotoChoice(st,"care",care.photo)}</div>`:""}
+    <label class="radio"><input type="checkbox" data-stonly="words" ${words.on?"checked":""}><span>Words we can practice</span></label>
+    ${words.on?`<div class="stclose"><label class="fld-label">Heading<input data-stf="words|heading" value="${esc(words.heading||"")}"></label>
+      ${(words.items||[]).map((w,i)=>`<div class="stword"><input data-stf="word|${i}|bold" value="${esc(w.bold||"")}" placeholder="I can keep my promises." aria-label="Words in bold"><input data-stf="word|${i}|plain" value="${esc(w.plain||"")}" placeholder="When I say I will help, I do my best to help." aria-label="What it means"><button class="linkbtn" data-stwordrm="${i}">Remove</button></div>`).join("")}
+      <button class="linkbtn" data-stwordadd="1">Add words</button></div>`:""}
+    <label class="radio"><input type="checkbox" data-stonly="think" ${think.on?"checked":""}><span>Let's think together</span></label>
+    ${think.on?`<div class="stclose"><label class="fld-label">Heading<input data-stf="think|heading" value="${esc(think.heading||"")}"></label>
+      <label class="fld-label">Questions, one on each line<textarea rows="3" data-stf="think|questions" placeholder="How did the friends help?">${esc(think.questions||"")}</textarea></label>
+      <label class="fld-label">Closing words, in bold at the foot<textarea rows="2" data-stf="think|refrain" placeholder="We belong. We listen. We help.">${esc(think.refrain||"")}</textarea></label>
+      <div class="actions"><button class="btn small ghost" data-stanswers="1">Keep their answers</button><span class="cnt">After reading, keep what the children say as a new observation.</span></div></div>`:""}
+  </section>
+  <section class="card"><div class="actions"><span id="stdel"><button class="linkbtn" data-stdel="1">Remove this story</button></span></div></section>`;
+}
+// what TREE sends when drafting, the educators' own words and which children are in each photo
+function storyPrompt(st){
+  const src=storySources(st);const ph=(st.sources||[]).filter(id=>{const n=notices.get(id);return n&&n.photo});
+  const kidsOf=id=>stKidNames(id);
+  const notes=src.map((n,i)=>{const pi=ph.indexOf(n.id);return `Observation ${i+1}${pi>=0?`, photo P${pi+1}`:""}, ${n.classroom?n.classroom+" class, ":""}${longDate(iso(new Date(n.at||Date.now())))}${kidsOf(n.id).length?`. Children in this photo ${kidsOf(n.id).join(", ")}`:""}.
+What the educators noticed. ${String(n.noticed||"").trim()||"(nothing written)"}
+What they wondered. ${String(n.wonder||"").trim()||"(nothing written)"}`}).join("\n\n");
+  return `You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write a social story to read aloud with young children, ages two to five. The educators will read and change every line.
+
+Write the story only from the educators' own words below. Never add an event, a place, a feeling, a quote or a child that the educators did not write. Name a feeling only if the educators named it. Use children's first names only, and only for children the educators wrote about or tagged in a photo. Write to the children, in the present or simple past, in short concrete sentences of 4 to 12 words, two or three sentences on a page. Show each child as capable, trying, helping or thinking. Keep it warm and positive. No colons, no dashes, no lists, no morals that the notes do not support.
+
+Order the pages as the events happened. Give each page one photo from the list, using its label like P1, and use each photo at most once. A page may have no photo only when no photo fits. Give each page a short heading of two to five words in plain words.
+
+Return only JSON in this shape
+{"title":"a short title for the story","cover":"a short line naming the children or group, like Ione and the Lavender Group","pages":[{"heading":"","photo":"P1","lines":["",""]}]}
+
+Photos available ${ph.length?ph.map((id,i)=>`P${i+1}`).join(", "):"none"}.
+
+The educators' observations.
+${notes}`;
+}
+async function storyDraftRun(st){
+  if(!sample){toast("Drafting is not available here. Open TREE and sign in.");return}
+  if(!storySources(st).length){toast("Add an observation's photos to the story first.");return}
+  stBusy=true;renderStory();
+  try{const out=await sample.json(storyPrompt(st),{modelTier:"default",cache:false,purpose:"story"});
+    const ph=(st.sources||[]).filter(id=>{const n=notices.get(id);return n&&n.photo});const clean=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").replace(/\s+/g," ").trim();
+    const used=new Set();const pages=(Array.isArray(out?.pages)?out.pages:[]).slice(0,16).map(p=>{let id="";const m=String(p?.photo||"").match(/P(\d+)/i);if(m){const c=ph[+m[1]-1];if(c&&!used.has(c)){id=c;used.add(c)}}
+      return {heading:clean(p?.heading),photo:id,lines:(Array.isArray(p?.lines)?p.lines:String(p?.lines||"").split("\n")).map(clean).filter(Boolean).slice(0,4)}}).filter(p=>p.lines.length);
+    if(!pages.length){toast("No pages came back. Try again in a moment.");return}
+    storyDraft={id:st.id,title:clean(out?.title),cover:clean(out?.cover),pages};
+  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  finally{stBusy=false;if(view==="story")renderStory()}
+}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.story){storyOpen=t.dataset.story;LS.set("tree.story",storyOpen);storyDraft=null;storyPick=false;goView("story");return}
+  if(t.dataset.storyfrom){const n=notices.get(t.dataset.storyfrom);if(n)newStory({from:n});return}
+  if(t.dataset.storyproj){const x=projects.get(t.dataset.storyproj);if(x)newStory({project:x});return}
+  if(view==="stories"&&t.dataset.storynew){newStory({});return}
+  if(view!=="story")return;const st=stories.get(storyOpen);if(!st)return;
+  if(t.dataset.stphoto!==undefined){const w=t.dataset.stphoto,id=t.dataset.id||"";
+    if(w==="cover")st.coverPhoto=id;else if(w==="care"){st.care=Object.assign({},ST_CARE,st.care||{});st.care.photo=id}else{const p=(st.pages||[]).find(x=>"page|"+x.id===w);if(p)p.photo=id}
+    saveStory(st);renderStory();return}
+  if(t.dataset.stpick){storyPick=!storyPick;renderStory();return}
+  if(t.dataset.stsrcadd){const id=t.dataset.stsrcadd;const add=noteGroup(notices.get(id)).filter(x=>x.photo).map(x=>x.id);st.sources=[...new Set([...(st.sources||[]),...(add.length?add:[id])])];if(!st.coverPhoto)st.coverPhoto=st.sources[0];saveStory(st);renderStory();return}
+  if(t.dataset.stsrcrm){const id=t.dataset.stsrcrm;st.sources=(st.sources||[]).filter(x=>x!==id);if(st.coverPhoto===id)st.coverPhoto=st.sources[0]||"";(st.pages||[]).forEach(p=>{if(p.photo===id)p.photo=""});if(st.care&&st.care.photo===id)st.care.photo="";saveStory(st);renderStory();return}
+  if(t.dataset.stdraft){storyDraftRun(st);return}
+  if(t.dataset.stdraftdrop){storyDraft=null;renderStory();return}
+  if(t.dataset.stdraftkeep&&storyDraft&&storyDraft.id===st.id){const fresh=storyDraft.pages.map(p=>({id:stPageId(),heading:p.heading,photo:p.photo,lines:p.lines.join("\n")}));
+    st.pages=t.dataset.stdraftkeep==="add"?[...(st.pages||[]).filter(p=>has(p.lines)||p.photo),...fresh]:fresh;
+    if(!has(st.title)&&storyDraft.title)st.title=storyDraft.title;if(!has(st.cover)&&storyDraft.cover)st.cover=storyDraft.cover;
+    storyDraft=null;saveStory(st);renderStory();toast("Kept. Read each page and make it yours.");return}
+  if(t.dataset.staddpage){st.pages=[...(st.pages||[]),{id:stPageId(),heading:"",photo:"",lines:""}];saveStory(st);renderStory();return}
+  if(t.dataset.stdelpage){st.pages=(st.pages||[]).filter(p=>p.id!==t.dataset.stdelpage);saveStory(st);renderStory();return}
+  if(t.dataset.stmove){const [id,d]=t.dataset.stmove.split("|");const i=(st.pages||[]).findIndex(p=>p.id===id),j=i+(+d);if(i<0||j<0||j>=st.pages.length)return;const a=st.pages;[a[i],a[j]]=[a[j],a[i]];saveStory(st);renderStory();return}
+  if(t.dataset.stwordadd){st.words=Object.assign({},ST_WORDS,st.words||{});st.words.items=[...(st.words.items||[]),{bold:"",plain:""}];saveStory(st);renderStory();return}
+  if(t.dataset.stwordrm!==undefined){st.words.items=(st.words.items||[]).filter((_,i)=>i!==+t.dataset.stwordrm);saveStory(st);renderStory();return}
+  if(t.dataset.stanswers){const line=`After reading the story ${stTitle(st)}, the children said`;
+    noticeForm=Object.assign(newNotice(),{classroom:st.classroom||myRoom()||"",projectId:st.projectId||"",children:[...(st.children||[])],noticed:line+"\n"});view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return}
+  if(t.dataset.stdel){$("#stdel").innerHTML=`<span class="confirm">Remove this story for everyone? The observations and photos stay. <button class="btn warn small" data-stdelyes="1">Remove</button> <button class="linkbtn" data-stdelno="1">Keep it</button></span>`;return}
+  if(t.dataset.stdelno){renderStory();return}
+  if(t.dataset.stdelyes){stories.delete(st.id);if(db)db.doc("stories/"+st.id).delete().catch(()=>toast("Could not remove it. Check your connection."));goView("stories");toast("Removed.");return}
+});
+document.addEventListener("input",e=>{const t=e.target;if(view!=="story"||!t.dataset||!t.dataset.stf||t.tagName==="SELECT")return;const st=stories.get(storyOpen);if(!st)return;
+  const [a,b,c]=t.dataset.stf.split("|");const v=t.value;
+  if(a==="page"){const p=(st.pages||[]).find(x=>x.id===b);if(p)p[c]=v}
+  else if(a==="word"){const w=(st.words.items||[])[+b];if(w)w[c]=v}
+  else if(a==="care"||a==="words"||a==="think"){st[a]=Object.assign({},a==="care"?ST_CARE:a==="words"?ST_WORDS:ST_THINK,st[a]||{});st[a][b]=v}
+  else st[a]=v;
+  saveStorySoon(st);if(a==="title"){const h=document.querySelector("#main .head h2");if(h)h.textContent=stTitle(st)}});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="story")return;const st=stories.get(storyOpen);if(!st)return;
+  if(t.dataset.stf&&t.tagName==="SELECT"){const k=t.dataset.stf;st[k]=t.value;if(k==="classroom"&&st.group&&!GROUPS.some(g=>g.name===st.group&&g.room===t.value))st.group="";saveStory(st);renderStory();return}
+  if(t.dataset.stonly){const k=t.dataset.stonly;st[k]=Object.assign({},k==="care"?ST_CARE:k==="words"?ST_WORDS:ST_THINK,st[k]||{});st[k].on=t.checked;if(k==="words"&&t.checked&&!(st.words.items||[]).length)st.words.items=[{bold:"",plain:""}];saveStory(st);renderStory();return}
+  if(t.dataset.stcopy&&t.value){const x=stories.get(t.value);if(x){for(const k of ["care","words","think"])if(x[k])st[k]=JSON.parse(JSON.stringify(x[k]));if(st.care&&st.care.photo&&!(st.sources||[]).includes(st.care.photo))st.care.photo="";saveStory(st);renderStory();toast("Closing pages copied. Change anything for this story.")}}});
+// a page in a child's portfolio, the story's words with only the photos that child is in
+function storyPortfolioDoc(st,mode,c){
+  const mine=storyPhotoIds(st).filter(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)}).slice(0,3);
+  const lines=(st.pages||[]).map(p=>[p.heading?p.heading+".":"",p.lines].filter(has).join(" ").replace(/\s*\n\s*/g," ")).filter(has).join("\n\n");
+  const all=lines+"\n"+st.title;
+  return {centered:true,display:true,type:"report",acc:"story",flow:true,title:displayText(focusText(stTitle(st),c),mode,all),details:[st.classroom?st.classroom+" class":"",st.cover?focusText(st.cover,c):""].filter(Boolean),
+    photos:mine.map(id=>notices.get(id)).flatMap(momentPhotos),blocks:lines?[{t:"para",text:displayText(focusText(lines,c),mode,all)}]:[]};
+}
+/* the story as a book, a landscape letter page for each sheet */
+function storyBook(st){
+  const pages=[{kind:"cover",photo:st.coverPhoto||storyPhotoIds(st)[0]||""}];
+  for(const p of st.pages||[])if(has(p.lines)||p.photo)pages.push({kind:"page",heading:p.heading,photo:p.photo,lines:String(p.lines||"").split("\n").map(s=>s.trim()).filter(Boolean)});
+  const care=st.care||{},words=st.words||{},think=st.think||{};
+  if(care.on&&(has(care.lines)||care.photo))pages.push({kind:"care",heading:care.heading||ST_CARE.heading,photo:care.photo,lines:String(care.lines||"").split("\n").map(s=>s.trim()).filter(Boolean)});
+  const its=(words.items||[]).filter(w=>has(w.bold)||has(w.plain));if(words.on&&its.length)pages.push({kind:"words",heading:words.heading||ST_WORDS.heading,items:its});
+  const qs=String(think.questions||"").split("\n").map(s=>s.trim()).filter(Boolean);if(think.on&&(qs.length||has(think.refrain)))pages.push({kind:"think",heading:think.heading||ST_THINK.heading,questions:qs,refrain:String(think.refrain||"").split("\n").map(s=>s.trim()).filter(Boolean)});
+  return pages;
+}
+const ST_INK=[34,58,44],ST_HEAD=[111,92,140],ST_MUT=[120,118,128],ST_BG=[250,248,242];
+async function storyPhotos(st,pages){const docs=[{photos:pages.filter(p=>p.photo).map(p=>notices.get(p.photo)).filter(Boolean).flatMap(momentPhotos)}];toast("Preparing the photos");await loadPhotos(docs)}
+async function storyPdf(st){
+  if(!window.jspdf){toast("The PDF tool did not load.");return}
+  const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
+  await loadPrintFonts();await storyPhotos(st,pages);
+  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
+  const W=792,H=612,M=40,foot=storyFoot(st);
+  const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
+  const col=c=>doc.setTextColor(c[0],c[1],c[2]);
+  const img=(id,x,y,w,h,center)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(w/ph.w,h/ph.h);const iw=ph.w*k,ih=ph.h*k;const ix=center?x+(w-iw)/2:x,iy=y+(h-ih)/2;doc.addImage(ph.url,"JPEG",ix,iy,iw,ih,undefined,"FAST");return {x:ix,y:iy,w:iw,h:ih}};
+  const lines=(arr,x,y,w,size,gap,bold)=>{font(bold);doc.setFontSize(size);col(ST_INK);for(const s of arr){const wr=doc.splitTextToSize(s,w);for(const l of wr){doc.text(l,x,y);y+=size*1.28}y+=gap}return y};
+  const head=t=>{if(!t)return;font(true);doc.setFontSize(9);col(ST_HEAD);doc.setCharSpace(.6);doc.text(String(t).toUpperCase(),M,M);doc.setCharSpace(0)};
+  pages.forEach((p,i)=>{if(i)doc.addPage();doc.setFillColor(ST_BG[0],ST_BG[1],ST_BG[2]);doc.rect(0,0,W,H,"F");
+    if(p.kind==="cover"){head("A story from our community");font(true);doc.setFontSize(32);col(ST_INK);const tl=doc.splitTextToSize(stTitle(st),W-2*M);let y=M+52;for(const l of tl){doc.text(l,M,y);y+=38}
+      const r=img(p.photo,M,y+4,W-2*M,H-y-110,true);if(has(st.cover)){font(false);doc.setFontSize(16);col(ST_INK);doc.text(st.cover,r?r.x:M,(r?r.y+r.h:y)+28)}}
+    else if(p.kind==="page"){head(p.heading);const pw=W*0.5;const r=p.photo?img(p.photo,M,M+24,pw-M,H-2*M-60,false):null;const tx=r?pw+24:M,tw=W-tx-M;
+      const sz=p.lines.join(" ").length>160?20:22;let est=0;font(false);doc.setFontSize(sz);for(const s of p.lines)est+=doc.splitTextToSize(s,tw).length*sz*1.28+sz*.6;
+      lines(p.lines,tx,Math.max(M+60,(r?r.y+Math.min(40,r.h*.1):H/2-est/2)),tw,sz,sz*.6,false)}
+    else if(p.kind==="care"){head(p.heading);let y=M+24;const r=p.photo?img(p.photo,M,y,W-2*M,H*0.48,true):null;y=r?r.y+r.h+40:M+90;lines(p.lines,r?r.x:M+40,y,W-2*M-40,20,6,false)}
+    else if(p.kind==="words"){head(p.heading);let y=M+52;for(const w of p.items){if(has(w.bold))y=lines([w.bold],M+20,y,W-2*M-40,20,0,true);if(has(w.plain))y=lines([w.plain],M+20,y,W-2*M-40,19,0,false);y+=18}}
+    else if(p.kind==="think"){head(p.heading);let y=M+52;y=lines(p.questions,M+20,y,W-2*M-40,19,14,false);if(p.refrain.length){let ry=H-M-48-(p.refrain.length-1)*25;font(true);doc.setFontSize(19);col(ST_INK);ry=Math.max(ry,y+20);doc.text(p.refrain[0],M+20,ry);font(false);for(const l of p.refrain.slice(1)){ry+=25;doc.text(l,M+20,ry)}}}
+    font(false);doc.setFontSize(8);col(ST_MUT);doc.text(foot,M,H-22);doc.text(String(i+1),W-M,H-22,{align:"right"})});
+  await saveFile(doc.output("blob"),safeFile(`Story ${stTitle(st)}`)+".pdf");
+}
+async function storyDocx(st){
+  let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
+  await loadPrintFonts();await storyPhotos(st,pages);
+  const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,BorderStyle,AlignmentType,PageOrientation,VerticalAlign,Footer,PageNumber,TabStopType,PageBreak}=X;
+  const F=b=>PF.buf?(b?PF.word.bs:PF.word.fr):"Arial";const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();
+  const run=(t,b,pt,c,o)=>new TextRun(Object.assign({text:String(t||""),font:F(b),size:Math.round(pt*2),color:hx(c||ST_INK),bold:!!b},o||{}));
+  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none};
+  const pic=(id,maxW,maxH)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(maxW/ph.w,maxH/ph.h);return new ImageRun({type:"jpg",data:ph.bytes,transformation:{width:Math.round(ph.w*k),height:Math.round(ph.h*k)}})};
+  const head=t=>new Paragraph({spacing:{after:200},children:[run(String(t||"").toUpperCase(),true,8,ST_HEAD,{characterSpacing:12})]});
+  const ch=[];
+  pages.forEach((p,i)=>{const kids=[];
+    if(p.kind==="cover"){kids.push(head("A story from our community"),new Paragraph({spacing:{after:200},children:[run(stTitle(st),true,30)]}));const im=pic(p.photo,560,300);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[im]}));if(has(st.cover))kids.push(new Paragraph({spacing:{before:160},children:[run(st.cover,false,15)]}))}
+    else if(p.kind==="page"){kids.push(head(p.heading));const im=p.photo&&pic(p.photo,330,330);const text=p.lines.map(l=>new Paragraph({spacing:{after:160},children:[run(l,false,20)]}));
+      if(im)kids.push(new Table({width:{size:13600,type:WidthType.DXA},columnWidths:[6800,6800],borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows:[new TableRow({children:[new TableCell({borders:noB,width:{size:6800,type:WidthType.DXA},verticalAlign:VerticalAlign.CENTER,children:[new Paragraph({children:[im]})]}),new TableCell({borders:noB,width:{size:6800,type:WidthType.DXA},margins:{left:300},verticalAlign:VerticalAlign.CENTER,children:text})]})]}));
+      else kids.push(...text)}
+    else if(p.kind==="care"){kids.push(head(p.heading));const im=p.photo&&pic(p.photo,480,280);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:240},children:[im]}));p.lines.forEach(l=>kids.push(new Paragraph({spacing:{after:100},children:[run(l,false,19)]})))}
+    else if(p.kind==="words"){kids.push(head(p.heading));p.items.forEach(w=>{if(has(w.bold))kids.push(new Paragraph({spacing:{before:160},children:[run(w.bold,true,19)]}));if(has(w.plain))kids.push(new Paragraph({children:[run(w.plain,false,18)]}))})}
+    else if(p.kind==="think"){kids.push(head(p.heading));p.questions.forEach(q=>kids.push(new Paragraph({spacing:{after:220},children:[run(q,false,18)]})));p.refrain.forEach((l,k)=>kids.push(new Paragraph({spacing:{before:k?0:600},children:[run(l,!k,18)]})))}
+    if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
+  const footer=new Footer({children:[new Paragraph({tabStops:[{type:TabStopType.RIGHT,position:13600}],children:[run(storyFoot(st),false,7.5,ST_MUT),run("\t",false,7.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:15,color:hx(ST_MUT),font:F(false)})]})]});
+  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await Packer.toBlob(d),safeFile(`Story ${stTitle(st)}`)+".docx");
+}
 // the deck as its sheets, in order, numbered, each with its evidence page when asked, and the closing quote
 function deckDocs(){
   const list=deck.ids.map(id=>slides.get(id)).filter(s=>s&&!slideEmpty(s));const n=list.length;const docs=[];
@@ -2092,8 +2363,10 @@ function portfolioItems(c){
   for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!onSlide.has(n.id)&&!inqHolds(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){
     const k=n.group?"g|"+n.group:String(n.noticed||"").trim().toLowerCase()+"|"+(n.classroom||"");const g=groups.get(k);
     if(g&&n.photo&&g.n.photo)g.more.push(n);else groups.set(g?k+"|"+n.id:k,{kind:"notices",at:n.at||0,n,more:[]})}
-  return [...groups.values(),...ss].sort((a,b)=>a.at-b.at);
+  const sts=kidStories(c).filter(st=>kidInPortfolio(c,"stories",st.id)).map(st=>({kind:"stories",at:st.at||0,st}));
+  return [...groups.values(),...ss,...sts].sort((a,b)=>a.at-b.at);
 }
+const pfItemId=x=>x.kind==="slides"?x.s.id:x.kind==="stories"?x.st.id:x.n.id;
 // the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
 function portfolioDrdpDoc(c,mode,view){
   // this school year's evidence only, from the day the year began
@@ -2116,7 +2389,7 @@ const pfDrdpMode=()=>{const v=LS.get("tree.pfdrdp","within");return PF_DRDP[v]?v
 function portfolioDocs(c,mode,drdp){
   mode=mode||PRINT.names;drdp=drdp||pfDrdpMode();const items=portfolioItems(c);
   const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
-  const who=[...new Set(items.map(x=>x.kind==="slides"?x.s.by:x.n.by).filter(Boolean))];
+  const who=[...new Set(items.map(x=>x.kind==="slides"?x.s.by:x.kind==="stories"?x.st.by:x.n.by).filter(Boolean))];
   const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-","–"),who.length&&who.length<=3?"With "+who.join(", ").replace(/, ([^,]*)$/," and $1"):""],photos:[],
     blocks:[{t:"para",text:(()=>{const whose=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${whose} story`;
       const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
@@ -2130,9 +2403,9 @@ function portfolioDocs(c,mode,drdp){
     const ls=Object.values(latest).sort((a,b)=>drdpOrder(a.view||drdpViewOf(c).v,a.code,b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
     if(!ls.length)return null;const first=!noted;noted=true;return {t:"small",label:"Learning seen here",lines:first?[...ls,"Evidence from our documentation, not a DRDP rating."]:ls}};
   const bySrcHas=keys=>keys.some(k=>bySrc.has(k));
-  const keysOf=x=>x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
-  const page=x=>{const d=x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
-    if(x.kind!=="slides"&&(x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);
+  const keysOf=x=>x.kind==="stories"?["stories|"+x.st.id]:x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
+  const page=x=>{const d=x.kind==="stories"?storyPortfolioDoc(x.st,mode,c):x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
+    if(x.kind==="notices"&&(x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);
     // within the moments, the slide's own list of measures gives way to the levels, so the measures are not named twice
     if(x.kind==="slides"&&drdp==="within"&&bySrcHas(keysOf(x)))d.blocks=(d.blocks||[]).filter(b=>!(b.t==="small"&&/DRDP/.test(b.label||"")));
     const a=kidAgeAt(c,x.at);d.details=[longDate(iso(new Date(x.at))),a?"Age "+a:""];
@@ -2184,10 +2457,10 @@ const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.F
 const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"]],
-  docs:[["slides","Slides"],["walls","Walls"],["newsletter","Newsletter"],["grant","Farm to School"],["kitchen","Kitchen"]],
+  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"]]};
 const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",newsletter:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings"};
 const TICON={kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -2218,10 +2491,11 @@ function subnavHtml(){
   if(view==="plans"&&currentId&&plans.get(currentId))back=`<button class="chip-btn back" data-tback="1">‹ Week of ${esc(fmtDate(plans.get(currentId).weekOf).replace(/, \d{4}$/,""))}</button>`;
   if(view==="child")back=`<button class="chip-btn back" data-tview="children">‹ All children</button>`;
   if(view==="slide")back=`<button class="chip-btn back" data-tview="slides">‹ All slides</button>`;
+  if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
   const subs=SUBS[s]&&SUBS[s].filter(([k])=>(k!=="newsletter"&&k!=="grant"&&k!=="kitchen")||isDirector());if(!subs&&!back)return"";
-  const curSub=view==="child"?"children":view==="slide"?"slides":view==="import"?"plans":view;
+  const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
 function placeSubnav(){
@@ -2787,6 +3061,12 @@ async function nlLoadComing(k){
 }
 const nlDay=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
+// a story the team made this month can join a topic as a photo with a few of its words, only when the director picks it
+const nlMonthStories=x=>[...stories.values()].filter(st=>iso(new Date(st.at||0)).slice(0,7)===x.month&&notices.get(st.coverPhoto||storyPhotoIds(st)[0])&&(st.pages||[]).some(p=>has(p.lines))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,4);
+function nlStoryCap(st){const words=(st.pages||[]).map(p=>String(p.lines||"").replace(/\s*\n\s*/g," ").trim()).filter(Boolean).join(" ");let ex="";for(const sn of words.match(/[^.!?]+[.!?]+/g)||[words]){if((ex+" "+sn).trim().length>150&&ex)break;ex=(ex+" "+sn.trim()).trim()}return nlClean(`From our story ${stTitle(st)}. ${ex}`)}
+function nlStoryOffer(x,t){const ss=nlMonthStories(x);if(!ss.length)return"";
+  return `<div class="nll">A story from this month</div><div class="nlstories">${ss.map(st=>{const on=(t.photos||[]).some(p=>p.story===st.id);const cv=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
+    return `<button class="nlstory${on?" on":""}" data-nltst="${esc(t.id)}" data-id="${esc(st.id)}" aria-pressed="${on}"><img src="${esc(photoThumb(cv))}" alt="" loading="lazy"><span><b>${esc(stTitle(st))}</b><span class="nlsmall">${on?"In this topic. Tap to take it out.":"Not in the newsletter. Tap to add its cover and a few of its words."}</span></span></button>`}).join("")}</div>`}
 function nlThumb(id,on,attr){const n=notices.get(id);if(!n||!n.photo)return"";
   return `<button class="nlph${on?" on":""}" ${attr} aria-pressed="${on}" title="${on?"In the newsletter":"Add to the newsletter"}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"></button>`}
 
@@ -2834,7 +3114,7 @@ function renderNewsletter(){
       <label class="nll">What happened this month<textarea class="nlta" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
       <div class="nlphotos">${(t.offer||[]).map(id=>nlThumb(id,(t.photos||[]).some(p=>p.notice===id),`data-nltph="${t.id}" data-id="${id}"`)).join("")}</div>
       ${(t.photos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="topics.${i}.photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
-      ${t.behavior?`<p class="muted nlhint">No child photo for a topic about behavior, so no family wonders whether it is about their child.</p>`:""}
+      ${t.behavior?`<p class="muted nlhint">No child photo for a topic about behavior, so no family wonders whether it is about their child.</p>`:nlStoryOffer(x,t)}
       <label class="nll">Why it matters<textarea class="nlta" rows="3" data-nlf="topics.${i}.why">${esc(t.why)}</textarea></label>
       <div class="nll">How it grows</div>
       ${(t.grows||[]).map((g,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.grows.${j}.age" value="${esc(g.age)}" aria-label="Age"><textarea class="nlta" rows="2" data-nlf="topics.${i}.grows.${j}.text" aria-label="What it looks like">${esc(g.text)}</textarea></div>`).join("")}
@@ -2941,6 +3221,9 @@ document.addEventListener("click",async e=>{
   if(d.nlfind){nlFindTopics(x,t);return}
   if(d.nluse){const s=(x.suggestions||[]).find(y=>y.id===d.nluse);if(s)nlUseTopic(x,s,t);return}
   if(d.nlrmtopic){if(!confirm("Remove this topic from the newsletter?"))return;x.topics=x.topics.filter(y=>y.id!==d.nlrmtopic);nlSave(x,true);renderNewsletter();return}
+  if(d.nltst){const tp=x.topics.find(y=>y.id===d.nltst);const st=stories.get(d.id);if(!tp||!st||tp.behavior)return;const on=(tp.photos||[]).some(p=>p.story===st.id);
+    if(on)tp.photos=tp.photos.filter(p=>p.story!==st.id);else{if((tp.photos||[]).length>=2){toast("Two photos fit a topic best. Take one out first.");return}tp.photos=(tp.photos||[]).concat([{notice:st.coverPhoto||storyPhotoIds(st)[0],cap:nlStoryCap(st),story:st.id}])}
+    nlSave(x);renderNewsletter();return}
   if(d.nltph){const tp=x.topics.find(y=>y.id===d.nltph);if(!tp)return;const has=(tp.photos||[]).some(p=>p.notice===d.id);
     if(has)tp.photos=tp.photos.filter(p=>p.notice!==d.id);else{if((tp.photos||[]).length>=2){toast("Two photos fit a topic best. Take one out first.");return}tp.photos=(tp.photos||[]).concat([{notice:d.id,cap:nlCaption(notices.get(d.id))}])}
     nlSave(x);renderNewsletter();return}
@@ -3947,12 +4230,13 @@ function noticeCard(n){
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
         ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
+        ...storiesWith(n.id).map(x=>`the story <button class="linkbtn" data-story="${esc(x.id)}">${esc(stTitle(x))}</button>`),
         ...ws.map(x=>`the wall for <button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`)];
       return bits.length?`<div class="cnt">Used in ${bits.join(", ")}${ps.length>4?`, and ${ps.length-4} more plans`:""}</div>`:""})()}
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
-    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span></div></article>`;
+    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button><button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span></div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -5736,6 +6020,10 @@ function planEvidence(p){
   for(const id of p.inquiries||[]){const q=inquiries.get(id);if(!q||!inqOf(q))continue;
     heads.push({kind:"Team inquiry",name:q.name||"Untitled",open:`data-iqopen="${q.id}"`,lines:[has(q.see)&&["What we see",q.see],inqOpenHyps(q).length&&["What we think is happening",inqOpenHyps(q).map(h=>h.text).join("\n")],
       inqCurric(q).length&&["What we will try in the curriculum",inqCurric(q).map(t=>t.text+(has(t.result)?". What happened. "+t.result:"")).join("\n")],has(q.watch)&&["What we will watch for",q.watch]].filter(Boolean)});take(inqNotices(q))}
+  // the stories made in the plan's project, or in the project of a thread it follows, with their cover photo
+  {const pids=new Set([x&&x.id,...planThreads(p).map(({t})=>{const pr=projectOfThread(t.id);return pr&&pr.id})].filter(Boolean));
+    for(const pid of pids)for(const st of [...stories.values()].filter(y=>y.projectId===pid).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,4)){const cv=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
+      heads.push({kind:"Story",name:stTitle(st),open:`data-story="${esc(st.id)}"`,img:cv&&cv.photo?photoThumb(cv):"",lines:has(st.cover)?[["For",st.cover]]:[]})}}
   if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
   {const b=p.bin&&binAll().find(x=>x.id===p.bin);if(b){const pcs=binPieces(b,p.classroom).filter(x=>(BIN_TO[p.type]||{})[x.kind]);
     heads.push({kind:"Weekly bin",name:"The FEED bin of "+fmtDate(b.date).replace(/, \d{4}$/,""),open:`data-pbin="${esc(b.id)}"`,lines:[],bin:pcs})}}
@@ -5773,7 +6061,7 @@ function evSync(){
   const began=ev.heads.length||(p.source&&p.source.kind);
   const lockedNow=$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type];
   pn.innerHTML=`<div class="evhead"><b>${began?"The evidence this plan began from":"Observations for this plan"}</b><button class="linkbtn" data-evshut="1">Close</button></div>
-    <div class="evbody">${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
+    <div class="evbody">${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.img?`<button class="evstory" ${h.open} aria-label="Open the story ${esc(h.name)}"><img src="${esc(h.img)}" alt="" loading="lazy"></button>`:""}${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
       ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
       ${(h.bin||[]).length?`<div style="display:grid;gap:6px;margin-top:4px">${h.bin.map(x=>{const k=BIN_TO[p.type][x.kind],inIt=binPieceIn(p,x);
         return `<div class="evbin"><div style="white-space:pre-line">${esc(x.text)}</div><div class="cnt">${inIt?"In "+esc(binTargetLabel(p.type,k).toLowerCase()):`<button class="btn small ghost" data-binuse="${esc(p.id)}|${esc(x.key)}" ${lockedNow?"disabled":""}>Add to ${esc(binTargetLabel(p.type,k).toLowerCase())}</button>`}</div></div>`}).join("")}</div>`:""}
@@ -5786,7 +6074,7 @@ function evSync(){
 document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
 document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
   evOpen=t.id==="evbtn";LS.set("fps.evopen",evOpen?"1":"0");evSync()});
-document.addEventListener("click",e=>{const t=e.target.closest("#evpanel [data-popen],#evpanel [data-tsee],#evpanel [data-iqopen]");if(t&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}});
+document.addEventListener("click",e=>{const t=e.target.closest("#evpanel [data-popen],#evpanel [data-tsee],#evpanel [data-iqopen],#evpanel [data-story]");if(t&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}});
 function projPlans(x){const m=new Map();for(const n of projNotices(x))m.set(n.id,noticeAsPlan(n));for(const {t} of projThreads(x)){for(const e of t.evidence||[]){const p=rec(e.planId);if(p)m.set(p.id,p)}for(const p of threadLinkedPlans(t))m.set(p.id,p)}
   for(const p of plans.values())if(p.projectId===x.id&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p);return [...m.values()]}
 function projWeeks(x){
@@ -5886,6 +6174,7 @@ function renderProject(x){
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
+  {const sts=projStories(x);h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length?sts.length+" to read aloud with children":"Read aloud with children"}</span></div>${sts.length?`<div class="actions" style="flex-wrap:wrap">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}</button>`).join("")}</div>`:""}<div class="actions"><button class="btn small ghost" data-storyproj="${esc(x.id)}">Make a story</button></div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
   h+=`<section class="card"><div class="lbl">Classes</div>
     <div class="hint">${x.home?"The project belongs to its home class. Other classes can join, each by its own path.":"This is a school-wide project with no home class. Each class that takes part joins it."}</div>
@@ -7383,6 +7672,7 @@ async function printsClick(t){
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
+  if(kind==="story"){const st=stories.get(t.dataset.id);if(st)await (word?storyDocx:storyPdf)(st);return true}
   if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
   // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
@@ -8339,7 +8629,7 @@ function renderChild(){
   const nx=kidNext(c);const {v}=drdpViewOf(c);const its=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=its.filter(x=>x.status==="suggested").length,levelled=new Set(its.filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>x.code)).size,nMs=drdpMeasuresFor(c).length;
   const today=iso(new Date());const nextConf=cs.filter(x=>x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],["details","Details"]];
+  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],["details","Details"]];
   if(!tabs.some(t=>t[0]===kidTab))kidTab="overview";
   let body="";
   if(kidTab==="overview"){
@@ -8354,9 +8644,10 @@ function renderChild(){
   }else if(kidTab==="docs"){
     const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which observations"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
-        <div class="cnt">Tap an observation to read it. The portfolio holds the observations and slides that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
+        <div class="cnt">Tap an observation to read it. The portfolio holds the observations, slides and stories that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
         ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
-      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${esc(s.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}`;
+      ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${esc(s.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}
+      ${(()=>{const sts=kidStories(c).sort((a,b)=>(b.at||0)-(a.at||0));return sts.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length}</span></div><div class="kmlist">${sts.map(st=>{const mine=storyPhotoIds(st).find(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)});const ph=notices.get(mine);return `<div class="kmwrap"><button class="kmrow" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(stTitle(st))}</b><span class="cnt">${shortDate(st.at)} · ${esc(st.by||"")}</span></span></button>${pfToggle(c,"stories",st.id,true)}</div>`}).join("")}</div><div class="cnt">In the portfolio, a story prints with its words and only the photos ${esc(c.first)} is in.</div></section>`:""})()}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
