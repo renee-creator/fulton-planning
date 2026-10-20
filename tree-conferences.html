@@ -382,8 +382,14 @@ header.top{position:static!important;border-bottom:0!important;background:transp
     for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b)}});
     const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
     content.push({type:"text",text});
-    const j=await api("/api/read",{content, careful:!!opts.careful}, opts.signal);
-    return j;
+    // when TREE is busy, wait and ask again a few times, so a long stack of forms is not lost to one busy moment
+    for(let tries=0;;tries++){
+      try{ return await api("/api/read",{content, careful:!!opts.careful}, opts.signal); }
+      catch(e){
+        if(e?.code!=="rate_limited" || tries>=4) throw e;
+        await new Promise((res,rej)=>{ const t=setTimeout(res,(tries+1)*15000); opts.signal?.addEventListener("abort",()=>{ clearTimeout(t); rej({code:"cancelled"}); },{once:true}); });
+      }
+    }
   }
   const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
     limits:async()=>({maxPromptBytes:262144, images:{maxCount:5, maxInputBytes:20e6, mediaTypes:["image/jpeg","image/png","image/webp","image/gif"]}}),
@@ -1583,25 +1589,42 @@ async function readPdf(file, {maxImagePages=4}={}){
   for(let p=1;p<=doc.numPages;p++){ const pg=await doc.getPage(p); const vp=pg.getViewport({scale:1}); const tc=await pg.getTextContent();
     try{ const ops=await pg.getOperatorList(); pageImgs.push(ops.fnArray.some(f=>IMG.has(f))); }catch(e){ pageImgs.push(false); }
     pages.push({width:vp.width,items:tc.items.map(i=>({str:i.str,x:i.transform[4],y:vp.height-i.transform[5]}))});
-    const t = tc.items.map(i=>i.str+(i.hasEOL?"\n":" ")).join(""); pageTexts.push(t); text += t+"\n\n"; }
+    const t = tc.items.map(i=>i.str+(i.hasEOL?"\n":" ")).join(""); pageTexts.push(t); text += t+"\n\n"; try{ pg.cleanup(); }catch(e){} }
   return {doc, text, pages, pageTexts, pageImgs};
 }
 async function pdfToImages(doc, max=4){
   const out=[];
-  for(let p=1;p<=Math.min(doc.numPages,max);p++){ const pg=await doc.getPage(p); const vp0=pg.getViewport({scale:1}); const scale=Math.min(2.2, 1700/vp0.width); const vp=pg.getViewport({scale});
-    const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height; const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
-    await pg.render({canvasContext:ctx,viewport:vp}).promise; out.push(await new Promise(r=>cv.toBlob(r,"image/jpeg",.88))); }
+  for(let p=1;p<=Math.min(doc.numPages,max);p++) out.push(await pageImage(doc, p, 1700, 0, .88));
   return out;
 }
-async function pageImage(doc, p, width=1700){
-  const pg=await doc.getPage(p); const vp0=pg.getViewport({scale:1}); const vp=pg.getViewport({scale:Math.min(2.2, width/vp0.width)});
-  const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height; const c=cv.getContext("2d"); c.fillStyle="#fff"; c.fillRect(0,0,cv.width,cv.height);
-  await pg.render({canvasContext:c,viewport:vp}).promise; return await new Promise(r=>cv.toBlob(r,"image/jpeg",.86));
+// one page at a time, turned upright when turn is 90, 180 or 270, and the canvas let go of at once so a phone keeps its memory
+async function pageImage(doc, p, width=1700, turn=0, q=.86){
+  const pg=await doc.getPage(p); const rotation=((pg.rotate||0)+(+turn||0))%360;
+  const vp0=pg.getViewport({scale:1, rotation}); const vp=pg.getViewport({scale:Math.min(2.2, width/vp0.width), rotation});
+  const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height); const c=cv.getContext("2d"); c.fillStyle="#fff"; c.fillRect(0,0,cv.width,cv.height);
+  try{ await pg.render({canvasContext:c,viewport:vp}).promise; return await new Promise(r=>cv.toBlob(r,"image/jpeg",q)); }
+  finally{ cv.width=cv.height=0; try{ pg.cleanup(); }catch(e){} }
+}
+// a photo turned by 90, 180 or 270 degrees
+async function turnImage(blob, turn){
+  turn=((+turn||0)%360+360)%360; if(!turn) return blob;
+  const bmp=await createImageBitmap(blob); const side=turn%180!==0;
+  const cv=document.createElement("canvas"); cv.width=side?bmp.height:bmp.width; cv.height=side?bmp.width:bmp.height;
+  const c=cv.getContext("2d"); c.translate(cv.width/2,cv.height/2); c.rotate(turn*Math.PI/180); c.drawImage(bmp,-bmp.width/2,-bmp.height/2);
+  try{ return await new Promise(r=>cv.toBlob(r,"image/jpeg",.9)); } finally{ cv.width=cv.height=0; try{ bmp.close(); }catch(e){} }
+}
+// asks which way up each page is, on small copies, and answers the turn each one needs, 0 when it cannot tell
+async function pageTurns(imgs, signal){
+  try{
+    const small=[]; for(const b of imgs) small.push(await shrinkImage(b, 700));
+    const r=await S.sample.json(`These ${imgs.length} images are pages of a completed preschool form, in order. For each page say how many degrees it must be turned clockwise so its writing reads upright, 0, 90, 180 or 270. Reply with only JSON in this shape {"pages":[{"page":1,"turn":0}]}`, {images:small, modelTier:"quick", signal});
+    return imgs.map((_,i)=>{ const hit=(r?.pages||[]).find(x=>+x.page===i+1)||(r?.pages||[])[i]||{}; return [0,90,180,270].includes(+hit.turn)? +hit.turn : 0; });
+  }catch(e){ if(e?.code==="cancelled") throw e; return imgs.map(()=>0); }
 }
 async function shrinkImage(blob, width=900){
   const bmp=await createImageBitmap(blob); const s=Math.min(1,width/Math.max(bmp.width,bmp.height));
   const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*s); cv.height=Math.round(bmp.height*s); cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
-  return await new Promise(r=>cv.toBlob(r,"image/jpeg",.8));
+  try{ return await new Promise(r=>cv.toBlob(r,"image/jpeg",.8)); } finally{ cv.width=cv.height=0; try{ bmp.close(); }catch(e){} }
 }
 async function readDocx(file){
   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
@@ -1627,12 +1650,13 @@ function extractionPrompt(text){
 
 Rules
 - Copy the writer's words faithfully. Keep their wording, spelling of names, and line breaks between separate thoughts. Do not summarize, rewrite, or add anything.
+- Never drop a line. Every line of writing inside every box must appear in your answer, including short lines, single questions, lines squeezed at the bottom of a box, and lines that continue past the box edge. Before replying, look at each box again and check that every line you can see is in the JSON.
 - Use an empty string for any section that is blank or missing.
 - If a word cannot be read, write [illegible] in its place.
 - Text printed on the blank template (section titles and the italic prompts under them) is not an answer. Leave it out.
 - The form may be an older version from a previous school year, with different section names, a different order, or fewer or extra sections. Put each answer into the current section that matches it in meaning. For example, Social Development goes in social, Interests goes in interests, Goals goes in goals, and questions the family answered go in the closest reflection question.
 - Never drop writing. Anything that fits no current section goes in otherSections, each piece starting with the original section title, like "Self-help skills. Uses the bathroom on her own." with a blank line between pieces.
-- Two older layouts are common. Map them this way. Child's Learning Style goes in approaches. Friends or Interacts with most goes in friends. Main interests goes in interests. Favorite Area and Activity goes in favoriteAreas. Strengths goes in strengths. Goals, Areas to explore further, and any At school or At home goals go in goals, keeping the words At school and At home in front of each part. Questions the family asked go in r6. Updates the family shared about home go in r1. Parent names written at the top, like Mom and Dad, go in familyMembersPresent and parentNames.
+- Two older layouts are common. Map them this way. Child's Learning Style goes in approaches. Friends or Interacts with most goes in friends. Main interests goes in interests. Favorite Area and Activity goes in favoriteAreas. Strengths goes in strengths. Goals, Areas to explore further, and any At school or At home goals go in goals, keeping the words At school and At home in front of each part. The box titled Questions, Questions/Home Updates or Questions for the family holds questions the educators wrote to ask the family, sometimes with the family's answers or home updates beside them. Put everything in that box in r6, every line in its original order, even when a question sounds like another reflection question. For example What is the child talking about at home still goes in r6, never in r2. Parent names written at the top, like Mom and Dad, go in familyMembersPresent and parentNames.
 - Notes written in the margins or outside the boxes go in otherSections, starting with Margin notes. Only include notes that carry meaning about the child or family. Leave out anything already captured elsewhere, such as parent names, times, ages, dates and page numbers. Leave out printed headings, stray single letters or symbols, and descriptions of where something was written.
 - Self-Care at School and Self-Care at Home are tick boxes for Toileting, Eating and Rest. List the exact labels of the ticked boxes in selfCareSchool and selfCareHome, choosing only from ${SELF_CARE.flatMap(r=>r.opts.map(o=>o[1])).join(", ")}. Put any writing on their Notes lines in selfCareSchoolNotes and selfCareHomeNotes. Older forms without these boxes leave them empty.
 - Often more than one educator holds the conference. Put every educator name written on the form in teacher, separated by commas.
@@ -1713,13 +1737,15 @@ function openImport(confId){
   drop.ondragleave=()=>drop.classList.remove("over");
   drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("over"); const fs=[...e.dataTransfer.files]; if(fs.length) handleImportFiles(fs); };
 }
+const BIG_FILE=25e6;
+function bigNote(){ return S.importCtx?.big? " This is a large file, so it may take a few minutes." : ""; }
 async function handleImportFiles(files){
-  const ctx=S.importCtx;
+  const ctx=S.importCtx; ctx.big=files.some(f=>f.size>BIG_FILE);
   if(ctx.confId || files.length===1){
     const f=files[0];
     if(!ctx.confId && /\.pdf$/i.test(f.name)||(!ctx.confId && f.type==="application/pdf")){
-      try{ impStatus(`<div class="progress-note"><span class="spinner"></span><span>Opening ${esc(f.name)}…</span></div>`);
-        const r=await readPdf(f); if(r.doc.numPages>=3) return runBatch([f], r); }catch(e){}
+      try{ impStatus(`<div class="progress-note"><span class="spinner"></span><span>Opening ${esc(f.name)}…${esc(bigNote())}</span></div>`);
+        const r=await readPdf(f); if(r.doc.numPages>=2) return runBatch([f], r); }catch(e){}
     }
     if(files.length>1) toast("Only the first file is used when filling one conference");
     return runImport(f);
@@ -1730,8 +1756,8 @@ async function handleImportFiles(files){
 }
 function impStatus(html){ const el=$("#imp-status"); if(el) el.innerHTML=html; const f=$("#imp-foot"); if(f) f.hidden=/modal-foot/.test(html); }
 async function runImport(file, opt={}){
-  const ctx=S.importCtx; ctx.file=file; ctx.careful=!!opt.careful;
-  const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
+  const ctx=S.importCtx; ctx.file=file; ctx.careful=!!opt.careful; ctx.pdfDoc=null; ctx.keepTurns=null; ctx.keepBlob=null;
+  const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t+bigNote())}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
   if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view. You can still attach the file to a conference from its Original forms panel.</div>`); return; }
   const ctl=new AbortController(); S.modalCtl=ctl;
   try{
@@ -1741,15 +1767,26 @@ async function runImport(file, opt={}){
     const name=file.name.toLowerCase();
     if(file.type==="application/pdf"||name.endsWith(".pdf")){
       const r=await readPdf(file); const real=r.text.replace(/\s+/g," ").trim();
-      if(real.length>200 && !r.pageImgs.some(Boolean)) text=r.text; else { busy("Turning scanned pages into images…"); images=await pdfToImages(r.doc, limits?.images?.maxCount? Math.min(4,limits.images.maxCount):4); }
+      if(real.length>200 && !r.pageImgs.some(Boolean)) text=r.text; else { busy("Turning scanned pages into images…"); images=await pdfToImages(r.doc, limits?.images?.maxCount? Math.min(4,limits.images.maxCount):4); ctx.pdfDoc=r.doc; }
     } else if(name.endsWith(".docx")){ text=await readDocx(file); }
     else if(name.endsWith(".doc")){ throw new Error("Older .doc files cannot be read here. Open it in Word and save it as .docx or PDF, then upload that."); }
     else if(file.type.startsWith("image/")||/\.(heic|heif)$/.test(name)){ images=[await normalizeImage(file, limits)]; ctx.keepBlob = images[0]!==file ? images[0] : null; }
     else if(file.type.startsWith("text/")){ text=await file.text(); }
     else throw new Error("This file type cannot be read. Upload a photo, PDF, or DOCX.");
     if(images.length && !limits?.images){ throw new Error("Reading photos is not available in this view. Upload the Word or PDF version instead."); }
+    if(images.length){
+      // a page photographed or scanned upside down or sideways is turned upright before it is read
+      busy("Checking which way up each page is…");
+      const turns=await pageTurns(images, ctl.signal);
+      if(turns.some(Boolean)){
+        for(let i=0;i<images.length;i++) if(turns[i]) images[i]= ctx.pdfDoc? await pageImage(ctx.pdfDoc, i+1, 1700, turns[i], .88) : await turnImage(images[i], turns[i]);
+        if(ctx.pdfDoc) ctx.keepTurns=turns; else ctx.keepBlob=images[0];
+      }
+      // handwriting is read with the stronger model
+      ctx.careful=true;
+    }
     busy(images.length? "TREE is reading the handwriting. This can take up to a minute…" : "TREE is reading the form…");
-    const res=await S.sample.json(extractionPrompt(text), {signal:ctl.signal, ...(images.length?{images}:{}), modelTier:"default", ...(opt.careful?{careful:true}:{})});
+    const res=await S.sample.json(extractionPrompt(text), {signal:ctl.signal, ...(images.length?{images}:{}), modelTier:"default", ...(opt.careful||images.length?{careful:true}:{})});
     if(!res || typeof res!=="object") throw new Error("The form could not be read. Try a clearer photo.");
     ctx.result=res; showReview();
   }catch(e){
@@ -1831,7 +1868,8 @@ async function applyReview(){
       setPath(patch,path,out);
     });
     if($("#rv-keep")?.checked && S.assets && ctx.file){
-      const keep = ctx.keepBlob || ctx.file;
+      let keep = ctx.keepBlob || ctx.file;
+      if(ctx.keepTurns && ctx.keepTurns.some(Boolean)) try{ keep=await turnPdfPages(ctx.file, ctx.keepTurns); }catch(e){}
       if(/\.docx$/i.test(ctx.file.name)) toast("Sections saved. Word files cannot be kept as originals, so save it as PDF if you want it attached.");
       else try{ const up=await S.assets.upload(keep); patch.attachments=[...(target.attachments||[]), {id:up.id,name:ctx.file.name,type:up.contentType||keep.type,at:nowISO(),...(S.uid?{by:S.uid}:{})}]; }
       catch(e){ toast("Sections saved. The original file could not be kept with the conference."); }
@@ -1871,7 +1909,7 @@ function pageRange(pages){ return pages.length===1? `Page ${pages[0]}` : `Pages 
 
 async function runBatch(files, preread){
   const ctx=S.importCtx; const ctl=new AbortController(); S.modalCtl=ctl;
-  const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t)}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
+  const busy=t=>impStatus(`<div class="progress-note"><span class="spinner"></span><span>${esc(t+bigNote())}</span><button class="btn sm" style="margin-left:auto" data-act="close">Stop</button></div>`);
   if(!S.sample){ impStatus(`<div class="notice">Reading forms is not available in this view.</div>`); return; }
   const limits=await S.sample.limits().catch(()=>null);
   const maxImg=Math.max(1, Math.min(limits?.images?.maxCount||4, 8));
@@ -1887,7 +1925,8 @@ async function runBatch(files, preread){
     }
     const scanned = B.pages.some(p=>!p.hasText);
     if(scanned && !limits?.images) throw new Error("Reading scanned pages or photos is not available in this view. Upload a typed PDF instead.");
-    const imgOf = async (p, width=1700)=>{ if(p.blob) return width<1700? shrinkImage(p.blob,width) : p.blob; return pageImage(B.pdf, p.n, width); };
+    // a page is drawn only when it is needed, turned upright once the sorting step has said which way up it is
+    const imgOf = async (p, width=1700, upright=true)=>{ if(p.blob) return width<1700? shrinkImage(p.blob,width) : p.blob; return pageImage(B.pdf, p.n, width, upright? (p.turn||0) : 0); };
 
     /* 2. find where each form starts and ends */
     const sortPrompt=(first,last,count,how)=>`These ${count} ${how} pages ${first} to ${last}, in order, from a stack of completed Family Conference forms at a preschool. Forms come from different school years, so the layout, titles and section names vary. The current version has a first page titled Family Conference, with Conference Date and Time, Teacher or Educator, and development areas starting with Main Interests and Friends, and a second page titled Family Reflections with six numbered questions for the family. Older versions may use other titles, other section names, a single page, or questions for the family on the same page.
@@ -1896,11 +1935,12 @@ For each page decide its kind.
 - reflections means a page of questions answered with the family that belongs with the form before it.
 - continuation means any other page that continues the form before it.
 - other means a page that is not part of any form, such as a blank page or a cover sheet.
-Also give the child's name written on the page, or an empty string when none appears.
+Also give the child's name written on the page, or an empty string when none appears.${how==="images are"?`
+Also give turn, how many degrees the page must be turned clockwise so its writing reads upright, 0, 90, 180 or 270. A page scanned upside down needs 180.`:""}
 Reply with only JSON in this shape
-{"pages":[{"page":${first},"kind":"conference | reflections | continuation | other","childName":""}]}`;
+{"pages":[{"page":${first},"kind":"conference | reflections | continuation | other","childName":""${how==="images are"?`,"turn":0`:""}}]}`;
     const KINDS=["conference","reflections","continuation","other"];
-    const take=(chunk,r,infos)=>chunk.forEach((p,k)=>{ const hit=(r?.pages||[]).find(x=>+x.page===p.n) || (r?.pages||[])[k] || {}; infos.push({n:p.n, kind:KINDS.includes(hit.kind)?hit.kind:"continuation", childName:String(hit.childName||"")}); });
+    const take=(chunk,r,infos)=>chunk.forEach((p,k)=>{ const hit=(r?.pages||[]).find(x=>+x.page===p.n) || (r?.pages||[])[k] || {}; if([90,180,270].includes(+hit.turn)) p.turn=+hit.turn; infos.push({n:p.n, kind:KINDS.includes(hit.kind)?hit.kind:"continuation", childName:String(hit.childName||"")}); });
     let infos;
     if(!scanned){
       infos=B.pages.map(p=>({n:p.n, kind:pageKindFromText(p.text), childName:""}));
@@ -1922,17 +1962,20 @@ Reply with only JSON in this shape
       for(let i=0;i<B.pages.length;i+=maxImg){
         const chunk=B.pages.slice(i,i+maxImg);
         busy(`Sorting pages ${chunk[0].n} to ${chunk.at(-1).n} of ${B.pages.length}…`);
-        const imgs=[]; for(const p of chunk) imgs.push(await imgOf(p, 900));
+        const imgs=[]; for(const p of chunk) imgs.push(await imgOf(p, 900, false));
         try{ take(chunk, await S.sample.json(sortPrompt(chunk[0].n,chunk.at(-1).n,chunk.length,"images are"), {images:imgs, modelTier:"quick", signal:ctl.signal}), infos); }
         catch(e){ if(e?.code==="cancelled") throw e; chunk.forEach(p=>infos.push({n:p.n, kind:(p.n%2===1)?"conference":"reflections", childName:"", guessed:true})); }
       }
     }
+    // photos the sorting step found sideways or upside down are turned now, so the reading and the kept original are upright
+    for(const p of B.pages) if(p.blob && p.turn){ try{ p.blob=await turnImage(p.blob, p.turn); }catch(e){} p.turn=0; }
     if(!infos.some(x=>x.kind==="conference")) infos=infos.map(x=>({...x, kind:x.kind==="other"?"other":(x.n%2===1?"conference":"reflections"), guessed:true}));
     const g=groupPages(infos); B.skipped=g.skipped;
     B.forms=g.forms.map((f,i)=>({i, pages:f.pages, nameHint:f.name, state:"waiting", result:null, error:"", include:true, childId:"", year:"", term:"", edits:{}, guessed:infos.some(x=>x.guessed)}));
     if(!B.forms.length) throw new Error("No conference forms were found in this upload.");
 
-    /* 3. read each form on its own */
+    /* 3. read each form on its own, handwriting with the stronger model */
+    if(scanned) B.forms.forEach(F=>F.careful=true);
     let done=0;
     const readOne = async (F)=>{
       F.state="reading"; busy(`Reading form ${done+1} of ${B.forms.length} (${pageRange(F.pages)})…`);
@@ -1953,7 +1996,7 @@ Reply with only JSON in this shape
     ctx.resplit=async(per)=>{
       const ctl2=new AbortController(); S.modalCtl=ctl2; done=0;
       const nums=B.pages.map(p=>p.n).filter(n=>!B.skipped.includes(n));
-      B.forms=[]; for(let i=0;i<nums.length;i+=per) B.forms.push({i:B.forms.length, pages:nums.slice(i,i+per), nameHint:"", state:"waiting", result:null, error:"", include:true, childId:"", year:"", term:"", edits:{}, guessed:false, manual:per});
+      B.forms=[]; for(let i=0;i<nums.length;i+=per) B.forms.push({i:B.forms.length, pages:nums.slice(i,i+per), nameHint:"", state:"waiting", result:null, error:"", include:true, childId:"", year:"", term:"", edits:{}, guessed:false, manual:per, careful:scanned});
       try{ for(const F of B.forms) await readOne(F); }catch(e){ if(e?.code==="cancelled") return; }
       showBatchReview();
     };
@@ -1989,7 +2032,7 @@ function showBatchReview(){
     const combined = F.include && F.childId && group.length>1 && firstI!==F.i ? B.forms[firstI] : null;
     const existing = F.childId ? findConf(F.childId, F.year, F.term) : null;
     const note = F.state==="failed"? `<span style="color:var(--danger)">${esc(F.error)}</span> <button class="btn sm" data-act="batch-retry" data-i="${F.i}">Try again</button>`
-      : !F.childId? `<span style="color:var(--danger)">Choose the child</span>`
+      : !F.childId? `<span style="color:var(--danger)">${bestChildMatch(r.childName||F.nameHint)?"Choose the child":"This child is not in TREE yet. Choose the child, or add them."}</span>${r.childName||F.nameHint?`<div><button class="btn sm" data-act="batch-addchild" data-i="${F.i}">Add ${esc(String(r.childName||F.nameHint).split(/\s+/)[0])} as a new child</button></div>`:""}`
       : (combined? `Combined with ${esc(pageRange(combined.pages).toLowerCase())}. Repeated text is left out.`
         : existing? (F.term==="Historical"? "Adds to earlier conferences" : hasWork(existing)?"Adds to the existing conference":"Fills the started conference")
         : F.term==="Historical"? "Starts the earlier conferences record" : "Starts a new conference")
@@ -2005,6 +2048,7 @@ function showBatchReview(){
       <td><div class="stack" style="gap:6px">${F.state==="read"?`<button class="btn sm" data-act="batch-check" data-i="${F.i}">Check</button>`:""}${window.CAREFUL_READ && F.state==="read" && !F.careful?`<button class="btn sm ghost" data-act="batch-careful" data-i="${F.i}" title="Uses a stronger model for hard handwriting">Read carefully</button>`:""}</div></td>
     </tr><tr class="batch-detail" data-detail="${F.i}" hidden><td colspan="8"></td></tr>`; };
   impStatus(`
+    ${(()=>{ const un=B.forms.filter(F=>F.state==="read"&&!F.childId); return un.length?`<div class="notice" style="margin-bottom:10px;border-color:var(--danger)"><b>${un.length} ${un.length===1?"form names a child":"forms name children"} TREE does not have.</b> ${esc([...new Set(un.map(F=>(F.result?.childName||F.nameHint||"No name").trim()))].join(", "))}. Add each child or choose one before saving, so no form is left out.</div>`:""; })()}
     <div class="notice" style="margin-bottom:10px"><b>${B.forms.length} ${B.forms.length===1?"form":"forms"} found in ${B.pages.length} pages.</b> ${read} read, ${matched} matched to a child.${B.skipped.length?` Skipped ${B.skipped.length===1?"page":"pages"} ${B.skipped.join(", ")} because ${B.skipped.length===1?"it does":"they do"} not look like part of a form.`:""}${B.forms[0]?.guessed?" Some pages could not be sorted automatically, so forms were assumed to be two pages each. Check the page ranges.":""} Check each child and season before saving. Forms for the same child and season are combined into one conference, and copies of the same form are not repeated. When the date is unclear, the form is kept with that child's earlier conferences.</div>
     <div class="row small" style="margin-bottom:10px"><span class="muted">Pages split wrong?</span><label for="bt-per" class="muted">Read again with</label><select id="bt-per">${[1,2,3,4].map(n=>`<option value="${n}" ${B.forms[0]?.manual===n?"selected":""}>${n} ${n===1?"page":"pages"} per form</option>`).join("")}</select><button class="btn sm" data-act="batch-resplit">Read again</button></div>
     <div class="tbl-wrap"><table class="list" id="batch-table"><thead><tr><th></th><th>Pages</th><th>Form says</th><th>Child</th><th>Season</th><th>Filled</th><th>What happens</th><th></th></tr></thead><tbody>${B.forms.map(row).join("")}</tbody></table></div>
@@ -2026,7 +2070,8 @@ function updateBatchSaveBtn(){
   const B=S.importCtx.batch, btn=$("#bt-save"); if(!btn) return;
   const ok=B.forms.filter(F=>F.include&&F.state==="read"); const conf=batchConflicts();
   const blocked=ok.some(F=>!F.childId);
-  btn.disabled=!ok.length||blocked; btn.textContent= ok.length? `Save ${ok.length} ${ok.length===1?"form":"forms"}` : "Save checked forms";
+  const need=ok.filter(F=>!F.childId).length;
+  btn.disabled=!ok.length||blocked; btn.textContent= need? `Choose or add a child for ${need} ${need===1?"form":"forms"}` : ok.length? `Save ${ok.length} ${ok.length===1?"form":"forms"}` : "Save checked forms";
 }
 function batchFieldList(){ return [["confDate","Conference date"],["confTime","Time"],["teacher","Educators"],["familyPresent","Family members present"],["reflDate","Reflections date"],...FIELDS.map(f=>["fields."+f.k,f.label]),...REFLECTIONS.map((r,i)=>["reflections."+r.k,"Reflection "+(i+1)]),["scTicks.school","Self-care at school, ticked"],["selfCare.schoolNotes","Self-care at school notes"],["scTicks.home","Self-care at home, ticked"],["selfCare.homeNotes","Self-care at home notes"],["otherSections","Other sections from the original form"]]; }
 function batchValue(F,path){
@@ -2045,6 +2090,37 @@ function toggleBatchDetail(i, forceOpen){
     ${batchFieldList().map(([path,label])=>{ const v=batchValue(F,path); return `<div class="review-row" style="grid-template-columns:180px minmax(0,1fr)"><div><b class="small">${esc(label)}</b></div><div><textarea data-path="${esc(path)}" aria-label="${esc(label)}">${esc(v)}</textarea></div></div>`; }).join("")}</div>`;
 }
 actions["batch-check"]=a=>toggleBatchDetail(+a.dataset.i);
+// a form for a child who is not in TREE yet offers a short add-a-child form, filled from what the form says
+actions["batch-addchild"]=a=>{
+  const B=S.importCtx.batch, F=B.forms[+a.dataset.i], tr=$(`tr[data-detail="${F.i}"]`); if(!tr) return;
+  const r=F.result||{}; const parts=String(r.childName||F.nameHint||"").trim().split(/\s+/); const rooms=S.settings.classrooms||[];
+  tr.hidden=false;
+  tr.firstElementChild.innerHTML=`<div class="stack" style="padding:6px 0;gap:8px"><b class="small">Add a child</b>
+    <div class="grid3">
+      <div class="field"><label for="ba-first">First name</label><input id="ba-first" value="${esc(parts[0]||"")}"></div>
+      <div class="field"><label for="ba-last">Last name</label><input id="ba-last" value="${esc(parts.slice(1).join(" "))}"></div>
+      <div class="field"><label for="ba-dob">Birthdate</label><input id="ba-dob" type="date" value="${esc(toISODate(r.birthdate)||"")}"></div>
+      <div class="field"><label for="ba-room">Class</label><select id="ba-room">${rooms.map(x=>`<option>${esc(x)}</option>`).join("")}</select></div>
+      <div class="field"><label for="ba-status">Enrollment</label><select id="ba-status"><option value="active">Enrolled</option><option value="withdrawn">Withdrawn (keeps conference history)</option></select></div>
+    </div>
+    <p class="small muted" style="margin:0">More details, such as parents and small group, can be added on the child's page later.</p>
+    <div class="row"><button class="btn primary sm" data-act="batch-addchild-save" data-i="${F.i}">Add child</button></div></div>`;
+  $("#ba-first").focus();
+};
+actions["batch-addchild-save"]=async a=>{
+  const B=S.importCtx.batch, F=B.forms[+a.dataset.i]; const v=id=>($("#"+id)?.value||"").trim();
+  if(!v("ba-first")){ toast("Add the child's first name"); $("#ba-first")?.focus(); return; }
+  const data={first:v("ba-first"),last:v("ba-last"),dob:v("ba-dob"),classroom:v("ba-room"),status:v("ba-status")||"active",parents:[],updatedAt:nowISO()};
+  let id=slug(data.first+" "+data.last)+"-"+(data.dob||"").replace(/-/g,""); if(S.children[id]) id+="-"+uid().slice(0,4);
+  a.disabled=true; a.textContent="Adding…";
+  try{ await dbSet("children/"+id,{...data,source:"conference form",createdAt:nowISO()}); }catch(e){ a.disabled=false; a.textContent="Add child"; toast("The child could not be added. Try again."); return; }
+  S.children[id]={id,...data};
+  // every form in this upload for the same child goes to them
+  for(const G of B.forms){ if(G.state!=="read" || G.childId) continue;
+    const m=bestChildMatch(G.result?.childName||G.nameHint, G.result?.birthdate, G.result?.parentNames||G.result?.familyMembersPresent);
+    if(G===F || m?.id===id){ G.childId=id; if(!G.seasonTouched){ const pd=inferSeason(G.result, S.children[id]); G.year=pd.year; G.term=pd.term; G.date=pd.date; G.how=pd.how; } } }
+  toast(`${data.first} added`); showBatchReview();
+};
 actions["show-onboarding"]=()=>{ S.view.showOb=true; render(); };
 actions["visit-upload"]=a=>{
   const id=a.dataset.id;
@@ -2243,6 +2319,21 @@ actions["batch-retry"]=async a=>{
   try{ await ctx.readOne(F); if(F.state==="read") F.include=true; }catch(e){}
   showBatchReview();
 };
+// the same PDF with each page turned by the given degrees, so a page scanned upside down is kept upright
+async function turnPdfPages(file, turns){
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  const L=window.PDFLib; const doc=await L.PDFDocument.load(await file.arrayBuffer(), {ignoreEncryption:true});
+  doc.getPages().forEach((pg,i)=>{ const t=+turns[i]||0; if(t) pg.setRotation(L.degrees(((pg.getRotation().angle||0)+t)%360)); });
+  return new Blob([await doc.save()],{type:"application/pdf"});
+}
+// scanned pages kept as a small PDF of upright page images, made one page at a time, so a very large scan never has to be held whole
+async function pagesAsPdf(pages){
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  const L=window.PDFLib, B=S.importCtx.batch; const out=await L.PDFDocument.create();
+  for(const n of pages){ const p=B.pages[n-1]; const blob=p.blob? p.blob : await pageImage(B.pdf, n, 1700, p.turn||0, .82);
+    const img=await out.embedJpg(new Uint8Array(await blob.arrayBuffer())); const w=612, h=img.height*w/img.width; const pg=out.addPage([w,h]); pg.drawImage(img,{x:0,y:0,width:w,height:h}); }
+  return new Blob([await out.save()],{type:"application/pdf"});
+}
 async function splitPdfPages(pages){
   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
   const ctx=S.importCtx, B=ctx.batch;
@@ -2283,7 +2374,7 @@ async function saveBatch(){
       if(keep){
         try{
           const atts=[...(target.attachments||[])];
-          if(B.file && B.pdf){ const blob=await splitPdfPages(F.pages); const up=await S.assets.upload(blob); atts.push({id:up.id,name:`${B.source.replace(/\.pdf$/i,"")} ${pageRange(F.pages).toLowerCase()}.pdf`,type:"application/pdf",at:nowISO(),...(S.uid?{by:S.uid}:{})}); }
+          if(B.file && B.pdf){ const blob=ctx.scanned? await pagesAsPdf(F.pages) : await splitPdfPages(F.pages); const up=await S.assets.upload(blob); atts.push({id:up.id,name:`${B.source.replace(/\.pdf$/i,"")} ${pageRange(F.pages).toLowerCase()}.pdf`,type:"application/pdf",at:nowISO(),...(S.uid?{by:S.uid}:{})}); }
           else for(const n of F.pages){ const p=B.pages[n-1]; const up=await S.assets.upload(p.blob); atts.push({id:up.id,name:p.name||`page-${n}.jpg`,type:up.contentType||p.blob.type,at:nowISO(),...(S.uid?{by:S.uid}:{})}); }
           patch.attachments=atts; target.attachments=atts;
         }catch(e){ console.warn(e); }
