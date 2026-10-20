@@ -552,6 +552,9 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .shposts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .shpost{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;text-align:left;cursor:pointer;color:var(--ink);padding:10px}.shpost img,.shpostblank{width:64px;height:80px;object-fit:cover;border-radius:6px;background:var(--moss-soft)}
 .shposted{position:absolute;top:4px;right:4px;background:var(--marigold);color:#fff;font-size:11px;padding:2px 6px;border-radius:999px}
+.shview{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.shview figure{margin:0;display:grid;gap:4px;justify-items:center}.shview img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.shcaption{white-space:pre-wrap;line-height:1.5;background:var(--moss-soft);border-radius:8px;padding:12px 14px;margin:6px 0}
+.shlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}.shlist .card{display:grid;gap:4px;align-content:start}
 .shmade img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.shaside{margin-top:8px}
 .nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
@@ -2031,12 +2034,12 @@ if(shareSt)posts.set(shareSt.id,shareSt);
 const SH_STATUS={draft:"Draft",ready:"Ready to post",posted:"Posted"};
 function shareSave(){if(!shareSt)return;shareSt.updatedAt=Date.now();shareSt.used=shareChosen().map(n=>n.id);posts.set(shareSt.id,shareSt);LS.set("tree.share",shareSt);postPut(shareSt)}
 function postPut(x){if(!db||window.TREE_VIEW_AS)return;clearTimeout(postTimers[x.id]);postTimers[x.id]=setTimeout(()=>{delete postTimers[x.id];db.doc("posts/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the post. Check your connection."))},700)}
-function shareOpen(id){const x=posts.get(id);if(!x)return;if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
+function shareOpen(id){const x=posts.get(id);if(!x)return;shView=true;if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
   shareSt=x;for(const [k,v] of Object.entries(x.faces||{}))if(!shareFaces[k]||shareFaces[k].v==="?")shareFaces[k]={v,at:Date.now()};LS.set("tree.share",shareSt);renderShare();jumpTop()}
 function shPostedIds(){const s=new Set();for(const x of posts.values())if(x&&x.status==="posted"&&(!shareSt||x.id!==shareSt.id))for(const id of x.used||[])s.add(id);return s}
 // the finished pictures are kept with the post, so opening it later shows them at once, with nothing drawn again
 function shStale(){if(shareMade)shareMade.stale=true;if(shareSt&&(shareSt.pics||[]).length&&!shareSt.picsStale){shareSt.picsStale=true;shareSave()}}
-let shPicsLoading="";
+let shPicsLoading="",shView=true,shStarting=false;
 async function shLoadPics(){const x=shareSt;if(!x||shareMade||!(x.pics||[]).length||shPicsLoading===x.id||!window.FP_ORIGINAL_URL)return;shPicsLoading=x.id;
   try{const blobs=await Promise.all(x.pics.map(async id=>await (await fetchPhoto(window.FP_ORIGINAL_URL(id))).blob()));
     if(shareSt===x&&!shareMade){shareMade={blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:!!x.picsStale};if(view==="share")renderShare()}}
@@ -2127,13 +2130,19 @@ async function shareDraft(btn){
 
 TREE exists to make children's learning and thinking visible. The director is making a post for the school's public Instagram account from the educators' documentation below, so families and the wider community can see how children think, what they are working out, and how the educators listen and respond. Children's names and children's own words have already been taken out, and they must stay out.
 
-Write in Fulton's voice, the voice of Reggio-inspired documentation. Lead with the children's thinking, what they noticed, tried, theorized, wondered, returned to and worked out together, and name the educators' reading of it as a hypothesis, such as "we wonder whether" or "we are curious about". Hold the image of the child as competent and capable. Use concrete details from the documentation, the materials, the place, the animals, the plants, what hands and bodies did. Never use generic or filler phrases, never praise, and never say children enjoyed or had fun.
+Write in Fulton's voice, the voice of Reggio-inspired documentation, for the school's Instagram.
+The language standard.
+Every line you write is a complete, grammatical sentence with a subject and a verb. Never write fragments, labels standing in for sentences, or clipped statements, and never drop articles or verbs for brevity.
+The writing is intentional, purposeful and conceptually sophisticated, and it never talks down to the reader. Present ordinary moments as the intellectually serious work they are, naming what children are constructing, such as theories about how living things behave, memory built from experience, relationships, responsibility to others, and the meaning children make together.
+Hold the image of the child as competent, capable and a co-constructor of knowledge. Name the educators' reading of the children's thinking as a hypothesis, such as "we wonder whether" or "we are curious about".
+Use concrete details from the documentation, the materials, the place, the animals, the plants and what hands and bodies did.
+Never use generic educational language, filler, praise, sentimentality or lists of skills, and never say children enjoyed something or had fun.
 
 Write these things.
-caption is the post's words, three to five sentences in the school's voice, using we. Open with the children's thinking or question, then what the educators noticed, then why it matters for learning. Use only the facts in the documentation. Speak of children as a group. Never name, describe or single out a child, never quote a child and never give a child's age. Warm and plain for families, with no sales language and no exclamation marks.
-hashtags is one line of four to six hashtags, the ones from this list that fit best. ${SH_TAGS}
-words gives, for each photo, one or two sentences, at most 30 words, that make the learning and thinking in that photo visible, drawn from that photo's documentation. When photos share the same documentation, give each photo a different part of it, so no two photos say the same thing.
-lines gives, for each photo, the learning that photo shows as a DRDP domain followed by the skill in plain family words, three to ten words in all, such as "Social and Emotional Development, caring for others with gentle hands", "Science, observing what living things need", "Approaches to Learning, returning to an idea" or "Math, comparing size and amount". Use the DRDP measures the educators linked when they are given. Never give a code or a level. No two photos repeat a line. When the photo shows no clear learning, use an empty string.
+caption is the post's words for Instagram, 70 to 150 words in two or three short paragraphs separated by a blank line, in the school's voice, using we. The first sentence is the line a reader sees before tapping more, so it names the children's question, idea or work in a way that draws the reader in. Then say what the educators noticed and what they wonder, and close with why this work matters, or with one open question that invites the community to wonder with us. Use only the facts in the documentation. Speak of children as a group. Never name, describe or single out a child, never quote a child and never give a child's age. No emojis, no sales language and no exclamation marks.
+hashtags is one line of five to eight hashtags, the ones from this list that fit best. ${SH_TAGS}
+words gives, for each photo, one or two complete sentences, 15 to 30 words, that make the learning and thinking in that photo visible, drawn from that photo's documentation. When photos share the same documentation, give each photo a different part of it, so no two photos say the same thing.
+lines gives, for each photo, the DRDP domain, a period, then one complete sentence of 8 to 16 words naming the specific learning that photo shows, such as "Science. Children are observing closely which leaves the rabbits choose and which they leave behind." or "Social and Emotional Development. Children are learning what gentle, patient hands ask of them with another living being." Use the DRDP measures the educators linked when they are given. Never give a code or a level. No two photos repeat a line. When the photo shows no clear learning, use an empty string.
 quote is the number of the one quote from the list below that best fits what these children were doing and thinking.
 
 Return only JSON in this shape {"caption":"","hashtags":"","words":[{"photo":1,"text":""}],"lines":[{"photo":1,"line":""}],"quote":1}.
@@ -2145,8 +2154,8 @@ The quotes.
 ${QS.map((q,i)=>(i+1)+". "+q[0]+" ("+q[1]+")").join("\n")}`;
   shareBusy.words=true;renderShare();
   try{
-    const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"share"});
-    const tidy=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,", ").trim();
+    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"share"});
+    const tidy=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,", ").replace(/[ \t]+\n/g,"\n").trim();
     if(out&&has(out.caption))shareSt.caption=tidy(out.caption);
     if(out&&has(out.hashtags))shareSt.tags=String(out.hashtags).trim();
     shareSt.lines=shareSt.lines||{};
@@ -2341,7 +2350,7 @@ async function shareMake(){
   if(shareMade&&window.FP_KEEP_ORIGINAL&&!window.TREE_VIEW_AS){const x=shareSt;try{const ids=[];for(let i=0;i<blobs.length;i++)ids.push(await window.FP_KEEP_ORIGINAL(blobs[i],`post-${x.id}-${i+1}.jpg`));x.pics=ids;x.picsStale=false;x.picsAt=Date.now();if(shareSt===x)shareSave();else postPut(x)}
     catch(e){toast("The pictures are made, but could not be kept with the post. They are here until you leave.")}}
   if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the post leaves ${missed>1?"them":"it"} out.`);
-  shareBusy.make=false;if(view==="share")renderShare();
+  shareBusy.make=false;if(shareMade&&(shareSt.pics||[]).length&&!shareSt.picsStale){shView=true;jumpTop()}if(view==="share")renderShare();
 }
 const shareFileName=i=>`Post ${iso(new Date())} ${String(i+1).padStart(2,"0")}.jpg`;
 function shareCanFiles(){try{return !!(navigator.canShare&&navigator.canShare({files:[new File([new Blob(["x"],{type:"image/jpeg"})],"a.jpg",{type:"image/jpeg"})]}))}catch(e){return false}}
@@ -2362,15 +2371,32 @@ function renderShare(){
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Share</h2><div class="sub">A post for the school's Instagram from documentation you already have. Children's names, children's words and DRDP never go into a post, and photos where a face or a name may show are set aside before you choose.</div></div>
 `;
   if(!st){
-    h+=`<section class="card"><div class="lbl">A new post</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button></div>
-    <div class="cnt">Observations kept with a team inquiry are never offered. Every post is kept, so several can be made ahead and posted later.</div></section>`;
     const all=[...posts.values()].filter(x=>x&&x.id&&!x.deleted),open=all.filter(x=>x.status!=="posted").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)),done=all.filter(x=>x.status==="posted").sort((a,b)=>(b.postedAt||0)-(a.postedAt||0));
-    const card=x=>{const n=notices.get((x.used||[])[0]||(x.ids||[])[0]);return `<button class="card shpost" data-shopen="${esc(x.id)}" type="button">${(x.pics||[]).length&&window.FP_ORIGINAL_URL?`<img src="${esc(window.FP_ORIGINAL_URL(x.pics[0]))}" alt="" loading="lazy">`:n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="">`:`<span class="shpostblank"></span>`}<span style="display:grid;gap:2px;min-width:0"><b>${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):x.updatedAt?", changed "+esc(shortDate(x.updatedAt)):""}</span><span class="cnt">${(x.pics||[]).length?(x.pics.length+" picture"+(x.pics.length===1?"":"s")+(x.picsStale?", changed since made":", made")):(x.used||[]).length+" photo"+((x.used||[]).length===1?"":"s")+", pictures not made yet"}${has(x.caption)?" · caption written":""}</span></span></button>`};
-    h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Posts waiting</h3><span class="cnt">${open.length}</span></div>${open.length?`<div class="shposts">${open.map(card).join("")}</div>`:`<div class="cnt">None yet. Start one above.</div>`}</section>`;
-    if(done.length)h+=`<details class="card"><summary class="secthead"><h3 style="font-size:17px;display:inline">Posted</h3> <span class="cnt">${done.length}</span></summary><div class="shposts" style="margin-top:8px">${done.map(card).join("")}</div></details>`;
+    const card=x=>{const n=notices.get((x.used||[])[0]||(x.ids||[])[0]);const pic=(x.pics||[]).length&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.pics[0]):n&&n.photo?photoThumb(n):"";
+      return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink)" data-shopen="${esc(x.id)}" type="button">${pic?`<img src="${esc(pic)}" alt="" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px">`:`<span class="shpostblank" style="width:100%;aspect-ratio:4/5;display:block"></span>`}
+        <b style="font-family:var(--display);font-size:17px">${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):", "+esc(shortDate(x.updatedAt||x.createdAt||Date.now()))}</span>
+        <span class="cnt">${(x.pics||[]).length?x.pics.length+" picture"+(x.pics.length===1?"":"s")+(x.picsStale?", changed since made":""):"Pictures not made yet"}${has(x.caption)?" · caption":""}</span></button>`};
+    h+=`<div class="actions" style="margin:4px 0 12px"><button class="btn" data-shmake1="1">Make a post</button></div>
+    ${shStarting?`<section class="card"><div class="lbl">A new post, starting from</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button><button class="linkbtn" data-shmake1="0">Cancel</button></div>
+      <div class="cnt">Observations kept with a team inquiry are never offered.</div></section>`:""}
+    ${open.length?`<div class="secthead" style="margin-top:6px"><h3 style="font-size:17px">Posts waiting</h3><span class="cnt">${open.length}</span></div><div class="shlist">${open.map(card).join("")}</div>`:`<div class="empty">No posts waiting. Make a post and it is kept here, its pictures and caption ready to post.</div>`}
+    ${done.length?`<details style="margin-top:14px"><summary class="secthead"><h3 style="font-size:17px;display:inline">Posted</h3> <span class="cnt">${done.length}</span></summary><div class="shlist" style="margin-top:8px">${done.map(card).join("")}</div></details>`:""}`;
     main.innerHTML=h;return}
   if(!shareMade&&(st.pics||[]).length)setTimeout(shLoadPics,0);
-  h+=`<section class="card"><div class="actions" style="justify-content:space-between"><button class="linkbtn" data-shnew="1">‹ All posts</button><button class="linkbtn" data-shclear="1">Delete this post</button></div>
+  if(shView&&(st.pics||[]).length){
+    h+=`<section class="card"><div class="actions" style="justify-content:space-between"><button class="linkbtn" data-shnew="1">‹ All posts</button><button class="linkbtn" data-shclear="1">Delete this post</button></div>
+      <h2 style="margin:4px 0 6px">${esc(shareName(st))}</h2>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
+      ${st.status==="posted"&&st.postedAt?`<div class="cnt">Posted ${esc(shortDate(st.postedAt))}.</div>`:""}</section>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">The pictures</h3><span class="cnt">${st.pics.length}, in order</span></div>
+      ${shareMade?`<div class="shview">${shareMade.urls.map((u,i)=>`<figure><img src="${u}" alt="Picture ${i+1}"><figcaption class="cnt">${i+1}</figcaption></figure>`).join("")}</div>`:`<div class="cnt">Opening the pictures.</div>`}
+      ${st.picsStale?`<div class="cnt"><b>The post was changed after these were made.</b> Choose Change this post, then Make the pictures again.</div>`:""}
+      <div class="actions">${shareCanFiles()?`<button class="btn small" data-shsend="1" ${shareMade?"":"disabled"}>Save to Photos or send to Instagram</button>`:""}<button class="btn small ghost" data-shsave="1" ${shareMade?"":"disabled"}>Download the pictures</button><button class="btn small ghost" data-shword="1" ${shareMade?"":"disabled"}>Word</button></div></section>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Caption</h3></div>
+      ${has(st.caption)||has(st.tags)?`<div class="shcaption">${esc(st.caption||"")}${has(st.tags)?"\n\n"+esc(st.tags):""}</div>`:`<div class="cnt">No caption yet.</div>`}
+      <div class="actions"><button class="btn small" data-shcopy="1" ${has(st.caption)?"":"disabled"}>Copy the caption</button><button class="btn small ghost" data-shedit="1">Change this post</button></div></section>`;
+    main.innerHTML=h;return}
+  h+=`<section class="card"><div class="actions" style="justify-content:space-between"><span class="actions" style="margin:0"><button class="linkbtn" data-shnew="1">‹ All posts</button>${(st.pics||[]).length?`<button class="linkbtn" data-shview="1">See the finished post</button>`:""}</span><button class="linkbtn" data-shclear="1">Delete this post</button></div>
     <div class="secthead"><h3 style="font-size:18px">${esc(shareName(st))}</h3></div>
     <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
     <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device, the finished pictures too.</div></section>`;
@@ -2424,10 +2450,13 @@ document.addEventListener("click",async e=>{
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
     const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
-    shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
+    shView=false;shStarting=false;shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
     if(k==="wall"){const x=projects.get(id);for(const sh of shareWallSheets(x)){const pid=wallPhotos(sh)[0];if(pid&&has(sh.title)&&!shareSt.lines[pid])shareSt.lines[pid]=shareScrub(sh.title)}}
     shareSave();renderShare();shareCheckFaces();return}
-  if(d.shnew){if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();jumpTop();return}
+  if(d.shmake1!=null){shStarting=d.shmake1==="1";renderShare();return}
+  if(d.shedit){shView=false;renderShare();jumpTop();return}
+  if(d.shview){shView=true;renderShare();jumpTop();return}
+  if(d.shnew){shStarting=false;if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();jumpTop();return}
   if(d.shopen){shareOpen(d.shopen);return}
   if(d.shclear){if(!shareSt||!confirm("Delete this post? Its photos stay in TREE."))return;const id=shareSt.id;posts.delete(id);clearTimeout(postTimers[id]);if(db&&!window.TREE_VIEW_AS)db.doc("posts/"+id).delete().catch(()=>{});
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();return}
