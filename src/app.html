@@ -286,6 +286,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
+.nfthreadline{overflow-wrap:anywhere}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -2148,7 +2149,7 @@ function renderStory(){
     <div style="margin-top:10px">${reviewBox}</div>
     <div style="margin-top:8px">${isDirector()?`<label class="radio"><input type="checkbox" data-stoff="1" ${st.offShare?"checked":""}><span>Keep it off the staff room display and the newsletter</span></label>`:st.offShare?`<div class="cnt">The director keeps this story off the staff room display and the newsletter.</div>`:""}</div></section>`;
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([room?room+" class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")].filter(Boolean).join(" · "))}</div></div>
-    <span class="actions">${printBtns("story",st.id,"Book PDF",true)}${printBtns("storysmall",st.id,"Small book PDF")}</span></div></div>
+    <span class="actions">${printBtns("story",st.id,"Book PDF",true)}${printBtns("storysmall",st.id,"Small book PDF")}</span></div><div class="hint">The small book prints on letter paper. Print on both sides, flip on the short edge, then fold the stack in half. The Word file keeps the pages in order for changing words.</div></div>
   ${kindBox}
   <section class="card"><div class="lbl">The cover</div>
     <label class="fld-label">Title<input data-stf="title" value="${esc(st.title||"")}" placeholder="We Are a Community of Kindness"></label>
@@ -2470,7 +2471,8 @@ async function storySmallPdf(st){
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const doc=new window.jspdf.jsPDF({unit:"pt",format:[396,612],orientation:"portrait"});pdfFonts(doc);
-  const W=396,H=612,M=28,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
+  // the inner edge of every page meets the fold, so the side margins are a little wider than the top and bottom
+  const W=396,H=612,M=32,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
   const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
   const col=c=>doc.setTextColor(c[0],c[1],c[2]);
   const img=(id,x,y,w,h)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(w/ph.w,h/ph.h);const iw=ph.w*k,ih=ph.h*k;const ix=x+(w-iw)/2,iy=y;doc.addImage(ph.url,"JPEG",ix,iy,iw,ih,undefined,"FAST");return {x:ix,y:iy,w:iw,h:ih}};
@@ -2503,7 +2505,27 @@ async function storySmallPdf(st){
     else if(p.kind==="think"){head(p.heading);block([...p.questions.map((t,i)=>({t,sz:18,gap:i===p.questions.length-1&&p.refrain.length?26:12})),...p.refrain.map((t,i)=>({t,sz:18,b:i===0,gap:3}))],M+24,H-M-26,W-2*M-10)}
     doc.setDrawColor(ST_HAIR[0],ST_HAIR[1],ST_HAIR[2]);doc.setLineWidth(.6);doc.line(M,H-36,W-M,H-36);font(false);doc.setFontSize(6.5);col(ST_MUT);doc.text(ST_CYCLE,W/2,H-25,{align:"center"});
     const fl=doc.splitTextToSize(foot+"    ·    Page "+(i+1)+" of "+pages.length,W-2*M);doc.text(fl[0]||"",W/2,H-15,{align:"center"})});
-  await saveFile(doc.output("blob"),safeFile(`Small book ${stTitle(st)}`)+".pdf");
+  // a booklet folds from sheets of four pages, so blank pages fill the gap before a quiet back cover
+  const total=Math.ceil((pages.length+1)/4)*4;
+  for(let k=pages.length;k<total-1;k++){doc.addPage([396,612],"portrait");if(st.bg==="tint"){doc.setFillColor(BG[0],BG[1],BG[2]);doc.rect(0,0,W,H,"F")}}
+  doc.addPage([396,612],"portrait");if(st.bg==="tint"){doc.setFillColor(BG[0],BG[1],BG[2]);doc.rect(0,0,W,H,"F")}
+  {let y=H/2-30;font(true);doc.setFontSize(11);col(HC);doc.text("A story from our community",W/2,y,{align:"center"});y+=14;
+    doc.setDrawColor(A.c[0],A.c[1],A.c[2]);doc.setLineWidth(1);doc.line(W/2-40,y,W/2+40,y);y+=24;
+    font(false);doc.setFontSize(12);col(ST_INK);doc.text("Fulton Community School & Farm",W/2,y,{align:"center"});y+=18;
+    const room=String(foot||"").split("|").slice(1).map(x=>x.trim()).filter(Boolean).join(", ");if(room){doc.setFontSize(10);col(ST_MUT);doc.text(room,W/2,y,{align:"center"})}}
+  const blob=await storyBooklet(doc.output("arraybuffer"),total);if(!blob)return;
+  await saveFile(blob,safeFile(`Small book ${stTitle(st)}`)+".pdf");
+}
+// sheets of letter paper turned sideways, two small pages on each side, ordered so the printed stack folds into the book.
+// Print on both sides and flip on the short edge. Sheet k has pages n-1-2k and 2k on the front, and 2k+1 and n-2-2k on the back.
+function bookletOrder(n){const out=[];for(let k=0;k<n/4;k++){out.push([n-1-2*k,2*k],[2*k+1,n-2-2*k])}return out}
+async function storyBooklet(bytes,n){
+  let L;try{L=await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js","PDFLib")}catch(e){toast("The booklet tool did not load.");return null}
+  const src=await L.PDFDocument.load(bytes);const out=await L.PDFDocument.create();
+  const pages=await out.embedPages(src.getPages());
+  for(const [a,b] of bookletOrder(n)){const sh=out.addPage([792,612]);sh.drawPage(pages[a],{x:0,y:0,width:396,height:612});sh.drawPage(pages[b],{x:396,y:0,width:396,height:612})}
+  out.setTitle("Small book");out.setCreator("Fulton Community School & Farm");out.setProducer("TREE");
+  return new Blob([await out.save()],{type:"application/pdf"});
 }
 async function storySmallDocx(st){
   let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
@@ -4490,7 +4512,7 @@ function noticeFormCard(){
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
-    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>`:""}
+    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>${threadLineHtml(notices.get(n.id)||n)}`:""}
 
     ${many?`<div class="cnt" style="margin-bottom:6px">${formPhotos(n).length} photos in this observation. Tap the children in each photo below.</div>${photoStatusHtml(n)}`
       :ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
@@ -4548,7 +4570,8 @@ function noticeCard(n){
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
-    ${pr||th?`<div class="origin"><div>${pr?`<b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>`:""}${th?`${pr?" ":""}<b>Thread</b><button class="linkbtn" data-tsee="${esc(th.id)}">${esc(th.name)}</button>`:""}</div></div>`:""}
+    ${pr?`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button></div></div>`:""}
+    ${threadLineHtml(n)}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
         ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
@@ -4870,6 +4893,14 @@ function noticeNoteHtml(p){
 // a project holds the moments kept for it and the moments kept for any thread it holds
 // a thread holds the observations kept for it and the ones Find threads found for it, which sit in its evidence by id
 const evNoticeIds=list=>(list||[]).map(e=>e&&(e.planId||e.id)).filter(id=>id&&notices.has(id));
+// the threads an observation belongs to, read from each thread's evidence and from the observation's own thread, for any photo in its group.
+// Nothing is written to the observation, so taking it out of a thread takes the line away too.
+function threadsOfNotice(n){if(!n)return [];const ids=new Set(noteGroup(n).map(x=>x.id)),own=new Set(noteGroup(n).map(x=>x.threadId).filter(Boolean));
+  return [...threads.values()].filter(t=>t&&(own.has(t.id)||evNoticeIds(t.evidence).some(id=>ids.has(id))))}
+function threadLineHtml(n,plain){const ts=threadsOfNotice(n);if(!ts.length)return "";
+  const names=ts.map(t=>plain?esc(t.name):`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`);
+  const list=names.length<3?names.join(" and "):names.slice(0,-1).join(", ")+" and "+names[names.length-1];
+  return plain?`In the thread${ts.length>1?"s":""} ${list}`:`<div class="cnt nfthreadline">In the thread${ts.length>1?"s":""} ${list}</div>`}
 const threadNotices=t=>{const ids=new Set(evNoticeIds(t&&t.evidence));return [...notices.values()].filter(n=>n.threadId===t.id||ids.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0))};
 // a project holds its own observations and every observation of the threads it follows
 const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
@@ -8968,7 +8999,7 @@ function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
 function kidMomentRow0(c,n,open){
   return open?`<div class="kmopen">${noticeCard(n)}<div class="actions"><button class="linkbtn" data-kmclose="1">Close</button></div></div>`
   :`<button class="kmrow" data-kmopen="${esc(n.id)}">${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy">`:`<span class="kmnone" aria-hidden="true"></span>`}
-    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"An observation")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${kidDrdpOf(c,"notices",n.id)}</span></button>`}
+    <span class="kmtext"><b>${esc(momentHeading(n)||firstLine(n.noticed,70)||"An observation")}</b><span class="cnt">${shortDate(n.at)}${kidAgeAt(c,n.at)?" · age "+kidAgeAt(c,n.at):""} · ${esc(n.by||"An educator")}${kidTagged(c,n)?"":" · names "+esc(c.first)}</span>${threadLineHtml(n,true)?`<span class="cnt">${threadLineHtml(n,true)}</span>`:""}${kidDrdpOf(c,"notices",n.id)}</span></button>`}
 function renderChild(){
   const c=children.get(kidOpen);
   if(!c){$("#main").innerHTML=`<div class="empty">That child is not on the roster.</div>`;return}
