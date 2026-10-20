@@ -555,6 +555,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .shview{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.shview figure{margin:0;display:grid;gap:4px;justify-items:center}.shview img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .shcaption{white-space:pre-wrap;line-height:1.5;background:var(--moss-soft);border-radius:8px;padding:12px 14px;margin:6px 0}
 .shlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}.shlist .card{display:grid;gap:4px;align-content:start}
+.pview{position:fixed;inset:0;z-index:300;background:rgba(18,24,20,.82);display:grid;grid-template-rows:auto 1fr}
+.pvbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--paper);color:var(--ink);padding:10px 16px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.pvname{display:grid;gap:2px;min-width:0}.pvname b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pvpages{overflow:auto;padding:18px 16px 40px;display:grid;gap:18px;justify-items:center;align-content:start}
+.pvpage{width:min(860px,100%);background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.35);display:grid;place-items:center;color:#888}.pvpage canvas{width:100%;height:auto;display:block}
 .shmade img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.shaside{margin-top:8px}
 .nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
@@ -4330,7 +4335,7 @@ async function nlPdf(x){
   for(const sc of [.96,.93,.9,.87]){const n=B.doc.getNumberOfPages();if(n<2||(B.last>PH*.33&&n<=4))break;const T=build(sc);if(T.doc.getNumberOfPages()<n){B=T;break}}
   const doc=B.doc;
   const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);pfont(doc,"fr",7.6);doc.setTextColor(...C.muted);doc.text("Fulton Community School & Farm"+(n>1?`   ${i} of ${n}`:""),PW/2,PH-28,{align:"center"})}
-  await downloads.save({filename:`Fulton family newsletter ${nlName(x.month)}.pdf`,data:doc.output("blob")});
+  await saveFile(doc.output("blob"),`Fulton family newsletter ${nlName(x.month)}.pdf`);
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -4662,10 +4667,36 @@ async function makePdf(list,filename,ret){
 }
 // a sheet with more words than fit still prints, and the educator hears which one to shorten
 function overWarn(){const u=[...new Set(centerOver)];if(u.length)setTimeout(()=>toast(`${u.length===1?"“"+u[0]+"” has":u.length+" sheets have"} more words than fit. Choose fewer quotes or shorten the words.`),1200);centerOver=[]}
-async function saveFile(blob,filename){
+// every PDF opens in a preview first, drawn page by page on the device, and is saved only from there
+async function saveFile(blob,filename,direct){
+  if(!direct&&/\.pdf$/i.test(filename||"")&&blob&&blob.size){pdfPreview(blob,filename);return}
   if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
   try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
 }
+let pvLast=null,pvState=null;
+// the preview draws pages with the same PDF reader TREE uses to read uploaded paper plans, pdfLib below
+async function pdfPreview(blob,filename){
+  const word=pvLast&&pvLast.dataset&&pvLast.dataset.print?pvLast:null;pvLast=null;
+  pvClose();const el=document.createElement("div");el.id="pview";el.className="pview";el.setAttribute("role","dialog");el.setAttribute("aria-label","Preview");
+  el.innerHTML=`<div class="pvbar"><div class="pvname"><b>${esc(filename.replace(/\.pdf$/i,""))}</b><span class="cnt" id="pvcount">Opening the preview</span></div>
+    <div class="actions" style="margin:0"><button class="btn small" data-pvsave="1">Download PDF</button>${word?`<button class="btn small ghost" data-pvword="1">Word</button>`:""}<button class="btn small ghost" data-pvclose="1">Close</button></div></div>
+    <div class="pvpages" id="pvpages"></div>`;
+  document.body.append(el);document.body.style.overflow="hidden";pvState={blob,filename,word,io:null,doc:null};
+  try{const lib=await pdfLib();const doc=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;if(!pvState||pvState.blob!==blob){doc.destroy();return}pvState.doc=doc;
+    const n=doc.numPages;$("#pvcount").textContent=n===1?"1 page":n+" pages";const box=$("#pvpages");
+    const first=await doc.getPage(1),v0=first.getViewport({scale:1});
+    for(let i=1;i<=n;i++){const d=document.createElement("div");d.className="pvpage";d.dataset.pg=i;d.style.aspectRatio=v0.width+" / "+v0.height;d.innerHTML=`<span class="cnt">${i}</span>`;box.append(d)}
+    const draw=async d=>{if(d.dataset.done)return;d.dataset.done="1";try{const pg=await doc.getPage(+d.dataset.pg),w=Math.min(1600,d.clientWidth*(window.devicePixelRatio||1)*1.2),v=pg.getViewport({scale:w/pg.getViewport({scale:1}).width});
+      const cv=document.createElement("canvas");cv.width=Math.round(v.width);cv.height=Math.round(v.height);await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;d.innerHTML="";d.append(cv)}catch(e){d.innerHTML=`<span class="cnt">This page could not be shown.</span>`}};
+    pvState.io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)draw(e.target)}),{root:el,rootMargin:"600px"});box.querySelectorAll(".pvpage").forEach(d=>pvState.io.observe(d));
+  }catch(e){const c=$("#pvcount");if(c)c.textContent="The preview could not open here. Download the PDF to see it."}
+}
+function pvClose(){const el=$("#pview");if(pvState){if(pvState.io)pvState.io.disconnect();if(pvState.doc)try{pvState.doc.destroy()}catch(e){}}pvState=null;if(el){el.remove();document.body.style.overflow=""}}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("#pview button");if(!t)return;e.stopImmediatePropagation();const st=pvState;
+  if(t.dataset.pvclose){pvClose();return}
+  if(t.dataset.pvsave&&st){saveFile(st.blob,st.filename,true);pvClose();return}
+  if(t.dataset.pvword&&st&&st.word){const b=st.word.cloneNode(true);b.dataset.word="1";pvClose();printsClick(b);return}},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#pview"))pvClose()});
 // a completed plan prints only what was written, each box as tall as its words
 // text kept short ends at a sentence, or at a word for a short label, never part way through a word
 function sentCut(t,max){t=String(t||"").trim();if(max&&t.length>max)t=t.slice(0,max);if(/[.?!]["')]?$/.test(t))return t;
@@ -8766,6 +8797,7 @@ async function onePage(make,from,to){
   return make(to);
 }
 async function printsClick(t){
+  if(t.dataset.word!=="1")pvLast=t;
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
