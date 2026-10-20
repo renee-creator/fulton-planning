@@ -781,7 +781,7 @@ async function displayFeed() {
   const codes = new Set(); const drdpShown = drdp.sort((a, b) => b.at - a.at).filter(d => !codes.has(d.code) && codes.add(d.code)).slice(0, 6);
   // stories the team has made to read with children, the cover and the first pages that have a photo
   const byNote = new Map(notices.map(n => [n.id, n]));
-  const stories = live('stories').filter(st => st && st.reviewed && String(st.title || '').trim() && (st.pages || []).some(p => String(p && p.lines || '').trim()))
+  const stories = live('stories').filter(st => st && st.reviewed && !st.offShare && String(st.title || '').trim() && (st.pages || []).some(p => String(p && p.lines || '').trim()))
     .sort((a, b) => (b.updatedAt || b.at || 0) - (a.updatedAt || a.at || 0)).slice(0, 4)
     .map(st => { const cover = photoOf(byNote.get(st.coverPhoto)) || (st.pages || []).map(p => photoOf(byNote.get(p && p.photo))).find(Boolean) || null;
       const pages = (st.pages || []).filter(p => p && String(p.lines || '').trim()).map(p => ({ heading: trim(p.heading, 60), lines: String(p.lines).split('\n').map(l => trim(l, 120)).filter(Boolean).slice(0, 3), photo: photoOf(byNote.get(p.photo)) }))
@@ -997,7 +997,7 @@ async function handle(req, res) {
     // and an educator's change to the words of a reviewed story sends it back to draft for the team to look at again
     if (kind === 'stories' && op !== 'delete' && !isDirector(me.name)) {
       const was = cur && !cur.deleted ? cur.doc : {};
-      const WORDS = ['title', 'cover', 'coverPhoto', 'pages', 'care', 'words', 'think', 'practice', 'kind'];
+      const WORDS = ['title', 'cover', 'coverPhoto', 'pages', 'care', 'words', 'think', 'practice', 'kind', 'ourwords', 'draw', 'community', 'families', 'about'];
       const fix = d => { if (!d || typeof d !== 'object') return d; d = Object.assign({}, d);
         const merged = op === 'update' ? Object.assign({}, was, d) : d;
         const changed = WORDS.some(k => JSON.stringify(merged[k]) !== JSON.stringify(was[k]));

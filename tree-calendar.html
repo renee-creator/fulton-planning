@@ -955,7 +955,7 @@ function openEventInfo(e, cal){
   if(e.allDay) when = e.start===e.end ? fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+"\nAll day" : fmt(e.start,{weekday:"short",month:"long",day:"numeric"})+" to "+fmt(e.end,{weekday:"short",month:"long",day:"numeric"});
   else { const sd=e.start.slice(0,10), ed=e.end.slice(0,10);
     when = sd===ed ? fmt(sd,{weekday:"long",month:"long",day:"numeric"})+"\n"+span(mins(e.start),mins(e.end)) : fmt(sd,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.start))+" to "+fmt(ed,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.end)); }
-  showInfo({ tag:"School calendar, view only", locked:true, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
+  showInfo({ tag:"School calendar, view only", locked:true, story:{id:e.id,title:e.title,when:when.replace(/\n/g,", "),where:e.location||"",desc:e.desc||""}, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
 }
 function showInfo(o){
   const tag=$("info-tag"); tag.textContent=""; if(o.locked) tag.append(lock()); tag.append(o.tag);
@@ -963,6 +963,8 @@ function showInfo(o){
   const rows=$("info-rows"); rows.textContent=""; for(const r of o.rows) if(r) rows.append(h("dt",{text:r[0]}),h("dd",{text:r[1]}));
   // a menu entry opens the month's lunch and snack menus, to print
   if((o.links||[]).length){ const dd=h("dd",{}); o.links.forEach((l,i)=>{ if(i) dd.append(document.createTextNode("  ·  ")); dd.append(h("a",{href:l.href,target:"_blank",rel:"noopener",text:l.text})); }); rows.append(h("dt",{text:"Menus"}),dd); }
+  // inside TREE, a day on the calendar can start a Getting ready story
+  if(o.story && window.parent!==window){ const dd=h("dd",{}); const b=h("button",{type:"button",class:"btn small ghost",text:"Make a story"}); b.onclick=()=>{ try{ window.parent.postMessage({treeStoryEvent:o.story},location.origin); }catch(e){} closeDlg($("dlg-info")); }; dd.append(b); rows.append(h("dt",{text:"Story"}),dd); }
   const d=$("dlg-info"); openDlg(d);
 }
 async function saveBooking(e){
