@@ -92,6 +92,20 @@ function checkSession(tok) {
   if (!TEACHERS.some(t => t.name === s.n)) return null;
   return { name: s.n };
 }
+// why a sign-in was turned down, for the log only, so a surprise sign-out can be traced to its cause
+function sessionWhy(req) {
+  const h = String(req.headers.authorization || ''); const tok = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
+  if (!tok) return 'no sign-in sent';
+  const [body, mac] = tok.split('.'); let s = null;
+  try { s = JSON.parse(Buffer.from(String(body).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) {}
+  if (!s || typeof s.n !== 'string') return 'unreadable sign-in';
+  const who = s.n.slice(0, 40);
+  if (!mac || sign(body).length !== mac.length || !crypto.timingSafeEqual(Buffer.from(sign(body)), Buffer.from(mac))) return who + ', signature does not match (the server key changed)';
+  if (!(s.e > Date.now())) return who + ', sign-in older than ' + SESSION_DAYS + ' days';
+  if (s.v != null) { const a = accountFor(s.n); if (!a) return who + ', sign-in removed'; if (!a.code) return who + ', passcode cleared'; if ((a.v || 0) !== s.v) return who + ', passcode changed or reset since (' + s.v + ' then, ' + (a.v || 0) + ' now)'; }
+  else if (!TEACHERS.some(t => t.name === s.n)) return who + ', no longer set on Render';
+  return who + ', reason unknown';
+}
 function matchPasscode(given) {
   if (typeof given !== 'string' || !given || given.length > 200) return null;
   const h = sha(normCode(given));
@@ -921,7 +935,7 @@ async function handle(req, res) {
   // sign-ins are read with the records, so a server just woken never mistakes an educator for a stranger
   if (!accounts.loaded) { await loadAll(); if (!accounts.loaded) { err(req, res, 503, store.error || 'TREE is still starting. Try again in a moment.'); return; } }
   const me = readSession(req);
-  if (!me) { err(req, res, 401, 'Please sign in again.'); return; }
+  if (!me) { log('Sign-in refused,', sessionWhy(req), 'on', path); err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest

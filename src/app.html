@@ -2525,7 +2525,7 @@ function renderWeekBoard(){
       <div class="actions"><button class="linkbtn" data-newind="" data-room="${esc(room)}">Plan for an area of the classroom instead</button></div></section>
     <section class="card"><div class="lbl">Classroom Curriculum Plan</div>
       ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
-        :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom">Start the Classroom plan</button></div>`}
+        :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom" data-room="${esc(room)}">Start the Classroom plan</button></div>`}
       ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
       ${loose.length?`<div class="lbl" style="margin-top:6px">No class chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the class.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
@@ -3119,7 +3119,12 @@ document.addEventListener("click",async e=>{
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
-  if(t.dataset.new){if(needName())return;view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+  if(t.dataset.new){if(needName())return;
+    // a Classroom plan belongs to the class shown on the page, and a class has one each week, so a second tap opens the first
+    if(t.dataset.new==="classroom"){const room=t.dataset.room||myRoom()||boardRoom();const had=[...plans.values()].find(p=>p.type==="classroom"&&p.weekOf===week&&p.classroom===room&&p.id!=="example");
+      if(had){view="plans";LS.set("fps.view",view);renderNav();currentId=had.id;renderList();renderMain();jumpTop();return}
+      view="plans";LS.set("fps.view",view);renderNav();const np=newPlan("classroom",{classroom:room});plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+    view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
   if(t.dataset.open&&notices.has(t.dataset.open)){const n=notices.get(t.dataset.open);noticeForm=null;view="plans";LS.set("fps.view",view);currentId=null;nRoom=n.classroom||"All";renderNav();noticeForm=Object.assign({},n);renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
@@ -6555,7 +6560,7 @@ function projWallHtml(x){
         <label class="cnt"><input type="checkbox" data-wsinc="${esc(sh.id)}" ${sh.include?"checked":""}> Hang this sheet</label>
         <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button></div>
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
-      <div class="wsgrid">${n?`<img src="${esc(photoSrc(n))}" alt="The first photo on this sheet" class="wsimg">`:`<div class="wsimg wsnone">No photo</div>`}
+      <div class="wsgrid">${n?`<img src="${esc(photoThumb(n))}" alt="The first photo on this sheet" class="wsimg" loading="lazy">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
         ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Observation")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
         <label class="fld-label">What the team understood here<textarea data-ws="${sh.id}|text" rows="3" placeholder="A few lines in the team's words. Families, colleagues and children read this.">${esc(sh.text||"")}</textarea></label>

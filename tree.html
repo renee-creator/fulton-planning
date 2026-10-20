@@ -695,7 +695,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
-  async function api(path, body, signal){
+  async function api(path, body, signal, retried){
     let r;
     const payload=JSON.stringify(body||{});
     // while the page is closing, let the last save finish in the background
@@ -703,7 +703,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     try{ r=await fetch(SERVER+path,{method:"POST",signal,keepalive,headers:{"Content-Type":"application/json",...(Auth.token?{Authorization:"Bearer "+Auth.token}:{})},body:payload}); }
     catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled"}; throw {code:"unavailable", message:"The TREE server could not be reached. Check your internet connection and try again."}; }
     let j={}; try{ j=await r.json(); }catch(e){}
-    if(r.status===401 && path!=="/login"){ signOut(); throw {code:"session_expired", message:j.error}; }
+    // one refused request never signs anyone out. TREE asks once more with the newest sign-in on this device, and only
+    // a second refusal ends the sign-in, with a note on the sign-in screen saying why
+    if(r.status===401 && path!=="/login"){
+      if(!retried){ await new Promise(ok=>setTimeout(ok,1200)); const t=LS.get("fp-token"); if(t) Auth.token=t; return api(path, body, signal, true); }
+      LS.set("fp-signout-why", j.error||"Your sign-in ended. Sign in again to keep going."); signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
     if(r.status===413) throw {code:"too_big", status:413, message:j.error};
@@ -724,6 +728,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
   function noteActive(){ lastActive=Date.now(); if(idle){ idle=false; poll(); } }
   ["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,noteActive,{passive:true,capture:true}));
+  // a page inside TREE that was refused asks TREE to check its own sign-in, which signs out only if TREE is refused too
+  window.addEventListener("message",e=>{ if(e.origin===location.origin && e.data && e.data.treeAuthCheck && Auth.token) poll(); });
   async function poll(){
     if(Date.now()-lastActive>IDLE_MS){ idle=true; return; }
     if(document.hidden || !Auth.token || polling) return;
@@ -756,6 +762,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     const f=document.getElementById("gate-form"), b=document.getElementById("gate-btn"), c=document.getElementById("gate-code"), n=document.getElementById("gate-name");
     const nv=document.getElementById("gate-new"), ag=document.getElementById("gate-again"), s1=document.getElementById("gate-step1"), s2=document.getElementById("gate-step2");
     n.value=LS.get("fp-last-name")||""; setTimeout(()=>(n.value?c:n).focus(),50);
+    const why=LS.get("fp-signout-why"); if(why){ LS.set("fp-signout-why",null); gateMsg(why,true); }
     let setting="", startCode="";
     return new Promise(resolve=>{
       const done=j=>{ Auth.token=j.token; Auth.name=j.name; Auth.director=!!j.director; LS.set("fp-token",j.token); LS.set("fp-name",j.name); LS.set("fp-director",j.director?"1":null); LS.set("fp-last-name",j.name); g.hidden=true; resolve(); };
@@ -2743,7 +2750,7 @@ function renderWeekBoard(){
       <div class="actions"><button class="linkbtn" data-newind="" data-room="${esc(room)}">Plan for an area of the classroom instead</button></div></section>
     <section class="card"><div class="lbl">Classroom Curriculum Plan</div>
       ${cls.length?`<div class="tlist">${cls.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(room)} team</b><div class="cnt">${has(p.fields?.observation)?esc(first(p.fields.observation)):"Not written yet"}</div></div>${statusPill(p)}</button>`).join("")}</div>`
-        :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom">Start the Classroom plan</button></div>`}
+        :`<div class="empty">Not started.${ps.filter(p=>p.type!=="classroom").length?` It can draw on the ${ps.filter(p=>p.type!=="classroom").length} Individual plan${ps.filter(p=>p.type!=="classroom").length>1?"s":""} already written.`:""}</div><div class="actions"><button class="btn" data-new="classroom" data-room="${esc(room)}">Start the Classroom plan</button></div>`}
       ${stories.length?`<div class="lbl" style="margin-top:6px">Stories</div><div class="tlist">${stories.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><b>${esc(planTitle(p))}</b>${statusPill(p)}</button>`).join("")}</div>`:""}
       ${loose.length?`<div class="lbl" style="margin-top:6px">No class chosen yet</div><div class="tlist">${loose.map(p=>`<button class="titem two press" data-open="${esc(p.id)}"><div style="min-width:0"><b>${esc(planTitle(p))}</b><div class="cnt">${esc(FORMS[p.type].name)}. Open it and choose the class.</div></div>${statusPill(p)}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
@@ -3337,7 +3344,12 @@ document.addEventListener("click",async e=>{
   if(await projectsClick(t))return;
   if(await threadsClick(t))return;
   if(await importClick(t))return;
-  if(t.dataset.new){if(needName())return;view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+  if(t.dataset.new){if(needName())return;
+    // a Classroom plan belongs to the class shown on the page, and a class has one each week, so a second tap opens the first
+    if(t.dataset.new==="classroom"){const room=t.dataset.room||myRoom()||boardRoom();const had=[...plans.values()].find(p=>p.type==="classroom"&&p.weekOf===week&&p.classroom===room&&p.id!=="example");
+      if(had){view="plans";LS.set("fps.view",view);renderNav();currentId=had.id;renderList();renderMain();jumpTop();return}
+      view="plans";LS.set("fps.view",view);renderNav();const np=newPlan("classroom",{classroom:room});plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+    view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
   if(t.dataset.open&&notices.has(t.dataset.open)){const n=notices.get(t.dataset.open);noticeForm=null;view="plans";LS.set("fps.view",view);currentId=null;nRoom=n.classroom||"All";renderNav();noticeForm=Object.assign({},n);renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
