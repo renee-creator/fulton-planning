@@ -2684,12 +2684,25 @@ function newStory(o){
     kind,frame,lensId,reviewed:false,about,from,offShare:off};
   saveStory(st);storyOpen=st.id;LS.set("tree.story",st.id);storyDraft=null;goView("story");return st;
 }
+// where a story can start, chosen on the Stories page itself
+let stStarting=false;
+function storyStartOptions(){const g=(label,list)=>list.length?`<optgroup label="${esc(label)}">${list.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`:"";
+  const room=myRoom(),mine=x=>isDirector()||!room||!x||x===room;
+  const prs=[...projects.values()].filter(x=>x&&!x.deleted&&x.status!=="closed").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>["proj:"+x.id,x.name]);
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted&&mine(t.classroom)).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,25).map(t=>["thread:"+t.id,t.name+(t.classroom?", "+t.classroom+" Class":"")]);
+  const wk=mondayOf(new Date()),pls=[...plans.values()].filter(p=>p&&p.id!=="example"&&p.weekOf>=addDays(wk,-14)&&mine(p.classroom)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,20).map(p=>["plan:"+p.id,(p.classroom?p.classroom+" ":"")+(p.type==="classroom"?"Classroom plan":(p.group?p.group+" plan":"Individual plan"))+", week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,"")]);
+  const iqs=inqAll().filter(x=>mine(x.room)).slice(0,20).map(x=>["inq:"+x.id,x.name||"A team inquiry"]);
+  const lns=LENSES.map(l=>["lens:"+l.id,l.name]);
+  const bns=[...bins.values()].filter(b=>b&&b.date&&b.date>=addDays(wk,-21)).sort((a,b)=>b.date.localeCompare(a.date)).map(b=>["bin:"+b.id,"Weekly bin, "+fmtDate(b.date).replace(/, \d{4}$/,"")]);
+  return `<option value="blank:">A blank story</option>`+g("Projects",prs)+g("Threads",ths)+g("Lenses",lns)+g("Plans",pls)+g("Team inquiries",iqs)+g("The weekly bin",bns)}
 function renderStories(){
   const ss=[...stories.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   const card=st=>{const ph=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
     return `<button class="card slidecard" style="text-align:left;cursor:pointer;color:var(--ink)" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:8px" loading="lazy">`:""}<b style="font-family:var(--display);font-size:17px">${esc(stTitle(st))}</b>${has(st.cover)?`<span class="cnt">${esc(st.cover)}</span>`:""}<span class="cnt">${stReviewed(st)?"Reviewed":"Draft"} · ${stReady(st)?"Getting ready · ":""}${(st.pages||[]).length} page${(st.pages||[]).length===1?"":"s"} · ${esc(st.by||"")} · ${shortDate(st.at)}</span></button>`};
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Stories</h2><div class="sub">Stories to read aloud with children, made from observations. Each page has one photo and a few short sentences written to the children, and every word comes from what the educators saw.</div></div>
-    <span class="actions"><button class="btn" data-storynew="1">Make a story</button></span></div><div class="cnt">Or open an observation or a project and choose Make a story.</div></div>
+    <span class="actions"><button class="btn" data-storystart="1">Make a story</button></span></div><div class="cnt">Start from a project, a thread, a lens, a plan, a team inquiry or the weekly bin, or open an observation and choose Make a story.</div></div>
+  ${stStarting?`<section class="card" style="margin-top:12px"><div class="lbl">A new story, starting from</div><div class="actions"><select id="ststart" style="width:auto;max-width:100%">${storyStartOptions()}</select><button class="btn small" data-storygo="1">Make the story</button><button class="linkbtn" data-storystart="0">Cancel</button></div>
+    <div class="cnt">The story brings in the photos and the educators' words from where it starts.</div></section>`:""}
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No stories yet.</div>`}`;
 }
 // the photos a story can use, the ones it already has and others from the same project or class
@@ -2870,6 +2883,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.storybin){const x=bins.get(t.dataset.storybin);if(x)newStory({bin:x});return}
   if(t.dataset.storylens){const x=LENSES.find(l=>l.id===t.dataset.storylens);if(x)newStory({lens:x});return}
   if(view==="stories"&&t.dataset.storynew){newStory({});return}
+  if(view==="stories"&&t.dataset.storystart!=null){stStarting=t.dataset.storystart==="1";renderStories();return}
+  if(view==="stories"&&t.dataset.storygo){const v=($("#ststart")||{}).value||"blank:",i=v.indexOf(":"),k=v.slice(0,i),id=v.slice(i+1);stStarting=false;
+    if(k==="proj"){const x=projects.get(id);if(x)newStory({project:x});return}
+    if(k==="thread"){const x=threads.get(id);if(x)newStory({thread:x});return}
+    if(k==="lens"){const x=LENSES.find(l=>l.id===id);if(x)newStory({lens:x});return}
+    if(k==="plan"){const x=plans.get(id);if(x)newStory({plan:x});return}
+    if(k==="inq"){const x=inquiries.get(id);if(x)newStory({inquiry:x});return}
+    if(k==="bin"){const x=bins.get(id);if(x)newStory({bin:x});return}
+    newStory({});return}
   if(view!=="story")return;const st=stories.get(storyOpen);if(!st)return;
   if(t.dataset.stphoto!==undefined){const w=t.dataset.stphoto,id=t.dataset.id||"";
     if(w==="cover")st.coverPhoto=id;else if(w==="care"){st.care=Object.assign({},ST_CARE,st.care||{});st.care.photo=id}else{const p=(st.pages||[]).find(x=>"page|"+x.id===w);if(p)p.photo=id}
