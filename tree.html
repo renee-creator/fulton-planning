@@ -2401,11 +2401,20 @@ function shDrawSoft(g,im,dx,dy,dw,dh,marks){
     const a=document.createElement("canvas");a.width=6;a.height=6;const ag=a.getContext("2d");ag.imageSmoothingEnabled=true;ag.drawImage(im,sx,sy,sw,sh,0,0,6,6);
     const b=document.createElement("canvas");b.width=40;b.height=40;const bg=b.getContext("2d");bg.imageSmoothingEnabled=true;bg.drawImage(a,0,0,40,40);
     g.save();g.beginPath();g.arc(dx+cx*sc,dy+cy*sc,r*sc,0,Math.PI*2);g.clip();g.imageSmoothingEnabled=true;g.drawImage(b,dx+sx*sc,dy+sy*sc,sw*sc,sh*sc);g.restore()}}
+// every set-aside photo is softened in one go, then waits for the director to look at it and choose Use this photo
+let shBatch=null,shAsideOpen=false;
+document.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("shaside"))shAsideOpen=e.target.open},true);
+async function shSoftAll(){if(!shareSt||shBatch)return;const list=shareSt.ids.map(id=>notices.get(id)).filter(n=>n&&shState(n)!=="clear"&&!shareChosen().includes(n));if(!list.length)return;
+  shBatch={done:0,of:list.length};renderShare();shareSt.soft=shareSt.soft||{};shareSt.found=shareSt.found||{};
+  try{await shFaceModel()}catch(e){shBatch=null;renderShare();toast("Faces could not be found on this device. Use Soften faces under each photo.");return}
+  for(const n of list){try{const im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob());const f=await shFindFaces(im);shareSt.found[n.id]=f.length;if(f.length&&!(shareSt.soft[n.id]||[]).length)shareSt.soft[n.id]=f}catch(e){console.warn("Soften",n.id,e)}
+    shBatch.done++;shareSave();if(view==="share")renderShare()}
+  shBatch=null;if(view==="share")renderShare();toast("Softened. Open each photo to check it, then choose Use this photo.")}
 async function shSoftOpen(id){const n=notices.get(id);if(!n)return;
   shSoft={id,im:null,marks:JSON.parse(JSON.stringify((shareSt.soft||{})[id]||[])),size:.08,busy:true,msg:"Opening the photo"};shSoftRender();
   try{shSoft.im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){shSoft=null;shSoftRender();toast("The photo could not be opened. Try again.");return}
   if(!shSoft.marks.length){shSoft.msg="Finding faces";shSoftRender();try{shSoft.marks=await shFindFaces(shSoft.im);shSoft.msg=shSoft.marks.length?`${shSoft.marks.length} face${shSoft.marks.length===1?"":"s"} found and softened.`:"No face was found. Tap any face to soften it."}catch(e){shSoft.msg="Faces could not be found on this device. Tap each face to soften it."}}
-  else shSoft.msg="";shSoft.busy=false;shSoftRender()}
+  else shSoft.msg=`${shSoft.marks.length} spot${shSoft.marks.length===1?"":"s"} softened. Check every face, then choose Use this photo.`;shSoft.busy=false;shSoftRender()}
 function shSoftRender(){
   let el=document.getElementById("shsoft");if(!shSoft){if(el)el.remove();document.body.style.overflow="";return}
   if(!el){el=document.createElement("div");el.id="shsoft";el.className="shsoft";document.body.append(el);document.body.style.overflow="hidden"}
@@ -2522,12 +2531,13 @@ function renderShare(){
   if(!ns.length&&!shareFoodKey()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
-  const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${sf?`<span class="shwhy">Faces softened</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
+  const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${sf?`<span class="shwhy">${k>=0?"Faces softened":"Softened, tap to check"}</span>`:s!=="clear"&&(st.found||{})[n.id]===0?`<span class="shwhy">No face found, tap to look</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
     ${shareBusy.faces?`<div class="cnt"><b>Checking photos for faces and names, ${shareBusy.left} to go.</b></div>`:""}
     <div class="cnt">Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.</div>
     ${clear.length?`<div class="shgrid">${clear.map(tile).join("")}</div>`:shareBusy.faces?"":`<div class="cnt" style="margin-top:6px">No photo came through the check.</div>`}
-    ${aside.length?`<details class="shaside" ${aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">A great photo can still be used. Choose Soften faces under it, or include it only after looking closely.</div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
+    ${aside.length?`<details class="shaside" ${shAsideOpen||shBatch||aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">A great photo can still be used. Soften every set-aside photo at once, then tap each one to check it.</div>
+    <div class="actions"><button class="btn small" data-shsoftall="1" ${shBatch?"disabled":""}>${shBatch?`Softening ${shBatch.done} of ${shBatch.of}`:"Soften faces in all of these"}</button></div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
     ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
     <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and lines"}</button></div>
@@ -2568,10 +2578,11 @@ document.addEventListener("click",async e=>{
     shareSt.off=(shareSt.off||[]).filter(x=>x!==n.id);shareSt.add=(shareSt.add||[]).filter(x=>x!==n.id);
     if(on){if(clear)shareSt.off.push(n.id)}
     else{if(shareChosen().length>=SH_MAX){toast(`A post holds up to ${SH_MAX} pictures. Take one out first.`);return}
-      if(!clear&&!((shareSt.soft||{})[n.id]||[]).length){shSoftOpen(n.id);return}
+      if(!clear){shSoftOpen(n.id);return}
       if(!clear)shareSt.add.push(n.id)}
     shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
   if(d.shsoftopen){shSoftOpen(d.shsoftopen);return}
+  if(d.shsoftall){shSoftAll();return}
   if(d.shrecheck){for(const id of shareSt.ids)if(shareFaces[id]&&shareFaces[id].v==="?")delete shareFaces[id];shareCheckFaces();return}
   if(d.shdraft){shareDraft(t);return}
   if(d.shcopy){const txt=[shareSt.caption||"",shareSt.tags||""].filter(has).join("\n\n");try{await navigator.clipboard.writeText(txt);toast("The caption is copied.")}catch(err){toast("Copying is not available here. Select the caption and copy it.")}return}
