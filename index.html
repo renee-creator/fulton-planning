@@ -2253,6 +2253,8 @@ function shareInquiryIds(){const s=new Set();for(const x of inquiries.values())f
 function shareSources(){
   const out=[];
   for(const x of [...projects.values()].filter(x=>x&&!x.deleted).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)).slice(0,20))out.push(["proj:"+x.id,"Project, "+x.name]);
+  for(const t of [...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,20))out.push(["thread:"+t.id,"Thread, "+t.name]);
+  for(const l of [...LENSES.filter(l=>l.year),...LENSES.filter(l=>!l.year)])out.push(["lens:"+l.id,"Lens, "+l.name]);
   for(const s of [...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,20))out.push(["slide:"+s.id,"Slide, "+shareScrub(slideTitle(s))]);
   out.push(["recent:","The last two weeks, all classes"]);CLASSROOMS.forEach(r=>out.push(["recent:"+r,"The last two weeks, "+r+" Class"]));
   out.push(["bin:","From the weekly bin, the last six weeks"]);
@@ -2263,6 +2265,9 @@ function shareGather(src){
   const [k,id]=shareSplit(src);let ns=[];
   if(k==="proj"){const x=projects.get(id);if(x)ns=projNotices(x)}
   else if(k==="slide"){const s=slides.get(id);if(s)ns=slideSources(s)}
+  else if(k==="thread"){const t=threads.get(id);if(t){const m=new Map();for(const n of threadNotices(t))m.set(n.id,n);for(const nid of evNoticeIds(t.evidence))m.set(nid,notices.get(nid));ns=[...m.values()]}}
+  else if(k==="lens"){const L=LENSES.find(l=>l.id===id);const re=L&&lensRegex(L);const langs=new Set(((L&&L.languages)||[]).map(x=>x.toLowerCase()));const yr=yearFromTime(Date.now());
+    if(L)ns=[...notices.values()].filter(n=>yearFromTime(n.at||Date.now())===yr&&((n.languages||[]).some(x=>langs.has(String(x).toLowerCase()))||(re&&(re.lastIndex=0,re.test(String(n.noticed||"")+" "+String(n.wonder||""))))))}
   else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||n.classroom===id))}
   else if(k==="bin"){const t=Date.now()-42*864e5;ns=[...notices.values()].filter(n=>n.bin&&(n.at||0)>=t)}
   const inq=shareInquiryIds();
@@ -2307,6 +2312,8 @@ async function shareDraft(btn){
   const [k,id]=shareSplit(shareSt.src);let about="";
   if(k==="proj"){const x=projects.get(id);if(x)about=shareScrub([`The project, ${x.name}.`,has(x.experience)?"The experience it grew from. "+x.experience:"",has(x.underneath)?"What may lie underneath. "+x.underneath:"",has(x.intent)?"The educators' intent. "+x.intent:""].filter(Boolean).join("\n"))}
   else if(k==="slide"){const s=slides.get(id);if(s)about=shareScrub([s.title,s.text].filter(has).join(". "))}
+  else if(k==="thread"){const t=threads.get(id);if(t)about=shareScrub([`A thread the educators are following, ${t.name}.`,has(t.question)?"The educators' question, their own hypothesis. "+t.question:"",...(t.evidence||[]).slice(-4).map(e=>"From the educators' plans. "+e.text),(t.languages||[]).length?"Languages children are using. "+t.languages.join(", "):""].filter(Boolean).join("\n"))}
+  else if(k==="lens"){const L=LENSES.find(l=>l.id===id);if(L)about=[`These moments are read through the school's lens, ${L.name}.`,has(L.description)?"What the lens means. "+L.description:"",L.questions.length?"The questions the educators read with. "+L.questions.join(" "):"","Let the caption show how this lens helps the educators see children's thinking, using only what the documentation says."].filter(Boolean).join("\n")}
   else if(k==="bin")about="These moments come from the weekly produce bin, which a small group unboxes as part of the curriculum.";
   const pics=ch.map((n,i)=>({photo:i+1,class:n.classroom||"",educators_words:shareObsText(n),learning_noticed:(n.measures||[]).filter(m=>m.kept).map(m=>DRDP[m.code]).filter(Boolean)}));
   const prompt=`${STYLE}
@@ -2441,7 +2448,7 @@ function shWarnHtml(){const w=shareWarn();return w.length?`<div class="cnt" styl
 document.addEventListener("click",async e=>{
   if(view!=="share")return;const t=e.target.closest("button");if(!t||!isDirector())return;const d=t.dataset;
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
-    const title=k==="proj"?((projects.get(id)||{}).name||""):k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
+    const title=k==="proj"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
     shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:true,lines:{},quote:SHARE_QUOTES[Math.floor(Math.random()*SHARE_QUOTES.length)][0],caption:"",tags:"",at:Date.now()};
     shareSave();renderShare();shareCheckFaces();return}
