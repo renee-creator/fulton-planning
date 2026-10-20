@@ -31,7 +31,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
@@ -268,7 +268,7 @@ function conferenceEvents(from, to) {
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -321,7 +321,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -369,7 +369,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -779,7 +779,16 @@ async function displayFeed() {
   }
   // the most recently reviewed first, one to a measure, so the screens show a range of the instrument
   const codes = new Set(); const drdpShown = drdp.sort((a, b) => b.at - a.at).filter(d => !codes.has(d.code) && codes.add(d.code)).slice(0, 6);
-  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown };
+  // stories the team has made to read with children, the cover and the first pages that have a photo
+  const byNote = new Map(notices.map(n => [n.id, n]));
+  const stories = live('stories').filter(st => st && String(st.title || '').trim() && (st.pages || []).some(p => String(p && p.lines || '').trim()))
+    .sort((a, b) => (b.updatedAt || b.at || 0) - (a.updatedAt || a.at || 0)).slice(0, 4)
+    .map(st => { const cover = photoOf(byNote.get(st.coverPhoto)) || (st.pages || []).map(p => photoOf(byNote.get(p && p.photo))).find(Boolean) || null;
+      const pages = (st.pages || []).filter(p => p && String(p.lines || '').trim()).map(p => ({ heading: trim(p.heading, 60), lines: String(p.lines).split('\n').map(l => trim(l, 120)).filter(Boolean).slice(0, 3), photo: photoOf(byNote.get(p.photo)) }))
+        .filter(p => p.photo && !(cover && p.photo.src === cover.src)).slice(0, 2);
+      return { id: st.id, title: trim(st.title, 90), cover: trim(st.cover, 90), room: st.classroom || '', group: st.group || '', photo: cover, pages }; })
+    .filter(st => st.photo);
+  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown, stories };
 }
 
 async function handle(req, res) {
