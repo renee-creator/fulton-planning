@@ -2280,13 +2280,25 @@ function saveStorySoon(st){st.updatedAt=Date.now();stories.set(st.id,st);clearTi
 const kidStories=c=>[...stories.values()].filter(st=>storyKids(st).includes(c.id));
 const projStories=x=>[...stories.values()].filter(st=>st.projectId===x.id).sort((a,b)=>(b.at||0)-(a.at||0));
 const storiesWith=id=>[...stories.values()].filter(st=>(st.sources||[]).includes(id)||storyPhotoIds(st).includes(id));
+// the same colours and backgrounds as a slide, so a story can sit beside the other documentation
+function storyDesignHtml(st){const pal=st.pal||"story",custom=String(pal).startsWith("#");
+  return `<section class="card"><div class="lbl">How it prints</div>
+    <div class="fld-label">Colour<div class="palrow">${Object.entries(SLIDE_PALS).map(([k,[l]])=>{const A=accOf(k)||ACC.story;return `<button class="palchip" data-stpal="${k}" aria-pressed="${pal===k}" title="${esc(l)}"><i style="background:rgb(${A.c.join(",")})"></i><i style="background:rgb(${A.t.join(",")})"></i><span>${esc(l)}</span></button>`}).join("")}
+      <label class="palchip" aria-pressed="${custom}" title="Your own colour"><input type="color" data-stcolor="1" value="${custom?pal:"#6f7f63"}"><span>Your own</span></label></div></div>
+    <div class="fld-label">Background<div class="tseg wrapseg" role="group">${[["","White"],["tint","A soft tint of the colour"]].map(([v,l])=>`<button data-stbg="${v}" aria-pressed="${(st.bg||"")===v}">${l}</button>`).join("")}</div></div>
+    <label class="radio"><input type="checkbox" data-stbrand="1" ${stBrand(st)?"checked":""}><span>The school's name on the cover</span></label>
+    <div class="cnt">Stories print in the same typeface, ink and footer as slides and walls.</div></section>`}
+// a project's first class, whether its classes are kept as names or as entries with a room
+function projRoom(x){const c=(x&&x.classrooms||[])[0];const r=c&&typeof c==="object"?c.room:c;return CLASSROOMS.includes(r)?r:(typeof x.home==="string"&&CLASSROOMS.includes(x.home)?x.home:"")}
 function storyFoot(st){return ["Fulton Community School & Farm",st.classroom?st.classroom+" Class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
 function newStory(o){
   if(needName())return null;o=o||{};const n=o.from||null;
   // where the story starts, the observations it brings and the educators' words it is drafted from
   let grp=n?noteGroup(n).filter(x=>x.photo):[],about="",kind="happened",frame="",from=null,room="",pr=o.project||null,lensId="",off=false,threadId="";
   const withPhotos=ns=>{const out=[],seen=new Set();for(const x of ns)for(const y of noteGroup(x))if(y.photo&&!seen.has(y.id)){seen.add(y.id);out.push(y)}return out.sort((a,b)=>(a.at||0)-(b.at||0)).slice(-12)};
-  if(o.thread){const t=o.thread;grp=withPhotos(threadNotices(t));threadId=t.id;from={kind:"thread",id:t.id,label:"the thread "+t.name};room=t.classroom||"";pr=pr||projectOfThread(t.id)||null;about=[t.question?"The question we are following. "+t.question:"",...(t.next||[]).slice(0,2)].filter(Boolean).join("\n")}
+  if(o.project&&!n&&!o.thread&&!o.plan){const x=o.project;grp=withPhotos(projNotices(x).filter(y=>!inqHolds(y.id)));from={kind:"project",id:x.id,label:"the project "+x.name};room=projRoom(x);
+    about=[has(x.experience)&&"What it grew from. "+String(x.experience).trim(),projIntent(x)&&"Our intent as educators. "+projIntent(x)].filter(Boolean).join("\n")}
+  if(o.thread){const t=o.thread;grp=withPhotos(threadNotices(t).filter(y=>!inqHolds(y.id)));threadId=t.id;from={kind:"thread",id:t.id,label:"the thread "+t.name};room=t.classroom||"";pr=pr||projectOfThread(t.id)||null;about=[t.question?"The question we are following. "+t.question:"",...(t.next||[]).slice(0,2)].filter(Boolean).join("\n")}
   if(o.plan){const p=o.plan;const ev=planEvidence(p);grp=withPhotos(ev?ev.obs:[]);kind="ready";from={kind:"plan",id:p.id,label:(p.classroom?p.classroom+" ":"")+(p.type==="classroom"?"Classroom plan":"plan")+", week of "+fmtDate(p.weekOf)};room=p.classroom||"";
     const f=p.fields||{};about=[f.observation&&"What we saw. "+f.observation,(f.intent||f.intentions)&&"What we will offer. "+(f.intent||f.intentions),f.materials&&"Materials. "+f.materials,f.area&&"Where. "+f.area].filter(Boolean).join("\n");if(p.projectId)pr=pr||projects.get(p.projectId)||null}
   if(o.inquiry){const q=o.inquiry;grp=withPhotos(inqNotices(q));from={kind:"inquiry",id:q.id,label:"the team inquiry "+(q.name||"")};room=q.room||"";off=true;about=[has(q.see)?"What we see. "+q.see:""].filter(Boolean).join("\n");lensId=q.lensId||""}
@@ -2295,7 +2307,7 @@ function newStory(o){
     const items=(b.items||[]).map(it=>String(it.name||"").trim()).filter(Boolean);about=["On Tuesday a small group will open our weekly bin from FEED Sonoma and share the food.",items.length?"In the bin. "+items.join(", ")+".":"","We wash and prepare the food simply and share it with care."].filter(Boolean).join("\n")}
   if(o.lens){const L=o.lens;lensId=L.id;grp=withPhotos([...notices.values()].filter(x=>x.photo&&lensesFinding(x).some(l=>l.id===L.id)));from={kind:"lens",id:L.id,label:"the lens "+(L.name||"")}}
   if(n){const th=n.threadId&&threads.get(n.threadId);pr=pr||(n.projectId&&projects.get(n.projectId))||(th&&projectOfThread(th.id))||null;threadId=n.threadId||""}
-  room=room||(n&&n.classroom)||(pr&&(pr.classrooms||[])[0])||myRoom()||"";
+  room=room||(n&&n.classroom)||(pr&&projRoom(pr))||myRoom()||"";
   // the group the children in the photos belong to, so the footer names their group
   const gc={};for(const x of grp)for(const id of x.children||[]){const c=children.get(id);if(c&&c.group)gc[c.group]=(gc[c.group]||0)+1}
   const gName=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0];const g=gName?{name:gName[0]}:n&&GROUPS.find(x=>x.room===room&&(x.educator||"").toLowerCase()===String(n.by||"").toLowerCase());
@@ -2369,6 +2381,7 @@ function renderStory(){
       <label class="fld-label">Group<select data-stf="group"><option value="">No group</option>${groups.map(g=>`<option ${g.name===st.group?"selected":""}>${esc(g.name)}</option>`).join("")}${st.group&&!groups.some(g=>g.name===st.group)?`<option selected>${esc(st.group)}</option>`:""}</select></label></div>
     <label class="fld-label">Project<select data-stf="projectId"><option value="">No project</option>${prs.map(x=>`<option value="${esc(x.id)}" ${x.id===st.projectId?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
     <div class="cnt">${kids.length?`In this story, ${esc(kids.map(c=>c.first).join(", "))}. A child's portfolio has the story only when they are in one of its photos.`:"Tag children in the observations' photos, and the story names them here."}</div></section>
+  ${storyDesignHtml(st)}
   <section class="card"><div class="lbl">In our own words</div>
     <label class="fld-label">What we want to tell${stReady(st)?", and what will happen":""}<textarea rows="4" data-stf="about" placeholder="${stReady(st)?"On Friday we will walk to the creek together. We will stay with our group and stop at the big rock.":"What happened, in the team's own words. TREE drafts the pages only from these words and the observations below."}">${esc(st.about||"")}</textarea></label>
     <div class="cnt">TREE drafts only from these words and the observations below. Name a child here only when they belong in the story.</div></section>
@@ -2497,6 +2510,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
     saveStory(st);renderStory();return}
   if(t.dataset.stpick){storyPick=!storyPick;renderStory();return}
   if(t.dataset.stkind){st.kind=t.dataset.stkind==="ready"?"ready":"happened";saveStory(st);renderStory();return}
+  if(t.dataset.stpal){st.pal=t.dataset.stpal==="story"?"":t.dataset.stpal;saveStory(st);renderStory();return}
+  if(t.dataset.stbg!==undefined){st.bg=t.dataset.stbg||"";saveStory(st);renderStory();return}
   if(t.dataset.streview!==undefined){if(!isDirector()){toast("The director marks a story reviewed.");return}
     if(t.dataset.streview==="1"){st.reviewed=true;st.reviewedBy=whoAmI();st.reviewedAt=Date.now();delete st.changedAfterReview}else{st.reviewed=false}
     saveStory(st);renderStory();toast(st.reviewed?"Reviewed. It can now be shared.":"Back to draft.");return}
@@ -2527,6 +2542,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.stdelno){renderStory();return}
   if(t.dataset.stdelyes){stories.delete(st.id);if(db)db.doc("stories/"+st.id).delete().catch(()=>toast("Could not remove it. Check your connection."));goView("stories");toast("Removed.");return}
 });
+// the story's own colour and the school's name on its cover
+document.addEventListener("change",e=>{const t=e.target;if(view!=="story"||!t.dataset||!(t.dataset.stcolor||t.dataset.stbrand))return;const st=stories.get(storyOpen);if(!st)return;
+  if(t.dataset.stcolor)st.pal=t.value;else st.brand=!!t.checked;saveStory(st);renderStory()});
 document.addEventListener("input",e=>{const t=e.target;if(view!=="story"||!t.dataset||!t.dataset.stf||t.tagName==="SELECT")return;const st=stories.get(storyOpen);if(!st)return;
   const [a,b,c]=t.dataset.stf.split("|");const v=t.value;
   if(a==="page"){const p=(st.pages||[]).find(x=>x.id===b);if(p)p[c]=v}
@@ -2555,7 +2573,9 @@ function storyPortfolioDoc(st,mode,c){
 /* the story as a book, a landscape letter page for each sheet */
 function storyBook(st,small){
   const pages=[{kind:"cover",photo:st.coverPhoto||storyPhotoIds(st)[0]||""}];
-  for(const p of st.pages||[])if(has(p.lines)||p.photo)pages.push({kind:"page",heading:p.heading,photo:p.photo,lines:String(p.lines||"").split("\n").map(s=>s.trim()).filter(Boolean)});
+  // a child's words print inside curly quotation marks, the same as on slides and walls
+  const curl=t=>String(t).replace(/"([^"\n]+)"/g,"“$1”");
+  for(const p of st.pages||[])if(has(p.lines)||p.photo)pages.push({kind:"page",heading:p.heading,photo:p.photo,lines:String(p.lines||"").split("\n").map(s=>curl(s.trim())).filter(Boolean)});
   const care=st.care||{},words=st.words||{},think=st.think||{};
   if(care.on&&(has(care.lines)||care.photo))pages.push({kind:"care",heading:care.heading||ST_CARE.heading,photo:care.photo,lines:String(care.lines||"").split("\n").map(s=>s.trim()).filter(Boolean)});
   const ow=st.ourwords||{};const said=(ow.items||[]).filter(w=>has(w.text)).slice(0,6);if(ow.on&&said.length)pages.push({kind:"ourwords",heading:ow.heading||ST_OURWORDS.heading,items:said});
@@ -2567,7 +2587,12 @@ function storyBook(st,small){
   const fm=st.families||{};if(small&&fm.on&&has(fm.text))pages.push({kind:"families",heading:fm.heading||ST_FAMILIES.heading,text:String(fm.text).trim()});
   return pages;
 }
-const ST_INK=[34,58,44],ST_HEAD=[111,92,140],ST_MUT=[120,118,128],ST_BG=[250,248,242];
+// a story prints in the same family as slides and walls, the same typeface, ink and quiet footer, on a white page or a
+// soft tint of the story's colour, with the story's colour for its headings and rules
+const ST_INK=[28,42,34],ST_MUT=[96,110,101],ST_HAIR=[208,217,211],ST_CYCLE="Observe    Provoke    Document    Reflect    Evolve";
+function stAcc(st){return accOf((st&&st.pal)||"story")||ACC.story}
+function stPageBg(st){return st&&st.bg==="tint"?mixW(stAcc(st).t,.45):[255,255,255]}
+function stBrand(st){return st&&st.brand!==undefined?!!st.brand:!!PRINT.schoolDocs}
 async function storyPhotos(st,pages){const ids=[...pages.filter(p=>p.photo).map(p=>p.photo),...pages.filter(p=>p.kind==="community").flatMap(p=>p.kids.map(k=>k.photo)).filter(Boolean)];
   const docs=[{photos:[...new Set(ids)].map(id=>notices.get(id)).filter(Boolean).flatMap(momentPhotos)}];toast("Preparing the photos");await loadPhotos(docs)}
 // a quotation as it prints, inside curly quotation marks
@@ -2577,7 +2602,7 @@ function stSquare(id){const ph=id&&photoCache.get(id);if(!ph||!ph.url)return nul
   try{const im=new Image();im.src=ph.url;if(!im.complete||!im.naturalWidth)return null;const s=Math.min(im.naturalWidth,im.naturalHeight),c=document.createElement("canvas");c.width=c.height=Math.min(700,s);
     c.getContext("2d").drawImage(im,(im.naturalWidth-s)/2,(im.naturalHeight-s)/2,s,s,0,0,c.width,c.height);const url=c.toDataURL("image/jpeg",.86);const b64=atob(url.split(",")[1]);const bytes=new Uint8Array(b64.length);for(let i=0;i<b64.length;i++)bytes[i]=b64.charCodeAt(i);ph.sq={url,bytes};return ph.sq}catch(e){return null}}
 // a soft square with a child's first letter, for a child with no photo yet, the same size as the photo tiles
-function stLetterTile(first){const c=document.createElement("canvas");c.width=c.height=400;const g=c.getContext("2d");g.fillStyle="#eee9de";g.fillRect(0,0,400,400);g.fillStyle="#6f5c8c";g.font="bold 170px "+(PF.b64?"Andika, sans-serif":"sans-serif");g.textAlign="center";g.textBaseline="middle";g.fillText(String(first||"").charAt(0),200,212);
+function stLetterTile(first,A){A=A||ACC.story;const c=document.createElement("canvas");c.width=c.height=400;const g=c.getContext("2d");g.fillStyle=`rgb(${A.t.join(",")})`;g.fillRect(0,0,400,400);g.fillStyle=`rgb(${deep(A.c).join(",")})`;g.font="bold 170px "+(PF.b64?"Andika, sans-serif":"sans-serif");g.textAlign="center";g.textBaseline="middle";g.fillText(String(first||"").charAt(0),200,212);
   const url=c.toDataURL("image/jpeg",.9);const b64=atob(url.split(",")[1]);const bytes=new Uint8Array(b64.length);for(let i=0;i<b64.length;i++)bytes[i]=b64.charCodeAt(i);return {url,bytes}}
 async function stSquaresReady(pages){const ids=pages.filter(p=>p.kind==="community").flatMap(p=>p.kids.map(k=>k.photo)).filter(Boolean);
   await Promise.all(ids.map(id=>new Promise(ok=>{const ph=photoCache.get(id);if(!ph||!ph.url)return ok();const im=new Image();im.onload=()=>{stSquare(id);ok()};im.onerror=()=>ok();im.src=ph.url})))}
@@ -2586,17 +2611,22 @@ async function storyPdf(st){
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
-  const W=792,H=612,M=40,foot=storyFoot(st);
+  const W=792,H=612,M=40,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
   const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
   const col=c=>doc.setTextColor(c[0],c[1],c[2]);
   const img=(id,x,y,w,h,center)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(w/ph.w,h/ph.h);const iw=ph.w*k,ih=ph.h*k;const ix=center?x+(w-iw)/2:x,iy=y+(h-ih)/2;doc.addImage(ph.url,"JPEG",ix,iy,iw,ih,undefined,"FAST");return {x:ix,y:iy,w:iw,h:ih}};
   const lines=(arr,x,y,w,size,gap,bold)=>{font(bold);doc.setFontSize(size);col(ST_INK);for(const s of arr){const wr=doc.splitTextToSize(s,w);for(const l of wr){doc.text(l,x,y);y+=size*1.28}y+=gap}return y};
-  const head=t=>{if(!t)return;font(true);doc.setFontSize(9);col(ST_HEAD);doc.setCharSpace(.6);doc.text(String(t).toUpperCase(),M,M);doc.setCharSpace(0)};
+  const head=t=>{if(!t)return;font(true);doc.setFontSize(10);col(HC);doc.setCharSpace(.6);doc.text(String(t).toUpperCase(),M,M+2);doc.setCharSpace(0)};
   const block=(items,top,bottom,w)=>{let hgt=0;const prep=items.map(it=>{font(it.b);doc.setFontSize(it.sz);const wr=doc.splitTextToSize(String(it.t||""),w);const h=wr.length*it.sz*1.25;hgt+=h+(it.gap||0);return Object.assign({wr,h},it)});
     let y=top+Math.max(0,(bottom-top-hgt)*0.38);for(const it of prep){font(it.b);doc.setFontSize(it.sz);col(it.c||ST_INK);for(const l of it.wr){y+=it.sz;doc.text(l,W/2,y,{align:"center"});y+=it.sz*.25}y+=it.gap||0}return y};
-  pages.forEach((p,i)=>{if(i)doc.addPage();doc.setFillColor(ST_BG[0],ST_BG[1],ST_BG[2]);doc.rect(0,0,W,H,"F");
-    if(p.kind==="cover"){head("A story from our community");font(true);doc.setFontSize(32);col(ST_INK);const tl=doc.splitTextToSize(stTitle(st),W-2*M);let y=M+52;for(const l of tl){doc.text(l,M,y);y+=38}
-      const r=img(p.photo,M,y+4,W-2*M,H-y-110,true);if(has(st.cover)){font(false);doc.setFontSize(16);col(ST_INK);doc.text(st.cover,r?r.x:M,(r?r.y+r.h:y)+28)}}
+  pages.forEach((p,i)=>{if(i)doc.addPage();if(st.bg==="tint"){doc.setFillColor(BG[0],BG[1],BG[2]);doc.rect(0,0,W,H,"F")}
+    // the cover opens like a slide or a wall sheet, the school's name, the title centred and a rule in the story's colour
+    if(p.kind==="cover"){let y=M;if(stBrand(st)){font(true);doc.setFontSize(9.5);col(HC);doc.text("Fulton Community School & Farm",W/2,y+8,{align:"center"});y+=24}
+      font(true);doc.setFontSize(11);col(HC);doc.text("A story from our community",W/2,y+9,{align:"center"});y+=24;
+      let ts=34,tl;for(;;){font(true);doc.setFontSize(ts);tl=doc.splitTextToSize(stTitle(st),W-2*M-40);if(tl.length<=2||ts<=24)break;ts-=2}tl=tl.slice(0,2);
+      font(true);doc.setFontSize(ts);col(ST_INK);tl.forEach((l,k)=>doc.text(l,W/2,y+ts*.82+k*ts*1.08,{align:"center"}));y+=tl.length*ts*1.08+10;
+      doc.setDrawColor(A.c[0],A.c[1],A.c[2]);doc.setLineWidth(1.3);doc.line(M,y,W-M,y);y+=16;
+      const r=img(p.photo,M,y,W-2*M,H-y-(has(st.cover)?96:64),true);if(has(st.cover)){font(false);doc.setFontSize(16);col(ST_INK);doc.text(st.cover,W/2,(r?r.y+r.h:y)+26,{align:"center"})}}
     else if(p.kind==="page"){head(p.heading);const pw=W*0.5;const r=p.photo?img(p.photo,M,M+24,pw-M,H-2*M-60,false):null;const tx=r?pw+24:M,tw=W-tx-M;
       const sz=p.lines.join(" ").length>160?20:22;let est=0;font(false);doc.setFontSize(sz);for(const s of p.lines)est+=doc.splitTextToSize(s,tw).length*sz*1.28+sz*.6;
       lines(p.lines,tx,Math.max(M+60,(r?r.y+Math.min(40,r.h*.1):H/2-est/2)),tw,sz,sz*.6,false)}
@@ -2604,16 +2634,18 @@ async function storyPdf(st){
     else if(p.kind==="words"){head(p.heading);const many=p.items.length>3,bs=many?24:28,ps=many?20:23;block(p.items.flatMap(w=>[has(w.bold)&&{t:w.bold,sz:bs,b:true,gap:has(w.plain)?4:(many?16:22)},has(w.plain)&&{t:w.plain,sz:ps,gap:many?16:22}].filter(Boolean)),M+30,H-M-30,W-2*M-120)}
     else if(p.kind==="practice"){head(p.heading);block(p.lines.map(t=>({t,sz:24,gap:18})),M+30,H-M-30,W-2*M-140)}
     else if(p.kind==="ourwords"){head(p.heading);const qs=p.items.length<=2?34:p.items.length<=4?30:26;block(p.items.flatMap(w=>[{t:stSaid(w.text),sz:qs,b:true,gap:has(w.child)?6:26},has(w.child)&&{t:w.child,sz:Math.round(qs*.6),c:ST_MUT,gap:26}].filter(Boolean)),M+30,H-M-30,W-2*M-120)}
-    else if(p.kind==="draw"){head(p.heading);let y=M+44;if(p.line)y=lines([p.line],M,y+16,W-2*M,20,0,false);doc.setDrawColor(214,208,196);doc.setLineWidth(1.2);doc.roundedRect(M,y+8,W-2*M,H-M-46-(y+8),14,14,"S")}
+    else if(p.kind==="draw"){head(p.heading);let y=M+44;if(p.line)y=lines([p.line],M,y+16,W-2*M,20,0,false);doc.setDrawColor(ST_HAIR[0],ST_HAIR[1],ST_HAIR[2]);doc.setLineWidth(1.2);doc.roundedRect(M,y+8,W-2*M,H-M-46-(y+8),14,14,"S")}
     else if(p.kind==="community"){head(p.heading);const n=p.kids.length,cols=n<=3?n:n<=8?4:n<=10?5:6,rows=Math.ceil(n/cols);const top=M+30,bottom=H-M-(p.line?64:36);
       const cell=Math.min((W-2*M-(cols-1)*18)/cols,(bottom-top-(rows-1)*16)/rows-24),gx=(W-cols*cell-(cols-1)*18)/2;
       p.kids.forEach((k,i)=>{const row=Math.floor(i/cols),inRow=Math.min(cols,n-row*cols),rx=(W-inRow*cell-(inRow-1)*18)/2;const cx=rx+(i%cols)*(cell+18),cy=top+row*(cell+40);const sq=stSquare(k.photo);
         // every tile the same square, a photo or a soft square with the child's first letter, and every name in the same place under it
-        if(sq)doc.addImage(sq.url,"JPEG",cx,cy,cell,cell,undefined,"FAST");else{doc.setFillColor(238,233,222);doc.rect(cx,cy,cell,cell,"F");font(true);doc.setFontSize(Math.round(cell*.42));col(ST_HEAD);doc.text(String(k.first||"").charAt(0),cx+cell/2,cy+cell/2+cell*.15,{align:"center"})}
+        if(sq)doc.addImage(sq.url,"JPEG",cx,cy,cell,cell,undefined,"FAST");else{doc.setFillColor(A.t[0],A.t[1],A.t[2]);doc.rect(cx,cy,cell,cell,"F");font(true);doc.setFontSize(Math.round(cell*.42));col(HC);doc.text(String(k.first||"").charAt(0),cx+cell/2,cy+cell/2+cell*.15,{align:"center"})}
         font(true);doc.setFontSize(cell>110?17:14);col(ST_INK);doc.text(k.first,cx+cell/2,cy+cell+20,{align:"center"})});
       if(p.line){font(true);doc.setFontSize(19);col(ST_INK);doc.text(p.line,W/2,H-M-26,{align:"center"})}}
     else if(p.kind==="think"){head(p.heading);const qs=p.questions.length>4?22:25;block([...p.questions.map((t,i)=>({t,sz:qs,gap:i===p.questions.length-1&&p.refrain.length?34:16})),...p.refrain.map((t,i)=>({t,sz:qs+1,b:i===0,gap:4}))],M+30,H-M-30,W-2*M-120)}
-    font(false);doc.setFontSize(8);col(ST_MUT);doc.text(foot,M,H-22);doc.text(String(i+1),W-M,H-22,{align:"right"})});
+    // the same quiet footer as slides and walls, with the class, group and page under it
+    doc.setDrawColor(ST_HAIR[0],ST_HAIR[1],ST_HAIR[2]);doc.setLineWidth(.7);doc.line(M,H-42,W-M,H-42);font(false);doc.setFontSize(8);col(ST_MUT);doc.text(ST_CYCLE,W/2,H-29,{align:"center"});
+    doc.setFontSize(7.5);doc.text(foot+"    ·    Page "+(i+1)+" of "+pages.length,W/2,H-18,{align:"center"})});
   await saveFile(doc.output("blob"),safeFile(`Story ${stTitle(st)}`)+".pdf");
 }
 async function storyDocx(st){
@@ -2622,13 +2654,16 @@ async function storyDocx(st){
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,BorderStyle,AlignmentType,PageOrientation,VerticalAlign,Footer,PageNumber,TabStopType,PageBreak}=X;
   const F=b=>PF.buf?(b?PF.word.bs:PF.word.fr):"Arial";const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();
-  const run=(t,b,pt,c,o)=>new TextRun(Object.assign({text:String(t||""),font:F(b),size:Math.round(pt*2),color:hx(c||ST_INK),bold:!!b},o||{}));
+  const A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);const run=(t,b,pt,c,o)=>new TextRun(Object.assign({text:String(t||""),font:F(b),size:Math.round(pt*2),color:hx(c||ST_INK),bold:!!b},o||{}));
   const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none};
   const pic=(id,maxW,maxH)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(maxW/ph.w,maxH/ph.h);return new ImageRun({type:"jpg",data:ph.bytes,transformation:{width:Math.round(ph.w*k),height:Math.round(ph.h*k)}})};
-  const head=t=>new Paragraph({spacing:{after:200},children:[run(String(t||"").toUpperCase(),true,8,ST_HEAD,{characterSpacing:12})]});
+  const head=t=>new Paragraph({spacing:{after:200},children:[run(String(t||"").toUpperCase(),true,8,HC,{characterSpacing:12})]});
   const ch=[];
   pages.forEach((p,i)=>{const kids=[];
-    if(p.kind==="cover"){kids.push(head("A story from our community"),new Paragraph({spacing:{after:200},children:[run(stTitle(st),true,30)]}));const im=pic(p.photo,560,300);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[im]}));if(has(st.cover))kids.push(new Paragraph({spacing:{before:160},children:[run(st.cover,false,15)]}))}
+    if(p.kind==="cover"){const C=AlignmentType.CENTER;if(stBrand(st))kids.push(new Paragraph({alignment:C,spacing:{after:80},children:[run("Fulton Community School & Farm",true,9.5,HC)]}));
+      kids.push(new Paragraph({alignment:C,spacing:{after:80},children:[run("A story from our community",true,11,HC)]}),new Paragraph({alignment:C,spacing:{after:120},children:[run(stTitle(st),true,32)]}),
+        new Paragraph({border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hx(A.c),space:4}},spacing:{after:240},children:[]}));
+      const im=pic(p.photo,560,290);if(im)kids.push(new Paragraph({alignment:C,children:[im]}));if(has(st.cover))kids.push(new Paragraph({alignment:C,spacing:{before:160},children:[run(st.cover,false,15)]}))}
     else if(p.kind==="page"){kids.push(head(p.heading));const im=p.photo&&pic(p.photo,330,330);const text=p.lines.map(l=>new Paragraph({spacing:{after:160},children:[run(l,false,20)]}));
       if(im)kids.push(new Table({width:{size:13600,type:WidthType.DXA},columnWidths:[6800,6800],borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows:[new TableRow({children:[new TableCell({borders:noB,width:{size:6800,type:WidthType.DXA},verticalAlign:VerticalAlign.CENTER,children:[new Paragraph({children:[im]})]}),new TableCell({borders:noB,width:{size:6800,type:WidthType.DXA},margins:{left:300},verticalAlign:VerticalAlign.CENTER,children:text})]})]}));
       else kids.push(...text)}
@@ -2637,16 +2672,17 @@ async function storyDocx(st){
     else if(p.kind==="practice"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.lines.forEach(l=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:300},children:[run(l,false,24)]})))}
     else if(p.kind==="ourwords"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.items.forEach(w=>{kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:360},children:[run(stSaid(w.text),true,32)]}));if(has(w.child))kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[run(w.child,false,19,ST_MUT)]}))})}
     else if(p.kind==="draw"){kids.push(head(p.heading));if(p.line)kids.push(new Paragraph({spacing:{after:240},children:[run(p.line,false,20)]}));
-      kids.push(new Table({width:{size:13600,type:WidthType.DXA},columnWidths:[13600],rows:[new TableRow({height:{value:6600,rule:"atLeast"},children:[new TableCell({width:{size:13600,type:WidthType.DXA},borders:{top:{style:BorderStyle.SINGLE,size:8,color:"D6D0C4"},bottom:{style:BorderStyle.SINGLE,size:8,color:"D6D0C4"},left:{style:BorderStyle.SINGLE,size:8,color:"D6D0C4"},right:{style:BorderStyle.SINGLE,size:8,color:"D6D0C4"}},children:[new Paragraph({children:[]})]})]})]}))}
+      kids.push(new Table({width:{size:13600,type:WidthType.DXA},columnWidths:[13600],rows:[new TableRow({height:{value:6600,rule:"atLeast"},children:[new TableCell({width:{size:13600,type:WidthType.DXA},borders:{top:{style:BorderStyle.SINGLE,size:8,color:hx(ST_HAIR)},bottom:{style:BorderStyle.SINGLE,size:8,color:hx(ST_HAIR)},left:{style:BorderStyle.SINGLE,size:8,color:hx(ST_HAIR)},right:{style:BorderStyle.SINGLE,size:8,color:hx(ST_HAIR)}},children:[new Paragraph({children:[]})]})]})]}))}
     else if(p.kind==="community"){kids.push(head(p.heading));const n=p.kids.length,cols=n<=3?Math.max(1,n):n<=8?4:n<=10?5:6,cw=Math.floor(13600/cols),px=Math.min(150,Math.floor(cw/15)-8);const rows=[];
-      for(let r=0;r<n;r+=cols){const cells=p.kids.slice(r,r+cols).map(k=>{const sq=stSquare(k.photo);return new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new ImageRun({type:"jpg",data:(sq||stLetterTile(k.first)).bytes,transformation:{width:px,height:px}})]}),new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:160},children:[run(k.first,true,14)]})]})});
+      for(let r=0;r<n;r+=cols){const cells=p.kids.slice(r,r+cols).map(k=>{const sq=stSquare(k.photo);return new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new ImageRun({type:"jpg",data:(sq||stLetterTile(k.first,A)).bytes,transformation:{width:px,height:px}})]}),new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:160},children:[run(k.first,true,14)]})]})});
         while(cells.length<cols)cells.push(new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({children:[]})]}));rows.push(new TableRow({children:cells}))}
       kids.push(new Table({width:{size:13600,type:WidthType.DXA},columnWidths:Array(cols).fill(cw),borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows}));
       if(p.line)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:240},children:[run(p.line,true,18)]}))}
     else if(p.kind==="think"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.questions.forEach(q=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:300},children:[run(q,false,25)]})));p.refrain.forEach((l,k)=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:k?0:500},children:[run(l,!k,25)]})))}
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
-  const footer=new Footer({children:[new Paragraph({tabStops:[{type:TabStopType.RIGHT,position:13600}],children:[run(storyFoot(st),false,7.5,ST_MUT),run("\t",false,7.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:15,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:6}},children:[run(ST_CYCLE,false,8,ST_MUT)]}),
+    new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,7.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:15,color:hx(ST_MUT),font:F(false)})]})]});
+  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(d),safeFile(`Story ${stTitle(st)}`)+".docx");
 }
 /* the small book, a half-letter page for each page of the story, for a family to keep at home or a child to hold */
@@ -2655,33 +2691,38 @@ async function storySmallPdf(st){
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const doc=new window.jspdf.jsPDF({unit:"pt",format:[396,612],orientation:"portrait"});pdfFonts(doc);
-  const W=396,H=612,M=28,foot=storyFoot(st);
+  const W=396,H=612,M=28,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
   const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
   const col=c=>doc.setTextColor(c[0],c[1],c[2]);
   const img=(id,x,y,w,h)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(w/ph.w,h/ph.h);const iw=ph.w*k,ih=ph.h*k;const ix=x+(w-iw)/2,iy=y;doc.addImage(ph.url,"JPEG",ix,iy,iw,ih,undefined,"FAST");return {x:ix,y:iy,w:iw,h:ih}};
   const lines=(arr,x,y,w,size,gap,bold)=>{font(bold);doc.setFontSize(size);col(ST_INK);for(const t of arr){for(const l of doc.splitTextToSize(t,w)){doc.text(l,x,y);y+=size*1.3}y+=gap}return y};
-  const head=t=>{if(!t)return;font(true);doc.setFontSize(8);col(ST_HEAD);doc.setCharSpace(.5);doc.text(String(t).toUpperCase(),M,M+4);doc.setCharSpace(0)};
+  const head=t=>{if(!t)return;font(true);doc.setFontSize(8.5);col(HC);doc.setCharSpace(.5);doc.text(String(t).toUpperCase(),M,M+4);doc.setCharSpace(0)};
   const block=(items,top,bottom,w)=>{let hgt=0;const prep=items.map(it=>{font(it.b);doc.setFontSize(it.sz);const wr=doc.splitTextToSize(String(it.t||""),w);const h=wr.length*it.sz*1.25;hgt+=h+(it.gap||0);return Object.assign({wr,h},it)});
     let y=top+Math.max(0,(bottom-top-hgt)*0.38);for(const it of prep){font(it.b);doc.setFontSize(it.sz);col(it.c||ST_INK);for(const l of it.wr){y+=it.sz;doc.text(l,W/2,y,{align:"center"});y+=it.sz*.25}y+=it.gap||0}return y};
-  pages.forEach((p,i)=>{if(i)doc.addPage([396,612],"portrait");doc.setFillColor(ST_BG[0],ST_BG[1],ST_BG[2]);doc.rect(0,0,W,H,"F");
-    if(p.kind==="cover"){head("A story from our community");font(true);doc.setFontSize(24);col(ST_INK);let y=M+44;for(const l of doc.splitTextToSize(stTitle(st),W-2*M)){doc.text(l,M,y);y+=29}
-      const r=img(p.photo,M,y+8,W-2*M,H-y-130);if(has(st.cover)){font(false);doc.setFontSize(14);col(ST_INK);const cy=(r?r.y+r.h:y)+28;for(const l of doc.splitTextToSize(st.cover,W-2*M))doc.text(l,M,cy)}}
+  pages.forEach((p,i)=>{if(i)doc.addPage([396,612],"portrait");if(st.bg==="tint"){doc.setFillColor(BG[0],BG[1],BG[2]);doc.rect(0,0,W,H,"F")}
+    if(p.kind==="cover"){let y=M;if(stBrand(st)){font(true);doc.setFontSize(8.5);col(HC);doc.text("Fulton Community School & Farm",W/2,y+8,{align:"center"});y+=20}
+      font(true);doc.setFontSize(9.5);col(HC);doc.text("A story from our community",W/2,y+9,{align:"center"});y+=22;
+      let ts=26,tl;for(;;){font(true);doc.setFontSize(ts);tl=doc.splitTextToSize(stTitle(st),W-2*M-10);if(tl.length<=3||ts<=18)break;ts-=2}
+      font(true);doc.setFontSize(ts);col(ST_INK);tl.forEach((l,k)=>doc.text(l,W/2,y+ts*.82+k*ts*1.1,{align:"center"}));y+=tl.length*ts*1.1+8;
+      doc.setDrawColor(A.c[0],A.c[1],A.c[2]);doc.setLineWidth(1.1);doc.line(M,y,W-M,y);y+=14;
+      const r=img(p.photo,M,y,W-2*M,H-y-(has(st.cover)?110:70));if(has(st.cover)){font(false);doc.setFontSize(14);col(ST_INK);let cy=(r?r.y+r.h:y)+26;for(const l of doc.splitTextToSize(st.cover,W-2*M)){doc.text(l,W/2,cy,{align:"center"});cy+=18}}}
     else if(p.kind==="care"&&!p.photo){head(p.heading);block(p.lines.map(t=>({t,sz:18,gap:7})),M+24,H-M-26,W-2*M-10)}
     else if(p.kind==="page"||p.kind==="care"){head(p.heading);const r=p.photo?img(p.photo,M,M+20,W-2*M,H*0.52):null;const y=r?r.y+r.h+34:M+70;
       const sz=p.lines.join(" ").length>150?16:18;lines(p.lines,M,y,W-2*M,sz,sz*.55,false)}
     else if(p.kind==="words"){head(p.heading);const many=p.items.length>3,bs=many?17:19,ps=many?15:16;block(p.items.flatMap(w=>[has(w.bold)&&{t:w.bold,sz:bs,b:true,gap:has(w.plain)?3:14},has(w.plain)&&{t:w.plain,sz:ps,gap:many?12:16}].filter(Boolean)),M+24,H-M-26,W-2*M-10)}
     else if(p.kind==="practice"){head(p.heading);block(p.lines.map(t=>({t,sz:18,gap:14})),M+24,H-M-26,W-2*M-10)}
     else if(p.kind==="ourwords"){head(p.heading);const qs=p.items.length<=2?24:p.items.length<=4?21:19;block(p.items.flatMap(w=>[{t:stSaid(w.text),sz:qs,b:true,gap:has(w.child)?4:18},has(w.child)&&{t:w.child,sz:Math.round(qs*.62),c:ST_MUT,gap:18}].filter(Boolean)),M+24,H-M-26,W-2*M-10)}
-    else if(p.kind==="draw"){head(p.heading);let y=M+30;if(p.line)y=lines([p.line],M,y+14,W-2*M,16,0,false);doc.setDrawColor(214,208,196);doc.setLineWidth(1);doc.roundedRect(M,y+8,W-2*M,H-M-40-(y+8),10,10,"S")}
+    else if(p.kind==="draw"){head(p.heading);let y=M+30;if(p.line)y=lines([p.line],M,y+14,W-2*M,16,0,false);doc.setDrawColor(ST_HAIR[0],ST_HAIR[1],ST_HAIR[2]);doc.setLineWidth(1);doc.roundedRect(M,y+8,W-2*M,H-M-40-(y+8),10,10,"S")}
     else if(p.kind==="community"){head(p.heading);const n=p.kids.length,cols=n<=1?1:2,rows=Math.ceil(n/cols);const top=M+24,bottom=H-M-(p.line?56:30);
       const cell=Math.min((W-2*M-(cols-1)*16)/cols,(bottom-top-(rows-1)*12)/rows-22),gx=(W-cols*cell-(cols-1)*16)/2;
       p.kids.forEach((k,i)=>{const row=Math.floor(i/cols),inRow=Math.min(cols,n-row*cols),rx=(W-inRow*cell-(inRow-1)*16)/2;const cx=rx+(i%cols)*(cell+16),cy=top+row*(cell+34);const sq=stSquare(k.photo);
-        if(sq)doc.addImage(sq.url,"JPEG",cx,cy,cell,cell,undefined,"FAST");else{doc.setFillColor(238,233,222);doc.rect(cx,cy,cell,cell,"F");font(true);doc.setFontSize(Math.round(cell*.42));col(ST_HEAD);doc.text(String(k.first||"").charAt(0),cx+cell/2,cy+cell/2+cell*.15,{align:"center"})}
+        if(sq)doc.addImage(sq.url,"JPEG",cx,cy,cell,cell,undefined,"FAST");else{doc.setFillColor(A.t[0],A.t[1],A.t[2]);doc.rect(cx,cy,cell,cell,"F");font(true);doc.setFontSize(Math.round(cell*.42));col(HC);doc.text(String(k.first||"").charAt(0),cx+cell/2,cy+cell/2+cell*.15,{align:"center"})}
         font(true);doc.setFontSize(14);col(ST_INK);doc.text(k.first,cx+cell/2,cy+cell+17,{align:"center"})});
       if(p.line){font(true);doc.setFontSize(15);col(ST_INK);doc.text(p.line,W/2,H-M-22,{align:"center"})}}
     else if(p.kind==="families"){head(p.heading);const paras=p.text.split(/\n+/).map(x=>x.trim()).filter(Boolean);lines(paras,M,M+56,W-2*M,14,10,false)}
     else if(p.kind==="think"){head(p.heading);block([...p.questions.map((t,i)=>({t,sz:18,gap:i===p.questions.length-1&&p.refrain.length?26:12})),...p.refrain.map((t,i)=>({t,sz:18,b:i===0,gap:3}))],M+24,H-M-26,W-2*M-10)}
-    font(false);doc.setFontSize(7);col(ST_MUT);const fl=doc.splitTextToSize(foot,W-2*M-24);doc.text(fl[0]||"",M,H-18);doc.text(String(i+1),W-M,H-18,{align:"right"})});
+    doc.setDrawColor(ST_HAIR[0],ST_HAIR[1],ST_HAIR[2]);doc.setLineWidth(.6);doc.line(M,H-36,W-M,H-36);font(false);doc.setFontSize(6.5);col(ST_MUT);doc.text(ST_CYCLE,W/2,H-25,{align:"center"});
+    const fl=doc.splitTextToSize(foot+"    ·    Page "+(i+1)+" of "+pages.length,W-2*M);doc.text(fl[0]||"",W/2,H-15,{align:"center"})});
   await saveFile(doc.output("blob"),safeFile(`Small book ${stTitle(st)}`)+".pdf");
 }
 async function storySmallDocx(st){
@@ -2691,28 +2732,31 @@ async function storySmallDocx(st){
   const {Document,Packer,Paragraph,TextRun,ImageRun,AlignmentType,PageOrientation,Footer,PageNumber,TabStopType,PageBreak,Table,TableRow,TableCell,WidthType,BorderStyle}=X;
   const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none};
   const F=b=>PF.buf?(b?PF.word.bs:PF.word.fr):"Arial";const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();
-  const run=(t,b,pt,c,o)=>new TextRun(Object.assign({text:String(t||""),font:F(b),size:Math.round(pt*2),color:hx(c||ST_INK),bold:!!b},o||{}));
+  const A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);const run=(t,b,pt,c,o)=>new TextRun(Object.assign({text:String(t||""),font:F(b),size:Math.round(pt*2),color:hx(c||ST_INK),bold:!!b},o||{}));
   const pic=(id,maxW,maxH)=>{const ph=id&&photoCache.get(id);if(!ph)return null;const k=Math.min(maxW/ph.w,maxH/ph.h);return new ImageRun({type:"jpg",data:ph.bytes,transformation:{width:Math.round(ph.w*k),height:Math.round(ph.h*k)}})};
-  const head=t=>new Paragraph({spacing:{after:160},children:[run(String(t||"").toUpperCase(),true,7.5,ST_HEAD,{characterSpacing:10})]});
+  const head=t=>new Paragraph({spacing:{after:160},children:[run(String(t||"").toUpperCase(),true,7.5,HC,{characterSpacing:10})]});
   const ch=[];
   pages.forEach((p,i)=>{const kids=[];
-    if(p.kind==="cover"){kids.push(head("A story from our community"),new Paragraph({spacing:{after:200},children:[run(stTitle(st),true,22)]}));const im=pic(p.photo,320,330);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[im]}));if(has(st.cover))kids.push(new Paragraph({spacing:{before:200},children:[run(st.cover,false,13)]}))}
+    if(p.kind==="cover"){const C=AlignmentType.CENTER;if(stBrand(st))kids.push(new Paragraph({alignment:C,spacing:{after:60},children:[run("Fulton Community School & Farm",true,8.5,HC)]}));
+      kids.push(new Paragraph({alignment:C,spacing:{after:60},children:[run("A story from our community",true,9.5,HC)]}),new Paragraph({alignment:C,spacing:{after:100},children:[run(stTitle(st),true,24)]}),
+        new Paragraph({border:{bottom:{style:BorderStyle.SINGLE,size:8,color:hx(A.c),space:4}},spacing:{after:200},children:[]}));const im=pic(p.photo,320,330);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[im]}));if(has(st.cover))kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:200},children:[run(st.cover,false,13)]}))}
     else if(p.kind==="page"||p.kind==="care"){kids.push(head(p.heading));const im=p.photo&&pic(p.photo,320,300);if(im)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:240},children:[im]}));p.lines.forEach(l=>kids.push(new Paragraph({spacing:{after:120},children:[run(l,false,16)]})))}
     else if(p.kind==="words"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:700},children:[]}));p.items.forEach(w=>{if(has(w.bold))kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:240},children:[run(w.bold,true,18)]}));if(has(w.plain))kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[run(w.plain,false,16)]}))})}
     else if(p.kind==="practice"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.lines.forEach(l=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:240},children:[run(l,false,17)]})))}
     else if(p.kind==="ourwords"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.items.forEach(w=>{kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:300},children:[run(stSaid(w.text),true,22)]}));if(has(w.child))kids.push(new Paragraph({alignment:AlignmentType.CENTER,children:[run(w.child,false,14,ST_MUT)]}))})}
     else if(p.kind==="draw"){kids.push(head(p.heading));if(p.line)kids.push(new Paragraph({spacing:{after:200},children:[run(p.line,false,15)]}));
-      const bd={style:BorderStyle.SINGLE,size:8,color:"D6D0C4"};kids.push(new Table({width:{size:6480,type:WidthType.DXA},columnWidths:[6480],rows:[new TableRow({height:{value:8400,rule:"atLeast"},children:[new TableCell({width:{size:6480,type:WidthType.DXA},borders:{top:bd,bottom:bd,left:bd,right:bd},children:[new Paragraph({children:[]})]})]})]}))}
+      const bd={style:BorderStyle.SINGLE,size:8,color:hx(ST_HAIR)};kids.push(new Table({width:{size:6480,type:WidthType.DXA},columnWidths:[6480],rows:[new TableRow({height:{value:8400,rule:"atLeast"},children:[new TableCell({width:{size:6480,type:WidthType.DXA},borders:{top:bd,bottom:bd,left:bd,right:bd},children:[new Paragraph({children:[]})]})]})]}))}
     else if(p.kind==="community"){kids.push(head(p.heading));const n=p.kids.length,cols=n<=1?1:2,cw=Math.floor(6480/cols),px=cols===1?220:150;const rows=[];
-      for(let r=0;r<n;r+=cols){const cells=p.kids.slice(r,r+cols).map(k=>{const sq=stSquare(k.photo);return new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new ImageRun({type:"jpg",data:(sq||stLetterTile(k.first)).bytes,transformation:{width:px,height:px}})]}),new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:140},children:[run(k.first,true,13)]})]})});
+      for(let r=0;r<n;r+=cols){const cells=p.kids.slice(r,r+cols).map(k=>{const sq=stSquare(k.photo);return new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new ImageRun({type:"jpg",data:(sq||stLetterTile(k.first,A)).bytes,transformation:{width:px,height:px}})]}),new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:140},children:[run(k.first,true,13)]})]})});
         while(cells.length<cols)cells.push(new TableCell({borders:noB,width:{size:cw,type:WidthType.DXA},children:[new Paragraph({children:[]})]}));rows.push(new TableRow({children:cells}))}
       kids.push(new Table({width:{size:6480,type:WidthType.DXA},columnWidths:Array(cols).fill(cw),borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows}));
       if(p.line)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:200},children:[run(p.line,true,14)]}))}
     else if(p.kind==="families"){kids.push(head(p.heading));p.text.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(t=>kids.push(new Paragraph({spacing:{after:160},children:[run(t,false,12.5)]})))}
     else if(p.kind==="think"){kids.push(head(p.heading));kids.push(new Paragraph({spacing:{before:900},children:[]}));p.questions.forEach(q=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:240},children:[run(q,false,18)]})));p.refrain.forEach((l,k)=>kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:k?0:400},children:[run(l,!k,18)]})))}
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
-  const footer=new Footer({children:[new Paragraph({tabStops:[{type:TabStopType.RIGHT,position:6480}],children:[run(storyFoot(st),false,6.5,ST_MUT),run("\t",false,6.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:13,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:5}},children:[run(ST_CYCLE,false,6.5,ST_MUT)]}),
+    new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,6.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:13,color:hx(ST_MUT),font:F(false)})]})]});
+  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(d),safeFile(`Small book ${stTitle(st)}`)+".docx");
 }
 // the deck as its sheets, in order, numbered, each with its evidence page when asked, and the closing quote
@@ -5019,7 +5063,7 @@ function noticeNoteHtml(p){
   const used=new Set(p.noticeUsed||[]);
   // a plan following a thread offers that thread's moments first, from any class. The class's other moments wait one tap away.
   const tids=new Set(planThreads(p).map(c=>c.t.id));
-  const fromThread=tids.size?[...notices.values()].filter(n=>n.threadId&&tids.has(n.threadId)&&!used.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)):[];
+  const fromThread=tids.size?[...new Map([...tids].flatMap(id=>threads.get(id)?threadNotices(threads.get(id)):[]).filter(n=>!used.has(n.id)).map(n=>[n.id,n])).values()].sort((a,b)=>(b.at||0)-(a.at||0)):[];
   const inThread=new Set(fromThread.map(n=>n.id));
   const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id)&&!inThread.has(n.id));
   if(!ns.length&&!fromThread.length)return"";
@@ -5044,8 +5088,12 @@ function noticeNoteHtml(p){
   return h;
 }
 // a project holds the moments kept for it and the moments kept for any thread it holds
-const projNotices=x=>{const ts=new Set((x.threads||[]).map(l=>l.id));return [...notices.values()].filter(n=>n.projectId===x.id||(n.threadId&&ts.has(n.threadId))).sort((a,b)=>(b.at||0)-(a.at||0))};
-const threadNotices=t=>[...notices.values()].filter(n=>n.threadId===t.id).sort((a,b)=>(b.at||0)-(a.at||0));
+// a thread holds the observations kept for it and the ones Find threads found for it, which sit in its evidence by id
+const evNoticeIds=list=>(list||[]).map(e=>e&&(e.planId||e.id)).filter(id=>id&&notices.has(id));
+const threadNotices=t=>{const ids=new Set(evNoticeIds(t&&t.evidence));return [...notices.values()].filter(n=>n.threadId===t.id||ids.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0))};
+// a project holds its own observations and every observation of the threads it follows
+const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
+  for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
 /* ---------- Farm to School grant ----------
    The director's view of the CDFA Farm to School Incubator grant. It gathers what TREE already holds, by quarter,
@@ -6532,7 +6580,7 @@ function planEvidence(p){
   if(x){heads.push({kind:"Project",name:x.name,open:`data-popen="${x.id}"`,lines:[projUnder(x)&&["What may lie underneath",projUnder(x)],projIntent(x)&&["Our intent as educators",projIntent(x)]].filter(Boolean)});take(projNotices(x))}
   for(const {t} of planThreads(p)){const last=threadLastRemarks(t);
     heads.push({kind:"Thread",name:t.name,open:`data-tsee="${t.id}"`,lines:[t.question&&["The question",t.question],last&&["Last written about it",last.text]].filter(Boolean),
-      from:(t.evidence||[]).filter((e,i,all)=>e.planId!==p.id&&has(e.text)&&all.findIndex(o=>String(o.text).trim()===String(e.text).trim())===i).sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,8)});take(threadNotices(t))}
+      from:(t.evidence||[]).filter((e,i,all)=>e.planId!==p.id&&!notices.has(e.planId)&&has(e.text)&&all.findIndex(o=>String(o.text).trim()===String(e.text).trim())===i).sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,8)});take(threadNotices(t))}
   for(const id of p.inquiries||[]){const q=inquiries.get(id);if(!q||!inqOf(q))continue;
     heads.push({kind:"Team inquiry",name:q.name||"Untitled",open:`data-iqopen="${q.id}"`,lines:[has(q.see)&&["What we see",q.see],inqOpenHyps(q).length&&["What we think is happening",inqOpenHyps(q).map(h=>h.text).join("\n")],
       inqCurric(q).length&&["What we will try in the curriculum",inqCurric(q).map(t=>t.text+(has(t.result)?". What happened. "+t.result:"")).join("\n")],has(q.watch)&&["What we will watch for",q.watch]].filter(Boolean)});take(inqNotices(q))}
@@ -8413,7 +8461,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       <button class="linkbtn" data-tedit="${esc(t.id)}">Change name or class</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${esc(t.id)}">Stop following</button></span>
       <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${esc(t.id)}">Undo follow</button></span></div>`;
-    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} kept for this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
+    {const ns=threadNotices(t);if(ns.length)h+=`<details${ns.length<=2?" open":""}><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} in this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${ns.map(noticeCard).join("")}</div></details>`;}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
