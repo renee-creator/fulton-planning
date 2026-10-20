@@ -934,7 +934,7 @@ async function boot(){
       for(const [id,loc] of posts)if(!m.has(id)&&(postTimers[id]||Date.now()-(loc.updatedAt||0)<8000))m.set(id,loc);
       // a post kept on this device before posts were kept in the records goes up once
       if(shareSt&&!m.has(shareSt.id)){m.set(shareSt.id,shareSt);postPut(shareSt)}
-      posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);if(shareMade)shareMade.stale=true}
+      posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);shStale()}
       if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -2034,6 +2034,13 @@ function postPut(x){if(!db||window.TREE_VIEW_AS)return;clearTimeout(postTimers[x
 function shareOpen(id){const x=posts.get(id);if(!x)return;if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
   shareSt=x;for(const [k,v] of Object.entries(x.faces||{}))if(!shareFaces[k]||shareFaces[k].v==="?")shareFaces[k]={v,at:Date.now()};LS.set("tree.share",shareSt);renderShare();jumpTop()}
 function shPostedIds(){const s=new Set();for(const x of posts.values())if(x&&x.status==="posted"&&(!shareSt||x.id!==shareSt.id))for(const id of x.used||[])s.add(id);return s}
+// the finished pictures are kept with the post, so opening it later shows them at once, with nothing drawn again
+function shStale(){if(shareMade)shareMade.stale=true;if(shareSt&&(shareSt.pics||[]).length&&!shareSt.picsStale){shareSt.picsStale=true;shareSave()}}
+let shPicsLoading="";
+async function shLoadPics(){const x=shareSt;if(!x||shareMade||!(x.pics||[]).length||shPicsLoading===x.id||!window.FP_ORIGINAL_URL)return;shPicsLoading=x.id;
+  try{const blobs=await Promise.all(x.pics.map(async id=>await (await fetchPhoto(window.FP_ORIGINAL_URL(id))).blob()));
+    if(shareSt===x&&!shareMade){shareMade={blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:!!x.picsStale};if(view==="share")renderShare()}}
+  catch(e){toast("The saved pictures could not be opened. Make the pictures again.")}shPicsLoading=""}
 function shareName(x){if(has(x.title))return x.title;const o=shareSources().find(([v])=>v===x.src);return o?o[1]:"A post"}
 function shareInquiryIds(){const s=new Set();for(const x of inqAll()){for(const id of x.obs||[])s.add(id);for(const id of evNoticeIds(x.evidence))s.add(id)}return s}
 function shareSources(){
@@ -2146,7 +2153,7 @@ ${QS.map((q,i)=>(i+1)+". "+q[0]+" ("+q[1]+")").join("\n")}`;
     for(const r of Array.isArray(out&&out.lines)?out.lines:[]){const n=ch[(+r.photo||0)-1];if(n)shareSt.lines[n.id]=tidy(r.line).replace(/\.$/,"")}
     shareSt.words=shareSt.words||{};for(const r of Array.isArray(out&&out.words)?out.words:[]){const n=ch[(+r.photo||0)-1];if(n)shareSt.words[n.id]=tidy(r.text)}
     const qn=+(out&&out.quote);if(qn>=1&&qn<=QS.length)shareSt.quote=QS[qn-1][0];
-    shareSave();if(shareMade)shareMade.stale=true;
+    shareSave();shStale();
   }catch(e){toast("The caption could not be drafted. Try again.")}
   shareBusy.words=false;if(view==="share")renderShare();
 }
@@ -2244,7 +2251,7 @@ document.addEventListener("click",e=>{
     const chosen=shareChosen().some(n=>n.id===id);
     if(!chosen){if(shareChosen().length>=SH_MAX){toast(`A post holds up to ${SH_MAX} pictures. Take one out first.`);return}
       shareSt.off=(shareSt.off||[]).filter(x=>x!==id);if(shState(notices.get(id))!=="clear")shareSt.add=[...new Set([...(shareSt.add||[]),id])]}
-    shareSave();if(shareMade)shareMade.stale=true;shSoft=null;shSoftRender();renderShare();return}
+    shareSave();shStale();shSoft=null;shSoftRender();renderShare();return}
 });
 document.addEventListener("input",e=>{if(shSoft&&e.target.id==="shsoftsize")shSoft.size=+e.target.value/100});
 /* the pictures */
@@ -2331,6 +2338,8 @@ async function shareMake(){
     if(qn){try{qim=await decodeImage(await (await fetchPhoto(photoSrc(qn))).blob())}catch(e){}}blobs.push(await shareCanvas({quote:q,photo:qim,soft:qn?(shareSt.soft||{})[qn.id]||[]:[]}))}
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));
   shareMade=blobs.length?{blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:false}:null;
+  if(shareMade&&window.FP_KEEP_ORIGINAL&&!window.TREE_VIEW_AS){const x=shareSt;try{const ids=[];for(let i=0;i<blobs.length;i++)ids.push(await window.FP_KEEP_ORIGINAL(blobs[i],`post-${x.id}-${i+1}.jpg`));x.pics=ids;x.picsStale=false;x.picsAt=Date.now();if(shareSt===x)shareSave();else postPut(x)}
+    catch(e){toast("The pictures are made, but could not be kept with the post. They are here until you leave.")}}
   if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the post leaves ${missed>1?"them":"it"} out.`);
   shareBusy.make=false;if(view==="share")renderShare();
 }
@@ -2356,14 +2365,15 @@ function renderShare(){
     h+=`<section class="card"><div class="lbl">A new post</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button></div>
     <div class="cnt">Observations kept with a team inquiry are never offered. Every post is kept, so several can be made ahead and posted later.</div></section>`;
     const all=[...posts.values()].filter(x=>x&&x.id&&!x.deleted),open=all.filter(x=>x.status!=="posted").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)),done=all.filter(x=>x.status==="posted").sort((a,b)=>(b.postedAt||0)-(a.postedAt||0));
-    const card=x=>{const n=notices.get((x.used||[])[0]||(x.ids||[])[0]);return `<button class="card shpost" data-shopen="${esc(x.id)}" type="button">${n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="">`:`<span class="shpostblank"></span>`}<span style="display:grid;gap:2px;min-width:0"><b>${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):x.updatedAt?", changed "+esc(shortDate(x.updatedAt)):""}</span><span class="cnt">${(x.used||[]).length} photo${(x.used||[]).length===1?"":"s"}${has(x.caption)?" · caption written":""}</span></span></button>`};
+    const card=x=>{const n=notices.get((x.used||[])[0]||(x.ids||[])[0]);return `<button class="card shpost" data-shopen="${esc(x.id)}" type="button">${(x.pics||[]).length&&window.FP_ORIGINAL_URL?`<img src="${esc(window.FP_ORIGINAL_URL(x.pics[0]))}" alt="" loading="lazy">`:n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="">`:`<span class="shpostblank"></span>`}<span style="display:grid;gap:2px;min-width:0"><b>${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):x.updatedAt?", changed "+esc(shortDate(x.updatedAt)):""}</span><span class="cnt">${(x.pics||[]).length?(x.pics.length+" picture"+(x.pics.length===1?"":"s")+(x.picsStale?", changed since made":", made")):(x.used||[]).length+" photo"+((x.used||[]).length===1?"":"s")+", pictures not made yet"}${has(x.caption)?" · caption written":""}</span></span></button>`};
     h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Posts waiting</h3><span class="cnt">${open.length}</span></div>${open.length?`<div class="shposts">${open.map(card).join("")}</div>`:`<div class="cnt">None yet. Start one above.</div>`}</section>`;
     if(done.length)h+=`<details class="card"><summary class="secthead"><h3 style="font-size:17px;display:inline">Posted</h3> <span class="cnt">${done.length}</span></summary><div class="shposts" style="margin-top:8px">${done.map(card).join("")}</div></details>`;
     main.innerHTML=h;return}
+  if(!shareMade&&(st.pics||[]).length)setTimeout(shLoadPics,0);
   h+=`<section class="card"><div class="actions" style="justify-content:space-between"><button class="linkbtn" data-shnew="1">‹ All posts</button><button class="linkbtn" data-shclear="1">Delete this post</button></div>
     <div class="secthead"><h3 style="font-size:18px">${esc(shareName(st))}</h3></div>
     <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
-    <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device. The pictures are made again from it whenever you need them.</div></section>`;
+    <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device, the finished pictures too.</div></section>`;
   const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
   if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
@@ -2402,6 +2412,7 @@ function renderShare(){
     <div class="cnt">Draft chooses the quote that fits these children's work best, from the full collection the Documentation Slides used.</div></section>`;
   h+=`<section class="card"><div class="lbl">The post</div>
     <div class="actions"><button class="btn small" data-shmake="1" ${(!ch.length&&!shareHasCards())||shareBusy.make?"disabled":""}>${shareBusy.make?"Drawing the pictures":shareMade?"Make the pictures again":"Make the pictures"}</button></div>
+    ${!shareMade&&(st.pics||[]).length?`<div class="cnt">Opening the saved pictures.</div>`:""}
     ${shareMade?`${shareMade.stale?`<div class="cnt"><b>Something changed since these were made. Make the pictures again to include it.</b></div>`:""}<div class="shgrid shmade">${shareMade.urls.map(u=>`<img src="${u}" alt="">`).join("")}</div>
     <div class="actions">${shareCanFiles()?`<button class="btn small" data-shsend="1">Save to Photos or send to Instagram</button>`:""}<button class="btn small ghost" data-shsave="1">Download the pictures</button><button class="btn small ghost" data-shword="1">Word</button></div>
     <div class="cnt">On a phone, choose Save Images, then start a post in Instagram and pick them in order. Instagram can also turn the same pictures into a reel with music.</div>`:""}</section>`;
@@ -2428,7 +2439,7 @@ document.addEventListener("click",async e=>{
     else{if(shareChosen().length>=SH_MAX){toast(`A post holds up to ${SH_MAX} pictures. Take one out first.`);return}
       if(!clear){shSoftOpen(n.id);return}
       if(!clear)shareSt.add.push(n.id)}
-    shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
+    shareSave();shStale();renderShare();return}
   if(d.shsoftopen){shSoftOpen(d.shsoftopen);return}
   if(d.shsoftall){shSoftAll();return}
   if(d.shrecheck){for(const id of shareSt.ids)if(shareFaces[id]&&shareFaces[id].v==="?")delete shareFaces[id];shareCheckFaces();return}
@@ -2441,10 +2452,10 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("change",e=>{
   if(view!=="share"||!shareSt||!isDirector())return;const t=e.target;
-  if(t.dataset&&t.dataset.shopt){shareSt[t.dataset.shopt]=t.checked;shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
-  if(t.id==="shqphoto"){shareSt.quotePhoto=t.value;shareSave();if(shareMade)shareMade.stale=true;return}
-  if(t.dataset&&t.dataset.shcardon!=null){const c=(shareSt.cards||[])[+t.dataset.shcardon];if(c){c.on=t.checked;shareSave();if(shareMade)shareMade.stale=true}return}
-  if(t.id==="shquote"){shareSt.quote=t.value;shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
+  if(t.dataset&&t.dataset.shopt){shareSt[t.dataset.shopt]=t.checked;shareSave();shStale();renderShare();return}
+  if(t.id==="shqphoto"){shareSt.quotePhoto=t.value;shareSave();shStale();return}
+  if(t.dataset&&t.dataset.shcardon!=null){const c=(shareSt.cards||[])[+t.dataset.shcardon];if(c){c.on=t.checked;shareSave();shStale()}return}
+  if(t.id==="shquote"){shareSt.quote=t.value;shareSave();shStale();renderShare();return}
 });
 document.addEventListener("input",e=>{
   if(view!=="share"||!shareSt||!isDirector())return;const t=e.target;let hit=true;
