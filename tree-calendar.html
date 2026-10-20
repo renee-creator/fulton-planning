@@ -1127,7 +1127,7 @@ function gateMsg(t,bad){ const m=$("gate-msg"); m.textContent=t||""; m.className
 async function wake(){
   const t0=Date.now(); let tries=0;
   while(Date.now()-t0<150000){
-    try{ const r=await fetch(SERVER+"/health",{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } } }catch(e){}
+    try{ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);const r=await fetch(SERVER+"/health",{cache:"no-store",signal:ac.signal}).finally(()=>clearTimeout(tm)); if(r.ok){ const j=await r.json(); if(j.ready) return true; if(j.error){ gateMsg(j.error,true); return false; } } }catch(e){}
     tries++; gateMsg(tries<2? "Connecting…" : "Still connecting. Check this device's internet connection.");
     await new Promise(r=>setTimeout(r, tries<3?2000:4000));
   }
