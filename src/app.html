@@ -549,6 +549,9 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .shsoftpic canvas{width:auto;max-width:100%;height:auto;max-height:62vh;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;display:block}
 .shpicwords{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start;margin:8px 0}.shpicwords img{width:72px;height:90px;object-fit:cover;border-radius:6px}
 .shcard{display:grid;gap:4px;margin:8px 0 8px 26px}
+.shposts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.shpost{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;text-align:left;cursor:pointer;color:var(--ink);padding:10px}.shpost img,.shpostblank{width:64px;height:80px;object-fit:cover;border-radius:6px;background:var(--moss-soft)}
+.shposted{position:absolute;top:4px;right:4px;background:var(--marigold);color:#fff;font-size:11px;padding:2px 6px;border-radius:999px}
 .shmade img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.shaside{margin-top:8px}
 .nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
@@ -927,6 +930,12 @@ async function boot(){
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("posts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=posts.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});
+      for(const [id,loc] of posts)if(!m.has(id)&&(postTimers[id]||Date.now()-(loc.updatedAt||0)<8000))m.set(id,loc);
+      // a post kept on this device before posts were kept in the records goes up once
+      if(shareSt&&!m.has(shareSt.id)){m.set(shareSt.id,shareSt);postPut(shareSt)}
+      posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);if(shareMade)shareMade.stale=true}
+      if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -2015,8 +2024,17 @@ const shQuote=t=>SHQ().find(x=>x[0]===t);
 const SH_TAGS="#reggioinspired #reggioemilia #naturebasedlearning #emergentcurriculum #earlychildhoodeducation #preschool #farmschool #outdoorlearning #santarosa #sonomacounty #playislearning #documentation #schoolgarden #farmtoschool";
 const SH_MAX=10;
 const SH_WHY={face:"A face may show",name:"A name may show","?":"Not checked",wait:"Checking"};
-let shareSt=LS.get("tree.share",null)||null, shareFaces=LS.get("tree.sharefaces",{})||{}, shareBusy={faces:false,left:0,words:false,make:false,tried:false}, shareMade=null;
-function shareSave(){LS.set("tree.share",shareSt)}
+// every post is kept in the school's records, the director's only, so posts can be made ahead and posted later from any device
+let posts=new Map(), postTimers={}, shareFaces=LS.get("tree.sharefaces",{})||{}, shareBusy={faces:false,left:0,words:false,make:false,tried:false}, shareMade=null;
+let shareSt=(()=>{const old=LS.get("tree.share",null);if(old&&old.src&&!old.id){old.id="post"+Date.now().toString(36);old.status="draft";old.createdAt=old.at||Date.now()}return old&&old.id?old:null})();
+if(shareSt)posts.set(shareSt.id,shareSt);
+const SH_STATUS={draft:"Draft",ready:"Ready to post",posted:"Posted"};
+function shareSave(){if(!shareSt)return;shareSt.updatedAt=Date.now();shareSt.used=shareChosen().map(n=>n.id);posts.set(shareSt.id,shareSt);LS.set("tree.share",shareSt);postPut(shareSt)}
+function postPut(x){if(!db||window.TREE_VIEW_AS)return;clearTimeout(postTimers[x.id]);postTimers[x.id]=setTimeout(()=>{delete postTimers[x.id];db.doc("posts/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the post. Check your connection."))},700)}
+function shareOpen(id){const x=posts.get(id);if(!x)return;if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
+  shareSt=x;for(const [k,v] of Object.entries(x.faces||{}))if(!shareFaces[k]||shareFaces[k].v==="?")shareFaces[k]={v,at:Date.now()};LS.set("tree.share",shareSt);renderShare();jumpTop()}
+function shPostedIds(){const s=new Set();for(const x of posts.values())if(x&&x.status==="posted"&&(!shareSt||x.id!==shareSt.id))for(const id of x.used||[])s.add(id);return s}
+function shareName(x){if(has(x.title))return x.title;const o=shareSources().find(([v])=>v===x.src);return o?o[1]:"A post"}
 function shareInquiryIds(){const s=new Set();for(const x of inqAll()){for(const id of x.obs||[])s.add(id);for(const id of evNoticeIds(x.evidence))s.add(id)}return s}
 function shareSources(){
   const out=[];
@@ -2076,7 +2094,9 @@ async function shareCheckFaces(){
       const arr=Array.isArray(out&&out.photos)?out.photos:[];
       have.forEach((n,j)=>{const r=arr.find(x=>+x.photo===j+1);shareFaces[n.id]={v:!r?"?":r.face!==false?"face":r.name!==false?"name":"clear",at:Date.now()}});
     }catch(e){have.forEach(n=>shareFaces[n.id]={v:"?",at:Date.now()})}}
-    shareBusy.left=Math.max(0,todo.length-i-4);LS.set("tree.sharefaces",shareFaces);if(view==="share")renderShare();
+    shareBusy.left=Math.max(0,todo.length-i-4);LS.set("tree.sharefaces",shareFaces);
+    if(shareSt){shareSt.faces=shareSt.faces||{};for(const id of shareSt.ids)if(shareFaces[id]&&shareFaces[id].v!=="?")shareSt.faces[id]=shareFaces[id].v;shareSave()}
+    if(view==="share")renderShare();
   }
   shareBusy.faces=false;if(view==="share")renderShare();
 }
@@ -2331,14 +2351,24 @@ function renderShare(){
   if(!isDirector()){main.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Share</h2><div class="sub">Posts are made in the director's view.</div></div>`;return}
   const st=shareSt;if(st){if(!st.words)st.words={};if(!st.cards){st.cards=shareCardsFrom(st.src);st.cardsOn=true}if(st.quote&&!shQuote(st.quote))st.quote=SHQ()[0][0]}
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Share</h2><div class="sub">A post for the school's Instagram from documentation you already have. Children's names, children's words and DRDP never go into a post, and photos where a face or a name may show are set aside before you choose.</div></div>
-  <section class="card"><div class="lbl">Start from</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}" ${st&&st.src===v?"selected":""}>${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button>${st?`<button class="linkbtn" data-shclear="1">Start over</button>`:""}</div>
-  <div class="cnt">Observations kept with a team inquiry are never offered.</div></section>`;
-  if(!st){main.innerHTML=h;return}
+`;
+  if(!st){
+    h+=`<section class="card"><div class="lbl">A new post</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button></div>
+    <div class="cnt">Observations kept with a team inquiry are never offered. Every post is kept, so several can be made ahead and posted later.</div></section>`;
+    const all=[...posts.values()].filter(x=>x&&x.id&&!x.deleted),open=all.filter(x=>x.status!=="posted").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)),done=all.filter(x=>x.status==="posted").sort((a,b)=>(b.postedAt||0)-(a.postedAt||0));
+    const card=x=>{const n=notices.get((x.used||[])[0]||(x.ids||[])[0]);return `<button class="card shpost" data-shopen="${esc(x.id)}" type="button">${n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="">`:`<span class="shpostblank"></span>`}<span style="display:grid;gap:2px;min-width:0"><b>${esc(shareName(x))}</b><span class="cnt">${esc(SH_STATUS[x.status]||"Draft")}${x.status==="posted"&&x.postedAt?", "+esc(shortDate(x.postedAt)):x.updatedAt?", changed "+esc(shortDate(x.updatedAt)):""}</span><span class="cnt">${(x.used||[]).length} photo${(x.used||[]).length===1?"":"s"}${has(x.caption)?" · caption written":""}</span></span></button>`};
+    h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Posts waiting</h3><span class="cnt">${open.length}</span></div>${open.length?`<div class="shposts">${open.map(card).join("")}</div>`:`<div class="cnt">None yet. Start one above.</div>`}</section>`;
+    if(done.length)h+=`<details class="card"><summary class="secthead"><h3 style="font-size:17px;display:inline">Posted</h3> <span class="cnt">${done.length}</span></summary><div class="shposts" style="margin-top:8px">${done.map(card).join("")}</div></details>`;
+    main.innerHTML=h;return}
+  h+=`<section class="card"><div class="actions" style="justify-content:space-between"><button class="linkbtn" data-shnew="1">‹ All posts</button><button class="linkbtn" data-shclear="1">Delete this post</button></div>
+    <div class="secthead"><h3 style="font-size:18px">${esc(shareName(st))}</h3></div>
+    <div class="seg" role="group" aria-label="Status">${Object.entries(SH_STATUS).map(([k,l])=>`<button data-shstatus="${k}" aria-pressed="${(st.status||"draft")===k}">${l}</button>`).join("")}</div>
+    <div class="cnt">${st.status==="posted"&&st.postedAt?"Posted "+esc(shortDate(st.postedAt))+". ":""}Everything here is kept as you go, on every device. The pictures are made again from it whenever you need them.</div></section>`;
   const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
   if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
-  const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${sf?`<span class="shwhy">${k>=0?"Faces softened":"Softened, tap to check"}</span>`:s!=="clear"&&(st.found||{})[n.id]===0?`<span class="shwhy">No face found, tap to look</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
+  const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${shPostedIds().has(n.id)?`<span class="shposted">Posted before</span>`:""}${sf?`<span class="shwhy">${k>=0?"Faces softened":"Softened, tap to check"}</span>`:s!=="clear"&&(st.found||{})[n.id]===0?`<span class="shwhy">No face found, tap to look</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
     ${shareBusy.faces?`<div class="cnt"><b>Checking photos for faces and names, ${shareBusy.left} to go.</b></div>`:""}
     <div class="cnt">Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.</div>
@@ -2383,10 +2413,14 @@ document.addEventListener("click",async e=>{
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
     const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
-    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
+    shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"none",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
     if(k==="wall"){const x=projects.get(id);for(const sh of shareWallSheets(x)){const pid=wallPhotos(sh)[0];if(pid&&has(sh.title)&&!shareSt.lines[pid])shareSt.lines[pid]=shareScrub(sh.title)}}
     shareSave();renderShare();shareCheckFaces();return}
-  if(d.shclear){if(!confirm("Start over? The photos chosen and the caption for this post are cleared."))return;shareSt=null;shareSave();if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;renderShare();return}
+  if(d.shnew){if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();jumpTop();return}
+  if(d.shopen){shareOpen(d.shopen);return}
+  if(d.shclear){if(!shareSt||!confirm("Delete this post? Its photos stay in TREE."))return;const id=shareSt.id;posts.delete(id);clearTimeout(postTimers[id]);if(db&&!window.TREE_VIEW_AS)db.doc("posts/"+id).delete().catch(()=>{});
+    if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();return}
+  if(d.shstatus&&shareSt){shareSt.status=d.shstatus;if(d.shstatus==="posted")shareSt.postedAt=Date.now();else delete shareSt.postedAt;shareSave();renderShare();if(d.shstatus==="posted")toast("Kept as posted.");return}
   if(!shareSt)return;
   if(d.shpick){const n=notices.get(d.shpick);if(!n)return;const on=shareChosen().includes(n),clear=shState(n)==="clear";
     shareSt.off=(shareSt.off||[]).filter(x=>x!==n.id);shareSt.add=(shareSt.add||[]).filter(x=>x!==n.id);
