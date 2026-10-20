@@ -254,17 +254,13 @@ function conferenceEvents(from, to) {
   // the month's snack and lunch, from the menus the director adds in TREE
   for (const [, r] of store.recs.menus) {
     const m = r.doc; if (r.deleted || !m || !m.days) continue;
-    // the month's menu PDFs, for educators to open and print from the entry
-    const pdfs = m.pdfs || {}; const fk = (pdfs.lunch || pdfs.snack) ? makeFileKey() : '';
-    const printOf = first => [first, first === 'lunch' ? 'snack' : 'lunch'].filter(k => pdfs[k]).map(k => ({ label: k === 'lunch' ? 'Lunch menu' : 'Snack menu', id: pdfs[k], url: '/original/' + encodeURIComponent(pdfs[k]) + '?t=' + encodeURIComponent(fk) }));
     for (const [day, d] of Object.entries(m.days)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < from || day > to || !d || d.closed) continue;
       // a morning snack, lunch, and an afternoon snack after lunch, each at the time kept with the month's menu.
       // Monday has the morning snack only. A meal without a time shows across the day.
       const am = String(d.am || '').trim(), pm = new Date(day + 'T12:00:00Z').getUTCDay() === 1 ? '' : String(d.pm || '').trim(), lunch = String(d.lunch || '').trim();
       const times = m.times || {}, note = m.notes || {};
-      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : ''; const print = printOf(key === 'lunch' ? 'lunch' : 'snack');
-        events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, print.length ? { print } : {}, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
+      const meal = (key, title, desc) => { const t = /^\d{2}:\d{2}$/.test(times[key] || '') ? times[key] : ''; events.push(Object.assign({ id: 'tmenu.' + day + '.' + key, cal: 'tmenu', title, desc: desc || '' }, t ? { allDay: false, start: day + 'T' + t, end: day + 'T' + plus(t, 30) } : { allDay: true, start: day, end: day })); };
       if (am) meal('am', 'Morning snack, ' + am, note.snack);
       if (lunch) meal('lunch', 'Lunch, ' + lunch, note.lunch);
       if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
