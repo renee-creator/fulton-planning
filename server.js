@@ -342,11 +342,39 @@ async function doLoad() {
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
-    kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message));
+    kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();
     if (photosDrive.on()) setTimeout(() => photosDrive.moveAll().catch(e => log('Photos could not move to Google Drive', e.message)), 60000).unref();
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
   } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
+}
+
+// a plan that holds an observation's words, written or pasted in before plans kept the observation's id, keeps the id
+// now, once, so a plan and its observations are found by id and never by matching words
+// the small groups are one list. Program settings (plans, Today, stories) and Conference settings (the primary educator)
+// each keep a copy, and a change saved in either is copied to the other, so the two never drift apart
+const groupsKey = g => JSON.stringify((Array.isArray(g) ? g : []).filter(x => x && x.name).map(x => ({ name: String(x.name), room: String(x.room || ''), educator: String(x.educator || '') })));
+function syncGroups(from) {
+  const to = from === 'program' ? 'main' : 'program';
+  const a = store.recs.settings.get(from), b = store.recs.settings.get(to);
+  if (!a || a.deleted || !a.doc || !Array.isArray(a.doc.groups) || !b || b.deleted || !b.doc) return;
+  if (groupsKey(a.doc.groups) === groupsKey(b.doc.groups)) return;
+  b.doc.groups = JSON.parse(groupsKey(a.doc.groups)); b.local = true;
+  noteChange('settings', to); scheduleSave('settings', to); log('Small groups copied from', from === 'program' ? 'Program settings to Conference settings' : 'Conference settings to Program settings');
+}
+const PLAN_KINDS = ['classroom', 'individual', 'smallgroup'];
+function linkPlansToObservations() {
+  const ns = []; for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue; const bit = String(d.noticed || '').replace(/\s+/g, ' ').trim().slice(0, 50); if (bit.length >= 20) ns.push([id, bit]); }
+  let n = 0;
+  for (const [pid, r] of store.recs.plans) {
+    const p = r && !r.deleted && r.doc; if (!p || p.id === 'example' || !PLAN_KINDS.includes(p.type)) continue;
+    const text = Object.values(p.fields || {}).map(v => String(v || '').replace(/\s+/g, ' ')).join('\n'); if (!text.trim()) continue;
+    const have = new Set(p.noticeAdded || []); const add = ns.filter(([id, bit]) => !have.has(id) && text.includes(bit)).map(([id]) => id);
+    if (!add.length) continue;
+    p.noticeAdded = [...have, ...add]; p.noticeUsed = [...new Set([...(p.noticeUsed || []), ...add])];
+    noteChange('plans', pid); scheduleSave('plans', pid); n++;
+  }
+  if (n) log('Plans linked to the observations written in them,', n);
 }
 
 // one bundle of every record, built once from what the server holds. Each file keeps its path in the records repository,
@@ -647,7 +675,14 @@ function send(req, res, status, headers, body) {
   try { if (res.headersSent) { res.end(); return; } res.writeHead(status, Object.assign({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, corsFor(req), headers)); res.end(body); }
   catch (e) { log('Could not send', e.message); }
 }
-function json(req, res, status, obj) { send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(obj)); }
+// a large answer, such as the records TREE loads when it opens, is sent compressed when the browser accepts it, about a quarter of the size
+function json(req, res, status, obj) {
+  const body = JSON.stringify(obj);
+  if (body.length > 16384 && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+    try { send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }, zlib.gzipSync(Buffer.from(body, 'utf8'), { level: 6 })); return; } catch (e) {}
+  }
+  send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, body);
+}
 function err(req, res, status, message) { json(req, res, status, { error: message }); }
 function readBody(req, limit) {
   const max = limit || MAX_BODY_BYTES;
@@ -735,10 +770,14 @@ async function displayFeed() {
       return { id: t.id, name: trim(t.name, 80), question: trim(t.question, 220), room: t.classroom || '', weeks: (t.weeks || []).length, words: ev.length ? trim(ev[ev.length - 1].text, 220) : '',
         photo: latestPhoto(n => n.threadId === t.id || evIds.has(n.id)) }; });
   const projects = live('projects').filter(x => x.status !== 'closed').sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 8)
-    .map(x => { const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); const rooms = [...new Set([x.home, ...(x.classrooms || []).map(c => c && c.room)].filter(Boolean))];
+    .map(x => { const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean));
+      // a project's photos include every observation its threads hold, as tagged or as Find threads attached them, as on its page
+      const evIds = new Set((x.evidence || []).map(e => e && (e.planId || e.id)).filter(Boolean));
+      for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) evIds.add(e.planId || e.id); }
+      const rooms = [...new Set([x.home, ...(x.classrooms || []).map(c => c && c.room)].filter(Boolean))];
       return { id: x.id, name: trim(x.name, 80), experience: trim(x.experience, 260), underneath: trim(x.underneath, 260), intent: trim(x.intent != null ? x.intent : (x.decision && x.decision.why), 260), rooms,
         threads: (x.threads || []).map(t => { const d = t && store.recs.threads.get(t.id); return d && !d.deleted ? trim(d.doc.name, 60) : ''; }).filter(Boolean).slice(0, 4),
-        photo: latestPhoto(n => n.projectId === x.id || (n.threadId && tids.has(n.threadId))) }; });
+        photo: latestPhoto(n => n.projectId === x.id || (n.threadId && tids.has(n.threadId)) || evIds.has(n.id)) }; });
   const prog = store.recs.settings.get('program'); const pv = prog && !prog.deleted && prog.doc ? prog.doc : {};
   const lensList = Array.isArray(pv.lenses) && pv.lenses.length ? pv.lenses : pv.lens ? [Object.assign({ year: true }, pv.lens)] : [];
   const lenses = lensList.filter(l => l && l.year && String(l.name || '').trim()).map(l => ({ name: trim(l.name, 80), description: trim(l.description, 320), questions: (Array.isArray(l.questions) ? l.questions : []).map(q => trim(q, 140)).filter(Boolean).slice(0, 3) }));
@@ -1032,6 +1071,7 @@ async function handle(req, res) {
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; }
     noteChange(kind, id); scheduleSave(kind, id);
+    if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
   }
