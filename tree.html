@@ -564,6 +564,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .shsoft{position:fixed;inset:0;z-index:200;background:rgba(18,24,20,.6);display:grid;place-items:center;padding:12px;overflow:auto}
 .shsoftbox{background:var(--paper);color:var(--ink);border-radius:14px;padding:16px;width:min(720px,100%);display:grid;gap:8px;max-height:calc(100vh - 24px);overflow:auto}
 .shsoftpic canvas{width:auto;max-width:100%;height:auto;max-height:62vh;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;display:block}
+.shpicwords{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start;margin:8px 0}.shpicwords img{width:72px;height:90px;object-fit:cover;border-radius:6px}
+.shcard{display:grid;gap:4px;margin:8px 0 8px 26px}
 .shmade img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.shaside{margin-top:8px}
 .nlphotos{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .nlph{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;opacity:.6}
@@ -2232,22 +2234,9 @@ function renderSlides(){
    final say. Children's names and children's own words are taken out before anything is drafted, and DRDP never goes
    into a post. Each picture can carry one line, in family words, about the learning it shows, and the post can end
    with a quote that has a known source. Pictures are 1080 by 1350, the shape Instagram shows best. */
-const SHARE_QUOTES=[
-  ["Nothing without joy.","Loris Malaguzzi",""],
-  ["Things about children and for children are only learned from children.","Loris Malaguzzi","The Hundred Languages of Children"],
-  ["Stand aside for a while and leave room for learning.","Loris Malaguzzi","The Hundred Languages of Children"],
-  ["Play is often talked about as if it were a relief from serious learning. But for children play is serious learning.","Fred Rogers","Mister Rogers Talks with Parents"],
-  ["If a child is to keep alive his inborn sense of wonder, he needs the companionship of at least one adult who can share it.","Rachel Carson","The Sense of Wonder"],
-  ["A child's world is fresh and new and beautiful, full of wonder and excitement.","Rachel Carson","The Sense of Wonder"],
-  ["Those who contemplate the beauty of the earth find reserves of strength that will endure as long as life lasts.","Rachel Carson","The Sense of Wonder"],
-  ["In every walk with nature one receives far more than he seeks.","John Muir","Steep Trails"],
-  ["The clearest way into the Universe is through a forest wilderness.","John Muir","John of the Mountains"],
-  ["Eating is an agricultural act.","Wendell Berry","The Pleasures of Eating"],
-  ["We need the tonic of wildness.","Henry David Thoreau","Walden"],
-  ["Give the pupils something to do, not something to learn.","John Dewey","Democracy and Education"],
-  ["Children are the R&D department of the human species.","Alison Gopnik",""],
-  ["Brains are built over time, from the bottom up.","Center on the Developing Child, Harvard University",""]
-];
+// the quotes are the original Documentation Slides collection, the same one slide decks use
+const SHQ=()=>SLIDE_QUOTES.filter(Boolean);
+const shQuote=t=>SHQ().find(x=>x[0]===t);
 const SH_TAGS="#reggioinspired #reggioemilia #naturebasedlearning #emergentcurriculum #earlychildhoodeducation #preschool #farmschool #outdoorlearning #santarosa #sonomacounty #playislearning #documentation #schoolgarden #farmtoschool";
 const SH_MAX=10;
 const SH_WHY={face:"A face may show",name:"A name may show","?":"Not checked",wait:"Checking"};
@@ -2330,20 +2319,28 @@ async function shareDraft(btn){
     F.sources.length?"Where it came from. "+F.sources.slice(0,10).map(e=>[e.name,e.what.join(" and "),e.town,e.miles!=null?e.miles+" miles away":""].filter(Boolean).join(", ")).join(". "):"",
     "Name the farms and producers only as listed here, and never mention prices, money or the grant."].filter(Boolean).join("\n")}
   else if(k==="bin")about="These moments come from the weekly produce bin, which a small group unboxes as part of the curriculum.";
-  const pics=ch.map((n,i)=>({photo:i+1,class:n.classroom||"",educators_words:shareObsText(n),learning_noticed:(n.measures||[]).filter(m=>m.kept).map(m=>DRDP[m.code]).filter(Boolean)}));
+  const pics=ch.map((n,i)=>({photo:i+1,class:n.classroom||"",educators_words:shareObsText(n),drdp_measures_the_educators_linked:(n.measures||[]).filter(m=>m.kept).map(m=>{const d=String(m.code).split(" ")[0];return (DRDP_DOM[d]||d)+", "+(DRDP[m.code]||"")}).filter(Boolean)}));
+  const QS=SHQ();
   const prompt=`${STYLE}
 
-The director is making a post for the school's public Instagram account from the educators' documentation below. Children's names and children's own words have already been taken out, and they must stay out.
+TREE exists to make children's learning and thinking visible. The director is making a post for the school's public Instagram account from the educators' documentation below, so families and the wider community can see how children think, what they are working out, and how the educators listen and respond. Children's names and children's own words have already been taken out, and they must stay out.
 
-Write three things.
-caption is the post's words, three to five short sentences in the school's voice, using we. Say what children were exploring and what the educators noticed or wondered, using only the facts in the documentation below. Speak of children as a group. Never name, describe or single out a child, never quote a child, never give a child's age, and never mention assessment, levels, measures or DRDP. Add nothing the educators did not write. Write for families who may be considering the school, warm and plain, with no sales language and no exclamation marks.
+Write in Fulton's voice, the voice of Reggio-inspired documentation. Lead with the children's thinking, what they noticed, tried, theorized, wondered, returned to and worked out together, and name the educators' reading of it as a hypothesis, such as "we wonder whether" or "we are curious about". Hold the image of the child as competent and capable. Use concrete details from the documentation, the materials, the place, the animals, the plants, what hands and bodies did. Never use generic or filler phrases, never praise, and never say children enjoyed or had fun.
+
+Write these things.
+caption is the post's words, three to five sentences in the school's voice, using we. Open with the children's thinking or question, then what the educators noticed, then why it matters for learning. Use only the facts in the documentation. Speak of children as a group. Never name, describe or single out a child, never quote a child and never give a child's age. Warm and plain for families, with no sales language and no exclamation marks.
 hashtags is one line of four to six hashtags, the ones from this list that fit best. ${SH_TAGS}
-lines gives, for each photo, one short line of three to ten words naming the learning that photo's documentation shows, in everyday words a family would use, such as "Early math, comparing and measuring", "Language, telling what we noticed", "Getting ready for kindergarten, taking turns", "Science, asking how and why" or "Caring for living things". Use the learning noticed for that photo when it is given, put into family words, and never a measure name, code or level. When a photo's words show no clear learning, use an empty string.
+words gives, for each photo, one or two sentences, at most 30 words, that make the learning and thinking in that photo visible, drawn from that photo's documentation. When photos share the same documentation, give each photo a different part of it, so no two photos say the same thing.
+lines gives, for each photo, the learning that photo shows as a DRDP domain followed by the skill in plain family words, three to ten words in all, such as "Social and Emotional Development, caring for others with gentle hands", "Science, observing what living things need", "Approaches to Learning, returning to an idea" or "Math, comparing size and amount". Use the DRDP measures the educators linked when they are given. Never give a code or a level. No two photos repeat a line. When the photo shows no clear learning, use an empty string.
+quote is the number of the one quote from the list below that best fits what these children were doing and thinking.
 
-Return only JSON in this shape {"caption":"","hashtags":"","lines":[{"photo":1,"line":""}]}.
+Return only JSON in this shape {"caption":"","hashtags":"","words":[{"photo":1,"text":""}],"lines":[{"photo":1,"line":""}],"quote":1}.
 
 ${about?"What the post is about.\n"+about+"\n\n":""}The photos, in order.
-${JSON.stringify(pics)}`;
+${JSON.stringify(pics)}
+
+The quotes.
+${QS.map((q,i)=>(i+1)+". "+q[0]+" ("+q[1]+")").join("\n")}`;
   shareBusy.words=true;renderShare();
   try{
     const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"share"});
@@ -2352,11 +2349,21 @@ ${JSON.stringify(pics)}`;
     if(out&&has(out.hashtags))shareSt.tags=String(out.hashtags).trim();
     shareSt.lines=shareSt.lines||{};
     for(const r of Array.isArray(out&&out.lines)?out.lines:[]){const n=ch[(+r.photo||0)-1];if(n)shareSt.lines[n.id]=tidy(r.line).replace(/\.$/,"")}
+    shareSt.words=shareSt.words||{};for(const r of Array.isArray(out&&out.words)?out.words:[]){const n=ch[(+r.photo||0)-1];if(n)shareSt.words[n.id]=tidy(r.text)}
+    const qn=+(out&&out.quote);if(qn>=1&&qn<=QS.length)shareSt.quote=QS[qn-1][0];
     shareSave();if(shareMade)shareMade.stale=true;
   }catch(e){toast("The caption could not be drafted. Try again.")}
   shareBusy.words=false;if(view==="share")renderShare();
 }
-function shareWarn(){if(!shareSt)return [];const ch=shareChosen();return nlNameWarn([shareSt.caption||"",shareSt.title||"",...(shareSt.linesOn?ch.map(n=>(shareSt.lines||{})[n.id]||""):[])].join(" "))}
+function shareWarn(){if(!shareSt)return [];const ch=shareChosen();return nlNameWarn([shareSt.caption||"",shareSt.title||"",...(shareSt.linesOn?ch.map(n=>(shareSt.lines||{})[n.id]||""):[]),...(shareSt.wordsOn?ch.map(n=>(shareSt.words||{})[n.id]||""):[]),...shareCardsOn().map(c=>c.h+" "+c.t)].join(" "))}
+/* words-only pictures, from the educators' own words about a thread, a project or a lens */
+const shSentences=(t,max)=>{const out=[];let n=0;for(const x of String(t||"").replace(/\s+/g," ").trim().split(/(?<=[.!?])\s+/)){const w=x.split(" ").length;if(out.length&&n+w>max)break;out.push(x);n+=w}return out.join(" ")};
+function shareCardsFrom(src){const [k,id]=shareSplit(src),c=[],add=(h,t)=>{t=shSentences(shareScrub(t),48);if(has(t))c.push({h,t,on:true})};
+  if(k==="thread"){const t=threads.get(id);if(t){add("The question we are following",t.question);const ev=(t.evidence||[]).slice(-1)[0];if(ev)add("What we are noticing",ev.text)}}
+  if(k==="proj"||k==="wall"){const x=projects.get(id);if(x){add("How it began",x.experience);add("What may lie underneath",x.underneath);add("Our intent",x.intent)}}
+  if(k==="lens"){const L=LENSES.find(l=>l.id===id);if(L){add("The lens we are reading through",L.description);if(L.questions.length)add("The questions we ask",L.questions.slice(0,3).join(" "))}}
+  return c}
+const shareCardsOn=()=>shareSt&&shareSt.cardsOn?(shareSt.cards||[]).filter(c=>c.on&&has(c.t)):[];
 /* what we ate and where it came from. Only what the menus, bins and orders say, never prices. */
 function shareFoodRange(k){const now=new Date(),wk=mondayOf(now);
   if(k==="week")return {from:wk,to:addDays(wk,4),label:"this week"};
@@ -2450,58 +2457,68 @@ const SH_W=1080,SH_H=1350,SH_TINT="#f6ece6",SH_INK="#1b2920",SH_ACC="#7a4834",SH
 const shFont=(b,px)=>PF.face?`${px}px PF${b?"bs":"fr"}`:`${b?"bold ":""}${px}px Helvetica, Arial, sans-serif`;
 function shWrap(g,text,maxW){const out=[];let cur="";for(const w of String(text||"").split(/\s+/).filter(Boolean)){const t=cur?cur+" "+w:w;if(cur&&g.measureText(t).width>maxW){out.push(cur);cur=w}else cur=t}if(cur)out.push(cur);return out}
 function shText(g,lines,y,lh){lines.forEach((l,i)=>g.fillText(l,SH_W/2,y+i*lh))}
+// TREE's own look, white, the title above a hairline in the accent, the photo large, the team's words in a soft box, the
+// learning beneath in the accent, and the same quiet footer as every TREE sheet
+const SH_BG="#ffffff",SH_HAIR="#d0d9d3";
+function shFoot(g){g.strokeStyle=SH_HAIR;g.lineWidth=2;g.beginPath();g.moveTo(90,SH_H-84);g.lineTo(SH_W-90,SH_H-84);g.stroke();
+  g.font=shFont(false,22);g.fillStyle="#606e65";g.fillText("Observe    Provoke    Document    Reflect    Evolve",SH_W/2,SH_H-50)}
+function shTitle(g,title,y){g.font=shFont(true,58);const tl=shWrap(g,title,SH_W-180).slice(0,2);g.fillStyle=SH_INK;shText(g,tl,y+50,68);y+=50+(tl.length-1)*68+34;
+  g.strokeStyle=SH_ACC;g.lineWidth=3;g.beginPath();g.moveTo(90,y);g.lineTo(SH_W-90,y);g.stroke();return y+30}
+function shBox(g,lines,y,size,lh){const w=Math.min(SH_W-140,Math.max(...lines.map(l=>g.measureText(l).width))+90),h=lines.length*lh+44;
+  g.fillStyle=SH_TINT;g.beginPath();if(g.roundRect)g.roundRect((SH_W-w)/2,y,w,h,18);else g.rect((SH_W-w)/2,y,w,h);g.fill();g.fillStyle=SH_INK;shText(g,lines,y+22+size*.95,lh);return y+h}
 async function shareCanvas(o){
   const cv=document.createElement("canvas");cv.width=SH_W;cv.height=SH_H;const g=cv.getContext("2d");
-  g.fillStyle=SH_TINT;g.fillRect(0,0,SH_W,SH_H);g.textAlign="center";g.textBaseline="alphabetic";
+  g.fillStyle=SH_BG;g.fillRect(0,0,SH_W,SH_H);g.textAlign="center";g.textBaseline="alphabetic";
+  const bottom=SH_H-110;
   if(o.info){
-    const I=o.info;g.font=shFont(true,64);const tl=shWrap(g,I.title,SH_W-200);let y=200;g.fillStyle=SH_ACC;shText(g,tl,y,78);y+=tl.length*78+40;
-    g.strokeStyle="#d9c8bd";g.lineWidth=2;g.beginPath();g.moveTo(320,y-20);g.lineTo(SH_W-320,y-20);g.stroke();y+=40;
-    const n=I.rows.length,big=n<=4?46:40,sm=n<=4?32:28,gap=n<=4?54:38;
-    for(const [main,sub] of I.rows){g.font=shFont(true,big);g.fillStyle=SH_INK;const ml=shWrap(g,main,SH_W-180).slice(0,2);shText(g,ml,y,big*1.2);y+=ml.length*big*1.2;
-      if(sub){g.font=shFont(false,sm);g.fillStyle=SH_MUTED;const sl=shWrap(g,sub,SH_W-200).slice(0,2);shText(g,sl,y+4,sm*1.25);y+=sl.length*sm*1.25+4}y+=gap}
-    if(I.foot){g.font=shFont(true,34);g.fillStyle=SH_ACC;g.fillText(I.foot,SH_W/2,Math.max(y+10,SH_H-150))}
-    g.strokeStyle="#d9c8bd";g.lineWidth=2;g.beginPath();g.moveTo(120,SH_H-96);g.lineTo(SH_W-120,SH_H-96);g.stroke();
-    g.font=shFont(false,24);g.fillStyle=SH_MUTED;g.fillText("Observe    Provoke    Document    Reflect    Evolve",SH_W/2,SH_H-56);
+    const I=o.info;let y=shTitle(g,I.title,40)+20;
+    const n=I.rows.length,big=n<=4?44:38,sm=n<=4?30:27,gap=n<=4?50:34;
+    for(const [main,sub] of I.rows){g.font=shFont(true,big);g.fillStyle=SH_INK;const ml=shWrap(g,main,SH_W-180).slice(0,2);shText(g,ml,y+big,big*1.2);y+=ml.length*big*1.2;
+      if(sub){g.font=shFont(false,sm);g.fillStyle="#606e65";const sl=shWrap(g,sub,SH_W-200).slice(0,2);shText(g,sl,y+sm+6,sm*1.25);y+=sl.length*sm*1.25+6}y+=gap}
+    if(I.foot){g.font=shFont(true,32);g.fillStyle=SH_ACC;g.fillText(I.foot,SH_W/2,Math.max(y+30,bottom-30))}
+  }else if(o.card){
+    let y=o.title?shTitle(g,o.title,40):60;
+    g.font=shFont(true,34);g.fillStyle=SH_ACC;const hl=shWrap(g,o.card.h,SH_W-200);
+    const len=o.card.t.length,size=len>260?40:len>160?46:54,lh=Math.round(size*1.36);g.font=shFont(false,size);const tl=shWrap(g,o.card.t,SH_W-220).slice(0,10);
+    const block=hl.length*44+36+tl.length*lh+44;y=Math.max(y+20,y+(bottom-y-block)/2);
+    g.font=shFont(true,34);g.fillStyle=SH_ACC;shText(g,hl,y+34,44);y+=hl.length*44+36;
+    g.font=shFont(false,size);shBox(g,tl,y,size,lh);
   }else if(o.quote){
-    const [words,who,src]=o.quote;const size=words.length>110?54:words.length>60?62:74;
-    g.font=shFont(false,size);const ql=shWrap(g,"“"+words+"”",SH_W-220);const lh=Math.round(size*1.32);
-    const block=ql.length*lh+40+46+(src?40:0);let y=(SH_H-block)/2+size*0.4;
-    g.fillStyle=SH_INK;shText(g,ql,y,lh);y+=ql.length*lh+40;
-    g.font=shFont(true,38);g.fillStyle=SH_ACC;g.fillText(who,SH_W/2,y);
-    if(src){g.font=shFont(false,30);g.fillStyle=SH_MUTED;g.fillText(src,SH_W/2,y+46)}
-    g.strokeStyle="#d9c8bd";g.lineWidth=2;g.beginPath();g.moveTo(120,SH_H-96);g.lineTo(SH_W-120,SH_H-96);g.stroke();
-    g.font=shFont(false,24);g.fillStyle=SH_MUTED;g.fillText("Observe    Provoke    Document    Reflect    Evolve",SH_W/2,SH_H-56);
+    const [words,who]=o.quote;const im=o.photo;let y=60;
+    const size=words.length>140?40:words.length>80?46:54,lh=Math.round(size*1.34);g.font=shFont(false,size);const ql=shWrap(g,"“"+words+"”",SH_W-200);
+    const textH=ql.length*lh+30+44;
+    if(im){const availH=bottom-y-textH-50,r=Math.min((SH_W-180)/im.width,availH/im.height),w=im.width*r,h=im.height*r;shDrawSoft(g,im,(SH_W-w)/2,y,w,h,o.soft);y+=h+56}
+    else y=(bottom-textH)/2;
+    g.font=shFont(false,size);g.fillStyle=SH_INK;shText(g,ql,y+size,lh);y+=ql.length*lh+30;
+    g.font=shFont(true,34);g.fillStyle=SH_ACC;g.fillText(who,SH_W/2,y+30);
   }else{
-    const im=o.photo,a=im.width/im.height,full=a>=0.62&&a<=0.95;
-    g.font=shFont(true,62);const tl=o.title?shWrap(g,o.title,SH_W-160).slice(0,3):[];
-    g.font=shFont(true,36);const ll=o.line?shWrap(g,o.line,SH_W-160).slice(0,2):[];
-    if(full){
-      const r=Math.max(SH_W/im.width,SH_H/im.height);shDrawSoft(g,im,(SH_W-im.width*r)/2,(SH_H-im.height*r)/2,im.width*r,im.height*r,o.soft);
-      if(tl.length||ll.length){const bh=60+tl.length*76+(ll.length?ll.length*48+(tl.length?20:0):0)+40;const gr=g.createLinearGradient(0,SH_H-bh-120,0,SH_H);
-        gr.addColorStop(0,"rgba(20,26,22,0)");gr.addColorStop(.35,"rgba(20,26,22,.55)");gr.addColorStop(1,"rgba(20,26,22,.82)");g.fillStyle=gr;g.fillRect(0,SH_H-bh-120,SH_W,bh+120);
-        let y=SH_H-bh+50;g.fillStyle="#ffffff";g.font=shFont(true,62);shText(g,tl,y,76);y+=tl.length*76+(tl.length?20:0);
-        g.font=shFont(true,36);g.fillStyle="#f6ece6";shText(g,ll,y,48)}
-    }else{
-      const top=tl.length?70+tl.length*76:64,bot=ll.length?70+ll.length*48:64,m=56,availW=SH_W-m*2,availH=SH_H-top-bot;
-      const r=Math.min(availW/im.width,availH/im.height),w=im.width*r,h=im.height*r,x=(SH_W-w)/2,y=top+(availH-h)/2;
-      shDrawSoft(g,im,x,y,w,h,o.soft);
-      if(tl.length){g.font=shFont(true,62);g.fillStyle=SH_INK;shText(g,tl,y-30-(tl.length-1)*76,76)}
-      if(ll.length){g.font=shFont(true,36);g.fillStyle=SH_ACC;shText(g,ll,y+h+62,48)}
-    }
+    const im=o.photo;let y=o.title?shTitle(g,o.title,30):56;
+    g.font=shFont(false,38);const wl=o.words?shWrap(g,o.words,SH_W-230).slice(0,5):[];
+    g.font=shFont(true,30);const ll=o.line?shWrap(g,o.line,SH_W-200).slice(0,2):[];
+    const textH=(wl.length?wl.length*50+44+28:0)+(ll.length?ll.length*40+14:0);
+    const availH=bottom-y-textH-(wl.length||ll.length?24:0),r=Math.min((SH_W-140)/im.width,availH/im.height),w=im.width*r,h=im.height*r;
+    shDrawSoft(g,im,(SH_W-w)/2,y,w,h,o.soft);y+=h+28;
+    if(wl.length){g.font=shFont(false,38);y=shBox(g,wl,y,38,50)+28}
+    if(ll.length){g.font=shFont(true,30);g.fillStyle=SH_ACC;shText(g,ll,y+30,40)}
   }
+  shFoot(g);
   return await new Promise(r=>cv.toBlob(r,"image/jpeg",.92));
 }
 const shareFoodKey=()=>{if(!shareSt)return "";const [k,id]=shareSplit(shareSt.src);return k==="food"?id:""};
-const shareHasCards=()=>{const fk=shareFoodKey();return !!fk&&shareFoodCards(fk).length>0};
+const shareHasCards=()=>{const fk=shareFoodKey();return (!!fk&&shareFoodCards(fk).length>0)||shareCardsOn().length>0};
 async function shareMake(){
   const ch=shareChosen();if(!ch.length&&!shareHasCards()){toast("Choose at least one photo first.");return}
   shareBusy.make=true;renderShare();await loadPrintFonts();
   const blobs=[];let missed=0;
+  const title=()=>blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"";const cards=shareCardsOn();
+  const putCards=async()=>{for(const c of cards)blobs.push(await shareCanvas({card:c,title:title()}))};
+  if(!ch.length)await putCards();
   for(let i=0;i<ch.length;i++){const n=ch[i];let im=null;try{im=await decodeImage(await (await fetchPhoto(photoSrc(n))).blob())}catch(e){}
-    if(!im){missed++;continue}
-    blobs.push(await shareCanvas({photo:im,soft:(shareSt.soft||{})[n.id]||[],title:blobs.length===0&&shareSt.titleOn?String(shareSt.title||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}))}
+    if(im)blobs.push(await shareCanvas({photo:im,soft:(shareSt.soft||{})[n.id]||[],title:title(),words:shareSt.wordsOn!==false?String((shareSt.words||{})[n.id]||"").trim():"",line:shareSt.linesOn?String((shareSt.lines||{})[n.id]||"").trim():""}));else missed++;
+    if(i===0)await putCards()}
   const fk=shareFoodKey();if(fk)for(const info of shareFoodCards(fk))blobs.push(await shareCanvas({info}));
-  const q=shareSt.quote&&SHARE_QUOTES.find(x=>x[0]===shareSt.quote);if(q&&blobs.length)blobs.push(await shareCanvas({quote:q}));
+  const q=shareSt.quote&&shQuote(shareSt.quote);if(q&&blobs.length){const qn=shareSt.quotePhoto==="none"?null:shareSt.quotePhoto==="last"?ch[ch.length-1]:ch.find(n=>n.id===shareSt.quotePhoto);let qim=null;
+    if(qn){try{qim=await decodeImage(await (await fetchPhoto(photoSrc(qn))).blob())}catch(e){}}blobs.push(await shareCanvas({quote:q,photo:qim,soft:qn?(shareSt.soft||{})[qn.id]||[]:[]}))}
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));
   shareMade=blobs.length?{blobs,urls:blobs.map(b=>URL.createObjectURL(b)),stale:false}:null;
   if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the post leaves ${missed>1?"them":"it"} out.`);
@@ -2522,13 +2539,13 @@ async function shareDocx(){
 function renderShare(){
   const main=$("#main");
   if(!isDirector()){main.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Share</h2><div class="sub">Posts are made in the director's view.</div></div>`;return}
-  const st=shareSt;
+  const st=shareSt;if(st){if(!st.words)st.words={};if(!st.cards){st.cards=shareCardsFrom(st.src);st.cardsOn=true}if(st.quote&&!shQuote(st.quote))st.quote=SHQ()[0][0]}
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Share</h2><div class="sub">A post for the school's Instagram from documentation you already have. Children's names, children's words and DRDP never go into a post, and photos where a face or a name may show are set aside before you choose.</div></div>
   <section class="card"><div class="lbl">Start from</div><div class="actions"><select id="shsrc" style="width:auto;max-width:100%">${shareSources().map(([v,l])=>`<option value="${esc(v)}" ${st&&st.src===v?"selected":""}>${esc(l)}</option>`).join("")}</select><button class="btn small" data-shgather="1">Gather photos</button>${st?`<button class="linkbtn" data-shclear="1">Start over</button>`:""}</div>
   <div class="cnt">Observations kept with a team inquiry are never offered.</div></section>`;
   if(!st){main.innerHTML=h;return}
   const ns=st.ids.map(id=>notices.get(id)).filter(Boolean);
-  if(!ns.length&&!shareFoodKey()){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
+  if(!ns.length&&!shareFoodKey()&&!(st.cards||[]).length){main.innerHTML=h+`<div class="empty" style="margin-top:12px">No photos were found there. Choose another place to start from.</div>`;return}
   if(!shareBusy.faces&&!shareBusy.tried&&ns.some(n=>!shareFaces[n.id]))setTimeout(shareCheckFaces,0);
   const ch=shareChosen(),clear=ns.filter(n=>shState(n)==="clear"),aside=ns.filter(n=>shState(n)!=="clear");
   const tile=n=>{const k=ch.indexOf(n),s=shState(n),sf=((st.soft||{})[n.id]||[]).length;return `<div class="shcell"><button class="shph${k>=0?" on":""}" data-shpick="${esc(n.id)}" aria-pressed="${k>=0}" type="button"><img src="${esc(photoThumb(n))}" alt="" loading="lazy">${k>=0?`<span class="decknum">${k+1}</span>`:""}${sf?`<span class="shwhy">${k>=0?"Faces softened":"Softened, tap to check"}</span>`:s!=="clear"&&(st.found||{})[n.id]===0?`<span class="shwhy">No face found, tap to look</span>`:s!=="clear"?`<span class="shwhy">${esc(SH_WHY[s]||"")}</span>`:""}</button><button class="linkbtn shsoftbtn" data-shsoftopen="${esc(n.id)}" type="button">${sf?"Change softening":"Soften faces"}</button></div>`};
@@ -2540,7 +2557,7 @@ function renderShare(){
     <div class="actions"><button class="btn small" data-shsoftall="1" ${shBatch?"disabled":""}>${shBatch?`Softening ${shBatch.done} of ${shBatch.of}`:"Soften faces in all of these"}</button></div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
     ${!shareBusy.faces&&ns.some(n=>shState(n)==="?")?`<div class="actions"><button class="linkbtn" data-shrecheck="1">Check the unchecked photos again</button></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
-    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and lines"}</button></div>
+    <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and words"}</button></div>
     <div class="cnt">Drafted only from the educators' words, with children's names and words taken out first.</div>
     <label class="fld-label">Caption<textarea id="shcap" rows="6">${esc(st.caption||"")}</textarea></label>
     <label class="fld-label">Hashtags<input id="shtags" value="${esc(st.tags||"")}" placeholder="#reggioinspired #naturebasedlearning"></label>
@@ -2552,10 +2569,17 @@ function renderShare(){
     ${shareFoodKey()?(()=>{const F=shareFood(shareFoodKey());return `<label class="radio"><input type="checkbox" data-shopt="menuOn" ${st.menuOn?"checked":""}><span>A picture of what we ate${F.days.length?`, ${F.days.length} day${F.days.length===1?"":"s"} on the menu`:", no menu kept for these days yet"}</span></label>
     <label class="radio"><input type="checkbox" data-shopt="farmsOn" ${st.farmsOn?"checked":""}><span>A picture of where our food came from${F.sources.length?`, ${F.sources.length} farm${F.sources.length===1?"":"s"} and producer${F.sources.length===1?"":"s"}`:", none kept for these days yet"}</span></label>
     <div class="cnt">Made from the menus, the weekly bins and the orders in TREE. Prices never show.</div>`})():""}
-    <label class="radio"><input type="checkbox" data-shopt="linesOn" ${st.linesOn?"checked":""}><span>A line on each picture about the learning it shows</span></label>
-    ${st.linesOn?`<div class="cnt">In family words, about children as a group. No codes, levels or DRDP.</div>${ch.map((n,i)=>`<label class="fld-label">Picture ${i+1}<input data-shline="${esc(n.id)}" value="${esc((st.lines||{})[n.id]||"")}" placeholder="Such as Early math, comparing and measuring"></label>`).join("")}`:""}
-    <label class="fld-label">End with a quote<select id="shquote"><option value="">No closing quote</option>${SHARE_QUOTES.map(q=>`<option value="${esc(q[0])}" ${st.quote===q[0]?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0].replace(/[.]$/,""))}, ${esc(q[1])}</option>`).join("")}</select></label>
-    <div class="cnt">Every quote here has a known source, and its source prints beneath it.</div></section>`;
+    <label class="radio"><input type="checkbox" data-shopt="wordsOn" ${st.wordsOn!==false?"checked":""}><span>Words under each photo that make the children's learning and thinking visible</span></label>
+    <label class="radio"><input type="checkbox" data-shopt="linesOn" ${st.linesOn?"checked":""}><span>The DRDP domain and the skill beneath, to go further</span></label>
+    ${(st.wordsOn!==false||st.linesOn)&&ch.length?`<div class="cnt">About children as a group. No codes or levels.</div>${ch.map((n,i)=>`<div class="shpicwords"><img src="${esc(photoThumb(n))}" alt=""><div style="display:grid;gap:6px;min-width:0">
+      ${st.wordsOn!==false?`<textarea data-shword="${esc(n.id)}" rows="2" placeholder="What children were noticing, trying or working out">${esc((st.words||{})[n.id]||"")}</textarea>`:""}
+      ${st.linesOn?`<input data-shline="${esc(n.id)}" value="${esc((st.lines||{})[n.id]||"")}" placeholder="Such as Science, observing what living things need">`:""}</div></div>`).join("")}`:""}
+    ${(st.cards||[]).length?`<label class="radio"><input type="checkbox" data-shopt="cardsOn" ${st.cardsOn?"checked":""}><span>Pictures of words only, from the educators' own writing</span></label>
+    ${st.cardsOn?(st.cards||[]).map((c,i)=>`<div class="shcard"><label class="radio"><input type="checkbox" data-shcardon="${i}" ${c.on?"checked":""}><span><b>${esc(c.h)}</b></span></label><textarea data-shcard="${i}" rows="3">${esc(c.t)}</textarea></div>`).join(""):""}
+    <div class="cnt">A post can be words only. Take out every photo and these pictures make the post.</div>`:""}
+    <label class="fld-label">End with a quote<select id="shquote"><option value="">No closing quote</option>${SHQ().map(q=>`<option value="${esc(q[0])}" ${st.quote===q[0]?"selected":""}>${esc(q[0].length>70?q[0].slice(0,67)+"...":q[0].replace(/[.]$/,""))}, ${esc(q[1])}</option>`).join("")}</select></label>
+    ${st.quote&&ch.length?`<label class="fld-label">Photo with the quote<select id="shqphoto"><option value="last" ${st.quotePhoto==="last"||!st.quotePhoto?"selected":""}>The last photo</option>${ch.map((n,i)=>`<option value="${esc(n.id)}" ${st.quotePhoto===n.id?"selected":""}>Photo ${i+1}</option>`).join("")}<option value="none" ${st.quotePhoto==="none"?"selected":""}>No photo</option></select></label>`:""}
+    <div class="cnt">Draft chooses the quote that fits these children's work best, from the full collection the Documentation Slides used.</div></section>`;
   h+=`<section class="card"><div class="lbl">The post</div>
     <div class="actions"><button class="btn small" data-shmake="1" ${(!ch.length&&!shareHasCards())||shareBusy.make?"disabled":""}>${shareBusy.make?"Drawing the pictures":shareMade?"Make the pictures again":"Make the pictures"}</button></div>
     ${shareMade?`${shareMade.stale?`<div class="cnt"><b>Something changed since these were made. Make the pictures again to include it.</b></div>`:""}<div class="shgrid shmade">${shareMade.urls.map(u=>`<img src="${u}" alt="">`).join("")}</div>
@@ -2569,7 +2593,7 @@ document.addEventListener("click",async e=>{
   if(d.shgather){const src=$("#shsrc").value;const ns=shareGather(src);const [k,id]=shareSplit(src);
     const title=k==="proj"||k==="wall"?((projects.get(id)||{}).name||""):k==="thread"?shareScrub((threads.get(id)||{}).name||""):k==="lens"?((LENSES.find(l=>l.id===id)||{}).name||""):k==="food"?"From our kitchen":k==="slide"?shareScrub((slides.get(id)||{}).title||""):"";
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;
-    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHARE_QUOTES[Math.floor(Math.random()*SHARE_QUOTES.length)][0],caption:"",tags:"",at:Date.now()};
+    shareSt={src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:!!title,title,linesOn:k!=="food",menuOn:true,farmsOn:true,lines:{},quote:SHQ()[Math.floor(Math.random()*SHQ().length)][0],quotePhoto:"last",wordsOn:true,words:{},cardsOn:true,cards:shareCardsFrom(src),caption:"",tags:"",at:Date.now()};
     if(k==="wall"){const x=projects.get(id);for(const sh of shareWallSheets(x)){const pid=wallPhotos(sh)[0];if(pid&&has(sh.title)&&!shareSt.lines[pid])shareSt.lines[pid]=shareScrub(sh.title)}}
     shareSave();renderShare();shareCheckFaces();return}
   if(d.shclear){if(!confirm("Start over? The photos chosen and the caption for this post are cleared."))return;shareSt=null;shareSave();if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;renderShare();return}
@@ -2594,12 +2618,16 @@ document.addEventListener("click",async e=>{
 document.addEventListener("change",e=>{
   if(view!=="share"||!shareSt||!isDirector())return;const t=e.target;
   if(t.dataset&&t.dataset.shopt){shareSt[t.dataset.shopt]=t.checked;shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
+  if(t.id==="shqphoto"){shareSt.quotePhoto=t.value;shareSave();if(shareMade)shareMade.stale=true;return}
+  if(t.dataset&&t.dataset.shcardon!=null){const c=(shareSt.cards||[])[+t.dataset.shcardon];if(c){c.on=t.checked;shareSave();if(shareMade)shareMade.stale=true}return}
   if(t.id==="shquote"){shareSt.quote=t.value;shareSave();if(shareMade)shareMade.stale=true;renderShare();return}
 });
 document.addEventListener("input",e=>{
   if(view!=="share"||!shareSt||!isDirector())return;const t=e.target;let hit=true;
   if(t.id==="shcap")shareSt.caption=t.value;else if(t.id==="shtags")shareSt.tags=t.value;else if(t.id==="shtitle")shareSt.title=t.value;
-  else if(t.dataset&&t.dataset.shline){shareSt.lines=shareSt.lines||{};shareSt.lines[t.dataset.shline]=t.value}else hit=false;
+  else if(t.dataset&&t.dataset.shline){shareSt.lines=shareSt.lines||{};shareSt.lines[t.dataset.shline]=t.value}
+  else if(t.dataset&&t.dataset.shword){shareSt.words=shareSt.words||{};shareSt.words[t.dataset.shword]=t.value}
+  else if(t.dataset&&t.dataset.shcard!=null){const c=(shareSt.cards||[])[+t.dataset.shcard];if(c)c.t=t.value}else hit=false;
   if(!hit)return;shareSave();if(shareMade&&t.id!=="shcap"&&t.id!=="shtags")shareMade.stale=true;const w=$("#shwarn");if(w)w.innerHTML=shWarnHtml();
 });
 /* ---------- Stories ----------
