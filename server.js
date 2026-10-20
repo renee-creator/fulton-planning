@@ -781,7 +781,7 @@ async function displayFeed() {
   const codes = new Set(); const drdpShown = drdp.sort((a, b) => b.at - a.at).filter(d => !codes.has(d.code) && codes.add(d.code)).slice(0, 6);
   // stories the team has made to read with children, the cover and the first pages that have a photo
   const byNote = new Map(notices.map(n => [n.id, n]));
-  const stories = live('stories').filter(st => st && String(st.title || '').trim() && (st.pages || []).some(p => String(p && p.lines || '').trim()))
+  const stories = live('stories').filter(st => st && st.reviewed && String(st.title || '').trim() && (st.pages || []).some(p => String(p && p.lines || '').trim()))
     .sort((a, b) => (b.updatedAt || b.at || 0) - (a.updatedAt || a.at || 0)).slice(0, 4)
     .map(st => { const cover = photoOf(byNote.get(st.coverPhoto)) || (st.pages || []).map(p => photoOf(byNote.get(p && p.photo))).find(Boolean) || null;
       const pages = (st.pages || []).filter(p => p && String(p.lines || '').trim()).map(p => ({ heading: trim(p.heading, 60), lines: String(p.lines).split('\n').map(l => trim(l, 120)).filter(Boolean).slice(0, 3), photo: photoOf(byNote.get(p.photo)) }))
@@ -992,6 +992,20 @@ async function handle(req, res) {
       const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return a.length === b.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum); };
       const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
       if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
+    }
+    // a story is shared beyond the team only once the director has reviewed it. An educator's save never marks it reviewed,
+    // and an educator's change to the words of a reviewed story sends it back to draft for the team to look at again
+    if (kind === 'stories' && op !== 'delete' && !isDirector(me.name)) {
+      const was = cur && !cur.deleted ? cur.doc : {};
+      const WORDS = ['title', 'cover', 'coverPhoto', 'pages', 'care', 'words', 'think', 'practice', 'kind'];
+      const fix = d => { if (!d || typeof d !== 'object') return d; d = Object.assign({}, d);
+        const merged = op === 'update' ? Object.assign({}, was, d) : d;
+        const changed = WORDS.some(k => JSON.stringify(merged[k]) !== JSON.stringify(was[k]));
+        if (was.reviewed && !changed) { d.reviewed = true; d.reviewedBy = was.reviewedBy; d.reviewedAt = was.reviewedAt; }
+        else { if (d.reviewed || was.reviewed) log('Story sent back to draft or kept as draft for', me.name, id); d.reviewed = false; if (was.reviewed) d.changedAfterReview = true; if (op === 'set') { delete d.reviewedBy; delete d.reviewedAt; } }
+        return d; };
+      if (body.data) body.data = fix(body.data);
+      if (body.patch) body.patch = fix(body.patch);
     }
     if (kind === 'projects' && op !== 'create' && cur && !cur.deleted && !isDirector(me.name)) {
       const OPEN = ['threads', 'classrooms', 'updatedAt', 'updatedByName', 'savedAt'];
