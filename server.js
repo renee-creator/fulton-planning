@@ -273,7 +273,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t) });
+const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -660,6 +660,65 @@ async function askClaude(content, careful, extra) {
     if (retired && modelAt[lane] < list.length - 1) { log('Model ' + model + ' is not available, switching'); modelAt[lane]++; continue; }
     return r;
   }
+}
+
+/* ---------- a thread an observation might belong to ----------
+   When an educator keeps an observation, or a Kaymbu post arrives, TREE quietly asks the quick model whether its words
+   fit a thread the team is following. The answer is only a suggestion, kept on the observation and every photo of its post,
+   for an educator to add with a tap or turn down. Nothing joins a thread without that tap. */
+const suggestWait = new Map(); const suggestTimes = []; let suggestRunning = false; const suggestQueue = [];
+const SUGGEST_PER_HOUR = Number(process.env.SUGGEST_PER_HOUR) || 120;
+const SUGGEST_DELAY_MS = Number(process.env.SUGGEST_DELAY_MS) || 45000;
+function noticeGroupDocs(doc) {
+  const out = [];
+  if (doc && doc.group) { for (const [, r] of store.recs.notices) if (!r.deleted && r.doc && r.doc.group === doc.group) out.push(r.doc); }
+  else if (doc) out.push(doc);
+  return out.sort((a, b) => (a.at || 0) - (b.at || 0));
+}
+function queueThreadSuggest(id) {
+  const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
+  const key = r.doc.group || id;
+  // the words are often typed after the photo is kept, so the check waits until the observation has been quiet for a little while
+  clearTimeout(suggestWait.get(key));
+  suggestWait.set(key, setTimeout(() => { suggestWait.delete(key); suggestQueue.push(id); runSuggestQueue(); }, SUGGEST_DELAY_MS));
+}
+async function runSuggestQueue() {
+  if (suggestRunning) return; suggestRunning = true;
+  try { while (suggestQueue.length) { const id = suggestQueue.shift(); try { await suggestThreadFor(id); } catch (e) { log('Thread suggestion skipped,', e.message); } } }
+  finally { suggestRunning = false; }
+}
+async function suggestThreadFor(id) {
+  const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
+  const docs = noticeGroupDocs(r.doc); const lead = docs[0] || r.doc;
+  const words = [...new Set(docs.map(d => [d.noticed, d.wonder].filter(Boolean).join('\n').trim()).filter(Boolean))].join('\n').trim();
+  if (words.split(/\s+/).filter(Boolean).length < 6) return;   // never from a photo alone, nor from a word or two
+  const ids = new Set(docs.map(d => d.id));
+  // an observation a team inquiry holds stays with the inquiry
+  for (const [, q] of store.recs.inquiries) if (!q.deleted && q.doc && (q.doc.obs || []).some(x => ids.has(x))) return;
+  const declined = new Set(docs.flatMap(d => d.threadNo || []));
+  const inThread = t => docs.some(d => d.threadId === t.id) || (t.evidence || []).some(e => e && ids.has(e.planId || e.id));
+  const live = [];
+  for (const [tid, tr] of store.recs.threads) { const t = tr.doc; if (tr.deleted || !t || t.status === 'closed' || t.unfollowed) continue; if (declined.has(tid) || inThread(t)) continue;
+    live.push({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }); }
+  if (!live.length) return;
+  const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
+  if (docs.some(d => d.threadSuggestKey === keyNow)) return;
+  if (!anthropicKey()) return;
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
+  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\nThese are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
+  let out = null;
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 400 });
+    if (res.status !== 200) return;
+    const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    const j = txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1); out = JSON.parse(j); } catch (e) { return; }
+  const okIds = new Set(live.map(t => t.id));
+  const clean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  const picks = (Array.isArray(out && out.threads) ? out.threads : []).filter(x => x && okIds.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: clean(x.why), at: now }));
+  for (const d of docs) { const rr = store.recs.notices.get(d.id); if (!rr || rr.deleted) continue;
+    rr.doc.threadSuggestKey = keyNow; if (picks.length) rr.doc.threadSuggest = picks; else delete rr.doc.threadSuggest;
+    noteChange('notices', d.id); scheduleSave('notices', d.id); }
+  log(picks.length ? `Thread suggested for ${lead.id}${docs.length > 1 ? ' and ' + (docs.length - 1) + ' more photos' : ''}, ${picks.map(p => (store.recs.threads.get(p.id) || {}).doc.name).join(' and ')}` : `No thread fits ${lead.id}`);
 }
 
 // sites the newsletter's suggested reading may come from
@@ -1080,6 +1139,8 @@ async function handle(req, res) {
     { const r0 = map.get(id); if (r0) r0.local = true; }
     noteChange(kind, id); scheduleSave(kind, id);
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
+    // an observation's words, new or changed, are checked against the threads a little later
+    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || 'noticed' in p0 || 'wonder' in p0 || 'group' in p0) queueThreadSuggest(id); }
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
   }

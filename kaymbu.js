@@ -11,7 +11,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
-module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive, digest }) {
+module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive, digest, onNotice }) {
   const KEY = () => String(process.env.KAYMBU_INBOX_KEY || '').trim();
   const PHOTO_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
   const seen = new Set();   // Moments being kept right now, so a second copy of the same email waits its turn
@@ -250,6 +250,8 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
           updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
+        // a thread it might belong to is checked once for the whole post, a little after the last photo arrives
+        if (onNotice) try { onNotice(id); } catch (e) {}
         kept++; if (needs) check++; have.add(k);
       } catch (e) { problems.push(e.message); log('A Kaymbu Moment could not be kept', e.message); }
       finally { seen.delete(k); }
