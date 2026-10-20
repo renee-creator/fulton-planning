@@ -1053,6 +1053,8 @@ function fmtDate(s){if(!s)return"";const k=String(s);let v=fmtDateMemo.get(k);if
 function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+// a message that stays while something is under way, such as photos being fetched for a printout
+function progress(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,30000)}
 // Staff is a shared passcode, not a person. A plan should carry the name of the educator who wrote it.
 const SHARED_SIGNIN=["staff","team","shared","classroom","educator","teacher","admin"];
 const isShared=n=>SHARED_SIGNIN.includes(String(n||"").trim().toLowerCase());
@@ -3226,7 +3228,7 @@ function stAcc(st){return accOf((st&&st.pal)||"story")||ACC.story}
 function stPageBg(st){return st&&st.bg==="tint"?mixW(stAcc(st).t,.45):[255,255,255]}
 function stBrand(st){return st&&st.brand!==undefined?!!st.brand:!!PRINT.schoolDocs}
 async function storyPhotos(st,pages){const ids=[...pages.filter(p=>p.photo).map(p=>p.photo),...pages.filter(p=>p.kind==="community").flatMap(p=>p.kids.map(k=>k.photo)).filter(Boolean)];
-  const docs=[{photos:[...new Set(ids)].map(id=>notices.get(id)).filter(Boolean).flatMap(momentPhotos)}];toast("Preparing the photos");await loadPhotos(docs)}
+  const docs=[{photos:[...new Set(ids)].map(id=>notices.get(id)).filter(Boolean).flatMap(momentPhotos)}];await loadPhotos(docs)}
 // a quotation as it prints, inside curly quotation marks
 const stSaid=t=>stQuoteMark(String(t||"").trim().replace(/^["“]|["”]$/g,""));
 // a photo filling a square cell, cropped from its middle, for the community page
@@ -3431,7 +3433,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("button");i
   if(t.dataset.deckpick){const id=t.dataset.deckpick,i=deck.ids.indexOf(id);i>=0?deck.ids.splice(i,1):deck.ids.push(id);deckSave();renderSlides();return}
   if(t.dataset.deckout){const docs=deckDocs();if(!docs.length)return;const name=safeFile(`Slides ${iso(new Date())}`);const kind=t.dataset.deckout;
     if(kind==="jpg"){toast("Drawing the pictures");let k=0;for(const d of docs){if(!d.centered)continue;k++;try{const b=await sheetJpg(d,d.sq?2400:3300);if(b)await saveFile(b,`${name} ${String(k).padStart(2,"0")}.jpg`)}catch(err){}}return}
-    if(docs.some(d=>(d.photos||[]).length)){toast("Preparing the photos");await loadPhotos(docs)}
+    if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs)}
     if(kind==="docx")makeDocx(docs,name+".docx");else makePdf(docs,name+".pdf");return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="slides"||!deck)return;
@@ -4894,6 +4896,7 @@ async function makePdf(list,filename,ret){
 function overWarn(){const u=[...new Set(centerOver)];if(u.length)setTimeout(()=>toast(`${u.length===1?"“"+u[0]+"” has":u.length+" sheets have"} more words than fit. Choose fewer quotes or shorten the words.`),1200);centerOver=[]}
 // every PDF opens in a preview first, drawn page by page on the device, and is saved only from there
 async function saveFile(blob,filename,direct){
+  {const tt=$("#toast");if(tt&&/^(Making the file|Getting photos|Getting the photo)/.test(tt.textContent))tt.hidden=true}
   if(!direct&&/\.pdf$/i.test(filename||"")&&blob&&blob.size){pdfPreview(blob,filename);return}
   if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
   try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
@@ -8183,13 +8186,15 @@ async function decodeImage(blob){
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs){
   const want=[];for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
-  let missed=0;
+  let missed=0,got=0;const n=want.length;if(n)progress(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
     const bmp=await decodeImage(blob);const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
     const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
     const jb=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));
-    photoCache.set(b.key,{url:c.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:c.width,h:c.height})}catch(e){missed++}}));
+    photoCache.set(b.key,{url:c.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:c.width,h:c.height})}catch(e){missed++}
+    got++;if(n>1)progress(`Getting photos, ${got} of ${n}`)}));
+  if(n&&!missed)progress("Making the file");
   if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the printout leaves ${missed>1?"them":"it"} out.`);
 }
 const SECT_SHORT={"Intentions and questions for the week":"intentions","Meeting time questions, concepts and ideas":"meeting time","Expressed interests of individual and small group":"expressed interests","Provocations and environmental changes, indoor":"indoor provocations","Provocations and environmental changes, outdoor":"outdoor provocations","Possible activities and materials":"possible materials","Observation rationale":"observation","The thread we are following":"the thread"};
@@ -9024,7 +9029,7 @@ async function onePage(make,from,to){
 async function printsClick(t){
   if(t.dataset.word!=="1")pvLast=t;
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
-  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){toast("Preparing the photos");await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="story"){const st=stories.get(t.dataset.id);if(st)await (word?storyDocx:storyPdf)(st);return true}
   if(kind==="storysmall"){const st=stories.get(t.dataset.id);if(st)await (word?storySmallDocx:storySmallPdf)(st);return true}
@@ -9952,7 +9957,7 @@ function renderChildren(){
       <label>Birthday<input type="date" id="ka-dob"></label><label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
     :`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button></div>`):"";
-  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children ${esc(yearFromTime(Date.now()).replace("-","–"))}</h2>
+  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
     <div class="sub">Each child's documentation, conferences and years at Fulton in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At Fulton ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
     <div class="tseg" role="group" aria-label="Classroom">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
