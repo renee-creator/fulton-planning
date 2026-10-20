@@ -2245,17 +2245,17 @@ async function loadTodayCal(force){
   try{const j=await window.FP_API("/api/view",{from:day,to:day});
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
-    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||"",print:(e.print||[]).filter(x=>x&&x.id)});
+    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
     for(const b of j.bookings||[]){const sp=spaces[b.spaceId]||{};const mins=v=>typeof v==="number"?String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0"):"";
       out.push({kind:"space",start:b.week?"":mins(b.start),end:b.week?"":mins(b.end),week:!!b.week,title:sp.name||"A space",sub:[b.who||b.by,b.group||b.what].filter(Boolean).join(", ")})}
     out.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
     // the menus to print show once, with the day's first snack or lunch
-    {let shown=false;for(const x of out)if((x.print||[]).length){if(shown)x.print=[];shown=true}}
+    {let shown=false;for(const x of out)if(x.menuMonth){if(shown)x.menuMonth="";shown=true}}
     todayCal={at:Date.now(),day,items:out,error:""};
   }catch(e){todayCal={at:Date.now(),day,items:null,error:e&&e.message||"The calendar could not be reached."}}
   if(view==="today")renderToday();
 }
-function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${(x.print||[]).length&&window.FP_ORIGINAL_URL?`<span class="cnt">${x.print.map(p=>`<a href="${esc(window.FP_ORIGINAL_URL(p.id))}" target="_blank" rel="noopener">Print the ${esc(String(p.label||"menu").toLowerCase())}</a>`).join(" · ")}</span>`:""}</div>`}
+function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${x.menuMonth?`<span class="cnt"><button class="linkbtn" data-print="kmenu" data-id="${esc(x.menuMonth)}|all">Print the monthly menu</button></span>`:""}</div>`}
 function todayWaiting(){
   const out=[],m=me(),dir=isDirector(),wk=mondayOf(new Date());
   const all=[...plans.values()].filter(p=>p.id!=="example");
@@ -4905,7 +4905,7 @@ function renderKitchen(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>
       <div class="sub">Type in any meal and it is saved to the month's menu, which the calendar, Today and the family sheets read.</div></div>
       <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button></div></div></div>
-    <section class="card kprint"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("kmenu",month+"|lunch","Lunch only")}${printBtns("kmenu",month+"|snack","Snacks only")}${printBtns("farmsheet",month,"What we ate")}${printBtns("farmwall",month,"Where our food came from")}</div>
+    <section class="card kprint"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("farmsheet",month,"What we ate")}${printBtns("farmwall",month,"Where our food came from")}</div>
       <div class="hint">One page each, as PDF or Word, ready to attach to the Kitchen Digest.</div></section>
     ${draftOn?`<div class="kdraftbar">This is a draft from past menus, in lighter type. Change anything, then save it. Fruit and vegetable sides are left for you to choose by season. <span class="actions"><button class="btn small" data-kdraftsave="1">Save the draft</button><button class="linkbtn" data-kdraftclear="1">Clear the draft</button></span></div>`:""}
     <div class="kwrap"><div class="kmain">${kWeeks(month).map(w=>`<div class="kweek">${w.days.map(d=>kCellHtml(month,d)).join("")}</div>`).join("")||`<div class="empty">No school days in this month.</div>`}</div>
