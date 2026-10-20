@@ -11,7 +11,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
-module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, keepInDrive, digest, onNotice }) {
+module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, educatorNames, keepInDrive, digest, onNotice }) {
   const KEY = () => String(process.env.KAYMBU_INBOX_KEY || '').trim();
   const PHOTO_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
   const seen = new Set();   // Moments being kept right now, so a second copy of the same email waits its turn
@@ -141,8 +141,15 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const named = (list, key) => list.filter(x => x[key] && words(x[key]).length > 2 && s.includes(' ' + words(x[key]) + ' ')).sort((a, b) => String(b[key]).length - String(a[key]).length)[0];
     const project = named(live('projects').filter(p => p.status !== 'closed'), 'name');
     const thread = named(live('threads').filter(t => t.status !== 'stopped'), 'name');
+    // Kaymbu is signed in per class, so the educator who shares writes their first name in the subject, as in North Jessica.
+    // The name is matched to the educators who sign in to TREE, and a child's name is never taken for an educator.
+    const kidFirsts = new Set(live('children').map(c => words(c.first || '')).filter(Boolean));
+    const edus = [...new Set((educatorNames ? educatorNames() : []).map(String).filter(Boolean))];
+    const eduHits = edus.filter(n => { const w = words(n); return w.length > 1 && s.includes(' ' + w + ' ') && !(kidFirsts.has(w) && !s.includes(' by ' + w + ' ')); });
+    const educator = eduHits.length === 1 ? eduHits[0] : eduHits.find(n => s.includes(' by ' + words(n) + ' ')) || '';
+    if (eduHits.length > 1 && !educator) log('Kaymbu subject names more than one educator, so none is set', eduHits.join(', '));
     // the word bin keeps the moments with that week's FEED bin, as in South Bin
-    return { room, rooms: inSubject, projectId: project ? project.id : '', threadId: thread ? thread.id : '', bin: / bins? /.test(s) };
+    return { room, rooms: inSubject, educator, projectId: project ? project.id : '', threadId: thread ? thread.id : '', bin: / bins? /.test(s) };
   }
 
   // the bin that arrived in the week of a day, up to six days before it
@@ -214,9 +221,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
     const moments = parseMoments(body.html);
     if (!moments.length) { log('Kaymbu email held no Moments'); reply(200, { ok: true, kept: 0 }); return; }
-    const name = from.replace(/<[^>]*>/, '').trim(), by = sharedBy(name, email);
+    const name = from.replace(/<[^>]*>/, '').trim();
     const sent = Date.parse(body.date) || Date.now(), onDay = subjectDay(body.subject, sent);
     const sub = readSubject(body.subject);
+    // the educator named in the subject comes first, since the Kaymbu sign-in belongs to the class
+    const by = sub.educator || sharedBy(name, email);
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
     // photos sent with the same title and note may each show different children, so the named children are suggested
     // for an educator to choose from, photo by photo, rather than tagged on every photo
@@ -268,6 +277,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     let n = 0;
     for (const [id, r] of store.recs.notices) {
       const d0 = r.doc; if (!r.deleted && d0 && d0.kaymbu && d0.by && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
+      // a moment kept before the subject's educator was read takes that educator, unless an educator has changed it since
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
+        const ed = readSubject(d0.kaymbu.subject).educator;
+        if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
+      }
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
       if (d.kaymbu.v === 2) {
         const twins = live('notices').filter(o => o !== d && o.kaymbu && (o.noticed || '').trim() === (d.noticed || '').trim() && o.classroom === d.classroom).length;
