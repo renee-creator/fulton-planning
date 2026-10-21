@@ -753,14 +753,18 @@ async function suggestThreadFor(id) {
   const inThread = t => docs.some(d => d.threadId === t.id) || (t.evidence || []).some(e => e && ids.has(e.planId || e.id));
   const live = [];
   for (const [tid, tr] of store.recs.threads) { const t = tr.doc; if (tr.deleted || !t || t.status === 'closed' || t.unfollowed) continue; if (declined.has(tid) || inThread(t)) continue;
-    live.push({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }); }
+    // what the team already decided for this thread, so the suggestion is weighed against the team's own judgment
+    const added = (t.evidence || []).filter(e => e && e.via === 'suggest' && e.why).slice(-3).map(e => ({ words: String(e.text || '').slice(0, 140), why: String(e.why).slice(0, 140) }));
+    const no = []; for (const [, nr] of store.recs.notices) { const nd = nr.doc; if (nr.deleted || !nd) continue; for (const w of nd.threadNoWhy || []) if (w && w.id === tid) no.push({ words: [nd.noticed, nd.wonder].filter(Boolean).join(' ').slice(0, 140), why: String(w.why || '').slice(0, 140), at: w.at || 0 }); }
+    const turnedDown = no.sort((a, b) => b.at - a.at).slice(0, 3).map(({ words, why }) => ({ words, why }));
+    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
   if (!live.length) return;
   const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
   if (docs.some(d => d.threadSuggestKey === keyNow)) return;
   if (!anthropicKey()) return;
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
-  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\nThese are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
+  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\nThese are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 400 });
     if (res.status !== 200) return;
