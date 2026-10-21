@@ -442,6 +442,7 @@ body{margin:0}
 .tabbar{display:none}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:0;background:var(--moss);color:var(--paper);border-radius:999px;padding:13px 20px;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.16);cursor:pointer;display:flex;gap:8px;align-items:center}
 .fab svg{width:18px;height:18px}
+.card select,.card input{max-width:100%}
 #main{padding-bottom:84px}
 .fab{transition:transform .22s ease,opacity .22s ease}.fab.away{transform:translateY(180%);opacity:0;pointer-events:none}
 @media (max-width:760px){
@@ -451,7 +452,10 @@ body{margin:0}
   .tabbar button svg{width:22px;height:22px}
   .tabbar button{font-size:9.8px;letter-spacing:-.02em;white-space:nowrap;min-width:0}
   .tabbar button[aria-current="page"]{color:var(--moss)}
-  .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:12px 16px}
+  /* on a phone the button is a small round plus, so it covers as little of the words being read as it can */
+  .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));right:14px;width:54px;height:54px;padding:0;justify-content:center}
+  .fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .fab svg{width:24px;height:24px}
   /* room under the last content, so the round button never covers it */
   #main{padding-bottom:150px}
   .ttop .who .savestate#conn{display:none}
@@ -5629,12 +5633,12 @@ function obsPlanChoices(n){const day=n.day||iso(new Date(n.at||Date.now())),wk=m
   return [...plans.values()].filter(p=>p&&p.id!=="example"&&(p.type==="individual"||p.type==="classroom"||p.type==="smallgroup")&&p.weekOf>=addDays(wk,-7)&&p.weekOf<=addDays(wk,7)&&(!n.classroom||!p.classroom||p.classroom===n.classroom||momentRooms(n).includes(p.classroom)))
     .sort((a,b)=>(a.weekOf===wk?0:1)-(b.weekOf===wk?0:1)||b.weekOf.localeCompare(a.weekOf)||(a.type==="classroom")-(b.type==="classroom"))}
 function obsPlanLabel(p){const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");if(p.type==="classroom")return `${p.classroom?p.classroom+" Class, ":""}Classroom plan, week of ${wk}`;
-  const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),50);
+  const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),32);
   return [p.educator||"",foc,"week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")}
 function obsGroupPlanHtml(n){const gs=GROUPS.filter(g=>!n.classroom||g.room===n.classroom||momentRooms(n).includes(g.room));const ps=obsPlanChoices(n);
   if(n.planId&&!ps.some(p=>p.id===n.planId)){const p0=plans.get(n.planId);if(p0)ps.unshift(p0)}
   return `<label class="cnt">Small group <select id="nf-sgroup" style="width:auto"><option value="">None</option>${gs.map(g=>`<option value="${esc(g.name)}" ${n.smallGroup===g.name?"selected":""}>${esc(g.name)}${g.educator?", "+esc(g.educator):""}</option>`).join("")}${n.smallGroup&&!gs.some(g=>g.name===n.smallGroup)?`<option selected>${esc(n.smallGroup)}</option>`:""}</select></label>
-    ${ps.length?`<label class="cnt">Plan <select id="nf-plan" style="width:auto;max-width:100%"><option value="">None</option>${ps.map(p=>`<option value="${esc(p.id)}" ${n.planId===p.id?"selected":""}>${esc(obsPlanLabel(p))}</option>`).join("")}</select></label>`:""}`}
+    ${ps.length?`<label class="cnt" style="display:block;min-width:0;max-width:100%">Plan <select id="nf-plan" style="display:block;width:100%;max-width:100%;min-width:0;text-overflow:ellipsis"><option value="">None</option>${ps.map(p=>`<option value="${esc(p.id)}" ${n.planId===p.id?"selected":""}>${esc(obsPlanLabel(p))}</option>`).join("")}</select></label>`:""}`}
 function noticeCards(list){const groups=shareGroups(list);
   return groups.map(g=>{if(g.length===1)return noticeCard(g[0]);const [first,...more]=g;
     return `<div class="nwgroup">${noticeCard(first)}
