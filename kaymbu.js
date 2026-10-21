@@ -57,7 +57,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       if (/image/i.test(t)) { const srcs = [...part.matchAll(/<img[^>]*src="([^"]+)"[^>]*>/gi)].map(m => m[1].replace(/&amp;/g, '&')).filter(u => /\/moments\//.test(u));
         if (!srcs.length) return; if (!cur) { cur = { heading: '', photos: [], text: [] }; out.sections.push(cur); } cur.photos.push(...srcs); }
     });
-    out.sections = out.sections.filter(sc => sc.photos.length || sc.text.length);
+    // a part is an observation only when an educator wrote about it. Photos with only a heading or names under them,
+    // such as The Faces of North Class, are left out.
+    out.sections = out.sections.filter(sc => sc.text.length);
     return out.sections.length ? out : null;
   }
 
@@ -327,7 +329,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const sg = m.smallGroup || sub.smallGroup;
         const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter } : {}) },
+          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
           updatedByName: mBy };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
@@ -360,6 +362,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
+      }
+      // photos kept from a newsletter part with no words, such as The Faces of North Class, are removed once, unless someone has worked on them
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.newsletter && !d0.kaymbu.words && !String(d0.noticed || '').includes('\n') && !(d0.children || []).length && !d0.kaymbu.checkedBy && !d0.editedBy) {
+        r.deleted = true; r.local = true; noteChange('notices', id); scheduleSave('notices', id); n++; continue;
       }
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
       if (d.kaymbu.v === 2) {
