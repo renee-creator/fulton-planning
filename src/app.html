@@ -2005,7 +2005,9 @@ function kidDrdpHtml(c){
       <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
 
-        <label class="fld-label" style="max-width:340px">Mark<select data-drmark="${code}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></label></div></details>`};
+        ${(()=>{const sel=`<label class="fld-label" style="max-width:340px">Code for this measure<select data-drmark="${code}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab==="No mark"?"None, rated from the evidence":lab)}</option>`).join("")}</select></label>`;
+          // the DRDP's special codes are rare, so the choice folds away unless one is set
+          return marks[code]?sel:`<details class="drmarkfold"><summary class="cnt">Absence or another DRDP code</summary>${sel}</details>`})()}</div></details>`};
   const doms=[...new Set(ms.map(k=>DRDP_M[v][k].d))];
   // a domain with nothing yet folds to one line, so the measures with evidence are easy to find
   const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;const busy=codes.some(k=>latest(k)||wait.some(x=>x.code===k)||(legacy[k]||[]).length||marks[k]);
