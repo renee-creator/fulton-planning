@@ -206,3 +206,11 @@ The Render server sleeps after 15 quiet minutes. The first visit after that take
 The wall keeps up with its project. When the director opens the project, any photo observation kept since the wall was planned joins it as its own sheet, in date order before Where it is now, with every photo from its post, and the team's writing is untouched. A sheet the team removes stays removed. Draft every empty sheet drafts the sheets one at a time, and Use all drafts keeps them for the team to read. Each draft reads the sheet's thread, the team's reading and intent, nearby observations without photos, and the final remarks from the weeks around it.
 
 The project PDF is the record and is built fresh at every print. The summary adds where the project is now, from the latest final remarks, the threads with their questions, and two photos, in about two pages. The full set adds How it unfolded, week by week, with every observation and its wonder, photos where there are photos, and each week's final remarks, plus up to four pieces of evidence per thread.
+
+Threads stay whole. A thread Find threads turns up whose records mostly sit in a thread the team already has, followed, closed or stopped, says so and offers Add this to it, beside Follow as a new thread. Find threads and the observation reading both check closed threads too, so a thread children return to is reopened instead of started again, and Find threads no longer replaces a thread's next steps the team already has. Following a pattern as a thread brings every one of its observations, including ones already in another thread.
+
+A thread's project story notes how many new pieces of evidence have arrived since it was written. Rewrite project story brings them in, and the earlier story is kept.
+
+The Classroom plan shows last week's final remarks and After the week reflections from the class's educators beside this week's Individual plans, and its drafts read them.
+
+The thread PDF carries where the thread is now, from its latest complete plan, and two photos. Inquiry and lens full PDFs carry the photos of their observations. The Observations and Lens printouts say when their reading was made, and how many observations or plans have come since.
