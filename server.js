@@ -875,11 +875,43 @@ async function displayFeed() {
   const moments = recent.slice(0, 36).map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
   const latestPhoto = test => { const n = shown.find(test); return n ? photoOf(n) : null; };
+  const firstName = s => String(s || '').trim().split(/\s+/)[0] || '';
+  // observations kept in words alone, over the same recent stretch as the photos. One still waiting for its photo stays off.
+  const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
+  let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
+  if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
+  const words = wordsRecent.slice(0, 12).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.by),
+    children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
+  // the reflection educators write once a week has passed, Final remarks on an Individual plan and After the week on a Small Group plan
+  const sinceWeek = addDay(mondayFor(laDayOf(now)), -21);
+  const AFTER = { individual: ['remarks', 'Final remarks'], smallgroup: ['reflection', 'After the week'] };
+  const reflections = live('plans').filter(p => p.id !== 'example' && !p.blank && AFTER[p.type] && /^\d{4}-\d{2}-\d{2}$/.test(p.weekOf || '') && p.weekOf >= sinceWeek && String((p.fields || {})[AFTER[p.type][0]] || '').trim())
+    .sort((a, b) => b.weekOf.localeCompare(a.weekOf) || (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 8)
+    .map(p => ({ id: p.id, label: AFTER[p.type][1], text: trim(p.fields[AFTER[p.type][0]], 460), by: firstName(p.educator), room: p.classroom || '', group: p.type === 'smallgroup' ? trim(p.group, 40) : '', week: p.weekOf }));
+  // moments the director found through a lens, the plan's or observation's own words, shown only while those words are still there
+  const squash = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const PLAN_NAME = { classroom: 'Classroom plan', individual: 'Individual plan', smallgroup: 'Small Group plan' };
+  const lensSeen = new Set(); const lensMoments = [];
+  for (const sc of live('scans').filter(s => s.kind === 'lens' && Array.isArray(s.moments) && s.moments.length && now - (s.createdAt || 0) < 56 * 864e5).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))) {
+    for (const m of sc.moments) {
+      if (lensMoments.length >= 6) break;
+      const q = String(m && m.quote || '').trim(); if (!q || !m.planId || held.has(m.planId) || lensSeen.has(m.planId + '|' + squash(q))) continue;
+      const pr = store.recs.plans.get(m.planId), nr = store.recs.notices.get(m.planId);
+      const p = pr && !pr.deleted && pr.doc, n = !p && nr && !nr.deleted && nr.doc; if (!p && !n) continue;
+      const src = p ? Object.values(p.fields || {}).join(' ') + ' ' + (p.web ? JSON.stringify(p.web) : '') : [n.noticed, n.wonder].join(' ');
+      if (!squash(src).includes(squash(q))) continue;
+      lensSeen.add(m.planId + '|' + squash(q));
+      lensMoments.push({ id: sc.id + '.' + m.planId + '.' + lensMoments.length, lens: trim(sc.lensName, 80), quote: trim(q, 300), language: trim(m.language, 40),
+        found: p ? PLAN_NAME[p.type] || 'plan' : 'observation', by: firstName(p ? p.educator : n.by), room: p ? p.classroom || '' : roomsOf(n)[0] || '', week: p ? p.weekOf || '' : n.week || '', at: n ? n.at || 0 : 0 });
+    }
+  }
   // threads the school is following now, with the last words that joined them
   const threads = live('threads').filter(t => !t.unfollowed && ['emerging', 'growing', 'deepening'].includes(t.status || 'emerging'))
     .sort((a, b) => String(b.lastWeek || '').localeCompare(String(a.lastWeek || '')) || (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 10)
     .map(t => { const ev = (t.evidence || []).filter(e => e && String(e.text || '').trim()); const evIds = new Set(ev.map(e => e.planId));
-      return { id: t.id, name: trim(t.name, 80), question: trim(t.question, 220), room: t.classroom || '', weeks: (t.weeks || []).length, words: ev.length ? trim(ev[ev.length - 1].text, 220) : '',
+      // the newest words by their week, then by when they joined, and by their place in the list only when both are the same
+      const newest = ev.map((e, i) => [e, i]).sort((a, b) => String(b[0].week || '').localeCompare(String(a[0].week || '')) || (Number(b[0].at) || 0) - (Number(a[0].at) || 0) || b[1] - a[1])[0];
+      return { id: t.id, name: trim(t.name, 80), question: trim(t.question, 220), room: t.classroom || '', weeks: (t.weeks || []).length, words: newest ? trim(newest[0].text, 220) : '',
         photo: latestPhoto(n => n.threadId === t.id || evIds.has(n.id)) }; });
   const projects = live('projects').filter(x => x.status !== 'closed').sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 8)
     .map(x => { const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean));
@@ -939,7 +971,7 @@ async function displayFeed() {
         .filter(p => p.photo && !(cover && p.photo.src === cover.src)).slice(0, 2);
       return { id: st.id, title: trim(st.title, 90), cover: trim(st.cover, 90), room: st.classroom || '', group: st.group || '', photo: cover, pages }; })
     .filter(st => st.photo);
-  return { at: now, today, moments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown, stories };
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown, stories };
 }
 
 async function handle(req, res) {

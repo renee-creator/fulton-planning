@@ -124,14 +124,15 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
   const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ACC={moment:"var(--moss)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",week:"var(--moss)",food:"var(--moss)"};
+  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",week:"var(--moss)",food:"var(--moss)"};
   let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
 
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const whenOf=t=>{const d=new Date(t),today=new Date();const same=(a,b)=>a.toDateString()===b.toDateString();const y=new Date();y.setDate(y.getDate()-1);
     return same(d,today)?"Today":same(d,y)?"Yesterday":d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})};
   const timeOf=s=>{const m=/T(\d{2}):(\d{2})/.exec(s);if(!m)return "";let hh=+m[1];const ap=hh<12?"AM":"PM";hh=hh%12||12;return m[2]==="00"?hh+" "+ap:hh+":"+m[2]+" "+ap};
-  const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" classes";
+  const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" Class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" Classes";
+  const weekText=iso=>/^\d{4}-\d{2}-\d{2}$/.test(iso||"")?"Week of "+new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"}):"";
   const names=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a.slice(-1);
   const img=p=>p&&p.src?`<img src="${esc(SERVER+p.src)}" alt="">`:"";
 
@@ -150,7 +151,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       <div class="measure"><div class="where">${esc(d.code)}</div><h2>${esc(d.measure||d.code)}</h2>${d.def?`<p>${esc(d.def)}</p>`:""}</div>
       <div class="lvl"><b>Evidence toward ${esc(d.level)}${d.emerging?", emerging to the next level":""}</b>${d.descriptor?`<p>${esc(d.descriptor)}</p>`:""}</div>
       <div class="fine">Evidence from our documentation${d.by?", reviewed by "+esc(d.by):""}. Never a DRDP rating on its own.</div></div>`}
-  function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" class":"across the school")}</span></div>
+  function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" Class":"across the school")}</span></div>
       <h1>${esc(t.name)}</h1>${t.question?`<div class="q">${esc(t.question)}</div>`:""}
       ${t.words?`<div class="words">${esc(t.words)}</div>`:""}
       ${t.weeks>1?`<div class="small">Seen across ${t.weeks} weeks</div>`:""}</div>${t.photo?`<div class="side">${img(t.photo)}</div>`:""}`}
@@ -160,14 +161,28 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${x.threads&&x.threads.length?`<div class="small">Threads in it, ${esc(names(x.threads))}</div>`:""}</div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
   function storyHtml(x){const p=x.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;
     return `<div class="ph" style="width:${portrait?36:48}%">${img(p)}</div><div class="tx">
-      <div class="kind">A story we read together <span>${esc([x.room?x.room+" class":"",x.group?String(x.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", ")||"across the school")}</span></div>
+      <div class="kind">A story we read together <span>${esc([x.room?x.room+" Class":"",x.group?String(x.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", ")||"across the school")}</span></div>
       <h2 class="sttitle">${esc(x.title)}</h2>${x.cover?`<div class="when">${esc(x.cover)}</div>`:""}
       ${(x.pages||[]).map(pg=>`<div class="stpg">${pg.photo&&pg.photo.src?`<img src="${esc(SERVER+pg.photo.src)}" alt="">`:""}<div>${pg.heading?`<b>${esc(pg.heading)}</b>`:""}${pg.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}</div>`}
+  // an observation kept in words alone, quiet, in the same type as the moments beside the photos
+  function wordsHtml(m){return `<div class="body"><div class="kind">What an educator noticed <span>${esc(roomsText(m.rooms))}</span></div>
+      <div class="when">${esc([m.by,whenOf(m.at)].filter(Boolean).join(", "))}</div>
+      <div class="noticed" style="max-width:40ch">${esc(m.noticed)}</div>
+      ${m.wonder?`<div class="wonder" style="max-width:44ch">${esc(m.wonder)}</div>`:""}
+      ${m.children&&m.children.length?`<div class="kids">With ${esc(names(m.children))}</div>`:""}</div>`}
+  // the reflection an educator writes once the week has passed
+  function reflectionHtml(r){return `<div class="body"><div class="kind">${esc(r.label)} <span>${esc([r.room?r.room+" Class":"",r.group?String(r.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", "))}</span></div>
+      <div class="when">${esc([r.by,weekText(r.week)].filter(Boolean).join(", "))}</div>
+      <div class="words" style="white-space:pre-line">${esc(r.text)}</div></div>`}
+  // a moment found through a lens, the educator's own words and where they were written
+  function lensMomentHtml(x){return `<div class="body"><div class="kind">Seen through the lens <span>${esc([x.lens,x.language].filter(Boolean).join(", "))}</span></div>
+      <div class="q" style="max-width:36ch">${esc(x.quote)}</div>
+      <div class="small">${esc(["Found in "+(/^[aeiou]/i.test(x.found)?"an ":"a ")+x.found+(x.by?" by "+x.by:""),x.room?x.room+" Class":"",x.at?whenOf(x.at):weekText(x.week)].filter(Boolean).join(", "))}</div></div>`}
   function lensHtml(l){return `<div class="body"><div class="kind">This year's lens</div><h1>${esc(l.name)}</h1>
       ${l.description?`<div class="q">${esc(l.description)}</div>`:""}
       ${l.questions.length?`<ul class="qs">${l.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}</div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
-    return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
+    return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" Class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
       <div class="blocks">${b.map(([k,v])=>`<div class="blk"><h2>${esc(k)}</h2><p style="white-space:pre-line">${esc(v)}</p></div>`).join("")}</div>
       ${x.lookAgain?`<div class="small">We look again ${esc(dayName(x.lookAgain))}</div>`:""}</div>`}
   function weekHtml(w){const by={};for(const e of w){const d=e.start.slice(0,10);(by[d]=by[d]||[]).push(e)}
@@ -190,11 +205,15 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     // projects, threads and inquiries take turns so no one kind fills a stretch of the day
     const D=(feed.drdp||[]).slice(0,4).map(d=>({k:"drdp",id:"d"+d.id,cls:"m d",html:()=>drdpHtml(d),src:d.photo&&d.photo.src}));
     const S=(feed.stories||[]).map(x=>({k:"story",cls:"m",id:"s"+x.id,html:()=>storyHtml(x),src:x.photo&&x.photo.src}));
-    const n=Math.max(P.length,T.length,I.length,D.length,S.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(I[i])O.push(I[i])}
+    const R=(feed.reflections||[]).map(r=>({k:"reflection",cls:"t",id:"r"+r.id,html:()=>reflectionHtml(r)}));
+    const L=(feed.lensMoments||[]).map(x=>({k:"lensmoment",cls:"t",id:"lm"+x.id,html:()=>lensMomentHtml(x)}));
+    const n=Math.max(P.length,T.length,I.length,D.length,S.length,R.length,L.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(R[i])O.push(R[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
-    if(!M.length)return O;
-    const out=[];let o=0;M.forEach((m,i)=>{out.push(m);if(i%3===2&&O.length)out.push(O[o++%O.length])});
+    // observations in words alone, one after every third photo at most, so the photos keep carrying the screen
+    const W=(feed.words||[]).map(m=>({k:"words",cls:"t",id:"w"+m.id,html:()=>wordsHtml(m)}));
+    if(!M.length)return W.concat(O);
+    const out=[];let o=0,w=0;M.forEach((m,i)=>{out.push(m);if(i%3===0&&i>0&&w<W.length)out.push(W[w++]);if(i%3===2&&O.length)out.push(O[o++%O.length])});
     // anything not reached in one turn through the moments still comes round
     while(O.length&&o<O.length){out.splice(Math.min(out.length,(o+1)*4),0,O[o]);o++}
     return out}
@@ -210,7 +229,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     el.innerHTML=item.html();stage.appendChild(el);bar.style.background=ACC[item.k]||"var(--moss)";
     const go=()=>{fit(el);requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);old.forEach(c=>c.classList.remove("on"));setTimeout(()=>old.forEach(c=>c.remove()),1600)})};
     const im=el.querySelector("img");if(im&&!im.complete){let done=false;const once=()=>{if(!done){done=true;go()}};im.onload=once;im.onerror=()=>{const ph=el.querySelector(".ph,.side");if(ph)ph.innerHTML="";once()};setTimeout(once,4000)}else go();
-    const ms=item.k==="moment"?MOMENT_MS:CARD_MS;
+    const ms=item.k==="moment"||item.k==="words"?MOMENT_MS:CARD_MS;
     bar.style.transition="none";bar.style.width="0";requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition=`width ${ms}ms linear`;bar.style.width="100%"}));
     // the next picture is fetched now, so it arrives already loaded
     const nx=list[(pos+1)%list.length];if(nx&&nx.src){const p=new Image();p.src=SERVER+nx.src}
