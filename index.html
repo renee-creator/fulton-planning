@@ -332,6 +332,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 #evpanel{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:45;background:var(--paper);border-left:1px solid var(--line);box-shadow:-4px 0 18px rgba(27,41,32,.12);display:flex;flex-direction:column}
 #evpanel .evhead{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
 #evpanel .evbody{overflow:auto;padding:12px 14px 40px;display:grid;gap:12px;align-content:start}
+#evpanel .evsearch{display:grid;gap:8px}#evpanel .evres{display:grid;gap:10px}#evpanel .evhit{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:4px;font-size:14px;min-width:0;overflow-wrap:anywhere}#evpanel .evhit mark{background:var(--marigold-soft);color:inherit;padding:0 1px;border-radius:2px}#evpanel .evhit .evrow{display:grid;grid-template-columns:56px 1fr;gap:8px;align-items:start}#evpanel .evhit .evrow img{width:56px;height:56px;object-fit:cover;border-radius:6px}
 #evpanel .evsrc{background:var(--marigold-soft);border-radius:8px;padding:10px 12px;font-size:14.5px;display:grid;gap:4px}
 #evpanel .evob{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:6px;font-size:14.5px}
 #evpanel .evob .evrow{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start}
@@ -4682,8 +4683,8 @@ document.addEventListener("click",async e=>{
   if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.docx");return}
   if(t.id==="sample"){makePdf([EXAMPLE],"Fulton sample classroom plan.pdf");return}
   if(!p)return;
-  if(t.id==="dl"){makePdf([p],fileName(p));return}
-  if(t.id==="dlw"){makeDocx([p],fileName(p).replace(/\.pdf$/,".docx"));return}
+  if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);const list=ev?[p,ev]:[p];
+    (async()=>{if(ev)await loadPhotos([ev]);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"))})();return}
   if(t.id==="carry"){carryForward(p);return}
   if(t.id==="del"){askDelete($("#delwrap"),p.id,"del");return}
   if(t.dataset.dupdel){askDelete($("#dupwrap"),t.dataset.dupdel,"dup");return}
@@ -7553,7 +7554,7 @@ function planEvidence(p){
   if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
   {const b=p.bin&&binAll().find(x=>x.id===p.bin);if(b){const pcs=binPieces(b,p.classroom).filter(x=>(BIN_TO[p.type]||{})[x.kind]);
     heads.push({kind:"Weekly bin",name:"The FEED bin of "+fmtDate(b.date).replace(/, \d{4}$/,""),open:`data-pbin="${esc(b.id)}"`,lines:[],bin:pcs})}}
-  take([...(src.ids||[]),...(p.noticeAdded||[])].map(id=>notices.get(id)));
+  take([...(src.ids||[]),...(p.noticeAdded||[]),...(p.evidenceRefs||[]).filter(r=>r.kind==="obs").map(r=>r.id)].map(id=>notices.get(id)));
   take([...notices.values()].filter(n=>n.planId===p.id));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   return heads.length||obs.length?{heads,obs}:null}
@@ -7564,7 +7565,7 @@ function evObHtml(n,used,p,more){more=more||[];const ids=[n.id,...more.map(m=>m.
   const kids=(n.children||[]).map(id=>children.get(id)).filter(Boolean).map(c=>c.first);
   const words=childLines(n.noticed||"",true).filter(childsWords).slice(0,3);
   const text=`<div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}`;
-  return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${added.has(n.id)?" \u00b7 in this plan":""}</div>
+  return `<div class="evob"><div class="cnt">${shortDate(n.at)} \u00b7 ${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${added.has(n.id)?" \u00b7 in this plan":p&&evRefHas(p,"obs",n.id)?` \u00b7 attached${$("#main")?.classList.contains("locked")?"":` <button class="linkbtn" data-evoff="obs|${esc(n.id)}">Take off</button>`}`:""}</div>
     ${n.photo?`<div class="evrow"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="min-width:0">${text}</div></div>`:text}
     ${more.length?`<div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div><div class="nwstrip">${more.map(m=>`<a href="${esc(photoSrc(m))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(m))}" alt="Another photo with this note" loading="lazy"></a>`).join("")}</div>`:""}
     ${words.map(l=>`<div class="evq">${esc(l.words)}${l.name?` <span class="cnt">${esc(l.name)}</span>`:""}</div>`).join("")}
@@ -7583,12 +7584,12 @@ function evSync(){
   if(!evOpen){if(pn)pn.remove();return}
   if(!pn){pn=document.createElement("aside");pn.id="evpanel";pn.setAttribute("aria-label","The evidence this plan began from");document.body.appendChild(pn)}
   const used=new Set(p.noticeUsed||[]);
-  const key=p.id+"|"+[...used].join(",")+"|"+(p.binAdded||[]).join(",")+"|"+more.length+"|"+$("#main")?.classList.contains("locked")+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
+  const key=p.id+"|"+JSON.stringify(p.evidenceRefs||[])+"|"+(p.threadLinks||[]).map(l=>l.id).join(",")+"|"+[...used].join(",")+"|"+(p.binAdded||[]).join(",")+"|"+more.length+"|"+$("#main")?.classList.contains("locked")+"|"+ev.heads.map(h=>(h.from||[]).length).join(",")+ev.obs.map(n=>n.id+(n.editedAt||n.at||"")).join(",")+"|"+ev.heads.map(h=>h.name+h.lines.map(l=>l[1]).join("")).join("|");
   if(pn.dataset.key===key)return;const top=pn.querySelector(".evbody")?.scrollTop||0;pn.dataset.key=key;
   const began=ev.heads.length||(p.source&&p.source.kind);
   const lockedNow=$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type];
   pn.innerHTML=`<div class="evhead"><b>${began?"The evidence this plan began from":"Observations for this plan"}</b><button class="linkbtn" data-evshut="1">Close</button></div>
-    <div class="evbody">${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.img?`<button class="evstory" ${h.open} aria-label="Open the story ${esc(h.name)}"><img src="${esc(h.img)}" alt="" loading="lazy"></button>`:""}${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
+    <div class="evbody"><div class="evsearch"><input type="search" id="evq" value="${esc(evQuery)}" placeholder="Search the evidence, ex. goats or water" aria-label="Search the evidence"><div class="evres" id="evres"></div></div>${evAttachedHtml(p,lockedNow)}${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.img?`<button class="evstory" ${h.open} aria-label="Open the story ${esc(h.name)}"><img src="${esc(h.img)}" alt="" loading="lazy"></button>`:""}${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
       ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
       ${(h.bin||[]).length?`<div style="display:grid;gap:6px;margin-top:4px">${h.bin.map(x=>{const k=BIN_TO[p.type][x.kind],inIt=binPieceIn(p,x);
         return `<div class="evbin"><div style="white-space:pre-line">${esc(x.text)}</div><div class="cnt">${inIt?"In "+esc(binTargetLabel(p.type,k).toLowerCase()):`<button class="btn small ghost" data-binuse="${esc(p.id)}|${esc(x.key)}" ${lockedNow?"disabled":""}>Add to ${esc(binTargetLabel(p.type,k).toLowerCase())}</button>`}</div></div>`}).join("")}</div>`:""}
@@ -7597,7 +7598,57 @@ function evSync(){
     ${more.length?`<details ${ev.obs.length||ev.heads.length?"":"open"}><summary class="chiprow-label">${ev.obs.length||ev.heads.length?"Other observations":"Observations"} from ${esc(p.classroom||"no class")}, ${more.length}</summary>
       <div class="muted" style="margin:6px 0">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>
       <div style="display:grid;gap:12px">${shareGroups(more.slice(0,24)).slice(0,12).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
-  pn.querySelector(".evbody").scrollTop=top}
+  evResults(p);pn.querySelector(".evbody").scrollTop=top}
+// searching the evidence. An educator looks for a subject across every observation, every saved plan with its final remarks, and
+// every thread, and attaches what substantiates the plan. Attached evidence prints with the plan
+let evQuery="",evTimer=null;
+const evStem=w=>w.length>4?w.replace(/(ies|es|s|ing|ed)$/,""):w;
+function evTerms(q){return [...new Set(String(q||"").toLowerCase().split(/[^a-z0-9']+/).filter(w=>w.length>1).map(evStem))]}
+function evMatch(text,terms){const t=String(text||"").toLowerCase();return terms.every(w=>t.includes(w))}
+function evSnip(text,terms){const t=String(text||"");const low=t.toLowerCase();let i=Math.min(...terms.map(w=>{const k=low.indexOf(w);return k<0?1e9:k}));if(i===1e9)i=0;
+  const a=Math.max(0,i-70),b=Math.min(t.length,i+150);let sn=(a?"…":"")+t.slice(a,b).replace(/\s+/g," ").trim()+(b<t.length?"…":"");let h=esc(sn);
+  for(const w of terms)h=h.replace(new RegExp("("+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[a-z']*)","gi"),"<mark>$1</mark>");return h}
+function evRefHas(p,kind,id){return (p.evidenceRefs||[]).some(r=>r.kind===kind&&r.id===id)}
+function evSearch(p,q){const terms=evTerms(q);if(!terms.length)return [];const out=[];
+  const seen=new Set();for(const n of [...notices.values()].sort((a,b)=>(b.at||0)-(a.at||0))){const k=n.group||n.id;if(seen.has(k))continue;const text=[n.noticed,n.wonder].filter(Boolean).join("\n");if(!evMatch(text,terms))continue;seen.add(k);out.push({kind:"obs",n,at:n.at||0,text})}
+  for(const pl of plans.values()){if(pl.id===p.id||pl.id==="example"||!PLAN_TYPES.includes(pl.type)||isEmptyPlan(pl))continue;const F=FORMS[pl.type];
+    const hits=F.fields.filter(f=>evMatch(pl.fields?.[f.k],terms));if(!hits.length)continue;const after=hits.find(f=>f.k===AFTER_KEY[pl.type])||hits[0];
+    out.push({kind:"plan",pl,k:after.k,label:after.label,at:parseIso(pl.weekOf).getTime(),text:pl.fields[after.k]})}
+  for(const t of threads.values()){if(!threadLive(t))continue;const text=[t.name,t.question,t.notes].filter(Boolean).join("\n");if(!evMatch(text,terms))continue;out.push({kind:"thread",t,at:t.createdAt||0,text})}
+  return out.sort((a,b)=>(a.kind==="thread")-(b.kind==="thread")||b.at-a.at).slice(0,30)}
+function evResults(p){const box=$("#evres");if(!box)return;const q=evQuery.trim();if(!q){box.innerHTML="";return}
+  const terms=evTerms(q),rs=evSearch(p,q),locked=$("#main")?.classList.contains("locked");
+  if(!rs.length){box.innerHTML=`<div class="cnt">Nothing kept mentions ${esc(q)} yet.</div>`;return}
+  box.innerHTML=`<div class="cnt">${rs.length===30?"The 30 most recent":rs.length} found</div>`+rs.map(r=>{
+    if(r.kind==="obs"){const n=r.n,on=evRefHas(p,"obs",n.id)||(p.noticeAdded||[]).includes(n.id);
+      return `<div class="evhit"><div class="cnt">Observation, ${esc([n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", "))}</div>
+        ${n.photo?`<div class="evrow"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"><div>${evSnip(r.text,terms)}</div></div>`:`<div>${evSnip(r.text,terms)}</div>`}
+        <div class="actions">${on?`<span class="cnt">Attached</span>`:locked?"":`<button class="btn small ghost" data-evatt="obs|${esc(n.id)}">Attach to this plan</button>`}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></div></div>`}
+    if(r.kind==="plan"){const pl=r.pl,on=evRefHas(p,"plan",pl.id);
+      return `<div class="evhit"><div class="cnt">${esc(r.label)}, ${esc(byLine(pl))}</div><div>${evSnip(r.text,terms)}</div>
+        <div class="actions">${on?`<span class="cnt">Attached</span>`:locked?"":`<button class="btn small ghost" data-evatt="plan|${esc(pl.id)}|${esc(r.k)}">Attach to this plan</button>`}<button class="linkbtn" data-open="${esc(pl.id)}">Open it</button></div></div>`}
+    const t=r.t,on=planThreads(p).some(c=>c.t.id===t.id);
+    return `<div class="evhit"><div class="cnt">Thread${t.classroom?", "+esc(t.classroom)+" Class":""}</div><div><b>${evSnip(t.name,terms)}</b>${t.question?`<div class="muted">${evSnip(t.question,terms)}</div>`:""}</div>
+      <div class="actions">${on?`<span class="cnt">This plan follows it</span>`:locked?"":`<button class="btn small ghost" data-evatt="thread|${esc(t.id)}">Follow it in this plan</button>`}<button class="linkbtn" data-tsee="${esc(t.id)}">Open it</button></div></div>`}).join("")}
+function evAttachedHtml(p,locked){const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="plan"&&plans.has(r.id));if(!refs.length)return "";
+  return `<details class="evsrc"><summary class="cnt">Attached from other plans, ${refs.length}</summary>${refs.map(r=>{const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);
+    return `<div style="margin-top:6px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><div class="evclamp" style="white-space:pre-line">${esc(pl.fields?.[r.k]||"")}</div><div class="actions"><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button>${locked?"":`<button class="linkbtn" data-evoff="plan|${esc(pl.id)}">Take off</button>`}</div></div>`}).join("")}</details>`}
+document.addEventListener("input",e=>{if(e.target.id!=="evq")return;evQuery=e.target.value;clearTimeout(evTimer);evTimer=setTimeout(()=>{const p=view==="plans"&&currentId&&plans.get(currentId);if(p)evResults(p)},180)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-evatt],[data-evoff]");if(!t||VIEW_AS)return;e.preventDefault();e.stopPropagation();
+  const p=view==="plans"&&currentId&&plans.get(currentId);if(!p)return;const [kind,id,k]=String(t.dataset.evatt||t.dataset.evoff).split("|");
+  if(t.dataset.evoff){p.evidenceRefs=(p.evidenceRefs||[]).filter(r=>!(r.kind===kind&&r.id===id));persist(p);renderMain();toast("Taken off this plan.");return}
+  if(kind==="thread"){const th=threads.get(id);if(!th)return;p.threadLinks=(p.threadLinks||[]).filter(l=>l.id!==id);p.threadLinks.push({id,by:whoAmI(),at:Date.now()});if(p.threadOff)p.threadOff=p.threadOff.filter(v=>v!==id);persist(p);renderMain();toast(`This plan now follows ${th.name}.`);return}
+  if(!evRefHas(p,kind,id))p.evidenceRefs=[...(p.evidenceRefs||[]),{kind,id,k:k||"",by:whoAmI(),at:Date.now()}];persist(p);renderMain();toast("Attached. It prints with the plan.")},true);
+// the evidence attached to a plan, printed after it, with photos where there are photos
+function planEvidenceDoc(p){const refs=p.evidenceRefs||[];if(!refs.length)return null;const blocks=[];
+  const os=refs.filter(r=>r.kind==="obs").map(r=>notices.get(r.id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0));
+  if(os.length){blocks.push(dSub("Observations"));for(const n of os){const credit=[pBy(n.by),n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", ");
+    const body=(n.photo?momentBody(n):String(n.noticed||""))+(has(n.wonder)?"\n"+wonderLine(n.wonder):"");
+    if(n.photo){blocks.push(dPhoto(n,170,false));blocks.push(dText(credit,body))}else blocks.push(dQuote(body,credit))}}
+  const ps=refs.filter(r=>r.kind==="plan"&&plans.has(r.id)).map(r=>({r,pl:plans.get(r.id)})).sort((a,b)=>String(a.pl.weekOf).localeCompare(String(b.pl.weekOf)));
+  if(ps.length){blocks.push(dSub("From other plans"));for(const {r,pl} of ps){const f=FORMS[pl.type].fields.find(x=>x.k===r.k);if(has(pl.fields?.[r.k]))blocks.push(dText([f?f.label:"",pBy(byLine(pl))].filter(Boolean).join(", "),pl.fields[r.k]))}}
+  if(!blocks.length)return null;
+  return {display:true,type:"report",acc:p.type==="smallgroup"?"smallgroup":p.type==="classroom"?"classroom":"individual",title:"The evidence for this plan",meta:metaRows(p).filter(([,v])=>has(v)),blocks}}
 document.addEventListener("click",e=>{const c=e.target.closest("#evpanel .evclamp");if(c)c.classList.toggle("full")});
 document.addEventListener("click",e=>{const t=e.target.closest("#evbtn,[data-evshut]");if(!t)return;
   evOpen=t.id==="evbtn";LS.set("fps.evopen",evOpen?"1":"0");evSync()});
