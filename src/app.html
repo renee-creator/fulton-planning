@@ -5018,6 +5018,13 @@ function saveNotice(n,base){n.updatedAt=Date.now();
   if(db)(patch?db.doc("notices/"+n.id).update(patch).catch(e=>{if(e&&e.status===404)return whole();throw e}):whole()).catch(e=>{if(e&&(e.code==="unavailable"||e.code==="server_error")){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.")}else toast(e&&e.message||"Could not save. Check your connection.")});
   else LS.set("fps.notices",[...notices.values()]);}
 // one field of an observation, such as its thread or its DRDP reading, changed without sending the rest
+// an observation joined to the wrong thread is taken out of it, every photo of its post with it, and TREE will not suggest that thread for it again
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tnout]");if(!t||VIEW_AS)return;e.preventDefault();e.stopPropagation();
+  const [nid,tid]=String(t.dataset.tnout).split("|");const n=notices.get(nid),th=threads.get(tid);if(!n||!th)return;const grp=noteGroup(n),ids=new Set(grp.map(g=>g.id));
+  if((th.evidence||[]).some(x=>x&&ids.has(x.planId||x.id))){th.evidence=th.evidence.filter(x=>!(x&&ids.has(x.planId||x.id)));saveThread(th)}
+  for(const x of grp){const patch={threadNo:[...new Set([...(x.threadNo||[]),tid])],threadSuggest:(x.threadSuggest||[]).filter(s=>s.id!==tid)};if(x.threadId===tid)patch.threadId="";patchNotice(x.id,patch)}
+  if(noticeForm&&ids.has(noticeForm.id)&&noticeForm.threadId===tid)noticeForm.threadId="";
+  obsIdx=null;renderMain();toast("Taken out of the thread "+(th.name||"")+".")},true);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-tsadd],[data-tsno]");if(!t||VIEW_AS)return;e.preventDefault();e.stopPropagation();
   const [nid,tid]=String(t.dataset.tsadd||t.dataset.tsno).split("|");const n=notices.get(nid),th=threads.get(tid);if(!n||!th)return;const grp=noteGroup(n);
   if(t.dataset.tsadd){
@@ -5709,7 +5716,7 @@ function threadSuggestsOf(n){if(!n)return [];const grp=noteGroup(n),have=new Set
 function threadSuggestHtml(n){if(VIEW_AS)return "";const ss=threadSuggestsOf(n);if(!ss.length)return "";
   return ss.map(({t,why})=>`<div class="nfsuggest"><span>Might belong in the thread <b>${esc(t.name)}</b>.${why?" "+esc(/[.!?]$/.test(why)?why:why+"."):""}</span><span class="actions"><button class="btn small" data-tsadd="${esc(n.id)}|${esc(t.id)}">Add it</button><button class="linkbtn" data-tsno="${esc(n.id)}|${esc(t.id)}">Not this</button></span></div>`).join("")}
 function threadLineHtml(n,plain){const ts=threadsOfNotice(n);if(!ts.length)return "";
-  const names=ts.map(t=>plain?esc(t.name):`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`);
+  const names=ts.map(t=>plain?esc(t.name):`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>${VIEW_AS?"":` <button class="linkbtn" data-tnout="${esc(n.id)}|${esc(t.id)}" title="Take this observation out of ${esc(t.name)}">(take out)</button>`}`);
   const list=names.length<3?names.join(" and "):names.slice(0,-1).join(", ")+" and "+names[names.length-1];
   return plain?`In the thread${ts.length>1?"s":""} ${list}`:`<div class="cnt nfthreadline">In the thread${ts.length>1?"s":""} ${list}</div>`}
 // a thread's observations, those tagged with it and those its evidence holds, read from the index for this pass of drawing
