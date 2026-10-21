@@ -16,6 +16,8 @@ module.exports = function reminders(o) {
   // the sections an educator prepares before a family conference. Shared goals and next steps are written at the conference
   const CONF_PREP = ['interests', 'friends', 'smallGroup', 'favoriteAreas', 'nature', 'approaches', 'social', 'language', 'cognition', 'physical', 'expressive', 'strengths', 'documentation'];
   const NO_SIGNUP = ['declined', 'noresponse', 'missed'];
+  // the preparation steps that also count, checked on the form
+  const CONF_STEPS = ['questionnaire', 'drdp', 'coteachers', 'samples'];
   // the sections each plan needs before it is complete. The after-the-week section is due the week after
   const NEED = {
     classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'],
@@ -188,8 +190,9 @@ module.exports = function reminders(o) {
       const first = childFirst(c.childId), d = c.confDate, wd = schoolDaysUntil(when.day, d), cal = calDays(when.day, d);
       const at = /^\d{2}:\d{2}$/.test(c.confTime || '') ? ' at ' + timeWord(c.confTime) : '';
       if (on('conf') && (cal === 0 || cal === 7 || (when.dow === 5 && cal > 0 && cal < 7))) out.push({ t: 'conf', text: cal === 0 ? `Conference today with ${first}'s family${at}` : `Conference with ${first}'s family ${dayWord(d)}${at}` });
-      const left = CONF_PREP.filter(k => !filled(c.fields && c.fields[k])).length;
-      if (on('confform') && left && wd >= 0 && wd <= 5) out.push({ t: 'confform', text: `${first}'s conference form, ${left} section${left > 1 ? 's' : ''} to finish${wd > 2 ? `, due ${dayWord(addSchoolDays(d, -2))}` : ''}` });
+      const left = CONF_PREP.filter(k => !filled(c.fields && c.fields[k])).length, steps = CONF_STEPS.filter(k => !(c.prep && c.prep[k])).length;
+      const todo = [left && `${left} section${left > 1 ? 's' : ''}`, steps && `${steps} preparation step${steps > 1 ? 's' : ''}`].filter(Boolean).join(' and ');
+      if (on('confform') && todo && wd >= 0 && wd <= 5) out.push({ t: 'confform', text: `${first}'s conference form, ${todo} to finish${wd > 2 ? `, due ${dayWord(addSchoolDays(d, -2))}` : ''}` });
     }
     if (on('obs') && week >= start && (when.dow === 4 || when.dow === 5 || when.force)) {
       const n = obsCount(e.name, week); if (n < S.perWeek) out.push({ t: 'obs', text: `Observations this week, ${n} of ${S.perWeek}` });
