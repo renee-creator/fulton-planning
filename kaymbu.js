@@ -350,11 +350,15 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     let n = 0;
     for (const [id, r] of store.recs.notices) {
       const d0 = r.doc; if (!r.deleted && d0 && d0.kaymbu && d0.by && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
+      // a moment whose subject named only a small group was kept with no class, and is placed in that group's class now,
+      // with the group's educator when it has none, whoever has edited it since
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.smallGroup) {
+        const rs = readSubject(d0.kaymbu.subject);
+        if (rs.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; if (!d0.by && rs.educator) d0.by = rs.educator; noteChange('notices', id); scheduleSave('notices', id); n++; }
+      }
       // a moment kept before the subject's educator was read takes that educator, unless an educator has changed it since
       if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
-        const rs = readSubject(d0.kaymbu.subject), ed = rs.educator;
-        // a moment whose subject named only a small group was kept with no class, and is placed in that group's class now
-        if (rs.smallGroup && !d0.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; noteChange('notices', id); scheduleSave('notices', id); n++; }
+        const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
