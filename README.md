@@ -218,3 +218,7 @@ The thread PDF carries where the thread is now, from its latest complete plan, a
 The staff room display shows the whole cycle. Observations without photos appear as What an educator noticed, at most one after every third photo. Recent Final remarks and After the week reflections, from the last four weeks, and lens moments from the last eight weeks take turns with projects, threads and inquiries. A lens moment shows only while its passage still appears word for word where it was found. A thread shows its newest words by week. Classes read as South Class.
 
 An observation in the wrong thread is taken out with (take out) beside the thread's name on the observation. It leaves the thread with every photo of its post, however it joined, and TREE will not suggest that thread for it again.
+
+The evidence panel beside a plan has a search. An educator searches a subject, such as goats or water, across every observation, every saved plan with its final remarks, and every thread. An observation or another plan's section can be attached to the plan, and a thread can be followed in it. Attached evidence is listed in the panel, can be taken off, and prints after the plan as The evidence for this plan, with photos, in the PDF and the Word file.
+
+Long pages stay clear. A project's sections after its intent fold to their headings and stay open once opened. A page's long introduction folds under About this page.
