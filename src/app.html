@@ -5150,9 +5150,9 @@ const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
 // Fulton's classes mix, so a moment belongs to its own class and to the class of every child tagged in it
 function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
-// "none" is the observations with no class chosen and no child tagged, so they can always be found
-const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!momentRooms(n).length:momentRooms(n).includes(room));
-const noClassPill=()=>{const k=[...notices.values()].filter(n=>!momentRooms(n).length).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
+// "none" is every observation kept without a class chosen on it. One with children tagged also shows under their classes.
+const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!n.classroom:momentRooms(n).includes(room));
+const noClassPill=()=>{const k=[...notices.values()].filter(n=>!n.classroom).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
 function noticeText(n){const a=String(n.noticed||"").trim(),b=String(wonderLine(n.wonder)||"").trim();return a&&b?a+(/[.!?"”)]$/.test(a)?" ":". ")+b:a||b}
