@@ -89,6 +89,8 @@ BRING = r"""<style>.tree-bring{margin-top:6px;border:1px solid #c6d0c3;border-ra
 .tree-bring b{font-weight:600}.tree-bring a{color:#2b5a40;text-decoration:underline}.tree-bring ul{margin:4px 0 6px 18px;padding:0}.tree-bring li{margin:2px 0}.tree-bring .muted{color:#46564c}
 .tree-bringall{margin:0 0 12px;border:1px solid #f0cf4f;background:#fffbe8;border-radius:10px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;font-size:14px}</style>
 <script>(()=>{const MAP={approaches:["ATL"],social:["SED"],language:["FLD","ELD"],cognition:["MATH","SCI","COG"],physical:["PD","HLTH"]};
+// sections TREE fills on its own when empty. The rest wait for an educator to read them and choose to add them
+const AUTO=["smallGroup","friends","interests"];
 const P=window.parent!==window?window.parent:null;if(!P)return;
 const iso=d=>new Date(d).toISOString().slice(0,10);
 const long=d=>new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
@@ -103,7 +105,7 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   // the period follows the conference date, so a new date draws the lists again
   const w=windowOf(cf);const key=id+"|"+w.from+"|"+w.to;
   // an empty section TREE knows about fills itself once, also after Edit is tapped on a saved form
-  try{const f0=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};for(const k of Object.keys(f0)){if(!f0[k])continue;const ta=ed.querySelector('textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
+  try{const f0=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};for(const k of Object.keys(f0)){if(!f0[k]||!AUTO.includes(k))continue;const ta=ed.querySelector('textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
     if(ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,String(f0[k]).split("\n").filter(Boolean));try{localStorage.setItem(mark,"1")}catch(e){};const bx=ta.closest("[data-wrap]")?.querySelector(".tree-bring");if(bx&&/small group in TREE|From the observations/.test(bx.textContent))bx.remove()}}}catch(e){}
   if(ed.querySelector(".tree-bringall,.tree-bring-none")){if(ed.dataset.bringKey===key)return;ed.querySelectorAll(".tree-bringall,.tree-bring-none,.tree-bring").forEach(x=>x.remove())}
   ed.dataset.bringKey=key;const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
@@ -117,9 +119,9 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields.documentation",dl);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}}
   // what TREE knows about the child's small group, friends and interests. An empty section fills itself once. A section already written shows it to add.
   const facts=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};const factKeys=Object.keys(facts).filter(k=>facts[k]);
-  const LBL={smallGroup:"The small group in TREE",friends:"From the observations",interests:"From the observations"};
+  const LBL={smallGroup:"The small group in TREE",friends:"From the observations",interests:"From the observations",expressive:"Languages in the observations, to review",nature:"Outdoors and on the farm, from the observations, to review"};
   for(const k of factKeys){const lines=String(facts[k]).split("\n").filter(Boolean);const ta=ed.querySelector('#conf-editor textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
-    if(ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,lines);try{localStorage.setItem(mark,"1")}catch(e){}continue}
+    if(AUTO.includes(k)&&ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,lines);try{localStorage.setItem(mark,"1")}catch(e){}continue}
     const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring")||(ta&&lines.every(l=>ta.value.includes(l))))continue;
     const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>"+LBL[k]+"</b><ul>"+lines.map(l=>"<li>"+l.replace(/</g,"&lt;")+"</li>").join("")+"</ul>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,lines);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
