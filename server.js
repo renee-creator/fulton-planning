@@ -1225,7 +1225,7 @@ async function handle(req, res) {
     noteChange(kind, id); scheduleSave(kind, id);
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     // an observation's words, new or changed, are checked against the threads a little later
-    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || 'noticed' in p0 || 'wonder' in p0 || 'group' in p0) queueThreadSuggest(id); }
+    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || 'noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) queueThreadSuggest(id); }
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
   }
