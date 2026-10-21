@@ -1617,6 +1617,14 @@ function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
+// The observation just kept or changed is brought into view on Observations. A class or a time range that would hide it,
+// such as an observation dated weeks back while Last 4 weeks is chosen, opens wider, and the reply says what changed.
+function showKept(n){if(view!=="moments"){renderAll();return ""}const said=[];
+  if(!momentIn(n,nRoom)){nRoom="All";LS.set("fps.nroom",nRoom);said.push("every class")}
+  if((n.at||0)<mSince()){mRange="all";said.push("everything kept")}
+  const i=momentsIn().findIndex(x=>x.id===n.id);if(i>=0&&typeof mShow==="number")mShow=Math.max(mShow,i+10);
+  renderAll();setTimeout(()=>{const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}},120);
+  return said.join(" and ")}
 // an observation opened from another page. Observations shows every class and everything kept, enough of the list to reach it,
 // and the card is brought into view
 document.addEventListener("click",e=>{const t=e.target.closest("[data-obsgo]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();const id=t.dataset.obsgo;if(!notices.has(id)){toast("That observation is no longer kept.");return}
@@ -5725,12 +5733,10 @@ function noticesClick(t){
       if(s.kaymbu&&s.kaymbu.check){s.kaymbu=Object.assign({},s.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete s.kaymbu.unsure;delete s.kaymbu.suggest;delete s.kaymbu.maybe}
       saveNotice(s,had?noticeBase.get(s.id):undefined);noticeBase.delete(s.id)});
     saveNotice(n,editing?noticeBase.get(n.id):undefined);noticeBase.delete(n.id);noticeForm=null;
-    if(editing){if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
-      renderAll();const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}toast("Changes saved.");return true}
+    if(editing){showKept(n);toast("Changes saved.");return true}
     if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast("Kept. The next photo is open.");return true}
     // the moment the educator just wrote should be the first thing they see, not an empty page
-    if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
-    renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
+    const moved=showKept(n);toast(moved?`Kept, dated ${shortDate(n.at)}. Observations now shows ${moved}, so you can see it.`:"Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}
   if(t.dataset.patone){if(VIEW_AS)return true;const [i,nid]=t.dataset.patone.split("|");const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+i];const th=p&&patternMatch(p);const n=notices.get(nid);if(!th||!n)return true;
     addNoticesToThread(th,[n],{via:"pattern",why:p.why});renderMain();toast(`Added to the thread ${th.name}.`);return true}
