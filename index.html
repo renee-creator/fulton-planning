@@ -5606,12 +5606,35 @@ function momentsReadHtml(){
     <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
     ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} observation${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}
-      ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${isDirector()?(p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`):""}</div>`:""}</div>`).join("")}</div>`:""}
+      ${patternMatchHtml(p,i)}
+      ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:patternMatch(p)?"":isDirector()?`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`:""}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
     <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
 }
 // a pattern's observations, newest last, in the educators' own words with their dates, for a plan's observation
 function patternMoments(p){return (p.ids||[]).map(id=>notices.get(id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0))}
+// a pattern that is already a thread the team follows. TREE names the match when it reads, and a pattern whose observations
+// sit mostly in one followed thread is that thread too. The team can say it is not, and then it can be followed on its own
+const matchable=t=>threadLive(t)&&t.status!=="closed";
+function patternMatch(p){if(!p||p.notThread||(p.threadId&&threads.get(p.threadId)))return null;
+  const named=p.matchId&&threads.get(p.matchId);if(matchable(named))return named;
+  const ns=patternMoments(p);if(ns.length<2)return null;const c=new Map();
+  for(const n of ns)for(const t of threadsOfNotice(n))if(matchable(t))c.set(t.id,(c.get(t.id)||0)+1);
+  const best=[...c.entries()].sort((a,b)=>b[1]-a[1])[0];
+  return best&&best[1]>=2&&best[1]*2>=ns.length?threads.get(best[0]):null}
+function patternMissing(p,th){const inIt=n=>threadsOfNotice(n).some(t=>t.id===th.id);
+  const seen=new Set(),out=[];for(const n of patternMoments(p)){const k=n.group||n.id;if(seen.has(k)||inIt(n))continue;seen.add(k);out.push(n)}return out}
+function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const miss=patternMissing(p,th),total=patternMoments(p).length;
+  const inIt=total-miss.length;
+  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, which the team is already following.${!miss.length?" All of these observations are in it.":inIt?` ${inIt} of these observations ${inIt>1?"are":"is"} already in it.`:""}</span>
+    <span class="actions">${miss.length&&!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add ${miss.length>1?"these "+miss.length+" observations":"this observation"} to it</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`}
+// observations join a thread the same way an observation suggestion does, as evidence the thread holds, one entry per post
+function addNoticesToThread(th,ns){let added=0;
+  for(const n of ns){const grp=noteGroup(n),lead=grp[0]||n;if((th.evidence||[]).some(x=>x&&grp.some(g=>g.id===(x.planId||x.id))))continue;
+    const d=lead.day?parseIso(lead.day):new Date(lead.at||Date.now()),week=mondayOf(d),text=firstLine([lead.noticed,lead.wonder].filter(Boolean).join(" "),240);
+    th.evidence=[...(th.evidence||[]),{planId:lead.id,week,text,by:whoAmI(),at:Date.now()}];th.weeks=[...new Set([...(th.weeks||[]),week])].sort();added++;
+    for(const x of grp)if((x.threadSuggest||[]).some(s=>s.id===th.id))patchNotice(x.id,{threadSuggest:(x.threadSuggest||[]).filter(s=>s.id!==th.id)})}
+  if(added){th.lastWeek=th.weeks.slice(-1)[0]||"";saveThread(th)}return added}
 function patternRoom(ns){if(nRoom!=="All")return nRoom;const c={};for(const n of ns)for(const r of momentRooms(n))c[r]=(c[r]||0)+1;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||myRoom()||""}
 // a plan from what the observations keep returning to. The plan begins from the observations themselves, and the
 // pattern's name and TREE's reading stay out of it, so the educator writes the area and the intent.
@@ -5619,7 +5642,7 @@ function planFromPattern(p){const ns=patternMoments(p);if(!ns.length){toast("Tho
   const np=newPlan("individual",{classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
   np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");
   np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);np.source={kind:"pattern",name:p.name||"",ids:ns.map(n=>n.id),at:Date.now()};
-  if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;
+  if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;else{const m=patternMatch(p);if(m)np.threadId=m.id}
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
   toast("The plan begins with these observations. Write the area and your intent in your own words.")}
 // a plan from a project. It continues one of the project's threads when one is chosen, and it keeps the project beside it
@@ -5679,11 +5702,13 @@ async function momentsRead(){
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom;
+  const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200)}));
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
+Threads the team is already following ${JSON.stringify(followed)}. Before naming a pattern, check it against these. When a pattern is what one of these threads already follows, set "thread" to that thread's id and use the thread's own name as the pattern name, so the team adds to the thread they have instead of starting another. Leave "thread" empty for anything new.
 ${STYLE}
-Return JSON {"summary": two or three sentences on what these moments show children working on across the whole view, "patterns":[up to 5 {"name": the short label, "why": one or two sentences on what the moments show, grounded in them, "ids": the ids of 2 to 6 moments it draws on}], "questions":[2 or 3 questions the team could take to its next meeting]}
+Return JSON {"summary": two or three sentences on what these moments show children working on across the whole view, "patterns":[up to 5 {"name": the short label, "why": one or two sentences on what the moments show, grounded in them, "ids": the ids of 2 to 6 moments it draws on, "thread": the id of the followed thread it matches, or ""}], "questions":[2 or 3 questions the team could take to its next meeting]}
 
 Moments, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
@@ -5691,10 +5716,12 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"moments"});
     const c2=v=>String(v||"").replace(/—/g,", ").trim();
     const patterns=(Array.isArray(out?.patterns)?out.patterns:[]).map(p=>({name:wordCut(c2(p&&p.name).replace(/\s*[.;]+$/,""),44),why:sentCut(c2(p&&p.why),320),
-      ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6)})).filter(p=>p.name&&p.ids.length).slice(0,5);
+      ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6),matchId:followed.some(t=>t.id===(p&&p.thread))?p.thread:""})).filter(p=>p.name&&p.ids.length).slice(0,5);
+    for(const p of patterns)if(!p.matchId)delete p.matchId;
+    const joined=patterns.filter(p=>patternMatch(p)).length;
     saveScan({room:"moments-"+room,kind:"moments",range:mRange,createdAt:Date.now(),by:whoAmI(),count:d.length,
       summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)});
-    toast(patterns.length?`Read ${d.length} observations and named ${patterns.length} pattern${patterns.length>1?"s":""}.`:`Read ${d.length} observations.`);
+    toast(patterns.length?`Read ${d.length} observations and named ${patterns.length} pattern${patterns.length>1?"s":""}${joined?`, ${joined} already a thread you follow`:""}.`:`Read ${d.length} observations.`);
   }catch(err){toast(assistError(err?.code||"unknown"))}
   mBusy=false;renderMain();
 }
@@ -5705,7 +5732,7 @@ function momentsDocs(long,cap){
   const meta=[["Classrooms",nRoom==="All"?"All":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
   const blocks=[];
   if(s&&has(s.summary))blocks.push(dLead("What these observations keep returning to",s.summary));
-  if(long&&s&&(s.patterns||[]).length)blocks.push(dList("Patterns the team is weighing",s.patterns.map(p=>`${p.name}. ${sentCut(p.why)}`).slice(0,5)));
+  if(long&&s&&(s.patterns||[]).length)blocks.push(dList("Patterns the team is weighing",s.patterns.map(p=>{const m=patternMatch(p);return `${p.name}. ${sentCut(p.why)}${m?` Part of the thread ${m.name}.`:""}`}).slice(0,5)));
   // the summary carries a spread. The full set carries them all, with what the educator wondered
   const total=long?60:(cap||12);
   const gs=momentGroups(all);let left=total;
@@ -5788,6 +5815,10 @@ function noticesClick(t){
     if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
     renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}
+  if(t.dataset.patadd!=null){if(VIEW_AS)return true;const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patadd];const th=p&&patternMatch(p);if(!th)return true;
+    const n=addNoticesToThread(th,patternMissing(p,th));renderMain();toast(n?`Added to the thread ${th.name}.`:"These observations are already in the thread.");return true}
+  if(t.dataset.patnot!=null){if(!isDirector())return true;const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patnot];if(!p)return true;
+    p.notThread=true;delete p.matchId;saveScan(sc);renderMain();toast("Set apart from that thread. It can be followed as a thread of its own.");return true}
   if(t.dataset.patthread!=null){if(!isDirector())return true;const sc=momentsScan();if(sc&&sc.patterns&&sc.patterns[+t.dataset.patthread])threadFromPattern(sc,+t.dataset.patthread);return true}
   if(t.dataset.nwopen){nwOpen=t.dataset.nwopen;renderMain();return true}
   if(t.dataset.nwshut){nwOpen="";renderMain();return true}
@@ -9223,6 +9254,7 @@ function renderThreads(){
     const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
     h+=`<div class="chiprow-label">Found by TREE, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
+    {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n})`).join(", ")}</div>`}
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
     else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
@@ -9559,11 +9591,13 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
       return {name:clean2(x.name)||"Untitled thread",question:clean2(x.question),classroom:CLASSROOMS.includes(x.classroom)?x.classroom:"",groups:(Array.isArray(x.groups)?x.groups:[]).filter(g=>GROUPS.some(G=>G.name===g)),status:TSTATUS[x.status]?x.status:"emerging",weeks:wk,evidence:ev,languages:langPick(x.languages),next:(Array.isArray(x.next)?x.next:[]).map(clean2).slice(0,4),trackedId:threads.has(x.trackedId)?x.trackedId:"",relatedProject:projects.has(x.relatedProject)?x.relatedProject:""};
     }).filter(x=>x.evidence.length);
     // update followed threads with new evidence
+    const joined=[];
     for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
-      const add=x.evidence.filter(e=>!have.has(e.planId+e.text));th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
+      const add=x.evidence.filter(e=>!have.has(e.planId+e.text));if(add.length)joined.push({id:th.id,name:th.name,n:add.length});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
       th.next=x.next.length?x.next:th.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
-    saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths});
-    toast(ths.length?`Found ${ths.length} thread${ths.length>1?"s":""}.`:"No threads with enough evidence yet.");
+    saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined});
+    const nNew=ths.filter(x=>!x.trackedId).length;
+    toast(nNew||joined.length?[nNew?`Found ${nNew} new thread${nNew>1?"s":""}`:"",joined.length?`added to ${joined.length} thread${joined.length>1?"s":""} you follow`:""].filter(Boolean).join(" and ").replace(/^./,c=>c.toUpperCase())+".":"No new threads with enough evidence yet.");
   }catch(err){toast(assistError(err?.code||"unknown"))}
   scanBusy=false;renderMain();
 }
