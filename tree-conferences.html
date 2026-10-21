@@ -150,6 +150,9 @@ table.list tr.click:hover td{background:var(--accent-soft)}
 .rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}
 @media (max-width:980px){.rail{position:static}}
 .rail .panel h3{margin-bottom:8px}
+.ready-yes{background:var(--ok-soft);color:var(--ok);font-weight:700;border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.ready-no{background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.ready-no b{display:block;margin-bottom:2px}
 .check{display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:.9rem}
 .check input{margin-top:3px;accent-color:var(--accent)}
 .meter{height:6px;background:var(--todo-soft);border-radius:4px;overflow:hidden;margin-top:6px}
@@ -603,6 +606,17 @@ function confsFor(childId){ return Object.values(S.confs).filter(c=>c.childId===
 function confSort(a,b){ return confKey(a).localeCompare(confKey(b)); }
 function filledCount(c){ let n=0; FIELDS.forEach(f=>{ if((c.fields?.[f.k]||"").trim()) n++; }); REFLECTIONS.forEach(r=>{ if((c.reflections?.[r.k]||"").trim()) n++; }); return n; }
 const TOTAL_FIELDS = FIELDS.length + REFLECTIONS.length;
+// Ready for the conference, the same rule the morning reminders use. The thirteen sections an educator prepares have writing
+// and the four preparation steps are checked. Shared Goals, Next Steps and Family Reflections are written at the conference.
+const READY_FIELDS = ["interests","friends","smallGroup","favoriteAreas","nature","approaches","social","language","cognition","physical","expressive","strengths","documentation"];
+const READY_STEPS = [["questionnaire","Family Questionnaire"],["drdp","DRDP documentation"],["coteachers","With co-educators"],["samples","Work samples"]];
+function confReady(c){ if(!c) return {ready:false, missing:[]}; const missing=[];
+  READY_FIELDS.forEach(k=>{ if(!String(c.fields?.[k]||"").trim()) missing.push(FIELDS.find(f=>f.k===k).label); });
+  READY_STEPS.forEach(([k])=>{ if(!c.prep?.[k]) missing.push(PREP.find(p=>p.k===k).label); });
+  return {ready:!missing.length, missing}; }
+function readyNote(c){ const r=confReady(c);
+  if(r.ready) return `<div class="ready-yes"><span aria-hidden="true">✓</span> Ready for the conference</div>`;
+  return `<div class="ready-no"><b>Not ready yet</b><div class="small muted">Still to finish ${esc(r.missing.join(", "))}</div></div>`; }
 function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function hasWork(c){ return !!c.signup || filledCount(c)>0 || Object.values(c.prep||{}).some(Boolean) || (c.attachments||[]).length>0 || (c.staffNotes||"").trim() || (c.teacher||"").trim(); }
 function confStatus(c){
@@ -787,7 +801,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
       <td class="name-cell"><b>${esc(childName(c))}</b><div class="small muted">${esc(ageAt(c.dob))}</div></td>
       <td>${esc(c.classroom||"")}</td>
       <td>${esc(educatorOf(c))}</td>
-      <td>${chip(st)}</td>
+      <td>${chip(st)}${cf&&cf.term!=="Historical"&&!["complete","nosignup"].includes(st.key)&&confReady(cf).ready?' <span class="chip st-complete">\u2713 Ready</span>':""}</td>
       <td class="mono small">${cf?.confDate? esc(fmtDate(cf.confDate,{month:"short",day:"numeric"}))+(cf.confTime?" "+esc(fmtTime(cf.confTime)):""):""}</td>
       <td class="mono small">${cf? filledCount(cf)+"/"+TOTAL_FIELDS:""}</td>
     </tr>`; }).join("");
@@ -1073,6 +1087,7 @@ function viewConf(id){
       </div>
       ${cf.term==="Historical"? `<div class="panel"><h3>Earlier conferences</h3><p class="small muted" style="margin:0">Forms whose date was unclear are kept here together, each labeled with whatever date was written. Use Move below if you work out the season for this record.</p></div>` : `<div class="panel">
         <h3>Preparation</h3>
+        <div id="ready-note">${readyNote(cf)}</div>
         ${PREP.filter(p=>!p.needsPrior||prior).map(p=>`<label class="check"><input type="checkbox" data-k="prep.${p.k}" ${cf.prep?.[p.k]?"checked":""} ${dis}><span>${esc(p.label)}</span></label>`).join("")}
       </div>
       <div class="panel">
@@ -1158,12 +1173,18 @@ function afterConfRender(){
     const v = t.type==="checkbox"? t.checked : t.value;
     queueSave(t.dataset.k, v);
     if(t.dataset.k.startsWith("fields.")||t.dataset.k.startsWith("reflections.")) updateMeter();
+    if(t.dataset.k.startsWith("fields.")||t.dataset.k.startsWith("prep.")) updateReady();
   });
   ed.addEventListener("change", e=>{ const t=e.target; if(t.dataset.k && (t.type==="date"||t.tagName==="SELECT"||t.type==="checkbox"||t.type==="time")) flushAll();
     if(t.dataset.k==="confDate"||t.dataset.k==="confTime"){ const n=$("#time-note"); if(n) n.textContent=timeNote({confDate:$("#i-confDate")?.value, confTime:$("#i-confTime")?.value}); } });
   ed.addEventListener("focusout", e=>{ if(e.target.dataset?.k) flushAll(); });
   updateLastEdit();
 }
+// the ready line follows what is on the screen, before it is saved
+function updateReady(){ const el=$("#ready-note"); const cf=S.confs[S.view.id]; if(!el||!cf) return;
+  const live={fields:{...(cf.fields||{})}, prep:{...(cf.prep||{})}};
+  $$("#conf-editor [data-k]").forEach(t=>{ const [g,k]=t.dataset.k.split("."); if(g==="fields"&&t.tagName==="TEXTAREA") live.fields[k]=t.value; if(g==="prep"&&t.type==="checkbox") live.prep[k]=t.checked; });
+  el.innerHTML=readyNote(live); }
 function updateMeter(){
   const vals={fields:{},reflections:{}};
   $$("#conf-editor textarea[data-k]").forEach(t=>{ const [g,k]=t.dataset.k.split("."); if(vals[g]) vals[g][k]=t.value; });
@@ -1185,7 +1206,7 @@ function syncEditor(){
   const chipEl=$("#conf-chip"); if(chipEl) chipEl.innerHTML=chip(confStatus(cf));
   const btn=$('[data-act="toggle-complete"]'); if(btn) btn.textContent= cf.status==="complete"?"Reopen conference":"Mark conference complete";
   const al=$("#attach-list"); if(al) al.innerHTML=attachList(cf);
-  updateMeter(); updateLastEdit();
+  updateMeter(); updateReady(); updateLastEdit();
 }
 
 /* ---------- settings ---------- */
@@ -1489,7 +1510,7 @@ async function downloadDocx(list, child){
       ...(info? [new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:[new D.TableRow({children:[new D.TableCell({borders:{top:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},bottom:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},left:{style:D.BorderStyle.SINGLE,size:24,color:"C9962A"},right:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"}},shading:{type:D.ShadingType.CLEAR,color:"auto",fill:"FDF3D8"},margins:{top:80,bottom:80,left:140,right:120},children:[
           new D.Paragraph({children:[new D.TextRun({text:info.text+" ",bold:true,size:19}),new D.TextRun({text:info.more,size:19})]}),
           new D.Paragraph({spacing:{before:60},children:[new D.TextRun({text:"Family's plan   ",bold:true,size:18}),...PLAN_BOXES.map(([v,l])=>new D.TextRun({text:`${info.plan===v?"\u2612":"\u2610"} ${l}     `,size:18}))]})]})]})]}), new D.Paragraph({spacing:{after:60},children:[]})] : []),
-      new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Educators review the Family Questionnaire and current DRDP documentation before the conference.",italics:true,size:16})]}),
+      new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Prepared   ",bold:true,size:17}),...READY_STEPS.map(([k,l])=>new D.TextRun({text:`${cf.prep?.[k]?"\u2612":"\u2610"} ${l}    `,size:17})),new D.TextRun({text:`     ${confReady(cf).ready?"\u2612":"\u2610"} Ready for the conference`,bold:true,size:18})]}),
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows}),
       title("Family Reflections", true),
       new D.Paragraph({spacing:{after:120},children:[new D.TextRun({text:"Completed together with the family during the conference. These questions build on the Family Questionnaire and focus on what has grown and changed since the start of the year.",size:18})]}),
@@ -1511,7 +1532,9 @@ async function buildFormsPdf(items){
   doc.setTitle("Family Conference"); doc.setAuthor("Fulton Community School & Farm");
   let F=null;const FF=await confFonts();
   if(FF){ try{ await loadScript("https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"); doc.registerFontkit(window.fontkit);
-      const r=await doc.embedFont(FF.r), b=await doc.embedFont(FF.s), t=await doc.embedFont(FF.b); F={r,b,i:r,t}; }catch(e){ F=null; } }
+      // ligatures off, so fi and fl print as two letters rather than a gap
+      const NOLIG={features:{liga:false,clig:false,dlig:false}};
+      const r=await doc.embedFont(FF.r,NOLIG), b=await doc.embedFont(FF.s,NOLIG), t=await doc.embedFont(FF.b,NOLIG); F={r,b,i:r,t}; }catch(e){ F=null; } }
   if(!F) F={r:await doc.embedFont(StandardFonts.Helvetica), b:await doc.embedFont(StandardFonts.HelveticaBold), i:await doc.embedFont(StandardFonts.HelveticaOblique), t:await doc.embedFont(StandardFonts.TimesRomanBold)};
   const charset=new Set(F.r.getCharacterSet());
   const clean=s=>String(s??"").replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,"-").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
@@ -1525,7 +1548,7 @@ async function buildFormsPdf(items){
   const lines=(pg,ls,x,y,font,size,color=INK,lh=1.2)=>{ ls.forEach((l,n)=>pg.drawText(l,{x,y:y-size-(n*size*lh),size,font,color})); return ls.length*size*lh; };
   const fit=(pg,text,x,top,w,h,max=9.5,min=5.5)=>{ if(!String(text||"").trim()) return; let size=max, ls;
     for(;size>=min;size=+(size-.5).toFixed(1)){ ls=wrap(text,F.r,size,w); if(ls.length*size*1.2<=h) break; }
-    if(size<min){ size=min; ls=wrap(text,F.r,size,w); const cap=Math.max(1,Math.floor(h/(size*1.2))); if(ls.length>cap){ ls=ls.slice(0,cap); const more=" (more in the app)"; let last=ls[cap-1]; while(last && F.r.widthOfTextAtSize(last+more,size)>w) last=last.slice(0,-1); ls[cap-1]=last.trimEnd()+more; } }
+    if(size<min){ for(size=min;size>4.5;size=+(size-.5).toFixed(1)){ ls=wrap(text,F.r,size,w); if(ls.length*size*1.2<=h) break; } if(size<5) { size=5; ls=wrap(text,F.r,size,w); } }
     lines(pg,ls,x,top,F.r,size); };
   const box=(pg,x,top,w,h,fill)=>pg.drawRectangle({x,y:top-h,width:w,height:h,color:fill,borderColor:LINE,borderWidth:.6});
   const label=(pg,x,top,w,h,lab,hint)=>{ box(pg,x,top,w,h,GREEN); let ls=wrap(lab,F.b,8.5,w-10), sz=8.5; if(!hint && ls.length*10.2>h-6){ sz=7; ls=wrap(lab,F.b,sz,w-10); } let used=lines(pg,ls,x+5,top-(ls.length>1&&!hint?2:4),F.b,sz,INK,1.1);
@@ -1545,6 +1568,63 @@ async function buildFormsPdf(items){
     const note=wrap(cf.selfCare?.[side+"Notes"]||"",F.r,7.8,TW-LW-62)[0]||"";
     if(note) pg.drawText(note,{x:M+LW+52,y:yy,size:7.8,font:F.r,color:INK});
     pg.drawLine({start:{x:M+LW+52,y:yy-2},end:{x:W-M-6,y:yy-2},thickness:.5,color:LINE}); };
+  // The four preparation steps and Ready for the conference, ticked when the thirteen sections have writing and the steps are checked
+  const prepLine=(pg,y,cf)=>{ const RL="Ready for the conference", ready=confReady(cf).ready; let sz=8;
+    const need=z=>F.b.widthOfTextAtSize("Prepared",z)+8+READY_STEPS.reduce((a,[,l])=>a+10+F.r.widthOfTextAtSize(l,z)+10,0)+18+11+F.b.widthOfTextAtSize(RL,z+.5);
+    while(sz>6.5 && need(sz)>TW) sz-=.5;
+    const yy=y-9; let x=M; pg.drawText("Prepared",{x,y:yy,size:sz,font:F.b,color:INK}); x+=F.b.widthOfTextAtSize("Prepared",sz)+8;
+    for(const [k,l] of READY_STEPS){ pg.drawRectangle({x,y:yy-1,width:7,height:7,borderColor:INK,borderWidth:.6}); if(cf.prep?.[k]) tick(pg,x,yy-1);
+      pg.drawText(l,{x:x+10,y:yy,size:sz,font:F.r,color:INK}); x+=10+F.r.widthOfTextAtSize(l,sz)+10; }
+    const rw=11+F.b.widthOfTextAtSize(RL,sz+.5), rx=W-M-rw-4;
+    pg.drawRectangle({x:rx-5,y:yy-4,width:rw+9,height:sz+7.5,color:ready?GREEN:CREAM,borderColor:ready?LINE:GOLD,borderWidth:.6});
+    pg.drawRectangle({x:rx,y:yy-1,width:7,height:7,borderColor:INK,borderWidth:.7,color:rgb(1,1,1)}); if(ready) tick(pg,rx,yy-1);
+    pg.drawText(RL,{x:rx+11,y:yy,size:sz+.5,font:F.b,color:INK}); };
+  // Every word prints. The boxes share the sheet by how much each holds, a sheet that is a little over is set a little smaller,
+  // and a form with more than one sheet holds carries on to a sheet headed continued, a box split between them with its heading repeated.
+  const LH=1.2, PADV=8, QROOM=30, FLOW=8.5, SMALLEST=7;
+  const cont=(t,on)=>on? t+", continued" : t;
+  const lblNeed=(l,hint)=>wrap(l,F.b,8.5,LW-10).length*9.35+8+(hint?10:0);
+  const cellsOf=r=> r.kind==="pair"? [{x:M+LW,w:VW,t:r.v1},{x:M+2*LW+VW,w:VW,t:r.v2}] : r.kind==="full"? [{x:M+LW,w:TW-LW,t:r.v}] : r.kind==="q"? [{x:M+6,w:TW-2,t:r.v}] : [];
+  const qHead=p=>wrap(cont(p.r.q,p.cont),F.b,9,TW-12);
+  const headNeed=p=>{ const r=p.r; if(r.kind==="q") return qHead(p).length*10.8+9; if(r.kind==="pair") return Math.max(lblNeed(cont(r.l1,p.cont),r.h1&&!p.cont),lblNeed(cont(r.l2,p.cont),r.h2&&!p.cont)); return lblNeed(cont(r.l,p.cont),r.h&&!p.cont); };
+  const piece=(r,s)=>({r,s,cont:false,ls:cellsOf(r).map(cl=>wrap(cl.t||"",F.r,s,cl.w-10))});
+  const pieceNeed=p=>{ if(p.r.kind==="block") return p.r.hgt; const n=Math.max(0,...p.ls.map(l=>l.length)), hn=headNeed(p);
+    if(p.r.kind==="q") return hn+Math.max(QROOM, n? n*p.s*LH+5 : 0); return Math.max(hn, n*p.s*LH+PADV); };
+  const splitPiece=(p,room)=>{ if(p.r.kind==="block") return null; const hn=headNeed(p);
+    const k=Math.floor((room-(p.r.kind==="q"? hn+5 : Math.max(0,PADV)))/(p.s*LH)); if(room<hn+4 || k<2) return null;
+    return [{...p,ls:p.ls.map(l=>l.slice(0,k)),split:true},{...p,cont:true,ls:p.ls.map(l=>l.slice(k))}]; };
+  // share a sheet's height, each box taking at least what it needs and the rest in proportion to its weight
+  const share=(ns,ws,total)=>{ const fixed=new Set(ws.map((w,i)=>w?-1:i).filter(i=>i>=0));
+    for(;;){ const fw=ws.reduce((a,w,i)=>fixed.has(i)?a:a+w,0), rest=total-ns.reduce((a,n,i)=>fixed.has(i)?a+n:a,0); let changed=false;
+      ws.forEach((w,i)=>{ if(!fixed.has(i) && (fw<=0 || ns[i]>rest*w/fw)){ fixed.add(i); changed=true; } }); if(!changed) return ws.map((w,i)=>fixed.has(i)?ns[i]:rest*w/fw); } };
+  const drawPiece=(pg,p,top,h,fitMode)=>{ const r=p.r; if(r.kind==="block"){ r.draw(pg,top); return; }
+    if(r.kind==="q"){ box(pg,M,top,TW,h); const qh=qHead(p); const used=lines(pg,qh,M+6,top-5,F.b,9);
+      if(fitMode) fit(pg,r.v,M+6,top-9-used,TW-12,h-14-used,9.5,p.s); else lines(pg,p.ls[0],M+6,top-9-used,F.r,p.s); return; }
+    const labs= r.kind==="pair"? [[M,r.l1,r.h1],[M+LW+VW,r.l2,r.h2]] : [[M,r.l,r.h]];
+    labs.forEach(([x,l,hint])=>label(pg,x,top,LW,h,cont(l,p.cont),p.cont?"":hint));
+    cellsOf(r).forEach((cl,i)=>{ box(pg,cl.x,top,cl.w,h); if(fitMode) fit(pg,cl.t,cl.x+5,top-4,cl.w-10,h-8,9.5,p.s); else lines(pg,p.ls[i],cl.x+5,top-4,F.r,p.s); }); };
+  const contPage=(title,c)=>{ const p=doc.addPage([W,H]); let y=H-M;
+    p.drawText("Fulton Community School & Farm",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
+    p.drawText(clean(title+", continued"),{x:M,y:y-17,size:17,font:F.t,color:INK}); y-=25;
+    p.drawText("Child",{x:M,y:y-9,size:9,font:F.b,color:INK}); p.drawText(clean(childName(c)),{x:M+32,y:y-9,size:9,font:F.r,color:INK}); y-=18;
+    return {p,y}; };
+  // lays rows from top down to the margin and returns the last sheet used
+  const layOut=(pg,top,rows,title,c)=>{ const avail=top-M;
+    for(let s=9.5;s>=SMALLEST;s=+(s-.5).toFixed(1)){ const ps=rows.map(r=>piece(r,s)), ns=ps.map(pieceNeed);
+      if(ns.reduce((a,b)=>a+b,0)<=avail){ const hs=share(ns,rows.map(r=>r.w),avail); let y=top; ps.forEach((p,i)=>{ drawPiece(pg,p,y,hs[i],true); y-=hs[i]; }); return pg; } }
+    // more than one sheet holds, so it carries on
+    const sheets=[{pg,top,ps:[]}]; let room=avail; const fullRoom=H-M-55-M;
+    const newSheet=()=>{ const {p,y}=contPage(title,c); sheets.push({pg:p,top:y,ps:[]}); room=y-M; };
+    for(const r of rows){ let p=piece(r,FLOW);
+      for(let guard=0;guard<50;guard++){ const nd=pieceNeed(p);
+        if(nd<=room+.01 || (!sheets.at(-1).ps.length && (nd<=fullRoom || !splitPiece(p,room)))){ sheets.at(-1).ps.push(p); room-=nd; break; }
+        // a box is kept whole on the next sheet, and only one taller than a whole sheet is split
+        const sp= nd>fullRoom ? splitPiece(p,room) : null; if(sp){ sheets.at(-1).ps.push(sp[0]); p=sp[1]; } newSheet(); } }
+    sheets.forEach((sh,n)=>{ const ns=sh.ps.map(pieceNeed), tot=sh.top-M, used=ns.reduce((a,b)=>a+b,0);
+      // every sheet fills to the margin, so the boxes written at the conference keep their room
+      const hs=share(ns, sh.ps.map(p=>p.split? 0 : p.r.w), Math.max(tot,used));
+      let y=sh.top; sh.ps.forEach((p,i)=>{ drawPiece(sh.pg,p,y,hs[i],false); y-=hs[i]; }); if(n<sheets.length-1) footer(sh.pg); });
+    return sheets.at(-1).pg; };
   for(const {cf, child:c} of items){
     const info=nextYearInfo(c, cf);
     // page one
@@ -1562,19 +1642,17 @@ async function buildFormsPdf(items){
       for(const [v,l] of PLAN_BOXES){ pg.drawRectangle({x,y:y-30,width:8,height:8,borderColor:INK,borderWidth:.7}); if(info.plan===v){ pg.drawLine({start:{x:x+1.5,y:y-26},end:{x:x+3.5,y:y-28.5},thickness:1.2,color:INK}); pg.drawLine({start:{x:x+3.5,y:y-28.5},end:{x:x+7,y:y-23},thickness:1.2,color:INK}); }
         pg.drawText(l,{x:x+11,y:y-29,size:8.5,font:F.r}); x+=11+F.r.widthOfTextAtSize(l,8.5)+16; }
       y-=fh+6; }
-    lines(pg,wrap("Educators review the Family Questionnaire and current DRDP documentation before the conference.",F.i,7.5,TW),M,y,F.i,7.5,GRAY); y-=13;
-    const body=[]; for(let i=0;i<FIELDS.length;i++){ const f=FIELDS[i]; if(f.full) body.push({w:["strengths","documentation"].includes(f.k)?.8:1,full:f}); else { body.push({w:1,a:f,b:FIELDS[i+1]}); i++; } }
-    if(cf.prevGoalsProgress) body.push({w:.8,full:{label:"Progress on earlier goals",k:"__prev"}});
-    if((cf.otherSections||"").trim()) body.push({w:.8,full:{label:"Other sections from the original form",k:"__other"}});
-    const META=22, avail=y-M-2*META-SC_H, unit=avail/body.reduce((s,r)=>s+r.w,0);
-    const valOf=k=>k==="__prev"?cf.prevGoalsProgress:k==="__other"?cf.otherSections:cf.fields?.[k];
+    prepLine(pg,y,cf); y-=15; const META=22;
+    const rows=[]; for(let i=0;i<FIELDS.length;i++){ const f=FIELDS[i];
+      if(f.full) rows.push({kind:"full",w:["strengths","documentation"].includes(f.k)?.8:1,l:f.label,h:f.hint,v:cf.fields?.[f.k]});
+      else { const g=FIELDS[i+1]; rows.push({kind:"pair",w:1,l1:f.label,h1:f.hint,v1:cf.fields?.[f.k],l2:g.label,h2:g.hint,v2:cf.fields?.[g.k]}); i++;
+        if(g.k==="expressive") rows.push({kind:"block",w:0,hgt:SC_H,draw:(p,top)=>selfCare(p,top,cf,"school")}); } }
+    if(cf.prevGoalsProgress) rows.push({kind:"full",w:.8,l:"Progress on earlier goals",v:cf.prevGoalsProgress});
+    if((cf.otherSections||"").trim()) rows.push({kind:"full",w:.8,l:"Other sections from the original form",v:cf.otherSections});
     const pair=(top,h,l1,v1,l2,v2,hint1,hint2)=>{ label(pg,M,top,LW,h,l1,hint1); value(pg,M+LW,top,VW,h,v1); label(pg,M+LW+VW,top,LW,h,l2,hint2); value(pg,M+2*LW+VW,top,VW,h,v2); };
     pair(y,META,"Date",fmtDate(cf.confDate),"Child",childName(c)); y-=META;
     pair(y,META,"Birthdate",fmtDate(c?.dob),"Age",ageAt(c?.dob,cf.confDate||undefined)); y-=META;
-    for(const r of body){ const h=unit*r.w;
-      if(r.full){ label(pg,M,y,LW,h,r.full.label,r.full.hint); value(pg,M+LW,y,TW-LW,h,valOf(r.full.k)); }
-      else pair(y,h,r.a.label,cf.fields?.[r.a.k],r.b.label,cf.fields?.[r.b.k],r.a.hint,r.b.hint);
-      y-=h; if(r.b?.k==="expressive"){ selfCare(pg,y,cf,"school"); y-=SC_H; } }
+    pg=layOut(pg,y,rows,"Family Conference \u00B7 "+confLabel(cf),c);
     footer(pg);
     // page two
     pg=doc.addPage([W,H]); y=H-M;
@@ -1584,8 +1662,7 @@ async function buildFormsPdf(items){
     pair(y,META,"Child",childName(c),"Family Members Present",cf.familyPresent); y-=META;
     label(pg,M,y,LW,META,"Date"); value(pg,M+LW,y,TW-LW,META,fmtDate(cf.reflDate||cf.confDate)); y-=META;
     selfCare(pg,y,cf,"home"); y-=SC_H;
-    const qh=(y-M)/REFLECTIONS.length;
-    REFLECTIONS.forEach((r,n)=>{ box(pg,M,y,TW,qh); const used=lines(pg,wrap(`${n+1}. ${r.q}`,F.b,9,TW-12),M+6,y-5,F.b,9); fit(pg,cf.reflections?.[r.k],M+6,y-9-used,TW-12,qh-14-used); y-=qh; });
+    pg=layOut(pg,y,REFLECTIONS.map((r,n)=>({kind:"q",w:1,q:`${n+1}. ${r.q}`,v:cf.reflections?.[r.k]})),"Family Reflections",c);
     footer(pg);
   }
   return new Blob([await doc.save()],{type:"application/pdf"});
