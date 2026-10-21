@@ -5653,7 +5653,7 @@ function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";
     return `<div style="display:grid;grid-template-columns:${n.photo?"64px ":""}1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);min-width:0">
       ${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:""}
       <div style="display:grid;gap:4px;min-width:0"><span class="cnt">${esc(who)}</span><span style="font-size:14.5px;overflow-wrap:anywhere">${esc(firstLine(noticeText(n),260))}</span>
-        <span class="actions" style="gap:4px 12px">${th?(inIt(n)?`<span class="cnt">In the thread</span>`:VIEW_AS?"":`<button class="btn small ghost" data-patone="${i}|${esc(n.id)}">Add to the thread</button>`):""}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div></div>`};
+        <span class="actions" style="gap:4px 12px">${th?(inIt(n)?`<span class="cnt">In the thread</span>${VIEW_AS?"":`<button class="linkbtn" data-tnout="${esc(n.id)}|${esc(th.id)}">Take out</button>`}`:VIEW_AS?"":`<button class="btn small ghost" data-patone="${i}|${esc(n.id)}">Add to the thread</button>`):""}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div></div>`};
   return `<details style="margin-top:6px" ${th?"open":""}><summary class="cnt" style="cursor:pointer">${posts.length} observation${posts.length>1?"s":""}, see each one</summary><div style="margin-top:4px">${posts.map(row).join("")}</div></details>`}
 // observations join a thread the same way an observation suggestion does, as evidence the thread holds, one entry per post
 function addNoticesToThread(th,ns){let added=0;
