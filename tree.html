@@ -1447,6 +1447,11 @@ function teamReadiness(p,src){
   const missing=[...names.keys()].filter(k=>!have.has(k)).map(k=>names.get(k));
   return {expected:names.size,written:[...names.keys()].filter(k=>have.has(k)).length,missing};
 }
+// last week's reflections in this class, the final remarks and After the week the educators wrote, which the Classroom plan builds on
+function lastWeekAfters(p){if(!p.classroom)return [];const last=addDays(p.weekOf,-7);
+  return [...plans.values()].filter(x=>x.id!=="example"&&(x.type==="individual"||x.type==="smallgroup")&&x.weekOf===last&&x.classroom===p.classroom&&planAfter(x)&&!(x.dupOf&&plans.has(x.dupOf))).sort((a,b)=>(a.educator||"").localeCompare(b.educator||""))}
+function lastWeekAftersText(p){const xs=lastWeekAfters(p);if(!xs.length)return "";
+  return "\n\nLast week's reflections from the educators in this class.\n"+xs.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and ")):"";return `${x.educator||"An educator"}${g?", "+g+" group":x.where?", "+x.where:""}. ${x.type==="smallgroup"?"After the week":"Final remarks"}. ${planAfter(x).slice(0,700)}`}).join("\n")}
 function teamSourceText(src){
   return src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and ")):"";
     const f=x.fields||{};const parts=x.type==="smallgroup"?[["Thread",f.thread],["Intention",f.intention]]:[["Area exploration",f.area],["Observation rationale",f.observation],["Intent",f.intent],["Possible activities and materials",f.materials]];
@@ -1457,13 +1462,17 @@ function teamSourcesHtml(p){
   const src=teamSources(p);const r=teamReadiness(p,src);
   const line=r.expected?`${r.written} of ${r.expected} Individual plans for this week are written.${r.missing.length?` Still to come, ${r.missing.map(esc).join(", ")}. The team can plan without them and add their thinking later.`:""}`:`${src.length} Individual plan${src.length===1?"":"s"} written for this week.`;
   const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?esc(t.slice(0,n))+"…":esc(t)};
-  return `<details class="ref" ${src.length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans, ${esc(p.classroom)} class</b></summary>
+  return `<details class="ref" ${src.length||lastWeekAfters(p).length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans${lastWeekAfters(p).length?" and last week's reflections":""}, ${esc(p.classroom)} class</b></summary>
     <div style="margin-top:6px">${line}</div>
     ${src.length?`<div style="display:grid;gap:8px;margin-top:8px">${src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");const f=x.fields||{};
       return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${esc(x.id)}">Open</button></span>
         ${(f.area||f.thread)?`<span><span class="muted">${x.type==="smallgroup"?"Thread":"Area exploration"}.</span> ${cut(f.area||f.thread,200)}</span>`:""}
         ${f.observation?`<span><span class="muted">Observation rationale.</span> ${cut(f.observation,260)}</span>`:""}
         ${(f.intent||f.intention)?`<span><span class="muted">Intent.</span> ${cut(f.intent||f.intention,180)}</span>`:""}</div>`}).join("")}</div>`:`<div class="muted" style="margin-top:4px">None written yet for this week.</div>`}
+    ${(()=>{const xs=lastWeekAfters(p);if(!xs.length)return "";
+      return `<div class="chiprow-label" style="margin-top:10px">Last week's reflections</div><div style="display:grid;gap:8px;margin-top:4px">${xs.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");
+        return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${esc(x.id)}">Open</button></span>
+          <span><span class="muted">${x.type==="smallgroup"?"After the week":"Final remarks"}.</span> ${cut(planAfter(x),320)}</span></div>`}).join("")}</div>`})()}
   </details>`;
 }
 async function draftInterests(p){
@@ -1478,7 +1487,7 @@ Write it from the educators' Individual and small group plans for this week belo
 Return only the section text, with no preface.
 
 ${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
-${teamSourceText(src)}${threadsForClaude(p)}`;
+${teamSourceText(src)}${lastWeekAftersText(p)}${threadsForClaude(p)}`;
   try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\u2014/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
   catch(err){suggest[key]={status:"error",error:assistError(err?.code||"unknown","Your text is unchanged."),from:"ind"}}
   if(currentId===p.id)rerenderCard(p,"interests");
@@ -1622,7 +1631,7 @@ ${STYLE}
 Return JSON {"focus": "", "branches": [{"name": "", "materials": ""}], "connections": [[branch index, branch index]], "languages": [], "questions": "", "environment": "", "why": one sentence naming which parts of the plan the web grew from}
 
 ${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroom+" class":""}.
-${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}${thText}`;
+${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}${p.type==="classroom"?lastWeekAftersText(p):""}${thText}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
     const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
@@ -5615,7 +5624,7 @@ function momentsReadHtml(){
 function patternMoments(p){return (p.ids||[]).map(id=>notices.get(id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0))}
 // a pattern that is already a thread the team follows. TREE names the match when it reads, and a pattern whose observations
 // sit mostly in one followed thread is that thread too. The team can say it is not, and then it can be followed on its own
-const matchable=t=>threadLive(t)&&t.status!=="closed";
+const matchable=t=>threadLive(t);
 function patternMatch(p){if(!p||p.notThread||(p.threadId&&threads.get(p.threadId)))return null;
   const named=p.matchId&&threads.get(p.matchId);if(matchable(named))return named;
   const ns=patternMoments(p);if(ns.length<2)return null;const c=new Map();
@@ -5626,7 +5635,7 @@ function patternMissing(p,th){const inIt=n=>threadsOfNotice(n).some(t=>t.id===th
   const seen=new Set(),out=[];for(const n of patternMoments(p)){const k=n.group||n.id;if(seen.has(k)||inIt(n))continue;seen.add(k);out.push(n)}return out}
 function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const miss=patternMissing(p,th),total=patternMoments(p).length;
   const inIt=total-miss.length;
-  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, which the team is already following.${!miss.length?" All of these observations are in it.":inIt?` ${inIt} of these observations ${inIt>1?"are":"is"} already in it.`:""}</span>
+  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, ${th.status==="closed"?"which the team had closed. Children may be returning to it.":"which the team is already following."}${!miss.length?" All of these observations are in it.":inIt?` ${inIt} of these observations ${inIt>1?"are":"is"} already in it.`:""}</span>
     <span class="actions">${miss.length&&!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add ${miss.length>1?"these "+miss.length+" observations":"this observation"} to it</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`}
 // observations join a thread the same way an observation suggestion does, as evidence the thread holds, one entry per post
 function addNoticesToThread(th,ns){let added=0;
@@ -5663,7 +5672,7 @@ function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNoti
 function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
   const weeks=[...new Set(ns.map(n=>n.week||mondayOf(new Date(n.at||Date.now()))))].sort();
   const nt={id:uid(),name:p.name,question:"",classroom:patternRoom(ns),groups:[],status:"emerging",weeks,lastWeek:weeks.slice(-1)[0]||"",evidence:[],languages:[],next:[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:"observations",at:s.createdAt}};
-  saveThread(nt);for(const n of ns)if(!n.threadId)patchNotice(n.id,{threadId:nt.id})
+  saveThread(nt);for(const n of ns)if(!n.threadId)patchNotice(n.id,{threadId:nt.id});addNoticesToThread(nt,ns.filter(n=>n.threadId&&n.threadId!==nt.id))
   p.threadId=nt.id;saveScan(s);renderMain();toast("Following it as a thread. Write its question on the thread when the team is ready.")}
 let mShow=30;
 document.addEventListener("click",e=>{const t=e.target.closest("[data-mmore]");if(!t||view!=="moments")return;e.stopImmediatePropagation();const y=window.scrollY;mShow+=30;renderMain();window.scrollTo(0,y)},true);
@@ -5702,11 +5711,11 @@ async function momentsRead(){
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom;
-  const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200)}));
+  const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),closed:t.status==="closed"}));
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
-Threads the team is already following ${JSON.stringify(followed)}. Before naming a pattern, check it against these. When a pattern is what one of these threads already follows, set "thread" to that thread's id and use the thread's own name as the pattern name, so the team adds to the thread they have instead of starting another. Leave "thread" empty for anything new.
+Threads the team is already following or has closed ${JSON.stringify(followed)}. Before naming a pattern, check it against these. When a pattern is what one of these threads already follows, set "thread" to that thread's id and use the thread's own name as the pattern name, so the team adds to the thread they have instead of starting another. Leave "thread" empty for anything new.
 ${STYLE}
 Return JSON {"summary": two or three sentences on what these moments show children working on across the whole view, "patterns":[up to 5 {"name": the short label, "why": one or two sentences on what the moments show, grounded in them, "ids": the ids of 2 to 6 moments it draws on, "thread": the id of the followed thread it matches, or ""}], "questions":[2 or 3 questions the team could take to its next meeting]}
 
@@ -5731,7 +5740,8 @@ function momentsDocs(long,cap){
   const s=momentsScan();
   const meta=[["Classrooms",nRoom==="All"?"All":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
   const blocks=[];
-  if(s&&has(s.summary))blocks.push(dLead("What these observations keep returning to",s.summary));
+  if(s&&has(s.summary)){blocks.push(dLead("What these observations keep returning to",s.summary));
+    const nw=all.filter(n=>(n.at||0)>(s.createdAt||0)).length;blocks.push({t:"text",label:"",quiet:true,text:`Read on ${shortDate(s.createdAt)}.${nw?` ${nw} observation${nw>1?"s":""} kept since ${nw>1?"are":"is"} not in this reading.`:""}`})}
   if(long&&s&&(s.patterns||[]).length)blocks.push(dList("Patterns the team is weighing",s.patterns.map(p=>{const m=patternMatch(p);return `${p.name}. ${sentCut(p.why)}${m?` Part of the thread ${m.name}.`:""}`}).slice(0,5)));
   // the summary carries a spread. The full set carries them all, with what the educator wondered
   const total=long?60:(cap||12);
@@ -7312,7 +7322,7 @@ function inquiryDoc(x,long){
   const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));if(a.length){blocks.push(dSub("Read through "+L.name));a.forEach(q=>blocks.push(dText(q,x.lensNotes[q])))}}
   if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
   const obs=long?ns:ns.slice(0,3);
-  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>blocks.push(dQuote(noticeText(n),n.by||"",shortDate(n.at),true)))}
+  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true))})}
   if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",shortDate(e.at))))}}
   const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
   if(x.lookAgain)meta.push(["Look again",fmtDate(x.lookAgain)]);
@@ -8329,6 +8339,9 @@ function threadDoc(t){
   if(has(t.question))blocks.push(dLead("The question we are following",t.question));
   const qs=pickSpread(ev,4);
   if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>{const pl=rec(e.planId);blocks.push(dQuote(e.text,whoLine(pl),shortWeek(e.week||pl.weekOf)))})}
+  {const lr=threadLastRemarks(t);if(lr){blocks.push(dSub("Where it is now"));blocks.push(dQuote(lr.text,pBy(byLine(lr.p))))}}
+  {const ns=threadNotices(t).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0)),posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
+    const ph=spread(posts,2);if(ph.length){blocks.push(dSub("Moments along the way"));ph.forEach(n=>{blocks.push(dPhoto(n,150,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentBody(n)||n.noticed,220)))})}}
   if((t.languages||[]).length)blocks.push(dTags("Languages children are using",t.languages));
   if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.slice(0,4)));
   if(has(t.notes))blocks.push(dText("Team notes",t.notes));
@@ -8587,7 +8600,9 @@ function lensDocs(long,cap){
   if(!long){const score=m=>m.hits.length*2+(m.obs?2:0)+(m.text.length>=60?1:0);moments=moments.filter(m=>m.text.length>=40).sort((a,b)=>score(b)-score(a)||b.week.localeCompare(a.week))}
   for(const m of moments){perWeek[m.week]=(perWeek[m.week]||0)+1;if(perWeek[m.week]<=perMax&&shown.length<total)shown.push(m)}
   if(shown.length){blocks.push(dSub(`Passages in educators' words${lLang?", "+lLang:""}`));
+    let lph=0;
     for(const m of shown){const p=rec(m.planId);const cs=p&&!p.notice?planThreads(p):[];
+      {const on=p&&p.notice&&notices.get(m.planId);if(long&&on&&on.photo&&lph<8){lph++;blocks.push(dPhoto(on,150,false))}}
       // the part of the plan a moment came from, so a reader can tell an observation from a provocation being planned
       blocks.push(dQuote(m.text,[whoLine(p),sectName(m.section),long&&cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))))}
     if(moments.length>shown.length)blocks.push({t:"text",label:"",quiet:true,text:`${moments.length-shown.length} more passage${moments.length-shown.length>1?"s are":" is"} on the Lens page.`})}
@@ -8598,6 +8613,7 @@ function lensDocs(long,cap){
   const scan=lensScan(lRoom);
   if(scan&&(scan.moments||[]).length){const qs=scan.questionsAsked||LENS.questions;const b=[];
     if(has(scan.summary))b.push(dLead("Across these weeks",scan.summary));
+    {const nw=ps.filter(p=>(p.updatedAt||p.at||0)>(scan.createdAt||0)).length;b.push({t:"text",label:"",quiet:true,text:`Read on ${shortDate(scan.createdAt)}.${nw?` ${nw} plan${nw>1?"s and observations have":" or observation has"} changed or been kept since, and ${nw>1?"are":"is"} not in this reading.`:""}`})}
     scan.moments.forEach(m=>{const p=rec(m.planId);
       b.push(dQuote(m.quote,byLine(p),m.language||""));
       qs.forEach((q,k)=>{const a=(m.answers||[])[k];if(has(a))b.push({t:"qa",q,a})});
@@ -9314,7 +9330,7 @@ function renderThreads(){
     const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
     h+=`<div class="chiprow-label">Found by TREE, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
-    {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n})`).join(", ")}</div>`}
+    {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n}${j.closed?", closed, children have returned to it":""})`).join(", ")}</div>`}
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
     else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
@@ -9439,17 +9455,26 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
     {const ns=threadNotices(t);const open=ns.length<=2;
       // a closed list is drawn only when it is opened, so a page of many threads stays quick
       if(ns.length)h+=`<details${open?" open":""} data-tobs="${esc(t.id)}"><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} in this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${open?ns.map(noticeCard).join(""):""}</div></details>`;}
+    {const nw=t.story&&t.storyRecs!=null?threadRecIds(t).size-t.storyRecs:0;
+      if(nw>0)h+=`<div class="nudge" style="justify-self:start">${nw} new piece${nw>1?"s":""} of evidence since this story was written${t.storyAt?" on "+esc(shortDate(t.storyAt)):""}. ${sample?"Rewrite project story brings them in, and the earlier story is kept.":""}</div>`}
     if(t.story)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Project story, for family evenings and colleagues</summary><div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-tstoryf="${t.id}|${k}" rows="2">${esc(t.story[k]||"")}</textarea></label>`).join("")}</div></details>`;
   }else{
     const was=t.trackedId&&threads.get(t.trackedId);
     if(was&&was.unfollowed&&!was.undone)h+=`<span class="nudge" style="justify-self:start">${esc(was.unfollowed.by||"Someone")} stopped following this on ${shortDate(was.unfollowed.at)}</span><div class="actions"><button class="btn small" data-trefollow="${esc(was.id)}">Follow again</button></div>`;
     else if(t.dismissed)h+=`<span class="cnt">Dismissed by ${esc(t.dismissed.by||"an educator")} on ${shortDate(t.dismissed.at)}</span><div class="actions"><button class="btn small ghost" data-tundis="${scanIdx}">Bring back</button></div>`;
+    else if(foundOverlap(t)){const o=foundOverlap(t);
+      h+=`<span class="nudge" style="justify-self:start">Much of this already sits in the thread ${esc(o.name)}${o.unfollowed?", which the team stopped following":o.status==="closed"?", which the team closed":""}.</span><div class="actions"><button class="btn small" data-tjoin="${scanIdx}|${esc(o.id)}">${o.unfollowed?"Follow it again and add this":"Add this to it"}</button><button class="linkbtn" data-track="${scanIdx}">Follow as a new thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`}
     else{const rp=t.relatedProject&&projects.get(t.relatedProject);
       if(rp)h+=`<span class="nudge" style="justify-self:start">TREE noticed this may relate to the project ${esc(rp.name)}. The team decides whether it joins.</span>`;
       h+=`<div class="actions"><button class="btn small" data-track="${scanIdx}">Follow this thread</button><button class="linkbtn" data-tdis="${scanIdx}">Dismiss</button></div>`}
   }
   return h+`</article>`;
 }
+// a thread TREE found that the team already has, read from the records it was found in. Two shared records, or half of them, is enough
+function threadRecIds(t){return new Set([...(t.evidence||[]).map(e=>e&&(e.planId||e.id)),...threadNotices(t).map(n=>n.id),...threadPlans(t).map(p=>p.id)].filter(Boolean))}
+function foundOverlap(x){const ids=[...new Set((x.evidence||[]).map(e=>e.planId).filter(Boolean))];if(!ids.length)return null;let best=null,bn=0;
+  for(const t of threads.values()){if(t.undone)continue;const have=threadRecIds(t);const n=ids.filter(i=>have.has(i)).length;if(n>bn){bn=n;best=t}}
+  return best&&bn>=Math.min(2,ids.length)&&bn*2>=ids.length?best:null}
 function stoppedCard(t){
   return `<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="cnt">Stopped by ${esc(t.unfollowed.by||"an educator")} on ${shortDate(t.unfollowed.at)}</span></div>
     ${t.question?`<div class="q">${esc(t.question)}</div>`:""}${originHtml(t,true)}
@@ -9555,6 +9580,11 @@ async function threadsClick(t){
   if(t.dataset.cell){const [w,r0]=t.dataset.cell.split("|");const r=r0||"All";week=w;roomFilter=r;LS.set("fps.room",r);view="plans";LS.set("fps.view",view);const team=[...plans.values()].find(p=>p.weekOf===w&&p.classroom===r&&p.type==="classroom");currentId=team?team.id:null;renderAll();jumpTop();return true}
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
   if(t.id==="scan"){if(isDirector())findThreads();return true}
+  if(t.dataset.tjoin){const [i,tid]=t.dataset.tjoin.split("|");const scan=scans.get(tRoom);const x=scan?.threads?.[+i],th=threads.get(tid);if(!x||!th)return true;
+    const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));th.evidence=[...(th.evidence||[]),...(x.evidence||[]).filter(e=>!have.has(e.planId+e.text))];
+    th.weeks=[...new Set([...(th.weeks||[]),...(x.weeks||[])])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";
+    if(th.unfollowed){delete th.unfollowed;th.followedBy=whoAmI()}if(th.status==="closed")th.status=x.status&&x.status!=="closed"?x.status:"growing";
+    saveThread(th);x.trackedId=th.id;saveScan(scan);renderMain();toast(`Added to the thread ${th.name}.`);return true}
   if(t.dataset.track!=null){const scan=scans.get(tRoom);const x=scan?.threads?.[+t.dataset.track];if(!x)return true;
     const prior=x.trackedId&&threads.get(x.trackedId);
     if(prior&&prior.undone){delete prior.unfollowed;delete prior.undone;prior.followedBy=whoAmI();prior.createdAt=Date.now();saveThread(prior);renderMain();toast("Following this thread. It stays here for the whole team.");return true}
@@ -9631,11 +9661,11 @@ async function findThreads(){
   if(d.length<full.length)toast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   scanBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
-  const tracked=[...threads.values()].filter(t=>t.status!=="closed"&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question}));
+  const tracked=[...threads.values()].filter(t=>threadLive(t)&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question,closed:t.status==="closed"}));
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classes":"the "+tRoom+" class"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and observations, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
 Rules. Use only what the plans and entries say. Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single observation, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
-Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
+Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id, including a closed one children have returned to. When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
 Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,what_may_lie_underneath:firstLine(projUnder(x),240),threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
 ${STYLE}
 Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words naming what children keep returning to, "question": the educators' hypothesis about what children may be asking, written as one sentence that begins with the words Children may be asking, never phrased in a child's voice, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials, each an invitation children may take up in their own way, never a rule, a chart of right and wrong, a job assigned by adults, or a question that tests], "trackedId": "", "relatedProject": ""}]}
@@ -9653,8 +9683,8 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     // update followed threads with new evidence
     const joined=[];
     for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
-      const add=x.evidence.filter(e=>!have.has(e.planId+e.text));if(add.length)joined.push({id:th.id,name:th.name,n:add.length});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
-      th.next=x.next.length?x.next:th.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
+      const add=x.evidence.filter(e=>!have.has(e.planId+e.text));if(add.length)joined.push({id:th.id,name:th.name,n:add.length,closed:th.status==="closed"});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
+      th.next=(th.next||[]).length?th.next:x.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
     saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined});
     const nNew=ths.filter(x=>!x.trackedId).length;
     toast(nNew||joined.length?[nNew?`Found ${nNew} new thread${nNew>1?"s":""}`:"",joined.length?`added to ${joined.length} thread${joined.length>1?"s":""} you follow`:""].filter(Boolean).join(" and ").replace(/^./,c=>c.toUpperCase())+".":"No new threads with enough evidence yet.");
@@ -9673,7 +9703,10 @@ Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
 
 Plans, oldest first.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
-  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const st={};STORY.forEach(([k])=>st[k]=String(out?.[k]||"").replace(/—/g,", "));th.story=st;saveThread(th);toast("Project story written. Open it below the thread to edit.")}
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const st={};STORY.forEach(([k])=>st[k]=String(out?.[k]||"").replace(/—/g,", "));
+    // the earlier story is kept, so a rewrite never loses what the team edited
+    if(th.story)th.storyEarlier=[...(th.storyEarlier||[]),{story:th.story,at:th.storyAt||0}].slice(-3);
+    th.story=st;th.storyAt=Date.now();th.storyRecs=threadRecIds(th).size;saveThread(th);toast("Project story written. Open it below the thread to edit.")}
   catch(err){toast(assistError(err?.code||"unknown"))}
   delete storyBusy[th.id];renderMain();
 }
