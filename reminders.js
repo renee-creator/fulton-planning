@@ -12,7 +12,10 @@ const crypto = require('crypto');
 module.exports = function reminders(o) {
   const { store, accounts, accountFor, saveAccounts, isDirector, isKitchen, log, noteChange, scheduleSave } = o;
   const TZ = 'America/Los_Angeles';
-  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', summary: 'Monday summary' };
+  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary' };
+  // the sections an educator prepares before a family conference. Shared goals and next steps are written at the conference
+  const CONF_PREP = ['interests', 'friends', 'smallGroup', 'favoriteAreas', 'nature', 'approaches', 'social', 'language', 'cognition', 'physical', 'expressive', 'strengths', 'documentation'];
+  const NO_SIGNUP = ['declined', 'noresponse', 'missed'];
   // the sections each plan needs before it is complete. The after-the-week section is due the week after
   const NEED = {
     classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'],
@@ -94,7 +97,7 @@ module.exports = function reminders(o) {
   const docOf = (kind, id) => { const r = store.recs[kind] && store.recs[kind].get(id); return r && !r.deleted ? r.doc : null; };
   function settings() {
     const s = docOf('settings', 'notify') || {};
-    return { start: s.start || '', perWeek: s.perWeek > 0 ? +s.perWeek : 3, types: Object.assign({ remarks: true, plan: true, classroom: true, obs: true, summary: true }, s.types || {}), people: s.people || {} };
+    return { start: s.start || '', perWeek: s.perWeek > 0 ? +s.perWeek : 3, types: Object.assign({ remarks: true, plan: true, classroom: true, obs: true, conf: true, confform: true, summary: true }, s.types || {}), people: s.people || {} };
   }
   // how often each person plans. Most plan weekly. Some plan monthly, and some keep observations only
   const PLAN_DEFAULTS = {  };
@@ -134,6 +137,21 @@ module.exports = function reminders(o) {
     for (const r of store.recs.notices.values()) { const n = r.doc; if (r.deleted || !n || (n.at || 0) < since || key(n.by) !== key(name)) continue; seen.add(n.group || n.id); }
     return seen.size;
   }
+  // ---------- conferences ----------
+  function childFirst(id) { const k = store.recs.children.get(id); return k && !k.deleted && k.doc && k.doc.first ? k.doc.first : 'a child'; }
+  function confsFor(name) {
+    const today = nowLA().day; const out = [];
+    for (const r of store.recs.conferences.values()) { const c = r.doc;
+      if (r.deleted || !c || !c.confDate || c.confDate < today || c.status === 'complete' || c.term === 'Historical' || NO_SIGNUP.includes(c.signup) || !nameIn(c.teacher, name)) continue;
+      const k = store.recs.children.get(c.childId); if (!k || k.deleted || (k.doc && k.doc.status === 'withdrawn')) continue;
+      out.push(c); }
+    return out.sort((a, b) => (a.confDate + (a.confTime || '')).localeCompare(b.confDate + (b.confTime || '')));
+  }
+  const calDays = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+  function schoolDaysUntil(a, b) { if (b < a) return -1; let n = 0; for (let d = a; d < b; d = addDays(d, 1)) { const w = new Date(d + 'T12:00:00Z').getUTCDay(); if (d !== a && w > 0 && w < 6) n++; } const w = new Date(b + 'T12:00:00Z').getUTCDay(); return a === b ? 0 : n + (w > 0 && w < 6 ? 1 : 0); }
+  function addSchoolDays(d, n) { let x = d; while (n < 0) { x = addDays(x, -1); const w = new Date(x + 'T12:00:00Z').getUTCDay(); if (w > 0 && w < 6) n++; } return x; }
+  const dayWord = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'short', day: 'numeric' });
+  const timeWord = t => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
   // what one educator has open now, each with where tapping it should lead
   function openFor(e, when, S) {
     const { week } = when; const start = S.start || week; const off = new Set(personOf(S, e.name).off || []); const on = t => S.types[t] && !off.has(t);
@@ -164,6 +182,15 @@ module.exports = function reminders(o) {
       if (!cp.length) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan` });
       else if (cp.every(p => missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} Class's Classroom plan`, plan: cp[0].id });
     }
+    // family conferences this educator leads. A reminder a week before, the Friday before and that morning, and the form
+    // finished two school days ahead, with a reminder each school morning from five school days ahead until it is
+    if ((on('conf') || on('confform')) && when.day) for (const c of confsFor(e.name)) {
+      const first = childFirst(c.childId), d = c.confDate, wd = schoolDaysUntil(when.day, d), cal = calDays(when.day, d);
+      const at = /^\d{2}:\d{2}$/.test(c.confTime || '') ? ' at ' + timeWord(c.confTime) : '';
+      if (on('conf') && (cal === 0 || cal === 7 || (when.dow === 5 && cal > 0 && cal < 7))) out.push({ t: 'conf', text: cal === 0 ? `Conference today with ${first}'s family${at}` : `Conference with ${first}'s family ${dayWord(d)}${at}` });
+      const left = CONF_PREP.filter(k => !filled(c.fields && c.fields[k])).length;
+      if (on('confform') && left && wd >= 0 && wd <= 5) out.push({ t: 'confform', text: `${first}'s conference form, ${left} section${left > 1 ? 's' : ''} to finish${wd > 2 ? `, due ${dayWord(addSchoolDays(d, -2))}` : ''}` });
+    }
     if (on('obs') && week >= start && (when.dow === 4 || when.dow === 5 || when.force)) {
       const n = obsCount(e.name, week); if (n < S.perWeek) out.push({ t: 'obs', text: `Observations this week, ${n} of ${S.perWeek}` });
     }
@@ -171,7 +198,8 @@ module.exports = function reminders(o) {
   }
   function messageFor(items, morning) {
     const one = items.length === 1 && items[0].plan;
-    return { title: morning ? 'TREE, due today' : 'TREE, still open', body: items.map(i => i.text).join('\n'), url: one ? `tree.html?plan=${encodeURIComponent(items[0].plan)}` : (items.every(i => i.t === 'obs') ? 'tree.html?go=moments' : 'tree.html?go=plans'), tag: 'tree-due' };
+    const conf = items.every(i => i.t === 'conf' || i.t === 'confform');
+    return { title: morning ? 'TREE, due today' : 'TREE, still open', body: items.map(i => i.text).join('\n'), url: one ? `tree.html?plan=${encodeURIComponent(items[0].plan)}` : conf ? 'tree.html?open=conferences' : (items.every(i => i.t === 'obs') ? 'tree.html?go=moments' : 'tree.html?go=plans'), tag: 'tree-due' };
   }
 
   // ---------- the schedule ----------
@@ -180,11 +208,11 @@ module.exports = function reminders(o) {
     const S = settings(); const res = [];
     for (const e of educators()) {
       if (personOf(S, e.name).paused) continue;
-      const items = openFor(e, when, S); if (!items.length) continue;
+      const items = openFor(e, when, S).filter(i => kind === 'morning' || (i.t !== 'conf' && i.t !== 'confform')); if (!items.length) continue;
       const r = await sendTo(e.name, messageFor(items, kind === 'morning')); res.push({ name: e.name, items, sent: r.sent });
     }
     if (kind === 'evening' && when.dow === 1 && S.types.summary) {
-      const open = educators().map(e => ({ e, items: openFor(e, when, S).filter(i => i.t !== 'obs') })).filter(x => x.items.length);
+      const open = educators().map(e => ({ e, items: openFor(e, when, S).filter(i => i.t !== 'obs' && i.t !== 'conf' && i.t !== 'confform') })).filter(x => x.items.length);
       const body = open.length ? open.map(x => `${x.e.name}, ${x.items.map(i => i.text.replace(/^Finish /, '').replace(/^This week's /, '').toLowerCase()).join('; ')}`).join('\n') : 'Every educator\'s planning is done for this week.';
       const dirs = [...accounts.list].filter(a => isDirector(a.name)).map(a => a.name);
       for (const d of dirs) await sendTo(d, { title: open.length ? `TREE, ${open.length} educator${open.length > 1 ? 's' : ''} still planning` : 'TREE, planning is done', body, url: 'tree.html?go=reminders', tag: 'tree-summary' });
