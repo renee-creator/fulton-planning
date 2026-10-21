@@ -5361,7 +5361,9 @@ const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
 // Fulton's classes mix, so a moment belongs to its own class and to the class of every child tagged in it
 function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
-const momentIn=(n,room)=>!room||room==="All"||momentRooms(n).includes(room);
+// "none" is the observations with no class chosen and no child tagged, so they can always be found
+const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!momentRooms(n).length:momentRooms(n).includes(room));
+const noClassPill=()=>{const k=[...notices.values()].filter(n=>!momentRooms(n).length).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
 function noticeText(n){const a=String(n.noticed||"").trim(),b=String(wonderLine(n.wonder)||"").trim();return a&&b?a+(/[.!?"”)]$/.test(a)?" ":". ")+b:a||b}
@@ -5607,7 +5609,7 @@ function noticeBrowseHtml(){
   const all=noticesFor(nRoom==="All"?"":nRoom,0);
   const rooms=["All",...CLASSROOMS];
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations kept</h3><span class="cnt">${all.length} in the record</span></div>
-    <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}</div>
+    <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}${noClassPill()}</div>
     ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No observations kept for this view yet.</div>`}</section>`;
 }
 // a quote counts as a child's words when a child is named as saying it, or it is a statement in an observation.
@@ -5768,7 +5770,7 @@ function addNoticesToThread(th,ns,meta){let added=0;meta=meta||{};
     th.evidence=[...(th.evidence||[]),Object.assign({planId:lead.id,week,text,by:whoAmI(),at:Date.now()},meta.via?{via:meta.via}:{},meta.why?{why:meta.why}:{})];th.weeks=[...new Set([...(th.weeks||[]),week])].sort();added++;
     for(const x of grp)if((x.threadSuggest||[]).some(s=>s.id===th.id))patchNotice(x.id,{threadSuggest:(x.threadSuggest||[]).filter(s=>s.id!==th.id)})}
   if(added){th.lastWeek=th.weeks.slice(-1)[0]||"";saveThread(th)}return added}
-function patternRoom(ns){if(nRoom!=="All")return nRoom;const c={};for(const n of ns)for(const r of momentRooms(n))c[r]=(c[r]||0)+1;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||myRoom()||""}
+function patternRoom(ns){if(nRoom!=="All"&&nRoom!=="none")return nRoom;const c={};for(const n of ns)for(const r of momentRooms(n))c[r]=(c[r]||0)+1;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||myRoom()||""}
 // a plan from what the observations keep returning to. The plan begins from the observations themselves, and the
 // pattern's name and TREE's reading stay out of it, so the educator writes the area and the intent.
 function planFromPattern(p){const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
@@ -5809,7 +5811,7 @@ function renderMoments(){
   let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change an observation":"Keep an observation"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
     <div class="sub" style="max-width:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":photoPickHtml("nf-photo2","Upload a photo")}</span></div>
-    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}</div>
+    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
@@ -5834,7 +5836,7 @@ async function momentsRead(){
   const d=capDigest(all.slice(0,160).map(n=>({id:n.id,date:shortDate(n.at),classroom:n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,700),wonder:String(n.wonder||"").slice(0,400)})),150000);
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
-  const room=nRoom;
+  const room=nRoom==="none"?"All":nRoom;
   const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),closed:t.status==="closed"}));
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
@@ -5862,7 +5864,7 @@ function momentsDocs(long,cap){
   const all=momentsIn();
   if(!all.length)return[];
   const s=momentsScan();
-  const meta=[["Classrooms",nRoom==="All"?"All":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
+  const meta=[["Classrooms",nRoom==="All"?"All":nRoom==="none"?"No class":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
   const blocks=[];
   if(s&&has(s.summary)){blocks.push(dLead("What these observations keep returning to",s.summary));
     const nw=all.filter(n=>(n.at||0)>(s.createdAt||0)).length;blocks.push({t:"text",label:"",quiet:true,text:`Read on ${shortDate(s.createdAt)}.${nw?` ${nw} observation${nw>1?"s":""} kept since ${nw>1?"are":"is"} not in this reading.`:""}`})}
@@ -9426,7 +9428,7 @@ async function printsClick(t){
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
-    const name=`Fulton observations ${nRoom==="All"?"all classes":nRoom} ${mondayOf(new Date())}`;
+    const name=`Fulton observations ${nRoom==="All"?"all classes":nRoom==="none"?"no class":nRoom} ${mondayOf(new Date())}`;
     if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
   if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classes":tRoom} ${mondayOf(new Date())}`);return true}
