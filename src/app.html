@@ -286,7 +286,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
-.nfthreadline{overflow-wrap:anywhere}details.fold>summary.foldhead{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}details.fold>summary.foldhead>.lbl{flex:1 1 auto}details.fold>summary.foldhead>.cnt{order:3;flex-basis:100%}details.fold>summary.foldhead::-webkit-details-marker{display:none}details.fold>summary.foldhead::after{content:"+";color:var(--muted,#6b7a70);font-size:18px;line-height:1}details.fold[open]>summary.foldhead::after{content:"−"}details.fold[open]>.foldbody{margin-top:10px}.pageabout>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);font-size:14px;text-decoration:underline;text-underline-offset:3px}.pageabout>summary::-webkit-details-marker{display:none}.pageabout[open]>summary{margin-bottom:6px}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
+.nfthreadline{overflow-wrap:anywhere}details.fold>summary.foldhead{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}details.fold>summary.foldhead>.lbl{flex:1 1 auto}details.connrow>summary.foldhead{flex-wrap:nowrap;align-items:start}details.fold>summary.foldhead>.cnt{order:3;flex-basis:100%}details.fold>summary.foldhead::-webkit-details-marker{display:none}details.fold>summary.foldhead::after{content:"+";color:var(--muted,#6b7a70);font-size:18px;line-height:1}details.fold[open]>summary.foldhead::after{content:"−"}details.fold[open]>.foldbody{margin-top:10px}.pageabout>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);font-size:14px;text-decoration:underline;text-underline-offset:3px}.pageabout>summary::-webkit-details-marker{display:none}.pageabout[open]>summary{margin-bottom:6px}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -9936,7 +9936,8 @@ function schoolSummary(){
 }
 
 /* ---------- All plans ---------- */
-let aRoom="All",aType="all",aStatus="all",aQ="";
+let aRoom="All",aType="all",aStatus="all",aQ="",aMode=LS.get("fps.amode","list"),aSRange=LS.get("fps.asrange","8");
+const AMODES=[["list","List"],["conn","Connections"],["school","Across the school"]];
 function allFiltered(){
   const q=aQ.trim().toLowerCase();
   return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&(aRoom==="All"||(aRoom==="none"?!p.classroom:p.classroom===aRoom))&&(aType==="all"||p.type===aType)&&
@@ -9954,14 +9955,17 @@ function renderAllPlans(){
     <div class="sub">Every plan from every week and class. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
     <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>observations kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
     <section class="card" style="gap:10px">
-      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
+${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       <div class="actions">
         <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>
-      <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${countShown(ps)}</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
-    </section><div id="alist" style="display:grid;gap:14px">${allListHtml(ps)}</div>`;
+`}
+      <div class="seg" role="group" aria-label="Way of looking">${AMODES.map(([k,l])=>`<button data-amode="${k}" aria-pressed="${aMode===k}">${l}</button>`).join("")}</div>
+      ${aMode==="school"?`<select id="asrange" style="width:auto" aria-label="How far back">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"]].map(([v,l])=>`<option value="${v}" ${aSRange===v?"selected":""}>${l}</option>`).join("")}</select>`:""}
+      <div class="actions" style="justify-content:space-between"><span class="cnt" id="acount">${aMode==="school"?"":countShown(ps)}</span><span class="actions"><button class="btn small" id="adl" ${ps.length?"":"disabled"}>Download these as one PDF</button><button class="btn small ghost" id="adlw" ${ps.length?"":"disabled"}>As one Word file</button></span></div>
+    </section><div id="alist" style="display:grid;gap:14px">${aListFor(ps)}</div>`;
   $("#main").innerHTML=h;
 }
 function allListHtml(ps){
@@ -9972,14 +9976,76 @@ function allListHtml(ps){
     ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${esc(p.id)}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.type==="notice"?`<div class="cnt">Kept by ${esc(p.educator||"an educator")}, ${esc(shortDate(p.createdAt))}</div>`:""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="Sections filled">${filledCount(p)}</td><td>${p.type==="notice"?`<span class="status ready">Kept</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
+function aListFor(ps){return aMode==="conn"?connListHtml(ps):aMode==="school"?schoolHtml():allListHtml(ps)}
+// what a plan is connected to. The threads it follows, its project, its team inquiries, the evidence attached to it and the observations it holds
+function planConn(p){const ths=planThreads(p).map(c=>c.t);const prs=new Map();
+  if(p.projectId&&projects.get(p.projectId))prs.set(p.projectId,projects.get(p.projectId));for(const t of ths){const pr=projectOfThread(t.id);if(pr)prs.set(pr.id,pr)}
+  const iqs=(p.inquiries||[]).map(id=>inquiries.get(id)).filter(q=>q&&inqOf(q));const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="obs"?notices.has(r.id):plans.has(r.id));
+  const obs=new Set([...(p.noticeAdded||[]),...[...notices.values()].filter(n=>n.planId===p.id).map(n=>n.id)].filter(id=>notices.has(id)));
+  return {ths,prs:[...prs.values()],iqs,refs,obs:[...obs].map(id=>notices.get(id))}}
+function connLine(c){return [c.ths.length&&"Follows "+c.ths.map(t=>t.name).join(", "),c.prs.length&&"Project "+c.prs.map(x=>x.name).join(", "),c.iqs.length&&"Inquiry "+c.iqs.map(q=>q.name||"Untitled").join(", "),
+  c.refs.length&&`${c.refs.length} attached`,c.obs.length&&`${c.obs.length} observation${c.obs.length>1?"s":""}`].filter(Boolean)}
+function connListHtml(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
+  const weeks=[...new Set(ps.map(p=>p.weekOf))];
+  return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:8px"><div class="chiprow-label">Week of ${fmtDate(w)}</div>${wp.map(p=>{const c=planConn(p),line=connLine(c);
+    const refRow=r=>{if(r.kind==="obs"){const n=notices.get(r.id);return `<div class="evhit" style="display:grid;gap:2px"><span class="cnt">Observation, ${esc([n.by,shortDate(n.at)].filter(Boolean).join(", "))}</span><span>${esc(firstLine(noticeText(n),180))}</span><span><button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div>`}
+      const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);return `<div class="evhit" style="display:grid;gap:2px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><span>${esc(firstLine(pl.fields?.[r.k]||"",180))}</span><span><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button></span></div>`};
+    return `<details class="card fold connrow"><summary class="foldhead"><span style="flex:1 1 auto;min-width:0"><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b><span class="cnt" style="display:block;margin-top:3px">${line.length?esc(line.join(" · ")):"Not connected yet"}</span></span></summary><div class="foldbody" style="display:grid;gap:8px">
+      ${c.ths.length?`<div><span class="chiprow-label">Threads it follows</span><div class="actions">${c.ths.map(t=>`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div></div>`:""}
+      ${c.prs.length?`<div><span class="chiprow-label">Project</span><div class="actions">${c.prs.map(x=>`<button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div></div>`:""}
+      ${c.iqs.length?`<div><span class="chiprow-label">Team inquiry</span><div class="actions">${c.iqs.map(q=>`<button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button>`).join("")}</div></div>`:""}
+      ${c.refs.length?`<div style="display:grid;gap:6px"><span class="chiprow-label">Attached evidence</span>${c.refs.map(refRow).join("")}</div>`:""}
+      ${c.obs.length?`<div style="display:grid;gap:6px"><span class="chiprow-label">Observations in it</span>${c.obs.slice(0,6).map(n=>refRow({kind:"obs",id:n.id})).join("")}${c.obs.length>6?`<span class="cnt">${c.obs.length-6} more in the plan.</span>`:""}</div>`:""}
+      <div class="actions"><button class="btn small ghost" data-open="${esc(p.id)}">Open the plan</button></div></div></details>`}).join("")}</section>`}).join("")}
+function connDocs(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)return [];const blocks=[];
+  for(const w of [...new Set(ps.map(p=>p.weekOf))]){blocks.push(dSub("Week of "+fmtDate(w)));
+    for(const p of ps.filter(p=>p.weekOf===w)){const c=planConn(p),line=connLine(c);blocks.push(dItem(planTitle(p),line.length?line.join(". ")+".":"Not connected yet.","",[FORMS[p.type].short]))}}
+  return [{display:true,type:"report",acc:"classroom",title:"How the plans connect",meta:[["Classrooms",aRoom==="All"?"All":aRoom],["Plans",String(ps.length)]],blocks}]}
+// the whole school at once. What each class is working on, the threads and projects that reach across classes, and the moments
+// children from different classes shared
+function schoolSince(){const now=new Date();if(aSRange==="year"){const y=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;return new Date(y,7,1).getTime()}return Date.now()-(+aSRange)*7*864e5}
+function schoolData(){const since=schoolSince(),sinceW=mondayOf(new Date(since));
+  const ps=[...plans.values()].filter(p=>p.id!=="example"&&PLAN_TYPES.includes(p.type)&&!isEmptyPlan(p)&&String(p.weekOf)>=sinceW&&!(p.dupOf&&plans.has(p.dupOf)));
+  const ns=[...notices.values()].filter(n=>(n.at||0)>=since);
+  const rooms={};for(const r of CLASSROOMS)rooms[r]={plans:ps.filter(p=>p.classroom===r),obs:ns.filter(n=>momentRooms(n).includes(r)),threads:new Map(),projects:new Map()};
+  const reach=new Map();const touch=(t,r,k)=>{if(!r||!rooms[r])return;let e=reach.get(t.id);if(!e){e={t,by:{}};reach.set(t.id,e)}e.by[r]=e.by[r]||{plans:0,obs:0};e.by[r][k]++;rooms[r].threads.set(t.id,t)};
+  for(const p of ps)for(const {t} of planThreads(p))touch(t,p.classroom,"plans");
+  for(const n of ns)for(const t of threadsOfNotice(n))for(const r of momentRooms(n))touch(t,r,"obs");
+  for(const x of projects.values()){if(x.status==="closed")continue;for(const r of projRooms(x).length?projRooms(x):[x.home].filter(Boolean))if(rooms[r])rooms[r].projects.set(x.id,x)}
+  const shared=[...reach.values()].filter(e=>Object.keys(e.by).length>1).sort((a,b)=>Object.keys(b.by).length-Object.keys(a.by).length);
+  const sharedP=[...projects.values()].filter(x=>x.status!=="closed"&&projRooms(x).length>1);
+  const mixed=ns.filter((n,i)=>momentRooms(n).length>1&&ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i).sort((a,b)=>(b.at||0)-(a.at||0));
+  return {rooms,shared,sharedP,mixed}}
+function schoolHtml(){const d=schoolData(),cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
+  let h=`<section class="card"><div class="lbl">Each class</div><div class="pcols">${CLASSROOMS.map(r=>{const c=d.rooms[r];
+    return `<div class="pcol"><div class="chiprow-label">${esc(r)} Class</div><div class="cnt">${[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", ")||"Nothing kept in this range"}</div>
+      ${c.threads.size?`<div class="actions">${[...c.threads.values()].map(t=>`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div>`:""}
+      ${c.projects.size?`<div class="cnt">Project ${[...c.projects.values()].map(x=>`<button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</div>`:""}</div>`}).join("")}</div></section>`;
+  if(d.shared.length||d.sharedP.length)h+=`<section class="card"><div class="lbl">Reaching across classes</div><div style="display:grid;gap:10px">
+    ${d.sharedP.map(x=>`<div><span class="cnt">Project</span> <button class="linkbtn" data-popen="${esc(x.id)}"><b>${esc(x.name)}</b></button><div class="cnt">${esc(projRooms(x).map(r=>r+" Class").join(", "))}</div></div>`).join("")}
+    ${d.shared.map(e=>`<div><span class="cnt">Thread</span> <button class="linkbtn" data-tsee="${esc(e.t.id)}"><b>${esc(e.t.name)}</b></button><div class="cnt">${Object.entries(e.by).map(([r,v])=>`${esc(r)}, ${[v.plans&&cnt(v.plans,"plan"),v.obs&&cnt(v.obs,"observation")].filter(Boolean).join(" and ")}`).join(" · ")}</div></div>`).join("")}</div></section>`;
+  if(d.mixed.length)h+=`<details class="card fold"><summary class="foldhead"><span class="lbl" style="margin:0">Children from different classes together</span><span class="cnt">${cnt(d.mixed.length,"observation")}</span></summary><div class="foldbody" style="display:grid;gap:8px">
+    ${d.mixed.slice(0,20).map(n=>`<div class="evhit" style="display:grid;gap:2px"><span class="cnt">${esc([momentRooms(n).join(" and "),n.by,shortDate(n.at)].filter(Boolean).join(", "))}</span><span>${esc(firstLine(noticeText(n),200))}</span><span><button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div>`).join("")}</div></details>`;
+  return h}
+function schoolDoc(){const d=schoolData(),cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;const blocks=[];
+  blocks.push(dSub("Each class"));for(const r of CLASSROOMS){const c=d.rooms[r];
+    blocks.push(dItem(r+" Class",[[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", "),c.threads.size&&"Threads "+[...c.threads.values()].map(t=>t.name).join(", "),c.projects.size&&"Projects "+[...c.projects.values()].map(x=>x.name).join(", ")].filter(Boolean).join(". "),"",[]))}
+  if(d.shared.length||d.sharedP.length){blocks.push(dSub("Reaching across classes"));
+    d.sharedP.forEach(x=>blocks.push(dItem(x.name,projRooms(x).map(r=>r+" Class").join(", "),"",["Project"])));
+    d.shared.forEach(e=>blocks.push(dItem(e.t.name,Object.entries(e.by).map(([r,v])=>`${r}, ${[v.plans&&cnt(v.plans,"plan"),v.obs&&cnt(v.obs,"observation")].filter(Boolean).join(" and ")}`).join(". "),"",["Thread"])))}
+  if(d.mixed.length){blocks.push(dSub("Children from different classes together"));d.mixed.slice(0,8).forEach(n=>blocks.push(dQuote(firstLine(noticeText(n),220),[momentRooms(n).join(" and "),pBy(n.by),shortDate(n.at)].filter(Boolean).join(", "))))}
+  return {display:true,type:"report",acc:"classroom",title:"Across the school",meta:[["Range",{"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year"}[aSRange]||""]],blocks}}
 function countShown(ps){const n=ps.filter(p=>p.type==="notice").length,pl=ps.length-n;
   return [pl?`${pl} plan${pl===1?"":"s"}`:"",n?`${n} observation${n===1?"":"s"}`:""].filter(Boolean).join(" and ")+" shown"||"nothing shown"}
-function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=allListHtml(ps);$("#acount").textContent=countShown(ps);$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
+function refreshAll(){const ps=allFiltered();$("#alist").innerHTML=aListFor(ps);$("#acount").textContent=countShown(ps);$("#adl").disabled=!ps.length;$("#adlw").disabled=!ps.length}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="all")return;
   if(t.dataset.aroom){aRoom=t.dataset.aroom;renderAllPlans()}
+  if(t.dataset.amode){aMode=t.dataset.amode;LS.set("fps.amode",aMode);renderAllPlans();return}
+  if((t.id==="adl"||t.id==="adlw")&&aMode!=="list"){const docs=aMode==="school"?[schoolDoc()]:connDocs(allFiltered());if(!docs.length)return;
+    (async()=>{await loadPhotos(docs);const n=`Fulton ${aMode==="school"?"across the school":"plan connections"} ${mondayOf(new Date())}`;if(t.id==="adl")makePdf(docs,n+".pdf");else makeDocx(docs,n+".docx")})();return}
   if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.docx`);return}
   if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.pdf`)}});
-document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
+document.addEventListener("change",e=>{if(view!=="all")return;if(e.target.id==="asrange"){aSRange=e.target.value;LS.set("fps.asrange",aSRange);refreshAll()}if(e.target.id==="atype"){aType=e.target.value;refreshAll()}if(e.target.id==="astatus"){aStatus=e.target.value;refreshAll()}});
 document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.target.value;refreshAll()}});
 
 /* ---------- Children ----------
