@@ -7390,6 +7390,7 @@ function projThreadCard(x,l,t,ws){
     <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start a plan from it</button><button class="linkbtn" data-tsee="${esc(t.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${esc(t.id)}">Take out of the project</button>`:""}</div></div>`;
 }
 function renderProject(x){
+  {const nw=wallSync(x);if(nw)setTimeout(()=>toast(nw>1?`${nw} new observations joined the wall.`:"A new observation joined the wall."),40)}
   const ths=projThreads(x),ws=projWeeks(x),rooms=projRooms(x);
   const groupsAvail=GROUPS.filter(g=>!rooms.length||rooms.includes(g.room));
   const free=[...threads.values()].filter(t=>t&&!t.unfollowed&&!projectOfThread(t.id)).sort((a,b)=>(rooms.includes(b.classroom)-rooms.includes(a.classroom))||(b.lastWeek||"").localeCompare(a.lastWeek||""));
@@ -7630,10 +7631,13 @@ async function projectsClick(t){
     const mv=(id,d)=>{const a=x.wall.sheets,i=a.findIndex(s=>s.id===id),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];saveProject(x);renderMain()};
     if(t.dataset.wsup){mv(t.dataset.wsup,-1);return true}
     if(t.dataset.wsdown){mv(t.dataset.wsdown,1);return true}
-    if(t.dataset.wsdel){x.wall.sheets=x.wall.sheets.filter(s=>s.id!==t.dataset.wsdel);saveProject(x);renderMain();return true}
+    if(t.dataset.wsdel){const gone=wallSheet(x,t.dataset.wsdel);if(gone)x.wall.skip=[...new Set([...(x.wall.skip||[]),...wallPhotos(gone)])];x.wall.sheets=x.wall.sheets.filter(s=>s.id!==t.dataset.wsdel);saveProject(x);renderMain();return true}
     if(t.dataset.wsq){const [id,k]=t.dataset.wsq.split("|");const sh=wallSheet(x,id),q=projChildWords(x)[+k];if(sh&&q){const i=(sh.quotes||[]).findIndex(o=>o.words.toLowerCase()===q.words.toLowerCase());
       if(i>=0)sh.quotes.splice(i,1);else{sh.quotes=[...(sh.quotes||[]),{name:q.name,words:q.words,at:q.at}];sh.quotes.sort((a,b)=>(a.at||0)-(b.at||0))}t.classList.toggle("on");saveProjectSoon(x)}return true}
     if(t.dataset.wsdraft){const sh=wallSheet(x,t.dataset.wsdraft);if(sh)wallDraft(x,sh);return true}
+    if(t.dataset.wsdraftall){wallDraftAll(x);return true}
+    if(t.dataset.wsuseall){let n=0;for(const sh of x.wall.sheets){const sg=wallSug[sh.id];if(!sg||sg.status!=="ready")continue;sh.text=($("#wsg-"+sh.id)?.value||sg.text||"").trim();delete wallSug[sh.id];n++}
+      if(n){saveProject(x);toast(`${n} sheets now carry the drafts. Read each one before it hangs.`)}renderMain();return true}
     if(t.dataset.wsyes){const sh=wallSheet(x,t.dataset.wsyes);if(sh){sh.text=($("#wsg-"+sh.id)?.value||wallSug[sh.id]?.text||"").trim();delete wallSug[sh.id];saveProject(x);renderMain()}return true}
     if(t.dataset.wsno){delete wallSug[t.dataset.wsno];renderMain();return true}
   }}
@@ -8192,10 +8196,23 @@ function wallProposal(x){
   if(sheets[0].photos[0]&&sheets[1]&&sheets[1].photos[0]===sheets[0].photos[0])sheets[0].photos=[];
   return {sheets,at:Date.now(),by:whoAmI()};
 }
+// the wall keeps up with the project. A photo observation kept since the wall was planned joins it as its own sheet, in date
+// order before Where it is now, with every photo of its post. A sheet the team removed stays removed, and nothing the team wrote changes
+function wallSync(x){const w=x.wall;if(!w||!Array.isArray(w.sheets)||!isDirector()||VIEW_AS)return 0;
+  const used=new Set([...w.sheets.flatMap(sh=>[...wallPhotos(sh),...(Array.isArray(sh.photos)?sh.photos:[]),sh.photo].filter(Boolean)),...(w.skip||[])]);
+  const seen=new Set(),add=[];
+  for(const n of wallPhotoMoments(x)){const grp=noteGroup(n).filter(g=>g.photo);const k=n.group||n.id;if(seen.has(k))continue;seen.add(k);
+    if(grp.some(g=>used.has(g.id))||used.has(n.id))continue;add.push(grp.length?grp:[n])}
+  if(!add.length)return 0;
+  for(const grp of add){const n=grp[0];
+    const sh={id:"w"+Math.random().toString(36).slice(2,8),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photos:grp.slice(0,3).map(g=>g.id),text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true,added:Date.now()};
+    const a=w.sheets,at=s2=>{const m=notices.get(wallPhotos(s2)[0]);return m?m.at||0:0};
+    let i=a.findIndex(s2=>s2.kind==="moment"&&at(s2)>(n.at||0));if(i<0)i=a.findIndex(s2=>s2.kind==="now");if(i<0)i=a.length;a.splice(i,0,sh)}
+  saveProject(x);return add.length}
 function wallSheet(x,id){return ((x.wall&&x.wall.sheets)||[]).find(s=>s.id===id)}
 function projWallHtml(x){
   const w=x.wall;const ms=wallPhotoMoments(x);
-  if(!wallOpen[x.id])return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The wall</h3>${w?`<span class="cnt">${w.sheets.filter(s=>s.include).length} sheets ready</span>`:""}</div>
+  if(!wallOpen[x.id])return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The wall</h3>${w?`<span class="cnt">${w.sheets.filter(s=>s.include).length} sheets${(()=>{const e=w.sheets.filter(s=>s.include&&!has(s.text)).length;return e?`, ${e} still need the team's words`:" ready"})()}</span>`:""}</div>
     <div class="hint">A run of sheets that hang in order and tell the project as it grew, each with a photo, the children's words, and a few lines from the team.</div>
     <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF"):""}</div></section>`;
   const sheets=w.sheets;
@@ -8203,7 +8220,7 @@ function projWallHtml(x){
     const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
     return `<div class="wsheet${sh.include?"":" off"}"><div class="actions"><b>Sheet ${i+1}</b>
         <label class="cnt"><input type="checkbox" data-wsinc="${esc(sh.id)}" ${sh.include?"checked":""}> Hang this sheet</label>
-        <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button></div>
+        <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button>${sh.added&&!has(sh.text)?`<span class="cnt">Joined ${esc(shortDate(sh.added))}</span>`:""}</div>
       <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
       <div class="wsgrid">${n?`<img src="${esc(photoThumb(n))}" alt="The first photo on this sheet" class="wsimg" loading="lazy">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
@@ -8221,20 +8238,44 @@ function projWallHtml(x){
   return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
     <div class="hint">Each sheet prints on its own page, in this order. Every word on it comes from the children or from the team.</div>
     <div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on the wall</span><div class="seg" role="group" aria-label="Children's names on the wall">${NAME_MODES.map(([k,l])=>`<button data-wnames="${k}" aria-pressed="${wallNames(x)===k}">${l}</button>`).join("")}</div></div>
-    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
+    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}${sample?(()=>{const empty=sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status))).length,ready=sheets.filter(s=>wallSug[s.id]&&wallSug[s.id].status==="ready").length,busy=!!wallAll[x.id];
+      return (busy?`<span class="hint"><span class="spin"></span> Drafting ${wallAll[x.id]}</span>`:empty?`<button class="btn small" data-wsdraftall="1">Draft every empty sheet (${empty})</button>`:"")+(ready>1&&!busy?`<button class="btn small" data-wsuseall="1">Use all ${ready} drafts</button>`:"")})():""}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
     <div style="display:grid;gap:14px">${sheets.map(sheetHtml).join("")}</div></section>`;
 }
+// every empty sheet drafted in turn, one at a time, for the team to read and keep or leave
+const wallAll={};
+async function wallDraftAll(x){if(wallAll[x.id]||!x.wall)return;
+  const todo=x.wall.sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status)));if(!todo.length)return;
+  for(let i=0;i<todo.length;i++){wallAll[x.id]=`${i+1} of ${todo.length}`;await wallDraft(x,todo[i])}
+  delete wallAll[x.id];if(view==="projects"&&projId===x.id)renderMain();toast("Every empty sheet has a draft. Read each one, then keep it or leave it.")}
+// a plan's reflection after the week, from the field each kind of plan keeps it in
+function planAfter(p){const k=p&&AFTER_KEY[p.type];return k?String(p.fields?.[k]||"").trim():""}
 async function wallDraft(x,sh){
-  const n=notices.get(wallPhotos(sh)[0]);const span=n?n.at:null;
-  const near=span?projPlans(x).filter(pl=>!pl.notice&&Math.abs(parseIso(pl.weekOf).getTime()-span)<=10*864e5):[];
+  // the sheet reads what the project holds around its moment. The thread it belongs to, the team's reading and intent, the
+  // final remarks written in the weeks around it, and the observations without photos kept for the same thread near that time
+  const ms=wallPhotos(sh).map(id=>notices.get(id)).filter(Boolean),n=ms[0],span=n?n.at:null,DAY=864e5;
+  const pts=projThreads(x).map(o=>o.t),mine=n?pts.filter(t=>ms.some(m=>threadsOfNotice(m).some(o=>o.id===t.id))):[];
+  const pls=projPlans(x).filter(pl=>!pl.notice),wk=pl=>parseIso(pl.weekOf).getTime();
+  const tPlans=new Set(mine.flatMap(t=>threadPlans(t).map(p=>p.id)));
+  let near=[];
+  if(sh.kind==="now")near=pls.filter(pl=>planAfter(pl)).sort((a,b)=>wk(b)-wk(a)).slice(0,4).reverse();
+  else if(span)near=pls.filter(pl=>Math.abs(wk(pl)-span)<=(tPlans.has(pl.id)?21:10)*DAY).sort((a,b)=>(tPlans.has(b.id)-tPlans.has(a.id))||wk(a)-wk(b)).slice(0,5);
+  else near=pls.filter(pl=>planAfter(pl)).sort((a,b)=>wk(b)-wk(a)).slice(0,3);
+  if(sh.kind==="begin")near=pls.sort((a,b)=>wk(a)-wk(b)).slice(0,3);
+  const quiet=span?projNotices(x).filter((o,i,a)=>a.findIndex(z=>(z.group||z.id)===(o.group||o.id))===i).filter(o=>!o.photo&&!inqHolds(o.id)&&Math.abs((o.at||0)-span)<=7*DAY&&(!mine.length||threadsOfNotice(o).some(t=>mine.some(m=>m.id===t.id)))).slice(0,4):[];
+  const story=(x.stories||[]).slice(-1)[0];
   const src=[`Project. ${x.name}`,has(x.experience)?`The experience it grew from. ${x.experience}`:"",has(projUnder(x))?`What the team thinks may lie underneath. ${projUnder(x)}`:"",has(projIntent(x))?`The team's intent. ${projIntent(x)}`:"",
-    n?`The moment on this sheet, kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`:"",
-    ...near.map(pl=>{const f=pl.fields||{};return [`${FORMS[pl.type].name}, week of ${fmtDate(pl.weekOf)}.`,f.observation&&"Observation. "+f.observation,f.remarks&&"Final remarks. "+f.remarks].filter(Boolean).join(" ")}),
-    sh.kind==="now"?projEarlier(x,"underneath").map(r=>`An earlier reading, set aside ${shortDate(r.at)}. ${r.text}`).join("\n"):""].filter(Boolean).join("\n");
+    ...mine.map(t=>`The thread this moment belongs to, ${t.name}.${has(t.question)?" "+t.question:""}${has(t.notes)?" Team notes. "+firstLine(t.notes,400):""}`),
+    ...ms.filter((m,i)=>ms.findIndex(o=>(o.group||o.id)===(m.group||m.id))===i).map((m,i)=>`${i?"Another moment":"The moment"} on this sheet, kept by ${m.by||"an educator"} on ${shortDate(m.at)}. ${m.noticed}${has(m.wonder)?" What the educator wondered. "+m.wonder:""}`),
+    ...quiet.map(o=>`An observation from the same days, kept by ${o.by||"an educator"} on ${shortDate(o.at)}. ${o.noticed}${has(o.wonder)?" What the educator wondered. "+o.wonder:""}`),
+    ...near.map(pl=>{const f=pl.fields||{};return [`${FORMS[pl.type].name}, week of ${fmtDate(pl.weekOf)}.`,(f.observation)&&"Observation. "+firstLine(f.observation,600),planAfter(pl)&&"Final remarks. "+planAfter(pl)].filter(Boolean).join(" ")}),
+    sh.kind==="now"?projEarlier(x,"underneath").map(r=>`An earlier reading, set aside ${shortDate(r.at)}. ${r.text}`).join("\n"):"",
+    sh.kind==="now"&&story&&story.fields&&has(story.fields.now)?`From the team's latest project story, where it is now. ${story.fields.now}`:"",
+    sh.kind==="now"&&x.status==="closed"&&has(x.closure)?`How the project closed. ${x.closure}`:""].filter(Boolean).join("\n");
   wallSug[sh.id]={status:"working"};renderMain();
   const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the few lines that sit on one sheet of a documentation wall for a project. Families, colleagues and the children read the wall.
 This sheet is titled "${sh.title}".${sh.kind==="begin"?" It shows how the project began.":sh.kind==="now"?" It shows where the project stands now, and how the team's understanding has moved.":""}
-Write two to four short sentences in the team's voice, using we, that say what happened here and what the team understood. Use only what the team wrote below. Keep their meaning, their facts and their interpretation, and add nothing they did not write. Never rate or praise children or their work. The children's own words are printed separately on the sheet, so do not quote them.
+Write two to four short sentences in the team's voice, using we, that say what happened here and what the team understood. Where a thread is named, let the sentences show what children were pursuing in it, and where final remarks are given, carry what the team came to understand. Use only what the team wrote below. Keep their meaning, their facts and their interpretation, and add nothing they did not write. Never rate or praise children or their work. The children's own words are printed separately on the sheet, so do not quote them.
 ${STYLE}
 Return only the sentences.
 
@@ -8258,29 +8299,48 @@ function wallSheetDoc(x,sh){
   return {centered:true,display:true,type:"report",acc:"story",title:displayText(sh.title||x.name,mode,all),details,photos:ns.flatMap(momentPhotos),blocks};
 }
 function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>wallSheetDoc(x,sh))}
+// the project as a record for the team and colleagues. The summary is short enough for a meeting, with the threads, where the
+// project is now and a few photos. The full set is the whole record in the order it happened, every observation with its wonder,
+// photos where there are photos, each week's final remarks, and each thread with its evidence. It is built fresh at every print
 function projectDoc(x,long){
-  const ths=projThreads(x),rooms=projRooms(x),ws=projWeeks(x);const blocks=[];
+  const ths=projThreads(x),ws=projWeeks(x),blocks=[];
+  const obs=projNotices(x).filter(n=>!inqHolds(n.id)).sort((a,b)=>(a.at||0)-(b.at||0));
+  const pls=projPlans(x).filter(pl=>!pl.notice).sort((a,b)=>String(a.weekOf).localeCompare(String(b.weekOf)));
+  const after=pls.filter(pl=>planAfter(pl));
   if(has(projUnder(x)))blocks.push(dLead("What may lie underneath",projUnder(x)));
   if(has(x.experience))blocks.push(dText("The experience it grew from",x.experience));
   if(has(projIntent(x)))blocks.push(dText("Our intent as educators",projIntent(x)));
-  const earlier=projEarlier(x,"underneath").slice(0,2);
+  const earlier=projEarlier(x,"underneath").slice(0,long?6:2);
   if(earlier.length)blocks.push(dList("How our reading has changed",earlier.map(r=>`${shortDate(r.at)}. ${r.text}`)));
   if(x.status==="closed"&&has(x.closure))blocks.push(dText("Summary of closure",x.closure));
-  if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)})}
-  if(!long)return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta:[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks};
+  else if(after.length){const last=after[after.length-1];blocks.push(dSub("Where it is now"));blocks.push(dQuote(planAfter(last),pBy(byLine(last))))}
   if(ths.length){blocks.push(dSub("Threads in this project"));
     for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
       const where=[c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
       blocks.push(dItem(t.name,t.question||"",where?where[0].toUpperCase()+where.slice(1):"",[t.classroom?t.classroom+" class":"All classes"]));
-      const last=[...(t.evidence||[])].filter(e=>rec(e.planId)).sort((a,b)=>(b.week||"").localeCompare(a.week||""))[0];
-      if(last)blocks.push(dQuote(last.text,byLine(rec(last.planId))))}}
-  if(long){const ns=projNotices(x);if(ns.length){blocks.push(dSub("Observations"));
-    ns.forEach(n=>blocks.push(dQuote(n.noticed,[n.by,n.classroom&&n.classroom+" class"].filter(Boolean).join(", "),shortDate(n.at))))}}
+      if(long){const ev=[...(t.evidence||[])].filter(e=>e&&has(e.text)&&rec(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
+        ev.slice(-4).forEach(e=>blocks.push(dQuote(e.text,pBy(byLine(rec(e.planId))))))}}}
+  const posts=obs.filter((n,i)=>obs.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
+  if(!long){const ph=spread(posts.filter(n=>n.photo),2);if(ph.length){blocks.push(dSub("Moments along the way"));
+      ph.forEach(n=>{blocks.push(dPhoto(n,140,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(n.photo?momentBody(n):n.noticed,220)))})}}
+  if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)})}
+  const meta=[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)],["Gathered",[obs.length&&`${obs.length} observation${obs.length>1?"s":""}`,pls.length&&`${pls.length} plan${pls.length>1?"s":""}`].filter(Boolean).join(", ")||"Nothing yet"]];
+  if(!long)return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
+  // the record, week by week. Observations in the order they were kept, and the week's final remarks after them
+  const wkOf=n=>n.week||mondayOf(new Date(n.at||Date.now())),weeks=[...new Set([...obs.map(wkOf),...after.map(pl=>pl.weekOf)])].filter(Boolean).sort();
+  if(weeks.length){blocks.push(dSub("How it unfolded"));
+    for(const w of weeks){const os=obs.filter(n=>wkOf(n)===w),rs=after.filter(pl=>pl.weekOf===w);if(!os.length&&!rs.length)continue;
+      blocks.push({t:"small",label:"Week of "+fmtDate(w),lines:[]});
+      for(const n of os.filter(n=>posts.includes(n))){const credit=[pBy(n.by),n.classroom&&n.classroom+" class"].filter(Boolean).join(", ");
+        const body=(n.photo?momentBody(n):String(n.noticed||""))+(has(n.wonder)?"\n"+wonderLine(n.wonder):"");
+        if(n.photo){os.filter(o=>o.photo&&(o.group||o.id)===(n.group||n.id)).slice(0,3).forEach(o=>blocks.push(dPhoto(o,230,false)));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),body))}
+        else blocks.push(dQuote(body,[credit,shortDate(n.at)].filter(Boolean).join(", ")))}
+      for(const pl of rs)blocks.push(dText([pl.type==="smallgroup"?"After the week":"Final remarks",pBy(whoLine(pl))].filter(Boolean).join(", "),planAfter(pl)))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
   if(has(x.people))blocks.push(dText("People beyond the classrooms",x.people));
   if(has(x.notes))blocks.push(dText("Team notes",x.notes));
-  return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta:[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)]],blocks};
+  return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
 }
 // a printed story leaves out the sentences that only ask the team to add something, and a section with nothing else
 // is left out. The records are called observations, as everywhere else.
