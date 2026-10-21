@@ -1929,6 +1929,13 @@ window.TREE_CONF_FACTS=(childId,from,to)=>{const c=children.get(childId);if(!c)r
   // the threads and projects the child's observations belong to
   const tp=[...new Set(ms.flatMap(n=>[n.threadId&&threads.get(n.threadId)&&threads.get(n.threadId).name,n.projectId&&projects.get(n.projectId)&&projects.get(n.projectId).name]).filter(Boolean))];
   if(tp.length)out.interests=`Threads and projects in ${c.first}'s observations, ${list(tp)}.`;
+  // the languages educators marked on the child's observations, most used first, for the educator to review
+  {const lc={};for(const n of ms)for(const l of n.languages||[])lc[l]=(lc[l]||0)+1;const ls=Object.entries(lc).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([l,n])=>`${l} (${n})`);
+    if(ls.length)out.expressive=`Languages marked on ${c.first}'s observations, ${list(ls)}.`}
+  // the child outdoors, in the garden or with the animals, in the educators' own words, for the educator to review
+  {const NATURE=/\b(garden|farm|chickens?|goats?|rabbits?|animals?|outdoors?|outside|yard|trees?|creek|worms?|bugs?|insects?|snails?|birds?|eggs?|weather|rain|mud|soil|dirt|seeds?|plants?|leaf|leaves|flowers?|harvest|compost|nature|feed bin|vegetables?)\b/i;
+    const nm=ms.filter(n=>NATURE.test([n.noticed,n.wonder].filter(Boolean).join(" "))).sort((a,b)=>(b.at||0)-(a.at||0)).filter((n,i,a)=>a.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i).slice(0,4);
+    if(nm.length)out.nature=nm.map(n=>`${shortDate(n.at).replace(/, \d{4}$/,"")}. ${firstLine(momentHeading(n)?momentHeading(n)+". "+momentBody(n):String(n.noticed||""),160)}`).join("\n")}
   return out};
 // opens a piece of documentation from a conference form
 window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="stories"&&stories.has(id)){storyOpen=id;LS.set("tree.story",id);storyDraft=null;goView("story");return}if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
