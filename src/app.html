@@ -286,7 +286,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
-.nfthreadline{overflow-wrap:anywhere}details.fold>summary.foldhead{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}details.fold>summary.foldhead>.lbl{flex:1 1 auto}details.connrow>summary.foldhead{flex-wrap:nowrap;align-items:start}details.fold>summary.foldhead>.cnt{order:3;flex-basis:100%}details.fold>summary.foldhead::-webkit-details-marker{display:none}details.fold>summary.foldhead::after{content:"+";color:var(--muted,#6b7a70);font-size:18px;line-height:1}details.fold[open]>summary.foldhead::after{content:"−"}details.fold[open]>.foldbody{margin-top:10px}.pageabout>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);font-size:14px;text-decoration:underline;text-underline-offset:3px}.pageabout>summary::-webkit-details-marker{display:none}.pageabout[open]>summary{margin-bottom:6px}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
+.nfthreadline{overflow-wrap:anywhere}#remgate{position:fixed;inset:0;z-index:90;background:rgba(27,41,32,.55);display:grid;place-items:center;padding:16px}#remgate>div{background:var(--paper,#fff);border-radius:14px;padding:22px 20px;max-width:380px;display:grid;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.25)}#rembar{position:sticky;top:0;z-index:40;background:var(--clay-soft,#f6e6dc);color:var(--ink,#1c2a22);padding:10px 14px;font-size:14px}.remrow>summary .cnt{display:block}details.fold>summary.foldhead{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}details.fold>summary.foldhead>.lbl{flex:1 1 auto}details.connrow>summary.foldhead{flex-wrap:nowrap;align-items:start}details.fold>summary.foldhead>.cnt{order:3;flex-basis:100%}details.fold>summary.foldhead::-webkit-details-marker{display:none}details.fold>summary.foldhead::after{content:"+";color:var(--muted,#6b7a70);font-size:18px;line-height:1}details.fold[open]>summary.foldhead::after{content:"−"}details.fold[open]>.foldbody{margin-top:10px}.pageabout>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);font-size:14px;text-decoration:underline;text-underline-offset:3px}.pageabout>summary::-webkit-details-marker{display:none}.pageabout[open]>summary{margin-bottom:6px}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -1549,6 +1549,69 @@ function lockHasContent(k){const [kind,id]=k.split(":");
   return true;
 }
 const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,.drev,[data-drback],#slideprev,[data-sfmoment],.prow,.lockbar,.ai,#deckbar,section.review";
+// reminders on a phone. The director owns the phones, so a phone turns reminders on at sign-in and there is no switch to turn
+// them off in TREE. The phone itself asks once for permission, which only a tap on that phone can give
+const REM_PHONE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent));
+const REM_STANDALONE=(()=>{try{return matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}})();
+let remKey="",remDone=false;
+const remU8=s=>{const b=atob(s.replace(/-/g,"+").replace(/_/g,"/")+"===".slice((s.length+3)%4));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+function remBar(text){let b=$("#rembar");if(!text){if(b)b.remove();return}if(!b){b=document.createElement("div");b.id="rembar";document.body.prepend(b)}b.textContent=text}
+async function remSubscribe(reg){let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:remU8(remKey)});
+  await window.FP_API("/api/push/subscribe",{sub:sub.toJSON()});remDone=true}
+async function remindersGate(){
+  if(remDone||!window.FP_HOSTED||!window.FP_API||VIEW_AS||!REM_PHONE||!(window.FP_NAME&&window.FP_NAME())||(window.FP_KITCHEN&&window.FP_KITCHEN()))return;
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&!REM_STANDALONE)remBar("To receive TREE reminders, open TREE from its icon on your Home Screen.");return}
+  try{const j=await window.FP_API("/api/push/key");remKey=j&&j.key||"";if(!remKey)return;
+    const reg=await navigator.serviceWorker.register("sw.js");
+    if(Notification.permission==="granted"){await remSubscribe(reg);remBar("");return}
+    if(Notification.permission==="denied"){remBar("TREE reminders are off on this phone. Open the phone's Settings, then Notifications, then TREE, and allow notifications.");return}
+    if($("#remgate"))return;const g=document.createElement("div");g.id="remgate";
+    g.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="remgt"><h3 id="remgt" style="margin:0">Turn on reminders</h3><div>TREE sends this phone a short reminder when a plan, final remarks or the week's observations are due. Tap below, then choose Allow.</div><button class="btn" id="remgo">Turn on reminders</button><div class="cnt" id="remmsg"></div></div>`;
+    document.body.appendChild(g);
+    $("#remgo").onclick=async()=>{const m=$("#remmsg");try{const r=await Notification.requestPermission();
+      if(r!=="granted"){m.textContent=r==="denied"?"Reminders were not allowed. Open the phone's Settings, then Notifications, then TREE, and allow notifications.":"Tap Turn on reminders again, then choose Allow.";if(r==="denied"){g.remove();remBar("TREE reminders are off on this phone. Open the phone's Settings, then Notifications, then TREE, and allow notifications.")}return}
+      await remSubscribe(reg);g.remove();remBar("");toast("Reminders are on for this phone.")}catch(e){m.textContent="Reminders could not be turned on. "+(e&&e.message||"")}}}
+  catch(e){}}
+// the director's reminders. Which reminders go out, how many observations a week, and for each educator whether their phone
+// receives them, what is open for them now, a pause and the reminders they get
+let remSt=null,remBusy=false;
+async function remLoad(){if(remBusy||!window.FP_API)return;remBusy=true;try{remSt=await window.FP_API("/api/notify/status")}catch(e){remSt={error:e&&e.message||"Reminders could not be read."}}remBusy=false;if(view==="settings")renderMain()}
+function remSave(){if(!remSt||!remSt.settings||VIEW_AS)return;const S=remSt.settings;const doc={start:S.start,perWeek:S.perWeek,types:S.types,people:S.people};
+  if(db)db.doc("settings/notify").set(doc).then(()=>toast("Saved.")).catch(e=>toast(e&&e.message||"Could not save."))}
+function remindersHtml(){if(!window.FP_HOSTED)return "";if(!remSt){remLoad();return `<section class="card"><div class="lbl">Reminders</div><div class="cnt">Reading reminders</div></section>`}
+  if(remSt.error)return `<section class="card"><div class="lbl">Reminders</div><div class="cnt">${esc(remSt.error)}</div></section>`;
+  if(!remSt.ready)return `<section class="card"><div class="lbl">Reminders</div><div class="cnt">Reminders start once the server is set up for them.</div></section>`;
+  const S=remSt.settings,T=remSt.types;const st=e=>e.phones?`Receiving on ${e.phones} phone${e.phones>1?"s":""}`:e.lastFail?`Stopped receiving ${esc(shortDate(e.lastFail))}`:"Not turned on yet";
+  return `<details class="card fold" id="remcard" data-fold="set:reminders" ${foldOpen.has("set:reminders")||location.search.includes("reminders")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Reminders</span><span class="cnt">${remSt.educators.filter(e=>e.phones).length} of ${remSt.educators.length} phones receiving</span></summary><div class="foldbody" style="display:grid;gap:12px">
+    <div class="hint">Monday at 8 and 4, and Tuesday to Friday at 8, for whatever is still open. Observations on Thursday and Friday at 8. Your summary Monday at 4. Only work from the week of ${esc(fmtDate(S.start||mondayOf(new Date())))} on counts.</div>
+    <label class="cnt">Observations expected each week <input type="number" id="remper" min="1" max="15" value="${esc(String(S.perWeek))}" style="width:5em"></label>
+    <div><span class="chiprow-label">Reminders that go out</span><div class="chips">${Object.entries(T).map(([k,l])=>`<button class="chip ${S.types[k]?"on":""}" data-remtype="${k}" type="button">${esc(l)}</button>`).join("")}</div></div>
+    <div style="display:grid;gap:8px">${remSt.educators.map(e=>{const pp=S.people[e.name]||{},off=new Set(pp.off||[]);
+      return `<details class="remrow evhit"><summary style="cursor:pointer"><b>${esc(e.name)}</b>${e.room?`, ${esc(e.room)} Class`:""}${e.plans==="monthly"?" · plans monthly":e.plans==="none"?" · observations only":""}${pp.paused?" · paused":""}<span class="cnt">${st(e)}${e.open.length?` · ${e.open.length} open now`:""}</span></summary>
+        <div style="display:grid;gap:8px;margin-top:8px">${e.why&&!e.phones?`<div class="cnt warnline">${esc(e.why)}</div>`:""}
+        ${e.open.length?`<div class="cnt">${e.open.map(esc).join("<br>")}</div>`:""}
+        <label class="cnt">Plans <select data-remplans="${esc(e.name)}" style="width:auto">${[["weekly","Weekly"],["monthly","Monthly, first week of the month"],["none","None, observations only"]].map(([v,l])=>`<option value="${v}" ${e.plans===v?"selected":""}>${l}</option>`).join("")}</select></label>
+        <label class="cnt"><input type="checkbox" data-rempause="${esc(e.name)}" ${pp.paused?"checked":""}> Pause reminders, such as while away</label>
+        <div class="chips">${Object.entries(T).filter(([k])=>k!=="summary").map(([k,l])=>`<button class="chip ${S.types[k]&&!off.has(k)?"on":""}" data-remoff="${esc(e.name)}|${k}" type="button" ${S.types[k]?"":"disabled"}>${esc(l)}</button>`).join("")}</div>
+        ${e.phones?`<div class="actions"><button class="linkbtn" data-remtest="${esc(e.name)}">Send a test</button></div>`:""}</div></details>`}).join("")}</div>
+    <div class="actions"><button class="linkbtn" data-remtest="">Send me a test</button><button class="linkbtn" data-remreload="1">Refresh</button></div></div></details>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-remtype],[data-remoff],[data-remtest],[data-remreload]");if(!t||view!=="settings"||!remSt||!remSt.settings)return;e.preventDefault();const S=remSt.settings;
+  if(t.dataset.remreload!=null){remSt=null;renderMain();return}
+  if(t.dataset.remtype){S.types[t.dataset.remtype]=!S.types[t.dataset.remtype];remSave();renderMain();return}
+  if(t.dataset.remoff){const [n,k]=t.dataset.remoff.split("|");const pp=S.people[n]=S.people[n]||{};const off=new Set(pp.off||[]);off.has(k)?off.delete(k):off.add(k);pp.off=[...off];remSave();renderMain();return}
+  if(t.dataset.remtest!=null){try{const r=await window.FP_API("/api/notify/test",{name:t.dataset.remtest||undefined});toast(r&&r.sent?"Sent. It should arrive in a moment.":(r&&r.why)||"Not delivered.")}catch(er){toast(er&&er.message||"Not sent.")}}},true);
+document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.settings)return;const S=remSt.settings;
+  if(e.target.id==="remper"){const v=Math.max(1,Math.min(15,parseInt(e.target.value,10)||3));S.perWeek=v;remSave()}
+  if(e.target.dataset&&e.target.dataset.remplans){const n=e.target.dataset.remplans;const pp=S.people[n]=S.people[n]||{};pp.plans=e.target.value;const r=remSt.educators.find(x=>x.name===n);if(r)r.plans=pp.plans;remSave();renderMain()}
+  if(e.target.dataset&&e.target.dataset.rempause){const n=e.target.dataset.rempause;const pp=S.people[n]=S.people[n]||{};pp.paused=e.target.checked;remSave();renderMain()}});
+// a reminder opens TREE where it points, a plan to finish or the list of plans or observations
+const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
+function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
+  if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}
+  LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
+{let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
+setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
 // a page's long introduction folds under About this page, so the page opens on its work
 function foldIntros(){const m=$("#main");if(!m)return;
   for(const hd of m.querySelectorAll(".head")){if(hd.querySelector(".pageabout"))continue;
@@ -10432,6 +10495,7 @@ function renderSettings(){
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
     <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
   ${viewAsHtml()}
+  ${remindersHtml()}
   ${signinsHtml()}
   ${lensSettingsHtml()}
   ${menusHtml()}
