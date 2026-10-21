@@ -202,3 +202,7 @@ The page is built from two parts in `src`. `app.html` is Planning Studio and `sh
 ## Free plan notes
 
 The Render server sleeps after 15 quiet minutes. The first visit after that takes about a minute while it wakes, and the page says so. Typing is gathered and saved to GitHub within about 15 seconds.
+
+The wall keeps up with its project. When the director opens the project, any photo observation kept since the wall was planned joins it as its own sheet, in date order before Where it is now, with every photo from its post, and the team's writing is untouched. A sheet the team removes stays removed. Draft every empty sheet drafts the sheets one at a time, and Use all drafts keeps them for the team to read. Each draft reads the sheet's thread, the team's reading and intent, nearby observations without photos, and the final remarks from the weeks around it.
+
+The project PDF is the record and is built fresh at every print. The summary adds where the project is now, from the latest final remarks, the threads with their questions, and two photos, in about two pages. The full set adds How it unfolded, week by week, with every observation and its wonder, photos where there are photos, and each week's final remarks, plus up to four pieces of evidence per thread.
