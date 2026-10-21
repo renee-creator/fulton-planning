@@ -286,7 +286,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
-.nfthreadline{overflow-wrap:anywhere}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
+.nfthreadline{overflow-wrap:anywhere}details.fold>summary.foldhead{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}details.fold>summary.foldhead>.lbl{flex:1 1 auto}details.fold>summary.foldhead>.cnt{order:3;flex-basis:100%}details.fold>summary.foldhead::-webkit-details-marker{display:none}details.fold>summary.foldhead::after{content:"+";color:var(--muted,#6b7a70);font-size:18px;line-height:1}details.fold[open]>summary.foldhead::after{content:"−"}details.fold[open]>.foldbody{margin-top:10px}.pageabout>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);font-size:14px;text-decoration:underline;text-underline-offset:3px}.pageabout>summary::-webkit-details-marker{display:none}.pageabout[open]>summary{margin-bottom:6px}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -1548,7 +1548,13 @@ function lockHasContent(k){const [kind,id]=k.split(":");
   return true;
 }
 const LOCK_KEEP="#fbsec,#spacecard,#delwrap,[data-keep],.dritem,.drev,[data-drback],#slideprev,[data-sfmoment],.prow,.lockbar,.ai,#deckbar,section.review";
-function applyLock(){
+// a page's long introduction folds under About this page, so the page opens on its work
+function foldIntros(){const m=$("#main");if(!m)return;
+  for(const hd of m.querySelectorAll(".head")){if(hd.querySelector(".pageabout"))continue;
+    const long=[...hd.querySelectorAll(":scope .sub, :scope .hint.muted")].filter(el=>!el.closest("details")&&el.textContent.trim().length>110);
+    if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
+    long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
+function applyLock(){try{foldIntros()}catch(e){}
   const main=$("#main");if(!main)return;const k=lockKey();
   // the evidence beside a plan offers its add buttons only while the plan is open to edit
   queueMicrotask(()=>{try{if(typeof evSync==="function")evSync()}catch(e){}});
@@ -5326,6 +5332,17 @@ function noticeCards(list){const groups=shareGroups(list);
       <div class="nwmore"><div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div><div class="nwstrip">${more.map(n=>`<a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Another photo with this note" loading="lazy"></a>`).join("")}</div>
       <details><summary class="linkbtn">Each photo on its own, to tag children or change one</summary><div style="display:grid;gap:12px;margin-top:10px">${more.map(noticeCard).join("")}</div></details></div></div>`}).join("")}
 // the few actions used most stay in view, and the rest wait under More, so a list of cards stays clear on a phone
+// a long page's sections fold to their headings, so the reader sees every place information belongs and opens the one they need.
+// A section stays open once opened, through every redraw, until it is closed again
+const foldOpen=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.matches||!d.matches("details[data-fold]"))return;if(d.open)foldOpen.add(d.dataset.fold);else foldOpen.delete(d.dataset.fold)},true);
+function foldSections(html,key){
+  return html.replace(/<section class="card"((?: id="[^"]*")?)>([\s\S]*?)<\/section>/g,(m,id,body)=>{let title="",side="",rest="";
+    let mm=body.match(/^\s*<div class="lbl">([\s\S]*?)<\/div>/);
+    if(mm){title=mm[1];rest=body.slice(mm[0].length)}
+    else{mm=body.match(/^\s*<div class="secthead"><h3[^>]*>([\s\S]*?)<\/h3>(?:<span class="cnt">([^<]*)<\/span>)?([\s\S]*?)<\/div>/);if(!mm)return m;title=mm[1];side=mm[2]||"";rest=(mm[3].trim()?`<div class="actions">${mm[3]}</div>`:"")+body.slice(mm[0].length)}
+    const k=key+":"+title.replace(/<[^>]*>/g,"").trim(),open=foldOpen.has(k)||(id&&/pwall/.test(id)&&typeof wallOpen!=="undefined"&&Object.values(wallOpen).some(Boolean));
+    return `<details class="card fold"${id} data-fold="${esc(k)}" ${open?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${title}</span>${side?`<span class="cnt">${side}</span>`:""}</summary><div class="foldbody">${rest}</div></details>`})}
 function moreMenu(inner){inner=String(inner||"").trim();return inner?`<details class="moremenu"><summary>More</summary><div class="actions">${inner}</div></details>`:""}
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
@@ -7459,6 +7476,7 @@ function renderProject(x){
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
+  const foldAt=h.length;
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   {const sts=projStories(x);h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length?sts.length+" to read aloud with children":"Read aloud with children"}</span></div>${sts.length?`<div class="actions" style="flex-wrap:wrap">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}${stReviewed(y)?"":", draft"}</button>`).join("")}</div>`:""}<div class="actions"><button class="btn small ghost" data-storyproj="${esc(x.id)}">Make a story</button></div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
@@ -7515,6 +7533,7 @@ function renderProject(x){
     ${stories.map(s=>`<details ${s.id===projOpenStory?"open":""}><summary class="chiprow-label" style="cursor:pointer">${esc(s.label||"Project story")}, ${shortDate(s.at)}${s.by?", "+esc(s.by):""}</summary>
       <div class="story" style="margin-top:8px">${STORY.map(([k,l])=>`<label class="fld-label">${l}<textarea data-psf="${s.id}|${k}" rows="2">${esc(s.fields?.[k]||"")}</textarea></label>`).join("")}
       <div class="actions">${printBtns("pstory",s.id,"Story PDF",true)}<span id="psrm-${s.id}"><button class="linkbtn" data-psrm="${esc(s.id)}">Remove this story</button></span></div></div></details>`).join("")}</section>`;
+  h=h.slice(0,foldAt)+foldSections(h.slice(foldAt),"p:"+x.id);
   if(isDirector())h+=`<div class="actions"><span id="pdel"><button class="linkbtn" data-pdel="1">Remove this project</button></span></div>`;
   else h=`<div class="ref" style="background:var(--sky-soft);margin-bottom:10px">Only the director changes a project. You can add a thread we are following, keep observations for it, and start a plan from any of its threads.</div>`+h;
   $("#main").innerHTML=h;sizeBoxes($("#main"));
