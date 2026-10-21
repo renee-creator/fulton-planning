@@ -5621,8 +5621,8 @@ function momentsReadHtml(){
   return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these observations keep returning to</h3>
     <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
-    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>${(p.ids||[]).length?`<div class="cnt" style="margin-top:4px">${p.ids.length} observation${p.ids.length>1?"s":""}. ${p.ids.map(id=>`<button class="linkbtn" data-mjump="${id}">${esc(shortDate((notices.get(id)||{}).at))}</button>`).join(" ")}</div>`:""}
-      ${patternMatchHtml(p,i)}
+    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>
+      ${patternMatchHtml(p,i)}${patternObsHtml(p,i)}
       ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:patternMatch(p)?"":isDirector()?`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`:""}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
     <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
@@ -5642,8 +5642,19 @@ function patternMissing(p,th){const inIt=n=>threadsOfNotice(n).some(t=>t.id===th
   const seen=new Set(),out=[];for(const n of patternMoments(p)){const k=n.group||n.id;if(seen.has(k)||inIt(n))continue;seen.add(k);out.push(n)}return out}
 function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const miss=patternMissing(p,th),total=patternMoments(p).length;
   const inIt=total-miss.length;
-  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, ${th.status==="closed"?"which the team had closed. Children may be returning to it.":"which the team is already following."}${!miss.length?" All of these observations are in it.":inIt?` ${inIt} of these observations ${inIt>1?"are":"is"} already in it.`:""}</span>
-    <span class="actions">${miss.length&&!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add ${miss.length>1?"these "+miss.length+" observations":"this observation"} to it</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`}
+  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, ${th.status==="closed"?"which the team had closed. Children may be returning to it.":"which the team is already following."}${!miss.length?" All of these observations are in it.":` ${inIt?inIt+" "+(inIt>1?"are":"is")+" already in it. ":""}Read each one below and add the ones that belong.`}</span>
+    <span class="actions">${miss.length>1&&!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add all ${miss.length}</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`}
+// the observations a pattern draws on, each with its photo, who kept it and its words, so the team can judge whether each belongs.
+// When the pattern matches a thread, each one not yet in it can be added on its own
+function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";const th=patternMatch(p);
+  const posts=ns.filter((n,k)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===k);
+  const inIt=n=>th&&threadsOfNotice(n).some(t=>t.id===th.id);
+  const row=n=>{const who=[n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", ");
+    return `<div style="display:grid;grid-template-columns:${n.photo?"64px ":""}1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);min-width:0">
+      ${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:""}
+      <div style="display:grid;gap:4px;min-width:0"><span class="cnt">${esc(who)}</span><span style="font-size:14.5px;overflow-wrap:anywhere">${esc(firstLine(noticeText(n),260))}</span>
+        <span class="actions" style="gap:4px 12px">${th?(inIt(n)?`<span class="cnt">In the thread</span>`:VIEW_AS?"":`<button class="btn small ghost" data-patone="${i}|${esc(n.id)}">Add to the thread</button>`):""}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div></div>`};
+  return `<details style="margin-top:6px" ${th?"open":""}><summary class="cnt" style="cursor:pointer">${posts.length} observation${posts.length>1?"s":""}, see each one</summary><div style="margin-top:4px">${posts.map(row).join("")}</div></details>`}
 // observations join a thread the same way an observation suggestion does, as evidence the thread holds, one entry per post
 function addNoticesToThread(th,ns){let added=0;
   for(const n of ns){const grp=noteGroup(n),lead=grp[0]||n;if((th.evidence||[]).some(x=>x&&grp.some(g=>g.id===(x.planId||x.id))))continue;
@@ -5832,6 +5843,8 @@ function noticesClick(t){
     if(view==="moments"&&nRoom!=="All"&&(n.classroom||"")!==nRoom){nRoom="All";LS.set("fps.nroom",nRoom)}
     renderAll();toast("Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}
+  if(t.dataset.patone){if(VIEW_AS)return true;const [i,nid]=t.dataset.patone.split("|");const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+i];const th=p&&patternMatch(p);const n=notices.get(nid);if(!th||!n)return true;
+    addNoticesToThread(th,[n]);renderMain();toast(`Added to the thread ${th.name}.`);return true}
   if(t.dataset.patadd!=null){if(VIEW_AS)return true;const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patadd];const th=p&&patternMatch(p);if(!th)return true;
     const n=addNoticesToThread(th,patternMissing(p,th));renderMain();toast(n?`Added to the thread ${th.name}.`:"These observations are already in the thread.");return true}
   if(t.dataset.patnot!=null){if(!isDirector())return true;const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patnot];if(!p)return true;
