@@ -295,6 +295,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
+const reminders = require('./reminders.js')({ store, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
@@ -1133,6 +1134,12 @@ async function handle(req, res) {
     const bad = !OPEN.includes(path) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
   }
+  // reminders. A phone turns them on once, the director sees who receives them and can send a test
+  if (path === '/api/push/key') { const a = accountFor(me.name); json(req, res, 200, { key: reminders.keys() ? reminders.keys().pub : '', phones: ((a && a.push) || []).length }); return; }
+  if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
+  if (path === '/api/notify/status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees reminders.'); return; } json(req, res, 200, reminders.status()); return; }
+  if (path === '/api/notify/test') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a test.'); return; }
+    const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name), kitchenOnly) }); return; }
