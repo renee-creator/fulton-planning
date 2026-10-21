@@ -214,3 +214,5 @@ A thread's project story notes how many new pieces of evidence have arrived sinc
 The Classroom plan shows last week's final remarks and After the week reflections from the class's educators beside this week's Individual plans, and its drafts read them.
 
 The thread PDF carries where the thread is now, from its latest complete plan, and two photos. Inquiry and lens full PDFs carry the photos of their observations. The Observations and Lens printouts say when their reading was made, and how many observations or plans have come since.
+
+The staff room display shows the whole cycle. Observations without photos appear as What an educator noticed, at most one after every third photo. Recent Final remarks and After the week reflections, from the last four weeks, and lens moments from the last eight weeks take turns with projects, threads and inquiries. A lens moment shows only while its passage still appears word for word where it was found. A thread shows its newest words by week. Classes read as South Class.
