@@ -303,7 +303,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .evid .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .evid .src button{font-size:12px}
 .origin{display:grid;gap:3px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px}
-.nfthreadline{overflow-wrap:anywhere}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
+.nfthreadline{overflow-wrap:anywhere}.moremenu>summary{list-style:none;cursor:pointer;color:var(--moss,#2f5a43);text-decoration:underline;text-underline-offset:3px}.moremenu>summary::-webkit-details-marker{display:none}.moremenu[open]{flex-basis:100%}.moremenu[open]>summary{margin-bottom:6px}.nfsuggest{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--sky-soft,#eaf2f6);font-size:14px;overflow-wrap:anywhere}.nfsuggest .actions{display:flex;gap:8px;align-items:center}.nfthreadline .linkbtn{white-space:normal;text-align:left}
 .origin b{font-weight:600;margin-right:4px}
 .stopped{display:grid;gap:10px;margin-top:8px}
 .stopped .thread{background:transparent}
@@ -1462,7 +1462,7 @@ function teamSourcesHtml(p){
   const src=teamSources(p);const r=teamReadiness(p,src);
   const line=r.expected?`${r.written} of ${r.expected} Individual plans for this week are written.${r.missing.length?` Still to come, ${r.missing.map(esc).join(", ")}. The team can plan without them and add their thinking later.`:""}`:`${src.length} Individual plan${src.length===1?"":"s"} written for this week.`;
   const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?esc(t.slice(0,n))+"…":esc(t)};
-  return `<details class="ref" ${src.length||lastWeekAfters(p).length?"open":""}><summary style="cursor:pointer"><b>This week's Individual plans${lastWeekAfters(p).length?" and last week's reflections":""}, ${esc(p.classroom)} class</b></summary>
+  return `<details class="ref"><summary style="cursor:pointer"><b>This week's Individual plans${lastWeekAfters(p).length?" and last week's reflections":""}, ${esc(p.classroom)} class</b></summary>
     <div style="margin-top:6px">${line}</div>
     ${src.length?`<div style="display:grid;gap:8px;margin-top:8px">${src.map(x=>{const g=isGroupPlan(x)?(x.type==="smallgroup"?x.group:(x.groups||[]).join(" and "))+" group":(x.where||"");const f=x.fields||{};
       return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:13.5px;min-width:0"><span><b style="font-weight:600">${esc(x.educator||"An educator")}</b>${g?` <span class="cnt">${esc(g)}</span>`:""} <button class="linkbtn" data-open="${esc(x.id)}">Open</button></span>
@@ -2138,16 +2138,16 @@ function kidDrdpHtml(c){
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
     const markOpts=[["","No mark"],["absence","Unable to rate, extended absence"],...(m.c==="eld"?[["english","Not rated, English only at home"]]:[]),...(v==="ptk"&&DRDP_NOTYET.has(code)?[["notyet","Not yet, before the first level of this measure"]]:[])];
     return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
-        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:`<span class="cnt">No level yet</span>`}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
+        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:marks[code]?`<span class="cnt">${esc(markOpts.find(o=>o[0]===marks[code])?.[1]||"")}</span>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
       <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
-        ${n||wn?"":`<div class="cnt">No evidence yet.</div>`}
+
         <label class="fld-label" style="max-width:340px">Mark<select data-drmark="${code}">${markOpts.map(([k,lab])=>`<option value="${k}" ${(marks[code]||"")===k?"selected":""}>${esc(lab)}</option>`).join("")}</select></label></div></details>`};
   const doms=[...new Set(ms.map(k=>DRDP_M[v][k].d))];
   // a domain with nothing yet folds to one line, so the measures with evidence are easy to find
   const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;const busy=codes.some(k=>latest(k)||wait.some(x=>x.code===k)||(legacy[k]||[]).length||marks[k]);
-    const key="dom:"+dm;const open=drdpOpen.has(key)||(busy&&!drdpShut.has(key));
-    return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b><span class="cnt">${got} of ${codes.length} with evidence${busy?"":", nothing yet"}</span></summary>${codes.map(rowOf).join("")}</details>`};
+    const key="dom:"+dm;const open=drdpOpen.has(key);
+    return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b>${got?`<span class="cnt">${got} of ${codes.length} with evidence</span>`:""}</summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with evidence toward a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
@@ -4018,7 +4018,7 @@ function renderToday(){
   ${todayBinHtml()}
   ${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3><span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)||"Nothing"}</span></div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)}</span>`:""}</div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Today</h3><button class="linkbtn" data-tview="calendar">Calendar</button></div>
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
@@ -5550,6 +5550,8 @@ function noticeCards(list){const groups=shareGroups(list);
     return `<div class="nwgroup">${noticeCard(first)}
       <div class="nwmore"><div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div><div class="nwstrip">${more.map(n=>`<a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Another photo with this note" loading="lazy"></a>`).join("")}</div>
       <details><summary class="linkbtn">Each photo on its own, to tag children or change one</summary><div style="display:grid;gap:12px;margin-top:10px">${more.map(noticeCard).join("")}</div></details></div></div>`}).join("")}
+// the few actions used most stay in view, and the rest wait under More, so a list of cards stays clear on a phone
+function moreMenu(inner){inner=String(inner||"").trim();return inner?`<details class="moremenu"><summary>More</summary><div class="actions">${inner}</div></details>`:""}
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${n.smallGroup?" \u00b7 "+esc(n.smallGroup)+" group":""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
@@ -5570,7 +5572,8 @@ function noticeCard(n){
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
-    <div class="actions">${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button><button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button><span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span></div></article>`;
+    <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
+      ${moreMenu(`${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -9335,11 +9338,11 @@ function renderThreads(){
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===tRoom}" data-troom="${r}">${r}</button>`).join("")}</div>
     <select id="trange" style="width:auto">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
   <div class="stats">
-    <div class="stat"><b>${realPs.length}</b><span>plans saved in this range</span></div>
-    <div class="stat"><b>${obsN}</b><span>observations kept in this range</span></div>
-    <div class="stat"><b>${withTeam}</b><span>classroom team plans</span></div>
-    <div class="stat"><b>${waiting}</b><span>waiting for director review</span></div>
-    <div class="stat"><b>${tracked.filter(t=>t.status!=="closed").length}</b><span>threads being followed</span></div>
+    ${realPs.length?`<div class="stat"><b>${realPs.length}</b><span>plans saved in this range</span></div>`:""}
+    ${obsN?`<div class="stat"><b>${obsN}</b><span>observations kept in this range</span></div>`:""}
+    ${withTeam?`<div class="stat"><b>${withTeam}</b><span>classroom team plans</span></div>`:""}
+    ${waiting&&isDirector()?`<div class="stat"><b>${waiting}</b><span>waiting for director review</span></div>`:""}
+    ${tracked.some(t=>t.status!=="closed")?`<div class="stat"><b>${tracked.filter(t=>t.status!=="closed").length}</b><span>threads being followed</span></div>`:""}
   </div>`;
 
   // Threads
@@ -9356,7 +9359,6 @@ function renderThreads(){
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n}${j.closed?", closed, children have returned to it":""})`).join(", ")}</div>`}
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
-    else h+=`<div class="empty">${nDis?"Every other thread from the last search is being followed or was dismissed.":"Every thread from the last search is already being followed."}</div>`;
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
   }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?(isDirector()?"No threads found yet. Press Find threads.":"No threads found yet. The director's next thread search will show here."):"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
   h+=`</section>`;
@@ -9366,7 +9368,7 @@ function renderThreads(){
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Ready for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
    ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
-     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}<span class="cnt">${r||teams.length?"· ":""}${ni} individual · ${ns} small group</span>${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
+     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}${ni||ns?`<span class="cnt">${r||teams.length?"· ":""}${[ni&&ni+" individual",ns&&ns+" small group"].filter(Boolean).join(" · ")}</span>`:""}${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
    </tbody></table></div></section>`;
 
   // Recurring ideas
@@ -9461,22 +9463,27 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" class",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
   h+=evidenceHtml(t);
-  if(linked.length)h+=`<details${linked.length<=3?" open":""}><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
+  if(linked.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
   if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
   if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
     const pr=projectOfThread(t.id);const openProjects=[...projects.values()].filter(x=>x.status!=="closed");
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
-    h+=`<div class="actions"><label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
-      <textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>
-      <div class="actions">${printBtns("thread",t.id,"Thread PDF")}<button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
+    const notesBox=`<textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>`;
+    // Undo follow is for a thread followed by mistake, so it stays only for the first day and never on a thread a project holds
+    const undoable=!pr&&Date.now()-(t.createdAt||0)<864e5;
+    h+=`${has(t.notes)?notesBox:""}
+      <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button>${printBtns("thread",t.id,"Thread PDF")}
+      ${moreMenu(`<label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
+      ${has(t.notes)?"":`<div style="flex-basis:100%">${notesBox}</div>`}
+      <button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
       ${pr?"":`<button class="btn small ghost" data-pstart="${esc(t.id)}">Start a project from it</button>${openProjects.length?`<select data-padd="${esc(t.id)}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${esc(t.id)}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${esc(t.id)}">Remove story</button></span>`:""}
       <button class="linkbtn" data-tedit="${esc(t.id)}">Change name or class</button>
       <span id="tstop-${t.id}"><button class="linkbtn" data-tstop="${esc(t.id)}">Stop following</button></span>
-      <span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${esc(t.id)}">Undo follow</button></span></div>`;
-    {const ns=threadNotices(t);const open=ns.length<=2;
+      ${undoable?`<span id="tundo-${t.id}"><button class="linkbtn" data-tundo="${esc(t.id)}">Undo follow</button></span>`:""}`)}</div>`;
+    {const ns=threadNotices(t);const open=false;
       // a closed list is drawn only when it is opened, so a page of many threads stays quick
       if(ns.length)h+=`<details${open?" open":""} data-tobs="${esc(t.id)}"><summary class="chiprow-label" style="cursor:pointer">${ns.length} observation${ns.length>1?"s":""} in this thread</summary><div style="display:grid;gap:12px;margin-top:8px">${open?ns.map(noticeCard).join(""):""}</div></details>`;}
     {const nw=t.story&&t.storyRecs!=null?threadRecIds(t).size-t.storyRecs:0;
