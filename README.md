@@ -253,3 +253,7 @@ Every box on the Individual and Classroom plans needs writing before the plan is
 ## Waiting for you, done in place
 
 On Today, Final remarks, the words on a copied photo, the children in a Kaymbu photo and the DRDP view for a child turning three open right under their row and are done there. Each closes when saved and the next one of the same kind opens beneath it. Open the full page is always there. Other tasks open their page, and when there are two or more of the same kind a slim bar shows how far through them the educator is, with Next and Back to Today. Groups left open on Today stay open when Today is drawn again.
+
+## The evidence beside a plan
+
+The evidence panel shows what the plan is built on first. That is the project, threads and inquiries it follows, last week's Final remarks, and for an Individual plan last week's Classroom plan for the class. Below them come the observations attached to the plan or kept with what it follows, and from the last three weeks the observations of the children in its small groups and the class's whole-class moments, kept with no child named or with half the class or more named. Four show, newest first, and the rest fold under More from this group. The class's other observations wait under More from the class, closed until opened. The search at the top still covers every observation, plan and thread.

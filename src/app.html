@@ -7542,12 +7542,26 @@ function planEvidence(p){
     for(const pid of pids)for(const st of [...stories.values()].filter(y=>y.projectId===pid).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,4)){const cv=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
       heads.push({kind:stReviewed(st)?"Story":"Story, draft",name:stTitle(st),open:`data-story="${esc(st.id)}"`,img:cv&&cv.photo?photoThumb(cv):"",lines:has(st.cover)?[["For",st.cover]]:[]})}}
   if(src.kind==="pattern")heads.push({kind:"What the observations keep returning to",name:src.name||"",lines:[]});
+  // last week's Final remarks, and for an Individual plan last week's Classroom plan, which the week grows from
+  {const lw=lastWeekOwn(p);if(lw)heads.push({kind:"Last week's Final remarks",name:planTitle(lw)+", week of "+fmtDate(lw.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(lw.id)}"`,lines:[["Final remarks",planAfter(lw)]]})}
+  if(p.type==="individual"&&p.classroom){const cp=[...plans.values()].find(x=>x.type==="classroom"&&x.classroom===p.classroom&&x.weekOf===addDays(p.weekOf,-7)&&!isEmptyPlan(x));
+    if(cp)heads.push({kind:"Last week's Classroom plan",name:p.classroom+" Class, week of "+fmtDate(cp.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(cp.id)}"`,lines:[["Intentions and questions",cp.fields.intentions],["Observation",cp.fields.observation]].filter(([,v])=>has(v))})}
   {const b=p.bin&&binAll().find(x=>x.id===p.bin);if(b){const pcs=binPieces(b,p.classroom).filter(x=>(BIN_TO[p.type]||{})[x.kind]);
     heads.push({kind:"Weekly bin",name:"The FEED bin of "+fmtDate(b.date).replace(/, \d{4}$/,""),open:`data-pbin="${esc(b.id)}"`,lines:[],bin:pcs})}}
   take([...(src.ids||[]),...(p.noticeAdded||[]),...(p.evidenceRefs||[]).filter(r=>r.kind==="obs").map(r=>r.id)].map(id=>notices.get(id)));
   take([...notices.values()].filter(n=>n.planId===p.id));
   const obs=[...seen.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   return heads.length||obs.length?{heads,obs}:null}
+// the educator's own plan from last week with its Final remarks, the plan carried forward or the same educator and group
+function lastWeekOwn(p){if(p.type!=="individual")return null;const prev=p.prevId&&plans.get(p.prevId);if(prev&&planAfter(prev))return prev;
+  const wk=addDays(p.weekOf,-7),ed=String(p.educator||"").trim().toLowerCase(),gs=p.groups||[];
+  return [...plans.values()].find(x=>x.id!==p.id&&x.type==="individual"&&x.weekOf===wk&&x.classroom===p.classroom&&planAfter(x)&&(ed&&String(x.educator||"").trim().toLowerCase()===ed||gs.some(g=>(x.groups||[]).includes(g))))||null}
+// observations that belong to this plan's group. Those of the children in its small groups, and whole-class moments,
+// kept with no child named or with half the class or more named, from the last three weeks. A Classroom plan takes the class's.
+function groupObs(p,pool){if(!p.classroom)return [];const since=Date.now()-21*864e5;const cls=kidsAt().filter(c=>c.classroom===p.classroom);
+  const gk=new Set(p.type==="individual"&&(p.groups||[]).length?cls.filter(c=>(p.groups||[]).includes(c.group)).map(c=>c.id):[]);
+  const whole=n=>{const k=(n.children||[]).filter(id=>cls.some(c=>c.id===id)).length;return !k||(cls.length&&k>=cls.length/2)};
+  return pool.filter(n=>(n.at||0)>=since&&(p.type==="classroom"||whole(n)||(n.children||[]).some(id=>gk.has(id))))}
 function evObHtml(n,used,p,more){more=more||[];const ids=[n.id,...more.map(m=>m.id)].join(",");
   const k=p&&!$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
   const added=new Set((p&&p.noticeAdded)||[]);
@@ -7564,8 +7578,11 @@ function evSync(){
   const p=view==="plans"&&currentId&&plans.get(currentId);let ev=p&&planEvidence(p);
   // the class's other observations wait in the same panel, so a plan shows its observations in one place
   const usedAll=new Set((p&&p.noticeUsed)||[]);
-  const more=p&&!p.blank&&p.id!=="example"&&PLAN_TYPES.includes(p.type)?noticesFor(p.classroom,0).filter(n=>!usedAll.has(n.id)&&!(ev&&ev.obs.some(o=>o.id===n.id))):[];
+  let more=p&&!p.blank&&p.id!=="example"&&PLAN_TYPES.includes(p.type)?noticesFor(p.classroom,0).filter(n=>!usedAll.has(n.id)&&!(ev&&ev.obs.some(o=>o.id===n.id))):[];
   if(p&&!ev&&more.length)ev={heads:[],obs:[]};
+  // what the plan is built on shows first, three or four pieces with the rest folded. The rest of the class waits closed
+  const mine=p&&ev?[...ev.obs,...groupObs(p,more)].sort((a,b)=>(b.at||0)-(a.at||0)):[];
+  if(mine.length){const ids=new Set(mine.map(n=>n.id));more=more.filter(n=>!ids.has(n.id))}
   let b=$("#evbtn"),pn=$("#evpanel");
   if(!ev){if(b)b.remove();if(pn)pn.remove();document.body.classList.remove("evopen");return}
   if(!b){b=document.createElement("button");b.id="evbtn";b.className="btn";document.body.appendChild(b)}
@@ -7584,8 +7601,10 @@ function evSync(){
       ${(h.bin||[]).length?`<div style="display:grid;gap:6px;margin-top:4px">${h.bin.map(x=>{const k=BIN_TO[p.type][x.kind],inIt=binPieceIn(p,x);
         return `<div class="evbin"><div style="white-space:pre-line">${esc(x.text)}</div><div class="cnt">${inIt?"In "+esc(binTargetLabel(p.type,k).toLowerCase()):`<button class="btn small ghost" data-binuse="${esc(p.id)}|${esc(x.key)}" ${lockedNow?"disabled":""}>Add to ${esc(binTargetLabel(p.type,k).toLowerCase())}</button>`}</div></div>`}).join("")}</div>`:""}
       ${(h.from||[]).length?`<div><span class="cnt">From the plans that followed it</span>${h.from.map(e=>`<div style="margin-top:4px">${esc(e.text)} <span class="cnt">${e.week?"Week of "+esc(fmtDate(e.week).replace(/, \d{4}$/,"")):""}${plans.has(e.planId)?` <button class="linkbtn" data-open="${e.planId}">Open</button>`:""}</span></div>`).join("")}</div>`:""}</div>`).join("")}
-    ${ev.obs.length?`<div class="cnt">${ev.obs.length} observation${ev.obs.length===1?"":"s"}, newest first</div>${shareGroups(ev.obs.slice(0,40)).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}${ev.obs.length>40?`<div class="cnt">Showing the 40 most recent.</div>`:""}`:began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:""}
-    ${more.length?`<details ${ev.obs.length||ev.heads.length?"":"open"}><summary class="chiprow-label">${ev.obs.length||ev.heads.length?"Other observations":"Observations"} from ${esc(p.classroom||"no class")}, ${more.length}</summary>
+    ${(()=>{if(!mine.length)return began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:"";const gs=shareGroups(mine.slice(0,60));const top=gs.slice(0,4),rest=gs.slice(4);
+      const label=p.type==="individual"&&(p.groups||[]).length?"More from this group":"More for this plan";
+      return `<div class="cnt">Observations for this plan, newest first</div>${top.map(([n,...m])=>evObHtml(n,used,p,m)).join("")}${rest.length?`<details><summary class="chiprow-label">${label}, ${rest.length}</summary><div style="display:grid;gap:12px;margin-top:8px">${rest.map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div></details>`:""}`})()}
+    ${more.length?`<details><summary class="chiprow-label">More from ${esc(p.classroom?p.classroom+" Class":"no class")}, ${more.length}</summary>
       <div class="muted" style="margin:6px 0">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>
       <div style="display:grid;gap:12px">${shareGroups(more.slice(0,24)).slice(0,12).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
   evResults(p);pn.querySelector(".evbody").scrollTop=top}
