@@ -3919,7 +3919,7 @@ function todayWaiting(){
   if(dir&&!mineC.length){if(upcoming.length)out.push({dot:"mari",n:upcoming.length,t:`${upcoming.length} family conference${upcoming.length===1?"":"s"} in the next three weeks`,s:`The first is ${parseIso(upcoming[0].confDate).toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}.`,act:`data-tview="conferences"`,b:"See them"});return out}
   for(const c of mineC.slice(0,6)){
     const k=children.get(c.childId);
-    out.push({dot:"mari",t:`Conference with ${k.first}'s family, ${parseIso(c.confDate).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.confTime?" at "+tlabel(c.confTime):""}`,s:c.teacher?"With "+c.teacher:"",act:`data-tconf="${esc(c.id)}"`,b:"Prepare"});
+    out.push({dot:"mari",t:`Conference with ${k.first}'s family, ${parseIso(c.confDate).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.confTime?" at "+tlabel(c.confTime):""}`,s:[confIsReady(c)?"Ready":"",c.teacher?"With "+c.teacher:""].filter(Boolean).join(" · "),act:`data-tconf="${esc(c.id)}"`,b:confIsReady(c)?"Open":"Prepare"});
     if(out.length>14)break}
   return out;
 }
@@ -10631,6 +10631,9 @@ function renderChildren(){
 function kidMoments(c){const re=new RegExp("(^|[^A-Za-z])"+c.first.replace(/[^A-Za-z'-]/g,"")+"(?![A-Za-z])");
   return [...notices.values()].filter(n=>(n.children||[]).includes(c.id)||(!n.group&&(!n.children||!n.children.length)&&n.classroom===c.classroom&&re.test(n.noticed||""))).sort((a,b)=>(b.at||0)-(a.at||0))}
 const kidTagged=(c,n)=>(n.children||[]).includes(c.id);
+// Ready for the conference, the same rule the Conferences section uses. The thirteen sections an educator prepares have writing and the four preparation steps are checked.
+const CONF_READY_FIELDS=["interests","friends","smallGroup","favoriteAreas","nature","approaches","social","language","cognition","physical","expressive","strengths","documentation"],CONF_READY_STEPS=["questionnaire","drdp","coteachers","samples"];
+function confIsReady(x){return !!x&&x.status!=="complete"&&CONF_READY_FIELDS.every(k=>String(x.fields?.[k]||"").trim())&&CONF_READY_STEPS.every(k=>x.prep?.[k])}
 function kidConfs(c){return [...conferences.values()].filter(x=>x.childId===c.id).sort((a,b)=>((b.schoolYear||"")+(b.term==="Spring"?"2":"1")).localeCompare((a.schoolYear||"")+(a.term==="Spring"?"2":"1"))||(b.confDate||"").localeCompare(a.confDate||""))}
 function kidSlides(c){return [...slides.values()].filter(s=>(s.children||[]).includes(c.id))}
 // DRDP measures linked to a child's documentation before levels came in, kept as evidence without a level
@@ -10683,7 +10686,7 @@ function renderChild(){
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
-      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
+      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
     body=`<section class="card"><div class="kgrid">
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>

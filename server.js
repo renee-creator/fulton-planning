@@ -296,6 +296,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
 const reminders = require('./reminders.js')({ store, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
+const signupSync = require('./signup-sync.js')({ store, log, readFeed: l => readSignupFeed(l, true), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
@@ -1334,12 +1335,7 @@ async function handle(req, res) {
     const set = store.recs.settings.get('main'); let link = String(body.link || (set && set.doc && set.doc.signupFeed) || '').trim().replace(/^webcal:\/\//i, 'https://');
     if (!link) { err(req, res, 400, 'Add the SignUpGenius calendar link in Settings first.'); return; }
     try {
-      if (!(feedCache.url === link && Date.now() - feedCache.at < 5 * 60000 && !body.fresh)) {
-        const r = await getText(link);
-        if (r.status !== 200) throw new Error('SignUpGenius answered ' + r.status + '.');
-        if (!/BEGIN:VCALENDAR/.test(r.text)) throw new Error(/does not exist/i.test(r.text) ? 'SignUpGenius says this calendar does not exist. In SignUpGenius, open Tools, then Calendar Subscriptions, check the feed is saved with the conference sign up in it, and copy its link again.' : 'That link did not return a calendar.');
-        feedCache.url = link; feedCache.at = Date.now(); feedCache.data = parseIcs(r.text);
-      }
+      await readSignupFeed(link, !!body.fresh);
       json(req, res, 200, { events: feedCache.data, checkedAt: new Date(feedCache.at).toISOString() });
     } catch (e) {
       // a network failure reads as a plain sentence, and the technical reason stays in the log
@@ -1390,6 +1386,16 @@ async function handle(req, res) {
 
 /* ---------- SignUpGenius, read only, for family conference times ---------- */
 const feedCache = { url: '', at: 0, data: null };
+async function readSignupFeed(link, fresh) {
+  link = String(link || '').trim().replace(/^webcal:\/\//i, 'https://');
+      if (!(feedCache.url === link && Date.now() - feedCache.at < 5 * 60000 && !fresh)) {
+        const r = await getText(link);
+        if (r.status !== 200) throw new Error('SignUpGenius answered ' + r.status + '.');
+        if (!/BEGIN:VCALENDAR/.test(r.text)) throw new Error(/does not exist/i.test(r.text) ? 'SignUpGenius says this calendar does not exist. In SignUpGenius, open Tools, then Calendar Subscriptions, check the feed is saved with the conference sign up in it, and copy its link again.' : 'That link did not return a calendar.');
+        feedCache.url = link; feedCache.at = Date.now(); feedCache.data = parseIcs(r.text);
+      }
+  return feedCache.data;
+}
 function getText(url, hops = 0) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
