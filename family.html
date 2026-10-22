@@ -34,6 +34,7 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
 .stack{display:grid;gap:12px}
 .banner{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:var(--r);padding:10px 14px;margin:0 0 14px;font-size:14px}
 .err{color:var(--clay);font-size:14px;min-height:1.2em}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kid{display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)}.kid:first-of-type{border-top:0;padding-top:0}
 .kid .top{display:flex;justify-content:space-between;gap:10px}
 .bar{height:10px;border-radius:999px;background:var(--moss-soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--moss)}
@@ -86,7 +87,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER=local?want:DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  let token=LS.get("fam-token"), D=null, logFor=null;
+  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null;
   const $=s=>document.querySelector(s);
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function api(path,body){
@@ -98,6 +99,15 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const day=d=>{if(!d)return"";const t=new Date(d+"T12:00:00");return t.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})};
   const time=t=>{if(!t)return"";let [h,m]=t.split(":").map(Number);const ap=h>=12?"pm":"am";h=h%12||12;return h+(m?":"+String(m).padStart(2,"0"):"")+" "+ap};
   const hrs=n=>n+" hour"+(n==1?"":"s");
+  const many=(n,w)=>n+" "+w+(n==1?"":(w==="child"?"ren":"s"));
+  const whoLine=(m,counts)=>[m.who,counts?many(m.adults||0,"adult")+", "+many(m.children||0,"child"):""].filter(Boolean).join(" · ");
+  // a short sign-up form, filled in with what the family gave before
+  const signForm=it=>{const m=it.my||{};return `<div class="stack" style="margin-top:8px">
+    <label>Who is coming<input type="text" id="sw" maxlength="120" value="${esc(m.who||D.me||"")}" placeholder="Ex. Maya and Sam"></label>
+    ${it.counts?`<div class="row2"><label>Adults<input type="number" id="sa" min="1" max="30" value="${esc(m.adults||1)}"></label><label>Children<input type="number" id="sc" min="0" max="30" value="${esc(m.children!=null?m.children:(D.kidCount||1))}"></label></div>`:""}
+    ${it.question?`<label>${esc(it.question)}<input type="text" id="sq" maxlength="300" value="${esc(m.answer||"")}"></label>`:""}
+    <div class="small err" id="es"></div>
+    <div><button class="btn sm" data-signsave="${esc(it.id)}">${it.mine?"Save":"Sign up"}</button> <button class="link" data-signcancel="1">Cancel</button></div></div>`};
   const today=()=>{const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")};
 
   function showGate(){$("#main").hidden=true;$("#gate").hidden=false;$("#f1").hidden=false;$("#f2").hidden=true;$("#email").value=LS.get("fam-email")||""}
@@ -154,7 +164,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       return `<div class="item"><div class="top"><div><span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span><div><b>${esc(it.title)}</b></div>
         <div class="small muted">${esc([it.date?day(it.date):"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
         ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}</div>
-        ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">You're signed up</div><button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full?"":`<button class="btn sm" data-signup="${esc(it.id)}">Sign up</button>`}</div></div>`}).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
+        ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">You're signed up</div>${signFor===it.id?"":`<button class="link small" data-signup="${esc(it.id)}">Change</button> · `}<button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full||signFor===it.id?"":`<button class="btn sm" data-signup="${esc(it.id)}">Sign up</button>`}</div>
+        ${it.mine&&signFor!==it.id?`<div class="small muted">${esc(whoLine(it.my,it.counts))}${it.my.answer?"<br>"+esc(it.my.answer):""}</div>`:""}
+        ${signFor===it.id?signForm(it):""}</div>`}).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
@@ -202,7 +214,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   let eTimer=null;document.addEventListener("input",e=>{if(!form||!form.startsWith("enroll")||!e.target.dataset.ef)return;clearTimeout(eTimer);const id=form.split("|")[1];eTimer=setTimeout(()=>api("/family/enroll",{childId:id,data:readEnroll(),done:false}).then(j=>{D=j}).catch(()=>{}),1200)});
   document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||!D)return;const d=b.dataset;
     try{
-      if(d.signup){b.disabled=true;D=await api("/family/signup",{itemId:d.signup,on:true});render()}
+      if(d.signup){signFor=d.signup;render();const w=$("#sw");if(w)w.focus()}
+      else if(d.signcancel){signFor=null;render()}
+      else if(d.signsave){try{D=await api("/family/signup",{itemId:d.signsave,on:true,who:$("#sw").value,adults:$("#sa")?$("#sa").value:0,children:$("#sc")?$("#sc").value:0,answer:$("#sq")?$("#sq").value:""});signFor=null;render()}catch(er){$("#es").textContent=er.message}}
       else if(d.signoff){D=await api("/family/signup",{itemId:d.signoff,on:false});render()}
       else if(d.logit){logFor=logFor===d.logit?null:d.logit;render()}
       else if(d.logcancel){logFor=null;render()}

@@ -1104,7 +1104,7 @@ async function handle(req, res) {
     const f = familyPage.readFamily(req); if (!f) { err(req, res, 401, 'Please sign in again.'); return; }
     let r;
     if (path === '/family/data') r = familyPage.familyView(f);
-    else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false);
+    else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false, { who: body.who, adults: body.adults, children: body.children, answer: body.answer });
     else if (path === '/family/log') r = familyPage.addLog(f, body || {});
     else if (path === '/family/unlog') r = familyPage.removeLog(f, String(body.id || ''));
     else if (path === '/family/book') r = familyPage.book(f, String(body.slotId || ''), String(body.childId || ''), body.on !== false);
