@@ -34,7 +34,19 @@ const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.an
 const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
-const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt'];
+const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy'];
+// every box on the Individual and Classroom plans has writing before a plan is sent to Renee, except Final remarks
+const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
+// an educator sends a plan only once its boxes are written. Once sent or reviewed it stays so, and only the director
+// marks it reviewed or sends it back to draft. The older Small Group plan keeps its own status row, never reviewed by an educator.
+function planStatusFor(cur, next) {
+  const was = cur && !cur.deleted && cur.doc ? cur.doc.status || 'draft' : 'draft', want = next.status || 'draft';
+  const need = SEND_NEED[next.type];
+  if (!need) return want === 'reviewed' && was !== 'reviewed' ? was : want;
+  if (was === 'ready' || was === 'reviewed') return was;
+  if (want === 'ready' && need.every(k => String((next.fields || {})[k] || '').trim())) return 'ready';
+  return 'draft';
+}
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 
 /* ---------- helpers ---------- */
@@ -1222,7 +1234,13 @@ async function handle(req, res) {
       const keep = d => { for (const k of DIRECTOR_FIELDS) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'feedback') d[k] = ''; else delete d[k]; } };
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keep(body.data); }
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of DIRECTOR_FIELDS) delete body.patch[k]; }
+      if (op !== 'delete') {
+        const next = op === 'update' ? Object.assign({}, cur && !cur.deleted ? cur.doc : {}, body.patch || {}, { fields: Object.assign({}, cur && !cur.deleted ? cur.doc.fields : {}, (body.patch || {}).fields || {}) }) : (body.data || {});
+        const st = planStatusFor(cur, next); const asked = next.status || 'draft';
+        if (st !== asked) { log('Plan status kept as', st, 'for', me.name, id, 'asked', asked); if (op === 'update') { body.patch = body.patch || {}; body.patch.status = st; } else if (body.data) body.data.status = st; }
+      }
     }
+    const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
@@ -1235,6 +1253,7 @@ async function handle(req, res) {
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; }
     noteChange(kind, id); scheduleSave(kind, id);
+    if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     // an observation's words, new or changed, are checked against the threads a little later
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || 'noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) queueThreadSuggest(id); }
