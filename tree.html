@@ -3911,6 +3911,9 @@ function todayWaiting(){
     out.push({dot:"moss",t:dir?`A reply on ${planTitle(p)}'s plan`:`A note from the director on your ${FORMS[p.type].short.toLowerCase()} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}" data-jump="fb"`,b:"Read it"});
   if(dir)for(const p of all.filter(p=>p.status==="ready").sort((a,b)=>b.weekOf.localeCompare(a.weekOf)))
     out.push({dot:"sky",t:`Waiting for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
+  // the director and the office see a family's visit coming up, so the forms are printed and ready to sign
+  if(isOffice()){const t0=iso(new Date()),t2=addDays(t0,2);for(const c of kidsAt().filter(c=>c.visit&&c.visit.date>=t0&&c.visit.date<=t2&&!(c.onboarding||{}).paperwork).sort((a,b)=>(a.visit.date+a.visit.time).localeCompare(b.visit.date+b.visit.time)))
+    out.push({dot:"mari",t:`${c.first}'s visit, ${parseIso(c.visit.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.visit.time?" at "+tlabel(c.visit.time):""}`,s:c.enrollForm?(c.enrollForm.done?"Print the forms for the family to sign.":"The enrollment information is not finished yet."):"The family has not typed the enrollment information yet.",act:`data-kid="${esc(c.id)}" data-ktab="details"`,b:"Open"})}
   // an educator hears when Renee has reviewed a plan, until the plan is opened
   if(!dir){for(const p of all.filter(p=>p.status==="reviewed"&&p.reviewedAt&&p.reviewedAt>Date.now()-14*864e5&&isMine(p,m)&&(p.reviewSeenAt||0)<p.reviewedAt).slice(0,4))
     out.push({dot:"moss",t:`Renee reviewed your ${FORMS[p.type].short} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Open"})}
@@ -7977,6 +7980,7 @@ function renderParticipation(){
     ${(()=>{const miss=kidsAt().filter(k=>!(k.parents||[]).some(p=>p&&has(p.email)));return miss.length?`<section class="card"><b>${miss.length} ${miss.length===1?"family has":"families have"} no email on file</b>, so ${miss.length===1?"it":"they"} cannot sign in to the Family page. <div class="actions" style="margin-top:6px">${miss.map(k=>`<button class="btn small ghost" data-kid="${esc(k.id)}" data-ktab="details">${esc(kidName(k))}</button>`).join("")}</div></section>`:""})()}
     ${test?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Testers</h3></div><div class="cnt">An email here signs in to the Family page as the family of the children you link to it. The code shows on the page in test mode.</div>${testers}
       <div class="actions"><input type="email" id="pt-temail" placeholder="An email to test with" style="flex:1;min-width:200px"><button class="btn small" data-ptadd="1">Add a tester</button></div></section>`:""}
+    ${ptSlotsHtml(c,test)}
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Ways to take part</h3>${ptForm?"":`<button class="btn small" data-ptnew="1">Add one</button>`}</div>
       ${form}${upcoming.length?upcoming.map(itemRow).join(""):`<div class="cnt">Nothing posted yet. Add a volunteer task or a community event, and families see it on the Family page.</div>`}
       ${past.length?`<details><summary class="chiprow-label">Already happened, ${past.length}</summary>${past.slice().reverse().map(itemRow).join("")}</details>`:""}</section>
@@ -7984,8 +7988,44 @@ function renderParticipation(){
       ${rows.length?`<div class="tlist">${rows.map(({k,h})=>{const ls=logs.filter(l=>l.childId===k.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
         return `<details class="ptkid"><summary><span style="min-width:0"><b>${esc(kidName(k))}</b> <span class="cnt">${esc(k.classroom||"")}</span></span><span class="pthrs ${h>=c.goal?"done":""}">${h} of ${c.goal}</span></summary>
         ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
-        :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>`;
+        :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
+    <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
+      <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
+      <textarea id="pt-welcome" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
+      <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
+      ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from Fulton's Welcome Letter and Logistics.</div>`}</details></section>`;
 }
+// times families choose on the Family page, for the visit before the first day and for conferences
+let ptSlotForm=null;
+function ptSlotsHtml(c,test){const today=iso(new Date());
+  const ss=[...participation.values()].filter(x=>x.kind==="slot"&&!!x.test===test&&x.date>=today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const group=pur=>{const list=ss.filter(s=>s.purpose===pur);if(!list.length)return `<div class="cnt">No ${pur==="visit"?"visit":"conference"} times added yet.</div>`;const days={};list.forEach(s=>(days[s.date]=days[s.date]||[]).push(s));
+    return Object.entries(days).map(([d,xs])=>`<div style="margin-top:8px"><b>${esc(fmtDate(d))}</b> <span class="cnt">${xs.filter(s=>s.booked).length} of ${xs.length} taken</span><div class="tlist">${xs.map(s=>`<div class="ptlog"><span>${esc(tlabel(s.time))}${s.classroom?" · "+esc(s.classroom):""}${s.with?" · "+esc(s.with):""}${s.booked?` · <b>${esc(s.booked.family||"A family")}</b>`:` <span class="cnt">open</span>`}${s.test?` <span class="status ready">Test</span>`:""}</span><button class="linkbtn" data-ptslotdel="${esc(s.id)}">${s.booked?"Remove":"Delete"}</button></div>`).join("")}</div></div>`).join("")};
+  const f=ptSlotForm;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Times families choose</h3>${f?"":`<button class="btn small" data-ptslotnew="visit">Add visit times</button> <button class="btn small ghost" data-ptslotnew="conference">Add conference times</button>`}</div>
+    <div class="actions" style="margin:4px 0"><label class="radio"><input type="checkbox" data-ptconfopen="1" ${c.confOpen?"checked":""}><span>Conference sign-ups are open to families</span></label></div>
+    ${f?`<div class="ptform" style="margin:8px 0"><b>${f.purpose==="visit"?"Visit times before the first day":"Conference times"}</b>
+      <div class="gsrow"><label>Day<input type="date" id="ps-date" value="${esc(f.date||"")}"></label><label>From<input type="time" id="ps-from" value="${esc(f.from||"08:30")}"></label><label>Until<input type="time" id="ps-to" value="${esc(f.to||"11:30")}"></label><label>Minutes each<input type="number" id="ps-min" min="10" step="5" value="${esc(f.min||(f.purpose==="visit"?30:20))}"></label></div>
+      <div class="gsrow"><label>For<select id="ps-class"><option value="">Every class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>With, optional<input type="text" id="ps-with" placeholder="Ex. Jessica"></label></div>
+      <div class="actions"><button class="btn small" data-ptslotsave="1">Add these times</button><button class="linkbtn" data-ptslotcancel="1">Cancel</button></div></div>`:""}
+    <details ${ss.some(s=>s.purpose==="visit")?"open":""}><summary class="chiprow-label">Visits before the first day</summary>${group("visit")}</details>
+    <details ${ss.some(s=>s.purpose==="conference")?"open":""}><summary class="chiprow-label">Conferences</summary>${group("conference")}</details></section>`}
+document.addEventListener("click",e=>{if(view!=="participation")return;const t=e.target.closest("button,input[data-ptconfopen]");if(!t)return;const d=t.dataset;const c=ptCfg();
+  if(VIEW_AS&&(d.ptslotsave||d.ptslotdel||d.ptwelcome||d.ptconfopen)){e.preventDefault();toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const saveCfg=nc=>ptSave("config",Object.assign({kind:"config"},c,nc,{updatedAt:Date.now()})).then(renderMain);
+  if(d.ptconfopen){saveCfg({confOpen:t.checked}).then(()=>toast(t.checked?"Families can choose conference times.":"Conference sign-ups are closed."));return}
+  if(d.ptslotnew){ptSlotForm={purpose:d.ptslotnew};renderMain();return}
+  if(d.ptslotcancel){ptSlotForm=null;renderMain();return}
+  if(d.ptslotsave&&ptSlotForm){const v=id=>($("#"+id)?.value||"").trim();const date=v("ps-date"),from=v("ps-from"),to=v("ps-to"),min=Math.max(10,Number(v("ps-min"))||20);
+    if(!date||!from||!to||to<=from){toast("Choose the day and the times.");return}
+    const toM=s=>{const [a,b]=s.split(":").map(Number);return a*60+b},hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+    const made=[];for(let m=toM(from);m+min<=toM(to);m+=min)made.push(hm(m));if(!made.length){toast("Those times are shorter than one visit.");return}
+    Promise.all(made.map(tm=>{const id=ptNewId("sl");return ptSave(id,{kind:"slot",purpose:ptSlotForm.purpose,date,time:tm,minutes:min,classroom:v("ps-class"),with:v("ps-with"),booked:null,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""})}))
+      .then(()=>{ptSlotForm=null;renderMain();toast(`${made.length} times added.`)});return}
+  if(d.ptslotdel){const s=participation.get(d.ptslotdel);if(!s)return;if(s.booked&&!t.dataset.sure){t.dataset.sure="1";t.textContent="Remove a booked time";return}participation.delete(s.id);db.doc("participation/"+s.id).delete().then(renderMain);return}
+  if(d.ptwelcome){saveCfg({welcome:$("#pt-welcome").value.trim()}).then(()=>toast("The welcome letter is saved."));return}
+  if(d.ptwelcomereset){saveCfg({welcome:""});return}
+});
 document.addEventListener("click",e=>{if(view!=="participation")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;const c=ptCfg();
   if(VIEW_AS&&(d.ptsave||d.ptadd||d.ptrm||d.ptclear||d.pttest)){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const saveCfg=nc=>ptSave("config",Object.assign({kind:"config"},c,nc,{updatedAt:Date.now()})).then(renderMain);
@@ -8005,7 +8045,10 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.pttkid){const [i,id]=d.pttkid.split("|");const ts=c.testers.map((x,j)=>j===+i?Object.assign({},x,{children:(x.children||[]).includes(id)?x.children.filter(z=>z!==id):[...(x.children||[]),id]}):x);saveCfg({testers:ts});return}
   if(d.pttest&&isDirector()){if(d.pttest==="off"&&!t.dataset.sure){t.dataset.sure="1";t.textContent="Open it to every family";return}saveCfg({test:d.pttest==="on"}).then(()=>toast(d.pttest==="on"?"Test mode is on.":"The Family page is open to families."));return}
   if(d.ptclear&&isDirector()){if(!t.dataset.sure){t.dataset.sure="1";t.textContent="Clear every test entry";return}
-    const tests=[...participation.values()].filter(x=>x.test&&(x.kind==="log"||x.kind==="item"));Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()})).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared.`)});return}
+    const tests=[...participation.values()].filter(x=>x.test&&(x.kind==="log"||x.kind==="item"||x.kind==="slot"||x.kind==="undo"));
+    // what a tester changed on a real child or conference goes back to how it was before testing
+    const undo=tests.filter(x=>x.kind==="undo").map(u=>u.prev?db.doc(u.target+"/"+u.tid).set(Object.assign({},u.prev)):db.doc(u.target+"/"+u.tid).delete());
+    Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared, and the real records put back.`)});return}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
 function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note")}}
@@ -10970,14 +11013,14 @@ function renderChild(){
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
-      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
+      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}${x.sharedWithFamily?" · Shared with the family":""}</div></div></button>${isOffice()&&x.term!=="Historical"?`<div class="actions" style="margin:-4px 0 8px 12px"><button class="linkbtn" data-confshare="${esc(x.id)}">${x.sharedWithFamily?"Stop sharing the notes":"Share the notes with the family"}</button></div>`:""}`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
     body=kidInfoEdit===c.id?kidInfoForm(c):`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">${esc(kidName(c))}</h3><button class="btn small ghost" data-kinfoedit="${esc(c.id)}">Change</button></div><div class="kgrid">
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
         <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
 </section>
-      ${kidFamilyHtml(c)}
+      ${kidFamilyHtml(c)}${kidFamilySideHtml(c)}
       ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
@@ -11012,6 +11055,84 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-kinfoedit]
   const was=kidName(c);c.first=first;c.last=v("ki-last");if(v("ki-dob"))c.dob=v("ki-dob");if(v("ki-start"))c.enrollDate=v("ki-start");if(c.program!=null||!c.schedule)c.program=v("ki-sched");else c.schedule=v("ki-sched");
   if(kidName(c)!==was)kidNote(c,`Name changed from ${was}`);saveKid(c);kidInfoEdit="";renderMain();toast("Saved.")});
 
+/* ---------- what the Family page brings in, on the child's Details tab ----------
+   The visit before the first day, the enrollment information and its forms, the Family Questionnaire, what the family
+   can share, and the documents shared with the family. Health and contact details from enrollment are for the director
+   and the office. Educators see the questionnaire and what the family can share. */
+const FAC={name:"Fulton Community School & Farm",addr:"1225 Fulton Road, Santa Rosa, CA 95401",license:"493009877"};
+function kidFamilySideHtml(c){
+  const ob=c.onboarding||{},ef=c.enrollForm,q=c.familyQuestionnaire,st=c.familyStrengths,files=(c.sharedFiles||[]).filter(Boolean);
+  let h="";
+  if(c.visit||ef||(isOffice()&&ob.started)){h+=`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Getting started</h3></div>
+    <div class="kgrid"><div><span class="lbl">Visit before the first day</span><div>${c.visit?esc(longDate(c.visit.date))+(c.visit.time?" at "+tlabel(c.visit.time):"")+(c.visit.with?", "+esc(c.visit.with):""):"Not booked yet"}</div></div>
+    <div><span class="lbl">Enrollment information</span><div>${ef?(ef.done?"Complete, "+esc(shortDate(new Date(ef.at).getTime())):"Started, not finished"):"Not started"}</div></div>
+    <div><span class="lbl">Forms signed</span><div>${ob.paperwork?"Signed and complete":"Not yet"}</div></div></div>
+    ${isOffice()?`<div class="actions">${ef?`<button class="btn small" data-kpacket="${esc(c.id)}">Print the forms to sign</button>`:""}<button class="btn small ghost" data-kpaper="${esc(c.id)}">${ob.paperwork?"Mark not signed":"Signed and complete"}</button></div>
+      ${ef?`<details><summary class="chiprow-label">What the family typed</summary>${enrollReadHtml(ef.data||{})}</details>`:""}`:""}</section>`}
+  if(q)h+=`<section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Family Questionnaire</h3> <span class="cnt">from ${esc(shortDate(new Date(q.at).getTime()))}</span></summary>
+    ${(q.questions||[]).map((qq,i)=>String((q.answers||[])[i]||"").trim()?`<div style="margin-top:8px"><div class="cnt">${esc(qq)}</div><div style="white-space:pre-line">${esc(q.answers[i])}</div></div>`:"").join("")}</details></section>`;
+  if(st&&has(st.text))h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">What the family can share</h3></div><div style="white-space:pre-line">${esc(st.text)}</div></section>`;
+  if(isOffice())h+=`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Shared with the family</h3><button class="btn small ghost" data-kshareport="${esc(c.id)}">Share the portfolio</button></div>
+    ${files.length?files.map((f,i)=>`<div class="ptlog"><span>${esc(f.title)}<span class="cnt"> · ${esc(shortDate(new Date(f.at).getTime()))}</span></span><button class="linkbtn" data-kunshare="${esc(c.id)}|${i}">Stop sharing</button></div>`).join(""):`<div class="cnt">Nothing shared yet. A portfolio shared here, and conference notes shared from the Conferences tab, appear on the Family page.</div>`}</section>`;
+  return h}
+const ENROLL_LABELS={c_first:"Child's first name",c_middle:"Middle name",c_last:"Last name",c_sex:"Sex",c_dob:"Birthday",c_phone:"Home telephone",c_street:"Address",c_city:"City",c_state:"State",c_zip:"Zip",doc_name:"Doctor",doc_phone:"Doctor's telephone",doc_addr:"Doctor's address",doc_plan:"Medical plan",den_name:"Dentist",den_phone:"Dentist's telephone",h_allergies:"Allergies",med_allergy:"Medicine allergies",pickup_time:"Usual pickup time"};
+function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&v!=null&&v!==false);
+  return `<div class="kgrid" style="margin-top:8px">${rows.map(([k,v])=>`<div><span class="lbl">${esc(ENROLL_LABELS[k]||k.replace(/_/g," "))}</span><div style="white-space:pre-line">${esc(v===true?"Yes":v)}</div></div>`).join("")}</div>`}
+// the state licensing forms, filled with what the family typed, for the family to sign at the visit
+const mdy=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[2]}/${m[3]}/${m[1]}`:String(s||"")};
+const splitStreet=s=>{const m=String(s||"").trim().match(/^(\d+[A-Za-z]?)\s+(.*)$/);return m?[m[1],m[2]]:["",String(s||"").trim()]};
+const splitPhone=s=>{const d=String(s||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");return d.length===10?[d.slice(0,3),d.slice(3,6)+"-"+d.slice(6)]:["",String(s||"")]};
+async function enrollPacket(c){
+  const ef=c.enrollForm;if(!ef){toast("The family has not typed the enrollment information yet.");return}
+  toast("Filling in the forms…");await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js","PDFLib");
+  const d=ef.data||{},v=k=>String(d[k]==null?"":d[k]).trim();const yes=k=>/^yes$/i.test(v(k)),no=k=>/^no$/i.test(v(k));
+  const nm=p=>[v(p+"first"),v(p+"middle"),v(p+"last")].filter(Boolean).join(" ");
+  const addrOf=p=>d[p+"same"]===true||d[p+"same"]==="true"||(!v(p+"street")&&p!=="c_")?["c_street","c_city","c_state","c_zip"].map(v):[v(p+"street"),v(p+"city"),v(p+"state"),v(p+"zip")];
+  const out=await PDFLib.PDFDocument.create();
+  const fill=async(file,set)=>{const bytes=await fetch("forms/"+file+".pdf").then(r=>{if(!r.ok)throw new Error(file);return r.arrayBuffer()});const doc=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});const form=doc.getForm();
+    const font=await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+    // a phone number sits inside the printed ( ), and long answers shrink to fit their box
+    const ph=x=>{const g=String(x).replace(/\D/g,"");return g.length===10?" "+g.slice(0,3)+"   "+g.slice(3,6)+"-"+g.slice(6):x};
+    const T=(n,val)=>{if(val==null||val==="")return;try{const f=form.getTextField(n);let t=String(val);if(/^[\s()+.\d-]{10,16}$/.test(t))t=ph(t);const max=f.getMaxLength();if(max)t=t.slice(0,max);
+      const w=f.acroField.getWidgets()[0];const r=w&&w.getRectangle();if(r&&!f.isMultiline()){let sz=10;while(sz>6&&font.widthOfTextAtSize(t,sz)>r.width-4)sz-=.5;f.setFontSize(sz)}f.setText(t)}catch(e){}};const C=(n,on)=>{if(!on)return;try{form.getCheckBox(n).check()}catch(e){}};
+    set(T,C);try{form.updateFieldAppearances(font)}catch(e){}try{form.flatten()}catch(e){}const pages=await out.copyPages(doc,doc.getPageIndices());pages.forEach(pg=>out.addPage(pg))};
+  const L=n=>"LIC 700 "+n;
+  await fill("LIC700",(T,C)=>{const [cn,cs]=splitStreet(v("c_street"));T(L(2),v("c_last"));T(L(3),v("c_middle"));T(L(4),v("c_first"));T(L(5),v("c_sex"));T(L(6),v("c_phone"));T(L(7),cn);T(L(8),cs);T(L(9),v("c_city"));T(L(10),v("c_state"));T(L(11),v("c_zip"));T(L(12),mdy(v("c_dob")));
+    [["p1_",13],["p2_",23]].forEach(([p,b])=>{if(!nm(p))return;const a=addrOf(p);const [an,as]=splitStreet(a[0]);T(L(b),v(p+"last"));T(L(b+1),v(p+"middle"));T(L(b+2),v(p+"first"));T(L(b+3),v(p+"work"));T(L(b+4),an);T(L(b+5),as);T(L(b+6),a[1]);T(L(b+7),a[2]);T(L(b+8),a[3]);T(L(b+9),v(p+"home"))});
+    T(L(33),v("r_last"));T(L(34),v("r_middle"));T(L(35),v("r_first"));T(L(36),v("r_home"));T(L(37),v("r_work"));
+    [1,2,3,4].forEach(i=>{const b=38+(i-1)*4;T(L(b),v("e"+i+"_name"));T(L(b+1),v("e"+i+"_addr"));T(L(b+2),v("e"+i+"_phone"));T(L(b+3),v("e"+i+"_rel"))});
+    T(L(54),v("doc_name"));T(L(55),v("doc_addr"));T(L(56),v("doc_plan"));T(L(57),v("doc_phone"));T(L(58),v("den_name"));T(L(59),v("den_addr"));T(L(60),v("den_plan"));T(L(61),v("den_phone"));
+    C(L(62),v("noreach")!=="Other");C(L(63),v("noreach")==="Other");T(L(64),v("noreach_other"));
+    [1,2,3,4,5].forEach(i=>{T(L(64+i*2),v("a"+i+"_name"));T(L(65+i*2),v("a"+i+"_rel"))});T(L(76),v("pickup_time"));
+    T(L(79),c.enrollDate?mdy(c.enrollDate):"")});
+  const M=n=>"LIC 702 "+n;
+  await fill("LIC702",(T,C)=>{T(M(2),nm("c_"));T(M(3),v("c_sex"));T(M(4),mdy(v("c_dob")));T(M(5),nm("p1_"));T(M(6),v("p1_lives"));T(M(7),nm("p2_"));T(M(8),v("p2_lives"));T(M(9),v("h_regular"));T(M(10),mdy(v("h_lastexam")));T(M(11),v("h_walked"));T(M(12),v("h_talked"));T(M(13),v("h_toilet"));
+    ["chickenpox","asthma","rheumatic","hayfever","diabetes","epilepsy","whooping","mumps","polio","rubeola","rubella"].forEach((k,i)=>{const w=v("h_ill_"+k);C(M(14+i*2),!!w);T(M(15+i*2),w)});
+    T(M(36),v("h_other"));C(M(37),yes("h_colds"));C(M(38),no("h_colds"));T(M(39),v("h_coldsn"));T(M(40),v("h_allergies"));
+    [["d_wake",41],["d_bed",42],["d_sleepwell",43],["d_nap",44],["d_napwhen",45],["d_naplong",46],["d_bfast",47],["d_lunch",48],["d_dinner",49],["d_bfast_t",50],["d_lunch_t",51],["d_dinner_t",52],["d_dislikes",53],["d_eatprob",54]].forEach(([k,n])=>T(M(n),v(k)));
+    C(M(55),yes("d_toilet"));C(M(56),no("d_toilet"));T(M(57),v("d_stage"));C(M(58),yes("d_bm"));C(M(59),no("d_bm"));T(M(60),v("d_bmtime"));T(M(61),v("d_bmword"));T(M(62),v("d_uword"));T(M(63),v("v_health"));
+    C(M(64),yes("v_doctor"));C(M(65),no("v_doctor"));T(M(66),v("v_doctorname"));C(M(67),yes("v_meds"));C(M(68),no("v_meds"));T(M(69),v("v_medswhat"));C(M(70),yes("v_device"));C(M(71),no("v_device"));T(M(72),v("v_devicewhat"));C(M(73),yes("v_devhome"));C(M(74),no("v_devhome"));T(M(75),v("v_devhomewhat"));
+    [["v_personality",76],["v_along",77],["v_group",78],["v_needs",79],["v_ill",80],["v_reason",81]].forEach(([k,n])=>T(M(n),v(k)))});
+  await fill("LIC627",T=>{const a=addrOf("p1_");const [ha,hp]=splitPhone(v("p1_home")),[wa,wp]=splitPhone(v("p1_work"));T("Facility Name",FAC.name);T("Name",v("doc_name"));T("Medications",v("med_allergy"));T("Street Address",a[0]);T("City state and zipcode",[a[1],a[2],a[3]].filter(Boolean).join(" "));T("Home area code",ha);T("Home phone",hp);T("work phone area code",wa);T("work phone",wp)});
+  await fill("LIC995",T=>{T("LIC 995 4",nm("p1_"));T("LIC 995 5",FAC.name)});
+  await fill("LIC613A",T=>{T("LIC613a_6",FAC.name);T("LIC613a_7",FAC.addr);T("LIC613a_8",nm("c_"));T("LIC613a_10","Parent")});
+  if(d.sun===true||d.sun==="true")await fill("LIC9221",T=>{T("Text Field 12",FAC.name);T("Text Field 13",FAC.license);T("Text Field 15",nm("c_"));T("Text Field 16",mdy(v("c_dob")));T("Text Field 17","Sunscreen"+(v("sun_brand")?", "+v("sun_brand"):""));T("Text Field 18","Apply as directed on the label");T("Text Field 22","Before outdoor play and as needed")});
+  const blob=new Blob([await out.save()],{type:"application/pdf"});saveFile(blob,`Enrollment forms ${kidName(c)}.pdf`);toast("The forms are ready to print.")}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-kpacket],[data-kpaper],[data-kshareport],[data-kunshare],[data-confshare]");if(!t)return;const d=t.dataset;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.kpacket){const c=children.get(d.kpacket);if(!c)return;enrollPacket(c).catch(er=>{toast("The forms could not be filled. "+(er&&er.message||""))});return}
+  if(d.kpaper){const c=children.get(d.kpaper);if(!c)return;const on=!(c.onboarding||{}).paperwork;c.onboarding=Object.assign({},c.onboarding||{},{paperwork:on});kidNote(c,on?"Enrollment forms signed and complete":"Enrollment forms marked not signed");saveKid(c);renderMain();return}
+  if(d.confshare){const x=conferences.get(d.confshare);if(!x)return;const on=!x.sharedWithFamily;x.sharedWithFamily=on;db.doc("conferences/"+x.id).update({sharedWithFamily:on,sharedAt:on?new Date().toISOString():""}).then(()=>{renderMain();toast(on?"The notes are on the Family page.":"The notes are no longer shared.")}).catch(er=>toast(er&&er.message||"Could not save."));return}
+  if(d.kunshare){const [id,i]=d.kunshare.split("|");const c=children.get(id);if(!c)return;c.sharedFiles=(c.sharedFiles||[]).filter((x,j)=>j!==+i);db.doc("children/"+c.id).update({sharedFiles:c.sharedFiles}).then(()=>{renderMain();toast("No longer shared.")});return}
+  if(d.kshareport){const c=children.get(d.kshareport);if(!c)return;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet.`);return}
+    t.disabled=true;t.textContent="Making the portfolio…";
+    try{const docs=portfolioDocs(c);await loadPhotos(docs);const blob=await makePdf(docs,"portfolio.pdf",true);if(!blob)throw new Error("");
+      const b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
+      const j=await window.FP_API("/api/original",{name:`portfolio-${c.id}.pdf`,data:b64});
+      const title=`${c.first}'s portfolio, ${new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"})}`;
+      c.sharedFiles=[...(c.sharedFiles||[]).filter(x=>x&&x.title!==title),{id:j.id,title,at:new Date().toISOString(),kind:"portfolio"}];
+      await db.doc("children/"+c.id).update({sharedFiles:c.sharedFiles});renderMain();toast("The portfolio is on the Family page.")}
+    catch(er){toast("The portfolio could not be shared. "+(er&&er.message||""));t.disabled=false;t.textContent="Share the portfolio"}}});
 function kidFamilyHtml(c){
   const ps=(c.parents||[]).filter(p=>p&&(has(p.name)||has(p.email)||has(p.cell)));const noEmail=!ps.some(p=>has(p.email));
   if(kidFamEdit===c.id){const rows=kidFamRows||[...ps];while(rows.length<2)rows.push({});kidFamRows=rows;

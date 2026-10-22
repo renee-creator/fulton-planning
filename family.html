@@ -43,6 +43,16 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
 .tag.ev{background:var(--marigold-soft);color:var(--marigold)}
 .entry{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:15px}.entry:first-of-type{border-top:0}
 .code{font-size:26px;font-weight:700;letter-spacing:.2em;color:var(--moss)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.tabs button{font:inherit;font-weight:700;font-size:14px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}.tabs button[aria-current]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
+.sub{padding:10px 0;border-top:1px solid var(--line)}.sub:first-of-type{border-top:0;padding-top:0}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+.slotday{margin-top:8px}.slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.slot{font:inherit;font-size:14px;border:1px solid var(--moss);background:var(--paper);color:var(--moss);border-radius:999px;padding:5px 12px;cursor:pointer}.slot.on{background:var(--moss);color:var(--paper)}
+.step{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.step:first-of-type{border-top:0}.tick{width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--paper)}.tick.on{background:var(--moss);border-color:var(--moss)}
+.md h3{font-size:16px;margin:14px 0 4px;color:var(--moss)}.md p{margin:6px 0}.md ul{margin:6px 0;padding-left:20px}.md li{margin:3px 0}
+details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3{font-size:15px;margin:10px 0 2px}
+.mweek{display:grid;gap:8px}.mday{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:15px}.mday.today{border-color:var(--moss);background:var(--moss-soft)}.mday.closed{color:var(--muted)}.mday .k{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.esec{border-top:1px solid var(--line);padding:10px 0}.esec>summary{font-size:16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}.grid .wide{grid-column:1/-1}
+.chk{display:flex;gap:8px;align-items:center;font-weight:700;grid-column:1/-1}.chk input{width:auto}.ills{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:6px}.ill{font-weight:400}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -98,14 +108,43 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
   $("#f2").onsubmit=async e=>{e.preventDefault();const b=$("#b2");b.disabled=true;$("#e2").textContent="";
     try{const j=await api("/family/login",{email:LS.get("fam-email"),code:$("#code").value.trim()});token=j.token;LS.set("fam-token",token);$("#code").value="";await load()}
     catch(er){$("#e2").textContent=er.message}finally{b.disabled=false}};
+  document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("letter")&&!e.target.open)LS.set("fam-letter","1")},true);
   $("#again").onclick=()=>{$("#f1").hidden=false;$("#f2").hidden=true};
 
   async function load(){const j=await api("/family/data");D=j;$("#gate").hidden=true;$("#main").hidden=false;render()}
+  let tab=LS.get("fam-tab")||"", form=null, openRefl="";
+  const md=t=>{const lines=String(t||"").split("\n");let out="",list=false;const inl=s=>esc(s).replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,(m,a,u)=>`<a href="${u}" target="_blank" rel="noopener">${a}</a>`);
+    for(const l of lines){if(/^\s*-\s+/.test(l)){if(!list){out+="<ul>";list=true}out+="<li>"+inl(l.replace(/^\s*-\s+/,""))+"</li>";continue}if(list){out+="</ul>";list=false}
+      if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
-  function render(){
-    const ks=D.children;
-    let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
+  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food","Menu and calendar"]);return t};
+  function slotList(k){if(!k.slots.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
+    const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
+    return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
+  function welcomeHtml(){const ks=D.children.filter(k=>k.isNew);
+    return `<section class="card"><h2>Welcome to Fulton</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
+    ks.map(k=>{const e=k.enroll||{},q=k.questionnaire;const steps=[
+      [!!e.done,"Enrollment information",e.done?"Done. We will have the forms ready to sign at your visit.":e.at?"Started. Finish it when you can.":"Type it once here. We fill in the state forms for you.",`<button class="btn sm" data-form="enroll|${esc(k.id)}">${e.at?"Open it":"Start"}</button>`],
+      [!!q,"Family Questionnaire",q?"Thank you. Your child's teachers will read it before your visit.":"Helps your child's teachers get to know your family.",`<button class="btn sm ${q?"ghost":""}" data-form="q|${esc(k.id)}">${q?"See or change it":"Start"}</button>`],
+      [!!k.visit,"Your visit before the first day",k.visit?`${day(k.visit.date)} at ${time(k.visit.time)}${k.visit.with?" with "+k.visit.with:""}. Please bring the doctor's report and immunization record.`:"Choose a time below.",""],
+      [false,"Bring to your visit","The Physician's Report signed by your doctor, and your child's current immunization record.",""],
+      [false,"All About Me book","Four pages about your child, described in the welcome letter.",""]];
+      return `<section class="card"><h2>${esc(k.first)}'s first steps</h2>${steps.map(([ok,t,s,b])=>`<div class="step"><span class="tick ${ok?"on":""}" aria-hidden="true">${ok?"✓":""}</span><div style="flex:1;min-width:0"><b>${t}</b><div class="small muted">${esc(s)}</div></div>${b}</div>`).join("")}
+        ${k.slotPurpose==="visit"?`<div style="margin-top:10px"><div class="small"><b>${k.visit?"Change your visit time":"Choose a visit time"}</b></div>${slotList(k)}</div>`:""}</section>`}).join("")}
+  function kidsHtml(){return D.children.map(k=>{const c=k.conference;let h=`<section class="card"><h2>${esc(k.first)}</h2>`;
+      h+=`<div class="sub"><b>Family conference</b>${c?`<div>${esc(day(c.date))}${c.time?" at "+esc(time(c.time)):""}${c.with?" with "+esc(c.with):""}${c.format?" · "+esc(c.format):""}</div>`:`<div class="small muted">${k.slotPurpose==="conference"?"Choose a time below.":"Not scheduled yet. The school will let you know when sign-ups open."}</div>`}
+        ${k.slotPurpose==="conference"?`<div style="margin-top:6px">${slotList(k)}</div>`:""}</div>`;
+      if(k.reflections){const open=openRefl===k.id;const filled=Object.values(k.reflections).some(Boolean);
+        h+=`<div class="sub"><div class="top"><b>Before the conference</b><button class="link small" data-refl="${esc(k.id)}">${open?"Close":filled?"See or change your thoughts":"Share your thoughts"}</button></div>
+        <div class="small muted">A few questions to think about at home. Your answers go to ${esc(k.first)}'s teachers before you meet.</div>
+        ${open?`<div class="stack" style="margin-top:8px">${D.reflectionQs.map(([key,qq])=>`<label>${esc(qq)}<textarea rows="3" data-rq="${key}">${esc(k.reflections[key]||"")}</textarea></label>`).join("")}<div><button class="btn sm" data-reflsave="${esc(k.id)}">Save</button></div></div>`:""}</div>`}
+      if(k.shared.length||k.files.length)h+=`<div class="sub"><b>Shared with you</b>${k.files.map(f=>`<div class="top" style="margin-top:6px"><span>${esc(f.title)}</span><button class="btn sm ghost" data-file="${esc(f.id)}">Open</button></div>`).join("")}
+        ${k.shared.map(s=>`<details class="shared"><summary>Conference notes, ${esc(s.label)}</summary>${s.sections.map(([l,v])=>`<h3>${esc(l)}</h3><p style="white-space:pre-line">${esc(v)}</p>`).join("")}</details>`).join("")}</div>`;
+      return h+`</section>`}).join("")+
+    `<section class="card"><h2>What our family can share</h2><p class="small muted" style="margin:0 0 8px">Something you know, love to do, or could share with the children, such as a craft, a language, music, building or cooking. Teachers may invite you in when it fits what the children are exploring.</p>
+      <textarea id="str" rows="4" maxlength="3000">${esc(D.children[0].strengths||"")}</textarea><div style="margin-top:8px"><button class="btn sm" id="strsave">Save</button> <span class="small muted" id="strmsg"></span></div></section>`}
+  function partHtml(){const ks=D.children;let h="";
     h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
       <p class="small muted" style="margin:8px 0 0">Each child takes part for ${D.goal} hours a year. Every entry rounds up to the next whole hour.</p></section>`;
     if(D.signed.length)h+=`<section class="card"><h2>Did you take part?</h2><p class="small muted" style="margin:0 0 6px">You signed up for these. Log each one once it is done.</p>
@@ -119,12 +158,48 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
-    h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>
-      <p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
+    h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
+    return h}
+  function foodHtml(){const m=D.menu,t=today();const wk=(from,to)=>m.days.filter(d=>d.date>=from&&d.date<=to);
+    const mon=m.days.length?m.days[0].date:t;const next=m.days.length>5?m.days[5].date:"";
+    const dayCard=d=>d.closed?`<div class="mday closed"><b>${esc(day(d.date))}</b><div>No school</div></div>`:`<div class="mday ${d.date===t?"today":""}"><b>${esc(day(d.date))}</b>${d.am?`<div><span class="k">Morning snack</span> ${esc(d.am)}</div>`:""}${d.lunch?`<div><span class="k">Lunch</span> ${esc(d.lunch)}</div>`:""}${d.pm?`<div><span class="k">Afternoon snack</span> ${esc(d.pm)}</div>`:""}${!d.am&&!d.lunch?`<div class="small muted">Not posted yet</div>`:""}</div>`;
+    const MENU=new URL("public.html",location.href).href;
+    return `<section class="card"><h2>This week's menu</h2><div class="mweek">${m.days.slice(0,5).map(dayCard).join("")}</div>
+      ${next?`<details><summary>Next week</summary><div class="mweek" style="margin-top:8px">${m.days.slice(5,10).map(dayCard).join("")}</div></details>`:""}
+      <p style="margin:10px 0 0"><a href="${esc(MENU)}" target="_blank" rel="noopener">The whole month, and where our food comes from</a></p></section>
+      <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
+      ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
+      <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · <a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a></p></section>`}
+  function formHtml(){const [kind,id]=form.split("|");const k=D.children.find(x=>x.id===id);if(!k){form=null;return ""}
+    if(kind==="q"){const a=(k.questionnaire&&k.questionnaire.answers)||[];
+      return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Family Questionnaire for ${esc(k.first)}</h2><p class="small muted">Each child is unique. Your answers help ${esc(k.first)}'s teachers build a relationship with your family. They are kept confidential and used only for this. Answer what you can.</p>
+        <div class="stack">${D.questions.map((qq,i)=>`<label>${esc(qq)}<textarea rows="2" data-qa="${i}">${esc(a[i]||"")}</textarea></label>`).join("")}</div><div class="err" id="eq" aria-live="polite"></div><div style="margin-top:8px"><button class="btn" data-qsave="${esc(k.id)}">Send it</button></div></section>`}
+    const e=k.enroll||{},v=Object.assign({},e.prefill||{},e.data||{});
+    const field=f=>{const val=v[f.k]!=null?v[f.k]:(f.value!=null?f.value:"");
+      if(f.type==="check")return `<label class="chk"><input type="checkbox" data-ef="${f.k}" ${val===true||val==="true"?"checked":""}> ${esc(f.label)}</label>`;
+      if(f.type==="yn")return `<label>${esc(f.label)}<select data-ef="${f.k}"><option value=""></option><option ${val==="Yes"?"selected":""}>Yes</option><option ${val==="No"?"selected":""}>No</option></select></label>`;
+      if(f.type==="choice")return `<label>${esc(f.label)}<select data-ef="${f.k}">${f.options.map(o=>`<option ${val===o?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+      if(f.type==="area")return `<label class="wide">${esc(f.label)}<textarea rows="2" data-ef="${f.k}">${esc(val)}</textarea></label>`;
+      if(f.type==="illness")return `<div class="wide"><div class="small"><b>${esc(f.label)}</b></div><div class="ills">${f.options.map(([ok,ol])=>`<label class="ill">${esc(ol)}<input type="text" data-ef="h_ill_${ok}" placeholder="When, if had" value="${esc(v["h_ill_"+ok]||"")}"></label>`).join("")}</div></div>`;
+      return `<label>${esc(f.label)}<input type="${f.type==="date"?"date":"text"}" data-ef="${f.k}" value="${esc(val)}"></label>`};
+    return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Enrollment information for ${esc(k.first)}</h2>
+      <p class="small muted">Type it once. We fill in the state licensing forms with it, and you sign them at your visit. It saves as you go, so you can stop and come back.</p>
+      ${D.enrollForm.map(s=>`<details class="esec" ${s===D.enrollForm[0]?"open":""}><summary>${esc(s.title)}</summary>${s.note?`<p class="small muted">${esc(s.note)}</p>`:""}<div class="grid">${s.fields.map(field).join("")}</div></details>`).join("")}
+      <div class="err" id="ee" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-esave="${esc(k.id)}|done">It's complete</button> <button class="btn ghost" data-esave="${esc(k.id)}|">Save for later</button></div></section>`}
+  function render(){
+    if(form){$("#main").innerHTML=(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml();return}
+    const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
+    let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
+    h+=`<nav class="tabs" aria-label="Family page">${T.map(([k,l])=>`<button data-tab="${k}" ${tab===k?'aria-current="page"':""}>${esc(l)}</button>`).join("")}</nav>`;
+    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():foodHtml();
+    h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
-    $("#fl").onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const ss=$("#strsave");if(ss)ss.onclick=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});render();$("#strmsg").textContent="Saved. Thank you."}catch(er){$("#strmsg").textContent=er.message}};
     $("#out").onclick=()=>{token=null;LS.set("fam-token",null);showGate()};
   }
+  const readEnroll=()=>{const o={};document.querySelectorAll("[data-ef]").forEach(x=>{o[x.dataset.ef]=x.type==="checkbox"?x.checked:x.value});return o};
+  let eTimer=null;document.addEventListener("input",e=>{if(!form||!form.startsWith("enroll")||!e.target.dataset.ef)return;clearTimeout(eTimer);const id=form.split("|")[1];eTimer=setTimeout(()=>api("/family/enroll",{childId:id,data:readEnroll(),done:false}).then(j=>{D=j}).catch(()=>{}),1200)});
   document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||!D)return;const d=b.dataset;
     try{
       if(d.signup){b.disabled=true;D=await api("/family/signup",{itemId:d.signup,on:true});render()}
@@ -133,6 +208,15 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
       else if(d.logcancel){logFor=null;render()}
       else if(d.logsave){const id=d.logsave;D=await api("/family/log",{itemId:id,childId:$("#lk-"+id).value,minutes:Math.round((Number($("#lh-"+id).value)||0)*60)});logFor=null;render()}
       else if(d.unlog){D=await api("/family/unlog",{id:d.unlog});render()}
+      else if(d.tab){tab=d.tab;LS.set("fam-tab",tab);render();window.scrollTo(0,0)}
+      else if(d.book){const on=!b.classList.contains("on");D=await api("/family/book",{slotId:d.book,childId:d.kid,on});render()}
+      else if(d.refl){openRefl=openRefl===d.refl?"":d.refl;render()}
+      else if(d.reflsave){const ans={};document.querySelectorAll("[data-rq]").forEach(x=>ans[x.dataset.rq]=x.value);D=await api("/family/reflect",{childId:d.reflsave,answers:ans});openRefl="";render()}
+      else if(d.form){form=d.form;render();window.scrollTo(0,0)}
+      else if(d.formclose){form=null;render();window.scrollTo(0,0)}
+      else if(d.qsave){const a=[...document.querySelectorAll("[data-qa]")].map(x=>x.value);try{D=await api("/family/questionnaire",{childId:d.qsave,answers:a});form=null;render();window.scrollTo(0,0)}catch(er){$("#eq").textContent=er.message}}
+      else if(d.esave){const [id,done]=d.esave.split("|");clearTimeout(eTimer);try{D=await api("/family/enroll",{childId:id,data:readEnroll(),done:!!done});form=null;render();window.scrollTo(0,0)}catch(er){$("#ee").textContent=er.message}}
+      else if(d.file){const w=window.open("","_blank");const j=await api("/family/file",{id:d.file});if(w)w.location=SERVER+j.path;else location.href=SERVER+j.path}
     }catch(er){if(er.message)alert(er.message);b.disabled=false}});
   if(token)load().catch(er=>{showGate();if(er.message)$("#e1").textContent=er.message});else showGate();
 })();
