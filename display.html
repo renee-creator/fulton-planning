@@ -33,7 +33,7 @@ body.idle{cursor:none}
 .wonder{font-size:calc(var(--u)*2);line-height:1.45;color:var(--muted);margin-top:calc(var(--u)*2);max-width:38ch;padding-left:calc(var(--u)*1.4);border-left:calc(var(--u)*.35) solid var(--line)}
 .kids{font-size:calc(var(--u)*1.6);color:var(--muted);margin-top:calc(var(--u)*2.4)}
 
-/* DRDP in practice, the moment beside the measure and the level it is evidence toward */
+/* DRDP in practice, the moment beside the measure and its level */
 .d .tx{justify-content:center}
 .d .meta{font-size:calc(var(--u)*1.5);color:var(--muted)}
 .d .noticed{font-size:calc(var(--u)*2.1);margin-top:calc(var(--u)*1.4);max-width:40ch}
@@ -149,7 +149,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       <div class="meta">${esc([d.child,roomsText(d.rooms),whenOf(d.seen)].filter(Boolean).join(", "))}</div>
       ${d.noticed?`<div class="noticed">${esc(d.noticed)}</div>`:""}
       <div class="measure"><div class="where">${esc(d.code)}</div><h2>${esc(d.measure||d.code)}</h2>${d.def?`<p>${esc(d.def)}</p>`:""}</div>
-      <div class="lvl"><b>Evidence toward ${esc(d.level)}${d.emerging?", emerging to the next level":""}</b>${d.descriptor?`<p>${esc(d.descriptor)}</p>`:""}</div>
+      <div class="lvl"><b>${esc(d.level)}${d.emerging?", emerging to the next level":""}</b>${d.descriptor?`<p>${esc(d.descriptor)}</p>`:""}</div>
       <div class="fine">Evidence from our documentation${d.by?", reviewed by "+esc(d.by):""}. Never a DRDP rating on its own.</div></div>`}
   function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" Class":"across the school")}</span></div>
       <h1>${esc(t.name)}</h1>${t.question?`<div class="q">${esc(t.question)}</div>`:""}
