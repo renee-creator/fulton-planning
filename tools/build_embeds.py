@@ -97,7 +97,7 @@ const long=d=>new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",d
 function windowOf(cf){let from="";try{const pr=priorConf(cf);if(pr&&pr.confDate)from=pr.confDate}catch(e){}
   if(!from){const y=parseInt(cf.schoolYear,10);from=Number.isFinite(y)?y+"-08-01":""}
   const to=cf.confDate||iso(Date.now());return {from,to}}
-const line=x=>x.name+", evidence toward "+x.level+(x.emerging?", emerging to the next level":"")+", not a DRDP rating."+(x.evidence?" "+x.evidence:"")+(x.title?" ("+x.title+", "+long(iso(x.at))+")":"");
+const line=x=>x.name+", evidence toward "+x.level+(x.emerging?", emerging to the next level":"")+"."+(x.evidence?" "+x.evidence:"")+(x.title?" ("+x.title+", "+long(iso(x.at))+")":"");
 function addTo(k,lines){const ta=document.querySelector('#conf-editor textarea[data-k="'+k+'"]');if(!ta||ta.readOnly||ta.disabled)return 0;
   const have=ta.value;const add=lines.filter(l=>!have.includes(l));if(!add.length)return 0;ta.value=(have.trim()?have.replace(/\s+$/,"")+"\n":"")+add.join("\n");
   ta.dispatchEvent(new Event("input",{bubbles:true}));ta.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return add.length}
@@ -112,7 +112,7 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   const span="from "+long(w.from)+" to "+long(w.to);
   const per={};for(const [k,doms] of Object.entries(MAP))per[k]=items.filter(x=>doms.includes(x.dom));
   for(const [k,list] of Object.entries(per)){if(!list.length)continue;const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))continue;
-    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>DRDP evidence, "+span+"</b><div class=\"muted\">Evidence from our documentation, not a DRDP rating.</div><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", evidence toward <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
+    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>DRDP evidence, "+span+"</b><div class=\"muted\">Evidence toward a level, from our documentation.</div><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", evidence toward <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
     const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,list.map(line));b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
   if(docs.length){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(wrap&&!wrap.querySelector(".tree-bring")){const box=document.createElement("div");box.className="tree-bring";
     const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. Pieces added to this section print after the form, in the PDF and as a second Word file. A piece not listed here does not print.</div>";
