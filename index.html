@@ -102,8 +102,9 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
 .sendmiss{font-size:14px;line-height:1.5}
 #kfam input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink);width:100%}.kfamrow{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.ptsign{margin:4px 0 0;padding-left:18px;font-size:14px;color:var(--muted)}.ptsign li{margin:1px 0}
 .ptitem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ptitem .actions{flex-wrap:nowrap}
-.card.ptbanner{border-color:var(--marigold);background:var(--marigold-soft)}#pt-temail,.ptform input,.ptform select,.ptform textarea,#pt-kq{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.ptform{display:grid;gap:10px}.ptform input,.ptform select,.ptform textarea{width:100%}
+.card.ptbanner{border-color:var(--marigold);background:var(--marigold-soft)}#pt-temail,.ptform input,.ptform select,.ptform textarea,#pt-kq{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.ptform{display:grid;gap:10px}.ptform input,.ptform select,.ptform textarea{width:100%}.ptform input[type=checkbox]{width:auto;flex:none}
 .ptkid summary{display:flex;justify-content:space-between;gap:10px;padding:10px 0;cursor:pointer;border-top:1px solid var(--line)}.pthrs{font-weight:600;white-space:nowrap}.pthrs.done{color:var(--moss)}
 .ptlog{display:flex;justify-content:space-between;gap:10px;padding:6px 0 6px 12px;font-size:14px}.ptkids{display:grid;gap:8px;padding:0 0 10px}
 .gsform{display:grid;gap:10px}.gsform input[type=search]{width:100%;font-size:16px}.gsrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}.gsrow label{display:grid;gap:4px;font-size:13px}
@@ -257,6 +258,10 @@ span.pfstate{cursor:default;border-style:dashed}
 .drrow>summary::-webkit-details-marker{display:none}.drrow[open]>summary{background:var(--sun-wash)}
 .drcode{min-width:0;flex:1 1 260px}.drnow{text-align:right}.drbody{display:grid;gap:6px;padding:6px 2px 12px}
 .drev{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px dashed var(--line)}.drev:first-child{border-top:0}
+.drsrc{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-radius:10px;padding:8px;margin:2px 0}.drsrc .drph{display:flex;gap:6px;flex:none}.drsrc img{width:110px;height:110px;object-fit:cover;border-radius:8px;cursor:zoom-in}
+.drsrc .drtx{font-size:15px;line-height:1.45;white-space:pre-line;min-width:0;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.drsrc .drtx.all{display:block}
+@media (max-width:640px){.drsrc{flex-direction:column}.drsrc img{width:90px;height:90px}}
+.drzoom{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;cursor:zoom-out;padding:16px}.drzoom img{max-width:100%;max-height:100%;border-radius:8px}
 .drthumb{width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none}
 .drchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}.drchip{font-size:11.5px;font-weight:700;letter-spacing:.03em;background:var(--sky-soft);color:var(--sky);border-radius:999px;padding:1px 8px}
 .storebar{width:180px;max-width:40vw;height:10px;border-radius:6px;background:var(--moss-soft);overflow:hidden;align-self:center}.storebar span{display:block;height:100%;background:var(--moss)}
@@ -2251,6 +2256,15 @@ function drdpCompareHtml(v,code,level,open){
   const m=DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][code];if(!m)return"";
   return `<details class="drcmp" ${open?"open":""}><summary class="cnt">Compare every level of ${esc(code)}</summary>${m.def?`<div class="cnt" style="margin:6px 0">${esc(m.def)}</div>`:""}
     <ol>${drdpLevels(v,code).map(l=>`<li class="${l===level?"on":""}"><b>${esc(l)}</b> ${esc(drdpLevelDesc(v,code,l))}</li>`).join("")}</ol></details>`}
+// the evidence itself, the photos and the educator's own words, so a level can be confirmed without leaving the page
+function drSourceHtml(x){const src=x&&x.src;if(!src)return"";let ns=[],tx="";
+  if(src.kind==="slides"){const sl=slides.get(src.id);if(!sl)return"";ns=slidePhotos(sl).map(id=>notices.get(id)).filter(Boolean);const ms=(sl.momentIds||[]).map(id=>notices.get(id)).filter(Boolean);
+    tx=[sl.title,String(sl.text||"").trim(),...(sl.quotes||[]).filter(q=>q&&q.words).map(q=>`${q.name?q.name+", ":""}"${q.words}"`),...ms.map(n=>String(n.noticed||"").trim())].filter(Boolean).join("\n")}
+  else{const n=notices.get(src.id);if(!n)return"";ns=[n];tx=[String(n.noticed||"").trim(),String(n.wonder||"").trim()].filter(Boolean).join("\n")}
+  const ph=ns.filter(n=>n.photo).slice(0,3);if(!ph.length&&!tx)return"";
+  return `<div class="drsrc">${ph.length?`<div class="drph">${ph.map(n=>`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" data-drzoom="${esc(n.id)}">`).join("")}</div>`:""}${tx?`<div class="drtx" data-drmore="1" title="Tap to read all">${esc(tx)}</div>`:""}</div>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-drmore]");if(t){t.classList.toggle("all");return}
+  const z=e.target.closest("[data-drzoom]");if(z){const n=notices.get(z.dataset.drzoom);if(!n)return;const w=document.createElement("div");w.className="drzoom";w.innerHTML=`<img src="${esc(photoSrc(n))}" alt="">`;w.onclick=()=>w.remove();document.body.appendChild(w)}});
 function kidDrdpHtml(c){
   loadDrdpTxt();
   const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
@@ -2265,6 +2279,7 @@ function kidDrdpHtml(c){
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
       <div class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</div>
       <div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
+      ${drSourceHtml(x)}
       ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}
       <div class="cnt">From ${srcBtn(x)}${x.by==="keywords"?", by keyword match":""}</div>
       ${drdpCompareHtml(x.view||v,x.code,x.level,drdpEdit===x.id)}
@@ -7962,7 +7977,11 @@ function renderParticipation(){
   const its=ptItems().filter(x=>!!x.test===test).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
   const upcoming=its.filter(x=>!x.date||x.date>=today),past=its.filter(x=>x.date&&x.date<today);
   const tag=test?` <span class="status ready">Test</span>`:"";
-  const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0"><b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" Class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?`<div class="cnt">${ss.map(s=>esc(s.family||s.email)).join(", ")}</div>`:""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
+  const ptCounts=x=>x.counts==null?x.type==="event":!!x.counts;
+  const ptMany=(n,w)=>n+" "+w+(n==1?"":(w==="child"?"ren":"s"));
+  const ptSignups=(x,ss)=>{const cnt=ptCounts(x);const ad=ss.reduce((a,s)=>a+(Number(s.adults)||0),0),ch=ss.reduce((a,s)=>a+(Number(s.children)||0),0);
+    return `${cnt?`<div class="cnt"><b>Coming ${ptMany(ad,"adult")} and ${ptMany(ch,"child")}</b></div>`:""}<ul class="ptsign">${ss.map(s=>`<li>${esc(s.who||s.family||s.email)}${s.who&&s.family?` <span class="muted">(${esc(s.family)})</span>`:""}${cnt&&s.adults!=null?" · "+ptMany(s.adults,"adult")+", "+ptMany(s.children||0,"child"):""}${s.answer?" · "+esc(s.answer):""}</li>`).join("")}</ul>`};
+  const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0"><b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" Class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?ptSignups(x,ss):""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
     <span class="actions"><button class="btn small ghost" data-ptedit="${esc(x.id)}">Change</button><button class="linkbtn" data-ptopen="${esc(x.id)}">${x.open===false?"Open it again":"Close it"}</button></span></div>`};
   const form=ptForm?`<section class="card ptform"><h3 style="font-size:17px">${ptForm.id?"Change":"Add"} a way to take part</h3>
     <div class="chips" role="group" aria-label="Kind">${[["task","Volunteer task"],["event","Community event"]].map(([k,l])=>`<button class="chip ${ptForm.type===k?"on":""}" data-pttype="${k}" type="button">${l}</button>`).join("")}</div>
@@ -7970,6 +7989,8 @@ function renderParticipation(){
     <div class="gsrow"><label>Day, if it has one<input type="date" id="pt-date" value="${esc(ptForm.date||"")}"></label><label>Starts<input type="time" id="pt-start" value="${esc(ptForm.start||"")}"></label><label>Ends<input type="time" id="pt-end" value="${esc(ptForm.end||"")}"></label></div>
     <div class="gsrow"><label>Hours it counts for<input type="number" min="1" max="12" step="1" id="pt-hours" value="${esc(ptForm.hours||"")}"></label><label>Spots, if limited<input type="number" min="0" step="1" id="pt-spots" value="${esc(ptForm.spots||"")}"></label><label>For<select id="pt-class"><option value="">Every family</option>${CLASSROOMS.map(r=>`<option ${ptForm.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label></div>
     <label class="fld-label">A note for families, optional<textarea id="pt-note" rows="2">${esc(ptForm.note||"")}</textarea></label>
+    <label class="radio" style="display:flex;gap:8px;align-items:center;justify-content:flex-start"><input type="checkbox" id="pt-counts" ${(ptForm.counts==null?ptForm.type==="event":ptForm.counts)?"checked":""}><span>Ask how many adults and children are coming</span></label>
+    <label class="fld-label">A question for families, optional<input type="text" id="pt-q" maxlength="120" value="${esc(ptForm.question||"")}" placeholder="Ex. What dish will you bring?"></label>
     <div class="actions"><button class="btn" data-ptsave="1">Save</button><button class="btn ghost" data-ptcancel="1">Cancel</button>${ptForm.id?`<button class="linkbtn" data-ptdel="${esc(ptForm.id)}">Delete</button>`:""}</div></section>`:"";
   const testers=c.testers.map((t,i)=>`<div class="ptitem"><div style="min-width:0"><b>${esc(t.email)}</b><div class="cnt">${(t.children||[]).map(id=>children.get(id)).filter(Boolean).map(k=>esc(kidName(k))).join(", ")||"No children linked yet"}</div></div><span class="actions"><button class="btn small ghost" data-pttkids="${i}">Children</button><button class="linkbtn" data-pttdel="${i}">Remove</button></span></div>
     ${ptOpen==="t"+i?`<div class="ptkids"><input type="search" id="pt-kq" placeholder="Find a child" value="${esc(ptKidQ)}"><div class="chips">${kidsAt().filter(k=>!ptKidQ||kidName(k).toLowerCase().includes(ptKidQ.toLowerCase())).sort((a,b)=>kidName(a).localeCompare(kidName(b))).slice(0,40).map(k=>`<button class="chip ${(t.children||[]).includes(k.id)?"on":""}" data-pttkid="${i}|${esc(k.id)}" type="button">${esc(kidName(k))}</button>`).join("")}</div></div>`:""}`).join("");
@@ -8031,7 +8052,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   const saveCfg=nc=>ptSave("config",Object.assign({kind:"config"},c,nc,{updatedAt:Date.now()})).then(renderMain);
   if(d.ptnew){ptForm={type:"task"};renderMain();return}
   if(d.ptcancel){ptForm=null;renderMain();return}
-  if(d.pttype&&ptForm){Object.assign(ptForm,ptRead());ptForm.type=d.pttype;renderMain();return}
+  if(d.pttype&&ptForm){Object.assign(ptForm,ptRead());ptForm.type=d.pttype;if(!ptForm.id)ptForm.counts=d.pttype==="event";renderMain();return}
   if(d.ptedit){ptForm=Object.assign({},participation.get(d.ptedit));renderMain();$(".ptform")?.scrollIntoView({block:"start"});return}
   if(d.ptsave&&ptForm){const v=Object.assign({},ptForm,ptRead());if(!v.title){toast("Say what it is.");return}
     const id=v.id||ptNewId("it");ptSave(id,Object.assign({kind:"item",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""},participation.get(id)||{},v,{id,updatedAt:Date.now()})).then(()=>{ptForm=null;renderMain();toast("Saved. Families see it on the Family page.")});return}
@@ -8051,7 +8072,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
     Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared, and the real records put back.`)});return}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
-function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note")}}
+function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note"),question:v("pt-q"),counts:$("#pt-counts")?$("#pt-counts").checked:undefined}}
 function evAttachedHtml(p,locked){const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="plan"&&plans.has(r.id));if(!refs.length)return "";
   return `<details class="evsrc"><summary class="cnt">Attached from other plans, ${refs.length}</summary>${refs.map(r=>{const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);
     return `<div style="margin-top:6px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><div class="evclamp" style="white-space:pre-line">${esc(pl.fields?.[r.k]||"")}</div><div class="actions"><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button>${locked?"":`<button class="linkbtn" data-evoff="plan|${esc(pl.id)}">Take off</button>`}</div></div>`}).join("")}</details>`}

@@ -135,14 +135,15 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
-      .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email) }; });
+      .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
     // what this family signed up for that has happened and is not logged yet, so logging it is one tap
     const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && it.date && it.date <= today && it.date >= ys && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
     const kidsOut = hours.map(h => Object.assign(h, childExtras(f, f.kids.find(k => k.id === h.id), c, today)));
     const entries = mine.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(l => ({ id: l.id, what: l.what, date: l.date, hours: l.hours, child: firstOf(f.kids.find(k => k.id === l.childId) || {}), childId: l.childId, mine: l.email === f.email }));
     const anyNew = kidsOut.some(k => k.isNew);
-    return { test: f.test, goal: c.goal, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
+    const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
+    return { test: f.test, goal: c.goal, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 
@@ -238,12 +239,19 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { days, closures };
   }
 
-  function signUp(f, itemId, on) {
+  // events ask how many adults and children are coming, unless the school turned that off; a task asks who is coming
+  const asksCounts = it => it.counts == null ? it.type === 'event' : !!it.counts;
+  function signUp(f, itemId, on, b) {
     const r = recs().get(itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item' || !!it.test !== f.test) return { error: 'That is no longer open.' };
-    const ss = (it.signups || []).filter(s => s.email !== f.email);
-    if (on) { if (it.open === false) return { error: 'That is no longer open.' }; if (Number(it.spots) > 0 && ss.length >= Number(it.spots)) return { error: 'Every spot is taken.' };
+    const had = (it.signups || []).find(s => s.email === f.email); const ss = (it.signups || []).filter(s => s.email !== f.email);
+    if (on) { if (it.open === false) return { error: 'That is no longer open.' }; if (!had && Number(it.spots) > 0 && ss.length >= Number(it.spots)) return { error: 'Every spot is taken.' };
+      b = b || {}; const who = String(b.who || '').trim().slice(0, 120); if (!who) return { error: 'Say who is coming.' };
+      const n = x => Math.max(0, Math.min(30, Math.round(Number(x) || 0)));
       const names = [...new Set(f.kids.map(k => [k.first, k.last].filter(Boolean).join(' ')))].join(' and ');
-      ss.push({ email: f.email, family: names, at: nowIso() }); }
+      const e = { email: f.email, family: names, who, at: had ? had.at : nowIso() };
+      if (asksCounts(it)) { e.adults = n(b.adults); e.children = n(b.children); if (!e.adults) return { error: 'Say how many adults are coming.' }; }
+      if (it.question) e.answer = String(b.answer || '').trim().slice(0, 300);
+      ss.push(e); }
     save(itemId, Object.assign({}, it, { signups: ss, updatedAt: nowIso() })); return { ok: true };
   }
   function addLog(f, b) {
