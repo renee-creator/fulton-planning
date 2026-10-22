@@ -10,7 +10,7 @@ def rep(s, a, b, n=1):
     return s.replace(a, b)
 
 def head(title, extra=""):
-    return ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+    return ('<!doctype html>\n<html lang="en" data-theme="light">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
             '<meta name="robots" content="noindex,nofollow">\n'
             f'<title>{title}</title>\n' + extra +

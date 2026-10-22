@@ -10,7 +10,7 @@ assert app.count(marker) == 1, "app script marker not found"
 # move the page title, fonts and the PDF library into the head
 cut = app.index("<style>")
 headbits, body = app[:cut], app[cut:]
-head = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+head = ('<!doctype html>\n<html lang="en" data-theme="light">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
         '<meta name="robots" content="noindex,nofollow">\n'
         '<link rel="icon" href="tree-icons/favicon-32.png" type="image/png">\n<link rel="apple-touch-icon" href="tree-icons/apple-touch-icon.png">\n'
