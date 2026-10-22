@@ -257,3 +257,7 @@ On Today, Final remarks, the words on a copied photo, the children in a Kaymbu p
 ## The evidence beside a plan
 
 The evidence panel shows what the plan is built on first. That is the project, threads and inquiries it follows, last week's Final remarks, and for an Individual plan last week's Classroom plan for the class. Below them come the observations attached to the plan or kept with what it follows, and from the last three weeks the observations of the children in its small groups and the class's whole-class moments, kept with no child named or with half the class or more named. Four show, newest first, and the rest fold under More from this group. The class's other observations wait under More from the class, closed until opened. The search at the top still covers every observation, plan and thread.
+
+## Search
+
+Search, at the top of every page, looks across every observation, photo, plan, thread, project, slide, wall and story. It finds words, children's names and educators, and narrows by child, small group and when, this month, this school year or last. Photos are found by their words and the children tagged in them. Results are grouped by kind with the newest first, and each opens where it lives, with Back to Search.
