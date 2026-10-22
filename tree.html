@@ -1913,7 +1913,8 @@ function applyLock(){try{foldIntros()}catch(e){}
   const ctrls=[...main.querySelectorAll("textarea,input,select")].filter(el=>!el.closest(LOCK_KEEP)&&el.type!=="search");
   if(!ctrls.length)return;
   const zones=new Set();
-  for(const el of ctrls){if(el.tagName==="SELECT"||el.type==="checkbox"||el.type==="radio"||el.type==="color"||el.type==="date"||el.type==="time"||el.type==="file")el.disabled=true;else el.readOnly=true;
+  for(const el of ctrls){if(el.type==="checkbox"||el.type==="radio"){el.dataset.lockTick="1";const z=el.closest("section,.card,.meta,.kfields,.two,.pdir");if(z)zones.add(z);continue}
+    if(el.tagName==="SELECT"||el.type==="color"||el.type==="date"||el.type==="time"||el.type==="file")el.disabled=true;else el.readOnly=true;
     const z=el.closest("section,.card,.meta,.kfields,.two,.pdir");if(z)zones.add(z)}
   for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
   // Renee marks a plan reviewed while reading it, without pressing Edit first
@@ -1922,6 +1923,8 @@ function applyLock(){try{foldIntros()}catch(e){}
     const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
+// a saved page shows its ticks in full colour, and a tick cannot change until Edit is pressed
+document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest("#main.locked input[data-lock-tick],#main.locked label");if(!x)return;const inp=x.matches("input")?x:x.querySelector("input[data-lock-tick]");if(inp){e.preventDefault();e.stopPropagation()}},true);
 const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});
 document.addEventListener("DOMContentLoaded",()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})});
 setTimeout(()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})},0);

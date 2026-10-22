@@ -2589,7 +2589,7 @@ boot();
 <script>setTimeout(()=>{try{if(!(S.loaded.children&&S.loaded.confs)){const a=document.getElementById("app");if(a)a.innerHTML='<div class="empty" style="display:grid;gap:10px;justify-items:center">The conference records are taking longer than usual to load.<button class="btn primary" onclick="location.reload()">Try again</button></div>'}}catch(e){}},25000);</script>
 <style>.tree-lockbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:#fffbe8;border:1px solid #f0cf4f;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14.5px}
 #conf-editor.tree-locked textarea[readonly],#conf-editor.tree-locked input[readonly]{background:transparent;border-color:transparent;box-shadow:none;resize:none;cursor:default}
-#conf-editor.tree-locked select:disabled,#conf-editor.tree-locked input:disabled{opacity:1;color:inherit;background:transparent;border-color:transparent;-webkit-appearance:none;appearance:none}
+#conf-editor.tree-locked select:disabled,#conf-editor.tree-locked input:disabled:not([type=checkbox]):not([type=radio]){opacity:1;color:inherit;background:transparent;border-color:transparent;-webkit-appearance:none;appearance:none}#conf-editor.tree-locked input[type=checkbox],#conf-editor.tree-locked input[type=radio],#conf-editor.tree-locked .sc-opt{cursor:default}#conf-editor.tree-locked input[type=checkbox]:disabled+*,#conf-editor.tree-locked label:has(input:disabled){opacity:1;color:inherit;cursor:default}
 #conf-editor.tree-locked button:disabled{opacity:.55}</style>
 <script>(()=>{let seen="",unlocked="",busy=false;
 const keep=b=>/print|pdf|word|download|back|close|open|copy/i.test(b.textContent||"")||b.dataset.go;
@@ -2599,9 +2599,11 @@ function lock(){const ed=document.getElementById("conf-editor");if(!ed){seen="";
   let bar=ed.querySelector(".tree-lockbar");
   if(!on){if(bar)bar.remove();ed.querySelectorAll("[data-tree-locked]").forEach(x=>{x.readOnly=false;x.disabled=false;delete x.dataset.treeLocked});return}
   ed.querySelectorAll("textarea,input,select,button").forEach(x=>{if(x.dataset.treeLocked||x.closest(".tree-lockbar"))return;
-    if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(x.tagName==="SELECT"||/checkbox|radio|file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
+    if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(/checkbox|radio/.test(x.type))return;else if(x.tagName==="SELECT"||/file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
   if(!bar){bar=document.createElement("div");bar.className="tree-lockbar";bar.innerHTML='<span>Saved</span><button type="button" class="btn small primary">Edit</button>';
     bar.querySelector("button").onclick=()=>{unlocked=id;lock();const f=ed.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})};ed.prepend(bar)}}
+// a saved form shows its ticks in full colour, and a tick cannot change until Edit is pressed
+document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest("#conf-editor.tree-locked input[type=checkbox],#conf-editor.tree-locked input[type=radio],#conf-editor.tree-locked label");if(!x)return;const inp=x.matches("input")?x:x.querySelector("input[type=checkbox],input[type=radio]");if(inp){e.preventDefault();e.stopPropagation()}},true);
 const go=()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{lock()}catch(e){}})};
 new MutationObserver(go).observe(document.body,{childList:true,subtree:true});go();})();</script>
 <style>.tree-bring{margin-top:6px;border:1px solid #c6d0c3;border-radius:10px;background:#f6f9f4;padding:8px 10px;font-size:13.5px}
