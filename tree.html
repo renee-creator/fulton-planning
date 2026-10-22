@@ -100,7 +100,11 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
-.sendmiss{font-size:14px;line-height:1.5}.sendmiss .linkbtn{font-size:14px}
+.sendmiss{font-size:14px;line-height:1.5}
+.tq{display:grid;gap:8px;padding:10px 12px 14px 30px;border-bottom:1px solid var(--line)}.tq textarea{width:100%}.tqimg{max-width:180px;max-height:180px;border-radius:8px;object-fit:cover;display:block}
+.tqph{display:grid;gap:6px}.titem.tqon{border-bottom:0}
+.nextbar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);z-index:55;width:min(560px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
+.nextbar .actions{display:flex;gap:6px}.sendmiss .linkbtn{font-size:14px}
 .sendask{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:6px}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
@@ -1367,6 +1371,7 @@ function renderList(){
 let kLanded=false;
 function renderMain(){
   try{noteLeaving()}catch(e){}
+  queueMicrotask(()=>{try{renderWaitBar()}catch(e){}});
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
   if(view==="kitchen"){renderKitchen();return}
@@ -3899,9 +3904,9 @@ function todayWaiting(){
   for(const p of all.filter(p=>p.weekOf===wk&&p.status==="draft"&&m&&(p.educator||"").toLowerCase()===m.toLowerCase()).slice(0,3))
     out.push({dot:"mari",t:`Finish your ${FORMS[p.type].short} plan`,s:planTitle(p),act:`data-open="${p.id}"`,b:"Open"});
   const due=dueList();for(const p of due.list.slice(0,3))
-    out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write"});
+    out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
-    out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check"});
+    out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check",q:"photo|"+n.id});
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   // the photos of one post wait as one row, with the number of photos, and Tag opens them together
   {const rm=myRoom();const waits=[...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0));
@@ -3911,7 +3916,7 @@ function todayWaiting(){
     // the moment's own words, and the reason it waits, kept apart so a group of them shows the reason once
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
-    out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag"})}}
+    out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag",q:"kay|"+n.id})}}
   // an observation TREE thinks might belong to a thread, one row for each post, folded together on Today
   {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
     const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
@@ -3933,7 +3938,7 @@ function todayWaiting(){
     if(n)out.push({dot:"mari",n,t:`${n} possible food education record${n===1?"":"s"} to confirm`,s:"Observations and plans that mention food, gardening or cooking. Count each one for the grant or set it aside.",act:`data-tview="grant"`,b:"Confirm"})}
   {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   {const rm=myRoom();for(const c of kidsAt().filter(c=>(dir||!rm||c.classroom===rm)&&kidTurnsThree(c)).slice(0,3))
-    out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new observations against the Preschool Transitional Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose"})}
+    out.push({dot:"mari",t:`${c.first} turns three on ${longDate(kidTurnsThree(c))}`,s:"TREE then reads new observations against the Preschool Transitional Kindergarten View. Choose the view to keep on the DRDP tab.",act:`data-kid="${esc(c.id)}" data-drdpfocus="1"`,b:"Choose",q:"three|"+c.id})}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
   const mineC=upcoming.filter(c=>{const k=children.get(c.childId);const t=(c.teacher||"").toLowerCase();return m&&t===m.toLowerCase()||(!dir&&room&&k.classroom===room)});
@@ -3952,22 +3957,86 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
-  :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
+const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
-  const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
+  // a quick task opens right here under its row. Anything else opens its page, with the Next bar to move through the rest
+  const row=w=>{const k=(WAIT_KIND(w)||[])[0]||"";const open=tqOpen===w.q;
+    return `<div class="titem${open?" tqon":""}"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div>${w.q?`<button class="btn small ghost" data-tq="${esc(w.q)}" aria-expanded="${open}">${open?"Close":w.b}</button>`:`<button class="btn small ghost" ${w.act} data-wk="${esc(k)}" data-wt="${esc(w.t+"|"+w.s)}">${w.b}</button>`}</div>${open?`<div class="tq" id="tqbox">${tqHtml(w)}</div>`:""}`};
   const rows=[],seen=new Map();
   for(const w of list){const k=WAIT_KIND(w);const n=k?list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]).length:0;
     if(k&&n>1){if(seen.has(k[0]))continue;const items=list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]);seen.set(k[0],1);
       const why=items.every(x=>x.why&&x.why===items[0].why)?items[0].why:"";
       const ps=[...new Set(items.map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):x.pv!=null?x.pv:(x.s||x.t),56).replace(/[.!?…]$/,"")).filter(Boolean))];
       const gist=ps.slice(0,2).join(". ")+(ps.length>2||items.length>2?", and more":"")+(why?". "+why:"");
-      rows.push(`<details class="tgroup"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
+      rows.push(`<details class="tgroup" data-tg="${esc(k[0])}" ${tgOpen.has(k[0])?"open":""}><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
     else rows.push(row(w))}
   const shown=todayAll?rows:rows.slice(0,5);
   return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
+// the groups left open on Today stay open when Today is drawn again, so coming back lands in the same place
+const tgOpen=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset||!d.dataset.tg)return;if(d.open)tgOpen.add(d.dataset.tg);else tgOpen.delete(d.dataset.tg)},true);
+function redrawToday(){if(view!=="today")return;const y=window.scrollY;renderMain();window.scrollTo(0,y)}
+/* ---------- quick tasks on Today ----------
+   Final remarks, words on a copied photo, the children in a Kaymbu photo and the DRDP view for a child turning three are
+   done under their row, each closing as it is done, with the next one beneath it. */
+let tqOpen="",tqKids=null,tqRoom="";
+function tqHtml(w){
+  const [kind,id]=String(w.q).split("|");const full=`<button class="linkbtn" ${w.act}>Open the full page</button>`;
+  if(kind==="rem"){const p=plans.get(id);if(!p)return "";const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);
+    const sum=[["Intent",p.fields.intent],["Observation rationale",p.fields.observation]].filter(([,v])=>String(v||"").trim()).map(([l,v])=>`<div class="cnt"><b>${esc(l)}.</b> ${esc(firstLine(v,160))}</div>`).join("");
+    return `${sum}<label class="fld-label">${esc(f.label)}<textarea id="tqtext" rows="4" placeholder="${esc(f.hint||"What happened, and where might it go next?")}">${esc(p.fields[f.k]||"")}</textarea></label><div class="actions"><button class="btn small" data-tqsave="rem|${esc(id)}">Save</button>${full}</div>`}
+  if(kind==="photo"){const n=notices.get(id);if(!n)return "";
+    return `${n.photo?`<img class="tqimg" src="${esc(photoThumb(n))}" alt="The copied photo" loading="lazy">`:""}<label class="fld-label">What I noticed<textarea id="tqtext" rows="5">${esc(n.noticed||"")}</textarea></label><div class="cnt">Fix the words marked [?] or [unclear], or take the mark away.</div><div class="actions"><button class="btn small" data-tqsave="photo|${esc(id)}">Save</button>${full}</div>`}
+  if(kind==="kay"){const n=notices.get(id);if(!n)return "";const grp=noteGroup(n);const room=tqRoom||momentRooms(n)[0]||"";
+    if(!tqKids)tqKids=Object.fromEntries(grp.map(x=>[x.id,[...new Set([...(x.children||[]),...((x.kaymbu&&x.kaymbu.suggest&&!x.kaymbu.maybe)?x.kaymbu.suggest:[])])]]));
+    const kids=kidsAt().filter(c=>!room||c.classroom===room).sort((a,b)=>(a.first||"").localeCompare(b.first||""));
+    return `<div class="cnt" style="white-space:pre-line">${esc(n.noticed||"")}</div>
+      ${momentRooms(n).length?"":`<label class="fld-label">Class<select id="tqroom"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${esc(r)}</option>`).join("")}</select></label>`}
+      ${grp.map(x=>`<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}<div class="chips">${kids.map(c=>`<button class="chip ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">Choose the class to see its children.</span>`}</div></div>`).join("")}
+      <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button>${full}</div>`}
+  if(kind==="three"){const c=children.get(id);if(!c)return "";
+    return `<div class="cnt">Which DRDP view should ${esc(c.first)} be read against?</div><div class="actions"><button class="btn small ghost" data-tqsave="three|${esc(id)}|it">Infant and Toddler</button><button class="btn small ghost" data-tqsave="three|${esc(id)}|ptk">Preschool Transitional Kindergarten</button>${full}</div>`}
+  return full}
+document.addEventListener("click",e=>{
+  const o=e.target.closest("[data-tq]");if(o){tqOpen=tqOpen===o.dataset.tq?"":o.dataset.tq;tqKids=null;tqRoom="";redrawToday();const b=$("#tqbox");if(b){const ta=b.querySelector("textarea");if(ta&&window.innerWidth>700)ta.focus({preventScroll:true})}return}
+  const k=e.target.closest("[data-tqkid]");if(k&&tqKids){const [pid,cid]=k.dataset.tqkid.split("|");const a=tqKids[pid]||(tqKids[pid]=[]);const i=a.indexOf(cid);i>=0?a.splice(i,1):a.push(cid);k.classList.toggle("on");return}
+  const s=e.target.closest("[data-tqsave]");if(!s)return;const [kind,id,v]=s.dataset.tqsave.split("|");
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(kind==="rem"){const p=plans.get(id);const txt=($("#tqtext")?.value||"").trim();if(!p)return;if(!txt){toast("Write the "+FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]).label.toLowerCase()+" first.");return}
+    p.fields[AFTER_KEY[p.type]]=txt;persist(p);toast("Saved to the plan.")}
+  else if(kind==="photo"){const n=notices.get(id);const txt=($("#tqtext")?.value||"").trim();if(!n||!txt)return;const base=jclone(n);n.noticed=txt;n.editedBy=whoAmI();n.editedAt=Date.now();saveNotice(n,base);toast("Saved.")}
+  else if(kind==="kay"){const n=notices.get(id);if(!n||!tqKids)return;const room=tqRoom||momentRooms(n)[0]||"";
+    for(const x of noteGroup(n)){const base=jclone(x);x.children=[...(tqKids[x.id]||[])];if(room&&!x.classroom)x.classroom=room;
+      if(x.kaymbu&&x.kaymbu.check){x.kaymbu=Object.assign({},x.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete x.kaymbu.unsure;delete x.kaymbu.suggest;delete x.kaymbu.maybe}
+      x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
+    toast("Saved.")}
+  else if(kind==="three"){const c=children.get(id);if(!c)return;kidDrdpPatch(c,{drdp:{view:v}});toast(`${c.first} is read against the ${v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten"} View.`)}
+  // the next task of the same kind opens beneath, so a run of them is done without leaving Today
+  const done=tqOpen;tqOpen="";tqKids=null;tqRoom="";
+  const left=todayWaiting().filter(w=>w.q&&w.q!==done&&w.q.split("|")[0]===kind);if(left.length)tqOpen=left[0].q;
+  redrawToday()});
+document.addEventListener("change",e=>{if(e.target.id!=="tqroom")return;tqRoom=e.target.value;redrawToday()});
+/* ---------- the Next bar ----------
+   A task opened from Waiting for you carries a slim bar, with how far through that kind of task the educator is, Next,
+   and Back to Today. Next opens the following one still waiting. After the last one it goes back to Today. */
+let waitRun=null;
+document.addEventListener("click",e=>{const b=e.target.closest("button[data-wk]");if(!b||view!=="today")return;
+  const k=b.dataset.wk,all=todayWaiting().filter(w=>!w.q&&(k?(WAIT_KIND(w)||[])[0]===k:w.t+"|"+w.s===b.dataset.wt));
+  waitRun={kind:k,label:k?(WAIT_KIND(all[0]||{t:""})||[,""])[1]:"",total:Math.max(all.length,1),done:new Set([b.dataset.wt])}},true);
+function waitNextItem(){if(!waitRun)return null;return todayWaiting().find(w=>!w.q&&waitRun.kind&&(WAIT_KIND(w)||[])[0]===waitRun.kind&&!waitRun.done.has(w.t+"|"+w.s))||null}
+function renderWaitBar(){let bar=$("#nextbar");
+  // a single task already has TREE's own Back, so the bar shows only for a run of two or more
+  if(!waitRun||view==="today"||waitRun.total<2){if(bar)bar.remove();if(view==="today")waitRun=null;return}
+  if(!bar){bar=document.createElement("div");bar.id="nextbar";bar.className="nextbar";document.body.appendChild(bar)}
+  const nx=waitNextItem();const at=Math.min(waitRun.done.size,waitRun.total);
+  bar.innerHTML=`<span>${waitRun.kind&&waitRun.total>1?`${esc(waitRun.label.charAt(0).toUpperCase()+waitRun.label.slice(1))}, ${at} of ${waitRun.total}`:"From Waiting for you"}</span><span class="actions">${nx?`<button class="btn small" data-nextgo="1">Next</button>`:""}${/Today/.test($(".chip-btn.back")?.textContent||"")?"":`<button class="btn small ghost" data-nextback="1">Back to Today</button>`}</span>`}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-nextback]")){waitRun=null;view="today";LS.set("fps.view",view);currentId=null;noticeForm=null;renderNav();renderMain();return}
+  if(!e.target.closest("[data-nextgo]"))return;const nx=waitNextItem();
+  if(!nx){waitRun=null;view="today";LS.set("fps.view",view);currentId=null;noticeForm=null;renderNav();renderMain();return}
+  waitRun.done.add(nx.t+"|"+nx.s);const tmp=document.createElement("div");tmp.hidden=true;tmp.innerHTML=`<button ${nx.act}></button>`;document.body.appendChild(tmp);tmp.firstChild.click();tmp.remove();renderWaitBar()});
 // on Monday, Tuesday and Wednesday the week's bin is a tap away
 /* A plan from the weekly bin, for the bin's week and the class chosen on the page. Each piece of the bin goes to the
    section of the form it belongs in. The observations kept with the bin go to the observation, with their day and
