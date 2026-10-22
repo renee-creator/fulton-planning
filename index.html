@@ -2039,7 +2039,7 @@ Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".
 How to read it.
 Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
 child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
-level is the latest level whose descriptor this evidence is consistent with. One piece of documentation is evidence toward a level, never a level the child has reached, since a child's development shows consistently, over time and across situations. Give one level only, never a range. Use an empty string when the evidence does not show a level clearly.
+level is the latest level whose descriptor this evidence is consistent with. Read only what this one piece of documentation shows. Give one level only, never a range. Use an empty string when the evidence does not show a level clearly.
 emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
 evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
 ${eld?"ELD measures apply only to the children described as learning English.\n":""}photo says in two sentences what the photos show, the actions, materials and interactions. Use an empty string when there are no photos.
@@ -2115,8 +2115,8 @@ function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c
   if(it.status==="aside")return {label:`Set aside by ${it.reviewedBy||"an educator"}`,cls:"muted"};
   return {label:"Waiting for an educator to review",cls:"wait",level:it.level,emerging:it.emerging};
 }
-// a level from documentation is evidence toward it, never a level reached or a rating
-const drdpLevelText=(l,em)=>l?"Evidence toward "+l+(em?", emerging to the next level":""):"No level suggested";
+// a level read from documentation, shown as the level itself with the moment it came from
+const drdpLevelText=(l,em)=>l?l+(em?", emerging to the next level":""):"No level suggested";
 // the DRDP panel on a slide or a moment
 function drdpPanelHtml(kind,rec){
   const key=kind+":"+rec.id,busy=drdpBusy[key],d=rec.drdp;const S=drdpSource(kind,rec);
@@ -2275,8 +2275,8 @@ function kidDrdpHtml(c){
     return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b>${got?`<span class="cnt">${got} of ${codes.length} with evidence</span>`:""}</summary>${codes.map(rowOf).join("")}</details>`};
   return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with evidence toward a level</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
-      <div class="cnt">Each level here is evidence toward a level, read from documentation and reviewed by an educator. Tap a measure to see its evidence.</div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with documentation</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
+      <div class="cnt">Each level is read from documentation and reviewed by an educator. Tap a measure to see the moments behind it.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
         <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool Transitional Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
@@ -2293,7 +2293,7 @@ function kidDrdpHtml(c){
 function drdpKid(){return children.get(kidOpen)}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;const c=drdpKid();if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted as evidence toward a level for ${x.code}.`);renderMain();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted for ${x.code}.`);renderMain();return}
   if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");renderMain();return}
   if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested"}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
@@ -2302,7 +2302,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
     if(!lv){toast("Choose a level, or set this aside.");return}
     const sug=x.suggested||{};const same=lv===sug.level&&em===!!sug.emerging;
     kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpEmergeOk(x.view||drdpViewOf(c).v,x.code,lv),status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
-    drdpEdit="";toast(`Saved as evidence toward a level for ${x.code}.`);renderMain();return}
+    drdpEdit="";toast(`Saved for ${x.code}.`);renderMain();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return;const c=drdpKid();if(!c)return;
   if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
@@ -3734,7 +3734,7 @@ function portfolioDrdpDoc(c,mode,view){
   const cur=drdpViewOf(c).v,v=view||cur;const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view===v||(!x.view&&v===cur))&&(x.src?.at||x.at||x.reviewedAt||0)>=y0);if(!done.length)return null;
   // the strongest reviewed level in the measure, and of those the most recent
   const latest={};for(const x of done){const t=x.src?.at||x.at||0,cur=latest[x.code];const r=drdpRank(v,x.code,x.level),rc=cur?drdpRank(v,x.code,cur.level):-1;if(!cur||r>rc||(r===rc&&t>(cur.src?.at||cur.at||0)))latest[x.code]=x}
-  const blocks=[dText("About this page",`Each is evidence toward a level, read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
+  const blocks=[dText("About this page",`Each level is read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
@@ -3761,7 +3761,7 @@ function portfolioDocs(c,mode,drdp){
   // the reminder that these are not DRDP ratings prints once, with the first levels in the portfolio
   const band=keys=>{const latest={};for(const k of keys)for(const x of bySrc.get(k)||[]){placed.add(x.id);const t=x.reviewedAt||x.at||0;if(!latest[x.code]||t>(latest[x.code].reviewedAt||latest[x.code].at||0))latest[x.code]=x}
     const ls=Object.values(latest).sort((a,b)=>drdpOrder(a.view||drdpViewOf(c).v,a.code,b.code)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}`);
-    if(!ls.length)return null;const first=!noted;noted=true;return {t:"small",label:"Learning seen here",lines:first?[...ls,"Evidence toward a level, from our documentation."]:ls}};
+    if(!ls.length)return null;const first=!noted;noted=true;return {t:"small",label:"Learning seen here",lines:ls}};
   const bySrcHas=keys=>keys.some(k=>bySrc.has(k));
   const keysOf=x=>x.kind==="stories"?["stories|"+x.st.id]:x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
   const page=x=>{const d=x.kind==="stories"?storyPortfolioDoc(x.st,mode,c):x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
