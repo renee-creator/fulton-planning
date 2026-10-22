@@ -320,7 +320,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ store, log, sign, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode });
+const familyPage = require('./family.js')({ store, log, sign, fileKey: () => makeFileKey(), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in Kitchen's Kitchen Digest and read by Claude
@@ -1107,6 +1107,12 @@ async function handle(req, res) {
     else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false);
     else if (path === '/family/log') r = familyPage.addLog(f, body || {});
     else if (path === '/family/unlog') r = familyPage.removeLog(f, String(body.id || ''));
+    else if (path === '/family/book') r = familyPage.book(f, String(body.slotId || ''), String(body.childId || ''), body.on !== false);
+    else if (path === '/family/reflect') r = familyPage.reflect(f, String(body.childId || ''), body.answers || {});
+    else if (path === '/family/strengths') r = familyPage.strengths(f, body.text);
+    else if (path === '/family/enroll') r = familyPage.enroll(f, String(body.childId || ''), body.data || {}, !!body.done);
+    else if (path === '/family/questionnaire') r = familyPage.questionnaire(f, String(body.childId || ''), Array.isArray(body.answers) ? body.answers : []);
+    else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
     else { err(req, res, 404, 'Not found'); return; }
     if (r.error) { err(req, res, 400, r.error); return; }
     json(req, res, 200, path === '/family/data' ? r : Object.assign({ ok: true }, familyPage.familyView(f))); return;
