@@ -3725,6 +3725,12 @@ function todayWaiting(){
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag",q:"kay|"+n.id})}}
+  // moments shared from Kaymbu this week that took an earlier week from their photo's date, so they are not missed
+  {const rm=myRoom(),wk0=mondayOf(new Date()),since=Date.now()-3*864e5,seenG=new Set();
+   for(const n of [...notices.values()].filter(n=>n.kaymbu&&!n.kaymbu.check&&(n.kaymbu.keptAt||0)>since&&(n.week||"")<wk0&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.kaymbu.keptAt||0)-(a.kaymbu.keptAt||0))){
+    const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);
+    const kids=(n.children||[]).map(id=>(children.get(id)||{}).first).filter(Boolean);
+    out.push({dot:"sky",t:"Just shared from Kaymbu, filed in an earlier week",s:[(t=>t&&!/[.!?…]$/.test(t)?t+".":t)(firstLine(n.noticed,50)),`${kids.length?kids.join(", ")+", ":""}${n.classroom?n.classroom+" Class, ":""}${n.at?shortDate(n.at):"week of "+fmtDate(n.week)}.`,n.by?"":"No educator was named in the email subject."].filter(Boolean).join(" "),act:`data-nwedit="${n.id}"`,b:"Open"})}}
   // an observation TREE thinks might belong to a thread, one row for each post, folded together on Today
   {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
     const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
