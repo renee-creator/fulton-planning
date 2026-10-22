@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fulton Menu</title>
+<style>
+@font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
+@font-face{font-family:Andika;font-weight:700;src:url(fonts/Andika-Bold.ttf)}
+:root{--bg:#fbf8f0;--paper:#fff;--ink:#1b2920;--muted:#46564c;--line:#d8dccf;--moss:#2b5a40;--moss-soft:#dce9de;--marigold:#9a5b07;--marigold-soft:#f9e9cc;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Andika,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:0;color:var(--moss)}h2{font-size:19px;margin:0 0 8px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
+.f2s{background:var(--moss-soft);border-color:var(--moss)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:10px 0}
+.stat{background:var(--paper);border-radius:10px;padding:10px 12px}.stat b{display:block;font-size:26px;color:var(--moss);line-height:1.1}
+.muted{color:var(--muted)}.small{font-size:14px}
+.farms{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}.farm{background:var(--paper);border-radius:999px;padding:3px 11px;font-size:14px}
+.nav{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:0 0 10px}
+.nav button{font:inherit;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.nav button:disabled{opacity:.4;cursor:default}
+.week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.day{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;font-size:14px}
+.day .d{font-weight:700;color:var(--moss)}.day .m{margin-top:4px}.day .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.day.closed{background:transparent;color:var(--muted)}.day.blank{visibility:hidden}
+.fund{font-size:13px;color:var(--muted);margin-top:10px}
+@media (max-width:640px){.week{grid-template-columns:1fr}.day.blank{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="eyebrow">Fulton Community School &amp; Farm</div>
+<h1>What we're eating</h1>
+<div id="out" class="muted" style="margin-top:12px">Loading the menu…</div>
+</div>
+<script>
+/*TOWNS*/
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const want=(qs.get("server")||"").replace(/\/+$/,"");
+  const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+  const SERVER=local?want:"https://fulton-planning.onrender.com";
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const key=s=>String(s||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").trim();
+  const townOf=(f,own)=>own[key(f)]||FARM_TOWNS[key(f)]||"";
+  const info=t=>{const v=G_TOWN_LL[t]||Object.entries(G_TOWN_LL).find(([k])=>k.toLowerCase()===String(t).toLowerCase())?.[1];return v?{lat:v[0],lng:v[1],county:v[2]}:null};
+  const miles=(lat,lng)=>{const R=3958.8,r=x=>x*Math.PI/180;const [a,b]=G_SCHOOL_LL;const h=Math.sin(r(lat-a)/2)**2+Math.cos(r(a))*Math.cos(r(lat))*Math.sin(r(lng-b)/2)**2;return Math.round(2*R*Math.asin(Math.sqrt(h)))};
+  const monthName=m=>new Date(m+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});
+  // Fulton's regular California producers, served every month
+  const STANDING=[["Petaluma Creamery","Petaluma","cheese"],["Next Generation Foods","West Sacramento","beans and grains"]];
+  let month=qs.get("month")||"";
+  async function load(){
+    const r=await fetch(SERVER+"/public/menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({month})});
+    if(!r.ok)throw new Error("The menu could not be loaded. Try again in a moment.");return r.json()}
+  function render(j){
+    month=j.menu?j.menu.month:(month||new Date().toISOString().slice(0,7));
+    const list=[];for(const [f,what] of Object.entries(j.farms||{})){const t=townOf(f,j.towns||{});const i=t&&info(t);list.push({name:f,town:t,mi:i?miles(i.lat,i.lng):null,county:i?i.county:"",what:[...new Set(what)]})}
+    for(const [n,t,w] of STANDING){const i=info(t);list.push({name:n,town:t,mi:i?miles(i.lat,i.lng):null,county:i?i.county:"",what:[w],standing:true})}
+    const fromFarms=list.filter(x=>!x.standing);
+    const son=list.filter(x=>x.county==="Sonoma").length;const known=list.filter(x=>x.mi!=null);const avg=known.length?Math.round(known.reduce((a,x)=>a+x.mi,0)/known.length):null;
+    let h="";
+    if(fromFarms.length)h+=`<section class="card f2s"><h2>Where our food came from in ${esc(monthName(j.prev))}</h2>
+      <div class="stats"><div class="stat"><b>${list.length}</b>farms and producers</div><div class="stat"><b>${son}</b>in Sonoma County</div>${avg!=null?`<div class="stat"><b>${avg}</b>miles on average</div>`:""}<div class="stat"><b>${j.bins}</b>weekly farm boxes</div></div>
+      <div class="small">Breads, doughs and crusts are made by hand at Fulton, and almost everything on the menu is cooked from scratch. Scraps go to our chickens and goats.</div>
+      <div class="farms">${list.sort((a,b)=>(a.mi==null)-(b.mi==null)||a.mi-b.mi).map(x=>`<span class="farm">${esc(x.name)}${x.town?", "+esc(x.town):""}</span>`).join("")}</div>
+      <div class="fund">Fulton's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.</div></section>`;
+    const months=(j.months||[]).filter(Boolean);const ix=months.indexOf(month);
+    h+=`<section class="card"><div class="nav"><button id="pv" ${ix>0?"":"disabled"} aria-label="The month before">‹</button><h2 style="margin:0">${esc(monthName(month))}</h2><button id="nx" ${ix>=0&&ix<months.length-1?"":"disabled"} aria-label="The month after">›</button></div>`;
+    if(!j.menu)h+=`<p class="muted">This month's menu is not posted yet.</p>`;
+    else{const [y,mo]=month.split("-").map(Number);const days=new Date(y,mo,0).getDate();let wk=[];const weeks=[];
+      for(let d=1;d<=days;d++){const dt=new Date(y,mo-1,d);const w=dt.getDay();if(w===0||w===6)continue;if(w===1&&wk.length){weeks.push(wk);wk=[]}if(!wk.length)for(let b=1;b<w;b++)wk.push(null);wk.push(d)}
+      if(wk.length)weeks.push(wk);
+      for(const w of weeks){h+=`<div class="week">`;for(let i=0;i<5;i++){const d=w[i];if(!d){h+=`<div class="day blank"></div>`;continue}
+        const iso=month+"-"+String(d).padStart(2,"0");const m=(j.menu.days||{})[iso]||{};const lbl=new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+        if(m.closed){h+=`<div class="day closed"><div class="d">${esc(lbl)}</div><div class="m">School closed</div></div>`;continue}
+        const mon=new Date(iso+"T12:00:00").getDay()===1;
+        h+=`<div class="day"><div class="d">${esc(lbl)}</div>${m.am?`<div class="m"><div class="k">Morning snack</div>${esc(m.am)}</div>`:""}${m.lunch?`<div class="m"><div class="k">Lunch</div>${esc(m.lunch)}</div>`:""}${m.pm&&!mon?`<div class="m"><div class="k">Afternoon snack</div>${esc(m.pm)}</div>`:""}</div>`}
+        h+=`</div>`}
+      const n=j.menu.notes||{};if(n.snack||n.lunch)h+=`<p class="small muted">${esc([n.snack,n.lunch].filter(Boolean).join(" "))}</p>`}
+    h+=`</section>`;
+    document.getElementById("out").className="";document.getElementById("out").innerHTML=h;
+    const go=k=>{month=months[ix+k];load().then(render)};const pv=document.getElementById("pv"),nx=document.getElementById("nx");if(pv)pv.onclick=()=>go(-1);if(nx)nx.onclick=()=>go(1);
+  }
+  load().then(render).catch(e=>{document.getElementById("out").textContent=e.message});
+})();
+</script>
+</body>
+</html>

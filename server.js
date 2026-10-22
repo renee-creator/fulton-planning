@@ -31,7 +31,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy'];
@@ -172,6 +172,11 @@ const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, 
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
 function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
 // a kitchen sign-in, such as Sally's, reaches the Kitchen page, Today and the calendar, and nothing about children or money
+// the office, Destiny by default, works with the director on families, enrollment and participation
+const OFFICE_NAMES = String(process.env.OFFICE_NAMES || 'Destiny').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.includes(String(name || '').toLowerCase())) return true; const a = accountFor(name); return !!(a && a.office); };
+// what only the director and the office see, the families' participation
+const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
 const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
 function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
@@ -303,12 +308,19 @@ function conferenceEvents(from, to) {
   }
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
 const reminders = require('./reminders.js')({ store, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const signupSync = require('./signup-sync.js')({ store, log, readFeed: l => readSignupFeed(l, true), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
+// a family's sign-in code goes out through the school's Google Workspace mailbox script, set as FAMILY_MAIL_URL and FAMILY_MAIL_KEY
+async function mailCode(to, code) {
+  const url = process.env.FAMILY_MAIL_URL, key = process.env.FAMILY_MAIL_KEY; if (!url || !key) throw new Error('Family email is not set up yet');
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
+  if (!r.ok) throw new Error('The mailbox answered ' + r.status);
+}
+const familyPage = require('./family.js')({ store, log, sign, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
@@ -348,7 +360,7 @@ async function doLoadGraph() {
   const files = await gqlFiles(store.branch);
   const jobs = [];let accSha = '';
   for (const f of files) {
-    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts)\/([^/]+)\.json$/);
+    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/);
     if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
     if (f.path === DRDP_PATH) drdpSha = f.sha;
     if (f.path === ACCOUNTS_PATH) accSha = f.sha;
@@ -384,7 +396,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -464,7 +476,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -828,8 +840,8 @@ function readBody(req, limit) {
 let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
-function snapshot(director, kitchen) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && id === 'display'))) out[k][id] = r.doc; }
+function snapshot(director, kitchen, office) {
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && id === 'display'))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -1082,6 +1094,23 @@ async function handle(req, res) {
   try { body = await readBody(req, path === '/login' ? LOGIN_MAX_BYTES : MAX_BODY_BYTES); }
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
+  // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
+  if (path.startsWith('/family/') || path === '/public/menu') {
+    if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, 'The school records are still loading. Try again in a moment.'); return; } }
+    const ip = who(req);
+    if (path === '/public/menu') { json(req, res, 200, familyPage.publicMenu(body.month)); return; }
+    if (path === '/family/code') { const r = await familyPage.sendCode(body.email, ip); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
+    if (path === '/family/login') { const r = familyPage.signIn(body.email, body.code, ip); if (r.error) { err(req, res, 403, r.error); return; } json(req, res, 200, r); return; }
+    const f = familyPage.readFamily(req); if (!f) { err(req, res, 401, 'Please sign in again.'); return; }
+    let r;
+    if (path === '/family/data') r = familyPage.familyView(f);
+    else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false);
+    else if (path === '/family/log') r = familyPage.addLog(f, body || {});
+    else if (path === '/family/unlog') r = familyPage.removeLog(f, String(body.id || ''));
+    else { err(req, res, 404, 'Not found'); return; }
+    if (r.error) { err(req, res, 400, r.error); return; }
+    json(req, res, 200, path === '/family/data' ? r : Object.assign({ ok: true }, familyPage.familyView(f))); return;
+  }
   if (path === '/login') {
     const ip = who(req);
     if (blocked(ip)) { err(req, res, 429, 'Too many wrong passcodes. Wait ten minutes and try again.'); return; }
@@ -1159,10 +1188,10 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), data: snapshot(isDirector(me.name), kitchenOnly) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && c.id === 'display'))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && c.id === 'display'))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -1173,6 +1202,7 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
+    if (OFFICE_KINDS.includes(kind) && !isOffice(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
