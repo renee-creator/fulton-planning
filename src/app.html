@@ -84,6 +84,10 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
 .sendmiss{font-size:14px;line-height:1.5}
+.gsform{display:grid;gap:10px}.gsform input[type=search]{width:100%;font-size:16px}.gsrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}.gsrow label{display:grid;gap:4px;font-size:13px}
+.gsgroup{display:grid;gap:8px;margin-bottom:18px}.gshit{display:grid;gap:3px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink);font:inherit;min-width:0}
+.gssnip{overflow-wrap:anywhere;font-size:14px;line-height:1.45}.gsphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gsph{display:grid;gap:4px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px;cursor:pointer;color:var(--ink);font:inherit;min-width:0}.gsph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.gsph .gssnip{font-size:13px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tq{display:grid;gap:8px;padding:10px 12px 14px 30px;border-bottom:1px solid var(--line)}.tq textarea{width:100%}.tqimg{max-width:180px;max-height:180px;border-radius:8px;object-fit:cover;display:block}
 .tqph{display:grid;gap:6px}.titem.tqon{border-bottom:0}
 .nextbar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);z-index:55;width:min(560px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
@@ -662,6 +666,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     <span id="mewrap" class="mewrap"><label for="me">Educator</label><input id="me" type="text" list="educators" placeholder="Your name" style="width:150px"></span>
     <span class="savestate" id="whoneed"></span>
     <span class="savestate" id="conn">Connecting</span>
+    <button class="chip-btn" id="tsearchall" data-tview="search">Search</button>
     <button class="chip-btn" id="tsettings" data-view="settings" hidden>Settings</button>
   </div>
 </div></header>
@@ -1160,6 +1165,7 @@ function renderMain(){
   if(view==="all"){renderAllPlans();return}
   if(view==="connect"||view==="school"){if(!isDirector()){view="plans";LS.set("fps.view",view);renderAll();return}if(view==="school"){view="connect";LS.set("fps.view",view)}renderConnect();return}
   if(view==="settings"){renderSettings();return}
+  if(view==="search"){renderSearchAll();return}
   if(view==="children"){renderChildren();return}
   if(view==="child"){renderChild();return}
   if(view==="today"){renderToday();return}
@@ -1524,6 +1530,7 @@ const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,storyOpen:view==="story"?storyOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
 const NAV_NAMES={today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",stories:"Stories",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
+  if(s.view==="search")return "Search";
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
   if(s.view==="story"){const x=stories.get(s.storyOpen);return x&&x.title?x.title:"the story"}
@@ -3591,7 +3598,7 @@ const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],[
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"]]};
-const SECTION_OF={today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -7639,6 +7646,65 @@ function evResults(p){const box=$("#evres");if(!box)return;const q=evQuery.trim(
     const t=r.t,on=planThreads(p).some(c=>c.t.id===t.id);
     return `<div class="evhit"><div class="cnt">Thread${t.classroom?", "+esc(t.classroom)+" Class":""}</div><div><b>${evSnip(t.name,terms)}</b>${t.question?`<div class="muted">${evSnip(t.question,terms)}</div>`:""}</div>
       <div class="actions">${on?`<span class="cnt">This plan follows it</span>`:locked?"":`<button class="btn small ghost" data-evatt="thread|${esc(t.id)}">Follow it in this plan</button>`}<button class="linkbtn" data-tsee="${esc(t.id)}">Open it</button></div></div>`}).join("")}
+/* ---------- search across TREE ----------
+   One search for observations, photos, plans, threads, projects, slides, walls and stories. It finds words, children's
+   names and educators, and narrows by child, small group and when. Photos are found by their words and the children in them. */
+let gs={q:LS.get("tree.gq",""),kid:"",group:"",when:"any",kind:"all"},gsTimer=null;
+const GS_KINDS=[["all","Everything"],["obs","Observations"],["photo","Photos"],["plan","Plans"],["thread","Threads"],["project","Projects"],["slide","Slides"],["wall","Walls"],["story","Stories"]];
+function gsText(o,depth){depth=depth||0;if(o==null||depth>4)return "";if(typeof o==="string")return o.length>1&&o.length<6000&&!/^(data:|https?:|[A-Za-z0-9_-]{20,}$)/.test(o)?o:"";
+  if(Array.isArray(o))return o.map(x=>gsText(x,depth+1)).filter(Boolean).join("\n");
+  if(typeof o==="object")return Object.entries(o).filter(([k])=>!/^(id|photo|thumb|data|url|sha|at|createdAt|updatedAt|savedAt|by|updatedBy|updatedByName|kaymbu|children|group|src)$/.test(k)).map(([,v])=>gsText(v,depth+1)).filter(Boolean).join("\n");return ""}
+function gsSince(){const now=Date.now();if(gs.when==="month")return [now-31*864e5,Infinity];if(gs.when==="year")return [parseIso(schoolYearStart()).getTime(),Infinity];
+  if(gs.when==="last"){const s=parseIso(schoolYearStart());const a=new Date(s);a.setFullYear(a.getFullYear()-1);return [a.getTime(),s.getTime()]}return [0,Infinity]}
+function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid),grp=gs.group;if(!terms.length&&!kid&&!grp)return null;
+  const [from,to]=gsSince(),inTime=t=>(t||0)>=from&&(t||0)<to;
+  const grpKids=new Set(grp?kidList().filter(c=>c.group===grp).map(c=>c.id):[]);
+  const names=ids=>(ids||[]).map(id=>children.get(id)).filter(Boolean).map(c=>[c.first,c.last].filter(Boolean).join(" ")).join(" ");
+  const okKid=(ids,text)=>!kid||(ids||[]).includes(kid.id)||new RegExp("(^|[^A-Za-z])"+kid.first+"(?![A-Za-z])").test(text||"");
+  const okGrp=(ids,gs0)=>!grp||(gs0||[]).includes(grp)||(ids||[]).some(id=>grpKids.has(id));
+  const out=[];const seen=new Set();
+  for(const n of [...notices.values()].sort((a,b)=>(b.at||0)-(a.at||0))){const k=n.group||n.id;if(seen.has(k))continue;const grpN=noteGroup(n);const ids=[...new Set(grpN.flatMap(x=>x.children||[]))];
+    const text=[n.noticed,n.wonder].filter(Boolean).join("\n"),full=[text,names(ids),n.by].join("\n");
+    if(!inTime(n.at)||!okKid(ids,text)||!okGrp(ids,[n.group])||(terms.length&&!evMatch(full,terms)))continue;seen.add(k);
+    out.push({kind:grpN.some(x=>x.photo)?"photo":"obs",n,ph:grpN.find(x=>x.photo),at:n.at||0,text:text||names(ids),title:[n.by,momentRoomsText(n)].filter(Boolean).join(", "),open:`data-mjump="${esc(n.id)}"`})}
+  for(const pl of plans.values()){if(pl.id==="example"||!PLAN_TYPES.includes(pl.type)||isEmptyPlan(pl))continue;const at=parseIso(pl.weekOf).getTime();const text=FORMS[pl.type].fields.map(f=>pl.fields?.[f.k]).filter(Boolean).join("\n");
+    if(!inTime(at)||!okKid([],text)||!okGrp([],[pl.group,...(pl.groups||[])])||(terms.length&&!evMatch([text,pl.educator,pl.classroom].join("\n"),terms)))continue;
+    out.push({kind:"plan",at,text,title:FORMS[pl.type].short+" plan, "+planTitle(pl)+", week of "+fmtDate(pl.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(pl.id)}"`})}
+  for(const t of threads.values()){if(!threadLive(t))continue;const text=[t.name,t.question,t.notes].filter(Boolean).join("\n");const at=t.createdAt||0;
+    if(!inTime(at)&&gs.when!=="any")continue;if(!okKid([],text)||grp||(terms.length&&!evMatch(text,terms)))continue;out.push({kind:"thread",at,text:t.question||t.name,title:"Thread, "+t.name,open:`data-tsee="${esc(t.id)}"`})}
+  for(const x of projects.values()){const base={...x};delete base.wall;const text=gsText(base),wt=x.wall?gsText(x.wall):"";const at=x.updatedAt||x.createdAt||0;
+    if(!grp&&okKid([],text)&&(gs.when==="any"||inTime(at))&&(!terms.length||evMatch(text,terms)))out.push({kind:"project",at,text,title:"Project, "+(x.name||"Untitled"),open:`data-popen="${esc(x.id)}"`});
+    if(wt&&!grp&&okKid([],wt)&&(gs.when==="any"||inTime(at))&&(!terms.length||evMatch(wt,terms)))out.push({kind:"wall",at,text:wt,title:"Wall, "+(x.name||"Untitled"),open:`data-twall="${esc(x.id)}"`})}
+  for(const s of slides.values()){const text=gsText(s);const at=s.updatedAt||s.createdAt||0;const ids=s.children||[];
+    if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"slide",at,text,title:"Slide, "+slideTitle(s),open:`data-slide="${esc(s.id)}"`})}
+  for(const st of stories.values()){const text=gsText(st);const at=st.updatedAt||st.at||0;const ids=st.children||[];
+    if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"story",at,text,title:"Story, "+stTitle(st),open:`data-story="${esc(st.id)}"`})}
+  return out.sort((a,b)=>b.at-a.at)}
+function renderSearchAll(){
+  const kids=kidsAt().sort((a,b)=>(a.first||"").localeCompare(b.first||""));
+  $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story.</div></div>
+    <section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="A word, a child's name or an educator, ex. water or Maya" aria-label="Search TREE" autocomplete="off">
+      <div class="gsrow"><label>Child<select id="gkid"><option value="">Any child</option>${kids.map(c=>`<option value="${esc(c.id)}" ${gs.kid===c.id?"selected":""}>${esc([c.first,c.last].filter(Boolean).join(" "))}</option>`).join("")}</select></label>
+      <label>Small group<select id="ggroup"><option value="">Any group</option>${GROUPS.map(g=>`<option ${gs.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>
+      <label>When<select id="gwhen">${[["any","Any time"],["month","The last month"],["year","This school year"],["last","Last school year"]].map(([v,l])=>`<option value="${v}" ${gs.when===v?"selected":""}>${l}</option>`).join("")}</select></label></div>
+      <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
+    <div id="gres"></div>`;
+  gsResults();if(window.innerWidth>760)$("#gq")?.focus({preventScroll:true})}
+function gsResults(){const box=$("#gres");if(!box)return;const all=gsRun();
+  if(!all){box.innerHTML=`<div class="empty">Type a word or choose a child or group to search.</div>`;return}
+  const terms=evTerms(gs.q);const rs=gs.kind==="all"?all:all.filter(r=>r.kind===gs.kind);
+  if(!rs.length){box.innerHTML=`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}
+  const counts=Object.fromEntries(GS_KINDS.map(([k])=>[k,all.filter(r=>r.kind===k).length]));
+  const order=GS_KINDS.slice(1).map(k=>k[0]).filter(k=>gs.kind==="all"||k===gs.kind);
+  box.innerHTML=`<div class="cnt" style="margin:4px 2px 10px">${all.length} found${gs.kind==="all"?". "+order.filter(k=>counts[k]).map(k=>{const l=GS_KINDS.find(x=>x[0]===k)[1].toLowerCase();return counts[k]+" "+(counts[k]===1?(l==="stories"?"story":l.replace(/s$/,"")):l)}).join(", "):""}</div>`+
+    order.filter(k=>rs.some(r=>r.kind===k)).map(k=>{const list=rs.filter(r=>r.kind===k);const shown=list.slice(0,gs.kind==="all"?6:80);
+      return `<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">${GS_KINDS.find(x=>x[0]===k)[1]}</h3><span class="cnt">${list.length}</span></div>
+      ${k==="photo"?`<div class="gsphotos">${shown.map(r=>`<button class="gsph" ${r.open}><img src="${esc(photoThumb(r.ph))}" alt="${esc(firstLine(r.text,80))}" loading="lazy"><span class="cnt">${esc(shortDate(r.at))}</span><span class="gssnip">${evSnip(r.text,terms)}</span></button>`).join("")}</div>`
+        :`<div class="tlist">${shown.map(r=>`<button class="gshit" ${r.open}><span class="cnt">${esc(r.title)}${r.at?" · "+esc(shortDate(r.at)):""}</span><span class="gssnip">${terms.length?evSnip(r.text,terms):esc(firstLine(r.text,180))}</span></button>`).join("")}</div>`}
+      ${list.length>shown.length?`<button class="linkbtn" data-gkind="${k}">See all ${list.length}</button>`:""}</section>`}).join("")}
+document.addEventListener("input",e=>{if(e.target.id!=="gq")return;gs.q=e.target.value;try{LS.set("tree.gq",gs.q)}catch(er){}clearTimeout(gsTimer);gsTimer=setTimeout(gsResults,200)});
+document.addEventListener("change",e=>{const id=e.target.id;if(id==="gkid")gs.kid=e.target.value;else if(id==="ggroup")gs.group=e.target.value;else if(id==="gwhen")gs.when=e.target.value;else return;gsResults()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gkind]");if(!t||view!=="search")return;gs.kind=t.dataset.gkind;document.querySelectorAll("[data-gkind].chip").forEach(b=>b.classList.toggle("on",b.dataset.gkind===gs.kind));gsResults();if(!t.classList.contains("chip"))window.scrollTo(0,0)});
 function evAttachedHtml(p,locked){const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="plan"&&plans.has(r.id));if(!refs.length)return "";
   return `<details class="evsrc"><summary class="cnt">Attached from other plans, ${refs.length}</summary>${refs.map(r=>{const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);
     return `<div style="margin-top:6px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><div class="evclamp" style="white-space:pre-line">${esc(pl.fields?.[r.k]||"")}</div><div class="actions"><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button>${locked?"":`<button class="linkbtn" data-evoff="plan|${esc(pl.id)}">Take off</button>`}</div></div>`}).join("")}</details>`}
