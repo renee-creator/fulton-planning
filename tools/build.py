@@ -28,3 +28,12 @@ print("tree.html", len(out), "bytes")
 print("index.html is TREE")
 import subprocess
 subprocess.run([sys.executable, str(root / "tools/build_embeds.py")], check=True)
+# the public menu page for families and the website, with the farm towns and distances TREE keeps
+pub = (root / "src/public.html").read_text()
+def grab(name):
+    m = re.search(r"^const " + name + r"=.*$", app, re.M)
+    assert m, name
+    return m.group(0)
+pub = pub.replace("/*TOWNS*/", "\n".join(grab(n) for n in ["FARM_TOWNS", "G_TOWN_LL", "G_SCHOOL_LL"]))
+(root / "public.html").write_text(pub)
+print("public.html", len(pub), "bytes")

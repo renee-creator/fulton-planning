@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Fulton Family Page</title>
+<link rel="icon" href="tree-icons/favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="tree-icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Fulton Family">
+<style>
+@font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
+@font-face{font-family:Andika;font-weight:700;src:url(fonts/Andika-Bold.ttf)}
+:root{--bg:#edf0e8;--paper:#fff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--moss:#2b5a40;--moss-soft:#dce9de;--marigold:#9a5b07;--marigold-soft:#f9e9cc;--clay:#984331;--focus:#c47a06;--r:12px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121814;--paper:#1d2620;--ink:#edf2ed;--muted:#aebdb3;--line:#3a4a41;--moss:#93ccaa;--moss-soft:#24382c;--marigold:#f2b955;--marigold-soft:#3b2f18;--clay:#eba189;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121814;--paper:#1d2620;--ink:#edf2ed;--muted:#aebdb3;--line:#3a4a41;--moss:#93ccaa;--moss-soft:#24382c;--marigold:#f2b955;--marigold-soft:#3b2f18;--clay:#eba189;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Andika,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 48px}
+header{padding:8px 0 14px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:28px;margin:2px 0 0;color:var(--moss)}
+h2{font-size:19px;margin:0 0 8px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:0 0 14px}
+.muted{color:var(--muted)}.small{font-size:14px}
+.btn{font:inherit;font-weight:700;border-radius:999px;padding:9px 16px;border:1px solid var(--moss);background:var(--moss);color:var(--paper);cursor:pointer}
+.btn.ghost{background:none;color:var(--moss)}.btn:disabled{opacity:.55;cursor:default}
+.btn.sm{padding:6px 12px;font-size:14px}
+.link{font:inherit;background:none;border:0;color:var(--moss);text-decoration:underline;cursor:pointer;padding:0}
+input,select{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label{display:grid;gap:4px;font-size:14px;font-weight:700}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stack{display:grid;gap:12px}
+.banner{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:var(--r);padding:10px 14px;margin:0 0 14px;font-size:14px}
+.err{color:var(--clay);font-size:14px;min-height:1.2em}
+.kid{display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)}.kid:first-of-type{border-top:0;padding-top:0}
+.kid .top{display:flex;justify-content:space-between;gap:10px}
+.bar{height:10px;border-radius:999px;background:var(--moss-soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--moss)}
+.item{display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)}.item:first-of-type{border-top:0;padding-top:0}
+.item .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;background:var(--moss-soft);color:var(--moss)}
+.tag.ev{background:var(--marigold-soft);color:var(--marigold)}
+.entry{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:15px}.entry:first-of-type{border-top:0}
+.code{font-size:26px;font-weight:700;letter-spacing:.2em;color:var(--moss)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Family page</h1></header>
+
+<section class="card" id="gate" hidden>
+  <form id="f1" class="stack">
+    <p style="margin:0">Sign in with the email address the school has for you. We'll send you a six-digit code.</p>
+    <label>Your email<input type="email" id="email" autocomplete="email" required></label>
+    <div class="err" id="e1" aria-live="polite"></div>
+    <div><button class="btn" id="b1">Send my code</button></div>
+  </form>
+  <form id="f2" class="stack" hidden>
+    <p style="margin:0" id="sent">Check your email for a six-digit code.</p>
+    <div id="testcode" hidden><div class="small muted">Test mode. No email is sent, so here is the code.</div><div class="code" id="tc"></div></div>
+    <label>The code<input inputmode="numeric" autocomplete="one-time-code" id="code" maxlength="6" required></label>
+    <div class="err" id="e2" aria-live="polite"></div>
+    <div><button class="btn" id="b2">Sign in</button> <button type="button" class="link" id="again">Use a different email</button></div>
+  </form>
+</section>
+
+<main id="main" hidden></main>
+</div>
+<script>
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const DEFAULT_SERVER="https://fulton-planning.onrender.com";
+  const want=(qs.get("server")||"").replace(/\/+$/,"");
+  const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+  const SERVER=local?want:DEFAULT_SERVER;
+  const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+  let token=LS.get("fam-token"), D=null, logFor=null;
+  const $=s=>document.querySelector(s);
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  async function api(path,body){
+    const r=await fetch(SERVER+path,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},token?{Authorization:"Bearer "+token}:{}),body:JSON.stringify(body||{})});
+    let j={};try{j=await r.json()}catch(e){}
+    if(r.status===401&&path!=="/family/login"){token=null;LS.set("fam-token",null);showGate();throw new Error("")}
+    if(!r.ok)throw new Error(j.error||"Something went wrong. Try again.");return j;
+  }
+  const day=d=>{if(!d)return"";const t=new Date(d+"T12:00:00");return t.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})};
+  const time=t=>{if(!t)return"";let [h,m]=t.split(":").map(Number);const ap=h>=12?"pm":"am";h=h%12||12;return h+(m?":"+String(m).padStart(2,"0"):"")+" "+ap};
+  const hrs=n=>n+" hour"+(n==1?"":"s");
+  const today=()=>{const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")};
+
+  function showGate(){$("#main").hidden=true;$("#gate").hidden=false;$("#f1").hidden=false;$("#f2").hidden=true;$("#email").value=LS.get("fam-email")||""}
+  $("#f1").onsubmit=async e=>{e.preventDefault();const b=$("#b1");b.disabled=true;$("#e1").textContent="";
+    try{const em=$("#email").value.trim();const j=await api("/family/code",{email:em});LS.set("fam-email",em);
+      $("#f1").hidden=true;$("#f2").hidden=false;$("#testcode").hidden=!j.test;$("#tc").textContent=j.code||"";$("#sent").textContent=j.test?"Type the code below to sign in.":"If that email is on file, a six-digit code is on its way. It works for 15 minutes.";$("#code").focus()}
+    catch(er){$("#e1").textContent=er.message}finally{b.disabled=false}};
+  $("#f2").onsubmit=async e=>{e.preventDefault();const b=$("#b2");b.disabled=true;$("#e2").textContent="";
+    try{const j=await api("/family/login",{email:LS.get("fam-email"),code:$("#code").value.trim()});token=j.token;LS.set("fam-token",token);$("#code").value="";await load()}
+    catch(er){$("#e2").textContent=er.message}finally{b.disabled=false}};
+  $("#again").onclick=()=>{$("#f1").hidden=false;$("#f2").hidden=true};
+
+  async function load(){const j=await api("/family/data");D=j;$("#gate").hidden=true;$("#main").hidden=false;render()}
+  function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
+    return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
+  function render(){
+    const ks=D.children;
+    let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
+    h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
+      <p class="small muted" style="margin:8px 0 0">Each child takes part for ${D.goal} hours a year. Every entry rounds up to the next whole hour.</p></section>`;
+    if(D.signed.length)h+=`<section class="card"><h2>Did you take part?</h2><p class="small muted" style="margin:0 0 6px">You signed up for these. Log each one once it is done.</p>
+      ${D.signed.map(s=>`<div class="item"><div class="top"><div><b>${esc(s.title)}</b><div class="small muted">${esc(day(s.date))}${s.hours?" · counts for "+hrs(s.hours):""}</div></div><button class="btn sm" data-logit="${esc(s.id)}">Log it</button></div>
+        ${logFor===s.id?`<div class="stack">${kidPick("lk-"+s.id)}<label>How long it took, in hours<input type="number" min="0.25" step="0.25" id="lh-${esc(s.id)}" value="${s.hours||1}"></label><div><button class="btn sm" data-logsave="${esc(s.id)}">Save</button> <button class="link" data-logcancel="1">Cancel</button></div></div>`:""}</div>`).join("")}</section>`;
+    h+=`<section class="card"><h2>Ways to take part</h2>${D.open.length?D.open.map(it=>{const full=it.spots&&it.taken>=it.spots&&!it.mine;
+      return `<div class="item"><div class="top"><div><span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span><div><b>${esc(it.title)}</b></div>
+        <div class="small muted">${esc([it.date?day(it.date):"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
+        ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}</div>
+        ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">You're signed up</div><button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full?"":`<button class="btn sm" data-signup="${esc(it.id)}">Sign up</button>`}</div></div>`}).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
+    h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
+      <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
+      ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
+    h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>
+      <p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
+    $("#main").innerHTML=h;
+    $("#fl").onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
+    $("#out").onclick=()=>{token=null;LS.set("fam-token",null);showGate()};
+  }
+  document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||!D)return;const d=b.dataset;
+    try{
+      if(d.signup){b.disabled=true;D=await api("/family/signup",{itemId:d.signup,on:true});render()}
+      else if(d.signoff){D=await api("/family/signup",{itemId:d.signoff,on:false});render()}
+      else if(d.logit){logFor=logFor===d.logit?null:d.logit;render()}
+      else if(d.logcancel){logFor=null;render()}
+      else if(d.logsave){const id=d.logsave;D=await api("/family/log",{itemId:id,childId:$("#lk-"+id).value,minutes:Math.round((Number($("#lh-"+id).value)||0)*60)});logFor=null;render()}
+      else if(d.unlog){D=await api("/family/unlog",{id:d.unlog});render()}
+    }catch(er){if(er.message)alert(er.message);b.disabled=false}});
+  if(token)load().catch(er=>{showGate();if(er.message)$("#e1").textContent=er.message});else showGate();
+})();
+</script>
+</body>
+</html>

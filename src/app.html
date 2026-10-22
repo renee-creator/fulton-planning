@@ -84,6 +84,10 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
 .sendmiss{font-size:14px;line-height:1.5}
+.ptitem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ptitem .actions{flex-wrap:nowrap}
+.card.ptbanner{border-color:var(--marigold);background:var(--marigold-soft)}#pt-temail,.ptform input,.ptform select,.ptform textarea,#pt-kq{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.ptform{display:grid;gap:10px}.ptform input,.ptform select,.ptform textarea{width:100%}
+.ptkid summary{display:flex;justify-content:space-between;gap:10px;padding:10px 0;cursor:pointer;border-top:1px solid var(--line)}.pthrs{font-weight:600;white-space:nowrap}.pthrs.done{color:var(--moss)}
+.ptlog{display:flex;justify-content:space-between;gap:10px;padding:6px 0 6px 12px;font-size:14px}.ptkids{display:grid;gap:8px;padding:0 0 10px}
 .gsform{display:grid;gap:10px}.gsform input[type=search]{width:100%;font-size:16px}.gsrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}.gsrow label{display:grid;gap:4px;font-size:13px}
 .gsgroup{display:grid;gap:8px;margin-bottom:18px}.gshit{display:grid;gap:3px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink);font:inherit;min-width:0}
 .gssnip{overflow-wrap:anywhere;font-size:14px;line-height:1.45}.gsphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -864,6 +868,8 @@ function needName(){if(me())return false;const el=$("#me");if(el){el.focus();el.
 function renderWho(){const el=$("#me"),w=$("#whoneed");if(!el||!w)return;const bad=!me();
   el.setAttribute("aria-invalid",bad?"true":"false");el.style.borderColor=bad?"var(--clay)":"";
   w.textContent=bad?"Add your name so plans carry it":"";w.style.color="var(--clay)";}
+// the director and the office, who keep families' participation and enrollment
+function isOffice(){if(VIEW_AS)return false;return isDirector()||!!(window.FP_OFFICE&&window.FP_OFFICE())}
 function isDirector(){if(VIEW_AS)return false;return window.FP_HOSTED?!!(window.FP_DIRECTOR&&window.FP_DIRECTOR()):true}
 function blankWeb(){return{focus:"",branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}],connections:[],languages:[],questions:"",environment:""}}
 
@@ -958,6 +964,7 @@ async function boot(){
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("participation").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});participation=m;if(view==="participation"&&!document.activeElement?.closest?.("#main input,#main textarea,#main select"))renderMain()});
     db.collection("posts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=posts.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});
       for(const [id,loc] of posts)if(!m.has(id)&&(postTimers[id]||Date.now()-(loc.updatedAt||0)<8000))m.set(id,loc);
       // a post kept on this device before posts were kept in the records goes up once
@@ -1166,6 +1173,7 @@ function renderMain(){
   if(view==="connect"||view==="school"){if(!isDirector()){view="plans";LS.set("fps.view",view);renderAll();return}if(view==="school"){view="connect";LS.set("fps.view",view)}renderConnect();return}
   if(view==="settings"){renderSettings();return}
   if(view==="search"){renderSearchAll();return}
+  if(view==="participation"){if(!isOffice()){view="children";renderMain();return}renderParticipation();return}
   if(view==="children"){renderChildren();return}
   if(view==="child"){renderChild();return}
   if(view==="today"){renderToday();return}
@@ -3593,9 +3601,9 @@ const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
-  children:[["children","Children"],["conferences","Conferences"]]};
+  children:[["children","Children"],["conferences","Conferences"],["participation","Participation"]]};
 const SECTION_OF={search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -3629,7 +3637,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k==="participation"?isOffice():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -7699,6 +7707,77 @@ function gsResults(){const box=$("#gres");if(!box)return;const all=gsRun();
 document.addEventListener("input",e=>{if(e.target.id!=="gq")return;gs.q=e.target.value;try{LS.set("tree.gq",gs.q)}catch(er){}clearTimeout(gsTimer);gsTimer=setTimeout(gsResults,200)});
 document.addEventListener("change",e=>{const id=e.target.id;if(id==="gkid")gs.kid=e.target.value;else if(id==="ggroup")gs.group=e.target.value;else if(id==="gwhen")gs.when=e.target.value;else return;gsResults()});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gkind]");if(!t||view!=="search")return;gs.kind=t.dataset.gkind;document.querySelectorAll("[data-gkind].chip").forEach(b=>b.classList.toggle("on",b.dataset.gkind===gs.kind));gsResults();if(!t.classList.contains("chip"))window.scrollTo(0,0)});
+/* ---------- Family participation, for the director and the office ----------
+   Ways to take part, each child's hours toward the year's goal, and the Family page's test mode. While test mode is on,
+   only the testers' emails sign in to the Family page, each linked to real children, nothing is emailed, and everything
+   made is marked test, shown here with a Test label and cleared with one button before going live. */
+let participation=new Map(),ptForm=null,ptKidQ="",ptOpen="";
+const ptCfg=()=>Object.assign({test:true,goal:10,testers:[]},participation.get("config")||{});
+const ptItems=()=>[...participation.values()].filter(x=>x.kind==="item");
+const ptLogs=()=>[...participation.values()].filter(x=>x.kind==="log"&&!x.removed);
+function ptYearStart(){const t=new Date();const y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1;return y+"-08-01"}
+const FAMILY_URL=(()=>{try{return new URL("family.html",location.href).href.replace(/\?.*$/,"")}catch(e){return "family.html"}})();
+function ptSave(id,doc){participation.set(id,Object.assign({id},doc));return db.doc("participation/"+id).set(doc).catch(e=>toast(e&&e.message||"Could not save."))}
+function ptNewId(p){return p+"-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function renderParticipation(){
+  const c=ptCfg(),test=!!c.test,ys=ptYearStart(),today=iso(new Date());
+  const kidsOf=new Set(test?c.testers.flatMap(t=>t.children||[]):[]);
+  const kids=kidsAt().filter(k=>!test||kidsOf.has(k.id)).sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||(a.first||"").localeCompare(b.first||""));
+  const logs=ptLogs().filter(l=>!!l.test===test&&(l.date||"")>=ys);
+  const hrs=k=>logs.filter(l=>l.childId===k.id).reduce((a,l)=>a+(Number(l.hours)||0),0);
+  const rows=kids.map(k=>({k,h:hrs(k)})).sort((a,b)=>a.h-b.h||(a.k.first||"").localeCompare(b.k.first||""));
+  const its=ptItems().filter(x=>!!x.test===test).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
+  const upcoming=its.filter(x=>!x.date||x.date>=today),past=its.filter(x=>x.date&&x.date<today);
+  const tag=test?` <span class="status ready">Test</span>`:"";
+  const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0"><b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" Class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?`<div class="cnt">${ss.map(s=>esc(s.family||s.email)).join(", ")}</div>`:""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
+    <span class="actions"><button class="btn small ghost" data-ptedit="${esc(x.id)}">Change</button><button class="linkbtn" data-ptopen="${esc(x.id)}">${x.open===false?"Open it again":"Close it"}</button></span></div>`};
+  const form=ptForm?`<section class="card ptform"><h3 style="font-size:17px">${ptForm.id?"Change":"Add"} a way to take part</h3>
+    <div class="chips" role="group" aria-label="Kind">${[["task","Volunteer task"],["event","Community event"]].map(([k,l])=>`<button class="chip ${ptForm.type===k?"on":""}" data-pttype="${k}" type="button">${l}</button>`).join("")}</div>
+    <label class="fld-label">What it is<input type="text" id="pt-title" value="${esc(ptForm.title||"")}" placeholder="${ptForm.type==="event"?"Ex. Family potluck":"Ex. Garden workday"}"></label>
+    <div class="gsrow"><label>Day, if it has one<input type="date" id="pt-date" value="${esc(ptForm.date||"")}"></label><label>Starts<input type="time" id="pt-start" value="${esc(ptForm.start||"")}"></label><label>Ends<input type="time" id="pt-end" value="${esc(ptForm.end||"")}"></label></div>
+    <div class="gsrow"><label>Hours it counts for<input type="number" min="1" max="12" step="1" id="pt-hours" value="${esc(ptForm.hours||"")}"></label><label>Spots, if limited<input type="number" min="0" step="1" id="pt-spots" value="${esc(ptForm.spots||"")}"></label><label>For<select id="pt-class"><option value="">Every family</option>${CLASSROOMS.map(r=>`<option ${ptForm.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label></div>
+    <label class="fld-label">A note for families, optional<textarea id="pt-note" rows="2">${esc(ptForm.note||"")}</textarea></label>
+    <div class="actions"><button class="btn" data-ptsave="1">Save</button><button class="btn ghost" data-ptcancel="1">Cancel</button>${ptForm.id?`<button class="linkbtn" data-ptdel="${esc(ptForm.id)}">Delete</button>`:""}</div></section>`:"";
+  const testers=c.testers.map((t,i)=>`<div class="ptitem"><div style="min-width:0"><b>${esc(t.email)}</b><div class="cnt">${(t.children||[]).map(id=>children.get(id)).filter(Boolean).map(k=>esc(kidName(k))).join(", ")||"No children linked yet"}</div></div><span class="actions"><button class="btn small ghost" data-pttkids="${i}">Children</button><button class="linkbtn" data-pttdel="${i}">Remove</button></span></div>
+    ${ptOpen==="t"+i?`<div class="ptkids"><input type="search" id="pt-kq" placeholder="Find a child" value="${esc(ptKidQ)}"><div class="chips">${kidsAt().filter(k=>!ptKidQ||kidName(k).toLowerCase().includes(ptKidQ.toLowerCase())).sort((a,b)=>kidName(a).localeCompare(kidName(b))).slice(0,40).map(k=>`<button class="chip ${(t.children||[]).includes(k.id)?"on":""}" data-pttkid="${i}|${esc(k.id)}" type="button">${esc(kidName(k))}</button>`).join("")}</div></div>`:""}`).join("");
+  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Family participation</h2><div class="sub">Each child's hours toward ${c.goal} this school year, and the ways families can take part. Families log their own hours on the Family page, and each entry rounds up to a whole hour.</div></div>
+    ${test?`<section class="card ptbanner"><b>Test mode is on.</b> Only the testers below can sign in to the Family page, each seeing the real children linked to them. No email goes to any family. Everything made now is marked Test. Educators do not see this page.
+      <div class="actions" style="margin-top:8px"><a class="btn small" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-ptclear="1">Clear test entries</button><button class="btn small ghost" data-pttest="off">Turn test mode off</button>`:""}</div></section>`
+      :`<section class="card"><b>The Family page is open to families.</b><div class="actions" style="margin-top:8px"><a class="btn small ghost" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-pttest="on">Turn test mode back on</button>`:""}</div></section>`}
+    ${test?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Testers</h3></div><div class="cnt">An email here signs in to the Family page as the family of the children you link to it. The code shows on the page in test mode.</div>${testers}
+      <div class="actions"><input type="email" id="pt-temail" placeholder="An email to test with" style="flex:1;min-width:200px"><button class="btn small" data-ptadd="1">Add a tester</button></div></section>`:""}
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Ways to take part</h3>${ptForm?"":`<button class="btn small" data-ptnew="1">Add one</button>`}</div>
+      ${form}${upcoming.length?upcoming.map(itemRow).join(""):`<div class="cnt">Nothing posted yet. Add a volunteer task or a community event, and families see it on the Family page.</div>`}
+      ${past.length?`<details><summary class="chiprow-label">Already happened, ${past.length}</summary>${past.slice().reverse().map(itemRow).join("")}</details>`:""}</section>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Hours this school year</h3><span class="cnt">${rows.filter(r=>r.h>=c.goal).length} of ${rows.length} children at ${c.goal}</span></div>
+      ${rows.length?`<div class="tlist">${rows.map(({k,h})=>{const ls=logs.filter(l=>l.childId===k.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+        return `<details class="ptkid"><summary><span style="min-width:0"><b>${esc(kidName(k))}</b> <span class="cnt">${esc(k.classroom||"")}</span></span><span class="pthrs ${h>=c.goal?"done":""}">${h} of ${c.goal}</span></summary>
+        ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
+        :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>`;
+}
+document.addEventListener("click",e=>{if(view!=="participation")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;const c=ptCfg();
+  if(VIEW_AS&&(d.ptsave||d.ptadd||d.ptrm||d.ptclear||d.pttest)){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const saveCfg=nc=>ptSave("config",Object.assign({kind:"config"},c,nc,{updatedAt:Date.now()})).then(renderMain);
+  if(d.ptnew){ptForm={type:"task"};renderMain();return}
+  if(d.ptcancel){ptForm=null;renderMain();return}
+  if(d.pttype&&ptForm){Object.assign(ptForm,ptRead());ptForm.type=d.pttype;renderMain();return}
+  if(d.ptedit){ptForm=Object.assign({},participation.get(d.ptedit));renderMain();$(".ptform")?.scrollIntoView({block:"start"});return}
+  if(d.ptsave&&ptForm){const v=Object.assign({},ptForm,ptRead());if(!v.title){toast("Say what it is.");return}
+    const id=v.id||ptNewId("it");ptSave(id,Object.assign({kind:"item",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""},participation.get(id)||{},v,{id,updatedAt:Date.now()})).then(()=>{ptForm=null;renderMain();toast("Saved. Families see it on the Family page.")});return}
+  if(d.ptdel){const x=participation.get(d.ptdel);if(x&&(x.signups||[]).length&&!t.dataset.sure){t.dataset.sure="1";t.textContent="Delete it, families signed up";return}participation.delete(d.ptdel);db.doc("participation/"+d.ptdel).delete().then(()=>{ptForm=null;renderMain()});return}
+  if(d.ptopen){const x=participation.get(d.ptopen);if(x)ptSave(x.id,Object.assign({},x,{open:x.open===false,updatedAt:Date.now()})).then(renderMain);return}
+  if(d.ptrm){const l=participation.get(d.ptrm);if(l)ptSave(l.id,Object.assign({},l,{removed:true,removedBy:myName()||"",removedAt:Date.now()})).then(()=>{renderMain();toast("Removed from the hours.")});return}
+  if(d.ptadd){const em=($("#pt-temail")?.value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em)){toast("Type an email address.");return}if(c.testers.some(x=>x.email===em)){toast("That email is already a tester.");return}
+    ptOpen="t"+c.testers.length;saveCfg({testers:[...c.testers,{email:em,children:[]}]});return}
+  if(d.pttdel!=null){saveCfg({testers:c.testers.filter((x,i)=>i!==+d.pttdel)});return}
+  if(d.pttkids!=null){ptOpen=ptOpen==="t"+d.pttkids?"":"t"+d.pttkids;ptKidQ="";renderMain();return}
+  if(d.pttkid){const [i,id]=d.pttkid.split("|");const ts=c.testers.map((x,j)=>j===+i?Object.assign({},x,{children:(x.children||[]).includes(id)?x.children.filter(z=>z!==id):[...(x.children||[]),id]}):x);saveCfg({testers:ts});return}
+  if(d.pttest&&isDirector()){if(d.pttest==="off"&&!t.dataset.sure){t.dataset.sure="1";t.textContent="Open it to every family";return}saveCfg({test:d.pttest==="on"}).then(()=>toast(d.pttest==="on"?"Test mode is on.":"The Family page is open to families."));return}
+  if(d.ptclear&&isDirector()){if(!t.dataset.sure){t.dataset.sure="1";t.textContent="Clear every test entry";return}
+    const tests=[...participation.values()].filter(x=>x.test&&(x.kind==="log"||x.kind==="item"));Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()})).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared.`)});return}
+});
+document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
+function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note")}}
 function evAttachedHtml(p,locked){const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="plan"&&plans.has(r.id));if(!refs.length)return "";
   return `<details class="evsrc"><summary class="cnt">Attached from other plans, ${refs.length}</summary>${refs.map(r=>{const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);
     return `<div style="margin-top:6px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><div class="evclamp" style="white-space:pre-line">${esc(pl.fields?.[r.k]||"")}</div><div class="actions"><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button>${locked?"":`<button class="linkbtn" data-evoff="plan|${esc(pl.id)}">Take off</button>`}</div></div>`}).join("")}</details>`}

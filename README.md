@@ -261,3 +261,11 @@ The evidence panel shows what the plan is built on first. That is the project, t
 ## Search
 
 Search, at the top of every page, looks across every observation, photo, plan, thread, project, slide, wall and story. It finds words, children's names and educators, and narrows by child, small group and when, this month, this school year or last. Photos are found by their words and the children tagged in them. Results are grouped by kind with the newest first, and each opens where it lives, with Back to Search.
+
+## The Family page
+
+family.html is the Family page, one link for every family. A parent signs in with the email the school has for them and a six-digit code, and sees only their own children. They find ways to take part, sign up, log what they did once it is done, choose which child it counts for, and see each child's hours toward the year's goal of 10. Each entry rounds up to the next whole hour. Signing up adds no hours. Records live under participation/, seen and changed only by the director and the office, Office by default or anyone named in OFFICE_NAMES. Children, then Participation, is where they post tasks and community events, see every child's hours with the furthest behind first, and remove an entry that is not right.
+
+Test mode is on until the director turns it off. While it is on, only the testers listed on the Participation page sign in, each linked to real children, the code shows on the page, nothing is emailed, educators do not see the page, and everything made is marked Test and cleared with one button. Live sign-in codes are emailed through the school's Google Workspace mailbox script, set on Render as FAMILY_MAIL_URL and FAMILY_MAIL_KEY.
+
+public.html is the public menu page for the website, with no sign-in. It shows the month's menu and the month before's Farm to School story, the farms and producers, how many are in Sonoma County and how far the food travelled, with the grant's funding line.
