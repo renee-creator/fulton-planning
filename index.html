@@ -99,6 +99,9 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .tag.smallgroup{background:var(--marigold-soft);color:var(--marigold)}
 .status{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
+.sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
+.sendmiss{font-size:14px;line-height:1.5}.sendmiss .linkbtn{font-size:14px}
+.sendask{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:6px}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
 .nav{flex-wrap:wrap;border-radius:20px}
@@ -1273,7 +1276,12 @@ function planTitle(p){
   const foc=(p.groups||[]).length?p.groups.join(" and "):(p.focus==="area"&&p.where?p.where:"");
   return (p.educator||"Educator")+(foc?" · "+foc:(p.fields?.area?" · "+p.fields.area:""));
 }
-const STATUS={draft:"Draft",ready:"Ready for review",reviewed:"Reviewed"};
+const STATUS={draft:"Draft",ready:"Waiting for Renee's review",reviewed:"Reviewed"};
+/* Sending a plan to Renee. Every box on the Individual and Classroom plans needs writing before it is sent, except Final
+   remarks, which is written after the week. Any writing counts. The older Small Group plan keeps its own status row. */
+const SEND_NEED={individual:["area","dates","observation","intent","materials","questions"],classroom:["observation","intentions","meeting","interests","indoor","outdoor","brainstorm"]};
+const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
+function planMissing(p){if(!sendable(p))return [];const F=FORMS[p.type];return SEND_NEED[p.type].filter(k=>!String((p.fields||{})[k]||"").trim()).map(k=>({k,label:(F.fields.find(f=>f.k===k)||{}).label||k}))}
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
 function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(m&&mine.length?mine:all).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
@@ -1304,6 +1312,13 @@ function renderFeedbackPanel(){
   const label=p=>p.type==="classroom"?(p.classroom||"Classroom")+" team":(p.educator||"Educator")+((p.groups||[]).length?", "+p.groups.join(" and "):"");
   el.innerHTML=list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="fb"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${dir?", from "+esc(p.feedbackReply.by||"an educator"):""}</span></span><span class="status" style="color:var(--moss);border-color:var(--moss)">New</span></button>`).join("")+(list.length>6?`<div class="cnt">${list.length-6} more</div>`:"");
 }
+function sendHtml(p){
+  if(!sendable(p)||isDirector())return "";
+  const when=ms=>ms?" on "+shortDate(ms):"";
+  if(p.status==="reviewed")return `<section class="sendsec done" id="sendsec"><b>Reviewed by Renee${when(p.reviewedAt)}</b></section>`;
+  if(p.status==="ready")return `<section class="sendsec done" id="sendsec"><b>Sent to Renee${when(p.sentAt)}</b><div class="cnt">Waiting for her review. You can keep adding to the plan, and Final remarks after the week.</div></section>`;
+  return `<section class="sendsec" id="sendsec"><button class="btn" id="sendplan">Send to Renee</button><div id="sendmsg" aria-live="polite"></div></section>`;
+}
 function feedbackHtml(p){
   const fb=String(p.feedback||"").trim();const rep=p.feedbackReply&&String(p.feedbackReply.text||"").trim()?p.feedbackReply:null;
   const when=ms=>ms?shortDate(ms):"";
@@ -1317,6 +1332,7 @@ function feedbackHtml(p){
     <label class="fld-label">Your reply, optional<textarea id="fbreply" rows="2" placeholder="Answer or ask a question. The director sees it with this plan.">${esc(rep?.text||"")}</textarea></label></section>`;
 }
 function markFeedbackSeen(p){
+  if(!isDirector()&&p.status==="reviewed"&&p.reviewedAt&&(p.reviewSeenAt||0)<p.reviewedAt&&isMine(p,me())){p.reviewSeenAt=Date.now();persist(p)}
   if(isDirector()){if(replyNew(p)){p.replySeenAt=Date.now();persist(p);renderFeedbackPanel()}return}
   if(fbNew(p)&&isMine(p,me())){p.feedbackSeenAt=Date.now();p.feedbackSeenBy=myName()||"An educator";persist(p);renderFeedbackPanel()}
 }
@@ -1341,7 +1357,7 @@ function renderList(){
     const rp=ps.filter(p=>(p.classroom||"")===r).sort((a,b)=>order[a.type]-order[b.type]||planTitle(a).localeCompare(planTitle(b)));
     if(!rp.length)continue;
     html+=`<div class="group-h">${r?esc(r):"No class chosen"}</div>`;
-    html+=rp.map(p=>`<button class="item" data-open="${esc(p.id)}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Ready":STATUS[p.status]}</span></button>`).join("");
+    html+=rp.map(p=>`<button class="item" data-open="${esc(p.id)}" aria-current="${p.id===currentId}"><span class="tag ${p.type}">${FORMS[p.type].short}</span><span class="nm">${esc(planTitle(p))}</span><span class="status ${p.status}">${p.status==="ready"?"Waiting for review":STATUS[p.status]}</span></button>`).join("");
   }
   $("#list").innerHTML=html;
 }
@@ -1350,6 +1366,7 @@ function renderList(){
 // the kitchen opens on the Kitchen page, where the month's menu is made
 let kLanded=false;
 function renderMain(){
+  try{noteLeaving()}catch(e){}
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
   if(view==="kitchen"){renderKitchen();return}
@@ -1399,9 +1416,9 @@ function renderMain(){
       ${p.type==="smallgroup"?`<label>Small group<select id="m-group"><option value="">Choose</option>${GROUPS.filter(g=>!p.classroom||g.room===p.classroom).map(g=>`<option ${p.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>`:""}
     </div>
     <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
-    <div class="actions"><span class="muted" style="font-size:13px">Status</span>
+    ${sendable(p)&&!isDirector()?`<div class="actions"><span class="muted" style="font-size:13px">Status</span><span class="status ${p.status}">${esc(STATUS[p.status]||"Draft")}</span></div>`:`<div class="actions"><span class="muted" style="font-size:13px">Status</span>
       <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"Renee marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
-    </div>
+    </div>`}
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
@@ -1414,7 +1431,7 @@ function renderMain(){
    h+=`<nav class="secidx" aria-label="Sections of this plan"><span class="cnt"><b>${done} of ${fsx.length}</b> sections written</span><div class="chips">${fsx.map(f=>`<button class="chip ${String(p.fields[f.k]||"").trim()?"on":""}" data-secjump="${f.k}" type="button">${esc(f.label)}</button>`).join("")}</div></nav>`}
   const planStarted=F.fields.some(f=>String(p.fields[f.k]||"").trim());
   if(sample)h+=`<${planStarted?"details":"section"} class="ai">${planStarted?`<summary class="lbl" style="cursor:pointer">Start from your notes</summary>`:`<div class="lbl">Start from your notes</div>`}
-    <p>Paste or dictate your quick jottings from the week. TREE sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
+    <p>Paste or dictate your quick jottings from the week. TREE sorts them into the empty sections below using only what you wrote. Review and edit everything before you send it to Renee.</p>
     <textarea id="notes" rows="4" placeholder="Ex. Tamsin and Mira spent all of free choice lining up acorns by size again, third day. Mira said the big ones are the grandmas..."></textarea>
     <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></${planStarted?"details":"section"}>`;
   if(p.type==="smallgroup")h+=smallGroupMeta(p);
@@ -1430,7 +1447,7 @@ function renderMain(){
   if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's classroom newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" data-talk="1" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
-  h+=feedbackHtml(p)+`
+  h+=sendHtml(p)+feedbackHtml(p)+`
     <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
   sizeBoxes($("#main"));
@@ -1713,7 +1730,7 @@ function renderWelcome(){
     <div class="steps">
       <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"TREE can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
       <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, Fulton's outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
-      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team, and the director can mark them reviewed.</p></div>
+      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team. Send each one to Renee for review when every box has writing.</p></div>
       <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
     </div>
     <div class="actions"><button class="btn" data-new="classroom">Start this week's Classroom Plan</button><button class="btn ghost" id="sample">Download a sample filled plan</button></div>
@@ -1838,7 +1855,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -1877,7 +1894,8 @@ function applyLock(){try{foldIntros()}catch(e){}
   for(const el of ctrls){if(el.tagName==="SELECT"||el.type==="checkbox"||el.type==="radio"||el.type==="color"||el.type==="date"||el.type==="time"||el.type==="file")el.disabled=true;else el.readOnly=true;
     const z=el.closest("section,.card,.meta,.kfields,.two,.pdir");if(z)zones.add(z)}
   for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
-  for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP))b.disabled=true;
+  // Renee marks a plan reviewed while reading it, without pressing Edit first
+  for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP)&&!(b.dataset.status&&isDirector()&&!b.dataset.keepoff))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
     const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
@@ -3870,8 +3888,11 @@ function todayWaiting(){
   // notes from the director, and replies to the director
   for(const p of all.filter(p=>dir?replyNew(p):fbNew(p)&&isMine(p,m)).slice(0,4))
     out.push({dot:"moss",t:dir?`A reply on ${planTitle(p)}'s plan`:`A note from the director on your ${FORMS[p.type].short.toLowerCase()} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}" data-jump="fb"`,b:"Read it"});
-  if(dir)for(const p of all.filter(p=>p.status==="ready"&&p.weekOf>=addDays(wk,-14)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,6))
-    out.push({dot:"sky",t:`Ready for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
+  if(dir)for(const p of all.filter(p=>p.status==="ready").sort((a,b)=>b.weekOf.localeCompare(a.weekOf)))
+    out.push({dot:"sky",t:`Waiting for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
+  // an educator hears when Renee has reviewed a plan, until the plan is opened
+  if(!dir){for(const p of all.filter(p=>p.status==="reviewed"&&p.reviewedAt&&p.reviewedAt>Date.now()-14*864e5&&isMine(p,m)&&(p.reviewSeenAt||0)<p.reviewedAt).slice(0,4))
+    out.push({dot:"moss",t:`Renee reviewed your ${FORMS[p.type].short} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Open"})}
   // the Individual plan comes first on Monday, so the team can write the Classroom plan from it
   const mg=myGroups();if(!dir&&mg.length&&!all.some(p=>p.weekOf===planWeekNow()&&(p.type==="individual"||p.type==="smallgroup")&&isMine(p,m)))
     out.push({dot:"mari",t:"Your Individual plan for this week",s:"Monday is the day for Individual plans, so the team can write the Classroom plan from them.",act:`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`,b:"Start it"});
@@ -3931,7 +3952,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
+const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Ready for your review/.test(w.t)?["review","plans ready for your review"]
   :/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   const row=w=>`<div class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div><button class="btn small ghost" ${w.act}>${w.b}</button></div>`;
@@ -4135,7 +4156,7 @@ function renderWeekBoard(){
   const usedIds=new Set(groups.map(planFor).filter(Boolean).map(p=>p.id));
   const others=ps.filter(p=>(p.type==="individual"||p.type==="smallgroup")&&!usedIds.has(p.id));
   const cls=ps.filter(p=>p.type==="classroom");const stories=ps.filter(p=>p.type==="story");
-  const statusPill=p=>`<span class="status ${p?p.status:"missing"}">${p?(p.status==="ready"?"Ready for review":STATUS[p.status]):"Not started"}</span>`;
+  const statusPill=p=>`<span class="status ${p?p.status:"missing"}">${p?(p.status==="ready"?"Waiting for review":STATUS[p.status]):"Not started"}</span>`;
   const first=t=>{const s=String(t||"").trim().split("\n")[0];return s.length>90?s.slice(0,89)+"…":s};
   const thisWk=planWeekNow();
   const loose=[...plans.values()].filter(p=>p.weekOf===week&&!p.classroom&&p.id!=="example"&&p.type!=="notice");
@@ -4783,7 +4804,8 @@ document.addEventListener("click",async e=>{
   if(t.dataset.delgo){const id=t.dataset.delgo;const keep=id!==p.id?p:null;if(keep){delete keep.dupOf;delete keep.importDup;persist(keep)}removePlan(id);toast("Plan deleted.");return}
   if(t.dataset.delkeep){renderMain();return}
   if(t.id==="dupok"){p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Marked as not a duplicate.");return}
-  if(t.dataset.status){if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
+  if(t.id==="sendplan"){sendPlan(p);return}
+  if(t.dataset.status){if(sendable(p)&&!isDirector())return;if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}if(t.dataset.status==="reviewed"&&p.status!=="reviewed"){p.reviewedAt=Date.now();p.reviewedBy=myName()||"Renee"}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
   if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
     if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
@@ -4820,7 +4842,7 @@ document.addEventListener("input",e=>{
   const t=e.target;
   if(t.id==="me"){LS.set("fps.me",me());renderWho();renderDue();return}
   const p=currentId&&plans.get(currentId);if(!p)return;
-  if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);{const cd=t.closest("[data-card]");if(cd)cd.classList.toggle("filled",!!t.value.trim());const ch=document.querySelector(`[data-secjump="${t.dataset.f}"]`);if(ch)ch.classList.toggle("on",!!t.value.trim());const ix=document.querySelector(".secidx b");if(ix){const all=FORMS[p.type].fields;ix.textContent=`${all.filter(f=>String(p.fields[f.k]||"").trim()).length} of ${all.length}`}}const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
+  if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);sendAskSoon(p);{const m=$("#sendmsg");if(m&&m.innerHTML&&!planMissing(p).length)m.innerHTML=""}{const cd=t.closest("[data-card]");if(cd)cd.classList.toggle("filled",!!t.value.trim());const ch=document.querySelector(`[data-secjump="${t.dataset.f}"]`);if(ch)ch.classList.toggle("on",!!t.value.trim());const ix=document.querySelector(".secidx b");if(ix){const all=FORMS[p.type].fields;ix.textContent=`${all.filter(f=>String(p.fields[f.k]||"").trim()).length} of ${all.length}`}}const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
   if(t.id==="feedback"){if(!isDirector())return;p.feedback=t.value;p.feedbackBy=myName()||"The director";p.feedbackAt=Date.now();autoGrow(t);persist(p);return}
   if(t.id==="fbreply"){const v=t.value;p.feedbackReply={text:v,by:myName()||"An educator",at:Date.now()};autoGrow(t);persist(p);return}
   if(t.id==="f-where"){p.where=t.value;persist(p);renderList();return}
@@ -4837,6 +4859,35 @@ document.addEventListener("change",e=>{
   if(t.id==="m-room"){p.classroom=t.value;if(!isDirector())LS.set("fps.myroom",t.value);if(p.group&&!GROUPS.some(g=>g.name===p.group&&g.room===t.value))p.group="";persist(p);renderList();renderMain();return}
   if(t.id==="m-group"){p.group=t.value;const g=GROUPS.find(g=>g.name===t.value);if(g&&!p.educator){p.educator=g.educator}persist(p);renderList();renderMain();return}
 });
+function sendPlan(p){
+  const miss=planMissing(p);
+  // a saved plan opens for reading, so it opens to edit when boxes are still to fill
+  if(miss.length&&$("#main")?.classList.contains("locked")){const u=$(".lockbar [data-unlock]");if(u)u.click()}
+  const msg=$("#sendmsg");
+  if(miss.length){if(msg)msg.innerHTML=`<div class="sendmiss">Before sending, fill in ${miss.map(m=>`<button class="linkbtn" data-secjump="${esc(m.k)}">${esc(m.label)}</button>`).join(miss.length===2?" and ":", ")}.</div>`;
+    const el=document.querySelector(`[data-card="${miss[0].k}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
+  if(!p.educator&&needName())return;if(!p.educator&&me())p.educator=me();
+  p.status="ready";p.sentAt=Date.now();p.sentBy=myName()||me()||"";sendAskedSet(p.id);persist(p);closeSendAsk();renderList();renderMain();
+  const s=$("#sendsec");if(s)s.scrollIntoView({block:"center"});toast("Sent to Renee for review.");
+}
+// once a plan's last box gets writing and the educator pauses, TREE asks once whether to send it
+const sendAskedGet=()=>{try{return new Set(LS.get("tree.sendasked",[]))}catch(e){return new Set()}};
+function sendAskedSet(id){try{const s=sendAskedGet();s.add(id);LS.set("tree.sendasked",[...s].slice(-300))}catch(e){}}
+let sendAskT=null;
+function sendAskSoon(p){clearTimeout(sendAskT);if(!sendable(p)||isDirector()||p.status!=="draft"||planMissing(p).length||sendAskedGet().has(p.id))return;
+  sendAskT=setTimeout(()=>{const q=currentId&&plans.get(currentId);if(!q||q.id!==p.id||view!=="plans"||q.status!=="draft"||planMissing(q).length||sendAskedGet().has(q.id))return;
+    sendAskedSet(q.id);closeSendAsk();const d=document.createElement("div");d.id="sendask";d.className="sendask";d.setAttribute("role","dialog");d.setAttribute("aria-label","Send this plan");
+    d.innerHTML=`<b>Your plan looks complete.</b><div>Send it to Renee for review?</div><div class="actions"><button class="btn" data-sendask="go">Send</button><button class="btn ghost" data-sendask="no">Not yet</button></div>`;
+    document.body.appendChild(d)},2500)}
+function closeSendAsk(){const d=$("#sendask");if(d)d.remove()}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-sendask]");if(!b)return;closeSendAsk();if(b.dataset.sendask==="go"){const p=currentId&&plans.get(currentId);if(p)sendPlan(p)}});
+// leaving a draft with empty boxes brings a short note, once per plan in a sitting. Nothing stops the educator leaving
+let leftFrom=null;const leftNoted=new Set();
+function noteLeaving(){
+  const now=view==="plans"&&currentId?currentId:null;
+  if(leftFrom&&leftFrom!==now){const q=plans.get(leftFrom);closeSendAsk();clearTimeout(sendAskT);
+    if(q&&sendable(q)&&!isDirector()&&q.status==="draft"&&!isEmptyPlan(q)&&!leftNoted.has(q.id)){const n=planMissing(q).length;if(n){leftNoted.add(q.id);setTimeout(()=>toast(`Your plan is saved as a draft. ${n} box${n===1?" is":"es are"} still empty.`),60)}}}
+  leftFrom=now}
 function insertText(k,text,isMaterial){
   const ta=$("#f-"+k);if(!ta)return;
   const p=plans.get(currentId);
@@ -9530,7 +9581,7 @@ function renderThreads(){
 
   // Planning grid
   const wks=[...weeks].reverse();
-  h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Ready for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
+  h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Waiting for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
    ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
      return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}${ni||ns?`<span class="cnt">${r||teams.length?"· ":""}${[ni&&ni+" individual",ns&&ns+" small group"].filter(Boolean).join(" · ")}</span>`:""}${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
@@ -10278,7 +10329,7 @@ function renderAllPlans(){aMode="list";
 ${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       ${aMode!=="list"?"":`<div class="actions">
         <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
-        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Ready for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>`}
 `}

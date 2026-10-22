@@ -12,7 +12,9 @@ const crypto = require('crypto');
 module.exports = function reminders(o) {
   const { store, accounts, accountFor, saveAccounts, isDirector, isKitchen, log, noteChange, scheduleSave } = o;
   const TZ = 'America/Los_Angeles';
-  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary' };
+  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary', review: 'Plans to review, for the director', reviewed: 'Renee reviewed a plan' };
+  // every box an educator writes before a plan is sent to Renee, except Final remarks
+  const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
   // the sections an educator prepares before a family conference. Shared goals and next steps are written at the conference
   const CONF_PREP = ['interests', 'friends', 'smallGroup', 'favoriteAreas', 'nature', 'approaches', 'social', 'language', 'cognition', 'physical', 'expressive', 'strengths', 'documentation'];
   const NO_SIGNUP = ['declined', 'noresponse', 'missed'];
@@ -99,7 +101,7 @@ module.exports = function reminders(o) {
   const docOf = (kind, id) => { const r = store.recs[kind] && store.recs[kind].get(id); return r && !r.deleted ? r.doc : null; };
   function settings() {
     const s = docOf('settings', 'notify') || {};
-    return { start: s.start || '', perWeek: s.perWeek > 0 ? +s.perWeek : 3, types: Object.assign({ remarks: true, plan: true, classroom: true, obs: true, conf: true, confform: true, summary: true }, s.types || {}), people: s.people || {} };
+    return { start: s.start || '', perWeek: s.perWeek > 0 ? +s.perWeek : 3, types: Object.assign({ remarks: true, plan: true, classroom: true, obs: true, conf: true, confform: true, summary: true, review: true, reviewed: true }, s.types || {}), people: s.people || {} };
   }
   // how often each person plans. Most plan weekly. Some plan monthly, and some keep observations only
   const PLAN_DEFAULTS = {  };
@@ -134,6 +136,9 @@ module.exports = function reminders(o) {
   const plansAll = () => [...store.recs.plans.values()].filter(r => !r.deleted && r.doc && r.doc.id !== 'example').map(r => r.doc).filter(p => NEED[p.type] && !(p.dupOf && store.recs.plans.has(p.dupOf)));
   const missing = p => NEED[p.type].filter(k => !filled(p.fields && p.fields[k])).length + (p.type === 'classroom' && !(filled(p.web && p.web.focus) || ((p.web && p.web.branches) || []).some(b => filled(b && b.name))) ? 1 : 0);
   const nonEmpty = p => Object.values(p.fields || {}).some(filled);
+  const sent = p => p.status === 'ready' || p.status === 'reviewed';
+  const writtenToSend = p => !!SEND_NEED[p.type] && SEND_NEED[p.type].every(k => filled(p.fields && p.fields[k]));
+  const draftLeft = (p, when) => when.dow >= 2 && !sent(p) && writtenToSend(p);
   function obsCount(name, week) {
     const since = weekStartMs(week); const seen = new Set();
     for (const r of store.recs.notices.values()) { const n = r.doc; if (r.deleted || !n || (n.at || 0) < since || key(n.by) !== key(name)) continue; seen.add(n.group || n.id); }
@@ -166,7 +171,8 @@ module.exports = function reminders(o) {
       if (on('plan') && week >= start) {
         const now = mine.filter(p => p.weekOf === week && nonEmpty(p));
         if (!now.length) out.push({ t: 'plan', text: 'This week\'s Individual or Small Group plan' });
-        else if (now.every(p => missing(p))) out.push({ t: 'plan', text: 'Finish this week\'s plan', plan: now[0].id });
+        else if (now.every(p => !sent(p) && missing(p))) out.push({ t: 'plan', text: 'Finish this week\'s plan', plan: now[0].id });
+        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your Individual plan for this week is still a draft. Send it to Renee when it\'s ready.', plan: d.id }); }
       }
     } else if (every === 'monthly' && week.slice(8) <= '07') {
       // a monthly plan is due the first week of the month, and last month's final remarks with it
@@ -176,13 +182,15 @@ module.exports = function reminders(o) {
       if (on('plan') && week >= start) {
         const now = mine.filter(p => String(p.weekOf).slice(0, 7) === month && nonEmpty(p));
         if (!now.length) out.push({ t: 'plan', text: 'This month\'s plan' });
-        else if (now.every(p => missing(p))) out.push({ t: 'plan', text: 'Finish this month\'s plan', plan: now[0].id });
+        else if (now.every(p => !sent(p) && missing(p))) out.push({ t: 'plan', text: 'Finish this month\'s plan', plan: now[0].id });
+        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your plan for this month is still a draft. Send it to Renee when it\'s ready.', plan: d.id }); }
       }
     }
     if (on('classroom') && week >= start && e.room) {
       const cp = ps.filter(p => p.type === 'classroom' && p.classroom === e.room && p.weekOf === week && nonEmpty(p));
       if (!cp.length) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan` });
-      else if (cp.every(p => missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} Class's Classroom plan`, plan: cp[0].id });
+      else if (cp.every(p => !sent(p) && missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} Class's Classroom plan`, plan: cp[0].id });
+      else { const d = cp.find(p => draftLeft(p, when)); if (d && !cp.some(sent)) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan is still a draft. Send it to Renee when it's ready.`, plan: d.id }); }
     }
     // family conferences this educator leads. A reminder a week before, the Friday before and that morning, and the form
     // finished two school days ahead, with a reminder each school morning from five school days ahead until it is
@@ -214,6 +222,11 @@ module.exports = function reminders(o) {
       const items = openFor(e, when, S).filter(i => kind === 'morning' || (i.t !== 'conf' && i.t !== 'confform')); if (!items.length) continue;
       const r = await sendTo(e.name, messageFor(items, kind === 'morning')); res.push({ name: e.name, items, sent: r.sent });
     }
+    // each school morning the director hears how many plans wait for review, only when some do
+    if (kind === 'morning' && S.types.review) {
+      const n = plansAll().filter(p => p.status === 'ready').length;
+      if (n) for (const d of [...accounts.list].filter(a => isDirector(a.name)).map(a => a.name)) await sendTo(d, { title: 'TREE, plans to review', body: `${n} plan${n === 1 ? ' is' : 's are'} waiting for your review.`, url: 'tree.html?go=today', tag: 'tree-review' });
+    }
     if (kind === 'evening' && when.dow === 1 && S.types.summary) {
       const open = educators().map(e => ({ e, items: openFor(e, when, S).filter(i => i.t !== 'obs' && i.t !== 'conf' && i.t !== 'confform') })).filter(x => x.items.length);
       const body = open.length ? open.map(x => `${x.e.name}, ${x.items.map(i => i.text.replace(/^Finish /, '').replace(/^This week's /, '').toLowerCase()).join('; ')}`).join('\n') : 'Every educator\'s planning is done for this week.';
@@ -233,6 +246,32 @@ module.exports = function reminders(o) {
   }
   setInterval(tick, 60e3); setTimeout(tick, 20e3);
 
+  // ---------- when Renee reviews a plan or leaves a note ----------
+  // the educator hears a few minutes after Renee stops typing, once, so a note written over several minutes is one message
+  const reviewTimers = new Map();
+  function planReviewed(id, before, doc) {
+    if (!doc || doc.id === 'example') return;
+    const reviewedNow = doc.status === 'reviewed' && (!before || before.status !== 'reviewed');
+    const noteNow = filled(doc.feedback) && (!before || String(before.feedback || '') !== String(doc.feedback || ''));
+    if (!reviewedNow && !noteNow) return;
+    const was = reviewTimers.get(id) || { reviewed: false, note: false };
+    clearTimeout(was.t);
+    const next = { reviewed: was.reviewed || reviewedNow, note: was.note || noteNow };
+    next.t = setTimeout(() => { reviewTimers.delete(id); sendReviewed(id, next).catch(e => log('Review notice not sent,', e.message)); }, 4 * 60000);
+    if (next.t.unref) next.t.unref();
+    reviewTimers.set(id, next);
+  }
+  async function sendReviewed(id, what) {
+    const S = settings(); if (!S.types.reviewed || !keys()) return;
+    const r = store.recs.plans.get(id); const p = r && !r.deleted ? r.doc : null; if (!p) return;
+    const kind = p.type === 'classroom' ? 'Classroom' : 'Individual';
+    const people = educators().filter(e => nameIn(p.educator, e.name) && !personOf(S, e.name).paused && !(personOf(S, e.name).off || []).includes('reviewed'));
+    const reviewed = what.reviewed && p.status === 'reviewed', note = what.note && filled(p.feedback);
+    if (!reviewed && !note) return;
+    const body = reviewed && note ? `Renee reviewed your ${kind} plan and left a note.` : reviewed ? `Renee reviewed your ${kind} plan.` : `Renee left a note on your ${kind} plan.`;
+    for (const e of people) await sendTo(e.name, { title: 'TREE', body, url: `tree.html?plan=${encodeURIComponent(id)}`, tag: 'tree-review-' + id });
+  }
+
   // ---------- for the director's page ----------
   function status() {
     const S = settings(); const when = Object.assign(nowLA(), { force: true });
@@ -241,5 +280,5 @@ module.exports = function reminders(o) {
       return { name: e.name, room: e.room, plans: planEvery(S, e.name), phones: (a.push || []).length, lastOk: lg.lastOk || 0, lastFail: lg.lastFail || 0, why: lg.why || '', signIn: !!a.name, open: openFor(e, when, S).map(i => i.text) };
     }) };
   }
-  return { keys, subscribe, sendTo, status, tick, encrypt, vapidHeader, TYPES };
+  return { keys, subscribe, sendTo, status, tick, encrypt, vapidHeader, TYPES, planReviewed };
 };
