@@ -101,6 +101,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .status.ready{border-color:var(--marigold);color:var(--marigold)}
 .sendsec{display:grid;gap:8px;justify-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.sendsec.done{border-color:var(--moss)}.sendsec.done b{color:var(--moss)}
 .sendmiss{font-size:14px;line-height:1.5}
+#kfam input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink);width:100%}.kfamrow{padding-bottom:10px;border-bottom:1px solid var(--line)}
 .ptitem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ptitem .actions{flex-wrap:nowrap}
 .card.ptbanner{border-color:var(--marigold);background:var(--marigold-soft)}#pt-temail,.ptform input,.ptform select,.ptform textarea,#pt-kq{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.ptform{display:grid;gap:10px}.ptform input,.ptform select,.ptform textarea{width:100%}
 .ptkid summary{display:flex;justify-content:space-between;gap:10px;padding:10px 0;cursor:pointer;border-top:1px solid var(--line)}.pthrs{font-weight:600;white-space:nowrap}.pthrs.done{color:var(--moss)}
@@ -7970,6 +7971,7 @@ function renderParticipation(){
     ${test?`<section class="card ptbanner"><b>Test mode is on.</b> Only the testers below can sign in to the Family page, each seeing the real children linked to them. No email goes to any family. Everything made now is marked Test. Educators do not see this page.
       <div class="actions" style="margin-top:8px"><a class="btn small" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-ptclear="1">Clear test entries</button><button class="btn small ghost" data-pttest="off">Turn test mode off</button>`:""}</div></section>`
       :`<section class="card"><b>The Family page is open to families.</b><div class="actions" style="margin-top:8px"><a class="btn small ghost" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-pttest="on">Turn test mode back on</button>`:""}</div></section>`}
+    ${(()=>{const miss=kidsAt().filter(k=>!(k.parents||[]).some(p=>p&&has(p.email)));return miss.length?`<section class="card"><b>${miss.length} ${miss.length===1?"family has":"families have"} no email on file</b>, so ${miss.length===1?"it":"they"} cannot sign in to the Family page. <div class="actions" style="margin-top:6px">${miss.map(k=>`<button class="btn small ghost" data-kid="${esc(k.id)}" data-ktab="details">${esc(kidName(k))}</button>`).join("")}</div></section>`:""})()}
     ${test?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Testers</h3></div><div class="cnt">An email here signs in to the Family page as the family of the children you link to it. The code shows on the page in test mode.</div>${testers}
       <div class="actions"><input type="email" id="pt-temail" placeholder="An email to test with" style="flex:1;min-width:200px"><button class="btn small" data-ptadd="1">Add a tester</button></div></section>`:""}
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Ways to take part</h3>${ptForm?"":`<button class="btn small" data-ptnew="1">Add one</button>`}</div>
@@ -10971,7 +10973,8 @@ function renderChild(){
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
         <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
-        <div class="cnt">Family details live on the conference record.</div></section>
+</section>
+      ${kidFamilyHtml(c)}
       ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
@@ -10988,6 +10991,27 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.pftoggle){const c=children.get(kidOpen);if(!c)return;const [kind,id]=t.dataset.pftoggle.split("|");const k=pfKey(kind,id);const on=kidInPortfolio(c,kind,id);
     kidDrdpPatch(c,{portfolio:{out:{[k]:on?true:{__delete__:true}}}});toast(on?"Taken out of the portfolio.":"Back in the portfolio.");renderMain();return}
 });
+/* a child's family contacts, on the child's own Details tab. They are the same contacts the conference record shows,
+   and a parent's email here is how that family signs in to the Family page. */
+let kidFamEdit="",kidFamRows=null;
+function kidFamilyHtml(c){
+  const ps=(c.parents||[]).filter(p=>p&&(has(p.name)||has(p.email)||has(p.cell)));const noEmail=!ps.some(p=>has(p.email));
+  if(kidFamEdit===c.id){const rows=kidFamRows||[...ps];while(rows.length<2)rows.push({});kidFamRows=rows;
+    return `<section class="card" id="kfam" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Family contacts</h3></div>
+      <div class="stack" style="gap:12px">${rows.map((p,i)=>`<div class="kfields kfamrow" data-kfam="${i}"><label>Name<input type="text" data-kf="name" value="${esc(p.name||"")}" autocomplete="off"></label><label>Cell<input type="tel" data-kf="cell" value="${esc(p.cell||"")}" autocomplete="off"></label><label>Email<input type="email" data-kf="email" value="${esc(p.email||"")}" autocomplete="off"></label></div>`).join("")}</div>
+      <div class="actions"><button class="btn small" data-kfamsave="${esc(c.id)}">Save</button><button class="btn small ghost" data-kfamadd="1">Add another parent</button><button class="linkbtn" data-kfamcancel="1">Cancel</button></div></section>`}
+  return `<section class="card" id="kfam" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Family contacts</h3><button class="btn small ghost" data-kfamedit="${esc(c.id)}">${ps.length?"Change":"Add a parent"}</button></div>
+    ${ps.length?`<div class="kgrid">${ps.map(p=>`<div><b>${esc(p.name||"A parent")}</b>${p.cell?`<div><a href="tel:${esc(String(p.cell).replace(/[^0-9+]/g,""))}">${esc(p.cell)}</a></div>`:""}${p.email?`<div style="overflow-wrap:anywhere"><a href="mailto:${esc(p.email)}">${esc(p.email)}</a></div>`:""}</div>`).join("")}</div>`:`<div class="cnt">No family contacts on file.</div>`}
+    ${noEmail?`<div class="cnt" style="color:var(--clay);margin-top:6px">No parent email, so this family cannot sign in to the Family page.</div>`:""}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-kfamedit],[data-kfamcancel],[data-kfamadd],[data-kfamsave]");if(!t)return;const d=t.dataset;
+  if(d.kfamedit){kidFamEdit=d.kfamedit;kidFamRows=null;renderMain();$("#kfam")?.scrollIntoView({block:"center"});$("#kfam input")?.focus({preventScroll:true});return}
+  if(d.kfamcancel){kidFamEdit="";kidFamRows=null;renderMain();return}
+  const read=()=>[...document.querySelectorAll("#kfam .kfamrow")].map(r=>({name:r.querySelector('[data-kf="name"]').value.trim(),cell:r.querySelector('[data-kf="cell"]').value.trim(),email:r.querySelector('[data-kf="email"]').value.trim().toLowerCase()}));
+  if(d.kfamadd){kidFamRows=[...read(),{}];renderMain();return}
+  if(d.kfamsave){const c=children.get(d.kfamsave);if(!c)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+    const ps=read().filter(p=>p.name||p.cell||p.email);const bad=ps.find(p=>p.email&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(p.email));if(bad){toast("Check the email for "+(bad.name||"that parent")+".");return}
+    c.parents=ps;children.set(c.id,c);kidFamEdit="";kidFamRows=null;renderMain();
+    if(db)db.doc("children/"+c.id).update({parents:ps}).then(()=>toast("Family contacts saved.")).catch(er=>toast(er&&er.message||"Could not save. Check your connection."))}});
 function kidEditHtml(c){
   const groupsFor=room=>GROUPS.filter(g=>!room||g.room===room).map(g=>g.name);
   const hist=(c.treeHistory||[]).slice().reverse();
@@ -11001,7 +11025,7 @@ function kidEditHtml(c){
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
-  if(t.dataset.kid){if(t.dataset.drdpfocus||kidOpen!==t.dataset.kid){kidTab=t.dataset.drdpfocus?"drdp":"overview";LS.set("tree.kidtab",kidTab)}kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
+  if(t.dataset.kid){if(t.dataset.drdpfocus||kidOpen!==t.dataset.kid){kidTab=t.dataset.drdpfocus?"drdp":t.dataset.ktab||"overview";LS.set("tree.kidtab",kidTab)}kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
   if(t.dataset.tconfchild){embedRoute.conferences="child="+t.dataset.tconfchild;embedGo.conferences=true;goView("conferences");return}
   if(t.dataset.mjumpto){const n=notices.get(t.dataset.mjumpto);if(n){const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}}return}
   if(view!=="children"&&view!=="child")return;
