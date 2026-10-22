@@ -10969,7 +10969,7 @@ function renderChild(){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
       ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
-    body=`<section class="card"><div class="kgrid">
+    body=kidInfoEdit===c.id?kidInfoForm(c):`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">${esc(kidName(c))}</h3><button class="btn small ghost" data-kinfoedit="${esc(c.id)}">Change</button></div><div class="kgrid">
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
         <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
@@ -10993,7 +10993,22 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
 });
 /* a child's family contacts, on the child's own Details tab. They are the same contacts the conference record shows,
    and a parent's email here is how that family signs in to the Family page. */
-let kidFamEdit="",kidFamRows=null;
+let kidFamEdit="",kidFamRows=null,kidInfoEdit="";
+// a child's name, birthday, first day and schedule, changed on the child's own Details tab
+function kidInfoForm(c){return `<section class="card" id="kinfo" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Change ${esc(c.first||"this child")}'s details</h3></div>
+  <div class="kfields"><label>First name<input type="text" id="ki-first" value="${esc(c.first||"")}" autocomplete="off"></label><label>Last name<input type="text" id="ki-last" value="${esc(c.last||"")}" autocomplete="off"></label>
+  <label>Birthday<input type="date" id="ki-dob" value="${esc(String(c.dob||"").slice(0,10))}"></label><label>First day<input type="date" id="ki-start" value="${esc(String(c.enrollDate||"").slice(0,10))}"></label>
+  <label>Schedule<input type="text" id="ki-sched" value="${esc(c.program||c.schedule||"")}" autocomplete="off"></label></div>
+  <div class="cnt">Class, small group and next year are changed below.</div>
+  <div class="actions"><button class="btn small" data-kinfosave="${esc(c.id)}">Save</button><button class="linkbtn" data-kinfocancel="1">Cancel</button></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-kinfoedit],[data-kinfocancel],[data-kinfosave]");if(!t)return;const d=t.dataset;
+  if(d.kinfoedit){kidInfoEdit=d.kinfoedit;renderMain();$("#ki-first")?.focus();return}
+  if(d.kinfocancel){kidInfoEdit="";renderMain();return}
+  const c=children.get(d.kinfosave);if(!c)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const v=id=>($("#"+id)?.value||"").trim();const first=v("ki-first");if(!first){toast("Type the child's first name.");return}
+  const was=kidName(c);c.first=first;c.last=v("ki-last");if(v("ki-dob"))c.dob=v("ki-dob");if(v("ki-start"))c.enrollDate=v("ki-start");if(c.program!=null||!c.schedule)c.program=v("ki-sched");else c.schedule=v("ki-sched");
+  if(kidName(c)!==was)kidNote(c,`Name changed from ${was}`);saveKid(c);kidInfoEdit="";renderMain();toast("Saved.")});
+
 function kidFamilyHtml(c){
   const ps=(c.parents||[]).filter(p=>p&&(has(p.name)||has(p.email)||has(p.cell)));const noEmail=!ps.some(p=>has(p.email));
   if(kidFamEdit===c.id){const rows=kidFamRows||[...ps];while(rows.length<2)rows.push({});kidFamRows=rows;
