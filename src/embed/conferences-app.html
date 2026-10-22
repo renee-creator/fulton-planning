@@ -6,7 +6,7 @@
 :root{
   --bg:#F3F5F1; --surface:#FFFFFF; --surface-2:#EBEFEA; --ink:#1E2A23; --muted:#5C6A61; --line:#D8DFD8;
   --accent:#2E5B44; --accent-ink:#FFFFFF; --accent-soft:#E1EBE4;
-  --ok:#2F7A4F; --ok-soft:#DDEFE3; --sched:#9A6A1C; --sched-soft:#F6EBD6; --prog:#3D6290; --prog-soft:#E1E9F4; --todo:#7E8983; --todo-soft:#ECEFEC; --danger:#A3392E; --danger-soft:#F7E2DF;
+  --ok:#2F7A4F; --ok-soft:#DDEFE3; --sched:#9A6A1C; --sched-soft:#F6EBD6; --prog:#3D6290; --prog-soft:#E1E9F4; --todo:#7E8983; --todo-soft:#ECEFEC; --danger:#A3392E; --danger-soft:#F7E2DF; --ready:#1D6F72; --ready-soft:#D8EEEE;
   --f-display:"Andika", system-ui, "Segoe UI", sans-serif;
   --f-body:"Andika", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"Andika", system-ui, sans-serif;
@@ -15,12 +15,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#121815; --surface:#1A221E; --surface-2:#212B26; --ink:#E4EBE6; --muted:#9BA9A1; --line:#2F3A34;
   --accent:#8EC5A3; --accent-ink:#0F1A14; --accent-soft:#213429;
-  --ok:#7FCB9B; --ok-soft:#1F3428; --sched:#E0B568; --sched-soft:#3A2F1B; --prog:#93B6E3; --prog-soft:#1F2B3B; --todo:#8D9892; --todo-soft:#242C28; --danger:#EE8F84; --danger-soft:#3A2220;
+  --ok:#7FCB9B; --ok-soft:#1F3428; --sched:#E0B568; --sched-soft:#3A2F1B; --prog:#93B6E3; --prog-soft:#1F2B3B; --todo:#8D9892; --todo-soft:#242C28; --danger:#EE8F84; --danger-soft:#3A2220; --ready:#7CCFCF; --ready-soft:#1A3131;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#121815; --surface:#1A221E; --surface-2:#212B26; --ink:#E4EBE6; --muted:#9BA9A1; --line:#2F3A34;
   --accent:#8EC5A3; --accent-ink:#0F1A14; --accent-soft:#213429;
-  --ok:#7FCB9B; --ok-soft:#1F3428; --sched:#E0B568; --sched-soft:#3A2F1B; --prog:#93B6E3; --prog-soft:#1F2B3B; --todo:#8D9892; --todo-soft:#242C28; --danger:#EE8F84; --danger-soft:#3A2220;
+  --ok:#7FCB9B; --ok-soft:#1F3428; --sched:#E0B568; --sched-soft:#3A2F1B; --prog:#93B6E3; --prog-soft:#1F2B3B; --todo:#8D9892; --todo-soft:#242C28; --danger:#EE8F84; --danger-soft:#3A2220; --ready:#7CCFCF; --ready-soft:#1A3131;
   color-scheme:dark}
 *{box-sizing:border-box}
 html,body{background:var(--bg);color:var(--ink)}
@@ -68,6 +68,7 @@ main{max-width:1180px;margin:0 auto;padding:24px 16px 80px}
 .st-progress{background:var(--prog-soft);color:var(--prog)}
 .st-none{background:var(--todo-soft);color:var(--todo)}
 .st-held{background:var(--danger-soft);color:var(--danger)}
+.st-ready{background:var(--ready-soft);color:var(--ready)}
 .pf-late{background:var(--danger-soft)}
 .pf-count{display:inline-block;min-width:22px;padding:1px 6px;border-radius:999px;background:var(--ok-soft);font-weight:600;text-decoration:none;color:inherit}
 input[type=checkbox]{accent-color:var(--accent)}
@@ -424,6 +425,7 @@ function confStatus(c){
   if(c.status==="complete") return {key:"complete",label:"Complete"};
   if(NO_SIGNUP[c.signup]) return {key:"nosignup",label:NO_SIGNUP[c.signup]};
   if(c.confDate && c.confDate<todayISO()) return {key:"held",label:"Date passed"};
+  if(confReady(c).ready) return {key:"ready",label:"Ready"};
   if(c.confDate) return {key:"scheduled",label:"Scheduled"};
   if(c.signup==="signedup") return {key:"progress",label:"Signed up"};
   if(c.signup==="invited") return {key:"progress",label:"Invited"};
@@ -431,6 +433,8 @@ function confStatus(c){
   if(!hasWork(c)) return {key:"none",label:"Not started"};
   return {key:"progress",label:"Preparing"};
 }
+// No conference date yet, so the family still needs reaching or a time. A child can be Ready before a date is set.
+function noDateYet(cf){ const k=confStatus(cf).key; return k==="none"||k==="progress"||(k==="ready"&&!cf?.confDate); }
 function parseTime(v){
   const m=String(v||"").trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?\s*m?\.?$/i); if(!m) return "";
   let h=+m[1]; const mi=m[2]||"00"; const ap=(m[3]||"").toLowerCase();
@@ -569,15 +573,15 @@ function periodPicker(){
 function viewOverview(){
   const kids = activeChildren();
   const rooms = S.settings.classrooms;
-  const counts = r => { const k = kids.filter(c=>c.classroom===r); const by={complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}; k.forEach(c=>by[confStatus(periodConf(c.id)).key]++); return {total:k.length,...by}; };
-const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}; rooms.forEach(r=>{ const c=counts(r); for(const k in tot) tot[k]+=c[k]; });
+  const counts = r => { const k = kids.filter(c=>c.classroom===r); const by={complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0,none:0}; k.forEach(c=>by[confStatus(periodConf(c.id)).key]++); return {total:k.length,...by}; };
+const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0,none:0}; rooms.forEach(r=>{ const c=counts(r); for(const k in tot) tot[k]+=c[k]; });
   const today0 = todayISO();
   const when = cf => (cf.confDate||"")+" "+(cf.confTime||"99:99");
   const whenText = cf => { const d=new Date(cf.confDate+"T12:00:00"); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+(cf.confTime?", "+fmtTime(cf.confTime):""); };
   const sched = r => { const k=kids.filter(c=>c.classroom===r).map(c=>({c,cf:periodConf(c.id)}));
     const up=k.filter(x=>x.cf&&x.cf.confDate&&x.cf.confDate>=today0&&x.cf.status!=="complete"&&!NO_SIGNUP[x.cf.signup]).sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
     const passed=k.filter(x=>confStatus(x.cf).key==="held").sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
-    const unsched=k.filter(x=>["none","progress"].includes(confStatus(x.cf).key)).sort((a,b)=>childName(a.c).localeCompare(childName(b.c)));
+    const unsched=k.filter(x=>noDateYet(x.cf)).sort((a,b)=>childName(a.c).localeCompare(childName(b.c)));
     const row=(x,cls)=>`<li class="${cls||""}"><a href="#" data-act="open-child-conf" data-id="${esc(x.c.id)}"><b>${esc(childName(x.c))}</b></a><span class="small muted">${esc([whenText(x.cf),x.cf.format,educatorOf(x.c)].filter(Boolean).join(" · "))}</span></li>`;
     return `<div class="sched">
       ${up.length?`<div class="sched-next"><span class="eyebrow">Next</span><a href="#" data-act="open-child-conf" data-id="${esc(up[0].c.id)}"><b>${esc(childName(up[0].c))}</b></a><div class="small">${esc([whenText(up[0].cf),up[0].cf.format,educatorOf(up[0].c)].filter(Boolean).join(" · "))}</div></div>`
@@ -588,8 +592,8 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
     </div>`; };
   const roomCard = r => { const c=counts(r); const pct=k=>c.total? (c[k]/c.total*100):0;
     return `<div class="panel room"><h3>${esc(r)} <span class="mono small muted">${c.complete}/${c.total} complete</span></h3>
-      <div class="bar" role="img" aria-label="${c.complete} complete, ${c.held} date passed, ${c.scheduled} scheduled, ${c.progress} preparing, ${c.none} not started"><i style="width:${pct("complete")}%;background:var(--ok)"></i><i style="width:${pct("held")}%;background:var(--danger)"></i><i style="width:${pct("nosignup")}%;background:var(--muted);opacity:.55"></i><i style="width:${pct("scheduled")}%;background:var(--sched)"></i><i style="width:${pct("progress")}%;background:var(--prog)"></i></div>
-      <div class="legend">${c.complete?`<span style="--c:var(--ok)">${c.complete} complete</span>`:""}${c.held?`<span style="--c:var(--danger)">${c.held} date passed</span>`:""}${c.nosignup?`<span style="--c:var(--muted)">${c.nosignup} did not sign up</span>`:""}${c.scheduled?`<span style="--c:var(--sched)">${c.scheduled} scheduled</span>`:""}${c.progress?`<span style="--c:var(--prog)">${c.progress} preparing</span>`:""}${c.none?`<span style="--c:var(--todo)">${c.none} not started</span>`:""}</div>${sched(r)}</div>`; };
+      <div class="bar" role="img" aria-label="${c.complete} complete, ${c.held} date passed, ${c.ready} ready, ${c.scheduled} scheduled, ${c.progress} preparing, ${c.none} not started"><i style="width:${pct("complete")}%;background:var(--ok)"></i><i style="width:${pct("held")}%;background:var(--danger)"></i><i style="width:${pct("nosignup")}%;background:var(--muted);opacity:.55"></i><i style="width:${pct("ready")}%;background:var(--ready)"></i><i style="width:${pct("scheduled")}%;background:var(--sched)"></i><i style="width:${pct("progress")}%;background:var(--prog)"></i></div>
+      <div class="legend">${c.complete?`<span style="--c:var(--ok)">${c.complete} complete</span>`:""}${c.held?`<span style="--c:var(--danger)">${c.held} date passed</span>`:""}${c.nosignup?`<span style="--c:var(--muted)">${c.nosignup} did not sign up</span>`:""}${c.ready?`<span style="--c:var(--ready)">${c.ready} ready</span>`:""}${c.scheduled?`<span style="--c:var(--sched)">${c.scheduled} scheduled</span>`:""}${c.progress?`<span style="--c:var(--prog)">${c.progress} preparing</span>`:""}${c.none?`<span style="--c:var(--todo)">${c.none} not started</span>`:""}</div>${sched(r)}</div>`; };
   const f=S.filters;
   let list = eduFilter(kids.filter(c=> (f.room==="All"||c.classroom===f.room)));
   if(f.q) list = list.filter(c=>childName(c).toLowerCase().includes(f.q.toLowerCase()));
@@ -624,7 +628,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
       <div class="filters">
         <input type="search" id="f-q" placeholder="Find a child" value="${esc(f.q)}" aria-label="Find a child">
         <select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
-        <select id="f-status" aria-label="Status"><option value="All">Every status</option>${[["none","Not started"],["progress","Preparing"],["scheduled","Scheduled"],["held","Date passed"],["nosignup","Did not sign up"],["complete","Complete"]].map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="f-status" aria-label="Status"><option value="All">Every status</option>${[["none","Not started"],["progress","Preparing"],["scheduled","Scheduled"],["ready","Ready"],["held","Date passed"],["nosignup","Did not sign up"],["complete","Complete"]].map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select>
         ${eduSelect()}${sortSelect()}
         <span id="live-meta"><span class="small muted mono">${list.length} of ${tot.total}</span>
         ${list.length?`<button class="btn" data-act="pdf-list" title="One PDF with a two-page form for each child shown, ready to print">Print forms for these ${list.length} (PDF)</button>`:""}</span>
@@ -637,10 +641,10 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
         ${upcoming.length? `<ul class="list-plain">${upcoming.map(c=>li(c,c.confDate, esc([fmtTime(c.confTime), c.format, c.teacher].filter(Boolean).join(" · "))||"Time not set")).join("")}</ul>` : `<p class="small muted">No conferences scheduled yet. Open a child and set a date to see it here.</p>`}
         ${nonMonday? `<p class="small muted" style="margin-bottom:0">${nonMonday} upcoming ${nonMonday===1?"conference falls":"conferences fall"} on a day other than Monday. Monday mornings work best.</p>`:""}
       </div>
-      ${(()=>{ const waiting=kids.filter(c=>["none","progress"].includes(confStatus(periodConf(c.id)).key) && !(periodConf(c.id)?.signup==="signedup"));
+      ${(()=>{ const waiting=kids.filter(c=>noDateYet(periodConf(c.id)) && !(periodConf(c.id)?.signup==="signedup"));
         return `<div class="panel"><h3>Families to reach</h3>
         <p class="small muted" style="margin:0 0 10px">${waiting.length} ${waiting.length===1?"family has":"families have"} no conference date yet and ${waiting.length===1?"has":"have"} not signed up.</p>
-        ${waiting.length?`<div class="stack" style="gap:8px"><button class="btn sm" data-act="copy-emails">Copy their parent emails</button>${signupUrl()?`<button class="btn sm" data-act="copy-signup">Copy the sign-up link</button><a class="btn sm ghost" href="${esc(signupUrl())}" target="_blank" rel="noopener">Open SignUpGenius</a>`:""}${canEdit()&&window.FC_SIGNUP_FEED?`<button class="btn sm" data-act="sug-check">Fill in times from SignUpGenius</button>`:""}${canEdit()?`<button class="btn sm ghost" data-act="mark-noresponse">Mark them as no response</button>`:""}</div>`:""}
+        ${waiting.length?`<div class="stack" style="gap:8px"><button class="btn sm" data-act="copy-emails">Copy their parent emails</button>${signupUrl()?`<button class="btn sm" data-act="copy-signup">Copy the sign-up link</button><a class="btn sm ghost" href="${esc(signupUrl())}" target="_blank" rel="noopener">Open SignUpGenius</a>`:""}${canEdit()&&window.FC_SIGNUP_FEED?`<button class="btn sm" data-act="sug-check">Fill in times from SignUpGenius</button>`:""}${window.FC_SIGNUP_FEED?`<p class="small muted" style="margin:0">TREE checks SignUpGenius every hour and fills in the families it can match. Use the button for any it could not.</p>`:""}${canEdit()?`<button class="btn sm ghost" data-act="mark-noresponse">Mark them as no response</button>`:""}</div>`:""}
         </div>`; })()}
       ${(()=>{ const nw=kids.filter(isNewChild).sort((a,b)=>(a.enrollDate||"").localeCompare(b.enrollDate||""));
         return nw.length? `<div class="panel"><h3>New children getting started</h3><ul class="list-plain">${nw.slice(0,10).map(c=>`<li><span><a href="#" data-go="child" data-id="${esc(c.id)}"><b>${esc(childName(c))}</b></a><div class="small muted">${esc(c.classroom||"")}${c.enrollDate?" · starts "+esc(fmtDate(c.enrollDate,{month:"short",day:"numeric"})):""}</div></span><span class="mono small">${onboardCount(c)}/${ONBOARD.length}</span></li>`).join("")}</ul></div>` : ""; })()}
@@ -648,7 +652,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,scheduled:0,progress:0,none:0}
         ${follow.length? `<ul class="list-plain">${follow.map(c=>li(c,c.followUpDate, esc(c.followUpNote||"Check in with the family")+(c.followUpDate<today?' · <span style="color:var(--danger)">past due</span>':""))).join("")}</ul>` : `<p class="small muted">Follow-up check-ins set inside a conference appear here two weeks ahead.</p>`}
       </div>
       <div class="panel"><h3>Season totals</h3>
-        <dl class="kv"><dt>Children</dt><dd class="mono">${tot.total}</dd><dt>Complete</dt><dd class="mono">${tot.complete}</dd><dt>Did not sign up</dt><dd class="mono">${tot.nosignup}</dd><dt>Date passed, not marked complete</dt><dd class="mono">${tot.held}</dd><dt>Scheduled</dt><dd class="mono">${tot.scheduled}</dd><dt>Preparing</dt><dd class="mono">${tot.progress}</dd><dt>Not started</dt><dd class="mono">${tot.none}</dd></dl>
+        <dl class="kv"><dt>Children</dt><dd class="mono">${tot.total}</dd><dt>Complete</dt><dd class="mono">${tot.complete}</dd><dt>Did not sign up</dt><dd class="mono">${tot.nosignup}</dd><dt>Date passed, not marked complete</dt><dd class="mono">${tot.held}</dd><dt>Ready</dt><dd class="mono">${tot.ready}</dd><dt>Scheduled, not ready yet</dt><dd class="mono">${tot.scheduled}</dd><dt>Preparing</dt><dd class="mono">${tot.progress}</dd><dt>Not started</dt><dd class="mono">${tot.none}</dd></dl>
         <div class="row" style="margin-top:12px"><button class="btn sm" data-act="export-csv">Download season list (CSV)</button></div>
       </div>
     </aside>
@@ -2041,7 +2045,7 @@ actions["visit-upload"]=a=>{
 };
 
 
-function familiesToReach(){ return activeChildren().filter(c=>["none","progress"].includes(confStatus(periodConf(c.id)).key) && !(periodConf(c.id)?.signup==="signedup")); }
+function familiesToReach(){ return activeChildren().filter(c=>noDateYet(periodConf(c.id)) && !(periodConf(c.id)?.signup==="signedup")); }
 /* ---------- SignUpGenius ---------- */
 // One SignUpGenius time slot can hold a family from each classroom, written as
 // "West Conferences", then "Parent Name (1)", then the family's comment. Split them apart.
@@ -2132,6 +2136,7 @@ actions["sug-apply"]=async btn=>{
       if(e.time && cf?.confTime!==e.time) patch.confTime=e.time;
       if(!["signedup","missed"].includes(cf?.signup||"")) patch.signup="signedup";
       if(!Object.keys(patch).length){ same++; continue; }
+      patch.sugDate=e.date; patch.sugTime=e.time||""; // so the hourly check can follow a family who moves their slot
       patch.updatedAt=nowISO(); if(S.uid) patch.updatedBy=S.uid;
       await dbUpdate("conferences/"+id, patch); n++; btn.textContent=`Filled in ${n}…`;
     }catch(err){ failed++; }
