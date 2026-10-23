@@ -35,6 +35,8 @@ label{display:grid;gap:4px;font-size:14px;font-weight:700}
 .banner{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:var(--r);padding:10px 14px;margin:0 0 14px;font-size:14px}
 .err{color:var(--clay);font-size:14px;min-height:1.2em}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.aamph{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.aamimg{display:grid;gap:2px;justify-items:center}.aamimg img{width:96px;height:96px;object-fit:cover;border-radius:8px}.aamadd{align-self:center}
+.miss input,.miss select,.miss textarea,input.miss,select.miss,textarea.miss{border-color:var(--clay)!important;background:#fdf1ee}
 .kid{display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)}.kid:first-of-type{border-top:0;padding-top:0}
 .kid .top{display:flex;justify-content:space-between;gap:10px}
 .bar{height:10px;border-radius:999px;background:var(--moss-soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--moss)}
@@ -79,6 +81,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 
 <main id="main" hidden></main>
 </div>
+<script src="enroll-rules.js"></script>
 <script>
 (function(){
   const qs=new URLSearchParams(location.search);
@@ -138,8 +141,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       [!!e.done,"Enrollment information",e.done?"Done. We will have the forms ready to sign at your visit.":e.at?"Started. Finish it when you can.":"Type it once here. We fill in the state forms for you.",`<button class="btn sm" data-form="enroll|${esc(k.id)}">${e.at?"Open it":"Start"}</button>`],
       [!!q,"Family Questionnaire",q?"Thank you. Your child's educators will read it before your visit.":"Helps your child's educators get to know your family.",`<button class="btn sm ${q?"ghost":""}" data-form="q|${esc(k.id)}">${q?"See or change it":"Start"}</button>`],
       [!!k.visit,"Your visit before the first day",k.visit?`${day(k.visit.date)} at ${time(k.visit.time)}${k.visit.with?" with "+k.visit.with:""}. Please bring the doctor's report and immunization record.`:"Choose a time below.",""],
-      [false,"Bring to your visit","The Physician's Report signed by your doctor, and your child's current immunization record.",""],
-      [false,"All About Me book","Four pages about your child, described in the welcome letter.",""]];
+      [false,"Bring to your visit","The Physician's Report signed by your doctor, and your child's current immunization record. The originals, please, since a photo cannot be accepted.",`<a class="btn sm ghost" href="forms/LIC701.pdf" target="_blank" rel="noopener">Physician's Report form</a>`],
+      [!!(k.aboutMe&&k.aboutMe.done),"All About Me book",k.aboutMe&&k.aboutMe.done?"Ready. We print and laminate it for your child.":"Four pages with photos and words about your child. We print and laminate it.",`<button class="btn sm ${k.aboutMe&&k.aboutMe.done?"ghost":""}" data-form="aam|${esc(k.id)}">${k.aboutMe&&k.aboutMe.at?"Open it":"Start"}</button>`],
+      [!!LS.get("fam-read-"+k.id),"Read the notices","Your rights as a parent and other notices every family receives. You sign for them at your visit.",`<button class="btn sm ghost" data-form="read|${esc(k.id)}">Read them</button>`]];
       return `<section class="card"><h2>${esc(k.first)}'s first steps</h2>${steps.map(([ok,t,s,b])=>`<div class="step"><span class="tick ${ok?"on":""}" aria-hidden="true">${ok?"✓":""}</span><div style="flex:1;min-width:0"><b>${t}</b><div class="small muted">${esc(s)}</div></div>${b}</div>`).join("")}
         ${k.slotPurpose==="visit"?`<div style="margin-top:10px"><div class="small"><b>${k.visit?"Change your visit time":"Choose a visit time"}</b></div>${slotList(k)}</div>`:""}</section>`}).join("")}
   function kidsHtml(){return D.children.map(k=>{const c=k.conference;let h=`<section class="card"><h2>${esc(k.first)}</h2>`;
@@ -200,6 +204,17 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · <a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a></p></section>`}
   function formHtml(){const [kind,id]=form.split("|");const k=D.children.find(x=>x.id===id);if(!k){form=null;return ""}
+    if(kind==="read"){const N=[["LIC995.pdf","Notification of Parents' Rights","Your rights as a parent at a licensed child care center."],["LIC995E.pdf","Caregiver Background Check Process","How everyone who works with children is checked."],["LIC613A.pdf","Personal Rights","Your child's personal rights at a child care center."]];
+      return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Notices for every family</h2><p class="small muted">The state asks every child care center to give these to families. Please read them before your visit. You sign that you received them at the visit.</p>
+        ${N.map(([f,t,d])=>`<div class="step"><div style="flex:1;min-width:0"><b>${esc(t)}</b><div class="small muted">${esc(d)}</div></div><a class="btn sm ghost" href="forms/${f}" target="_blank" rel="noopener">Open</a></div>`).join("")}
+        ${D.handbookUrl?`<div class="step"><div style="flex:1;min-width:0"><b>Family Handbook</b><div class="small muted">How Fulton works, day to day.</div></div><a class="btn sm ghost" href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">Open</a></div>`:""}
+        <div style="margin-top:10px"><button class="btn" data-readok="${esc(k.id)}">I have read them</button></div></section>`}
+    if(kind==="aam"){const am=k.aboutMe||{pages:[]};
+      return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">All About Me, ${esc(k.first)}</h2><p class="small muted">Four pages, each with one to three photos and a few words. We print each page and laminate it, and it stays in ${esc(k.first)}'s stories at school.</p>
+        ${am.pages.map((p,i)=>`<div class="sub"><b>Page ${i+1}. ${esc(p.title)}</b><div class="small muted">${esc(p.prompt)}</div>
+          <div class="aamph">${p.photos.map((ph,j)=>`<span class="aamimg"><img src="${esc(SERVER+ph.src)}" alt=""><button class="link small" data-aamrm="${i}|${j}">Take out</button></span>`).join("")}${p.photos.length<3?`<label class="btn sm ghost aamadd">Add a photo<input type="file" accept="image/*" data-aamadd="${i}" hidden></label>`:""}</div>
+          <textarea rows="3" data-aamt="${i}" placeholder="A few words, as you would say them to ${esc(k.first)}">${esc(p.text)}</textarea></div>`).join("")}
+        <div class="err" id="ea" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-aamsave="${esc(k.id)}|done">The book is ready</button> <button class="btn ghost" data-aamsave="${esc(k.id)}|">Save for later</button></div></section>`}
     if(kind==="q"){const a=(k.questionnaire&&k.questionnaire.answers)||[];
       return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Family Questionnaire for ${esc(k.first)}</h2><p class="small muted">Each child is unique. Your answers help ${esc(k.first)}'s educators build a relationship with your family. They are kept confidential and used only for this. Answer what you can.</p>
         <div class="stack">${D.questions.map((qq,i)=>`<label>${esc(qq)}<textarea rows="2" data-qa="${i}">${esc(a[i]||"")}</textarea></label>`).join("")}</div><div class="err" id="eq" aria-live="polite"></div><div style="margin-top:8px"><button class="btn" data-qsave="${esc(k.id)}">Send it</button></div></section>`}
@@ -212,9 +227,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if(f.type==="illness")return `<div class="wide"><div class="small"><b>${esc(f.label)}</b></div><div class="ills">${f.options.map(([ok,ol])=>`<label class="ill">${esc(ol)}<input type="text" data-ef="h_ill_${ok}" placeholder="When, if had" value="${esc(v["h_ill_"+ok]||"")}"></label>`).join("")}</div></div>`;
       return `<label>${esc(f.label)}<input type="${f.type==="date"?"date":"text"}" data-ef="${f.k}" value="${esc(val)}"></label>`};
     return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Enrollment information for ${esc(k.first)}</h2>
-      <p class="small muted">Type it once. We fill in the state licensing forms with it, and you sign them at your visit. It saves as you go, so you can stop and come back.</p>
+      <p class="small muted">Type it once. We fill in the state licensing forms with it, and you sign them at your visit. It saves as you go, so you can stop and come back. Every box is needed. Write None when something does not apply.</p>
       ${D.enrollForm.map(s=>`<details class="esec" ${s===D.enrollForm[0]?"open":""}><summary>${esc(s.title)}</summary>${s.note?`<p class="small muted">${esc(s.note)}</p>`:""}<div class="grid">${s.fields.map(field).join("")}</div></details>`).join("")}
-      <div class="err" id="ee" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-esave="${esc(k.id)}|done">It's complete</button> <button class="btn ghost" data-esave="${esc(k.id)}|">Save for later</button></div></section>`}
+      <div class="err" id="ee" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-esave="${esc(k.id)}|done">It's complete</button> <button class="btn ghost" data-esave="${esc(k.id)}|">Save for later</button> <button class="link" data-eview="${esc(k.id)}">See the state forms with your answers</button></div></section>`}
   function render(){
     if(form){$("#main").innerHTML=(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml();return}
     const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
@@ -229,6 +244,13 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};
     $("#out").onclick=()=>{token=null;LS.set("fam-token",null);showGate()};
   }
+  // the book's words are read from the page before any save, and photos go up made smaller first
+  function aamText(k){document.querySelectorAll("[data-aamt]").forEach(t=>{k.aboutMe.pages[+t.dataset.aamt].text=t.value})}
+  async function aamSave(k,done){D=await api("/family/aboutme",{childId:k.id,done,pages:k.aboutMe.pages.map(p=>({text:p.text,photos:p.photos.map(x=>x.id)}))})}
+  async function shrink(file){const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)});const m=1800,sc=Math.min(1,m/Math.max(img.width,img.height));
+    const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.86).split(",")[1]}
+  document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.aamadd==null||!t.files||!t.files[0])return;const i=+t.dataset.aamadd;const k=D.children.find(x=>x.id===form.split("|")[1]);if(!k)return;
+    const lab=t.closest("label");if(lab)lab.firstChild.textContent="Adding";try{aamText(k);const j=await api("/family/photo",{childId:k.id,data:await shrink(t.files[0])});k.aboutMe.pages[i].photos.push({id:j.id,src:j.src});await aamSave(k,false);render()}catch(er){$("#ea").textContent=er.message||"That photo could not be added."}});
   const readEnroll=()=>{const o={};document.querySelectorAll("[data-ef]").forEach(x=>{o[x.dataset.ef]=x.type==="checkbox"?x.checked:x.value});return o};
   let eTimer=null;document.addEventListener("input",e=>{if(!form||!form.startsWith("enroll")||!e.target.dataset.ef)return;clearTimeout(eTimer);const id=form.split("|")[1];eTimer=setTimeout(()=>api("/family/enroll",{childId:id,data:readEnroll(),done:false}).then(j=>{D=j}).catch(()=>{}),1200)});
   document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||!D)return;const d=b.dataset;
@@ -248,6 +270,14 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       else if(d.form){form=d.form;render();window.scrollTo(0,0)}
       else if(d.formclose){form=null;render();window.scrollTo(0,0)}
       else if(d.qsave){const a=[...document.querySelectorAll("[data-qa]")].map(x=>x.value);try{D=await api("/family/questionnaire",{childId:d.qsave,answers:a});form=null;render();window.scrollTo(0,0)}catch(er){$("#eq").textContent=er.message}}
+      else if(d.esave&&d.esave.endsWith("|done")&&window.enrollMissing){const miss=window.enrollMissing(readEnroll(),D.enrollForm);document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));
+        if(miss.length){miss.forEach(f=>{const el=document.querySelector(`[data-ef="${f.k}"]`);if(el){el.classList.add("miss");const dt=el.closest("details");if(dt)dt.open=true}});$("#ee").textContent=`${miss.length} box${miss.length===1?" is":"es are"} still empty, marked in red. Write None when something does not apply.`;const first=document.querySelector(".miss");if(first)first.scrollIntoView({block:"center"});return}
+        const [id]=d.esave.split("|");clearTimeout(eTimer);try{D=await api("/family/enroll",{childId:id,data:readEnroll(),done:true});form=null;render();window.scrollTo(0,0)}catch(er){$("#ee").textContent=er.message}}
+      else if(d.eview){const w=window.open("","_blank");try{if(!window.fillEnrollForms)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="enroll-forms.js";sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)});
+          const bytes=await window.fillEnrollForms(readEnroll(),{});const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));if(w)w.location=url;else location.href=url}catch(er){if(w)w.close();$("#ee").textContent="The forms could not be shown just now."}}
+      else if(d.readok){LS.set("fam-read-"+d.readok,"1");form=null;render();window.scrollTo(0,0)}
+      else if(d.aamrm){const [i,j]=d.aamrm.split("|").map(Number);const k=D.children.find(x=>x.id===form.split("|")[1]);if(k){aamText(k);k.aboutMe.pages[i].photos.splice(j,1);await aamSave(k,false);render()}}
+      else if(d.aamsave){const [id,done]=d.aamsave.split("|");const k=D.children.find(x=>x.id===id);if(k){aamText(k);try{await aamSave(k,!!done);if(done){form=null;window.scrollTo(0,0)}render()}catch(er){$("#ea").textContent=er.message}}}
       else if(d.esave){const [id,done]=d.esave.split("|");clearTimeout(eTimer);try{D=await api("/family/enroll",{childId:id,data:readEnroll(),done:!!done});form=null;render();window.scrollTo(0,0)}catch(er){$("#ee").textContent=er.message}}
       else if(d.file){const w=window.open("","_blank");const j=await api("/family/file",{id:d.file});if(w)w.location=SERVER+j.path;else location.href=SERVER+j.path}
     }catch(er){if(er.message)alert(er.message);b.disabled=false}});
