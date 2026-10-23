@@ -259,6 +259,7 @@ span.pfstate{cursor:default;border-style:dashed}
 .drcode{min-width:0;flex:1 1 260px}.drnow{text-align:right}.drbody{display:grid;gap:6px;padding:6px 2px 12px}
 .drev{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px dashed var(--line)}.drev:first-child{border-top:0}
 .chip.sug{border-style:dashed}
+.kmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:420px;overflow:auto}.kmph{display:grid;gap:3px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:4px;cursor:pointer;font:inherit;font-size:12.5px;text-align:left;color:var(--ink)}.kmph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.kmnone{aspect-ratio:1;display:grid;place-items:center;color:var(--muted);background:var(--bg);border-radius:6px}
 .drpick{display:grid;gap:4px;margin:4px 0}.drpk{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14.5px;line-height:1.4;background:var(--paper)}.drpk input{margin-top:3px;flex:none}.drpk:has(input:checked){border-color:var(--moss);background:var(--moss-soft)}.drlow{color:var(--clay);font-weight:700}
 .drsrc{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-radius:10px;padding:8px;margin:2px 0}.drsrc .drph{display:flex;gap:6px;flex:none}.drsrc img{width:110px;height:110px;object-fit:cover;border-radius:8px;cursor:zoom-in}
 .drsrc .drtx{font-size:15px;line-height:1.45;white-space:pre-line;min-width:0;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.drsrc .drtx.all{display:block}
@@ -3977,23 +3978,21 @@ function todayWaiting(){
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag",q:"kay|"+n.id})}}
-  // Kaymbu moments with no educator named ask who shared them, one row for each email, since one person sends an email
-  const kBatch=kBatchOf;
-  {const rm=myRoom(),since=Date.now()-14*864e5,bs=new Map();
-   for(const n of [...notices.values()].filter(n=>n.kaymbu&&!String(n.by||"").trim()&&(n.kaymbu.keptAt||0)>since&&(dir||!rm||momentIn(n,rm)))){const k=kBatch(n);const e=bs.get(k);if(e)e.ns.push(n);else bs.set(k,{ns:[n]})}
-   for(const {ns} of [...bs.values()].sort((a,b)=>(b.ns[0].kaymbu.keptAt||0)-(a.ns[0].kaymbu.keptAt||0))){const n=ns[0];const posts=new Set(ns.map(x=>x.group||x.id)).size;const subj=(n.kaymbu.subject||"").trim();
-    out.push({dot:"sky",t:"Who shared this from Kaymbu?",s:`${ns.length} photo${ns.length===1?"":"s"}${posts!==ns.length?` in ${posts} post${posts===1?"":"s"}`:""} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${subj?` with the subject ${subj}`:" with no subject"}. ${(t=>t&&!/[.!?…]$/.test(t)?t+".":t)(firstLine(n.noticed,60))}`,act:`data-nwedit="${n.id}"`,b:"Choose",q:"kby|"+n.id})}}
+  // one row for each recent Kaymbu email that needs a look: no educator named, or photos filed in earlier weeks.
+  // It opens right here with the photos and the educators, so nothing needs another page
+  {const rm=myRoom(),wk0=mondayOf(new Date()),bs=new Map(),seenM=new Set(LS.get("tree.kmailSeen",[]));
+   for(const n of [...notices.values()].filter(n=>n.kaymbu&&(n.kaymbu.keptAt||0)>Date.now()-14*864e5&&(dir||!rm||momentIn(n,rm)))){const k=kBatchOf(n);const e=bs.get(k);if(e)e.push(n);else bs.set(k,[n])}
+   for(const [k,ns] of [...bs.entries()].sort((a,b)=>(b[1][0].kaymbu.keptAt||0)-(a[1][0].kaymbu.keptAt||0))){const n=ns[0];
+    const unnamed=ns.some(x=>!String(x.by||"").trim()),early=ns.filter(x=>(x.week||"")<wk0);
+    if(!unnamed&&(!early.length||seenM.has(k)||(n.kaymbu.keptAt||0)<Date.now()-3*864e5))continue;
+    const subj=(n.kaymbu.subject||"").trim(),by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];
+    const ats=early.map(x=>x.at||0).sort((a,b)=>a-b);const span=!ats.length?"":ats.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
+    out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
   // on Friday the director sees how many Kaymbu moments came in from each educator this week, so a missing one is easy to spot
   if(dir&&new Date().getDay()===5){const wk0=parseIso(mondayOf(new Date())).getTime();const cnt={};for(const r of roster)if(r.room&&!isShared(r.name))cnt[r.name]=0;
     for(const n of notices.values())if(n.kaymbu&&(n.kaymbu.keptAt||0)>=wk0){const b=String(n.by||"").trim()||"No educator named";cnt[b]=(cnt[b]||0)+1}
     const parts=Object.entries(cnt).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).map(([nm,c])=>`${nm} ${c}`);const none=Object.entries(cnt).filter(([nm,c])=>!c&&nm!=="No educator named").map(([nm])=>nm);
     out.push({dot:"sky",t:"Kaymbu moments this week",s:parts.join(", ")+"."+(none.length?` Nothing yet from ${none.join(", ")}.`:""),act:`data-tview="moments"`,b:"See them"})}
-  // moments shared from Kaymbu in the last three days that took an earlier week from their photo's date, one row for each email
-  {const rm=myRoom(),wk0=mondayOf(new Date()),since=Date.now()-3*864e5,bs=new Map();
-   for(const n of [...notices.values()].filter(n=>n.kaymbu&&!n.kaymbu.check&&(n.kaymbu.keptAt||0)>since&&(n.week||"")<wk0&&(dir||!rm||momentIn(n,rm)))){const k=kBatchOf(n);const e=bs.get(k);if(e)e.push(n);else bs.set(k,[n])}
-   for(const ns of [...bs.values()].sort((a,b)=>(b[0].kaymbu.keptAt||0)-(a[0].kaymbu.keptAt||0))){const ats=ns.map(n=>n.at||0).sort((a,b)=>a-b);const n=ns[0];
-    const span=ns.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
-    out.push({dot:"sky",t:"Just shared from Kaymbu, filed in earlier weeks",s:`${ns.length} photo${ns.length===1?"":"s"} that came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})} were taken ${span}, so each is under the week it was taken.`,act:ns.length===1?`data-nwedit="${n.id}"`:`data-tview="moments"`,b:ns.length===1?"Open":"See them"})}}
   // an observation TREE thinks might belong to a thread, one row for each post, folded together on Today
   {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
     const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
@@ -4035,7 +4034,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
-const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Who shared this from Kaymbu?"?["kby","Kaymbu emails with no educator named"]:w.t==="Just shared from Kaymbu, filed in earlier weeks"?["kearly","Kaymbu emails with photos filed in earlier weeks"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
+const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Who shared this from Kaymbu?"?["kby","Kaymbu emails with no educator named"]:w.t==="Just shared from Kaymbu"?["kmail","Kaymbu emails with photos filed in earlier weeks"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
   // a quick task opens right here under its row. Anything else opens its page, with the Next bar to move through the rest
   const row=w=>{const k=(WAIT_KIND(w)||[])[0]||"";const open=tqOpen===w.q;
@@ -4085,8 +4084,12 @@ function tqHtml(w){
       ${momentRooms(n).length?"":`<label class="fld-label">Class<select id="tqroom"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${esc(r)}</option>`).join("")}</select></label>`}
       ${grp.map(x=>`<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}<div class="chips">${kids.map(c=>`<button class="chip ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">Choose the class to see its children.</span>`}</div></div>`).join("")}
       <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button>${full}</div>`}
-  if(kind==="kby"){const n=notices.get(id);if(!n)return "";const rm=momentRooms(n)[0]||"";const names=rosterNames();const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=names.filter(x=>!mine.includes(x));
-    return `<div class="cnt" style="white-space:pre-line">${esc(n.noticed||"")}</div><div class="cnt" style="margin-top:6px">Who shared it?</div><div class="chips">${[...mine,...rest].map(x=>`<button class="chip" data-tqsave="kby|${esc(id)}|${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div><div class="actions">${full}</div>`}
+  if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb).sort((a,b)=>(a.at||0)-(b.at||0));
+    const by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];const rm=momentRooms(n)[0]||"";const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=rosterNames().filter(x=>!mine.includes(x));
+    return `<div class="cnt">${by.length?`<b>Shared by ${esc(by.join(" and "))}.</b>${ns.some(x=>!String(x.by||"").trim())?" Some have no name yet.":""} Tap a name to change it`:"<b>Who shared these?</b> Tap a name to put it"} on all ${ns.length} photo${ns.length===1?"":"s"}.</div>
+      <div class="chips">${[...mine,...rest].map(x=>`<button class="chip ${by.length===1&&by[0]===x?"on":""}" data-tqsave="kmail|${esc(id)}|${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div>
+      <div class="kmgrid">${ns.map(x=>{const kids=(x.children||[]).map(c=>(children.get(c)||{}).first).filter(Boolean);return `<button class="kmph" data-nwedit="${esc(x.id)}" type="button">${x.photo?`<img src="${esc(photoThumb(x))}" alt="" loading="lazy">`:`<span class="kmnone">No photo</span>`}<span>${esc(shortDate(x.at).replace(/, \d{4}$/,""))}${kids.length?", "+esc(kids.join(", ")):""}</span></button>`}).join("")}</div>
+      <div class="actions">${by.length?`<button class="btn small" data-tqsave="kmail|${esc(id)}|__done">Done</button>`:""}<span class="cnt">Tap a photo to open it.</span></div>`}
   if(kind==="three"){const c=children.get(id);if(!c)return "";
     return `<div class="cnt">Which DRDP view should ${esc(c.first)} be read against?</div><div class="actions"><button class="btn small ghost" data-tqsave="three|${esc(id)}|it">Infant and Toddler</button><button class="btn small ghost" data-tqsave="three|${esc(id)}|ptk">Preschool Transitional Kindergarten</button>${full}</div>`}
   return full}
@@ -4103,7 +4106,10 @@ document.addEventListener("click",e=>{
       if(x.kaymbu&&x.kaymbu.check){x.kaymbu=Object.assign({},x.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete x.kaymbu.unsure;delete x.kaymbu.suggest;delete x.kaymbu.maybe}
       x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
     toast("Saved.")}
-  else if(kind==="kby"){const n=notices.get(id);if(!n||!v)return;const kb=kBatchOf(n);for(const x of [...notices.values()].filter(x=>x.kaymbu&&!String(x.by||"").trim()&&kBatchOf(x)===kb)){const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}toast(`Saved as shared by ${v}, with every photo from that email.`)}
+  else if(kind==="kmail"){const n=notices.get(id);if(!n||!v)return;const kb=kBatchOf(n);
+    if(v==="__done"){const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200))}
+    else{let c=0;for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v)){const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base);c++}
+      const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200));toast(`Shared by ${v}, on every photo from that email.`)}}
   else if(kind==="three"){const c=children.get(id);if(!c)return;kidDrdpPatch(c,{drdp:{view:v}});toast(`${c.first} is read against the ${v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten"} View.`)}
   // the next task of the same kind opens beneath, so a run of them is done without leaving Today
   const done=tqOpen;tqOpen="";tqKids=null;tqRoom="";
