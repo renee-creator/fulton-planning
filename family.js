@@ -303,7 +303,12 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // the bin note the director posted this week, and the kitchen's recipe of the month
     let binNote = ''; for (const [id, r] of store.recs.grant || []) { const d = r && !r.deleted && r.doc; if (!d || !/^binnote-/.test(id) || d.status !== 'posted') continue; if (String(d.week || '') >= days[0].date.slice(0, 10) && (!binNote || String(d.week) > binNote.week)) binNote = { week: d.week, text: d.text || '' }; }
     const mr = getRec('menus', today.slice(0, 7)) || {};
-    return { days, closures, binNote: binNote ? binNote.text : '', recipe: mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null };
+    // the newsletters the director posted to the Family page, the latest first
+    const fk = fileKey(); const news = [];
+    for (const [id, r] of store.recs.newsletters || []) { const d = r && !r.deleted && r.doc; if (!d || !d.posted || !Array.isArray(d.posted.blocks)) continue;
+      news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: '/original/' + encodeURIComponent(x.id) + '?t=' + encodeURIComponent(fk), cap: String(x.cap || '') })) })) }); }
+    news.sort((a, b) => String(b.month).localeCompare(String(a.month)));
+    return { news: news.slice(0, 6), days, closures, binNote: binNote ? binNote.text : '', recipe: mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null };
   }
 
   // events ask how many adults and children are coming, unless the school turned that off; a task asks who is coming

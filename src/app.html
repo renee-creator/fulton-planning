@@ -4517,7 +4517,8 @@ function renderNewsletter(){
   // finish
   h+=`<section class="card nlcard"><div class="nlstep">${step+3}</div><h3>Send it</h3>
     <p class="muted nlhint">Copy each block into your Kaymbu template and add the photos. Word and PDF copies are for your records and the front entrance.</p>
-    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
+    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${x.posted?"":`<button class="btn ghost" data-nlpost="1">Post to the Family page</button>`}${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
+    ${x.posted?`<div class="nlres" style="margin-top:10px"><div>On the Family page since ${esc(fmtDate(iso(new Date(x.posted.at))))}.${x.updatedAt>(x.posted.at||0)+5000?" You have changed it since, so update it for families to see the changes.":""}</div><span class="actions"><button class="btn small" data-nlpost="1">Update it</button><button class="btn small ghost" data-nlunpost="1">Take it down</button></span></div>`:""}
     ${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
   h+=nlArchiveHtml(k);
   main.innerHTML=h;
@@ -4610,6 +4611,13 @@ document.addEventListener("click",async e=>{
   if(d.nlword){nlWord(x);return}
   if(d.nlpdf){nlPdf(x);return}
   if(d.nlsent){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length&&!confirm("A topic about a behavior names a child. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
+  // the newsletter goes on the Family page only when the director posts it, as it reads at that moment
+  if(d.nlpost){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length){toast("A topic about a behavior names a child. Take the name out before posting.");return}
+    const B=nlBlocks(x);if(!B.length){toast("Nothing is written yet.");return}
+    const blocks=tidyWords(B.map(b=>({h:nlTxt(b.h),text:nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""),photos:(b.photos||[]).map(p=>{const n=notices.get(p.notice);return n&&n.photo&&n.photo.id?{id:n.photo.id,cap:p.cap||""}:null}).filter(Boolean)})));
+    if(!confirm(x.posted?"Update the newsletter on the Family page with what is here now?":`Post the ${nlName(x.month)} newsletter to the Family page? Every family will see it.`))return;
+    x.posted={title:`The ${nlName(x.month)} newsletter`,blocks,at:Date.now()};nlSave(x,true);toast("On the Family page.");renderNewsletter();return}
+  if(d.nlunpost){if(!confirm("Take the newsletter off the Family page?"))return;x.posted=null;nlSave(x,true);toast("Taken off the Family page.");renderNewsletter();return}
   if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
   if(d.nldel){if(!confirm(`Delete the ${nlName(x.month)} newsletter? Its topics, tips and photos choices are removed. Articles stay in your library.`))return;
     clearTimeout(nlTimers[x.id]);delete nlTimers[x.id];nlDeleted.add(x.id);newsletters.delete(x.id);nlKaymbu=false;
