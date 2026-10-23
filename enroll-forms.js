@@ -49,7 +49,8 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     const wrap=(t,f,sz,w)=>{const out=[];let line="";for(const w0 of String(t||"").split(/\s+/).filter(Boolean)){const tt=line?line+" "+w0:w0;if(f.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)out.push(line);line=w0}}if(line)out.push(line);return out};
     const page=()=>{pg=out.addPage([612,792]);y=748;pg.drawText(FAC.name,{x:M,y,size:12,font:B,color:ink});y-=16;pg.drawText("Admission Agreement"+(yearTitle?" "+yearTitle+" school year":""),{x:M,y,size:11,font:F,color:ink});y-=26};
     const field=(l,v,x,w)=>{pg.drawText(l,{x,y,size:8.5,font:F,color:gray});const lx=x+F.widthOfTextAtSize(l,8.5)+4;pg.drawLine({start:{x:lx,y:y-2},end:{x:x+w,y:y-2},thickness:.5,color:gray});if(v)pg.drawText(String(v).slice(0,60),{x:lx+2,y,size:10,font:F,color:ink})};
-    const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
+    const ag=o.agreement||null;let ai=0;
+    const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});if(ag&&ag.initials&&(ag.ticks||[])[ai])pg.drawText(String(ag.initials).toUpperCase(),{x:M+2,y,size:9,font:B,color:ink});ai++;ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
     const box=(on,t)=>{pg.drawRectangle({x:M,y:y-1.5,width:8,height:8,borderColor:ink,borderWidth:.7});if(on){pg.drawLine({start:{x:M+1.5,y:y+2.5},end:{x:M+3.5,y:y},thickness:1.1,color:ink});pg.drawLine({start:{x:M+3.5,y},end:{x:M+7,y:y+6},thickness:1.1,color:ink})}pg.drawText(t,{x:M+14,y,size:9.5,font:F,color:ink});y-=15};
     page();
     const sched=String(o.schedule||"");
