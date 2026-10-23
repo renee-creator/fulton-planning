@@ -270,7 +270,13 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <p class="small muted">Type it once. We fill in the state licensing forms with it, and you sign them at your visit. It saves as you go, so you can stop and come back. Every box is needed. Write None when something does not apply.</p>
       ${D.enrollForm.map(s=>`<details class="esec" ${s===D.enrollForm[0]?"open":""}><summary>${esc(s.title)}</summary>${s.note?`<p class="small muted">${esc(s.note)}</p>`:""}<div class="grid">${s.fields.map(field).join("")}</div></details>`).join("")}
       <div class="err" id="ee" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-esave="${esc(k.id)}|done">It's complete</button> <button class="btn ghost" data-esave="${esc(k.id)}|">Save for later</button> <button class="link" data-eview="${esc(k.id)}">See the state forms with your answers</button></div></section>`}
-  function render(){
+  // the page keeps its height while photos load after a redraw, so it does not jump under the reader
+  let rKey="",rHold=null;
+  function render(){const m=$("#main"),k=(form||"")+"|"+tab;if(k===rKey&&m){clearTimeout(rHold);m.style.minHeight=m.offsetHeight+"px"}else if(m)m.style.minHeight="";rKey=k;
+    renderInner();
+    if(!m)return;const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const rel=()=>{m.style.minHeight=""};
+    if(!imgs.length){rHold=setTimeout(rel,60);return}let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(rHold);rHold=setTimeout(rel,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});rHold=setTimeout(rel,4000)}
+  function renderInner(){
     if(form){$("#main").innerHTML=(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml();return}
     const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";

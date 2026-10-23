@@ -11638,5 +11638,25 @@ document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")re
 });
 
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
+/* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
+   scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height
+   until its photos have loaded, so nothing jumps while they come in. */
+{const inner=renderMain;let lastUser=0,lastScroll=0,held=false,wait=null,hold=null,lastV="";
+  ["pointerdown","keydown","click","input","change","submit"].forEach(t=>document.addEventListener(t,()=>{lastUser=Date.now()},true));
+  document.addEventListener("pointerdown",()=>{held=true},true);document.addEventListener("pointerup",()=>{held=false},true);document.addEventListener("pointercancel",()=>{held=false},true);
+  ["wheel","touchmove"].forEach(t=>addEventListener(t,()=>{lastScroll=Date.now()},{passive:true}));addEventListener("keydown",e=>{if(/^(Arrow|Page|Home|End| )/.test(e.key))lastScroll=Date.now()},true);addEventListener("scroll",()=>{if(held)lastScroll=Date.now()},{passive:true});
+  const dkey=d=>(d.id||"")+"|"+((d.querySelector("summary")||{}).textContent||"").trim().slice(0,80);
+  renderMain=function(){const m=$("#main");const bg=Date.now()-lastUser>800;
+    if(bg&&(held||Date.now()-lastScroll<1500||(document.activeElement&&m&&m.contains(document.activeElement)&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)))){clearTimeout(wait);wait=setTimeout(()=>renderMain(),1600);return}
+    clearTimeout(wait);const v0=lastV+"|"+(typeof currentId!=="undefined"?currentId:""),y=window.scrollY;const open=m?new Set([...m.querySelectorAll("details[open]")].map(dkey)):new Set();const shut=m?new Set([...m.querySelectorAll("details:not([open])")].map(dkey)):new Set();
+    const same=()=>view+"|"+(typeof currentId!=="undefined"?currentId:"")===v0;
+    if(m&&lastV===view){clearTimeout(hold);m.style.minHeight=m.offsetHeight+"px"}
+    inner();lastV=view;try{foldIntros()}catch(e){}
+    if(!m)return;
+    if(same()){m.querySelectorAll("details").forEach(d=>{const k=dkey(d);if(open.has(k))d.open=true;else if(shut.has(k))d.open=false});if(bg){const t0=lastScroll;const put=()=>{if(lastScroll===t0&&Math.abs(window.scrollY-y)>1)window.scrollTo(0,y)};queueMicrotask(()=>{put();requestAnimationFrame(()=>{put();setTimeout(put,120)})})}}
+    else m.style.minHeight="";
+    const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const release=()=>{m.style.minHeight=""};
+    if(!imgs.length){hold=setTimeout(release,60);return}
+    let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(hold);hold=setTimeout(release,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});hold=setTimeout(release,4000)}}
 boot();
 </script>
