@@ -80,7 +80,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .iconbtn{border:1px solid var(--line);background:transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:var(--moss-soft)}
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}#proofchip{position:fixed;z-index:60;box-shadow:var(--shadow);background:var(--paper)}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
 .newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
@@ -10812,9 +10812,22 @@ const PROOF={
     apply(k,v){const el=$("#pt-welcome");if(el)el.value=v;ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}))}},
   binnote:{fields(){const t=$("#g-binnote")?.value||"";return t.trim()?[{k:"binnote",label:"Bin note",text:t}]:[]},
     apply(k,v){const el=$("#g-binnote");if(el)el.value=v;const b=binCurrent();if(b)gWrite("binnote-"+b.id,{text:v.trim()})}}};
+// any writing box in TREE, the one the person is writing in
+let proofEl=null;
+PROOF.el={fields(){const el=proofEl;const t=el&&el.isConnected?el.value:"";return t.trim()?[{k:"el",label:"",text:t}]:[]},
+  apply(k,v){const el=proofEl;if(!el||!el.isConnected)return;el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
+const proofOk=el=>el&&!el.readOnly&&!el.disabled&&!el.closest(".proof,#gate,[data-noproof]")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&(el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=4));
+{const chip=document.createElement("button");chip.type="button";chip.id="proofchip";chip.className="btn small ghost";chip.textContent="Proofread";chip.hidden=true;document.body.appendChild(chip);
+  let cur=null;const place=()=>{if(!cur||!cur.isConnected||chip.hidden)return;const r=cur.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight){chip.style.visibility="hidden";return}chip.style.visibility="";chip.style.top=Math.min(innerHeight-40,Math.max(4,r.bottom-34))+"px";chip.style.left=Math.max(4,Math.min(innerWidth-chip.offsetWidth-8,r.right-chip.offsetWidth-6))+"px"};
+  const show=el=>{if(!proofOk(el)||String(el.value).trim().length<12){chip.hidden=true;return}cur=el;chip.hidden=false;place()};
+  document.addEventListener("focusin",e=>{if(e.target===chip)return;show(e.target)});document.addEventListener("input",e=>{if(e.target===cur||proofOk(e.target))show(e.target)});
+  document.addEventListener("focusout",e=>{if(e.target===cur)setTimeout(()=>{if(document.activeElement!==chip&&document.activeElement!==cur)chip.hidden=true},150)});
+  addEventListener("scroll",place,{passive:true});addEventListener("resize",place);
+  chip.addEventListener("pointerdown",e=>e.preventDefault());
+  chip.addEventListener("click",()=>{if(!cur||!cur.isConnected)return;proofEl=cur;document.querySelectorAll('[data-proofbox="el"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="el";cur.insertAdjacentElement("afterend",box);chip.hidden=true;proofRun("el")})}
 const proofBtn=id=>`<button class="btn small ghost" data-proof="${id}" ${proof&&proof.id===id&&proof.busy?"disabled":""}>${proof&&proof.id===id&&proof.busy?"Proofreading":"Proofread"}</button>`;
 const proofBox=id=>`<div data-proofbox="${id}">${proofHtml(id)}</div>`;
-function proofHtml(id){if(!proof||proof.id!==id||proof.busy)return "";
+function proofHtml(id){if(!proof||proof.id!==id)return "";if(proof.busy)return id==="el"?`<div class="proof"><span class="cnt">Proofreading</span></div>`:"";
   if(proof.error)return `<div class="proof"><span class="cnt">${esc(proof.error)}</span> <button class="linkbtn" data-proofx="1">Close</button></div>`;
   const left=proof.fixes.filter(f=>!f.done);
   const kept=proof.fixes.filter(f=>f.left).length;if(!left.length)return `<div class="proof"><b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as you wrote ${kept===1?"it":"them"}.`:"All fixes accepted."}</b> <button class="linkbtn" data-proofx="1">Close</button></div>`;
