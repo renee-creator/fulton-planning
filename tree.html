@@ -80,7 +80,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .iconbtn{border:1px solid var(--line);background:transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:var(--moss-soft)}
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
 .newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
@@ -4693,14 +4693,14 @@ function renderNewsletter(){
     h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${esc(t.id)}">Remove topic</button></div>
       ${warn.length?`<div class="nlwarn">This topic is about a behavior, and it mentions ${esc(warn.join(", "))}. Leave names out of it so no family can tell who it is about.</div>`:""}
       <label class="nll">Title<input data-nlf="topics.${i}.title" value="${esc(t.title)}"></label>
-      <label class="nll">What happened this month<textarea class="nlta" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
+      <label class="nll">What happened this month<textarea class="nlta" aria-label="What is happening" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
       <div class="nlphotos">${(t.offer||[]).map(id=>nlThumb(id,(t.photos||[]).some(p=>p.notice===id),`data-nltph="${t.id}" data-id="${id}"`)).join("")}</div>
       ${(t.photos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="topics.${i}.photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
       ${t.behavior?`<p class="muted nlhint">No child photo for a topic about behavior, so no family wonders whether it is about their child.</p>`:nlStoryOffer(x,t)}
-      <label class="nll">Why it matters<textarea class="nlta" rows="3" data-nlf="topics.${i}.why">${esc(t.why)}</textarea></label>
+      <label class="nll">Why it matters<textarea class="nlta" aria-label="Why it matters" rows="3" data-nlf="topics.${i}.why">${esc(t.why)}</textarea></label>
       <div class="nll">How it grows</div>
       ${(t.grows||[]).map((g,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.grows.${j}.age" value="${esc(g.age)}" aria-label="Age"><textarea class="nlta" rows="2" data-nlf="topics.${i}.grows.${j}.text" aria-label="What it looks like">${esc(g.text)}</textarea></div>`).join("")}
-      <label class="nll nlbonus">Bonus for school<textarea class="nlta" rows="2" data-nlf="topics.${i}.bonus">${esc(t.bonus)}</textarea></label>
+      <label class="nll nlbonus">Bonus for school<textarea class="nlta" aria-label="More to know" rows="2" data-nlf="topics.${i}.bonus">${esc(t.bonus)}</textarea></label>
       <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Ideas to try at home</div><span><button class="btn small ghost" data-nltipdraft="${esc(t.id)}">${(t.tips||[]).length?"Draft new tips":"Draft tips for me"}</button> <button class="btn small ghost" data-nltipadd="${esc(t.id)}">Add a tip</button></span></div>
       ${t.tipsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
       ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(nlTxt(p.lead))}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" data-talk="1" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${esc(t.id)}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
@@ -4722,7 +4722,7 @@ function renderNewsletter(){
   // school and farm
   h+=`<section class="card nlcard"><div class="nlstep">${step+1}</div><div class="head-row"><h3>Around the school and farm</h3><button class="btn small ghost" data-nlschool="1">${(x.school||[]).length?"Suggest more":"Suggest from observations"}</button></div>
     <p class="muted nlhint">Only what spans the school, such as the animals, the garden, staff news, events and policy updates.</p>
-    ${(x.school||[]).map((s,j)=>`<div class="nlrow"><textarea class="nlta" rows="2" data-nlf="school.${j}.text">${esc(s.text)}</textarea><button class="btn small ghost" data-nlrmschool="${j}" aria-label="Remove">×</button></div>`).join("")}
+    ${(x.school||[]).map((s,j)=>`<div class="nlrow"><textarea class="nlta" rows="2" aria-label="School news" data-nlf="school.${j}.text">${esc(s.text)}</textarea><button class="btn small ghost" data-nlrmschool="${j}" aria-label="Remove">×</button></div>`).join("")}
     <button class="btn small ghost" data-nladdschool="1">Add a line</button>
     ${(x.schoolOffer||[]).length?`<div class="nlphotos">${x.schoolOffer.map(id=>nlThumb(id,(x.schoolPhotos||[]).some(p=>p.notice===id),`data-nlsph="${id}"`)).join("")}</div>`:""}
     ${(x.schoolPhotos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="schoolPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`;
@@ -6555,7 +6555,7 @@ function renderGrant0(){
       <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for ${pw} yet. Add a FEED order confirmation below.</div>`}
     ${lines.length?`<details class="gmore" style="margin-top:10px"><summary class="linkbtn">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
       ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}${x.review?` · <span class="warnline">to check</span>`:""}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
-        <td><select data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
+        <td><select aria-label="How it was used" data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
     <div class="actions" style="margin-top:12px"><label class="btn small ghost" style="cursor:pointer">Add an order or invoice<input type="file" id="g-order" accept=".eml,.html,.htm,.txt,.pdf,message/rfc822,application/pdf" multiple hidden></label><button class="btn small ghost" data-gact="addbuy">Add a purchase by hand</button></div>
     <div class="hint">Forward order emails and invoices to the TREE mailbox and they arrive by themselves, or add a saved email or PDF here. FEED's are read exactly. Any other vendor's waits under Orders to check. A purchase with no email can be added by hand.</div>
     ${gAdd?gAddHtml():""}</div></details>`;
@@ -7055,7 +7055,7 @@ function recipeDoc(month){const mrec=menus.get(month)||{};const name=String(mrec
 function madeForSchoolHtml(){const b=binCurrent(),bn=binNoteRec(b),pm=mShift(mNow(),-1),lq=lastQuarter(),m=mNow();const mrec=menus.get(m)||{};
   return `${gCardO("made","Made for the school","Bin note, post, printouts",false)}
     <div class="gmade"><div><b>This week's bin note for families</b><div class="cnt">${!b?"The bin list has not arrived yet.":!bn?"TREE writes it as soon as the bin list arrives.":bn.status==="posted"?"On the Family page.":"Ready for you to read."}</div>
-      ${b&&bn?`<textarea id="g-binnote" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button><button class="linkbtn" data-gbn="again">Write it again</button></div>`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
+      ${b&&bn?`<textarea id="g-binnote" aria-label="The bin note" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button><button class="linkbtn" data-gbn="again">Write it again</button></div>`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
     <div><b>Farm of the month</b><div class="cnt">${(()=>{const fm=farmOfMonth(pm).best;return fm?`${esc(fm.farm)} for ${esc(parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"}))}${farmPostMade(pm)?", the post is started in Share":""}.`:"No farm in last month's orders yet."})()}</div><div class="actions"><button class="btn small ghost" data-gfom="${pm}">${farmPostMade(pm)?"Start it again":"Start the post in Share"}</button></div></div>
     <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${printBtns("ftour","","Food at Fulton for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
       <div class="cnt">The recipe card comes once the kitchen writes the recipe on the Kitchen page.</div></div></div></div></details>`}
@@ -7617,7 +7617,7 @@ function binHandHtml(){const d=binCurrent();const next=(()=>{const t=new Date();
   return `<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Add a week's list by hand</summary>
     <div class="cnt" style="margin:8px 0">For a week FEED's page could not be read. One item on each line, written the way FEED writes it, such as Fennel (1 ea) - Paul's Produce.</div>
     <label class="cnt">The day it arrives <input type="date" id="bin-hdate" value="${esc(next)}" style="width:auto"></label>
-    <textarea id="bin-hlist" rows="6" style="margin-top:8px"></textarea>
+    <textarea id="bin-hlist" aria-label="The list" rows="6" style="margin-top:8px"></textarea>
     <div class="actions" style="margin-top:8px"><button class="btn small ghost" data-binact="hand">Keep this list</button></div></details>`}
 
 async function binWrite(id,patch,base){if(!db){toast("TREE is not connected. Try again in a moment.");return false}
@@ -8357,7 +8357,7 @@ function renderParticipation(){
         :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
-      <textarea id="pt-welcome" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
+      <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
       <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
       ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from Fulton's Welcome Letter and Logistics.</div>`}</details></section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Admission agreement dates</h3> <span class="cnt">${c.aa&&c.aa.start?esc(fmtDate(c.aa.start))+" to "+esc(fmtDate(c.aa.end||"")):"Not set, so the agreement prints blank lines"}</span></summary>
@@ -10790,10 +10790,15 @@ function readError(err){
   return `Something went wrong (${c||"unknown"}). Press Try again.`;
 }
 // every TREE reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
+// writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
+const FAMILY_WORDS=new Set(["newsletter","share","story","binnote"]);
+function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
+    return x.replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
+  if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
 async function askRead(prompt,opts,j){
   const waits=[8000,25000,60000];
   for(let a=0;;a++){
-    try{const out=await sample.json(prompt,opts);if(j){j.note="";queueRender()}return out}
+    try{let out=await sample.json(prompt,opts);if(opts&&FAMILY_WORDS.has(opts.purpose))out=tidyWords(out);if(j){j.note="";queueRender()}return out}
     catch(err){
       const c=err?.code;
       if(!["rate_limited","unavailable","server_error","invalid_json"].includes(c)||a>=waits.length)throw err;
