@@ -42,6 +42,22 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
   await fill("LIC995",T=>{T("LIC 995 1",LICO.name);T("LIC 995 2",LICO.addr);T("LIC 995 3",LICO.phone);T("LIC 995 4",nm("c_"));T("LIC 995 5",FAC.name)});
   await fill("LIC613A",T=>{T("LIC613a_1",LICO.name);T("LIC613a_2",LICO.street);T("LIC613a_3",LICO.city);T("LIC613a_4",LICO.zip);T("LIC613a_5",LICO.phone);T("LIC613a_6",FAC.name);T("LIC613a_7",FAC.addr);T("LIC613a_8",nm("c_"));T("LIC613a_10","Parent")});
   if(d.sun===true||d.sun==="true")await fill("LIC9221",T=>{T("Text Field 12",FAC.name);T("Text Field 13",FAC.license);T("Text Field 15",nm("c_"));T("Text Field 16",mdy(v("c_dob")));T("Text Field 17","School provided sunscreen");T("Text Field 18","Apply as directed on the label");T("Text Field 22","Before outdoor play and as needed")});
+  // the school's own page, the food allergy and dietary information, signed at the visit with the state forms
+  {const pg=out.addPage([612,792]);const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);
+    let y=740;const M=60,W=492;
+    const wrap=(t,f,sz,w)=>{const out=[];for(const para of String(t||"").split("\n")){let line="";for(const w0 of para.split(/\s+/).filter(Boolean)){const tt=line?line+" "+w0:w0;if(f.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)out.push(line);line=w0}}out.push(line)}return out};
+    const text=(t,f,sz,c)=>{for(const l of wrap(t,f,sz,W)){pg.drawText(l,{x:M,y,size:sz,font:f,color:c||ink});y-=sz*1.35}};
+    const pair=(l,v)=>{pg.drawText(l,{x:M,y,size:10,font:B,color:ink});pg.drawText(String(v||""),{x:M+150,y,size:10.5,font:F,color:ink});y-=20};
+    pg.drawText(FAC.name,{x:M,y,size:9,font:F,color:gray});y-=26;
+    text("Food Allergy and Dietary Information",B,18);y-=8;
+    pair("Child",nm("c_"));pair("Birthdate",mdy(v("c_dob")));pair("Class",o.classroom||"");pair("Parent or guardian",nm("p1_"));pair("Home telephone",v("p1_home"));pair("Work telephone",v("p1_work"));y-=8;
+    if(yes("fa_has")){text("Foods to avoid",B,11);text(v("fa_food"),F,10.5);y-=6;text("The nature of the reaction or sensitivity",B,11);text(v("fa_reaction"),F,10.5);y-=6;
+      pair("Reason",v("fa_reason"));pair("Medical condition",v("fa_medical"));if(yes("fa_medical"))text("Please bring a note from the doctor.",F,10,gray)}
+    else text("My child has no food allergy, severe food allergy or dietary need.",F,11);
+    y-=14;text("Fulton is a nut free school. A severe food allergy is a dangerous or life-threatening reaction to a food, by breathing, eating or touching it, that needs medical care right away.",F,9.5,gray);y-=4;
+    text("We keep this information confidential and share it only with the educators and school staff who care for your child.",F,9.5,gray);
+    y=Math.min(y-40,170);pg.drawLine({start:{x:M,y},end:{x:M+300,y},thickness:.6,color:gray});pg.drawLine({start:{x:M+340,y},end:{x:M+W,y},thickness:.6,color:gray});
+    pg.drawText("Signature of parent or guardian",{x:M,y:y-12,size:8.5,font:F,color:gray});pg.drawText("Date",{x:M+340,y:y-12,size:8.5,font:F,color:gray})}
   return await out.save()}
 window.fillEnrollForms=fillEnrollForms;window.ENROLL_LICO=LICO;window.ENROLL_FAC=FAC;
 })();

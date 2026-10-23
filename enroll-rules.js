@@ -17,7 +17,7 @@
       const og = optional.find(g => g(k)); if (og && !filled(all.map(x => x.k).filter(og))) continue;
       const p = (k.match(/^(p1_|p2_)/) || [])[1]; if (p && /(street|city|state|zip)$/.test(k) && (d[p + 'same'] === true || d[p + 'same'] === 'true')) continue;
       const when = { noreach_other: v('noreach') === 'Other', d_stage: yes('d_toilet'), d_bmtime: yes('d_bm'), d_napwhen: v('d_nap') && !/^no/i.test(v('d_nap')), d_naplong: v('d_nap') && !/^no/i.test(v('d_nap')),
-        h_coldsn: yes('h_colds'), v_doctorname: yes('v_doctor'), v_medswhat: yes('v_meds'), v_devicewhat: yes('v_device'), v_devhomewhat: yes('v_devhome') };
+        h_coldsn: yes('h_colds'), fa_food: yes('fa_has'), fa_reaction: yes('fa_has'), fa_reason: yes('fa_has'), fa_medical: yes('fa_has'), v_doctorname: yes('v_doctor'), v_medswhat: yes('v_meds'), v_devicewhat: yes('v_device'), v_devhomewhat: yes('v_devhome') };
       if (k in when && !when[k]) continue;
       if (!v(k)) out.push(f);
     }
