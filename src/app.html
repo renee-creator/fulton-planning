@@ -969,6 +969,7 @@ async function boot(){
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
+    db.doc("settings/weekly").onSnapshot(snap=>{weeklyRec=snap.exists?snap.data():null;setTimeout(()=>weeklyReads().catch(()=>{}),20000);if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{weeklyRec=null});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/backup").onSnapshot(snap=>{backupInfo=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()});
     db.doc("settings/stories").onSnapshot(snap=>{storySet=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sf-card"))renderSettings()},()=>{});
@@ -4075,6 +4076,29 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-kser
   const d=t.dataset,now=!(t.getAttribute("aria-pressed")==="true");t.setAttribute("aria-pressed",String(now));
   try{await window.FP_API("/api/kitchen-serve",{monday:d.kmon,name:d.kname,farm:d.kfarm,field:d.kserve,value:now});
     kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y)}catch(err){t.setAttribute("aria-pressed",String(!now));toast((err&&err.message)||"Could not save that.")}},true);
+/* The week's reading. The first time the director opens TREE each week, Find threads and the lens read the plans by
+   themselves, in the background, for every class. What they find waits for her, the same as when she presses the buttons.
+   One device runs it, and a reading closed partway starts again the next time TREE opens. */
+let weeklyRec,weeklyBusy=false;
+async function weeklyReads(){
+  if(weeklyBusy||weeklyRec===undefined||!isDirector()||VIEW_AS||!sample||!db||!navigator.onLine)return;
+  const wk=mondayOf(new Date());const r=weeklyRec||{};
+  if(r.week===wk&&(r.done||Date.now()-(r.startedAt||0)<(r.failed?60*60e3:15*60e3)))return;
+  if(scanBusy||lensBusy)return;
+  weeklyBusy=true;weeklyRec={week:wk,startedAt:Date.now(),done:false};await db.doc("settings/weekly").set(weeklyRec);if(view==="today")renderMain();
+  const keep={tRoom,tRange,lRoom,lRange};tRoom="All";tRange="8";lRoom="All";
+  const t0=Date.now();const newest=kind=>[...scans.values()].filter(x=>(kind==="lens")===(x.kind==="lens")&&(x.createdAt||0)>=t0).sort((a,b)=>b.createdAt-a.createdAt)[0];
+  let th=null,ln=null,tried=0;
+  try{if(rangePlans().length){tried++;await findThreads();th=newest("threads")}if(lensPlans().length){tried++;await lensRead();ln=newest("lens")}}catch(e){}
+  finally{tRoom=keep.tRoom;tRange=keep.tRange;lRoom=keep.lRoom;lRange=keep.lRange;weeklyBusy=false;
+    const ok=!tried||th||ln;weeklyRec={week:wk,startedAt:weeklyRec.startedAt,done:!!ok,failed:!ok,doneAt:Date.now(),threads:th?(th.threads||[]).filter(x=>!x.trackedId).length:0,joined:th?(th.joined||[]).length:0,moments:ln?(ln.moments||[]).length:0};
+    db.doc("settings/weekly").set(weeklyRec).catch(()=>{});if(view==="today")renderMain()}}
+function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(new Date()))return "";
+  if(weeklyRec.failed)return `<div class="card" style="margin-top:14px"><b>This week's reading did not run</b> <span class="cnt">TREE tries again the next time you open it, after an hour.</span></div>`;
+  if(!weeklyRec.done)return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>This week's reading</b> <span class="cnt">TREE is reading the plans for threads and the lens. Keep TREE open for a few minutes.</span></span></div>`;
+  if(LS.get("tree.weeklyseen")===weeklyRec.week)return "";
+  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done</b> <span class="cnt">${esc([weeklyRec.threads?`${weeklyRec.threads} new thread${weeklyRec.threads===1?"":"s"}`:"",weeklyRec.joined?`more evidence for ${weeklyRec.joined} thread${weeklyRec.joined===1?"":"s"} you follow`:"",weeklyRec.moments?`${weeklyRec.moments} lens moment${weeklyRec.moments===1?"":"s"}`:""].filter(Boolean).join(", ").replace(/^./,c=>c.toUpperCase())||"Nothing new this week.")}${weeklyRec.threads||weeklyRec.joined||weeklyRec.moments?" They wait for you.":""}</span></span><span class="actions"><button class="btn small" data-weeklygo="threads">Threads</button><button class="btn small ghost" data-weeklygo="lens">The lens</button><button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
@@ -4126,7 +4150,7 @@ function renderToday(){
   </div>
   ${askFam?askFamHtml(room):""}
   ${todayBinHtml()}
-  ${kitchenCardHtml(planWeekNow(),true)}
+  ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)}</span>`:""}</div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
