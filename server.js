@@ -1117,6 +1117,7 @@ async function handle(req, res) {
     else if (path === '/family/enroll') r = familyPage.enroll(f, String(body.childId || ''), body.data || {}, !!body.done);
     else if (path === '/family/questionnaire') r = familyPage.questionnaire(f, String(body.childId || ''), Array.isArray(body.answers) ? body.answers : []);
     else if (path === '/family/photo') { r = await familyPage.photo(f, String(body.childId || ''), body.data); if (!r.error) { json(req, res, 200, r); return; } }
+    else if (path === '/family/check') r = familyPage.check(f, String(body.childId || ''), String(body.key || ''), body.on !== false);
     else if (path === '/family/aboutme') r = familyPage.aboutMe(f, String(body.childId || ''), body.pages, !!body.done);
     else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
     else { err(req, res, 404, 'Not found'); return; }
