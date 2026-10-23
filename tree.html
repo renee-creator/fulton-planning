@@ -103,6 +103,9 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .sendmiss{font-size:14px;line-height:1.5}
 #kfam input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink);width:100%}.kfamrow{padding-bottom:10px;border-bottom:1px solid var(--line)}
 .aamstaff{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.aamstaff img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;margin:4px 0}
+.drov,.drgrid{display:grid;gap:8px 10px;align-items:center;overflow-x:auto}.drbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.drbar i{display:block;height:100%;background:var(--moss)}.drbar.thin i{background:var(--marigold)}
+.drc{border:1px solid var(--line);border-radius:6px;padding:4px 0;font:inherit;font-size:13px;cursor:pointer;background:color-mix(in srgb,var(--moss) calc(var(--f)*45%),var(--paper));color:var(--ink)}.drc.none{background:var(--clay-soft);color:var(--clay)}.drc.na{border:0;background:none;cursor:default}.drc.on{outline:2px solid var(--moss)}
+.drdetail{grid-column:1/-1;background:var(--bg);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:14px}.drgap{border-top:1px solid var(--line);padding:8px 0}
 .ptsign{margin:4px 0 0;padding-left:18px;font-size:14px;color:var(--muted)}.ptsign li{margin:1px 0}
 .ptitem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ptitem .actions{flex-wrap:nowrap}
 .card.ptbanner{border-color:var(--marigold);background:var(--marigold-soft)}#pt-temail,.ptform input,.ptform select,.ptform textarea,#pt-kq{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.ptform{display:grid;gap:10px}.ptform input,.ptform select,.ptform textarea{width:100%}.ptform input[type=checkbox]{width:auto;flex:none}
@@ -1410,6 +1413,7 @@ function renderMain(){
   if(view==="settings"){renderSettings();return}
   if(view==="search"){renderSearchAll();return}
   if(view==="participation"){if(!isOffice()){view="children";renderMain();return}renderParticipation();return}
+  if(view==="drdpreport"){if(!isDirector()){view="children";renderMain();return}renderDrdpReport();return}
   if(view==="children"){renderChildren();return}
   if(view==="child"){renderChild();return}
   if(view==="today"){renderToday();return}
@@ -3874,8 +3878,8 @@ const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
 const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
-  children:[["children","Children"],["conferences","Conferences"],["participation","Participation"]]};
-const SECTION_OF={search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+  children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
+const SECTION_OF={drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -3910,7 +3914,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k==="participation"?isOffice():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -3986,6 +3990,9 @@ function todayWaiting(){
     if(qd<21&&!LS.get("tree.f2sq-"+lq))out.push({dot:"sky",t:"New quarter, Farm to School printouts",s:`The impact story and the farm thank-you cards for ${quarterName(lq)} are ready to print.`,act:`data-tview="grant" data-gopen="made" data-f2sq="${lq}"`,b:"Open"})}
   // an educator's Class with no food moment in two weeks sees ideas from this week's bin
   if(!dir){const rm=myRoom();const to=iso(new Date()),from=addDays(to,-14);if(rm&&!LS.get("tree.fidea-"+mondayOf(new Date())+"-"+rm)&&!foodMoments(from,to,rm).found.length&&binCurrent())out.push({dot:"sky",t:"Food education ideas from this week's bin",s:`No food moment in ${rm} Class's observations for two weeks. Three ideas from the bin are ready.`,act:`data-tview="bin"`,b:"See them",q:"fidea|"+rm});}
+  // once a month, the domains less visible so far in each class
+  if(dir&&new Date().getDate()<=7&&!LS.get("tree.drrep-"+mNow())){const {rows,rooms}=drData();const t=rooms.map(r=>[r,drThin(rows.filter(x=>x.c.classroom===r))]).filter(([,x])=>x.length);
+    if(t.length)out.push({dot:"sky",t:"DRDP, less visible so far this year",s:t.map(([r,x])=>`${r}, ${x.map(y=>DRDP_DOM[y.d]||y.d).join(" and ")}`).join(". ")+".",act:`data-tview="drdpreport" data-drrep="1"`,b:"Open"})}
   // requests from Class teams wait for the director or the office to post them
   if(isOffice())for(const x of ptItems().filter(x=>x.status==="requested"))out.push({dot:"mari",t:`Request from ${x.requestedBy||"a Class team"}`,s:[x.title+".",x.date?fmtDate(x.date)+".":"",x.spots?x.spots+" people.":""].filter(Boolean).join(" "),act:`data-tview="participation"`,b:"Look"});
   // a family's strengths that fit a thread the Class follows, so the team can think about inviting them
@@ -4965,6 +4972,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-tsec]");if(!t)return;
   if(t.dataset.tsec){e.stopImmediatePropagation();if(t.dataset.tsec==="calendar"){embedRoute.calendar="";embedGo.calendar=true}if(secOf(view)===t.dataset.tsec&&t.dataset.tsec==="children"&&view!=="children"){goView("children");return}goSection(t.dataset.tsec);return}
   if(t.dataset.f2sq)LS.set("tree.f2sq-"+t.dataset.f2sq,"1");
+  if(t.dataset.drrep)LS.set("tree.drrep-"+mNow(),"1");
   if(t.dataset.gopen){gOpen[t.dataset.gopen]=true;LS.set("fps.gopen",gOpen)}
   if(t.dataset.tview){e.stopImmediatePropagation();if(t.dataset.tview==="conferences"||t.dataset.tview==="calendar"){embedRoute[t.dataset.tview]="";embedGo[t.dataset.tview]=true}goView(t.dataset.tview);return}
   if(t.dataset.tback){e.stopImmediatePropagation();currentId=null;renderList();renderMain();jumpTop();return}
@@ -6878,6 +6886,64 @@ function farmWallMonth(month){const F=farmMonthData(month);const d=farmWallDoc(`
   // the range of tastes, in large type under the farms
   if(F.fruits.length+F.vegs.length||F.dishes)d.blocks.push(dText("",`${F.fruits.length+F.vegs.length} fruits and vegetables and ${F.dishes} different dishes this month.`));
   for(const n of foodPhotos(F.from,F.to,2))d.blocks.push(dPhoto(n,200));return d}
+
+
+/* ---------- DRDP report ----------
+   How the Preschool Learning Foundations are visible across the school this year, from the evidence educators accepted.
+   Director only. Each class shows by domain first, a tap opens the measures. When a domain is thin, TREE tells apart
+   observations that may already hold evidence from experiences not offered lately, so the next step is clear. */
+let drRoom="All",drCell="";
+const DR_ORDER=["ATL","SED","FLD","ELD","COG","MATH","SCI","PD","HLTH"];
+function drKid(c,from){const v=drdpViewOf(c).v;const M=DRDP_M[v]||{};const ms=Object.entries(M).filter(([k,m])=>(m.c!=="eld"||kidEld(c))&&(m.c!=="iep"||kidIep(c)));
+  const ev=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view||v)===v&&((x.src&&x.src.at)||x.at||0)>=from);
+  const dom={};for(const [k,m] of ms){const d=m.d||k.split(" ")[0];const e=dom[d]||(dom[d]={total:0,have:0,last:0,ms:[]});e.total++;const xs=ev.filter(x=>x.code===k);
+    const best=xs.sort((a,b)=>drdpRank(v,k,b.level)-drdpRank(v,k,a.level)||((b.src&&b.src.at)||b.at||0)-((a.src&&a.src.at)||a.at||0))[0];
+    if(best){e.have++;e.last=Math.max(e.last,...xs.map(x=>(x.src&&x.src.at)||x.at||0))}e.ms.push({code:k,name:m.n,best,n:xs.length})}
+  return {v,dom,pieces:ev.length}}
+function drData(){const from=parseIso(ptYearStart()).getTime();const kids=kidsAt();const rows=kids.map(c=>Object.assign({c},drKid(c,from)));
+  const rooms=CLASSROOMS.filter(r=>rows.some(x=>x.c.classroom===r));return {from,rows,rooms}}
+// a domain where fewer than half the children in the class have any evidence this year
+// the two domains least visible in the class, when fewer than half the children have any evidence in them
+function drThin(rows){const out=[];for(const d of DR_ORDER){const app=rows.filter(x=>x.dom[d]);if(app.length<3)continue;const have=app.filter(x=>x.dom[d].have>0).length;if(have/app.length<.5)out.push({d,have,of:app.length,f:have/app.length})}return out.sort((a,b)=>a.f-b.f).slice(0,2)}
+// observations in the class from the last six weeks whose words fit the domain and that no accepted evidence comes from
+function drMaybe(room,d){const since=Date.now()-42*864e5;const kw=[...new Set(Object.values(DRDP_M.ptk).concat(Object.values(DRDP_M.it)).filter(m=>m.d===d).flatMap(m=>m.k||[]))];
+  const used=new Set(kidsAt().flatMap(c=>kidDrdpItems(c).filter(x=>x.src&&(x.status==="accepted"||x.status==="changed")).map(x=>x.src.id)));
+  // two or more of the domain's words, one observation from each post
+  const seen=new Set();return [...notices.values()].filter(n=>{if((n.at||0)<since||!momentIn(n,room)||used.has(n.id)||!(n.children||[]).length)return false;const t=" "+String(n.noticed||"").toLowerCase()+" ";return kw.filter(w=>kwHit(t,w)).length>=2})
+    .sort((a,b)=>(b.at||0)-(a.at||0)).filter(n=>{const k=n.group||String(n.noticed||"").slice(0,80);if(seen.has(k))return false;seen.add(k);return true}).slice(0,4)}
+function drIdeas(d){const kw=[...new Set(Object.values(DRDP_M.ptk).filter(m=>m.d===d).flatMap(m=>m.k||[]))];return binIdeas().filter(i=>kw.some(w=>kwHit(" "+String(i.text||"").toLowerCase()+" ",w))).slice(0,2)}
+function renderDrdpReport(){const {rows,rooms}=drData();const doms=DR_ORDER.filter(d=>rows.some(x=>x.dom[d]));const yr=ptYearStart();
+  const bar=(have,of)=>{const pc=of?have/of:0;return `<div class="drbar ${pc<.5?"thin":""}"><i style="width:${Math.round(pc*100)}%"></i></div><span class="cnt">${have} of ${of}</span>`};
+  let h=`<div class="head"><span class="eyebrow">Children</span><div class="head-row"><h2 style="margin-top:4px">DRDP report</h2><span class="actions">${printBtns("drdprep",drRoom,"Print",true)}</span></div>
+    <div class="sub" style="max-width:76ch">How the Preschool Learning Foundations are visible in each class since ${esc(fmtDate(yr))}, from the evidence educators accepted. A bar is the children with any evidence in that domain. Only you see this page.</div>
+    <div class="filters" role="group" aria-label="Class">${["All",...rooms].map(r=>`<button class="pill" aria-pressed="${r===drRoom}" data-drroom="${esc(r)}">${r==="All"?"Every class":esc(r)}</button>`).join("")}</div></div>`;
+  if(drRoom==="All"){
+    h+=`<section class="card"><div class="drov" style="grid-template-columns:minmax(110px,1.1fr) repeat(${doms.length},minmax(70px,1fr))"><span></span>${doms.map(d=>`<b class="cnt">${esc(DRDP_DOM[d]||d)}</b>`).join("")}
+      ${rooms.map(r=>{const rs=rows.filter(x=>x.c.classroom===r);return `<button class="linkbtn" data-drroom="${esc(r)}" style="text-align:left"><b>${esc(r)}</b><br><span class="cnt">${rs.length} children</span></button>${doms.map(d=>{const app=rs.filter(x=>x.dom[d]);return `<span>${app.length?bar(app.filter(x=>x.dom[d].have).length,app.length):`<span class="cnt">Not used</span>`}</span>`}).join("")}`}).join("")}</div></section>`;
+    const thin=rooms.map(r=>[r,drThin(rows.filter(x=>x.c.classroom===r))]).filter(([,t])=>t.length);
+    h+=`<section class="card"><h3 style="font-size:17px">Least visible so far</h3><div class="cnt">The two domains in each class where the fewest children have evidence.</div>${thin.length?thin.map(([r,t])=>`<div class="ptitem"><span><b>${esc(r)}</b> <span class="cnt">${esc(t.map(x=>DRDP_DOM[x.d]||x.d).join(", "))}</span></span><button class="btn small ghost" data-drroom="${esc(r)}">Open</button></div>`).join(""):`<div class="cnt">Every domain used has evidence for at least half the children in each class.</div>`}</section>`;
+  }else{
+    const rs=rows.filter(x=>x.c.classroom===drRoom).sort((a,b)=>a.c.first.localeCompare(b.c.first));
+    h+=`<section class="card"><div class="drgrid" style="grid-template-columns:minmax(110px,1.2fr) repeat(${doms.length},minmax(54px,1fr)) 64px"><span></span>${doms.map(d=>`<b class="cnt">${esc(DRDP_DOM[d]||d)}</b>`).join("")}<b class="cnt">Pieces</b>
+      ${rs.map(x=>`<button class="linkbtn" data-kid="${esc(x.c.id)}" data-ktab="drdp" style="text-align:left">${esc(x.c.first)}${x.c.last?" "+esc(x.c.last[0]):""}</button>${doms.map(d=>{const e=x.dom[d];if(!e)return `<span class="drc na"></span>`;const k=x.c.id+"|"+d;
+        return `<button class="drc ${e.have?"":"none"} ${drCell===k?"on":""}" style="--f:${e.total?e.have/e.total:0}" data-drcell="${esc(k)}" title="${esc(DRDP_DOM[d]||d)}">${e.have?e.have+"/"+e.total:"·"}</button>`}).join("")}<span class="cnt" style="text-align:center">${x.pieces}</span>
+        ${drCell.startsWith(x.c.id+"|")?(()=>{const e=x.dom[drCell.split("|")[1]];return `<div class="drdetail">${e.ms.map(m=>`<div><b>${esc(m.code)}</b> ${esc(m.name)}, ${m.best?`<b>${esc(drdpLevelText(m.best.level,m.best.emerging))}</b> <span class="cnt">${esc(shortDate((m.best.src&&m.best.src.at)||m.best.at))}${m.n>1?", "+m.n+" pieces":""}</span>`:`<span class="cnt">no evidence yet</span>`}</div>`).join("")}</div>`})():""}`).join("")}</div></section>`;
+    const thin=drThin(rs);
+    h+=`<section class="card"><h3 style="font-size:17px">Least visible so far in ${esc(drRoom)}</h3>${thin.length?thin.map(t=>{const may=drMaybe(drRoom,t.d),ideas=may.length?[]:drIdeas(t.d);
+      return `<div class="drgap"><b>${esc(DRDP_DOM[t.d]||t.d)}</b> <span class="cnt">${t.have} of ${t.of} children have evidence</span>
+        ${may.length?`<div class="cnt">Happening but not documented. These observations may already hold evidence.</div>${may.map(n=>`<div class="ptitem"><span>${esc(firstLine(momentHeading(n)||n.noticed,90))} <span class="cnt">${esc(shortDate(n.at))}</span></span><button class="linkbtn" data-nwedit="${esc(n.id)}">Open</button></div>`).join("")}`
+          :`<div class="cnt">Not offered lately. Nothing in the last six weeks of observations touches it.</div>${ideas.map(i=>`<div class="cnt">Idea from the bank. ${esc(i.text)}</div>`).join("")}`}</div>`}).join(""):`<div class="cnt">Every domain has evidence for at least half the children in ${esc(drRoom)}.</div>`}</section>`}
+  $("#main").innerHTML=h}
+document.addEventListener("click",e=>{if(view!=="drdpreport")return;const t=e.target.closest("[data-drroom],[data-drcell]");if(!t)return;
+  if(t.dataset.drroom){drRoom=t.dataset.drroom;drCell="";renderMain();window.scrollTo(0,0);return}
+  drCell=drCell===t.dataset.drcell?"":t.dataset.drcell;const y=window.scrollY;renderMain();window.scrollTo(0,y)});
+// one page for each class, for staff meetings
+function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.filter(d=>rows.some(x=>x.dom[d]));const yr=fmtDate(ptYearStart());
+  return (room&&room!=="All"?[room]:rooms).map(r=>{const rs=rows.filter(x=>x.c.classroom===r).sort((a,b)=>a.c.first.localeCompare(b.c.first));const blocks=[];
+    blocks.push(dTable("",rs.map(x=>[x.c.first+(x.c.last?" "+x.c.last[0]:""),...doms.map(d=>x.dom[d]?(x.dom[d].have?x.dom[d].have+" of "+x.dom[d].total:"none"):""),String(x.pieces)]),{head:["Child",...doms.map(d=>d),"Pieces"],widths:[.2,...doms.map(()=>.7/doms.length),.1]}));
+    const thin=drThin(rs);if(thin.length){blocks.push(dSub("Less visible so far"));for(const t of thin){const may=drMaybe(r,t.d);blocks.push(dText(DRDP_DOM[t.d]||t.d,`${t.have} of ${t.of} children have evidence. ${may.length?`${may.length} recent observation${may.length===1?"":"s"} may already hold evidence, ${may.map(n=>firstLine(momentHeading(n)||n.noticed,40)).join(", ")}.`:"Not offered lately in the observations."}`))}}
+    blocks.push(dText("",`Domains, ${doms.map(d=>d+" "+(DRDP_DOM[d]||"")).join(", ")}.`));
+    return {display:true,type:"report",acc:"smallgroup",title:"DRDP evidence, "+r+" Class",meta:[["Since",yr]],blocks}})}
 
 /* ---------- Food at Fulton, made for the school ----------
    Farm to School does work for the school from what TREE already holds. Each piece waits for the director before it
@@ -10053,6 +10119,7 @@ async function printsClick(t){
   if(kind==="farmsheet"){await out([farmSheetDoc(t.dataset.id)],`What we ate ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="farmwall"){await out([farmWallMonth(t.dataset.id)],`Where our food came from ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="farmweek"){const d=farmWallWeek(t.dataset.id);if(!d){toast("The kitchen's order for this week has not arrived yet.");return true}await out([d],`Our food this week ${t.dataset.id}`);return true}
+  if(kind==="drdprep"){const ds=drdpReportDocs(t.dataset.id);if(!ds.length){toast("No class has children on the roster.");return true}await out(ds,`DRDP evidence ${t.dataset.id==="All"?"all classes":t.dataset.id}`);return true}
   if(kind==="fimpact"){await out([impactDoc(t.dataset.id)],`Farm to School impact ${periodName(t.dataset.id)}`);return true}
   if(kind==="ftour"){await out([tourDoc()],"Food at Fulton");return true}
   if(kind==="fthanks"){const ds=thanksDocs(t.dataset.id);if(!ds.length){toast("No farm is in the orders or bins for that quarter yet.");return true}await out(ds,`Farm thank-you cards ${periodName(t.dataset.id)}`);return true}
