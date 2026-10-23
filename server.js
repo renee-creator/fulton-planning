@@ -1001,7 +1001,11 @@ async function displayFeed() {
         .filter(p => p.photo && !(cover && p.photo.src === cover.src)).slice(0, 2);
       return { id: st.id, title: trim(st.title, 90), cover: trim(st.cover, 90), room: st.classroom || '', group: st.group || '', photo: cover, pages }; })
     .filter(st => st.photo);
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, drdp: drdpShown, stories };
+  // a recent moment of children with food, from the food words, for the food slide
+  const FOODW = /\b(cook|cooking|bake|baking|bread|dough|soup|salad|tast(e|ed|ing)|harvest(ed|ing)?|garden|seeds?|chop|peel|wash(ed|ing)? the|fruit|vegetables?|apples?|pumpkins?|squash|kale|lettuce|carrots?|tomato(es)?|eggs?|feed bin|farm bin|snack)\b/i;
+  const fm = shown.find(n => now - (n.at || 0) < 21 * 864e5 && FOODW.test(String(n.noticed || '') + ' ' + String(n.wonder || '')));
+  const foodMoment = fm ? { id: fm.id, at: fm.at || 0, photo: photoOf(fm), noticed: trim(fm.noticed, 300), wonder: trim(fm.wonder, 200), rooms: roomsOf(fm), children: [] } : null;
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories };
 }
 
 async function handle(req, res) {
@@ -1209,7 +1213,10 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
-    if (OFFICE_KINDS.includes(kind) && !isOffice(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
+    // a Class team can ask families for help. The request waits for the director, so an educator may only start one, never change or open it
+    const askOk = kind === 'participation' && /^rq-/.test(id) && (op === 'create' || op === 'set') && !(store.recs.participation.get(id) && !store.recs.participation.get(id).deleted) && body.data && body.data.kind === 'item' && body.data.status === 'requested' && body.data.open === false;
+    if (askOk) body.data = Object.assign({}, body.data, { requestedBy: me.name, test: false });
+    if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     if (kind === 'children' && !isDirector(me.name)) {
