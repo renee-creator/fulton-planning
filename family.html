@@ -29,7 +29,7 @@ h2{font-size:19px;margin:0 0 8px}
 .link{font:inherit;background:none;border:0;color:var(--moss);text-decoration:underline;cursor:pointer;padding:0}
 input,select{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-a{color:var(--moss)}label{display:grid;gap:4px;font-size:14px;font-weight:700}
+a{color:var(--moss)}.nphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px}.nphotos figure{margin:0}.nphotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}.news h3{font-size:17px}label{display:grid;gap:4px;font-size:14px;font-weight:700}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .stack{display:grid;gap:12px}
 .banner{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:var(--r);padding:10px 14px;margin:0 0 14px;font-size:14px}
@@ -133,7 +133,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
-  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food","Menu and calendar"]);return t};
+  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);return t};
   function slotList(k){if(!k.slots.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
     const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
@@ -201,11 +201,19 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
     h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
     return h}
+  // the school's newsletter, as the director posted it, the latest open and earlier months below
+  function newsHtml(){const ns=D.menu.news||[];if(!ns.length)return "";
+    const link=t=>esc(t).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>48?u.slice(0,46)+"…":u}</a>`);
+    const SUBS=["Why it matters","How it grows","Ideas to try at home"];
+    const para=t=>{const ls=t.split("\n");let h="";for(const l of ls){const x=l.trim();if(!x){continue}if(SUBS.includes(x))h+=`<p style="margin:10px 0 2px"><b>${esc(x)}</b></p>`;else if(x===ls[0].trim()&&b0&&x===b0)continue;else h+=`<p style="margin:0 0 6px">${link(x).replace(/^Bonus for school\./,"<b>Bonus for school.</b>")}</p>`}return h};let b0="";
+    const body=n=>n.blocks.map(b=>`<h3 style="margin:18px 0 6px">${esc(b.h)}</h3>${(b0=b.h,para(b.text))}${b.photos.length?`<div class="nphotos">${b.photos.map(p=>`<figure><img src="${esc(SERVER+p.src)}" alt="${esc(p.cap||"A photo from the newsletter")}" loading="lazy">${p.cap?`<figcaption class="small muted">${esc(p.cap)}</figcaption>`:""}</figure>`).join("")}</div>`:""}`).join("");
+    const [first,...rest]=ns;
+    return `<section class="card news"><h2>${esc(first.title)}</h2>${body(first)}</section>${rest.length?`<section class="card"><h2>Earlier newsletters</h2>${rest.map(n=>`<details class="shared"><summary>${esc(n.title)}</summary>${body(n)}</details>`).join("")}</section>`:""}`}
   function foodHtml(){const m=D.menu,t=today();const wk=(from,to)=>m.days.filter(d=>d.date>=from&&d.date<=to);
     const mon=m.days.length?m.days[0].date:t;const next=m.days.length>5?m.days[5].date:"";
     const dayCard=d=>d.closed?`<div class="mday closed"><b>${esc(day(d.date))}</b><div>No school</div></div>`:`<div class="mday ${d.date===t?"today":""}"><b>${esc(day(d.date))}</b>${d.am?`<div><span class="k">Morning snack</span> ${esc(d.am)}</div>`:""}${d.lunch?`<div><span class="k">Lunch</span> ${esc(d.lunch)}</div>`:""}${d.pm?`<div><span class="k">Afternoon snack</span> ${esc(d.pm)}</div>`:""}${!d.am&&!d.lunch?`<div class="small muted">Not posted yet</div>`:""}</div>`;
     const MENU=new URL("public.html",location.href).href;
-    return `<section class="card"><h2>This week's menu</h2><div class="mweek">${m.days.slice(0,5).map(dayCard).join("")}</div>
+    return newsHtml()+`<section class="card"><h2>This week's menu</h2><div class="mweek">${m.days.slice(0,5).map(dayCard).join("")}</div>
       ${next?`<details><summary>Next week</summary><div class="mweek" style="margin-top:8px">${m.days.slice(5,10).map(dayCard).join("")}</div></details>`:""}
       <p style="margin:10px 0 0"><a href="${esc(MENU)}" target="_blank" rel="noopener">The whole month, and where our food comes from</a></p></section>
       ${m.binNote?`<section class="card"><h2>In this week's farm bin</h2><p style="white-space:pre-line;margin:0">${esc(m.binNote)}</p></section>`:""}
