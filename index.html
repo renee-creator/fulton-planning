@@ -10862,7 +10862,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
   if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
   if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
 // the moments writing leaves TREE: posting to the Family page, sending a plan to Renee, printing, copying for Kaymbu
-const PROOF_GATES='#sendplan,[data-nlpost],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
+const PROOF_GATES='#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
 document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
   if(!proofEls().length||proofHash()===proofClean)return;
@@ -10871,7 +10871,7 @@ document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.cl
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
 const FAMILY_WORDS=new Set(["newsletter","share","story","binnote"]);
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
-    return x.replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
+    return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
   if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
 async function askRead(prompt,opts,j){
   const waits=[8000,25000,60000];
