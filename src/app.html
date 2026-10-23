@@ -63,7 +63,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .iconbtn{border:1px solid var(--line);background:transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:var(--moss-soft)}
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}#proofchip{position:fixed;z-index:60;box-shadow:var(--shadow);background:var(--paper)}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}#proofpanel{position:fixed;z-index:70;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
 .newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
@@ -685,6 +685,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     <span class="savestate" id="whoneed"></span>
     <span class="savestate" id="conn">Connecting</span>
     <button class="chip-btn" id="tsearchall" data-tview="search">Search</button>
+    <button class="chip-btn" id="tproof" title="Proofread everything written on this page">Proofread</button>
     <button class="chip-btn" id="tsettings" data-view="settings" hidden>Settings</button>
   </div>
 </div></header>
@@ -1708,7 +1709,7 @@ function applyLock(){try{foldIntros()}catch(e){}
   // Renee marks a plan reviewed while reading it, without pressing Edit first
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP)&&!(b.dataset.status&&isDirector()&&!b.dataset.keepoff))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
-    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><span class="actions"><button class="btn small" data-unlock="1">Edit</button><button class="btn small ghost" data-proofpage="1">Proofread</button></span>`;
+    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
 // a saved page shows its ticks in full colour, and a tick cannot change until Edit is pressed
@@ -4517,9 +4518,9 @@ function renderNewsletter(){
   // finish
   h+=`<section class="card nlcard"><div class="nlstep">${step+3}</div><h3>Send it</h3>
     <p class="muted nlhint">Copy each block into your Kaymbu template and add the photos. Word and PDF copies are for your records and the front entrance.</p>
-    <div class="actions">${proofBtn("newsletter")}<button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${x.posted?"":`<button class="btn ghost" data-nlpost="1">Post to the Family page</button>`}${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
+    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${x.posted?"":`<button class="btn ghost" data-nlpost="1">Post to the Family page</button>`}${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
     ${x.posted?`<div class="nlres" style="margin-top:10px"><div>On the Family page since ${esc(fmtDate(iso(new Date(x.posted.at))))}.${x.updatedAt>(x.posted.at||0)+5000?" You have changed it since, so update it for families to see the changes.":""}</div><span class="actions"><button class="btn small" data-nlpost="1">Update it</button><button class="btn small ghost" data-nlunpost="1">Take it down</button></span></div>`:""}
-    ${proofBox("newsletter")}${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
+    ${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
   h+=nlArchiveHtml(k);
   main.innerHTML=h;
   main.querySelectorAll("textarea.nlta").forEach(ta=>{try{autoGrow(ta)}catch(e){}});
@@ -6837,7 +6838,7 @@ function recipeDoc(month){const mrec=menus.get(month)||{};const name=String(mrec
 function madeForSchoolHtml(){const b=binCurrent(),bn=binNoteRec(b),pm=mShift(mNow(),-1),lq=lastQuarter(),m=mNow();const mrec=menus.get(m)||{};
   return `${gCardO("made","Made for the school","Bin note, post, printouts",false)}
     <div class="gmade"><div><b>This week's bin note for families</b><div class="cnt">${!b?"The bin list has not arrived yet.":!bn?"TREE writes it as soon as the bin list arrives.":bn.status==="posted"?"On the Family page.":"Ready for you to read."}</div>
-      ${b&&bn?`<textarea id="g-binnote" aria-label="The bin note" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button>${proofBtn("binnote")}<button class="linkbtn" data-gbn="again">Write it again</button></div>${proofBox("binnote")}`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
+      ${b&&bn?`<textarea id="g-binnote" aria-label="The bin note" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button><button class="linkbtn" data-gbn="again">Write it again</button></div>`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
     <div><b>Farm of the month</b><div class="cnt">${(()=>{const fm=farmOfMonth(pm).best;return fm?`${esc(fm.farm)} for ${esc(parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"}))}${farmPostMade(pm)?", the post is started in Share":""}.`:"No farm in last month's orders yet."})()}</div><div class="actions"><button class="btn small ghost" data-gfom="${pm}">${farmPostMade(pm)?"Start it again":"Start the post in Share"}</button></div></div>
     <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${printBtns("ftour","","Food at Fulton for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
       <div class="cnt">The recipe card comes once the kitchen writes the recipe on the Kitchen page.</div></div></div></div></details>`}
@@ -8140,8 +8141,8 @@ function renderParticipation(){
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
       <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
-      <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${proofBtn("welcome")}${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
-      ${proofBox("welcome")}${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from Fulton's Welcome Letter and Logistics.</div>`}</details></section>
+      <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
+      ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from Fulton's Welcome Letter and Logistics.</div>`}</details></section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Admission agreement dates</h3> <span class="cnt">${c.aa&&c.aa.start?esc(fmtDate(c.aa.start))+" to "+esc(fmtDate(c.aa.end||"")):"Not set, so the agreement prints blank lines"}</span></summary>
       <div class="cnt" style="margin:6px 0">These print on the admission agreement each family signs at the visit. Set them once each school year.</div>
       <div class="gsrow"><label>School year begins<input type="date" id="aa-start" value="${esc((c.aa||{}).start||"")}"></label><label>School year ends<input type="date" id="aa-end" value="${esc((c.aa||{}).end||"")}"></label><label>Program fee due<input type="date" id="aa-fee" value="${esc((c.aa||{}).fee||"")}"></label></div>
@@ -10573,78 +10574,74 @@ function readError(err){
 }
 // every TREE reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
 /* ---------- Proofread ----------
-   One button for writing families read. It fixes spelling, capitals, punctuation and grammar and keeps the school's words,
-   and changes nothing else. Each fix shows what is there and what it becomes, and nothing changes until the director accepts it. */
-let proof=null;
-const PROOF={
-  newsletter:{fields(){const x=nlDoc(nlCur());if(!x)return [];const F=[];const add=(k,l,t)=>{if(String(t||"").trim())F.push({k,label:l,text:String(t)})};
-      add("note","Your note",x.note);(x.topics||[]).forEach((t,i)=>{const n=(x.topics.length>1?"Topic "+(i+1)+", ":"");add(`topics.${i}.title`,n+"title",t.title);add(`topics.${i}.happening`,n+"what happened",t.happening);add(`topics.${i}.why`,n+"why it matters",t.why);
-        (t.grows||[]).forEach((g,j)=>add(`topics.${i}.grows.${j}.text`,n+"how it grows, "+(g.age||""),g.text));add(`topics.${i}.bonus`,n+"bonus for school",t.bonus);(t.tips||[]).forEach((tp,j)=>{add(`topics.${i}.tips.${j}.lead`,n+"tip "+(j+1)+" opening",tp.lead);add(`topics.${i}.tips.${j}.text`,n+"tip "+(j+1),tp.text)})});
-      (x.school||[]).forEach((sc,j)=>add(`school.${j}.text`,"Around the school, "+(j+1),sc.text));(x.schoolPhotos||[]).forEach((ph,j)=>add(`schoolPhotos.${j}.cap`,"Photo caption "+(j+1),ph.cap));(x.coming||[]).forEach((c,j)=>{if(c.own)add(`coming.${j}.text`,"Coming up",c.text)});return F},
-    apply(k,v){const x=nlDoc(nlCur());if(!x)return;const ps=k.split(".");let o=x;for(let i=0;i<ps.length-1;i++)o=o[ps[i]];o[ps[ps.length-1]]=v;nlSave(x);const el=document.querySelector(`[data-nlf="${CSS.escape(k)}"]`);if(el){el.value=v;try{autoGrow(el)}catch(e){}}}},
-  welcome:{fields(){const t=$("#pt-welcome")?.value||"";return t.trim()?[{k:"welcome",label:"Welcome letter",text:t}]:[]},
-    apply(k,v){const el=$("#pt-welcome");if(el)el.value=v;ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}))}},
-  binnote:{fields(){const t=$("#g-binnote")?.value||"";return t.trim()?[{k:"binnote",label:"Bin note",text:t}]:[]},
-    apply(k,v){const el=$("#g-binnote");if(el)el.value=v;const b=binCurrent();if(b)gWrite("binnote-"+b.id,{text:v.trim()})}}};
-// a box is found again after the page redraws, by its id or its data attributes
-const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...document.querySelectorAll("#main textarea,#main input")];return "nth:"+all.indexOf(el)};
-const proofFind=sel=>{if(!sel)return null;if(sel.startsWith("nth:"))return [...document.querySelectorAll("#main textarea,#main input")][+sel.slice(4)]||null;try{return document.querySelector(sel)}catch(e){return null}};
-// any writing box in TREE, the one the person is writing in
-let proofElSel="";const proofElNow=()=>proofFind(proofElSel);let proofEl=null;
-PROOF.el={fields(){const el=proofElNow();const t=el&&el.isConnected?el.value:"";return t.trim()?[{k:"el",label:"",text:t}]:[]},
-  apply(k,v){const el=proofElNow();if(!el||!el.isConnected)return;el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
-const proofOk=el=>el&&!el.readOnly&&!el.disabled&&!el.closest(".proof,#gate,[data-noproof]")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&(el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=4));
-{const chip=document.createElement("button");chip.type="button";chip.id="proofchip";chip.className="btn small ghost";chip.textContent="Proofread";chip.hidden=true;document.body.appendChild(chip);
-  let cur=null;const place=()=>{if(!cur||!cur.isConnected||chip.hidden)return;const r=cur.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight){chip.style.visibility="hidden";return}chip.style.visibility="";chip.style.top=Math.min(innerHeight-40,Math.max(4,r.bottom-34))+"px";chip.style.left=Math.max(4,Math.min(innerWidth-chip.offsetWidth-8,r.right-chip.offsetWidth-6))+"px"};
-  const show=el=>{if(!proofOk(el)||String(el.value).trim().length<12){chip.hidden=true;return}cur=el;chip.hidden=false;place()};
-  document.addEventListener("focusin",e=>{if(e.target===chip)return;show(e.target)});document.addEventListener("input",e=>{if(e.target===cur||proofOk(e.target))show(e.target)});
-  document.addEventListener("focusout",e=>{if(e.target===cur)setTimeout(()=>{if(document.activeElement!==chip&&document.activeElement!==cur)chip.hidden=true},150)});
-  addEventListener("scroll",place,{passive:true});addEventListener("resize",place);
-  chip.addEventListener("pointerdown",e=>e.preventDefault());
-  chip.addEventListener("click",()=>{if(!cur||!cur.isConnected)return;proofEl=cur;proofElSel=proofSel(cur);document.querySelectorAll('[data-proofbox="el"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="el";cur.insertAdjacentElement("afterend",box);chip.hidden=true;proofRun("el")})}
-// a whole saved page, such as a plan, read at once. Accepting a fix opens the page to edit, the same as pressing Edit.
-let proofPageEls=[];let proofPageSels=[];
-const proofLabel=el=>{const l=el.closest("label");const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card");const h=c&&c.querySelector("h2,h3,h4,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
-PROOF.page={fields(){return proofPageSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean)},
-  apply(k,v){const el=proofFind(proofPageSels[+k]);if(!el||!el.isConnected)return;const m=$("#main");if(lockOn){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
-    el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
-document.addEventListener("click",e=>{const t=e.target.closest("[data-proofpage]");if(!t)return;e.stopImmediatePropagation();const m=$("#main");
-  proofPageEls=[...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&!el.closest(".proof,[data-noproof]")&&el.type!=="search"&&!el.disabled&&String(el.value).trim());
-  if(!proofPageEls.length){toast("Nothing is written yet.");return}proofPageSels=proofPageEls.map(proofSel);
-  m.querySelectorAll('[data-proofbox="page"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="page";(m.querySelector(".lockbar")||m.firstElementChild).after(box);proofRun("page")},true);
-const proofBtn=id=>`<button class="btn small ghost" data-proof="${id}" ${proof&&proof.id===id&&proof.busy?"disabled":""}>${proof&&proof.id===id&&proof.busy?"Proofreading":"Proofread"}</button>`;
-const proofBox=id=>`<div data-proofbox="${id}">${proofHtml(id)}</div>`;
-function proofHtml(id){if(!proof||proof.id!==id)return "";if(proof.busy)return id==="el"||id==="page"?`<div class="proof"><span class="cnt">Proofreading</span></div>`:"";
-  if(proof.error)return `<div class="proof"><span class="cnt">${esc(proof.error)}</span> <button class="linkbtn" data-proofx="1">Close</button></div>`;
-  const left=proof.fixes.filter(f=>!f.done);
-  const kept=proof.fixes.filter(f=>f.left).length;if(!left.length)return `<div class="proof"><b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as you wrote ${kept===1?"it":"them"}.`:"All fixes accepted."}</b> <button class="linkbtn" data-proofx="1">Close</button></div>`;
+   One Proofread button in the top bar reads everything written on the page. Before writing leaves TREE, by posting to the
+   Family page, sending a plan to Renee, printing or copying for Kaymbu, TREE reads it first and shows any fixes. A fix shows
+   what is there and what it becomes; nothing changes until it is accepted. Only spelling, capitals, punctuation, grammar and
+   the school's words are fixed. */
+let proof=null,proofSels=[],proofClean="";
+const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...document.querySelectorAll("#main textarea,#main input,#main button")];return "nth:"+el.tagName+":"+all.indexOf(el)};
+const proofFind=sel=>{if(!sel)return null;if(sel.startsWith("nth:")){const [,tag,n]=sel.split(":");const el=[...document.querySelectorAll("#main textarea,#main input,#main button")][+n];return el&&el.tagName===tag?el:null}try{return document.querySelector(sel)}catch(e){return null}};
+const proofLabel=el=>{const l=el.closest("label");const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card,details");const h=c&&c.querySelector("h2,h3,h4,summary,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
+// every box with writing on the page, including a saved page that is closed until Edit
+function proofEls(){const m=$("#main");if(!m)return [];const locked=m.classList.contains("locked");
+  return [...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&el.type!=="search"&&!el.disabled&&(!el.readOnly||locked)&&!el.closest(".proof,[data-noproof]")&&String(el.value).trim().length>=3)}
+const proofFields=()=>proofSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean);
+const proofHash=()=>proofEls().map(el=>el.value).join("\u0001");
+// a box takes the fix and saves the way it always does; the welcome letter and the bin note save here, since they have their own save buttons
+function proofApply(k,v){const el=proofFind(proofSels[+k]);if(!el||!el.isConnected)return false;const m=$("#main");
+  if(lockOn){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
+  el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}
+  if(el.id==="pt-welcome")ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}));
+  if(el.id==="g-binnote"){const b=binCurrent();if(b)gWrite("binnote-"+b.id,{text:v.trim()})}
+  return true}
+const proofPanel=(()=>{const p=document.createElement("div");p.id="proofpanel";p.hidden=true;p.setAttribute("role","dialog");p.setAttribute("aria-label","Proofread");document.body.appendChild(p);return p})();
+function proofPaint(){const p=proofPanel;if(!proof){p.hidden=true;p.innerHTML="";return}p.hidden=false;
+  const gate=proof.gate;const close=gate?"":`<button class="linkbtn" data-proofx="1">Close</button>`;
+  if(proof.busy){p.innerHTML=`<div class="proof"><b>${gate?"Proofreading before it goes out":"Proofreading this page"}</b><span class="cnt">A moment.</span></div>`;return}
+  if(proof.error){p.innerHTML=`<div class="proof"><b>Proofreading did not run.</b><span class="cnt">${esc(proof.error)}</span><div class="actions">${gate?`<button class="btn small" data-proofgo="1">Continue</button>`:close}</div></div>`;return}
+  const left=proof.fixes.filter(f=>!f.done),kept=proof.fixes.filter(f=>f.left).length;
   const show=f=>{let a=0;while(a<f.from.length&&a<f.to.length&&f.from[a]===f.to[a])a++;while(a>0&&/\S/.test(f.from[a-1]))a--;let b=0;while(b<f.from.length-a&&b<f.to.length-a&&f.from[f.from.length-1-b]===f.to[f.to.length-1-b])b++;while(b>0&&/\S/.test(f.from[f.from.length-b]))b--;
     return `${esc(f.from.slice(0,a))}<del>${esc(f.from.slice(a,f.from.length-b))}</del><ins>${esc(f.to.slice(a,f.to.length-b))}</ins>${esc(f.from.slice(f.from.length-b))}`};
-  return `<div class="proof"><div class="head-row"><b>${left.length} fix${left.length===1?"":"es"} to look at</b><span class="actions"><button class="btn small" data-proofall="1">Accept all</button><button class="linkbtn" data-proofx="1">Close</button></span></div>
-    ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><span class="cnt">${esc(f.label)}</span><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">Leave it</button></span></div>`).join("")}</div>`}
-function proofRestore(){if(!proof||(proof.id!=="page"&&proof.id!=="el"))return;if(document.querySelector(`[data-proofbox="${proof.id}"]`))return;const m=$("#main");if(!m)return;
-  const at=proof.id==="page"?(m.querySelector(".lockbar")||m.querySelector(".head")||m.firstElementChild):proofElNow();if(!at)return;const box=document.createElement("div");box.dataset.proofbox=proof.id;at.after(box);box.innerHTML=proofHtml(proof.id)}
-function proofPaint(){proofRestore();document.querySelectorAll("[data-proofbox]").forEach(b=>{b.innerHTML=proofHtml(b.dataset.proofbox)});document.querySelectorAll("[data-proof]").forEach(b=>{const id=b.dataset.proof;b.outerHTML=proofBtn(id)})}
-async function proofRun(id){const F=PROOF[id].fields();if(!F.length){toast("Nothing is written yet.");return}
-  proof={id,busy:true,fixes:[]};proofPaint();
-  const prompt=`Proofread the writing below. It is from Fulton Community School & Farm, a preschool, for families to read. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Keep names of children, people, farms and places exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link).
+  const head=!left.length?`<b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as written.`:"All fixes accepted."}</b>`:`<b>${left.length} fix${left.length===1?"":"es"} to look at</b>`;
+  const acts=gate?(left.length?`<button class="btn small" data-proofall="1" data-thengo="1">Accept all and continue</button><button class="btn small ghost" data-proofgo="1">Continue as it is</button>`:`<button class="btn small" data-proofgo="1">Continue</button>`)
+    :(left.length?`<button class="btn small" data-proofall="1">Accept all</button>`:"")+close;
+  p.innerHTML=`<div class="proof">${head}<div class="actions">${acts}</div>
+    ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><button class="linkbtn cnt" data-proofshow="${f.k}">${esc(f.label||"Show")}</button><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">Leave it</button></span></div>`).join("")}</div>`}
+async function proofRun(gate){proofSels=proofEls().map(proofSel);const F=proofFields();
+  if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
+  const hash=proofHash();proof={busy:true,fixes:[],gate,hash};proofPaint();
+  const prompt=`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Keep names of children, people, farms and places exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
 
 Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","from":"a short span copied exactly from that text, with a few words around the error so it appears only once","to":"the same span corrected","why":"two to five words, such as Capital letter or Spelling"}]}. Answer {"fixes":[]} when nothing needs fixing.
 
 ${F.map(f=>`<text id="${f.k}">\n${f.text}\n</text>`).join("\n\n")}`;
   try{const out=await askRead(prompt,{modelTier:"complex",cache:false,purpose:"proofread"});const by=new Map(F.map(f=>[f.k,f]));
     const fixes=(Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from)).map(x=>Object.assign(x,{label:by.get(x.k).label}));
-    proof={id,busy:false,fixes}}catch(e){proof={id,busy:false,fixes:[],error:assistError(e?.code||"unknown","Proofreading did not run. Try again.")}}
+    if(!fixes.length)proofClean=hash;
+    if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
+    proof={busy:false,fixes,gate,hash}}catch(e){proof={busy:false,fixes:[],gate,error:assistError(e?.code||"unknown","Try again in a minute.")}}
   proofPaint()}
-function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const cur=(PROOF[proof.id].fields().find(x=>x.k===f.k)||{}).text||"";
-  if(!cur.includes(f.from)){f.done=true;toast("That part has changed since, so it was left as it is.");return}PROOF[proof.id].apply(f.k,cur.replace(f.from,f.to));f.done=true}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-proof],[data-proofok],[data-proofno],[data-proofall],[data-proofx]");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
-  if(d.proof!=null){proofRun(d.proof);return}
+function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=proofFind(proofSels[+f.k]);const cur=el?el.value:"";
+  if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
+// the action the check was holding goes ahead
+let proofPassing=false;
+function proofPass(gate){const b=proofFind(gate);proofClean=proofHash();if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
+  if(t.id==="tproof"){if(proof&&proof.busy)return;proofRun(null);return}
   if(!proof)return;
+  if(d.proofshow!=null){const el=proofFind(proofSels[+d.proofshow]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.classList.add("proofhl");setTimeout(()=>el.classList.remove("proofhl"),1600)}return}
   if(d.proofx!=null){proof=null;proofPaint();return}
   if(d.proofok!=null){proofAccept(+d.proofok);proofPaint();return}
-  if(d.proofno!=null){proof.fixes[+d.proofno].done=true;proof.fixes[+d.proofno].left=true;proofPaint();return}
-  if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});proofPaint();toast("Fixes accepted.")}},true);
+  if(d.proofno!=null){const f=proof.fixes[+d.proofno];f.done=true;f.left=true;proofPaint();return}
+  if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
+  if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
+// the moments writing leaves TREE: posting to the Family page, sending a plan to Renee, printing, copying for Kaymbu
+const PROOF_GATES='#sendplan,[data-nlpost],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
+document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
+  if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
+  if(!proofEls().length||proofHash()===proofClean)return;
+  if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
+  e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b))},true);
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
 const FAMILY_WORDS=new Set(["newsletter","share","story","binnote"]);
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
@@ -11737,7 +11734,7 @@ $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentI
     clearTimeout(wait);const v0=lastV+"|"+(typeof currentId!=="undefined"?currentId:""),y=window.scrollY;const open=m?new Set([...m.querySelectorAll("details[open]")].map(dkey)):new Set();const shut=m?new Set([...m.querySelectorAll("details:not([open])")].map(dkey)):new Set();
     const same=()=>view+"|"+(typeof currentId!=="undefined"?currentId:"")===v0;
     if(m&&lastV===view){clearTimeout(hold);m.style.minHeight=m.offsetHeight+"px"}
-    inner();lastV=view;try{foldIntros()}catch(e){}try{proofRestore()}catch(e){}
+    inner();lastV=view;try{foldIntros()}catch(e){}
     if(!m)return;
     if(same()){m.querySelectorAll("details").forEach(d=>{const k=dkey(d);if(open.has(k))d.open=true;else if(shut.has(k))d.open=false});if(bg){const t0=lastScroll;const put=()=>{if(lastScroll===t0&&Math.abs(window.scrollY-y)>1)window.scrollTo(0,y)};queueMicrotask(()=>{put();requestAnimationFrame(()=>{put();setTimeout(put,120)})})}}
     else m.style.minHeight="";
