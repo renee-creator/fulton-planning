@@ -9,6 +9,7 @@ const mdy=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`
 const splitStreet=s=>{const m=String(s||"").trim().match(/^(\d+[A-Za-z]?)\s+(.*)$/);return m?[m[1],m[2]]:["",String(s||"").trim()]};
 const splitPhone=s=>{const d=String(s||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");return d.length===10?[d.slice(0,3),d.slice(3,6)+"-"+d.slice(6)]:["",String(s||"")]};
 async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const base=o.base||"";
+  if(!window.FultonAgreement)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=base+"agreement.js";sc.onload=ok;sc.onerror=()=>no(new Error("The agreement could not be loaded."));document.head.appendChild(sc)});
   if(!window.PDFLib)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js";sc.onload=ok;sc.onerror=()=>no(new Error("The forms could not be opened."));document.head.appendChild(sc)});
   const d=ef.data||{},v=k=>String(d[k]==null?"":d[k]).trim();const yes=k=>/^yes$/i.test(v(k)),no=k=>/^no$/i.test(v(k));
   const nm=p=>[v(p+"first"),v(p+"middle"),v(p+"last")].filter(Boolean).join(" ");
@@ -52,25 +53,24 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     const ag=o.agreement||null;let ai=0;
     const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});if(ag&&ag.initials&&(ag.ticks||[])[ai])pg.drawText(String(ag.initials).toUpperCase(),{x:M+2,y,size:9,font:B,color:ink});ai++;ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
     const box=(on,t)=>{pg.drawRectangle({x:M,y:y-1.5,width:8,height:8,borderColor:ink,borderWidth:.7});if(on){pg.drawLine({start:{x:M+1.5,y:y+2.5},end:{x:M+3.5,y:y},thickness:1.1,color:ink});pg.drawLine({start:{x:M+3.5,y},end:{x:M+7,y:y+6},thickness:1.1,color:ink})}pg.drawText(t,{x:M+14,y,size:9.5,font:F,color:ink});y-=15};
+    const A=window.FultonAgreement;const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
+    const prog=g?g.program:A.programFor(o.schedule);const T=A.terms(g&&g.aa&&g.aa.start?g.aa:yr,prog);
     page();
-    const sched=String(o.schedule||"");
-    field("Child's name",nm("c_"),M,300);field("Sex",v("c_sex"),M+310,80);field("DOB",mdy(v("c_dob")),M+400,104);y-=20;
-    field("Parent(s) name(s)",[nm("p1_"),nm("p2_")].filter(Boolean).join(" and "),M,W);y-=20;
-    field("Address",v("c_street"),M,290);field("City",v("c_city"),M+300,120);field("Zip",v("c_zip"),M+430,74);y-=20;
-    field("Email",o.email||"",M,230);field("Home",v("c_phone")||v("p1_home"),M+240,130);field("Cell",v("p1_home")||"",M+380,124);y-=26;
-    box(false,"Morning Program 8:30-12:30 M-F, $17,500 per year, to be paid in 10 monthly payments of $1750");
-    box(sched==="M,W,F","Morning Program 8:30-12:30 MWF, $9,500 per school year, or 10 monthly payments of $950");
-    box(sched==="Tu,Th","Morning Program 8:30-12:30 T TH, $11,500 per school year, or 10 monthly payments of $1150");
-    box(sched==="Tu,W,Th,F","Full Day 8:30 to 4:00 Tuesday-Friday, $18,500 per year, to be paid in 10 monthly payments of $1850");
-    box(false,"4 1/2 days, Monday 8:30-12:30 and T-F 8:30am-4:00pm, $20,000 per year, 10 monthly payments of $2000");
-    box(false,"Early Care 7:30-8:30 M-F, $200 per month");box(false,"Early Care 7:30-8:30 T-F, $180 per month");box(false,"After Care 4:00-5:00, $180 per month");y-=6;
+    field("Child's name",g?gf.child:nm("c_"),M,300);field("Sex",g?gf.sex:v("c_sex"),M+310,80);field("DOB",g?gf.dob:mdy(v("c_dob")),M+400,104);y-=20;
+    field("Parent(s) name(s)",g?gf.parents:[nm("p1_"),nm("p2_")].filter(Boolean).join(" and "),M,W);y-=20;
+    field("Address",g?gf.address:v("c_street"),M,290);field("City",g?gf.city:v("c_city"),M+300,120);field("Zip",g?gf.zip:v("c_zip"),M+430,74);y-=20;
+    field("Email",g?gf.email:(o.email||""),M,230);field("Home",g?gf.home:(v("c_phone")||v("p1_home")),M+240,130);field("Cell",g?gf.cell:"",M+380,124);y-=26;
+    A.PROGRAMS.forEach(([key,l])=>box(prog===key,l));A.ADDONS.forEach(([key,l])=>box(!!(g&&(g.addons||[]).includes(key)),l));y-=6;
     pg.drawText("TUITION AGREEMENT (Please read carefully, initial and sign)",{x:M,y,size:10.5,font:B,color:ink});y-=17;
-    [`I accept admission for the school year beginning ${md(yr.start)||"________________"}, ending ${md(yr.end)||"________________"}.`,"I have received, read and agree to all items and terms outlined in the Parent Handbook including tuition rate listed.",`A non-refundable program fee of $450 is due by ${md(yr.fee)||"________________"}.`,"I understand that no refunds or credits will be granted.","In the event of school closure of more than 30 days subsequent tuition charges will be suspended until the program resumes.","I understand that if I do not fulfill 10 Parent participation hours, I will be charged $200 in lieu of participating.","I understand that the tuition is based on a yearly rate and payable monthly for convenience.","I undertake the annual tuition of $________ in 10 monthly installments (Aug. to May) of $________.","I understand that there will be an annual tuition increase.","Tuition is due in advance on the 1st of each month. There is a $45 late fee for tuition paid after the 5th of the month.","Payment may be made with cash, credit card, check or online.","Should a check be returned a fee of $50 plus the late fee will be charged.","$1 per minute late fee is charged for all late pickups.","Tuition that is past due may result in termination of enrollment.","In case of withdrawal, I agree to notify the school 30 days in advance."].forEach(item);
+    T.page1.forEach(item);
     pg.drawText("See other side",{x:M+W-60,y:40,size:8.5,font:F,color:gray});
     page();
-    ["This agreement may be terminated by the administration without notice at any time if the health and safety of any person cannot be maintained.","The Department of licensing agency shall have the authority to interview children, or staff, and to inspect and audit child or facility records without prior consent. The licensee shall make provisions for private interviews with child(ren), or any staff member; and for the examination of all records relating to the operation of the facility. B) The Department or licensing agency shall have the authority to observe the physical condition of the child(ren), including conditions which could indicate abuse, neglect, or inappropriate placement, and have to have a licensed medical professional physically examine the child(ren). NOTE. Authority cited, Section 1596.81, Health and Safety Code. Reference, Sections 1596.72, 1596.73, 1596.81, 1596.852 and 1596.853, Health and Safety Code.","All forms required by Community Care Licensing, including proof of immunizations must be submitted before a child is enrolled, children will not be admitted without submission of required forms.","In case of any changes to this agreement, any changes will be signed as a new agreement by all parties."].forEach(item);
-    y-=8;for(const l of wrap("I have read, understand, and agree to the terms of this Admission Tuition Agreement and the Parent Handbook and hereby enroll my child for attendance at Fulton Community School & Farm.",F,10,W)){pg.drawText(l,{x:M,y,size:10,font:F,color:ink});y-=13.5}
-    y-=30;for(let i=0;i<2;i++){field("Signature","",M,230);field("Name",i===0?nm("p1_"):nm("p2_"),M+240,170);field("Date","",M+420,84);y-=34}}
+    T.page2.forEach(item);
+    y-=8;for(const l of wrap(A.STATEMENT,F,10,W)){pg.drawText(l,{x:M,y,size:10,font:F,color:ink});y-=13.5}
+    const signed=!!(ag&&ag.done);const sd=signed?new Date(ag.signedAt).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"}):"";
+    y-=30;for(let i=0;i<2;i++){const sg=signed?(i===0?ag.sign1:ag.sign2)||{}:{};const pn=g?(i===0?(ag.sign1||{}).name:(ag.sign2||{}).name):(i===0?nm("p1_"):nm("p2_"));
+      field("Signature",sg.name?"/s/ "+sg.name:"",M,230);field("Name",pn||"",M+240,170);field("Date",sg.name?sd:"",M+420,84);y-=34}
+    if(signed){pg.drawText(`Signed electronically on the Family page on ${sd} by ${[ag.sign1&&ag.sign1.name,ag.sign2&&ag.sign2.name].filter(Boolean).join(" and ")}${ag.by?", "+ag.by:""}.`,{x:M,y,size:8.5,font:F,color:gray})}}
   // the school's own page, the food allergy and dietary information, signed at the visit with the state forms
   {const pg=out.addPage([612,792]);const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);
     let y=740;const M=60,W=492;
