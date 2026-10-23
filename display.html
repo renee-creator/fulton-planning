@@ -210,6 +210,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const n=Math.max(P.length,T.length,I.length,D.length,S.length,R.length,L.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(R[i])O.push(R[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
+    // children with food, in the educators' words, beside the bin
+    if(feed.foodMoment)O.push({k:"food",id:"fm"+feed.foodMoment.id,cls:"m",html:()=>momentHtml(feed.foodMoment).replace('<div class="where">','<div class="where">Food education, '),src:feed.foodMoment.photo&&feed.foodMoment.photo.src});
     // observations in words alone, one after every third photo at most, so the photos keep carrying the screen
     const W=(feed.words||[]).map(m=>({k:"words",cls:"t",id:"w"+m.id,html:()=>wordsHtml(m)}));
     if(!M.length)return W.concat(O);

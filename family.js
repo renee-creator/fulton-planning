@@ -137,13 +137,14 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
       .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
     // what this family signed up for that has happened and is not logged yet, so logging it is one tap
-    const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && it.date && it.date <= today && it.date >= ys && !mine.some(l => l.itemId === it.id))
+    const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && (it.type === 'wish' ? it.status !== 'requested' : (it.date && it.date <= today && it.date >= ys)) && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
     const kidsOut = hours.map(h => Object.assign(h, childExtras(f, f.kids.find(k => k.id === h.id), c, today)));
     const entries = mine.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(l => ({ id: l.id, what: l.what, date: l.date, hours: l.hours, child: firstOf(f.kids.find(k => k.id === l.childId) || {}), childId: l.childId, mine: l.email === f.email }));
     const anyNew = kidsOut.some(k => k.isNew);
+    const pace = (() => { const t = new Date(), y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; const a = new Date(y, 7, 15).getTime(), b = new Date(y + 1, 4, 31).getTime(); return Math.floor(c.goal * Math.min(1, Math.max(0, (t.getTime() - a) / (b - a)))); })();
     const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
-    return { test: f.test, goal: c.goal, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
+    return { test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 
@@ -236,7 +237,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     for (let i = 0; i < 14; i++) { const d = new Date(mon); d.setDate(mon.getDate() + i); if (d.getDay() === 0 || d.getDay() === 6) continue; const iso = d.toISOString().slice(0, 10);
       const m = getRec('menus', iso.slice(0, 7)); const x = m && m.days ? m.days[iso] || {} : {}; days.push({ date: iso, closed: !!x.closed, am: x.am || '', lunch: x.lunch || '', pm: d.getDay() === 1 ? '' : (x.pm || '') }); }
     for (let i = 0; i < 60; i++) { const d = new Date(t); d.setDate(t.getDate() + i); const iso = d.toISOString().slice(0, 10); const m = getRec('menus', iso.slice(0, 7)); if (m && m.days && m.days[iso] && m.days[iso].closed) closures.push(iso); }
-    return { days, closures };
+    // the bin note the director posted this week, and the kitchen's recipe of the month
+    let binNote = ''; for (const [id, r] of store.recs.grant || []) { const d = r && !r.deleted && r.doc; if (!d || !/^binnote-/.test(id) || d.status !== 'posted') continue; if (String(d.week || '') >= days[0].date.slice(0, 10) && (!binNote || String(d.week) > binNote.week)) binNote = { week: d.week, text: d.text || '' }; }
+    const mr = getRec('menus', today.slice(0, 7)) || {};
+    return { days, closures, binNote: binNote ? binNote.text : '', recipe: mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null };
   }
 
   // events ask how many adults and children are coming, unless the school turned that off; a task asks who is coming
@@ -245,7 +249,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const r = recs().get(itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item' || !!it.test !== f.test) return { error: 'That is no longer open.' };
     const had = (it.signups || []).find(s => s.email === f.email); const ss = (it.signups || []).filter(s => s.email !== f.email);
     if (on) { if (it.open === false) return { error: 'That is no longer open.' }; if (!had && Number(it.spots) > 0 && ss.length >= Number(it.spots)) return { error: 'Every spot is taken.' };
-      b = b || {}; const who = String(b.who || '').trim().slice(0, 120); if (!who) return { error: 'Say who is coming.' };
+      b = b || {}; const who = String(b.who || '').trim().slice(0, 120); if (!who) return { error: it.type === 'wish' ? 'Say who is bringing it.' : 'Say who is coming.' };
       const n = x => Math.max(0, Math.min(30, Math.round(Number(x) || 0)));
       const names = [...new Set(f.kids.map(k => [k.first, k.last].filter(Boolean).join(' ')))].join(' and ');
       const e = { email: f.email, family: names, who, at: had ? had.at : nowIso() };
@@ -257,7 +261,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   function addLog(f, b) {
     const kid = f.kids.find(k => k.id === b.childId); if (!kid) return { error: 'Choose which child this counts for.' };
     let what = String(b.what || '').trim().slice(0, 200), itemId = '', date = String(b.date || '').slice(0, 10), minutes = Number(b.minutes) || 0;
-    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || it.date; if (!minutes) minutes = (Number(it.hours) || 1) * 60; }
+    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || (it.date && it.date <= new Date().toISOString().slice(0, 10) ? it.date : new Date().toISOString().slice(0, 10)); if (!minutes) minutes = (Number(it.hours) || 1) * 60; }
     if (!what) return { error: 'Say what you did.' };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > new Date().toISOString().slice(0, 10)) return { error: 'Choose the day, today or earlier.' };
     if (!(minutes > 0) || minutes > 24 * 60) return { error: 'Say how long it took.' };

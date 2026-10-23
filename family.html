@@ -103,7 +103,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const whoLine=(m,counts)=>[m.who,counts?many(m.adults||0,"adult")+", "+many(m.children||0,"child"):""].filter(Boolean).join(" · ");
   // a short sign-up form, filled in with what the family gave before
   const signForm=it=>{const m=it.my||{};return `<div class="stack" style="margin-top:8px">
-    <label>Who is coming<input type="text" id="sw" maxlength="120" value="${esc(m.who||D.me||"")}" placeholder="Ex. Maya and Sam"></label>
+    <label>${it.type==="wish"?"Who is bringing it":"Who is coming"}<input type="text" id="sw" maxlength="120" value="${esc(m.who||D.me||"")}" placeholder="Ex. Maya and Sam"></label>
     ${it.counts?`<div class="row2"><label>Adults<input type="number" id="sa" min="1" max="30" value="${esc(m.adults||1)}"></label><label>Children<input type="number" id="sc" min="0" max="30" value="${esc(m.children!=null?m.children:(D.kidCount||1))}"></label></div>`:""}
     ${it.question?`<label>${esc(it.question)}<input type="text" id="sq" maxlength="300" value="${esc(m.answer||"")}"></label>`:""}
     <div class="small err" id="es"></div>
@@ -164,16 +164,24 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   function partHtml(){const ks=D.children;let h="";
     h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
       <p class="small muted" style="margin:8px 0 0">Each child takes part for ${D.goal} hours a year. Every entry rounds up to the next whole hour.</p></section>`;
+    // a friendly note when a family is behind for the time of year, with easy ways to catch up, once a quarter
+    {const behind=ks.filter(k=>k.hours<k.goal&&k.hours<(D.pace||0));const qk="fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3);
+      if(behind.length&&!LS.get(qk)){const easy=D.open.filter(it=>!it.mine&&!(it.spots&&it.taken>=it.spots)).sort((a,b)=>(b.type==="wish")-(a.type==="wish")||(!b.date)-(!a.date)).slice(0,3);
+        h+=`<section class="card" style="border-color:var(--marigold)"><h2>A few easy ways this season</h2><p class="small" style="margin:0 0 6px">${esc(behind.map(k=>k.first).join(" and "))} ${behind.length>1?"have":"has"} a few hours to go for this time of year. Here are some that fit a busy week${easy.some(it=>!it.date)?", including ones you can do from home":""}.</p>
+          ${easy.map(it=>`<div class="small">${esc(it.title)}${it.hours?", counts for "+hrs(it.hours):""}</div>`).join("")}<div style="margin-top:8px"><button class="link small" id="pacegot">Thanks, got it</button></div></section>`}}
     if(D.signed.length)h+=`<section class="card"><h2>Did you take part?</h2><p class="small muted" style="margin:0 0 6px">You signed up for these. Log each one once it is done.</p>
-      ${D.signed.map(s=>`<div class="item"><div class="top"><div><b>${esc(s.title)}</b><div class="small muted">${esc(day(s.date))}${s.hours?" · counts for "+hrs(s.hours):""}</div></div><button class="btn sm" data-logit="${esc(s.id)}">Log it</button></div>
+      ${D.signed.map(s=>`<div class="item"><div class="top"><div><b>${esc(s.title)}</b><div class="small muted">${esc(s.date?day(s.date):s.type==="wish"?"For the wish list":"")}${s.hours?" · counts for "+hrs(s.hours):""}</div></div><button class="btn sm" data-logit="${esc(s.id)}">Log it</button></div>
         ${logFor===s.id?`<div class="stack">${kidPick("lk-"+s.id)}<label>How long it took, in hours<input type="number" min="0.25" step="0.25" id="lh-${esc(s.id)}" value="${s.hours||1}"></label><div><button class="btn sm" data-logsave="${esc(s.id)}">Save</button> <button class="link" data-logcancel="1">Cancel</button></div></div>`:""}</div>`).join("")}</section>`;
-    h+=`<section class="card"><h2>Ways to take part</h2>${D.open.length?D.open.map(it=>{const full=it.spots&&it.taken>=it.spots&&!it.mine;
-      return `<div class="item"><div class="top"><div><span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span><div><b>${esc(it.title)}</b></div>
-        <div class="small muted">${esc([it.date?day(it.date):"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
+    const itemCard=it=>{const full=it.spots&&it.taken>=it.spots&&!it.mine;
+      return `<div class="item"><div class="top"><div>${it.type==="wish"?"":`<span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span>`}<div><b>${esc(it.title)}</b></div>
+        <div class="small muted">${esc([it.date?day(it.date):it.type==="wish"?"":"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
         ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}</div>
-        ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">You're signed up</div>${signFor===it.id?"":`<button class="link small" data-signup="${esc(it.id)}">Change</button> · `}<button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full||signFor===it.id?"":`<button class="btn sm" data-signup="${esc(it.id)}">Sign up</button>`}</div>
+        ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">${it.type==="wish"?"You are bringing it":"You are signed up"}</div>${signFor===it.id?"":`<button class="link small" data-signup="${esc(it.id)}">Change</button> · `}<button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full||signFor===it.id?"":`<button class="btn sm" data-signup="${esc(it.id)}">${it.type==="wish"?"I can bring it":"Sign up"}</button>`}</div>
         ${it.mine&&signFor!==it.id?`<div class="small muted">${esc(whoLine(it.my,it.counts))}${it.my.answer?"<br>"+esc(it.my.answer):""}</div>`:""}
-        ${signFor===it.id?signForm(it):""}</div>`}).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
+        ${signFor===it.id?signForm(it):""}</div>`};
+    const ways=D.open.filter(it=>it.type!=="wish"),wishes=D.open.filter(it=>it.type==="wish");
+    h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
+    if(wishes.length)h+=`<section class="card"><h2>Our wish list</h2><p class="small muted" style="margin:0 0 6px">Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.</p>${wishes.map(itemCard).join("")}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
@@ -186,6 +194,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return `<section class="card"><h2>This week's menu</h2><div class="mweek">${m.days.slice(0,5).map(dayCard).join("")}</div>
       ${next?`<details><summary>Next week</summary><div class="mweek" style="margin-top:8px">${m.days.slice(5,10).map(dayCard).join("")}</div></details>`:""}
       <p style="margin:10px 0 0"><a href="${esc(MENU)}" target="_blank" rel="noopener">The whole month, and where our food comes from</a></p></section>
+      ${m.binNote?`<section class="card"><h2>In this week's farm bin</h2><p style="white-space:pre-line;margin:0">${esc(m.binNote)}</p></section>`:""}
+      ${m.recipe?`<section class="card"><details><summary><b>${esc(m.recipe.name)}</b>, a recipe from our kitchen</summary><p style="white-space:pre-line;margin:8px 0 0">${esc(m.recipe.text)}</p></details></section>`:""}
       <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · <a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a></p></section>`}
@@ -214,6 +224,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const pg=$("#pacegot");if(pg)pg.onclick=()=>{LS.set("fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3),"1");render()};
     const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};
     if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};
     $("#out").onclick=()=>{token=null;LS.set("fam-token",null);showGate()};
