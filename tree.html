@@ -1934,7 +1934,7 @@ function applyLock(){try{foldIntros()}catch(e){}
   // Renee marks a plan reviewed while reading it, without pressing Edit first
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP)&&!(b.dataset.status&&isDirector()&&!b.dataset.keepoff))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
-    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
+    const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><span class="actions"><button class="btn small" data-unlock="1">Edit</button><button class="btn small ghost" data-proofpage="1">Proofread</button></span>`;
     const head=main.querySelector(".ktabs")||main.querySelector(".head");if(head&&head.nextSibling)head.after(bar);else main.prepend(bar)}
 }
 // a saved page shows its ticks in full colour, and a tick cannot change until Edit is pressed
@@ -10812,10 +10812,13 @@ const PROOF={
     apply(k,v){const el=$("#pt-welcome");if(el)el.value=v;ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}))}},
   binnote:{fields(){const t=$("#g-binnote")?.value||"";return t.trim()?[{k:"binnote",label:"Bin note",text:t}]:[]},
     apply(k,v){const el=$("#g-binnote");if(el)el.value=v;const b=binCurrent();if(b)gWrite("binnote-"+b.id,{text:v.trim()})}}};
+// a box is found again after the page redraws, by its id or its data attributes
+const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...document.querySelectorAll("#main textarea,#main input")];return "nth:"+all.indexOf(el)};
+const proofFind=sel=>{if(!sel)return null;if(sel.startsWith("nth:"))return [...document.querySelectorAll("#main textarea,#main input")][+sel.slice(4)]||null;try{return document.querySelector(sel)}catch(e){return null}};
 // any writing box in TREE, the one the person is writing in
-let proofEl=null;
-PROOF.el={fields(){const el=proofEl;const t=el&&el.isConnected?el.value:"";return t.trim()?[{k:"el",label:"",text:t}]:[]},
-  apply(k,v){const el=proofEl;if(!el||!el.isConnected)return;el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
+let proofElSel="";const proofElNow=()=>proofFind(proofElSel);let proofEl=null;
+PROOF.el={fields(){const el=proofElNow();const t=el&&el.isConnected?el.value:"";return t.trim()?[{k:"el",label:"",text:t}]:[]},
+  apply(k,v){const el=proofElNow();if(!el||!el.isConnected)return;el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
 const proofOk=el=>el&&!el.readOnly&&!el.disabled&&!el.closest(".proof,#gate,[data-noproof]")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&(el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=4));
 {const chip=document.createElement("button");chip.type="button";chip.id="proofchip";chip.className="btn small ghost";chip.textContent="Proofread";chip.hidden=true;document.body.appendChild(chip);
   let cur=null;const place=()=>{if(!cur||!cur.isConnected||chip.hidden)return;const r=cur.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight){chip.style.visibility="hidden";return}chip.style.visibility="";chip.style.top=Math.min(innerHeight-40,Math.max(4,r.bottom-34))+"px";chip.style.left=Math.max(4,Math.min(innerWidth-chip.offsetWidth-8,r.right-chip.offsetWidth-6))+"px"};
@@ -10824,10 +10827,20 @@ const proofOk=el=>el&&!el.readOnly&&!el.disabled&&!el.closest(".proof,#gate,[dat
   document.addEventListener("focusout",e=>{if(e.target===cur)setTimeout(()=>{if(document.activeElement!==chip&&document.activeElement!==cur)chip.hidden=true},150)});
   addEventListener("scroll",place,{passive:true});addEventListener("resize",place);
   chip.addEventListener("pointerdown",e=>e.preventDefault());
-  chip.addEventListener("click",()=>{if(!cur||!cur.isConnected)return;proofEl=cur;document.querySelectorAll('[data-proofbox="el"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="el";cur.insertAdjacentElement("afterend",box);chip.hidden=true;proofRun("el")})}
+  chip.addEventListener("click",()=>{if(!cur||!cur.isConnected)return;proofEl=cur;proofElSel=proofSel(cur);document.querySelectorAll('[data-proofbox="el"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="el";cur.insertAdjacentElement("afterend",box);chip.hidden=true;proofRun("el")})}
+// a whole saved page, such as a plan, read at once. Accepting a fix opens the page to edit, the same as pressing Edit.
+let proofPageEls=[];let proofPageSels=[];
+const proofLabel=el=>{const l=el.closest("label");const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card");const h=c&&c.querySelector("h2,h3,h4,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
+PROOF.page={fields(){return proofPageSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean)},
+  apply(k,v){const el=proofFind(proofPageSels[+k]);if(!el||!el.isConnected)return;const m=$("#main");if(lockOn){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
+    el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}}};
+document.addEventListener("click",e=>{const t=e.target.closest("[data-proofpage]");if(!t)return;e.stopImmediatePropagation();const m=$("#main");
+  proofPageEls=[...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&!el.closest(".proof,[data-noproof]")&&el.type!=="search"&&!el.disabled&&String(el.value).trim());
+  if(!proofPageEls.length){toast("Nothing is written yet.");return}proofPageSels=proofPageEls.map(proofSel);
+  m.querySelectorAll('[data-proofbox="page"]').forEach(b=>b.remove());const box=document.createElement("div");box.dataset.proofbox="page";(m.querySelector(".lockbar")||m.firstElementChild).after(box);proofRun("page")},true);
 const proofBtn=id=>`<button class="btn small ghost" data-proof="${id}" ${proof&&proof.id===id&&proof.busy?"disabled":""}>${proof&&proof.id===id&&proof.busy?"Proofreading":"Proofread"}</button>`;
 const proofBox=id=>`<div data-proofbox="${id}">${proofHtml(id)}</div>`;
-function proofHtml(id){if(!proof||proof.id!==id)return "";if(proof.busy)return id==="el"?`<div class="proof"><span class="cnt">Proofreading</span></div>`:"";
+function proofHtml(id){if(!proof||proof.id!==id)return "";if(proof.busy)return id==="el"||id==="page"?`<div class="proof"><span class="cnt">Proofreading</span></div>`:"";
   if(proof.error)return `<div class="proof"><span class="cnt">${esc(proof.error)}</span> <button class="linkbtn" data-proofx="1">Close</button></div>`;
   const left=proof.fixes.filter(f=>!f.done);
   const kept=proof.fixes.filter(f=>f.left).length;if(!left.length)return `<div class="proof"><b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as you wrote ${kept===1?"it":"them"}.`:"All fixes accepted."}</b> <button class="linkbtn" data-proofx="1">Close</button></div>`;
@@ -10835,7 +10848,9 @@ function proofHtml(id){if(!proof||proof.id!==id)return "";if(proof.busy)return i
     return `${esc(f.from.slice(0,a))}<del>${esc(f.from.slice(a,f.from.length-b))}</del><ins>${esc(f.to.slice(a,f.to.length-b))}</ins>${esc(f.from.slice(f.from.length-b))}`};
   return `<div class="proof"><div class="head-row"><b>${left.length} fix${left.length===1?"":"es"} to look at</b><span class="actions"><button class="btn small" data-proofall="1">Accept all</button><button class="linkbtn" data-proofx="1">Close</button></span></div>
     ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><span class="cnt">${esc(f.label)}</span><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">Leave it</button></span></div>`).join("")}</div>`}
-function proofPaint(){document.querySelectorAll("[data-proofbox]").forEach(b=>{b.innerHTML=proofHtml(b.dataset.proofbox)});document.querySelectorAll("[data-proof]").forEach(b=>{const id=b.dataset.proof;b.outerHTML=proofBtn(id)})}
+function proofRestore(){if(!proof||(proof.id!=="page"&&proof.id!=="el"))return;if(document.querySelector(`[data-proofbox="${proof.id}"]`))return;const m=$("#main");if(!m)return;
+  const at=proof.id==="page"?(m.querySelector(".lockbar")||m.querySelector(".head")||m.firstElementChild):proofElNow();if(!at)return;const box=document.createElement("div");box.dataset.proofbox=proof.id;at.after(box);box.innerHTML=proofHtml(proof.id)}
+function proofPaint(){proofRestore();document.querySelectorAll("[data-proofbox]").forEach(b=>{b.innerHTML=proofHtml(b.dataset.proofbox)});document.querySelectorAll("[data-proof]").forEach(b=>{const id=b.dataset.proof;b.outerHTML=proofBtn(id)})}
 async function proofRun(id){const F=PROOF[id].fields();if(!F.length){toast("Nothing is written yet.");return}
   proof={id,busy:true,fixes:[]};proofPaint();
   const prompt=`Proofread the writing below. It is from Fulton Community School & Farm, a preschool, for families to read. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Keep names of children, people, farms and places exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link).
@@ -11948,7 +11963,7 @@ $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentI
     clearTimeout(wait);const v0=lastV+"|"+(typeof currentId!=="undefined"?currentId:""),y=window.scrollY;const open=m?new Set([...m.querySelectorAll("details[open]")].map(dkey)):new Set();const shut=m?new Set([...m.querySelectorAll("details:not([open])")].map(dkey)):new Set();
     const same=()=>view+"|"+(typeof currentId!=="undefined"?currentId:"")===v0;
     if(m&&lastV===view){clearTimeout(hold);m.style.minHeight=m.offsetHeight+"px"}
-    inner();lastV=view;try{foldIntros()}catch(e){}
+    inner();lastV=view;try{foldIntros()}catch(e){}try{proofRestore()}catch(e){}
     if(!m)return;
     if(same()){m.querySelectorAll("details").forEach(d=>{const k=dkey(d);if(open.has(k))d.open=true;else if(shut.has(k))d.open=false});if(bg){const t0=lastScroll;const put=()=>{if(lastScroll===t0&&Math.abs(window.scrollY-y)>1)window.scrollTo(0,y)};queueMicrotask(()=>{put();requestAnimationFrame(()=>{put();setTimeout(put,120)})})}}
     else m.style.minHeight="";
