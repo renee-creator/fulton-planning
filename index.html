@@ -6432,6 +6432,8 @@ const G_OBJ=[
 function gTextOfPlan(p){return [Object.values(p.fields||{}).join(" "),p.web?[p.web.focus,(p.web.branches||[]).map(b=>b.name+" "+b.materials).join(" "),p.web.questions].join(" "):""].join(" ")}
 // the director's choice for each observation or plan found, kept in the director's own grant record
 const gEduKey=(n,kind,id)=>n+"|"+kind+"|"+id;
+const gEduShowNo=new Set();
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gedushow]");if(!t)return;const n=+t.dataset.gedushow;gEduShowNo.has(n)?gEduShowNo.delete(n):gEduShowNo.add(n);const y=window.scrollY;renderMain();window.scrollTo(0,y)});
 const gEduMark=(n,kind,id)=>{const v=((grantRecs.get("education")||{}).list||{})[gEduKey(n,kind,id)];return v&&typeof v.v==="boolean"?v.v:null};
 function gEducation(from,to){const inR=ms=>{const d=iso(new Date(ms||0));return d>=from&&d<=to};
   const inq=new Set(inqAll().flatMap(x=>x.obs||[]));const obs=[...notices.values()].filter(n=>inR(n.at)&&!inq.has(n.id)),plans_=[...plans.values()].filter(p=>p.weekOf>=from&&p.weekOf<=to&&p.id!=="example");
@@ -6524,7 +6526,10 @@ function renderGrant0(){
   h+=`${gCardO("edu","Hands-on food education, objectives 5 to 7",conf+" confirmed"+(pend?", "+pend+" to check":""),pend>0)}
     <div class="cnt" style="margin-bottom:8px">Found by food words in the educators' own observations and plans ${pw}. Only those you mark Counts are counted, here and in the summaries.</div>
     ${ed.map(o=>`<details class="gmore" style="margin-top:6px"><summary style="cursor:pointer"><b>${o.n}. ${esc(G_SHORT[o.n])}</b> <span class="cnt">· ${o.obs.length+o.plans.length} confirmed${o.pending?`, ${o.pending} to check`:""}, of ${o.foundObs.length+o.foundPlans.length} found</span></summary>
-      ${gFold(o.foundObs.map(n=>mk(o,"o",n,momentMini(n))).concat(o.foundPlans.map(p=>mk(o,"p",p,`<button class="item" data-open="${esc(p.id)}"><span class="nm">${esc(planTitle(p))}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span></button>`))),10)||`<div class="cnt">Nothing found ${pw}.</div>`}</details>`).join("")}</div></details>`;
+      ${(()=>{const no=x=>gEduMark(o.n,x[0],x[1].id)===false;const all=o.foundObs.map(n=>["o",n]).concat(o.foundPlans.map(p=>["p",p]));const hid=all.filter(no).length;const show=gEduShowNo.has(o.n);
+        // what is marked Does not count is set aside out of the list, and can be shown again to change it
+        const rows=all.filter(x=>show||!no(x)).map(([k,x])=>k==="o"?mk(o,"o",x,momentMini(x)):mk(o,"p",x,`<button class="item" data-open="${esc(x.id)}"><span class="nm">${esc(planTitle(x))}<br><span class="cnt">week of ${fmtDate(x.weekOf)}${x.classroom?", "+esc(x.classroom):""}</span></span></button>`));
+        return (gFold(rows,10)||(hid?"":`<div class="cnt">Nothing found ${pw}.</div>`))+(hid?`<button class="linkbtn" data-gedushow="${o.n}" style="margin-top:6px">${show?"Hide":"Show"} the ${hid} marked Does not count</button>`:"")})()}</details>`).join("")}</div></details>`;
 
   // objective 8, families
   const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>b.date.localeCompare(a.date));
