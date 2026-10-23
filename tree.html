@@ -105,7 +105,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .ocgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;margin-top:6px}.octick{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
 .aamstaff{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.aamstaff img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;margin:4px 0}
 .drov,.drgrid{display:grid;gap:8px 10px;align-items:center;overflow-x:auto}.drbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.drbar i{display:block;height:100%;background:var(--moss)}.drbar.thin i{background:var(--marigold)}
-.drc{border:1px solid var(--line);border-radius:6px;padding:4px 0;font:inherit;font-size:13px;cursor:pointer;background:color-mix(in srgb,var(--moss) calc(var(--f)*45%),var(--paper));color:var(--ink)}.drc.none{background:var(--clay-soft);color:var(--clay)}.drc.na{border:0;background:none;cursor:default}.drc.on{outline:2px solid var(--moss)}
+.drc{border:1px solid var(--line);border-radius:6px;padding:4px 0;font:inherit;font-size:13px;cursor:pointer;background:color-mix(in srgb,var(--moss) calc(var(--f)*45%),var(--paper));color:var(--ink)}.drc.none{background:var(--clay-soft);color:var(--clay)}.drc.prior{background:var(--moss-soft);color:var(--moss);border-style:dashed;font-size:12px}.drc.na{border:0;background:none;cursor:default}.drc.on{outline:2px solid var(--moss)}
 .drdetail{grid-column:1/-1;background:var(--bg);border-radius:8px;padding:8px 10px;display:grid;gap:3px;font-size:14px}.drgap{border-top:1px solid var(--line);padding:8px 0}
 .ptsign{margin:4px 0 0;padding-left:18px;font-size:14px;color:var(--muted)}.ptsign li{margin:1px 0}
 .ptitem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ptitem .actions{flex-wrap:nowrap}
@@ -542,7 +542,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 @media (max-width:520px){.mrow{grid-template-columns:72px minmax(0,1fr)}.mthumb{width:72px;height:86px}}
 /* children */
 .kids{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:10px}
-.kidc{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;color:var(--ink)}
+.kidc{display:grid;gap:2px;align-content:start;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;color:var(--ink)}
 .kidc:hover{border-color:var(--moss)}
 .vabar{position:relative;z-index:25;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--sun-soft);border-bottom:2px solid var(--marigold);padding:10px 16px;font-size:15px}
 .pflist{display:grid;gap:10px;margin-top:12px}.pfcard{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
@@ -554,8 +554,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .pfn{min-width:24px;height:24px;padding:0 5px;border-radius:999px;border:0;background:var(--moss-soft);font:inherit;font-weight:700;font-size:14px;cursor:pointer}
 @media (max-width:420px){.pfm>span{font-size:10px}.pfn{min-width:22px;height:22px;font-size:13px}.pfm input{width:18px;height:18px}}
 .kidc b{font-family:var(--display);font-size:16px}
-.kidc span{font-size:12.5px;color:var(--muted)}
-.kidc{grid-template-columns:auto 1fr;column-gap:12px}.kidc>*:not(.kav){grid-column:2}.kidc .kav{grid-row:1/span 4;width:38px;height:38px;border-radius:50%;background:var(--moss-soft);color:var(--moss);display:grid;place-items:center;font-weight:700;font-size:14px;align-self:start}.kidc .ksoon{color:var(--marigold);font-weight:600}
+.kidc span{font-size:12.5px;color:var(--muted);min-height:1.35em}
+.kidc{grid-template-columns:auto 1fr;column-gap:12px}.kidc>*:not(.kav){grid-column:2}.kidc>.kline{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kidc>.kline:first-of-type{margin-top:6px}.kidc .kav{grid-row:1/span 2;width:38px;height:38px;border-radius:50%;background:var(--moss-soft);color:var(--moss);display:grid;place-items:center;font-weight:700;font-size:14px;align-self:start}.kidc .ksoon{color:var(--marigold);font-weight:600}
 /* the Conferences and Calendar pages, inside TREE */
 .embed{width:100%;border:0;display:block;background:var(--bg);height:calc(100vh - 150px);min-height:520px;border-radius:var(--r)}
 #main{align-self:stretch;width:100%}
@@ -6900,12 +6900,19 @@ function drKid(c,from){const v=drdpViewOf(c).v;const M=DRDP_M[v]||{};const ms=Ob
   const dom={};for(const [k,m] of ms){const d=m.d||k.split(" ")[0];const e=dom[d]||(dom[d]={total:0,have:0,last:0,ms:[]});e.total++;const xs=ev.filter(x=>x.code===k);
     const best=xs.sort((a,b)=>drdpRank(v,k,b.level)-drdpRank(v,k,a.level)||((b.src&&b.src.at)||b.at||0)-((a.src&&a.src.at)||a.at||0))[0];
     if(best){e.have++;e.last=Math.max(e.last,...xs.map(x=>(x.src&&x.src.at)||x.at||0))}e.ms.push({code:k,name:m.n,best,n:xs.length})}
-  return {v,dom,pieces:ev.length}}
+  // evidence this year in the other view, such as the Infant and Toddler View before a child turned three, counts in the matching domain
+  const ov=v==="ptk"?"it":"ptk";const OM=DRDP_M[ov]||{};const oev=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&x.view===ov&&((x.src&&x.src.at)||x.at||0)>=from);
+  if(oev.length){const map=d=>v==="ptk"&&d==="COG"?["MATH","SCI"]:v==="it"&&(d==="MATH"||d==="SCI")?["COG"]:[d];const seen=new Set();
+    for(const [k,m] of Object.entries(OM)){const xs=oev.filter(x=>x.code===k);if(!xs.length)continue;const best=xs.sort((a,b)=>drdpRank(ov,k,b.level)-drdpRank(ov,k,a.level))[0];
+      for(const d of map(m.d||k.split(" ")[0])){const e=dom[d];if(!e)continue;const pr=e.prior||(e.prior={have:0,ms:[]});if(!seen.has(d+k)){seen.add(d+k);pr.have++;pr.ms.push({code:k,name:m.n,best,n:xs.length})}}}}
+  return {v,ov,dom,pieces:ev.length+oev.length}}
+// a domain counts as visible for a child with evidence in either view this year
+const drHas=e=>!!(e&&(e.have||(e.prior&&e.prior.have)));
 function drData(){const from=parseIso(ptYearStart()).getTime();const kids=kidsAt();const rows=kids.map(c=>Object.assign({c},drKid(c,from)));
   const rooms=CLASSROOMS.filter(r=>rows.some(x=>x.c.classroom===r));return {from,rows,rooms}}
 // a domain where fewer than half the children in the class have any evidence this year
 // the two domains least visible in the class, when fewer than half the children have any evidence in them
-function drThin(rows){const out=[];for(const d of DR_ORDER){const app=rows.filter(x=>x.dom[d]);if(app.length<3)continue;const have=app.filter(x=>x.dom[d].have>0).length;if(have/app.length<.5)out.push({d,have,of:app.length,f:have/app.length})}return out.sort((a,b)=>a.f-b.f).slice(0,2)}
+function drThin(rows){const out=[];for(const d of DR_ORDER){const app=rows.filter(x=>x.dom[d]);if(app.length<3)continue;const have=app.filter(x=>drHas(x.dom[d])).length;if(have/app.length<.5)out.push({d,have,of:app.length,f:have/app.length})}return out.sort((a,b)=>a.f-b.f).slice(0,2)}
 // observations in the class from the last six weeks whose words fit the domain and that no accepted evidence comes from
 function drMaybe(room,d){const since=Date.now()-42*864e5;const kw=[...new Set(Object.values(DRDP_M.ptk).concat(Object.values(DRDP_M.it)).filter(m=>m.d===d).flatMap(m=>m.k||[]))];
   const used=new Set(kidsAt().flatMap(c=>kidDrdpItems(c).filter(x=>x.src&&(x.status==="accepted"||x.status==="changed")).map(x=>x.src.id)));
@@ -6920,7 +6927,7 @@ function renderDrdpReport(){const {rows,rooms}=drData();const doms=DR_ORDER.filt
     <div class="filters" role="group" aria-label="Class">${["All",...rooms].map(r=>`<button class="pill" aria-pressed="${r===drRoom}" data-drroom="${esc(r)}">${r==="All"?"Every class":esc(r)}</button>`).join("")}</div></div>`;
   if(drRoom==="All"){
     h+=`<section class="card"><div class="drov" style="grid-template-columns:minmax(110px,1.1fr) repeat(${doms.length},minmax(70px,1fr))"><span></span>${doms.map(d=>`<b class="cnt">${esc(DRDP_DOM[d]||d)}</b>`).join("")}
-      ${rooms.map(r=>{const rs=rows.filter(x=>x.c.classroom===r);return `<button class="linkbtn" data-drroom="${esc(r)}" style="text-align:left"><b>${esc(r)}</b><br><span class="cnt">${rs.length} children</span></button>${doms.map(d=>{const app=rs.filter(x=>x.dom[d]);return `<span>${app.length?bar(app.filter(x=>x.dom[d].have).length,app.length):`<span class="cnt">Not used</span>`}</span>`}).join("")}`}).join("")}</div></section>`;
+      ${rooms.map(r=>{const rs=rows.filter(x=>x.c.classroom===r);return `<button class="linkbtn" data-drroom="${esc(r)}" style="text-align:left"><b>${esc(r)}</b><br><span class="cnt">${rs.length} children</span></button>${doms.map(d=>{const app=rs.filter(x=>x.dom[d]);return `<span>${app.length?bar(app.filter(x=>drHas(x.dom[d])).length,app.length):`<span class="cnt">Not used</span>`}</span>`}).join("")}`}).join("")}</div></section>`;
     const thin=rooms.map(r=>[r,drThin(rows.filter(x=>x.c.classroom===r))]).filter(([,t])=>t.length);
     h+=`<section class="card"><h3 style="font-size:17px">Least visible so far</h3><div class="cnt">The two domains in each class where the fewest children have evidence.</div>${thin.length?thin.map(([r,t])=>`<div class="ptitem"><span><b>${esc(r)}</b> <span class="cnt">${esc(t.map(x=>DRDP_DOM[x.d]||x.d).join(", "))}</span></span><button class="btn small ghost" data-drroom="${esc(r)}">Open</button></div>`).join(""):`<div class="cnt">Every domain used has evidence for at least half the children in each class.</div>`}</section>`;
   }else{
@@ -6930,8 +6937,10 @@ function renderDrdpReport(){const {rows,rooms}=drData();const doms=DR_ORDER.filt
     for(const [v,gr] of groups){const gd=DR_ORDER.filter(d=>gr.some(x=>x.dom[d]));
       h+=`<section class="card">${groups.length>1?`<h3 style="font-size:16px;margin-bottom:8px">${VNAME[v]}, ${gr.length} ${gr.length===1?"child":"children"}</h3>`:""}`+`<div class="drgrid" style="grid-template-columns:minmax(110px,1.2fr) repeat(${gd.length},minmax(54px,1fr)) 64px"><span></span>${gd.map(d=>`<b class="cnt">${esc(DRDP_DOM[d]||d)}</b>`).join("")}<b class="cnt">Pieces</b>
       ${gr.map(x=>`<button class="linkbtn" data-kid="${esc(x.c.id)}" data-ktab="drdp" style="text-align:left">${esc(x.c.first)}${x.c.last?" "+esc(x.c.last[0]):""}</button>${gd.map(d=>{const e=x.dom[d];if(!e)return `<span class="drc na"></span>`;const k=x.c.id+"|"+d;
-        return `<button class="drc ${e.have?"":"none"} ${drCell===k?"on":""}" style="--f:${e.total?e.have/e.total:0}" data-drcell="${esc(k)}" title="${esc(DRDP_DOM[d]||d)}">${e.have?e.have+"/"+e.total:"·"}</button>`}).join("")}<span class="cnt" style="text-align:center">${x.pieces}</span>
-        ${drCell.startsWith(x.c.id+"|")?(()=>{const e=x.dom[drCell.split("|")[1]];return `<div class="drdetail">${e.ms.map(m=>`<div><b>${esc(m.code)}</b> ${esc(m.name)}, ${m.best?`<b>${esc(drdpLevelText(m.best.level,m.best.emerging))}</b> <span class="cnt">${esc(shortDate((m.best.src&&m.best.src.at)||m.best.at))}${m.n>1?", "+m.n+" pieces":""}</span>`:`<span class="cnt">no evidence yet</span>`}</div>`).join("")}</div>`})():""}`).join("")}</div></section>`;}
+        const pr=!e.have&&e.prior&&e.prior.have;
+        return `<button class="drc ${e.have?"":pr?"prior":"none"} ${drCell===k?"on":""}" style="--f:${e.total?e.have/e.total:0}" data-drcell="${esc(k)}" title="${esc(DRDP_DOM[d]||d)}${pr?", evidence in the "+VNAME[x.ov]:""}">${e.have?e.have+"/"+e.total:pr?(x.ov==="it"?"IT ":"PS ")+e.prior.have:"·"}</button>`}).join("")}<span class="cnt" style="text-align:center">${x.pieces}</span>
+        ${drCell.startsWith(x.c.id+"|")?(()=>{const e=x.dom[drCell.split("|")[1]];const row=m=>`<div><b>${esc(m.code)}</b> ${esc(m.name)}, ${m.best?`<b>${esc(drdpLevelText(m.best.level,m.best.emerging))}</b> <span class="cnt">${esc(shortDate((m.best.src&&m.best.src.at)||m.best.at))}${m.n>1?", "+m.n+" pieces":""}</span>`:`<span class="cnt">no evidence yet</span>`}</div>`;
+          return `<div class="drdetail">${e.ms.map(row).join("")}${e.prior&&e.prior.have?`<div class="cnt" style="margin-top:6px"><b>Evidence in the ${esc(VNAME[x.ov])} this year</b></div>${e.prior.ms.map(row).join("")}`:""}</div>`})():""}`).join("")}</div>${gr.some(x=>Object.values(x.dom).some(e=>!e.have&&e.prior&&e.prior.have))?`<div class="cnt" style="margin-top:8px">${v==="ptk"?"IT":"PS"} with a number is the measures with evidence in the ${v==="ptk"?"Infant and Toddler View, from before the child turned three":"Preschool View"}, so the domain is visible for that child.</div>`:""}</section>`;}
     const thin=drThin(rs);
     h+=`<section class="card"><h3 style="font-size:17px">Least visible so far in ${esc(drRoom)}</h3>${thin.length?thin.map(t=>{const may=drMaybe(drRoom,t.d),ideas=may.length?[]:drIdeas(t.d);
       return `<div class="drgap"><b>${esc(DRDP_DOM[t.d]||t.d)}</b> <span class="cnt">${t.have} of ${t.of} children have evidence</span>
@@ -6946,7 +6955,8 @@ function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.fi
   return (room&&room!=="All"?[room]:rooms).map(r=>{const rs=rows.filter(x=>x.c.classroom===r).sort((a,b)=>a.c.first.localeCompare(b.c.first));const blocks=[];
     const VN={it:"Infant and Toddler View",ptk:"Preschool View"};const grs=["it","ptk"].map(v=>[v,rs.filter(x=>x.v===v)]).filter(([,g])=>g.length);
     for(const [v,gr] of grs){const gd=DR_ORDER.filter(d=>gr.some(x=>x.dom[d]));
-      blocks.push(dTable(grs.length>1?VN[v]:"",gr.map(x=>[x.c.first+(x.c.last?" "+x.c.last[0]:""),...gd.map(d=>x.dom[d]?(x.dom[d].have?x.dom[d].have+" of "+x.dom[d].total:"none"):""),String(x.pieces)]),{head:["Child",...gd,"Pieces"],widths:[.2,...gd.map(()=>.7/gd.length),.1],noRule:grs.length<2}))}
+      blocks.push(dTable(grs.length>1?VN[v]:"",gr.map(x=>[x.c.first+(x.c.last?" "+x.c.last[0]:""),...gd.map(d=>x.dom[d]?(x.dom[d].have?x.dom[d].have+" of "+x.dom[d].total:x.dom[d].prior&&x.dom[d].prior.have?(x.ov==="it"?"IT ":"PS ")+x.dom[d].prior.have:"none"):""),String(x.pieces)]),{head:["Child",...gd,"Pieces"],widths:[.2,...gd.map(()=>.7/gd.length),.1],noRule:grs.length<2}))}
+    if(rs.some(x=>Object.values(x.dom).some(e=>!e.have&&e.prior&&e.prior.have)))blocks.push(dText("","IT with a number is the measures with evidence in the Infant and Toddler View, from before the child turned three."));
     const thin=drThin(rs);if(thin.length){blocks.push(dSub("Less visible so far"));for(const t of thin){const may=drMaybe(r,t.d);blocks.push(dText(DRDP_DOM[t.d]||t.d,`${t.have} of ${t.of} children have evidence. ${may.length?`${may.length} recent observation${may.length===1?"":"s"} may already hold evidence, ${may.map(n=>firstLine(momentHeading(n)||n.noticed,40)).join(", ")}.`:"Not offered lately in the observations."}`))}}
     blocks.push(dText("",`Domains, ${doms.map(d=>d+" "+(DRDP_DOM[d]||"")).join(", ")}.`));
     return {display:true,type:"report",acc:"smallgroup",title:"DRDP evidence, "+r+" Class",meta:[["Since",yr]],blocks}})}
@@ -11308,9 +11318,11 @@ function renderChildren(){
   const card=c=>{const nx=kidNext(c);const n=mCount(c);
     const cf=[...conferences.values()].filter(x=>x.childId===c.id&&x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
     const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;
-    const soon=[cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:"",dw?`${dw} DRDP to review`:""].filter(Boolean);
-    return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${soon.length?`<span class="ksoon">${esc(soon.join(" · "))}</span>`:""}
-      <span>${kidAt(c)?((nx==="k"||nx==="tk")?(nx==="k"?"Kindergarten next year":"TK next year"):n?`${n} observation${n===1?"":"s"}`:"No observations yet"):`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}`}</span></button>`};
+    // every card has the same lines in the same order, so children compare at a glance
+    const line=(on,t)=>`<span class="kline ${on?"ksoon":""}">${esc(t)}</span>`;
+    const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":"")]
+      :[line(false,`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+longDate(kidLeftDay(c)):""}`)];
+    return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${rows.join("")}</button>`};
   const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
   let body="";
   for(const r of rooms){const rs=shown.filter(c=>c.classroom===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first));if(!rs.length)continue;
