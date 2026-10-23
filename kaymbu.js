@@ -216,6 +216,16 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   // the children a note names, read the same way Tag the children named does on the page. A first name shared by two
   // children in the classroom is left for an educator. A name found only in the title, or a name that is also an everyday
   // word, is offered to an educator to check.
+  // the class and small group every one of these children shares, if they share one
+  function kidsPlace(ids) {
+    const ks = [...new Set(ids)].map(id => { const r = store.recs.children.get(id); return r && !r.deleted && r.doc; }).filter(Boolean);
+    if (!ks.length) return {};
+    const one = a => (a.length && a.every(x => x && x === a[0])) ? a[0] : '';
+    const room = one(ks.map(k => k.classroom || '')); const gname = one(ks.map(k => k.group || ''));
+    const set = (store.recs.settings.get('main') || {}).doc || {};
+    const group = gname ? (Array.isArray(set.groups) ? set.groups : []).find(g => g && g.name === gname && (!g.room || !room || g.room === room)) || { name: gname, room } : null;
+    return { room, group };
+  }
   function findChildren(text, room, title) {
     // a child's record has no id inside it, so the id is the name of its record
     const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
@@ -316,8 +326,13 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
           // Kaymbu's own smaller copy is kept for cards and lists. The original above is what slides and printouts use.
           if (p.url !== m.photo) { try { const r = await getBuf(m.photo); const d = r.status === 200 && /^image\//.test(r.type) && r.buf.length < 600 * 1024 ? size(r.buf) : null; if (d) photo.thumb = await keepPhoto(r.buf, by, 'thumb'); } catch (e) {} } }
         const noticed = [m.title, m.note].filter(Boolean).join('\n');
-        const rooms = m.room ? [m.room, ...sub.rooms.filter(r => r !== m.room)] : sub.rooms, room = m.room || sub.room, mBy = m.by || by;
+        const rooms = m.room ? [m.room, ...sub.rooms.filter(r => r !== m.room)] : sub.rooms;
         const kids = findChildren(m.note || '', rooms, m.title || '');
+        // the children named say the class and the small group when they all share one, and the group's educator shared it when nobody was named
+        const fromKids = kidsPlace([...kids.ids, ...kids.maybe]);
+        const room = m.room || (fromKids.room && (!sub.room || sub.rooms.length > 1 || sub.room === fromKids.room) ? fromKids.room : '') || sub.room;
+        const kidGroup = !m.smallGroup && !sub.smallGroup && fromKids.group && (!fromKids.group.room || fromKids.group.room === room) ? fromKids.group : null;
+        const mBy = m.by || by || (kidGroup && kidGroup.educator ? String(kidGroup.educator) : '');
         const group = (many.get(sameNote(m)) || 0) > 1 && (kids.ids.length + kids.maybe.length) > 0;
         const needs = group || !kids.ids.length || kids.unsure.length > 0 || kids.maybe.length > 0;
         // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
@@ -326,10 +341,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
         const pg = photo ? postGroup(noticed, room, day) : '';
-        const sg = m.smallGroup || sub.smallGroup;
+        const sg = m.smallGroup || sub.smallGroup || (kidGroup ? String(kidGroup.name) : '');
         const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
+          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), mail: String(sent), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
           updatedByName: mBy };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);

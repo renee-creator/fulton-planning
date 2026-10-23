@@ -87,7 +87,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER=local?want:DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null;
+  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null, strOpen=false;
   const $=s=>document.querySelector(s);
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function api(path,body){
@@ -136,7 +136,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return `<section class="card"><h2>Welcome to Fulton</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
     ks.map(k=>{const e=k.enroll||{},q=k.questionnaire;const steps=[
       [!!e.done,"Enrollment information",e.done?"Done. We will have the forms ready to sign at your visit.":e.at?"Started. Finish it when you can.":"Type it once here. We fill in the state forms for you.",`<button class="btn sm" data-form="enroll|${esc(k.id)}">${e.at?"Open it":"Start"}</button>`],
-      [!!q,"Family Questionnaire",q?"Thank you. Your child's teachers will read it before your visit.":"Helps your child's teachers get to know your family.",`<button class="btn sm ${q?"ghost":""}" data-form="q|${esc(k.id)}">${q?"See or change it":"Start"}</button>`],
+      [!!q,"Family Questionnaire",q?"Thank you. Your child's educators will read it before your visit.":"Helps your child's educators get to know your family.",`<button class="btn sm ${q?"ghost":""}" data-form="q|${esc(k.id)}">${q?"See or change it":"Start"}</button>`],
       [!!k.visit,"Your visit before the first day",k.visit?`${day(k.visit.date)} at ${time(k.visit.time)}${k.visit.with?" with "+k.visit.with:""}. Please bring the doctor's report and immunization record.`:"Choose a time below.",""],
       [false,"Bring to your visit","The Physician's Report signed by your doctor, and your child's current immunization record.",""],
       [false,"All About Me book","Four pages about your child, described in the welcome letter.",""]];
@@ -145,15 +145,22 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   function kidsHtml(){return D.children.map(k=>{const c=k.conference;let h=`<section class="card"><h2>${esc(k.first)}</h2>`;
       h+=`<div class="sub"><b>Family conference</b>${c?`<div>${esc(day(c.date))}${c.time?" at "+esc(time(c.time)):""}${c.with?" with "+esc(c.with):""}${c.format?" · "+esc(c.format):""}</div>`:`<div class="small muted">${k.slotPurpose==="conference"?"Choose a time below.":"Not scheduled yet. The school will let you know when sign-ups open."}</div>`}
         ${k.slotPurpose==="conference"?`<div style="margin-top:6px">${slotList(k)}</div>`:""}</div>`;
-      if(k.reflections){const open=openRefl===k.id;const filled=Object.values(k.reflections).some(Boolean);
-        h+=`<div class="sub"><div class="top"><b>Before the conference</b><button class="link small" data-refl="${esc(k.id)}">${open?"Close":filled?"See or change your thoughts":"Share your thoughts"}</button></div>
-        <div class="small muted">A few questions to think about at home. Your answers go to ${esc(k.first)}'s teachers before you meet.</div>
-        ${open?`<div class="stack" style="margin-top:8px">${D.reflectionQs.map(([key,qq])=>`<label>${esc(qq)}<textarea rows="3" data-rq="${key}">${esc(k.reflections[key]||"")}</textarea></label>`).join("")}<div><button class="btn sm" data-reflsave="${esc(k.id)}">Save</button></div></div>`:""}</div>`}
+      // once the family sends their thoughts the box closes, and it opens again for the next conference
+      if(k.reflections){const open=openRefl===k.id;const sent=!!k.reflectedAt;
+        h+=`<div class="sub"><div class="top"><b>Before the conference</b>${open?`<button class="link small" data-refl="${esc(k.id)}">Close</button>`:sent?`<button class="link small" data-refl="${esc(k.id)}">Change</button>`:""}</div>
+        ${sent&&!open?`<div class="small" style="color:var(--moss);font-weight:700">Sent to ${esc(k.first)}'s educators on ${esc(new Date(k.reflectedAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}))}. Thank you.</div>`:open?"":`<div class="small muted">A few questions to think about at home. Your answers go to ${esc(k.first)}'s educators before you meet.</div><div style="margin-top:6px"><button class="btn sm" data-refl="${esc(k.id)}">Share your thoughts</button></div>`}
+        ${open?`<div class="stack" style="margin-top:8px">${D.reflectionQs.map(([key,qq])=>`<label>${esc(qq)}<textarea rows="3" data-rq="${key}">${esc(k.reflections[key]||"")}</textarea></label>`).join("")}<div><button class="btn sm" data-reflsave="${esc(k.id)}">Send</button></div></div>`:""}</div>`}
       if(k.shared.length||k.files.length)h+=`<div class="sub"><b>Shared with you</b>${k.files.map(f=>`<div class="top" style="margin-top:6px"><span>${esc(f.title)}</span><button class="btn sm ghost" data-file="${esc(f.id)}">Open</button></div>`).join("")}
         ${k.shared.map(s=>`<details class="shared"><summary>Conference notes, ${esc(s.label)}</summary>${s.sections.map(([l,v])=>`<h3>${esc(l)}</h3><p style="white-space:pre-line">${esc(v)}</p>`).join("")}</details>`).join("")}</div>`;
       return h+`</section>`}).join("")+
-    `<section class="card"><h2>What our family can share</h2><p class="small muted" style="margin:0 0 8px">Something you know, love to do, or could share with the children, such as a craft, a language, music, building or cooking. Teachers may invite you in when it fits what the children are exploring.</p>
-      <textarea id="str" rows="4" maxlength="3000">${esc(D.children[0].strengths||"")}</textarea><div style="margin-top:8px"><button class="btn sm" id="strsave">Save</button> <span class="small muted" id="strmsg"></span></div></section>`}
+    strengthsHtml()}
+  // the family's strengths are asked once a quarter of the school year. Saved this quarter, the box stays closed with what they wrote.
+  function qStart(){const d=new Date(),m=d.getMonth(),y=d.getFullYear();const s=[1,4,7,10].filter(x=>x<=m).pop();return s==null?new Date(y-1,10,1):new Date(y,s,1)}
+  function strengthsHtml(){const k=D.children[0]||{};const t=k.strengths||"",at=k.strengthsAt?new Date(k.strengthsAt):null;const fresh=at&&at>=qStart();
+    const head=`<section class="card"><h2>What our family can share</h2>`;
+    if(fresh&&!strOpen)return head+`<div style="white-space:pre-line">${esc(t)}</div><div class="small muted" style="margin-top:6px">Saved ${esc(new Date(k.strengthsAt).toLocaleDateString("en-US",{month:"short",day:"numeric"}))}. <button class="link small" id="stredit">Change</button></div></section>`;
+    return head+`<p class="small muted" style="margin:0 0 8px">${t&&!strOpen?"Anything new your family would like to share this season? Your last answer is below.":"Something you know, love to do, or could share with the children, such as a craft, a language, music, building or cooking. Educators may invite you in when it fits what the children are exploring."}</p>
+      <textarea id="str" rows="4" maxlength="3000">${esc(t)}</textarea><div style="margin-top:8px"><button class="btn sm" id="strsave">Save</button>${t&&!strOpen?` <button class="btn sm ghost" id="strkeep">Keep it as it is</button>`:""} <span class="small muted" id="strmsg"></span></div></section>`}
   function partHtml(){const ks=D.children;let h="";
     h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
       <p class="small muted" style="margin:8px 0 0">Each child takes part for ${D.goal} hours a year. Every entry rounds up to the next whole hour.</p></section>`;
@@ -184,7 +191,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · <a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a></p></section>`}
   function formHtml(){const [kind,id]=form.split("|");const k=D.children.find(x=>x.id===id);if(!k){form=null;return ""}
     if(kind==="q"){const a=(k.questionnaire&&k.questionnaire.answers)||[];
-      return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Family Questionnaire for ${esc(k.first)}</h2><p class="small muted">Each child is unique. Your answers help ${esc(k.first)}'s teachers build a relationship with your family. They are kept confidential and used only for this. Answer what you can.</p>
+      return `<section class="card"><button class="link small" data-formclose="1">‹ Back</button><h2 style="margin-top:6px">Family Questionnaire for ${esc(k.first)}</h2><p class="small muted">Each child is unique. Your answers help ${esc(k.first)}'s educators build a relationship with your family. They are kept confidential and used only for this. Answer what you can.</p>
         <div class="stack">${D.questions.map((qq,i)=>`<label>${esc(qq)}<textarea rows="2" data-qa="${i}">${esc(a[i]||"")}</textarea></label>`).join("")}</div><div class="err" id="eq" aria-live="polite"></div><div style="margin-top:8px"><button class="btn" data-qsave="${esc(k.id)}">Send it</button></div></section>`}
     const e=k.enroll||{},v=Object.assign({},e.prefill||{},e.data||{});
     const field=f=>{const val=v[f.k]!=null?v[f.k]:(f.value!=null?f.value:"");
@@ -207,7 +214,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
-    const ss=$("#strsave");if(ss)ss.onclick=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});render();$("#strmsg").textContent="Saved. Thank you."}catch(er){$("#strmsg").textContent=er.message}};
+    const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};
+    if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};
     $("#out").onclick=()=>{token=null;LS.set("fam-token",null);showGate()};
   }
   const readEnroll=()=>{const o={};document.querySelectorAll("[data-ef]").forEach(x=>{o[x.dataset.ef]=x.type==="checkbox"?x.checked:x.value});return o};
