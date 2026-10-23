@@ -1912,20 +1912,23 @@ async function drdpAnalyze(kind,id,mode,quiet){
   }catch(e){if(!quiet)toast(assistError(e?.code||"unknown","Nothing changed."))}
   finally{delete drdpBusy[key];drdpRefresh()}
 }
-// a Kaymbu moment with its children tagged and at least a sentence of notes is read for DRDP evidence by itself, once.
-// The suggestions wait on each child's page for an educator to accept, change or set aside. A post of several photos with
-// one note is read once. Each moment is marked before it is read, so two devices do not read the same one.
+// every observation with its children tagged, from Kaymbu or kept in TREE, with a photo or a few words, is read for DRDP
+// evidence by itself, once, newest first, from the start of the school year. One being written is left until it has rested
+// two minutes. The suggestions wait on each child's page for an educator to accept, change or set aside. A post of several
+// photos is read once. Each is marked before it is read, so two devices do not read the same one.
 let drdpAutoBusy=false;
 async function drdpAutoKaymbu(){
   if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden)return;
-  const rm=myRoom(),dir=isDirector()||isOffice(),since=Date.now()-7*864e5,seen=new Set();
-  const body=n=>String(n.noticed||"").split("\n").slice(1).join(" ").trim()||String(n.noticed||"").trim();
-  const next=[...notices.values()].filter(n=>{if(!n.kaymbu||n.kaymbu.check||!(n.children||[]).length||n.drdp||n.drdpAuto||(n.kaymbu.keptAt||0)<since)return false;
-    if(!dir&&rm&&!momentIn(n,rm))return false;const b=body(n);return b.length>=40&&/[a-z].*[.!?"”]/i.test(b)})
+  const rm=myRoom(),dir=isDirector()||isOffice(),since=parseIso(schoolYearStart()).getTime(),seen=new Set(),now=Date.now();
+  const when=n=>(n.kaymbu&&n.kaymbu.keptAt)||n.at||0;
+  const next=[...notices.values()].filter(n=>{if(!(n.children||[]).length||n.drdp||n.drdpAuto||when(n)<since)return false;
+    if(typeof noticeForm!=="undefined"&&noticeForm&&noticeForm.id===n.id)return false;if(now-(n.updatedAt||n.at||0)<120000)return false;
+    if(!dir&&rm&&!momentIn(n,rm))return false;return !!n.photo||String(n.noticed||"").trim().length>=15})
+    .sort((a,b)=>when(b)-when(a))
     .filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return !noteGroup(n).some(x=>x.drdp||x.drdpAuto)})[0];
   if(!next)return;drdpAutoBusy=true;
   try{patchNotice(next.id,{drdpAuto:Date.now()});await drdpAnalyze("notices",next.id,"",true)}finally{drdpAutoBusy=false}}
-setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},45000);
+setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
 function drdpRefresh(){if(view==="slide")renderSlide();else if(view==="moments"||view==="child")renderMain()}
 // where each suggestion from this documentation stands now, read from the child's page
 function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c.drdp||{}).items||{})[x.id];
@@ -1942,8 +1945,8 @@ function drdpPanelHtml(kind,rec){
   const key=kind+":"+rec.id,busy=drdpBusy[key],d=rec.drdp;const S=drdpSource(kind,rec);
   const views=[...new Set(S.kids.map(c=>drdpViewOf(c).v))];
   const legacy=(rec.measures||[]).filter(m=>m.kept);
-  return `<div class="cnt">${S.kids.length?`Read against the ${views.map(v=>DRDP_VIEW[v]).join(" and the ")} View${views.length>1?"s":""}, for ${S.kids.map(c=>esc(c.first)).join(", ")}.`:"Tag the children this documentation is about. A level always belongs to one child."} Each suggestion waits on the child's page for an educator to accept, change or set aside. A suggestion is never a DRDP rating.</div>
-    <div class="actions">${sample?`<button class="btn small ghost" data-keep="1" data-drdpgo="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>${busy?'<span class="spin"></span> Reading':"Read words and photos"}</button>`:""}<button class="linkbtn" data-keep="1" data-drdpkw="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>Keyword match</button></div>
+  return `<div class="cnt">${S.kids.length?`Read against the ${views.map(v=>DRDP_VIEW[v]).join(" and the ")} View${views.length>1?"s":""}, for ${S.kids.map(c=>esc(c.first)).join(", ")}.`:"Tag the children this documentation is about. A level always belongs to one child."} ${kind==="notices"&&!d&&S.kids.length?"TREE reads it by itself a few minutes after it is saved. ":""}Each suggestion waits on the child's page for an educator to accept, change or set aside, and nothing counts until it is accepted.</div>
+    <div class="actions">${sample?`<button class="btn small ghost" data-keep="1" data-drdpgo="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>${busy?'<span class="spin"></span> Reading':d?"Read again":"Read now"}</button>`:""}<button class="linkbtn" data-keep="1" data-drdpkw="${kind}|${rec.id}" ${busy||!S.kids.length?"disabled":""}>Keyword match</button></div>
     ${d?`<div class="drdpres">
       ${d.mode==="keywords"?`<div class="cnt">Keyword match on ${shortDate(d.at)}. Keywords point to possible measures and give no level.</div>`:`<div class="cnt">Read on ${shortDate(d.at)} by ${esc(d.by||"an educator")}${d.official===false?". The official DRDP wording was not available on the server for this reading, so read it again once the director has added it.":", against the official DRDP (2025) definitions and level descriptors."}</div>`}
       ${has(d.summary)?`<div class="ref"><b>What it shows</b><div>${esc(d.summary)}</div></div>`:""}
