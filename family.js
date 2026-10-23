@@ -24,8 +24,7 @@ const CHECKS = [['onecore', 'Install the 1Core Family app', 'Turn on camera and 
 // the first day, packed and labeled. Rain gear stays at school all season.
 const PACK = [['bottle', 'A reusable water bottle with your child\'s name, water only, washed daily'], ['clothes', 'Three full sets of clothes, with shirts, pants, underwear and socks'], ['shoes', 'Close-toed slip-on or Velcro shoes, unless your child ties laces'], ['spare', 'An extra pair of slip-on shoes or slippers for inside'],
   ['rain', 'A waterproof rain suit, or waterproof rain pants and a jacket, waterproof and not only water resistant'], ['boots', 'Rain boots with no fabric lining, easy to pull on and off'], ['wetbag', 'A reusable wet bag for wet or muddy clothes'], ['blanket', 'A thin blanket if your child naps, and a small comfort item if you like'], ['labels', 'Everything labeled with your child\'s name']];
-const AA_ITEMS = (aa) => { const md = x => { const m = String(x || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'the date the school sets'; }; aa = aa || {};
-  return [`I accept admission for the school year beginning ${md(aa.start)}, ending ${md(aa.end)}.`, 'I have received, read and agree to all items and terms outlined in the Parent Handbook including tuition rate listed.', `A non-refundable program fee of $450 is due by ${md(aa.fee)}.`, 'I understand that no refunds or credits will be granted.', 'In the event of school closure of more than 30 days subsequent tuition charges will be suspended until the program resumes.', 'I understand that if I do not fulfill 10 Parent participation hours, I will be charged $200 in lieu of participating.', 'I understand that the tuition is based on a yearly rate and payable monthly for convenience.', 'I undertake the annual tuition in 10 monthly installments (Aug. to May), with the amounts written on the agreement at the visit.', 'I understand that there will be an annual tuition increase.', 'Tuition is due in advance on the 1st of each month. There is a $45 late fee for tuition paid after the 5th of the month.', 'Payment may be made with cash, credit card, check or online.', 'Should a check be returned a fee of $50 plus the late fee will be charged.', '$1 per minute late fee is charged for all late pickups.', 'Tuition that is past due may result in termination of enrollment.', 'In case of withdrawal, I agree to notify the school 30 days in advance.', 'This agreement may be terminated by the administration without notice at any time if the health and safety of any person cannot be maintained.', 'The licensing agency has the authority to interview children or staff, to inspect and audit child or facility records without prior consent, and to observe the physical condition of the children and have a licensed medical professional examine them (Health and Safety Code Section 1596.81).', 'All forms required by Community Care Licensing, including proof of immunizations, must be submitted before a child is enrolled. Children will not be admitted without the required forms.', 'In case of any changes to this agreement, any changes will be signed as a new agreement by all parties.']; };
+const AGREE = require('./agreement.js');
 const AAM_PAGES = [['All About {first}', 'A current photo of {first}, and a few words about {first}.'], ['My family', 'Who lives in my home, and who is important to me.'], ['Things I like', 'Toys, places, songs, books, anything {first} loves.'], ['Foods I like', 'The foods {first} enjoys most.']];
 const T = (k, label, extra) => Object.assign({ k, label, type: 'text' }, extra || {});
 const person = (p, who) => [T(p + 'first', who + ', first name'), T(p + 'middle', 'Middle name'), T(p + 'last', 'Last name')];
@@ -159,7 +158,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const pace = (() => { const t = new Date(), y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; const a = new Date(y, 7, 15).getTime(), b = new Date(y + 1, 4, 31).getTime(); return Math.floor(c.goal * Math.min(1, Math.max(0, (t.getTime() - a) / (b - a)))); })();
     const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
     return { test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
-      welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, aaItems: anyNew ? AA_ITEMS(c.aa) : [], email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
+      welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 
   function save(id, doc) { const cur = recs().get(id); recs().set(id, { doc, sha: cur && cur.sha, path: `${KIND}/${id}.json`, local: true }); noteChange(KIND, id); scheduleSave(KIND, id); }
@@ -231,7 +230,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   function questionnaire(f, childId, answers) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
     const a = QUESTIONS.map((q, i) => String((answers || [])[i] || '').trim().slice(0, 3000));
-    if (!a.some(Boolean)) return { error: 'Answer at least one question first.' };
+    { const left = a.filter(x => !x).length; if (left) return { error: left === 1 ? 'Please answer every question. One is still empty.' : 'Please answer every question. ' + left + ' are still empty.' }; }
     remember(f, 'children', childId); const kd = getRec('children', childId);
     saveRec('children', childId, Object.assign({}, kd, { familyQuestionnaire: { answers: a, questions: QUESTIONS, at: nowIso(), by: f.email }, onboarding: Object.assign({}, kd.onboarding || {}, { started: true }), updatedAt: nowIso() }));
     return { ok: true };
@@ -272,12 +271,22 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     remember(f, 'children', childId); const kd = getRec('children', childId); const ch = Object.assign({}, kd.familyChecks || {}); if (on) ch[key] = nowIso(); else delete ch[key];
     saveRec('children', childId, Object.assign({}, kd, { familyChecks: ch, updatedAt: nowIso() })); return { ok: true };
   }
-  function agreement(f, childId, initials, ticks) {
+  // the Admission Agreement, completed, initialed and signed by the family. Once signed it is kept as it is, and the office reopens it for a change.
+  function agreement(f, childId, b, submit) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
-    const n = AA_ITEMS(cfg().aa).length; const t = Array.from({ length: n }, (_, i) => !!(Array.isArray(ticks) && ticks[i]));
-    const ini = String(initials || '').replace(/[^A-Za-z.\s]/g, '').trim().slice(0, 5);
     remember(f, 'children', childId); const kd = getRec('children', childId);
-    saveRec('children', childId, Object.assign({}, kd, { familyAgreement: { initials: ini, ticks: t, at: nowIso(), by: f.email, done: !!ini && t.every(Boolean) }, updatedAt: nowIso() }));
+    if (kd.familyAgreement && kd.familyAgreement.done) return { error: 'This agreement is signed. Please contact the office to make a change.' };
+    b = b || {}; const str = (x, n) => String(x == null ? '' : x).trim().slice(0, n || 200);
+    const fields = {}; AGREE.FIELDS.forEach(([key]) => { fields[key] = str((b.fields || {})[key]); });
+    const n = AGREE.count();
+    const ag = { fields, program: AGREE.PROGRAMS.some(p => p[0] === b.program) ? b.program : '', addons: AGREE.ADDONS.map(a => a[0]).filter(a => (b.addons || []).includes(a)),
+      initials: str(b.initials, 5).replace(/[^A-Za-z.\s]/g, '').toUpperCase(), ticks: Array.from({ length: n }, (_, i) => !!(Array.isArray(b.ticks) && b.ticks[i])),
+      sign1: { name: str((b.sign1 || {}).name, 100) }, sign2: { name: str((b.sign2 || {}).name, 100) }, esign: !!b.esign, aa: cfg().aa || {}, at: nowIso(), by: f.email, done: false };
+    if (submit) {
+      const miss = AGREE.missing(ag); if (miss.length) return { error: 'Please complete ' + miss.slice(0, 5).join(', ') + (miss.length > 5 ? ', and ' + (miss.length - 5) + ' more' : '') + '.' };
+      ag.done = true; ag.signedAt = nowIso(); ag.sign1.at = ag.signedAt; if (ag.sign2.name) ag.sign2.at = ag.signedAt;
+    }
+    saveRec('children', childId, Object.assign({}, kd, { familyAgreement: ag, onboarding: Object.assign({}, kd.onboarding || {}, { started: true }), updatedAt: nowIso() }));
     return { ok: true };
   }
   function file(f, id) {
