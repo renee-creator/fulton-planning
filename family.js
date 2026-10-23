@@ -57,7 +57,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   function season(day) { const t = day ? new Date(day + 'T12:00:00') : new Date(); const y = t.getFullYear(), m = t.getMonth(); return m >= 7 ? { year: `${y}-${String(y + 1).slice(2)}`, term: 'Fall' } : { year: `${y - 1}-${String(y).slice(2)}`, term: 'Spring' }; }
   const confIdOf = (childId, p) => `${childId}--${p.year}-${p.term.toLowerCase()}`;
   // a child is new until the first day, or until the onboarding checklist is finished
-  function isNew(k) { const ob = k.onboarding || {}; const done = ['questionnaire', 'welcomeCall', 'visitScheduled', 'calendar', 'contactVerified', 'visitDone', 'thankYou', 'teamShared', 'labels', 'aboutMe', 'firstDay'].every(s => ob[s]); if (done) return false; if (ob.started) return true; const e = k.enrollDate ? new Date(String(k.enrollDate).slice(0, 10) + 'T12:00:00') : null; return !!e && (e - new Date()) > -21 * 864e5; }
+  function isNew(k) { const ob = k.onboarding || {}; const done = ['questionnaire', 'welcomeCall', 'visitScheduled', 'calendar', 'contactVerified', 'visitDone', 'thankYou', 'teamShared', 'labels', 'aboutMe', 'firstDay'].every(s => ob[s]); if (done) return false; if (k.welcomeOn || ob.started) return true; const e = k.enrollDate ? new Date(String(k.enrollDate).slice(0, 10) + 'T12:00:00') : null; return !!e && (e - new Date()) > -21 * 864e5; }
   const norm = e => String(e || '').trim().toLowerCase();
   const okEmail = e => /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i.test(e);
   const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -168,7 +168,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0] || '', last: w.length > 1 ? w[w.length - 1] : '' }; };
     const pa = (k.parents || []).filter(Boolean); const p1 = split(pa[0] && pa[0].name), p2 = split(pa[1] && pa[1].name);
     const prefill = { c_first: k.first || '', c_last: k.last || '', c_dob: String(k.dob || '').slice(0, 10), p1_first: p1.first, p1_last: p1.last, p1_home: (pa[0] && pa[0].cell) || '', p2_first: p2.first, p2_last: p2.last, p2_home: (pa[1] && pa[1].cell) || '' };
-    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null };
+    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null };
   }
   function book(f, slotId, childId, on) {
     const s0 = getRec(KIND, slotId), s = s0 && Object.assign(s0, { id: slotId }); const k = f.kids.find(x => x.id === childId);

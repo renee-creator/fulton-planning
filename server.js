@@ -1115,7 +1115,8 @@ async function handle(req, res) {
     else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
     else { err(req, res, 404, 'Not found'); return; }
     if (r.error) { err(req, res, 400, r.error); return; }
-    json(req, res, 200, path === '/family/data' ? r : Object.assign({ ok: true }, familyPage.familyView(f))); return;
+    // the family's children are read again after a change, so the page shows what was just saved
+    json(req, res, 200, path === '/family/data' ? r : Object.assign({ ok: true }, familyPage.familyView(familyPage.readFamily(req) || f))); return;
   }
   if (path === '/login') {
     const ip = who(req);

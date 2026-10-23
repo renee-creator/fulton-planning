@@ -1915,7 +1915,7 @@ function showReview(){
     const single=["confDate","confTime","reflDate"].includes(path);
     const def = !String(val||"").trim()? "skip" : cur.trim()? (single? "skip" : "append") : "replace";
     return `<div class="review-row" data-path="${esc(path)}"><div><b class="small">${esc(label)}</b></div>
-      <div><textarea aria-label="${esc(label)}">${esc(val||"")}</textarea>${cur.trim()?`<div class="cur">Already in the record · ${esc(cur.slice(0,240))}${cur.length>240?"…":""}</div>`:""}</div>
+      <div><textarea aria-label="${esc(label)}">${esc(val||"")}</textarea>${cur.trim()?`<div class="cur">Already in the record · ${esc(cur)}</div>`:""}</div>
       <div><select aria-label="What to do with ${esc(label)}"><option value="replace" ${def==="replace"?"selected":""}>Use this</option><option value="append" ${def==="append"?"selected":""}>Add below existing</option><option value="skip" ${def==="skip"?"selected":""}>Skip</option></select></div></div>`; };
   const metaRows = [
     ["confDate","Conference date", toISODate(r.conferenceDate)||pd.date||r.conferenceDate],["confTime","Time",r.conferenceTime],["teacher","Educators",r.teacher],
@@ -2608,6 +2608,8 @@ const go=()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try
 new MutationObserver(go).observe(document.body,{childList:true,subtree:true});go();})();</script>
 <style>.tree-bring{margin-top:6px;border:1px solid #c6d0c3;border-radius:10px;background:#f6f9f4;padding:8px 10px;font-size:13.5px}
 .tree-bring b{font-weight:600}.tree-bring a{color:#2b5a40;text-decoration:underline}.tree-bring ul{margin:4px 0 6px 18px;padding:0}.tree-bring li{margin:2px 0}.tree-bring .muted{color:#46564c}
+.tree-bring .tb-list{display:grid;gap:4px;margin:6px 0 8px}.tree-bring .tb-row{display:flex;gap:8px;align-items:flex-start;cursor:pointer;line-height:1.4;font-weight:400;font-size:13.5px;margin:0;text-transform:none;letter-spacing:0}.tree-bring .tb-row input{margin-top:3px;flex:none}.tree-bring .tb-row img{width:44px;height:44px;object-fit:cover;border-radius:6px;flex:none}.tree-bring .tb-row.on{color:#46564c}.tree-bring .tb-have{font-size:12px;font-weight:600;color:#2b5a40}
+.tree-pages{margin:0 0 12px;border:1px solid #f0cf4f;background:#fffbe8;border-radius:10px;padding:8px 12px;font-size:14px}
 .tree-bringall{margin:0 0 12px;border:1px solid #f0cf4f;background:#fffbe8;border-radius:10px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;font-size:14px}</style>
 <script>(()=>{const MAP={approaches:["ATL"],social:["SED"],language:["FLD","ELD"],cognition:["MATH","SCI","COG"],physical:["PD","HLTH"]};
 // sections TREE fills on its own when empty. The rest wait for an educator to read them and choose to add them
@@ -2622,7 +2624,7 @@ const line=x=>x.name+", "+x.level+(x.emerging?", emerging to the next level":"")
 function addTo(k,lines){const ta=document.querySelector('#conf-editor textarea[data-k="'+k+'"]');if(!ta||ta.readOnly||ta.disabled)return 0;
   const have=ta.value;const add=lines.filter(l=>!have.includes(l));if(!add.length)return 0;ta.value=(have.trim()?have.replace(/\s+$/,"")+"\n":"")+add.join("\n");
   ta.dispatchEvent(new Event("input",{bubbles:true}));ta.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return add.length}
-function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;const id=ed.dataset.id;const cf=S.confs&&S.confs[id];if(!cf||!P.TREE_DRDP_FOR)return;
+function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;const id=ed.dataset.id;const cf=S.confs&&S.confs[id];if(!cf||!P.TREE_DRDP_FOR)return;jumpSec(ed);
   // the period follows the conference date, so a new date draws the lists again
   const w=windowOf(cf);const key=id+"|"+w.from+"|"+w.to;
   // an empty section TREE knows about fills itself once, also after Edit is tapped on a saved form
@@ -2630,29 +2632,47 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
     if(ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,String(f0[k]).split("\n").filter(Boolean));try{localStorage.setItem(mark,"1")}catch(e){};const bx=ta.closest("[data-wrap]")?.querySelector(".tree-bring");if(bx&&/small group in TREE|From the observations/.test(bx.textContent))bx.remove()}}}catch(e){}
   if(ed.querySelector(".tree-bringall,.tree-bring-none")){if(ed.dataset.bringKey===key)return;ed.querySelectorAll(".tree-bringall,.tree-bring-none,.tree-bring").forEach(x=>x.remove())}
   ed.dataset.bringKey=key;const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
-  const span="from "+long(w.from)+" to "+long(w.to);
-  const per={};for(const [k,doms] of Object.entries(MAP))per[k]=items.filter(x=>doms.includes(x.dom));
-  for(const [k,list] of Object.entries(per)){if(!list.length)continue;const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))continue;
-    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>DRDP evidence, "+span+"</b><ul>"+list.map(x=>"<li>"+x.code+" "+x.name.replace(/</g,"&lt;")+", <b>"+x.level+"</b>"+(x.emerging?", emerging":"")+"</li>").join("")+"</ul>";
-    const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,list.map(line));b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
-  if(docs.length){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(wrap&&!wrap.querySelector(".tree-bring")){const box=document.createElement("div");box.className="tree-bring";
-    const dl=docs.map(d=>d.title+", "+long(iso(d.at)));box.innerHTML="<b>Documentation "+span+"</b><ul>"+docs.map(d=>'<li><a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+String(d.title).replace(/</g,"&lt;")+"</a>, "+long(iso(d.at))+"</li>").join("")+"</ul><div class=\"muted\">Tap one to open it. Pieces added to this section print after the form, in the PDF and as a second Word file. A piece not listed here does not print.</div>";
-    const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields.documentation",dl);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}}
-  // what TREE knows about the child's small group, friends and interests. An empty section fills itself once. A section already written shows it to add.
+  const span="from "+long(w.from)+" to "+long(w.to);const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // a list to choose from. Nothing is ticked at first, and only the lines ticked are added
+  const pick=(k,title,rows,note)=>{const wrap=ed.querySelector('[data-wrap="'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))return;const ta=wrap.querySelector("textarea");
+    const box=document.createElement("div");box.className="tree-bring";
+    const draw1=()=>{const have=ta?ta.value:"";box.innerHTML="<b>"+esc(title)+"</b>"+(note?'<div class="muted">'+esc(note)+"</div>":"")+'<div class="tb-list">'+rows.map((r,i)=>{const on=have.includes(r.line);
+        return '<label class="tb-row'+(on?" on":"")+'"><input type="checkbox" data-tb="'+i+'"'+(on?" disabled checked":"")+'>'+(r.thumb?'<img src="'+esc(r.thumb)+'" alt="" loading="lazy">':"")+"<span>"+r.html+(on?' <span class="tb-have">On the form</span>':"")+"</span></label>"}).join("")+"</div>";
+      const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add the ones ticked";b.disabled=true;
+      box.onchange=()=>{b.disabled=!box.querySelector("[data-tb]:checked:not(:disabled)")};
+      b.onclick=()=>{const ls=[...box.querySelectorAll("[data-tb]:checked:not(:disabled)")].map(x=>rows[+x.dataset.tb].line);if(ls.length)addTo(k,ls);draw1()};box.append(b)};
+    draw1();wrap.append(box)};
+  // each measure once, its most recent piece at the highest level educators accepted, in full
+  for(const [k,doms] of Object.entries(MAP)){const list=items.filter(x=>doms.includes(x.dom));if(!list.length)continue;
+    pick("fields."+k,"DRDP evidence, "+span,list.map(x=>({line:line(x),html:"<b>"+esc(x.code+" "+x.name)+", "+esc(x.level)+(x.emerging?", emerging":"")+"</b>"+(x.evidence?" "+esc(x.evidence):"")+(x.title?' <span class="muted">'+esc(x.title+", "+long(iso(x.at)))+"</span>":"")})),"Each measure's most recent evidence at its highest level. Tick the ones to add.")}
+  if(docs.length)pick("fields.documentation","Documentation "+span,docs.map(d=>({line:d.title+", "+long(iso(d.at)),thumb:d.thumb||"",html:'<a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+esc(d.title)+"</a>, "+esc(long(iso(d.at)))})),"Tick the pieces to share. Only the pieces on the form print after it, in the PDF and as a second Word file.");
+  // what TREE knows about the child's small group, friends and interests. An empty section fills itself once. A section already written offers it to choose from.
   const facts=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};const factKeys=Object.keys(facts).filter(k=>facts[k]);
   const LBL={smallGroup:"The small group in TREE",friends:"From the observations",interests:"From the observations",expressive:"Languages in the observations, to review",nature:"Outdoors and on the farm, from the observations, to review"};
   for(const k of factKeys){const lines=String(facts[k]).split("\n").filter(Boolean);const ta=ed.querySelector('#conf-editor textarea[data-k="fields.'+k+'"]');const mark="tree-fill-"+id+"-"+k;let done=false;try{done=localStorage.getItem(mark)==="1"}catch(e){}
     if(AUTO.includes(k)&&ta&&!ta.value.trim()&&!ta.readOnly&&!ta.disabled&&!done){addTo("fields."+k,lines);try{localStorage.setItem(mark,"1")}catch(e){}continue}
-    const wrap=ed.querySelector('[data-wrap="fields.'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring")||(ta&&lines.every(l=>ta.value.includes(l))))continue;
-    const box=document.createElement("div");box.className="tree-bring";box.innerHTML="<b>"+LBL[k]+"</b><ul>"+lines.map(l=>"<li>"+l.replace(/</g,"&lt;")+"</li>").join("")+"</ul>";
-    const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add to this section";b.onclick=()=>{const n=addTo("fields."+k,lines);b.textContent=n?"Added":"Already here"};box.append(b);wrap.append(box)}
+    if(ta&&lines.every(l=>ta.value.includes(l)))continue;
+    pick("fields."+k,LBL[k],lines.map(l=>({line:l,html:esc(l)})))}
   const sec=[...ed.querySelectorAll(".sheet-sec")].find(x=>/Educator observations/.test(x.querySelector("h2")?.textContent||""));
   const bar=document.createElement("div");
   if(!items.length&&!docs.length&&!factKeys.length){bar.className="tree-bring-none";bar.style.display="none";ed.append(bar);return}
-  bar.className="tree-bringall";const what=[facts.smallGroup&&"the small group and its members",facts.friends&&"friends",facts.interests&&"threads and projects"].filter(Boolean);bar.innerHTML="<span>"+(what.length?"TREE brought in "+(what.length>1?what.slice(0,-1).join(", ")+" and "+what[what.length-1]:what[0])+". It also holds ":"TREE holds ")+items.length+" accepted DRDP level"+(items.length===1?"":"s")+" and "+docs.length+" piece"+(docs.length===1?"":"s")+" of documentation "+span+". Each shows under its section.</span>";
-  const b=document.createElement("button");b.type="button";b.className="btn sm primary";b.textContent="Add them all";
-  b.onclick=()=>{let n=0;for(const [k,list] of Object.entries(per))if(list.length)n+=addTo("fields."+k,list.map(line));if(docs.length)n+=addTo("fields.documentation",docs.map(d=>d.title+", "+long(iso(d.at))));for(const k of factKeys)n+=addTo("fields."+k,String(facts[k]).split("\n").filter(Boolean));b.textContent=n?"Added":"Already here"};
-  bar.append(b);if(sec){const t=sec.querySelector(".sheet-title");t?t.after(bar):sec.prepend(bar)}else ed.prepend(bar)}
+  bar.className="tree-bringall";const what=[facts.smallGroup&&"the small group and its members",facts.friends&&"friends",facts.interests&&"threads and projects"].filter(Boolean);
+  bar.innerHTML="<span>"+(what.length?"TREE brought in "+(what.length>1?what.slice(0,-1).join(", ")+" and "+what[what.length-1]:what[0])+". It also holds ":"TREE holds ")+"evidence for "+items.length+" DRDP measure"+(items.length===1?"":"s")+" and "+docs.length+" piece"+(docs.length===1?"":"s")+" of documentation "+span+". Each shows under its section to choose from.</span>";
+  if(sec){const t=sec.querySelector(".sheet-title");t?t.after(bar):sec.prepend(bar)}else ed.prepend(bar);
+  pagesSoon()}
+// opened from Today on its first empty section
+function jumpSec(ed){const sk=P.TREE_CONF_SEC;if(!sk)return;const wr=ed.querySelector('[data-wrap="'+sk+'"]');if(!wr)return;P.TREE_CONF_SEC="";
+  setTimeout(()=>{wr.scrollIntoView({block:"center"});const t=wr.querySelector("textarea");if(t&&!t.readOnly)t.focus({preventScroll:true})},300)}
+// the online form says when the printed form will run past its usual two sheets, so an educator can shorten it. It still prints in full.
+let pgTimer=null,pgKey="";
+function pagesSoon(){clearTimeout(pgTimer);pgTimer=setTimeout(pagesNow,1800)}
+async function pagesNow(){const ed=document.getElementById("conf-editor");if(!ed||typeof buildFormsPdf!=="function")return;const cf0=S.confs&&S.confs[ed.dataset.id];if(!cf0)return;
+  const cf=JSON.parse(JSON.stringify(cf0));ed.querySelectorAll("textarea[data-k]").forEach(t=>{const [a,b]=t.dataset.k.split(".");if(b){cf[a]=cf[a]||{};cf[a][b]=t.value}else cf[a]=t.value});
+  const k=JSON.stringify([cf.fields,cf.reflections,cf.prevGoalsProgress,cf.otherSections]);if(k===pgKey)return;pgKey=k;
+  let n=0;try{const blob=await buildFormsPdf([{cf,child:S.children[cf.childId]}]);n=(await window.PDFLib.PDFDocument.load(await blob.arrayBuffer())).getPageCount()}catch(e){return}
+  let note=ed.querySelector(".tree-pages");if(!note){note=document.createElement("div");note.className="tree-pages";const bar=ed.querySelector(".tree-bringall");bar?bar.after(note):ed.prepend(note)}
+  note.hidden=n<=2;note.textContent=n>2?"This form now prints on "+n+" pages instead of 2. Every word still prints. Shortening a long section brings it back to 2.":""}
+document.addEventListener("input",e=>{if(e.target.closest&&e.target.closest("#conf-editor"))pagesSoon()});
 document.addEventListener("click",e=>{const a=e.target.closest("[data-treedoc]");if(!a)return;e.preventDefault();const [k,i]=a.dataset.treedoc.split("|");if(P.TREE_OPEN_DOC)P.TREE_OPEN_DOC(k,i)});
 // a conference's documentation prints after its form, and only the pieces listed in its Documentation Shared section,
 // so a line taken out of that section is left out of the printout. The PDF holds both. Word saves the documentation as a

@@ -1714,7 +1714,7 @@ function showReview(){
     const single=["confDate","confTime","reflDate"].includes(path);
     const def = !String(val||"").trim()? "skip" : cur.trim()? (single? "skip" : "append") : "replace";
     return `<div class="review-row" data-path="${esc(path)}"><div><b class="small">${esc(label)}</b></div>
-      <div><textarea aria-label="${esc(label)}">${esc(val||"")}</textarea>${cur.trim()?`<div class="cur">Already in the record · ${esc(cur.slice(0,240))}${cur.length>240?"…":""}</div>`:""}</div>
+      <div><textarea aria-label="${esc(label)}">${esc(val||"")}</textarea>${cur.trim()?`<div class="cur">Already in the record · ${esc(cur)}</div>`:""}</div>
       <div><select aria-label="What to do with ${esc(label)}"><option value="replace" ${def==="replace"?"selected":""}>Use this</option><option value="append" ${def==="append"?"selected":""}>Add below existing</option><option value="skip" ${def==="skip"?"selected":""}>Skip</option></select></div></div>`; };
   const metaRows = [
     ["confDate","Conference date", toISODate(r.conferenceDate)||pd.date||r.conferenceDate],["confTime","Time",r.conferenceTime],["teacher","Educators",r.teacher],
