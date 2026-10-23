@@ -3752,13 +3752,14 @@ function todayWaiting(){
     const pv=firstLine(n.noticed,50),why=maybe?`Check whether the note means ${sug.join(" or ")}.`:sug.length?"The note names "+sug.join(", ")+".":!momentRooms(n).length?"No class was named and no child was found.":(n.kaymbu.unsure||[]).length?`More than one child is named ${n.kaymbu.unsure.join(" or ")}.`:"No child's name was found in the note.";
     const many=count>1?`${count} photos in this post wait.`:"";
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag",q:"kay|"+n.id})}}
-  // one row for each recent Kaymbu email that needs a look: no educator named, or photos filed in earlier weeks.
+  // one row for each recent Kaymbu email with no educator named.
   // It opens right here with the photos and the educators, so nothing needs another page
   {const rm=myRoom(),wk0=mondayOf(new Date()),bs=new Map(),seenM=new Set(LS.get("tree.kmailSeen",[]));
    for(const n of [...notices.values()].filter(n=>n.kaymbu&&(n.kaymbu.keptAt||0)>Date.now()-14*864e5&&(dir||!rm||momentIn(n,rm)))){const k=kBatchOf(n);const e=bs.get(k);if(e)e.push(n);else bs.set(k,[n])}
    for(const [k,ns] of [...bs.entries()].sort((a,b)=>(b[1][0].kaymbu.keptAt||0)-(a[1][0].kaymbu.keptAt||0))){const n=ns[0];
     const unnamed=ns.some(x=>!String(x.by||"").trim()),early=ns.filter(x=>(x.week||"")<wk0);
-    if(!unnamed&&(!early.length||seenM.has(k)||(n.kaymbu.keptAt||0)<Date.now()-3*864e5))continue;
+    // only an email with no educator named needs anyone. Photos filed in earlier weeks are where they belong and ask nothing
+    if(!unnamed)continue;
     const subj=(n.kaymbu.subject||"").trim(),by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];
     const ats=early.map(x=>x.at||0).sort((a,b)=>a-b);const span=!ats.length?"":ats.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
     out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
