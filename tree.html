@@ -479,6 +479,9 @@ body{margin:0}
 .tabbar{display:none}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:0;background:var(--moss);color:var(--paper);border-radius:999px;padding:13px 20px;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.16);cursor:pointer;display:flex;gap:8px;align-items:center}
 .fab svg{width:18px;height:18px}
+/* Proofread waits at the bottom of any page with writing, across from Keep an observation */
+.prooftab{position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:1.5px solid var(--moss);background:var(--paper);color:var(--moss);border-radius:999px;padding:11px 18px;font:inherit;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.12);cursor:pointer;display:flex;align-items:center;gap:6px}
+.prooftab svg{width:17px;height:17px}
 .card select,.card input{max-width:100%}
 #main{padding-bottom:84px}
 .fab{transition:transform .22s ease,opacity .22s ease}.fab.away{transform:translateY(180%);opacity:0;pointer-events:none}
@@ -493,6 +496,7 @@ body{margin:0}
   .fab{bottom:calc(76px + env(safe-area-inset-bottom,0px));right:14px;width:54px;height:54px;padding:0;justify-content:center}
   .fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .fab svg{width:24px;height:24px}
+  .prooftab{bottom:calc(76px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 16px}
   /* room under the last content, so the round button never covers it */
   #main{padding-bottom:150px}
   .ttop .who .savestate#conn{display:none}
@@ -710,7 +714,6 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     <span class="savestate" id="whoneed"></span>
     <span class="savestate" id="conn">Connecting</span>
     <button class="chip-btn" id="tsearchall" data-tview="search">Search</button>
-    <button class="chip-btn" id="tproof" title="Proofread everything written on this page">Proofread</button>
     <button class="chip-btn" id="tsettings" data-view="settings" hidden>Settings</button>
   </div>
 </div></header>
@@ -726,6 +729,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   </div>
 </div>
 <nav class="tabbar" id="ttab" aria-label="Sections"></nav>
+<button class="prooftab" id="tproof" type="button" hidden title="Proofread everything written on this page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4 4L19 7"/></svg>Proofread</button>
 <button class="fab" id="newnotice" aria-label="Keep an observation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Keep an observation</span></button>
 <datalist id="educators"></datalist><datalist id="placelist"></datalist><datalist id="arealist"></datalist>
 <div class="toast" id="toast" hidden></div>
@@ -1930,7 +1934,8 @@ function foldIntros(){const m=$("#main");if(!m)return;
     const long=[...hd.querySelectorAll(":scope .sub, :scope .hint.muted")].filter(el=>!el.closest("details")&&el.textContent.trim().length>110);
     if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
     long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
-function proofBtn(){const b=$("#tproof");if(b)b.hidden=proofOnSave()}
+function proofBtn(){const b=$("#tproof");if(!b)return;const m=$("#main");
+  b.hidden=!m||isKitchenUser()||view==="moments"||!(view==="conferences"||[...m.querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]")))}
 function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
   const main=$("#main");if(!main)return;const k=lockKey();
   // the evidence beside a plan offers its add buttons only while the plan is open to edit
@@ -11012,14 +11017,16 @@ function proofOnSave(){return !!me()&&(isDirector()||PROOF_SAVE)}
 const SAVE_GATES='#sendplan,#pf-go,[data-tesave],[data-iqmake],[data-streview="1"]';
 const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...proofMain().querySelectorAll("textarea,input,button")];return "nth:"+el.tagName+":"+all.indexOf(el)};
 const proofFind=sel=>{if(!sel)return null;const m=proofMain();if(sel.startsWith("nth:")){const [,tag,n]=sel.split(":");const el=[...m.querySelectorAll("textarea,input,button")][+n];return el&&el.tagName===tag?el:null}try{return m.ownerDocument.querySelector(sel)}catch(e){return null}};
-const proofLabel=el=>{const l=el.closest("label");const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card,details");const h=c&&c.querySelector("h2,h3,h4,summary,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
+const proofLabel=el=>{const l=el.closest("label")||(el.id&&el.ownerDocument.querySelector(`label[for="${CSS.escape(el.id)}"]`));const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card,details");const h=c&&c.querySelector("h2,h3,h4,summary,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
 // every box with writing on the page, including a saved page that is closed until Edit
-function proofEls(){const m=proofMain();if(!m)return [];const locked=m.classList.contains("locked");
+function proofEls(){const m=proofMain();if(!m)return [];const locked=m.classList.contains("locked")||!!m.querySelector(".tree-locked");
   return [...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&el.type!=="search"&&!el.disabled&&(!el.readOnly||locked)&&!el.closest(".proof,[data-noproof]")&&String(el.value).trim().length>=3)}
 const proofFields=()=>proofSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean);
 const proofHash=()=>proofEls().map(el=>el.value).join("\u0001");
 // a box takes the fix and saves the way it always does; the welcome letter and the bin note save here, since they have their own save buttons
 function proofApply(k,v){const el=proofFind(proofSels[+k]);if(!el||!el.isConnected)return false;const m=$("#main");
+  // a saved conference form opens to edit, as pressing its Edit would
+  {const ed=el.closest(".tree-locked");const b=ed&&ed.querySelector(".tree-lockbar button");if(b)b.click()}
   if(lockOn&&m.contains(el)){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
   el.value=v;const W=el.ownerDocument.defaultView||window;el.dispatchEvent(new W.Event("input",{bubbles:true}));el.dispatchEvent(new W.Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}
   if(el.id==="pt-welcome")ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}));
@@ -11060,7 +11067,10 @@ function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=pro
 let proofPassing=false;
 function proofPass(gate){proofClean=proofHash();if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
-  if(t.id==="tproof"){if(proof&&proof.busy)return;proofRun(null);return}
+  if(t.id==="tproof"){if(proof&&proof.busy)return;proofRoot=null;
+    // on the Conferences page the writing is inside the page TREE shows it in
+    if(view==="conferences"){const f=$("#tembed-conferences");try{const r=f&&f.contentDocument&&f.contentDocument.getElementById("app");if(r)proofRoot=r}catch(er){}}
+    proofRun(null);return}
   if(!proof)return;
   if(d.proofshow!=null){const el=proofFind(proofSels[+d.proofshow]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.classList.add("proofhl");setTimeout(()=>el.classList.remove("proofhl"),1600)}return}
   if(d.proofx!=null){proof=null;proofRoot=null;proofPaint();return}
@@ -12023,7 +12033,7 @@ function applyProgram(v){
   else if(v.lens&&typeof v.lens==="object")LENSES=[normLens(Object.assign({year:true},v.lens),0)];
   if(!LENSES.some(l=>l.year))LENSES[0].year=true;
   if(v.print&&typeof v.print==="object")PRINT=Object.assign({schoolDocs:false,schoolRecords:true,names:"first",by:true},v.print);
-  PROOF_SAVE=v.proofSave===true;proofBtn();
+  PROOF_SAVE=v.proofSave===true;try{proofBtn()}catch(e){}
   setLens(lensId);
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
@@ -12098,8 +12108,8 @@ function renderSettings(){
       <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div>
     <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of observation sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
       <div class="seg" role="group" aria-label="Educators' names"><button data-pby="1" aria-pressed="${PRINT.by!==false}">On</button><button data-pby="0" aria-pressed="${PRINT.by===false}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form proofreads it first, and the Proofread button leaves the top bar. Observations save straight away. You have it already, so you can try it before educators do.</div>
-    <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators keep the Proofread button in the top bar."}</div></div>
+  <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
+    <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
