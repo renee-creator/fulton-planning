@@ -7,8 +7,12 @@
   its date, such as TREE readable copies / 2026-10-26 / North Class. A second set started the same day is numbered,
   such as 2026-10-26 2. There is one folder for each Class, one for the school, one for former children and one for
   former educators. Only once the whole new set has arrived are the earlier sets moved to the Drive trash, so only the
-  newest complete set is kept. Evaluations, journals, check-ins and
-  growth are never sent here.
+  newest complete set is kept. A file whose records have not changed since the last whole set is copied from that set
+  here, inside Drive, so TREE makes only the files that changed. Evaluations, journals, check-ins and growth are never
+  sent here.
+
+  To update from the version before the copy step, paste this whole file over the readable-copies script file, save,
+  and do step 4 below, Deploy, Manage deployments, New version. Until then TREE makes every file itself, as before.
 
   Setup, once
   1. In script.google.com, signed in as the TREE mailbox, open the project that holds the TREE Kaymbu inbox script.
@@ -90,6 +94,26 @@ function readableAsk_(body) {
     if (code === 308) return { ok: true };
     if (code === 200 || code === 201) { cache.remove(key); let id = ''; try { id = JSON.parse(res.getContentText()).id || ''; } catch (e) {} return { id: id || 'done' }; }
     return { error: 'Drive did not keep a piece of ' + name + ', ' + code + ' ' + res.getContentText().slice(0, 200) };
+  }
+  if (body.op === 'readable-copy') {
+    // a file whose records have not changed since the last whole set is copied from that set, inside Drive, so TREE
+    // does not make it again or load its photos again
+    const from = String(body.from || '');
+    if (!/^\d{4}-\d{2}-\d{2}( \d{1,2})?$/.test(from) || from === run) return { error: 'The week to copy from is missing' };
+    const olds = root.getFoldersByName(from); if (!olds.hasNext()) return { ok: true, copied: [] };
+    const old = olds.next(), week = readableChild_(root, run), copied = [];
+    (Array.isArray(body.files) ? body.files : []).slice(0, 40).forEach(function (path) {
+      path = String(path); const i = path.indexOf('/'); if (i < 1) return;
+      const place = path.slice(0, i), name = path.slice(i + 1);
+      if (!READABLE_PLACES.test(place) || !/^[^\/\\]{1,160}\.(pdf|docx)$/i.test(name)) return;
+      const of = old.getFoldersByName(place); if (!of.hasNext()) return;
+      const src = of.next().getFilesByName(name); if (!src.hasNext()) return;
+      const f = src.next(); if (f.isTrashed()) return;
+      const to = readableChild_(week, place);
+      const same = to.getFilesByName(name); while (same.hasNext()) same.next().setTrashed(true);
+      f.makeCopy(name, to); copied.push(path);
+    });
+    return { ok: true, copied: copied };
   }
   if (body.op === 'readable-finish') {
     // the new set is counted first, and only a whole set sends earlier weeks to the trash

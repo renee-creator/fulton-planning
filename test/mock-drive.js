@@ -17,7 +17,8 @@ function start(opt) {
   const blob = (bytes, type, name) => ({ bytes: Buffer.from(bytes), type: type || 'application/octet-stream', name: name || '', getBytes() { return this.bytes; }, setName(x) { this.name = x; return this; }, setContentType(t) { this.type = t; return this; }, copyBlob() { return blob(this.bytes, this.type, this.name); }, getDataAsString() { return this.bytes.toString('utf8'); } });
   const isTrashed = id => { for (let x = nodes.get(id); x; x = nodes.get(x.parent)) if (x.trashed) return true; return false; };
   function fileObj(id) { const x = nodes.get(id); return { getId: () => id, getName: () => x.name, getSize: () => x.bytes.length, getMimeType: () => x.type, isTrashed: () => isTrashed(id), setTrashed: t => { x.trashed = !!t; },
-    getBlob: () => blob(x.bytes, x.type, x.name), getParents: () => iter(x.parent ? [folderObj(x.parent)] : []) }; }
+    getBlob: () => blob(x.bytes, x.type, x.name), getParents: () => iter(x.parent ? [folderObj(x.parent)] : []),
+    makeCopy: (nm, f) => fileObj(add({ name: nm, parent: f.getId(), bytes: Buffer.from(x.bytes), type: x.type })) }; }
   function folderObj(id) { const x = nodes.get(id); return { getId: () => id, getName: () => x.name, isTrashed: () => isTrashed(id), setTrashed: t => { x.trashed = !!t; },
     getFolders: () => iter(kids(id, true).map(k => folderObj(k.id))), getFiles: () => iter(kids(id, false).map(k => fileObj(k.id))),
     getFoldersByName: nm => iter(kids(id, true).filter(k => k.name === nm).map(k => folderObj(k.id))), getFilesByName: nm => iter(kids(id, false).filter(k => k.name === nm).map(k => fileObj(k.id))),

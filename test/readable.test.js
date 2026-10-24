@@ -134,6 +134,11 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     const n0 = d.tree().length;
     await s.p.click('[data-rcnow]'); await s.p.waitForFunction(() => !rcNow && /The readable copies are in Google Drive/.test(document.querySelector('#toast').textContent), null, { timeout: 20000 });
     assert.strictEqual(d.trashed().length, 1); assert.strictEqual(d.tree().length, n0); assert.ok(d.tree().every(f => / 2\//.test(f)));
+    // the second set copies every file whose records have not changed, inside Drive, and makes only the rest
+    const second = d.calls.slice(d.calls.findIndex((c, i) => c.op === 'readable-start' && i > 0 && d.calls.slice(0, i).some(x => x.op === 'readable-finish')));
+    assert.ok(second.some(c => c.op === 'readable-copy'), 'files were copied');
+    assert.deepStrictEqual(second.filter(c => c.op === 'readable-put').map(c => c.name), ['Team inquiry Rest time full.pdf'], 'only the file that did not finish last time is made again');
+    assert.match(await s.p.evaluate(() => { renderSettings(); return document.querySelector('#main').innerText; }), /copied unchanged from the set before/);
     // a week with no set says so
     await s.p.evaluate(() => { readableInfo = Object.assign({}, readableInfo, { lastAt: Date.now() - 16 * 864e5 }); renderSettings(); });
     assert.match(await s.p.evaluate(() => document.querySelector('#main').innerText), /Last week's set was missed/);

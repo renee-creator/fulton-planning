@@ -37,7 +37,21 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
       let j; try { j = await drive.ask({ op: 'readable-start', run }, 120000); } catch (e) { claim = null; return { status: 502, error: 'The mailbox script did not answer. ' + e.message }; }
       if (!p || p.run !== run) save({ pending: { run, at: Date.now(), by: who } });
       log('Readable copies started by', who, 'for', run + ',', (j.have || []).length, 'files already there');
-      return { run, have: Array.isArray(j.have) ? j.have : [] };
+      // the last complete set, with what each of its files was made from, so a file whose records have not changed is
+      // copied from it inside Drive instead of being made again
+      const prev = info().run && info().run !== run && info().sigs && typeof info().sigs === 'object' ? { run: info().run, sigs: info().sigs } : null;
+      return { run, have: Array.isArray(j.have) ? j.have : [], prev };
+    }
+    if (a === 'copy') {
+      if (!mine(b)) return { status: 409, error: 'Another device is making the readable copies, or this one waited too long. Try again in a few minutes.' };
+      claim.at = Date.now();
+      const run = String(b.run || ''), from = String(b.from || ''); const prevRun = info().run;
+      if (!RUN.test(run) || !RUN.test(from) || from !== prevRun) return { status: 400, error: 'The request could not be read.' };
+      const files = (Array.isArray(b.files) ? b.files : []).map(String).filter(f => { const [folder, ...rest] = f.split('/'); return FOLDER.test(folder) && NAME.test(rest.join('/')); }).slice(0, 40);
+      // a mailbox script from before the copy step does not know this request, so the device makes those files itself
+      let j; try { j = await drive.ask({ op: 'readable-copy', run, from, files }, 180000); }
+      catch (e) { if (/unknown request/i.test(e.message)) return { unsupported: true, copied: [] }; return { status: 502, error: 'The mailbox script did not answer. ' + e.message }; }
+      return { copied: Array.isArray(j.copied) ? j.copied.map(String) : [] };
     }
     if (!mine(b)) return { status: 409, error: 'Another device is making the readable copies, or this one waited too long. Try again in a few minutes.' };
     claim.at = Date.now();
@@ -57,7 +71,9 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
       let j; try { j = await drive.ask({ op: 'readable-finish', run, expect: files }, 180000); } catch (e) { return { status: 502, error: 'The new set is in Drive, and last week\'s is still there too. ' + e.message }; }
       // a print TREE could not make is named, so the director can see which one to look at
       const skipped = (Array.isArray(b.skipped) ? b.skipped : []).slice(0, 20).map(s => String(s).slice(0, 200));
-      save({ lastAt: Date.now(), run, files: Number(j.kept) || files, bytes: Number(b.bytes) || 0, skipped, by: who, pending: null, tried: null });
+      // what each file in the set was made from, so next week's set copies the ones whose records have not changed
+      const sigs = {}; if (b.sigs && typeof b.sigs === 'object') for (const [k, v] of Object.entries(b.sigs).slice(0, 5000)) { const [folder, ...rest] = String(k).split('/'); if (FOLDER.test(folder) && NAME.test(rest.join('/')) && /^[a-z0-9]{1,40}$/.test(String(v))) sigs[k] = String(v); }
+      save({ lastAt: Date.now(), run, files: Number(j.kept) || files, bytes: Number(b.bytes) || 0, copied: Number(b.copied) || 0, skipped, sigs, by: who, pending: null, tried: null });
       claim = null; log('Readable copies kept for', run + ',', j.kept, 'files,', j.trashed || 0, 'older sets to the Drive trash');
       return { ok: true, kept: j.kept, trashed: j.trashed || 0 };
     }

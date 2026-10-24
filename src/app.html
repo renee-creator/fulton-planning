@@ -12439,7 +12439,7 @@ const rcText=()=>rcNow?`Making readable copies now, ${rcNow.done.toLocaleString(
 function rcShow(){const el=$("#rc-now");if(el)el.textContent=rcText();const b=document.querySelector("[data-rcnow]");if(b)b.disabled=!!rcNow}
 function readableHtml(){const r=readableInfo||{},at=r.lastAt,day=ms=>whenAt(ms,{weekday:"long",month:"long",day:"numeric"});
   const t=r.tried&&r.tried.at>(at||0)?r.tried:null;
-  const lines=[at?`${(r.files||0).toLocaleString()} files${r.bytes?", "+rcSize(r.bytes):""}, in TREE readable copies in the mailbox's Google Drive.`:"No set has been made yet."];
+  const lines=[at?`${(r.files||0).toLocaleString()} files${r.bytes?", "+rcSize(r.bytes)+" made new":""}${r.copied?", "+r.copied.toLocaleString()+" copied unchanged from the set before":""}, in TREE readable copies in the mailbox's Google Drive.`:"No set has been made yet."];
   if(rcMissed())lines.push("Last week's set was missed, so the newest set is more than a week old.");
   const sk=Array.isArray(r.skipped)?r.skipped:[];
   if(at&&sk.length)lines.push(`${sk.length} file${sk.length===1?"":"s"} could not be made, so the set leaves ${sk.length===1?"it":"them"} out. ${sk.length===1?"It is":"They are"} ${sk.slice(0,5).map(x=>x.split("/").pop()).join(", ").replace(/, ([^,]*)$/," and $1")}${sk.length>5?" and more":""}. Printing ${sk.length===1?"it":"them"} from TREE shows the same problem.`);
@@ -12475,42 +12475,71 @@ async function rcConferences(each){const fr=document.createElement("iframe");fr.
     if(!list)throw new Error("The conferences did not open");
     await each(list,id=>fr.contentWindow.TREE_CONF_FILES(id))}
   finally{fr.remove()}}
+/* A week's set is light. Each file carries a fingerprint of the records it is made from. A file whose records have not
+   changed since the last whole set is copied from that set inside Drive by the mailbox script, so TREE does not make it
+   again or load its photos again. Only the files that changed are made here, one at a time, and only while the director
+   is not tapping or typing, so TREE keeps answering. A mailbox script from before the copy step makes TREE make every
+   file, as before. The files themselves are TREE's own prints, which only a browser makes. */
+const RC_V="8";
+function rcHash(str){let h1=0x811c9dc5,h2=0x1000193;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,16777619);h2=Math.imul(h2^c,2246822507)}return ((h1>>>0).toString(36)+(h2>>>0).toString(36))}
+const rcSig=(...x)=>rcHash(RC_V+"|"+JSON.stringify(x));
+let rcActive=0;["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,()=>{rcActive=Date.now()},{passive:true,capture:true}));
+async function rcIdle(){await new Promise(r=>setTimeout(r,80));for(let i=0;i<400&&Date.now()-rcActive<5000;i++)await new Promise(r=>setTimeout(r,1500));await new Promise(r=>(window.requestIdleCallback?requestIdleCallback(r,{timeout:3000}):setTimeout(r,50)))}
 async function rcMake(manual){
-  if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[]};rcShow();
+  if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[],copied:0};rcShow();
   const keep=new Set(photoCache.keys()),clear=()=>{for(const k of [...photoCache.keys()])if(!keep.has(k))photoCache.delete(k)};let run="";
   try{
     const st=await window.FP_API("/api/readable",{action:"start",device:RC_DEVICE});
     if(st.busy){rcNow=null;rcShow();if(manual)toast("Another computer or iPad is making the readable copies now.");return}
-    run=st.run;const have=new Set(st.have||[]),used=new Set();let files=0;
+    run=st.run;const have=new Set(st.have||[]),used=new Set(),prev=st.prev&&st.prev.sigs?st.prev:null,sigs={};let files=0,canCopy=!!prev;
     // two pieces with the same name in one folder are told apart by a number
     const uniq=(folder,n)=>{const b=safeFile(n)||"Untitled";let k=b,i=2;while(used.has(folder+"/"+k)){k=b+" "+i;i++}used.add(folder+"/"+k);return k};
+    // the files of the last whole set that were made from the same records, copied inside Drive, forty at a time
+    const copy=async paths=>{const want=paths.filter(x=>!have.has(x));if(!canCopy||!want.length)return new Set(paths.filter(x=>have.has(x)));
+      const got=new Set(paths.filter(x=>have.has(x)));
+      for(let i=0;i<want.length;i+=40){const r=await window.FP_API("/api/readable",{action:"copy",device:RC_DEVICE,run,from:prev.run,files:want.slice(i,i+40)});
+        if(r.unsupported){canCopy=false;break}for(const x of r.copied||[]){got.add(x);have.add(x);rcNow.copied++}}
+      return got};
+    const same=(folder,sig)=>prev?Object.keys(prev.sigs).filter(k=>prev.sigs[k]===sig&&k.startsWith(folder+"/")):[];
     // a print that cannot be made is left out and named on the card, and the set still finishes. A file that cannot be sent stops the set.
-    const put=async(folder,name,blob)=>{if(have.has(folder+"/"+name)){files++;rcNow.done++;rcShow();return}
-      if(!blob||!blob.size){rcNow.skipped.push(folder+"/"+name);rcNow.done++;rcShow();return}
+    const put=async(folder,name,blob,sig)=>{if(sig)sigs[folder+"/"+name]=sig;if(have.has(folder+"/"+name)){files++;rcNow.done++;rcShow();return}
+      if(!blob||!blob.size){delete sigs[folder+"/"+name];rcNow.skipped.push(folder+"/"+name);rcNow.done++;rcShow();return}
       files++;try{rcNow.bytes+=await rcSend(run,folder,name,blob)}catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why=(e&&e.message)||""}
-      rcNow.done++;rcShow();await new Promise(r=>setTimeout(r,150))};
+      rcNow.done++;rcShow()};
     const jobs=rcJobs();rcNow.total=jobs.length*2;rcShow();
-    for(const j of jobs){const base=uniq(j.folder,j.name);
-      if(have.has(j.folder+"/"+base+".pdf")&&have.has(j.folder+"/"+base+".docx")){files+=2;rcNow.done+=2;rcShow();continue}
-      let docs=[];try{docs=j.docs();if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,true)}catch(e){docs=[];rcNow.skipped.push(j.folder+"/"+base+".pdf",j.folder+"/"+base+".docx");rcNow.done+=2}
-      if(docs.length){await put(j.folder,base+".pdf",await makePdf(docs,base+".pdf","quiet").catch(()=>null));await put(j.folder,base+".docx",await makeDocx(docs,base+".docx","quiet").catch(()=>null))}
+    for(const j of jobs){const base=uniq(j.folder,j.name),pdf=j.folder+"/"+base+".pdf",doc=j.folder+"/"+base+".docx";
+      let docs=[];try{docs=j.docs()}catch(e){docs=null}
+      if(!docs||!docs.length){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();continue}
+      const sig=rcSig(j.folder,base,docs);
+      if(prev&&prev.sigs[pdf]===sig&&prev.sigs[doc]===sig){const got=await copy([pdf,doc]);if(got.has(pdf)&&got.has(doc)){sigs[pdf]=sigs[doc]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
+      await rcIdle();
+      try{if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,true)}catch(e){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();clear();continue}
+      await put(j.folder,base+".pdf",have.has(pdf)?null:await makePdf(docs,base+".pdf","quiet").catch(()=>null),sig);
+      await rcIdle();
+      await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
     try{staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
-      for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records");
-        for(const ext of [".pdf",".docx"])await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null))}}
+      for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
+        const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
+        if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
+        for(const ext of [".pdf",".docx"]){await rcIdle();await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null),sig)}}}
     catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The educators' records could not be read. "+((e&&e.message)||"")}
-    // each conference as it prints, in the child's Class, or Former children
+    // each conference as it prints, in the child's Class, or Former children. One whose record and child have not
+    // changed is copied, every file it made last time.
     try{await rcConferences(async(list,make)=>{rcNow.total+=list.length*2;rcShow();
       for(const x of list){const c=children.get(x.childId),folder=!c?"School":kidAt(c)?(CLASSROOMS.includes(c.classroom)?c.classroom+" Class":"School"):"Former children";
+        const sig=rcSig(folder,"conference",x,c||null),olds=same(folder,sig);
+        if(olds.length){const got=await copy(olds);if(olds.every(k=>got.has(k))){for(const k of olds){sigs[k]=sig;used.add(k.replace(/\.(pdf|docx)$/i,""))}files+=olds.length;rcNow.done+=2;rcShow();continue}}
+        await rcIdle();
         const got=await make(x.id).catch(()=>[]);if(!got.length){rcNow.skipped.push(folder+"/Conference "+(c?kidName(c):"form"));rcNow.done+=2}
-        const names=new Map();for(const f of got){const m=String(f.filename||"").match(/^(.*)(\.pdf|\.docx)$/i);if(!m)continue;if(!names.has(m[1]))names.set(m[1],uniq(folder,m[1].replace(/-+$/,"")));await put(folder,names.get(m[1])+m[2].toLowerCase(),f.blob)}
+        const names=new Map();for(const f of got){const m=String(f.filename||"").match(/^(.*)(\.pdf|\.docx)$/i);if(!m)continue;if(!names.has(m[1]))names.set(m[1],uniq(folder,m[1].replace(/-+$/,"")));await put(folder,names.get(m[1])+m[2].toLowerCase(),f.blob,sig)}
         clear()}})}
     catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The conferences could not be read. "+((e&&e.message)||"")}
     if(rcNow.failed)throw new Error(`${rcNow.failed} file${rcNow.failed===1?"":"s"} could not be sent to Google Drive. ${rcNow.why}`.trim());
-    const fin=await window.FP_API("/api/readable",{action:"finish",device:RC_DEVICE,run,files,bytes:rcNow.bytes,skipped:rcNow.skipped});
+    const fin=await window.FP_API("/api/readable",{action:"finish",device:RC_DEVICE,run,files,bytes:rcNow.bytes,copied:rcNow.copied,skipped:rcNow.skipped,sigs});
     // the card shows the new set at once, before the server's own record reaches this page
-    readableInfo=Object.assign({},readableInfo,{lastAt:Date.now(),run,files:Number(fin.kept)||files,bytes:rcNow.bytes,skipped:rcNow.skipped.slice(0,20),pending:null,tried:null});
+    readableInfo=Object.assign({},readableInfo,{lastAt:Date.now(),run,files:Number(fin.kept)||files,bytes:rcNow.bytes,copied:rcNow.copied,skipped:rcNow.skipped.slice(0,20),pending:null,tried:null});
     if(manual)toast(`The readable copies are in Google Drive, ${Number(fin.kept||files).toLocaleString()} files.`)}
   catch(e){const why=(e&&e.message)||"The readable copies did not finish.";
     if(run&&!(e&&e.status===409)){await window.FP_API("/api/readable",{action:"fail",device:RC_DEVICE,run,done:rcNow.done,total:rcNow.total,why}).catch(()=>{});readableInfo=Object.assign({},readableInfo,{tried:{at:Date.now(),run,done:rcNow.done,total:rcNow.total,why}})}
