@@ -3709,7 +3709,7 @@ const GROW_VIEWS=["stgrow","stplan","stjour","stci","stmom","stpdd"];
 function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{});if(isDirector()&&!VIEW_AS)return true;
   if(isKitchenUser())return k==="strec"&&!!c.records;
   // a new hire's own four pages, which the server also holds them to
-  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd");
+  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
   if(["stteam","st27","stdrill","stfiles"].includes(k))return false;
   // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
   if(GROW_VIEWS.includes(k))return !!c.growth;

@@ -293,6 +293,9 @@ module.exports = function growthModule(c) {
     const dir = isDirector(me); const who = String(body.name || me);
     const deny = m => err(req, res, 403, m || 'This is not open yet.');
     if (!allowed(me)) return deny('This part of TREE is not open yet.');
+    // a new hire before full access reaches only their own growth, never other staff's moments or the PD days
+    const OWN = ['boot', 'mine', 'plan', 'journal/open', 'journal/save', 'journal/bring', 'checkin/pre', 'checkin/followed', 'eval/self', 'eval/goals', 'modules', 'module/progress', 'schedule'];
+    if (isNewHire(me) && !OWN.includes(P)) return deny('This opens once the director turns on full access.');
     const y = thisYear();
 
     if (P === 'boot') {
@@ -301,7 +304,7 @@ module.exports = function growthModule(c) {
       json(req, res, 200, { year: y, areas: AREAS, points: POINTS, continuum: continuum(y), modules: MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: t, desc: d, areas: a, ready: !!modules()[k] || k === 'licensing' || k === 'howto', minutes: (modules()[k] || {}).minutes || 0 })),
         feedback: FEEDBACK, audience: AUDIENCE, me: { name: me, director: dir, takesPart: takesPart(me), room: roomOf(me), lighter: lighter(me), journalEvery: +profileOf(me).journalEvery || 1, curriculumFrom: profileOf(me).curriculumFrom || '', role: roleOf(me) },
         people: dir ? people().map(n => ({ name: n, room: roomOf(n), role: roleOf(n), lighter: lighter(n), checkin: profileOf(n).checkin || '', planHour: profileOf(n).planHour || '', startDate: profileOf(n).startDate || '', curriculumFrom: profileOf(n).curriculumFrom || '' })) : [],
-        team: people().map(n => ({ name: n, room: roomOf(n) })), schedule: { now: s && Object.assign({}, s, { list: mineOnly(s.list) }), next: nx && Object.assign({}, nx, { list: mineOnly(nx.list) }) },
+        team: isNewHire(me) ? [] : people().map(n => ({ name: n, room: roomOf(n) })), schedule: { now: s && Object.assign({}, s, { list: mineOnly(s.list) }), next: nx && Object.assign({}, nx, { list: mineOnly(nx.list) }) },
         settings: { checkin: Object.assign({ week: 1, secondTime: '13:00', minutes: 20 }, school().checkin || {}), meeting: Object.assign({ start: '13:15', end: '14:30' }, school().meeting || {}) }, today: today() });
       return;
     }
