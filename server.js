@@ -436,8 +436,8 @@ function restoreFormer(a) {
    Nothing is removed until she chooses Remove and confirms it. A period that cannot be confirmed there is left blank
    for her to set. The removed files stay in the records' history on GitHub and in the weekly backups made before. ---------- */
 const KEEP_SOURCES = {
-  child: { years: 3, reg: 'Title 22, section 101221, Children\'s Records', words: 'Originals or photocopies of all children\'s records shall be kept for at least three years following termination of service to the child.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc5.pdf' },
-  staff: { years: 3, reg: 'Title 22, section 101217, Personnel Records', words: 'All personnel records shall be retained for at least three years following termination of employment.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc4.pdf' } };
+  child: { years: 3, reg: 'Title 22, section 101221(g), Children\'s Records', words: 'Originals or photocopies of all children\'s records shall be kept for at least three years following termination of service to the child.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc5.pdf' },
+  staff: { years: 3, reg: 'Title 22, section 101217(d), Personnel Records', words: 'All personnel records shall be retained for at least three years following termination of employment.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc4.pdf' } };
 function keepDoc() { const r = store.recs.settings.get('keeping'); return r && !r.deleted && r.doc ? r.doc : {}; }
 const KEEP_FIELD = { child: 'childYears', staff: 'staffYears' };
 const keepYears = kind => { const d = keepDoc(), f = KEEP_FIELD[kind]; if (!(f in d)) return KEEP_SOURCES[kind].years || 0; return +d[f] > 0 ? +d[f] : 0; };

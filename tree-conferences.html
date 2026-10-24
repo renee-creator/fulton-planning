@@ -1229,7 +1229,7 @@ function viewSettings(){
     <div class="stack" style="gap:10px"><div class="lbl" style="font-weight:600">Educators by class</div><div class="hint small muted"><i>Names, separated by commas. These are listed under Settings for reference and for the small groups below.</i></div>
       ${s.classrooms.map(r=>`<div class="field"><label for="s-ed-${esc(r)}">${esc(r)}</label><input id="s-ed-${esc(r)}" data-room="${esc(r)}" value="${esc((s.educators?.[r]||[]).join(", "))}" ${canEdit()?"":"disabled"}></div>`).join("")}
     </div>
-    <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, classroom, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${canEdit()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
+    <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, Class, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${canEdit()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
     ${canEdit()?`<div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>`:""}
   </form>
   <div class="panel stack">
@@ -1549,7 +1549,7 @@ async function buildFormsPdf(items){
       const r=await doc.embedFont(FF.r,NOLIG), b=await doc.embedFont(FF.s,NOLIG), t=await doc.embedFont(FF.b,NOLIG); F={r,b,i:r,t}; }catch(e){ F=null; } }
   if(!F) F={r:await doc.embedFont(StandardFonts.Helvetica), b:await doc.embedFont(StandardFonts.HelveticaBold), i:await doc.embedFont(StandardFonts.HelveticaOblique), t:await doc.embedFont(StandardFonts.TimesRomanBold)};
   const charset=new Set(F.r.getCharacterSet());
-  const clean=s=>String(s??"").replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,"-").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
+  const clean=s=>String(s??"").replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\s*[\u2013\u2014]\s*/g,", ").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
   const INK=rgb(.13,.16,.14), GRAY=rgb(.36,.4,.37), LINE=rgb(.6,.65,.62), GREEN=rgb(.894,.925,.902), GOLD=rgb(.79,.59,.16), CREAM=rgb(.992,.953,.847);
   const W=612,H=792,M=36,TW=W-2*M;
   const wrap=(text,font,size,width)=>{ const out=[]; for(const para of clean(text).split("\n")){ if(!para.trim()){ out.push(""); continue; } let line="";

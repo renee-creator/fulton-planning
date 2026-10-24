@@ -1535,7 +1535,7 @@ function renderMain(){
     h+=fieldCard(p,f);
   }
   if(F.web)h+=webEditor(p);
-  if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's classroom newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
+  if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's Class newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" data-talk="1" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
   h+=sendHtml(p)+feedbackHtml(p)+`
@@ -1602,7 +1602,7 @@ Return only the section text, with no preface.
 
 ${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
 ${teamSourceText(src)}${lastWeekAftersText(p)}${threadsForClaude(p)}`;
-  try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\u2014/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
+  try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\s*[\u2014\u2013]\s*/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
   catch(err){suggest[key]={status:"error",error:assistError(err?.code||"unknown","Your text is unchanged."),from:"ind"}}
   if(currentId===p.id)rerenderCard(p,"interests");
 }
@@ -1756,7 +1756,7 @@ ${FORMS[p.type].name}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+p.classroo
 ${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.\n"+teamSourceText(teamSources(p)):""}${p.type==="classroom"?lastWeekAftersText(p):""}${thText}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
-    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const c=v=>String(v||"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
     const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:c(b?.name),materials:c(b?.materials)})).filter(b=>b.name).slice(0,6);
     if(!c(out?.focus)&&!br.length)throw {code:"empty_completion"};
     const conn=(Array.isArray(out?.connections)?out.connections:[]).filter(x=>Array.isArray(x)&&x.length===2).map(x=>[+x[0],+x[1]]).filter(([a,b])=>a!==b&&a>=0&&b>=0&&a<br.length&&b<br.length);
@@ -2175,9 +2175,9 @@ async function drdpRead(v,cs,S){
     const level=drdpLevelOk(v,code,m.level);if(!level)continue;
     // at most two measures for each child, the clearest first
     if(items.filter(x=>x.childId===c.id).length>=2)continue;
-    items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:sentFit(String(m.evidence||"").replace(/—/g,", "),600)});
+    items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:sentFit(String(m.evidence||"").replace(/\s*[—–]\s*/g,", "),600)});
   }
-  const clean=t=>{t=String(t||"").replace(/—/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":sentFit(t,900)};
+  const clean=t=>{t=String(t||"").replace(/\s*[—–]\s*/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":sentFit(t,900)};
   return {items:items.slice(0,12),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
 }
 // without TREE, or when an educator asks for it, keywords point to possible measures. They give no level.
@@ -3815,7 +3815,7 @@ Return only the sentences.
 
 What the educators wrote.
 ${src.map(n=>`Kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`).join("\n")}`;
-  try{const r=await sample(prompt,{modelTier:"default",cache:false});slideSug[s.id]=String(r.text||"").replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/—/g,", ").trim()||undefined;if(!slideSug[s.id])toast("No draft this time. Nothing changed.")}
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});slideSug[s.id]=String(r.text||"").replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[—–]\s*/g,", ").trim()||undefined;if(!slideSug[s.id])toast("No draft this time. Nothing changed.")}
   catch(e){delete slideSug[s.id];toast(assistError(e?.code||"unknown","The slide is unchanged."))}
   if(view==="slide")renderSlide();
 }
@@ -4635,7 +4635,7 @@ function renderWeekBoard(){
     <div class="sub">Individual plans come first on Monday. The team writes the Classroom plan from them, and nobody's absence holds it up.</div></div>
     <span class="actions"><button class="btn small ghost" id="importbtn">Upload a plan or photo</button></span></div></div>
   <div class="spread" style="margin:4px 0 14px"><div class="weekbar"><button class="iconbtn" id="prevwk" aria-label="Previous week">‹</button><b>${esc(parseIso(week).toLocaleDateString("en-US",{month:"long",day:"numeric"}))}</b><button class="iconbtn" id="nextwk" aria-label="Next week">›</button>${week!==thisWk?`<button class="linkbtn" data-tthisweek="1">This week</button>`:""}</div>
-    <div class="tseg" role="group" aria-label="Classroom">${CLASSROOMS.map(r=>`<button data-room="${r}" aria-pressed="${r===room}">${r}</button>`).join("")}</div></div>
+    <div class="tseg" role="group" aria-label="Class">${CLASSROOMS.map(r=>`<button data-room="${r}" aria-pressed="${r===room}">${r}</button>`).join("")}</div></div>
   <div class="tgrid2">
     <section class="card"><div class="lbl">Individual plans</div><div class="tlist">
       ${groups.map(g=>{const p=planFor(g);return `<button class="titem two press" ${p?`data-open="${p.id}"`:`data-newind="${esc(g.name)}" data-room="${esc(room)}"`}><div style="min-width:0"><b>${esc(g.name)} group</b><div class="cnt">${esc(p&&p.educator||g.educator||"")}${p&&has(p.fields?.observation)?" · "+esc(first(p.fields.observation)):""}</div></div>${statusPill(p)}</button>`}).join("")}
@@ -4683,7 +4683,7 @@ const nlShift=(k,n)=>{const [y,m]=k.split("-").map(Number);return nlKey(new Date
 const nlSchoolYear=k=>{const [y,m]=k.split("-").map(Number);return m>=8?y:y-1};
 const nlDoc=k=>newsletters.get("nl-"+k)||null;
 const nlLib=()=>newsletters.get("library")||{id:"library",items:[]};
-const nlClean=s=>String(s??"").replace(/\*+/g,"").replace(/\s*—\s*/g,", ").replace(/\s+–\s+/g,", ").trim();
+const nlClean=s=>String(s??"").replace(/\*+/g,"").replace(/\s*[—–]\s*/g,", ").trim();
 function nlCur(){if(!nlMonth){const d=new Date();nlMonth=nlKey(d.getDate()>=15?d:new Date(d.getFullYear(),d.getMonth()-1,1));if(!nlDoc(nlMonth)&&nlDoc(nlKey(d)))nlMonth=nlKey(d)}return nlMonth}
 const nlTimers={};
 function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
@@ -5498,7 +5498,7 @@ ${cur}`;
     try{const r=await sample(prompt,{modelTier:attempt?"quick":"default",cache:false,onText:u=>{const el=$("#sg-"+k);if(el)el.textContent=u.text;if(suggest[key])suggest[key].text=u.text}});out=(r.text||"").trim();code=""}
     catch(err){code=err?.code||"unknown";console.warn("Strengthen failed",err);if(code!=="upstream_error"&&code!=="empty_completion"&&code!=="invalid_request")break}
   }
-  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\u2014/g,", ").trim();
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
   const P=plans.get(p.id)||p;
   suggest[key]=out?{status:"ready",text:out,base:cur}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
   if(currentId===P.id)rerenderCard(P,k);
@@ -5527,7 +5527,7 @@ ${notes}`;
     const out=await sample.json(prompt,{modelTier:"default",cache:false});
     p=plans.get(p.id)||p;
     let n=0;
-    for(const f of empty){const v=out?.[f.k];if(typeof v==="string"&&v.trim()){p.fields[f.k]=v.trim().replace(/—/g,", ");n++}}
+    for(const f of empty){const v=out?.[f.k];if(typeof v==="string"&&v.trim()){p.fields[f.k]=v.trim().replace(/\s*[—–]\s*/g,", ");n++}}
     if(wantWeb&&out?.web&&typeof out.web==="object"){const w=out.web;p.web.focus=String(w.focus||"");const br=Array.isArray(w.branches)?w.branches.slice(0,6).map(b=>({name:String(b?.name||""),materials:String(b?.materials||"")})).filter(b=>b.name):[];if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=langPick(w.languages);p.web.questions=String(w.questions||"");p.web.environment=String(w.environment||"");n++}
     persist(p);renderMain();toast(n?`Filled ${n} section${n>1?"s":""}. Read each one and make it yours.`:"Your notes did not match any empty section.");
   }catch(err){btn.disabled=false;$("#draftstate").textContent="";toast(assistError(err?.code||"unknown","Nothing was changed."))}
@@ -5536,7 +5536,7 @@ ${notes}`;
 /* ---------- Printable PDF ---------- */
 const PW=612,PH=792,M=40,CW=PW-2*M,BOTTOM=PH-50;
 const C={ink:[34,51,42],moss:[47,90,67],muted:[93,110,99],line:[176,192,180],soft:[234,241,235],marigold:[196,122,6],paper:[255,255,255]};
-function clean(s){return String(s??"").replace(/—/g,", ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,"...").replace(/[^\x09\x0A\x0D\x20-\x7E -ÿ–•]/g,"")}
+function clean(s){return String(s??"").replace(/\s*[—–]\s*/g,", ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,"...").replace(/[^\x09\x0A\x0D\x20-\x7E -ÿ–•]/g,"")}
 const CYCLE=["Informal observation","Assumptions, outcomes, goals, biases","Provocation","Formal observation","Documentation","Reflection"];
 const CYCLE_TEXT=["OBSERVE","PROVOKE","DOCUMENT","REFLECT","EVOLVE"].join("  \u2022  ");
 let pageInfo={};
@@ -6561,7 +6561,7 @@ Moments, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"moments"});
-    const c2=v=>String(v||"").replace(/—/g,", ").trim();
+    const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();
     const patterns=(Array.isArray(out?.patterns)?out.patterns:[]).map(p=>({name:wordCut(c2(p&&p.name).replace(/\s*[.;]+$/,""),44),why:sentCut(c2(p&&p.why),320),
       ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6),matchId:followed.some(t=>t.id===(p&&p.thread))?p.thread:""})).filter(p=>p.name&&p.ids.length).slice(0,5);
     for(const p of patterns)if(!p.matchId)delete p.matchId;
@@ -6576,7 +6576,7 @@ function momentsDocs(long,cap){
   const all=momentsIn();
   if(!all.length)return[];
   const s=momentsScan();
-  const meta=[["Classrooms",nRoom==="All"?"All":nRoom==="none"?"No class":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
+  const meta=[["Classes",nRoom==="All"?"All":nRoom==="none"?"No class":nRoom],["Kept",MRANGE_WORDS[mRange]||""],["Read",mGroupLabel()]];
   const blocks=[];
   if(s&&has(s.summary)){blocks.push(dLead("What these observations keep returning to",s.summary));
     const nw=all.filter(n=>(n.at||0)>(s.createdAt||0)).length;blocks.push({t:"text",label:"",quiet:true,text:`Read on ${shortDate(s.createdAt)}.${nw?` ${nw} observation${nw>1?"s":""} kept since ${nw>1?"are":"is"} not in this reading.`:""}`})}
@@ -7423,7 +7423,7 @@ ${days.join("\n")||"Not posted."}
 Write four to six warm, plain sentences a parent reads in a minute. Name what is in the bin and the farms that grew it, say how the children will meet the food, and end with one simple thing to try at home with the same food, prepared and eaten as food. Never suggest food as an art or play material. Call the adults educators, never teachers. Never use colons, em dashes, lists or headings. Do not invent anything that is not given above.
 Return only JSON {"note":"the note"}`}
 async function binNoteDraft(b,quiet){if(!sample||!b||!isDirector())return;
-  try{const out=await askRead(binNotePrompt(b),{purpose:"binnote",modelTier:"fast",cache:false});const t=String(out?.note||"").replace(/—/g,", ").replace(/:\s/g,". ").trim();if(!t)return;
+  try{const out=await askRead(binNotePrompt(b),{purpose:"binnote",modelTier:"fast",cache:false});const t=String(out?.note||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,". ").trim();if(!t)return;
     await gWrite("binnote-"+b.id,{id:"binnote-"+b.id,week:b.date,text:t,status:"draft",at:Date.now()});if(!quiet)toast("The bin note is ready to read.");if(view==="today"||view==="grant")renderMain()}catch(e){if(!quiet)toast(assistError(e?.code||"unknown","The note could not be written just now."))}}
 // once a week, as the list arrives, the director's TREE writes the note by itself
 let binNoteBusy=false;
@@ -8442,7 +8442,7 @@ The team's entry, the only text to rewrite.
 ${cur}`;
   let out="",code="";
   try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
-  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/—/g,", ").trim();
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[—–]\s*/g,", ").trim();
   if(/^THIN\.?$/i.test(out))iqSug[sk]={status:"error",mode,error:"The evidence does not say enough for this part yet. Add observations, or write it from the team's discussion."};
   else iqSug[sk]=out?{status:"ready",mode,text:out}:{status:"error",mode,error:assistError(code||"empty_completion","What is written is unchanged.")};
   if(view==="inquiries"&&inqId===x.id)renderMain()}
@@ -9023,7 +9023,7 @@ function renderProject(x){
         ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this class yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
     ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
 
-  h+=`<section class="card"><div class="lbl">People beyond the classrooms</div>
+  h+=`<section class="card"><div class="lbl">People beyond the Classes</div>
     <textarea data-pf="people" rows="2" placeholder="Families, community members, or the people receiving the children's letters">${esc(x.people||"")}</textarea></section>
     <section class="card"><div class="lbl">Team notes</div><textarea data-pf="notes" rows="2">${esc(x.notes||"")}</textarea></section>`;
 
@@ -9106,7 +9106,7 @@ Educators' entry for "${PSTD[k][0]}", the only text to rewrite.
 ${cur}`;
   let out="",code="";
   try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
-  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["\u201c]|["\u201d]$/g,"").replace(/\u2014/g,", ").trim();
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["\u201c]|["\u201d]$/g,"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
   projStr[key]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
   if(view==="projects"&&projId===x.id)renderMain();
 }
@@ -9141,7 +9141,7 @@ Project ${JSON.stringify(info)}
 Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question||"",classroom:t.classroom||"",quotes:(t.evidence||[]).slice(-8).map(e=>e.text),possible_next_provocations:t.next||[]})))}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
-    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const c=v=>String(v||"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
     // a label on a wall, so a trailing full stop and an over-long name are trimmed back
     const lab=(v,n)=>{let t=c(v).replace(/\s*[.;]+$/,"");if(t.length>n){const cut=t.slice(0,n);const sp=cut.lastIndexOf(" ");t=(sp>n*.5?cut.slice(0,sp):cut).replace(/[\s,]+$/,"")}return t};
     const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:lab(b?.name,44),materials:lab(b?.materials,64)})).filter(b=>b.name).slice(0,6);
@@ -9167,7 +9167,7 @@ Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
 
 Plans, oldest first.
 ${d.map(o=>JSON.stringify(o)).join("\n")}`;
-  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const fields={};STORY.forEach(([k])=>fields[k]=String(out?.[k]||"").replace(/—/g,", "));
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const fields={};STORY.forEach(([k])=>fields[k]=String(out?.[k]||"").replace(/\s*[—–]\s*/g,", "));
     const cur=projects.get(x.id)||x;const s={id:uid(),label:label||"",at:Date.now(),by:whoAmI(),fields};cur.stories=[...(cur.stories||[]),s];projOpenStory=s.id;saveProject(cur);toast("Project story written. It is kept below with today's date.")}
   catch(err){toast(assistError(err?.code||"unknown"))}
   delete projBusy[x.id];renderMain();
@@ -9449,7 +9449,7 @@ Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"lens"});
-    const c2=v=>String(v||"").replace(/—/g,", ").trim();const lmap=new Map(LENS.languages.map(l=>[l.toLowerCase(),l]));
+    const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();const lmap=new Map(LENS.languages.map(l=>[l.toLowerCase(),l]));
     const moments=(Array.isArray(out?.moments)?out.moments:[]).filter(m=>m&&ids.has(m.planId)&&c2(m.quote)).slice(0,14).map(m=>({planId:m.planId,quote:sentCut(c2(m.quote),300),language:lmap.get(String(m.language||"").trim().toLowerCase())||"",answers:Array.from({length:n},(_,i)=>sentCut(c2((Array.isArray(m.answers)?m.answers:[])[i]),500))}));
     const strs=(a,k)=>(Array.isArray(a)?a:[]).map(c2).filter(Boolean).slice(0,k);
     saveScan({room:lensKey(room),kind:"lens",range,createdAt:Date.now(),by:whoAmI(),lensId,lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)});
@@ -9513,7 +9513,7 @@ ${STYLE}
 Return JSON {"description":"","questions":[],"languages":[],"words":[]}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
-    const c=v=>String(v||"").replace(/\u2014/g,", ").trim();
+    const c=v=>String(v||"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
     const list=(a,n)=>(Array.isArray(a)?a:[]).map(c).filter(Boolean).slice(0,n);
     const w=[...new Set(list(out?.words,70).map(x=>x.toLowerCase().replace(/[^a-z' -]/g,"")).filter(x=>x.length>1))].slice(0,60);
     if(!w.length&&!c(out?.description))throw {code:"empty_completion"};
@@ -9674,7 +9674,7 @@ function threadDoc(t){
 }
 function threadsOverviewDoc(tracked){
   const blocks=tracked.length?tracked.map(t=>{const pr=projectOfThread(t.id);return dItem(t.name,t.question||"",pr?"Part of the project "+pr.name:"",[t.classroom?t.classroom+" class":"All classes",weeksSpan(t.weeks)])}):[dText("","No threads are being followed in this view yet.")];
-  return {display:true,type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classrooms",tRoom==="All"?"All":tRoom],["Printed",shortDate(Date.now())]],blocks};
+  return {display:true,type:"report",acc:"smallgroup",title:"Threads we are following",meta:[["Classes",tRoom==="All"?"All":tRoom],["Printed",shortDate(Date.now())]],blocks};
 }
 function threadsDocs(long){
   const tracked=[...threads.values()].filter(t=>!t.unfollowed&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
@@ -9845,7 +9845,7 @@ What the team wrote.
 ${src}`;
   let out="",code="";
   try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
-  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/—/g,", ").trim();
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[—–]\s*/g,", ").trim();
   wallSug[sh.id]=out?{status:"ready",text:out}:{status:"error",error:assistError(code||"empty_completion","The sheet is unchanged.")};
   if(view==="projects"&&projId===x.id)renderMain();
 }
@@ -9886,7 +9886,7 @@ function projectDoc(x,long){
   if(!long){const ph=spread(posts.filter(n=>n.photo),2);if(ph.length){blocks.push(dSub("Moments along the way"));
       ph.forEach(n=>{blocks.push(dPhoto(n,140,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(n.photo?momentBody(n):n.noticed,220)))})}}
   if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)})}
-  const meta=[["Classrooms",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)],["Gathered",[obs.length&&`${obs.length} observation${obs.length>1?"s":""}`,pls.length&&`${pls.length} plan${pls.length>1?"s":""}`].filter(Boolean).join(", ")||"Nothing yet"]];
+  const meta=[["Classes",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)],["Gathered",[obs.length&&`${obs.length} observation${obs.length>1?"s":""}`,pls.length&&`${pls.length} plan${pls.length>1?"s":""}`].filter(Boolean).join(", ")||"Nothing yet"]];
   if(!long)return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
   // the record, week by week. Observations in the order they were kept, and the week's final remarks after them
   const wkOf=n=>n.week||mondayOf(new Date(n.at||Date.now())),weeks=[...new Set([...obs.map(wkOf),...after.map(pl=>pl.weekOf)])].filter(Boolean).sort();
@@ -9900,7 +9900,7 @@ function projectDoc(x,long){
       for(const pl of rs)blocks.push(dText([pl.type==="smallgroup"?"After the week":"Final remarks",pBy(whoLine(pl))].filter(Boolean).join(", "),planAfter(pl)))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
-  if(has(x.people))blocks.push(dText("People beyond the classrooms",x.people));
+  if(has(x.people))blocks.push(dText("People beyond the Classes",x.people));
   if(has(x.notes))blocks.push(dText("Team notes",x.notes));
   return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
 }
@@ -9912,11 +9912,11 @@ function storyDoc(title,fields,meta){
   return {display:true,type:"report",acc:"story",title,meta,blocks:STORY.map(([k,l])=>[l,storyPrintText(fields&&fields[k])]).filter(([,t])=>has(t)).map(([l,t])=>dText(l,t))};
 }
 function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Class",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classes"],["Seen",weeksSpan(th.weeks)]])}
-function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classrooms",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
+function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classes",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
 function lensDocs(long,cap){
   const ps=lensPlans();let moments=lensMoments(ps);
   if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
-  const meta=[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
+  const meta=[["Classes",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
   const blocks=[dText("What it means here",LENS.description),dList("How we read a passage",LENS.questions,true),{t:"text",label:"",quiet:true,text:"Read for the thinking. How a product looks is never rated."}];
   // the summary carries the strongest few. The full set carries more, a few from each week, most recent first.
   const perMax=long?6:3,total=long?24:(cap||5);
@@ -9944,7 +9944,7 @@ function lensDocs(long,cap){
       b.push({t:"rule"})});
     if((scan.gaps||[]).length)b.push(dList("What we could notice next",scan.gaps));
     if((scan.teamQuestions||[]).length)b.push(dList("Questions for the team",scan.teamQuestions));
-    docs.push({display:true,type:"report",acc:"individual",title:`${scan.lensName||LENS.name}, a closer reading`,meta:[["Classrooms",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[scan.range]||""]],blocks:b})}
+    docs.push({display:true,type:"report",acc:"individual",title:`${scan.lensName||LENS.name}, a closer reading`,meta:[["Classes",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[scan.range]||""]],blocks:b})}
   return docs;
 }
 
@@ -10219,7 +10219,7 @@ function displayFoot(doc,A,pi){
    the preview and the Word file. */
 const CM=54,CSCALES=[1.6,1.5,1.4,1.3,1.25,1.2,1.15,1.1,1.05,1,.95,.9,.85,.8];
 let centerOver=[];
-const ct=(doc,t)=>doc.__pf?String(t??"").replace(/—/g,", ").replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF–‘’“”…•]/g,""):clean(t);
+const ct=(doc,t)=>doc.__pf?String(t??"").replace(/\s*[—–]\s*/g,", ").replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF–‘’“”…•]/g,""):clean(t);
 function cwrap(doc,k,s,text,w){pfont(doc,k,s);return ct(doc,text).split("\n").flatMap(p=>p.trim()?doc.splitTextToSize(p.trim(),w):[])}
 function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
@@ -11013,7 +11013,7 @@ Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"threads"});
-    const clean2=v=>String(v||"").replace(/—/g,", ");
+    const clean2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ");
     const ths=(Array.isArray(out?.threads)?out.threads:[]).slice(0,8).map(x=>{
       const ev=(Array.isArray(x.evidence)?x.evidence:[]).filter(e=>e&&ids.has(e.planId)).map(e=>({planId:e.planId,week:byId.get(e.planId).week,text:clean2(e.text).slice(0,240)}));
       const wk=[...new Set([...(Array.isArray(x.weeks)?x.weeks:[]).filter(w=>d.some(p=>p.week===w)),...ev.map(e=>e.week)])].sort();
@@ -11042,7 +11042,7 @@ Return JSON with these keys ${STORY.map(([k,l])=>`"${k}" (${l})`).join(", ")}.
 
 Plans, oldest first.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
-  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const st={};STORY.forEach(([k])=>st[k]=String(out?.[k]||"").replace(/—/g,", "));
+  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const st={};STORY.forEach(([k])=>st[k]=String(out?.[k]||"").replace(/\s*[—–]\s*/g,", "));
     // the earlier story is kept, so a rewrite never loses what the team edited
     if(th.story)th.storyEarlier=[...(th.storyEarlier||[]),{story:th.story,at:th.storyAt||0}].slice(-3);
     th.story=st;th.storyAt=Date.now();th.storyRecs=threadRecIds(th).size;saveThread(th);toast("Project story written. Open it below the thread to edit.")}
@@ -11057,7 +11057,7 @@ async function familyUpdate(p,btn){
 Return only the note.
 
 ${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+p.web.branches.map(b=>b.name).filter(Boolean).join(", "):""}`;
-  try{const r=await sample(prompt,{modelTier:"default",cache:false});p=plans.get(p.id)||p;p.familyUpdate=(r.text||"").trim().replace(/—/g,", ");persist(p);const ta=$("#family");if(ta){ta.value=p.familyUpdate;autoGrow(ta)}}
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});p=plans.get(p.id)||p;p.familyUpdate=(r.text||"").trim().replace(/\s*[—–]\s*/g,", ");persist(p);const ta=$("#family");if(ta){ta.value=p.familyUpdate;autoGrow(ta)}}
   catch(err){toast(assistError(err?.code||"unknown"))}
   btn.disabled=false;btn.textContent="Draft family update";
 }
@@ -11313,8 +11313,11 @@ document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.cl
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b))},true);
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
 const FAMILY_WORDS=new Set(["newsletter","share","story","binnote","transition"]);
+// names that keep the word Teacher, such as Role of the Teacher, stay as they are
+const KEEP_TEACHER=/(Role of the Teacher|Environment as the Third Teacher|Teacher Policies (?:and|&) Procedures|Child Development Teacher Permit)/gi;
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
-    return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
+    const kept=[];x=x.replace(KEEP_TEACHER,m=>{kept.push(m);return "\u0001"+(kept.length-1)+"\u0001"});
+    return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ").replace(/\u0001(\d+)\u0001/g,(m,i)=>kept[+i])}
   if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
 /* ---------- Proofread observations ----------
    The director's page for proofreading many saved observations at once. It gathers every observation never proofread,
@@ -11723,7 +11726,7 @@ function howProjectExtras(x){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;const s
     sts.length&&`<div><span class="chiprow-label">Stories to read aloud</span><div class="actions">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}</button>`).join("")}</div></div>`,
     ps.length&&`<div><span class="chiprow-label">Project stories</span><div>${esc(ps.map(s=>(s.label||"Project story")+", "+shortDate(s.at)).join(" · "))}</div></div>`,
     iq.length&&`<div><span class="chiprow-label">Team inquiries alongside it</span><div class="actions">${iq.map(q=>`<button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button>`).join("")}</div></div>`,
-    has(x.people)&&`<div><span class="chiprow-label">People beyond the classrooms</span><div>${esc(firstLine(x.people,200))}</div></div>`].filter(Boolean);
+    has(x.people)&&`<div><span class="chiprow-label">People beyond the Classes</span><div>${esc(firstLine(x.people,200))}</div></div>`].filter(Boolean);
   return rows.length?`<section class="card" style="gap:10px">${rows.join("")}</section>`:""}
 // what has not been connected to anything yet, so nothing kept is out of view
 function howLoose(){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
@@ -11768,7 +11771,7 @@ function howDoc(){const {ev,HOW}=howFiltered();const blocks=[];
   for(const w of [...new Set(ev.map(e=>mondayOf(new Date(e.at))))]){blocks.push(dSub("Week of "+fmtDate(w)));
     for(const e of ev.filter(e=>mondayOf(new Date(e.at))===w))blocks.push(dItem(strip(e.what),[e.why&&((e.how==="suggest"||e.how==="pattern"||e.how==="find"?"Reason given, ":"")+e.why),e.words&&"“"+firstLine(e.words,200)+"”"].filter(Boolean).join(" "),[e.who?pBy(e.who):"TREE on its own",HOW[e.how]||"",shortDate(e.at)].filter(Boolean).join(", "),[]))}
   const [k,id]=String(aFocus||"").split(":");const f=id&&(k==="t"?threads.get(id):projects.get(id));
-  return {display:true,type:"report",acc:"classroom",title:f?`How ${f.name} connects`:"How it connects",meta:[["Classrooms",aRoom==="All"?"All":aRoom],["Connections",String(ev.length)]],blocks}}
+  return {display:true,type:"report",acc:"classroom",title:f?`How ${f.name} connects`:"How it connects",meta:[["Classes",aRoom==="All"?"All":aRoom],["Connections",String(ev.length)]],blocks}}
 // the director's Connections. How it connects, the map of each project and thread with everything in it, and Across the school
 function renderConnect(){const [k,id]=String(aFocus||"").split(":");const f=id&&(k==="t"?threads.get(id):projects.get(id));
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Connections</span><h2 style="margin-top:4px">${f?esc(f.name):"The whole school"}</h2>
@@ -11832,7 +11835,7 @@ function connListHtml(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)retur
 function connDocs(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)return [];const blocks=[];
   for(const w of [...new Set(ps.map(p=>p.weekOf))]){blocks.push(dSub("Week of "+fmtDate(w)));
     for(const p of ps.filter(p=>p.weekOf===w)){const c=planConn(p),line=connLine(c);blocks.push(dItem(planTitle(p),line.length?line.join(". ")+".":"Not connected yet.","",[FORMS[p.type].short]))}}
-  return [{display:true,type:"report",acc:"classroom",title:"How the plans connect",meta:[["Classrooms",aRoom==="All"?"All":aRoom],["Plans",String(ps.length)]],blocks}]}
+  return [{display:true,type:"report",acc:"classroom",title:"How the plans connect",meta:[["Classes",aRoom==="All"?"All":aRoom],["Plans",String(ps.length)]],blocks}]}
 // the whole school at once. What each class is working on, the threads and projects that reach across classes, and the moments
 // children from different classes shared
 function schoolSince(){const now=new Date();if(aSRange==="year"){const y=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;return new Date(y,7,1).getTime()}return Date.now()-(+aSRange)*7*864e5}
@@ -11958,7 +11961,7 @@ function renderChildren(){
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
     <div class="sub">Each child's documentation, conferences and years at Fulton in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At Fulton ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
-    <div class="tseg" role="group" aria-label="Classroom">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
+    <div class="tseg" role="group" aria-label="Class">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
     <input type="search" id="kq" placeholder="Find a child or group" value="${esc(kQ)}" style="max-width:220px"></div>
     ${addHtml}<div style="display:grid;gap:18px">${body}</div>`;
 }
@@ -12454,7 +12457,7 @@ async function spaceBook(p){
     try{const r=await window.FP_API("/api/book",{spaceId:space.id,date,start,end,what,group});
       for(const b of r.made||[])made.push({id:b.id,day:d});
       for(const x of r.skipped||[])skipped.push(`${parseIso(x.date).toLocaleDateString("en-US",{weekday:"long"})} is taken by ${x.by}.`)}
-    catch(e){skipped.push(`${parseIso(date).toLocaleDateString("en-US",{weekday:"long"})}: ${e&&e.message||"not signed up"}`)}}
+    catch(e){const why=String(e&&e.message||"").trim();skipped.push(`${parseIso(date).toLocaleDateString("en-US",{weekday:"long"})} could not be signed up.${why?" "+why.replace(/([^.!?])$/,"$1."):""}`)}}
   p.space=Object.assign(sp,{booked:made,skipped,spaceName:space.name,bookedStart:sp.start,bookedEnd:sp.end});persist(p);
   delete spaceBusy[p.id];rerenderSpace();toast(made.length?`Signed up for ${space.name}.`:"No days could be signed up. See the note under the space.");
 }
