@@ -169,9 +169,11 @@ T._={tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,rep
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
-  const rows=ps.map(p=>{const sts=itemsFor(p).map(it=>itemState(it,(p.items||{})[it.k]).s);const ok=sts.filter(s=>s==="ok").length,soon=sts.filter(s=>s==="soon").length,outn=sts.filter(s=>s==="out").length;
+  // a Fulton training not done yet is due, never to renew
+  const rows=ps.map(p=>{const st0=itemsFor(p).map(it=>({it,s:itemState(it,(p.items||{})[it.k]).s,none:!((p.items||{})[it.k]||{}).date}));const sts=st0.map(x=>x.s);
+    const ok=sts.filter(s=>s==="ok").length,due=st0.filter(x=>x.it.fulton&&x.none).length,soon=st0.filter(x=>x.s==="soon"&&!(x.it.fulton&&x.none)).length,outn=sts.filter(s=>s==="out").length;
     return `<tr data-stperson="${H(p.name)}" style="cursor:pointer"><td><b>${H(p.name)}</b>${p.newHire?` ${chip("soonish","New, New Educator section only")}`:p.newEd?` ${chip("soonish","New educator")}`:""}</td><td>${H(p.role)}</td><td>${H(p.room?p.room+" Class":"")}</td>
-      <td>${ok} of ${itemsFor(p).length} in place${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
+      <td>${ok} of ${itemsFor(p).length} in place${due?` ${chip("soon",due+" due")}`:""}${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
   const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section"}[k]));
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}

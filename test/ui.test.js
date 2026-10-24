@@ -69,4 +69,12 @@ test('TREE in the browser', async t => {
     assert.match(text, /Gia answers your questions/);
     assert.deepStrictEqual(n.errors, []); await n.close();
   });
+
+  await t.test('the director\'s list says a Fulton training not done yet is due, not to renew', async () => {
+    const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+    await s.p.evaluate(() => goView('stteam')); await s.p.waitForFunction(() => /Every educator/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const row = await s.p.evaluate(() => [...document.querySelectorAll('[data-stperson]')].find(r => /Ann/.test(r.innerText)).innerText);
+    assert.match(row, /1 due/); assert.doesNotMatch(row, /to renew/);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
 });
