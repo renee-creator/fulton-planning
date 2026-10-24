@@ -51,7 +51,8 @@ module.exports = function growthModule(c) {
   /* ---------- who takes part ---------- */
   // every educator and apprentice takes part. The office and the kitchen have records pages only, and the director leads it.
   const roleOf = n => (profileOf(n).role || 'educator');
-  const takesPart = n => !!n && !isDirector(n) && !isKitchen(n) && roleOf(n) !== 'staff';
+  // a shared sign-in, with no TREE sign-in of its own, has no growth pages
+  const takesPart = n => !!n && !isDirector(n) && !isKitchen(n) && roleOf(n) !== 'staff' && staffNames().some(x => nameKey(x) === nameKey(n));
   const people = () => staffNames().filter(takesPart).sort();
   const canSee = (me, who) => isDirector(me) || nameKey(me) === nameKey(who);
   function allowed(me) { if (isDirector(me)) return true; if (!takesPart(me)) return false; if (isNewHire(me)) return !!opened().growth && !!opened().newed; return !!opened().growth; }
@@ -262,7 +263,8 @@ module.exports = function growthModule(c) {
       if (hr >= 8 && hr < 11) for (const a of Object.values(pdd().agendas)) {
         const left = daysBetween(day, a.date); if (left !== 3 || !(a.blocks || []).length) continue; if (!once(`pdday|${a.id}|remind`)) continue;
         const prep = (a.blocks || []).map(b => String(b.prepare || '').trim()).filter(Boolean);
-        for (const n of people()) await reminders.sendTo(n, { title: 'TREE, ' + (a.kind === 'meeting' ? 'PD staff meeting' : 'PD day') + ' in three days', body: prep.length ? 'To prepare. ' + prep.join(' ').slice(0, 300) : 'The agenda is ready to read in TREE.', url: 'tree.html?go=pdday', tag: 'tree-pdday' });
+        // a new hire before full access cannot open the PD days, so hears nothing about them
+        for (const n of people().filter(n => !isNewHire(n))) await reminders.sendTo(n, { title: 'TREE, ' + (a.kind === 'meeting' ? 'PD staff meeting' : 'PD day') + ' in three days', body: prep.length ? 'To prepare. ' + prep.join(' ').slice(0, 300) : 'The agenda is ready to read in TREE.', url: 'tree.html?go=pdday', tag: 'tree-pdday' });
       }
     } catch (e) { log('Growth reminders failed,', e.message); } finally { busy = false; }
   }

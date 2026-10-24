@@ -172,6 +172,8 @@ module.exports = function staffModule(o) {
     return !!o[sec] || (o.newed && inNewEd(me));
   }
   const canSee = (me, name) => isDirector(me) || nameKey(me) === nameKey(name);
+  // only someone with their own TREE sign-in has a record. A shared sign-in never starts one.
+  const hasOwn = me => isDirector(me) || staffNames().some(n => nameKey(n) === nameKey(me));
   function whoRole(name) {
     if (isDirector(name)) return 'Director'; if (isKitchen(name)) return 'Kitchen'; if (isOffice(name)) return 'Office';
     const r = profileOf(name).role; return r === 'apprentice' ? 'Apprentice' : r === 'atelierista' ? 'Atelierista' : r === 'staff' ? 'Staff' : 'Educator';
@@ -196,6 +198,8 @@ module.exports = function staffModule(o) {
     for (const k of ['review8', 'starting']) { if (cur.checklist && cur.checklist[k]) out.checklist[k] = cur.checklist[k]; else if (out.checklist) delete out.checklist[k]; }
     out.focus = (cur.focus || []).map(f => { const n = (next.focus || []).find(x => x && x.id === f.id); return Object.assign({}, f, n && n.educatorOk && !f.educatorOk ? { educatorOk: Date.now() } : {}); });
     out.pd = Object.assign({}, cur.pd, next.pd || {});
+    // hours TREE logged, from a finished piece, module or PD day, stay as TREE logged them
+    if (next.hours !== undefined) out.hours = [...(cur.hours || []).filter(h => h && h.by === 'TREE'), ...(Array.isArray(next.hours) ? next.hours : []).filter(h => h && h.by !== 'TREE')];
     return out;
   }
 
@@ -276,7 +280,7 @@ module.exports = function staffModule(o) {
       json(req, res, 200, { fid }); return;
     }
     if (P === 'upload') {
-      if (!canSee(me, who)) return deny('Only you and the director add files to your records.');
+      if (!canSee(me, who) || !hasOwn(who)) return deny('Only you and the director add files to your records.');
       if (!dir && !allowed(me, 'records') && !allowed(me, 'newed')) return deny();
       const name = String(body.filename || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60);
       const ext = (name.match(/\.(pdf|jpe?g|png|webp|heic)$/) || [])[1];
@@ -388,7 +392,7 @@ module.exports = function staffModule(o) {
       put(pPath(who), doc); json(req, res, 200, doc); return;
     }
     if (P === 'pd/done') {
-      if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny();
+      if ((!allowed(me, 'pd') && !allowed(me, 'newed')) || !hasOwn(me)) return deny();
       const all = [...(pieces().licensing || []), ...(pieces().howto || [])]; const pc = all.find(x => x.id === body.id); if (!pc) { err(req, res, 404, 'That piece is not here.'); return; }
       const doc = person(me); doc.pd = Object.assign({ done: {}, read: {} }, doc.pd); doc.pd.done = Object.assign({}, doc.pd.done);
       const was = doc.pd.done[pc.id];
@@ -398,7 +402,7 @@ module.exports = function staffModule(o) {
       doc.updatedAt = Date.now(); put(pPath(me), doc); json(req, res, 200, doc); return;
     }
     if (P === 'read') {
-      if (!allowed(me, 'newed') && !allowed(me, 'records')) return deny();
+      if ((!allowed(me, 'newed') && !allowed(me, 'records')) || !hasOwn(me)) return deny();
       const k = ['welcome', 'whoswho', 'handbook'].includes(body.what) ? body.what : ''; if (!k) { err(req, res, 400, 'Not a page.'); return; }
       const doc = person(me); doc.pd = Object.assign({ done: {}, read: {} }, doc.pd); doc.pd.read = Object.assign({}, doc.pd.read, { [k]: doc.pd.read[k] || Date.now() });
       if (k === 'handbook') { doc.paperwork = Object.assign({}, doc.paperwork, { tppack: Object.assign({}, doc.paperwork.tppack, { ack: (doc.paperwork.tppack && doc.paperwork.tppack.ack) || Date.now() }) }); }
@@ -407,12 +411,14 @@ module.exports = function staffModule(o) {
     if (P === 'goto') {
       // the go-to team member, or the new educator, notes this week's check-in
       const nb = String(body.newName || me); const isGo = !!goToOf(nb) && nameKey(goToOf(nb)) === nameKey(me);
-      if (!(dir || isGo || nameKey(nb) === nameKey(me))) return deny('Only the new educator and their go-to team member note check-ins.');
+      if (!(dir || isGo || nameKey(nb) === nameKey(me)) || !hasOwn(nb)) return deny('Only the new educator and their go-to team member note check-ins.');
       if (!allowed(me, 'newed') && !allowed(me, 'records') && !dir) return deny();
       const doc = person(nb); const wk = mondayOf(today());
       doc.gotoCheckins = (doc.gotoCheckins || []).filter(c => c.week !== wk || body.undo !== true);
       if (body.undo !== true && !doc.gotoCheckins.some(c => c.week === wk)) doc.gotoCheckins.push({ week: wk, at: Date.now(), by: me });
-      put(pPath(nb), doc); json(req, res, 200, doc); return;
+      put(pPath(nb), doc);
+      // the go-to person sees the pairing and the first weeks check-ins only, never the rest of the record
+      json(req, res, 200, dir || nameKey(nb) === nameKey(me) ? doc : { name: doc.name, gotoCheckins: doc.gotoCheckins }); return;
     }
     if (P === 'drills') {
       if (!dir) return deny('Only the director keeps the drill log.');
@@ -494,5 +500,5 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd });
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, tick, pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { load, handle, flushAll, bootInfo, dump, isNewHire, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
