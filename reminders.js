@@ -12,8 +12,8 @@ const crypto = require('crypto');
 module.exports = function reminders(o) {
   const { store, accounts, accountFor, saveAccounts, isDirector, isKitchen, log, noteChange, scheduleSave } = o;
   const TZ = 'America/Los_Angeles';
-  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary', review: 'Plans to review, for the director', reviewed: 'Renee reviewed a plan' };
-  // every box an educator writes before a plan is sent to Renee, except Final remarks
+  const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary', review: 'Plans to review, for the director', reviewed: 'The director reviewed a plan' };
+  // every box an educator writes before a plan is sent to the director, except Final remarks
   const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
   // the sections an educator prepares before a family conference. Shared goals and next steps are written at the conference
   const CONF_PREP = ['interests', 'friends', 'smallGroup', 'favoriteAreas', 'nature', 'approaches', 'social', 'language', 'cognition', 'physical', 'expressive', 'strengths', 'documentation'];
@@ -42,7 +42,7 @@ module.exports = function reminders(o) {
   function vapidHeader(endpoint) {
     const k = keys(); const aud = new URL(endpoint).origin;
     const head = b64u(JSON.stringify({ typ: 'JWT', alg: 'ES256' }));
-    const body = b64u(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: 'mailto:renee@childfamilycommunity.com' }));
+    const body = b64u(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: 'mailto:tree@childfamilycommunity.com' }));
     const sig = crypto.sign('sha256', Buffer.from(head + '.' + body), { key: k.key, dsaEncoding: 'ieee-p1363' });
     return `vapid t=${head}.${body}.${b64u(sig)}, k=${k.pub}`;
   }
@@ -173,7 +173,7 @@ module.exports = function reminders(o) {
         const now = mine.filter(p => p.weekOf === week && nonEmpty(p));
         if (!now.length) out.push({ t: 'plan', text: 'This week\'s Individual or Small Group plan' });
         else if (now.every(p => !sent(p) && missing(p))) out.push({ t: 'plan', text: 'Finish this week\'s plan', plan: now[0].id });
-        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your Individual plan for this week is still a draft. Send it to Renee when it\'s ready.', plan: d.id }); }
+        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your Individual plan for this week is still a draft. Send it to the director when it\'s ready.', plan: d.id }); }
       }
     } else if (every === 'monthly' && week.slice(8) <= '07') {
       // a monthly plan is due the first week of the month, and last month's final remarks with it
@@ -184,14 +184,14 @@ module.exports = function reminders(o) {
         const now = mine.filter(p => String(p.weekOf).slice(0, 7) === month && nonEmpty(p));
         if (!now.length) out.push({ t: 'plan', text: 'This month\'s plan' });
         else if (now.every(p => !sent(p) && missing(p))) out.push({ t: 'plan', text: 'Finish this month\'s plan', plan: now[0].id });
-        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your plan for this month is still a draft. Send it to Renee when it\'s ready.', plan: d.id }); }
+        else { const d = now.find(p => draftLeft(p, when)); if (d && !now.some(sent)) out.push({ t: 'plan', text: 'Your plan for this month is still a draft. Send it to the director when it\'s ready.', plan: d.id }); }
       }
     }
     if (on('classroom') && week >= start && e.room) {
       const cp = ps.filter(p => p.type === 'classroom' && p.classroom === e.room && p.weekOf === week && nonEmpty(p));
       if (!cp.length) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan` });
       else if (cp.every(p => !sent(p) && missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} Class's Classroom plan`, plan: cp[0].id });
-      else { const d = cp.find(p => draftLeft(p, when)); if (d && !cp.some(sent)) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan is still a draft. Send it to Renee when it's ready.`, plan: d.id }); }
+      else { const d = cp.find(p => draftLeft(p, when)); if (d && !cp.some(sent)) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan is still a draft. Send it to the director when it's ready.`, plan: d.id }); }
     }
     // family conferences this educator leads. A reminder a week before, the Friday before and that morning, and the form
     // finished two school days ahead, with a reminder each school morning from five school days ahead until it is
@@ -247,8 +247,8 @@ module.exports = function reminders(o) {
   }
   setInterval(tick, 60e3); setTimeout(tick, 20e3);
 
-  // ---------- when Renee reviews a plan or leaves a note ----------
-  // the educator hears a few minutes after Renee stops typing, once, so a note written over several minutes is one message
+  // ---------- when the director reviews a plan or leaves a note ----------
+  // the educator hears a few minutes after the director stops typing, once, so a note written over several minutes is one message
   const reviewTimers = new Map();
   function planReviewed(id, before, doc) {
     if (!doc || doc.id === 'example') return;
@@ -269,7 +269,7 @@ module.exports = function reminders(o) {
     const people = educators().filter(e => nameIn(p.educator, e.name) && !personOf(S, e.name).paused && !(personOf(S, e.name).off || []).includes('reviewed'));
     const reviewed = what.reviewed && p.status === 'reviewed', note = what.note && filled(p.feedback);
     if (!reviewed && !note) return;
-    const body = reviewed && note ? `Renee reviewed your ${kind} plan and left a note.` : reviewed ? `Renee reviewed your ${kind} plan.` : `Renee left a note on your ${kind} plan.`;
+    const body = reviewed && note ? `The director reviewed your ${kind} plan and left a note.` : reviewed ? `The director reviewed your ${kind} plan.` : `The director left a note on your ${kind} plan.`;
     for (const e of people) await sendTo(e.name, { title: 'TREE', body, url: `tree.html?plan=${encodeURIComponent(id)}`, tag: 'tree-review-' + id });
   }
 

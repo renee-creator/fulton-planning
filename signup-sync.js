@@ -7,9 +7,9 @@
 // since TREE remembers the time it last took from SignUpGenius and only follows changes to that.
 const DEFAULT_FEED = 'webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=52b9d3e8d48a36eeafcf25b67ee0ea5a';
 const DEFAULT_GROUPS = [
-  { name: 'Cosmos', room: 'West', educator: 'Lauren M' }, { name: 'Yarrow', room: 'West', educator: 'Lauren M' }, { name: 'Zinnia', room: 'West', educator: 'Lauren F' }, { name: 'Borage', room: 'West', educator: 'Lauren F' },
-  { name: 'Marigold', room: 'North', educator: 'Hannah' }, { name: 'Morning Glory', room: 'North', educator: 'Justine' }, { name: 'Sunflower', room: 'North', educator: 'Yarely' },
-  { name: 'Poppy', room: 'South', educator: '' }, { name: 'Lavender', room: 'South', educator: 'Chris' }, { name: 'Iris', room: 'South', educator: 'Ahlina' }];
+  { name: 'Cosmos', room: 'West', educator: '' }, { name: 'Yarrow', room: 'West', educator: '' }, { name: 'Zinnia', room: 'West', educator: '' }, { name: 'Borage', room: 'West', educator: '' },
+  { name: 'Marigold', room: 'North', educator: '' }, { name: 'Morning Glory', room: 'North', educator: '' }, { name: 'Sunflower', room: 'North', educator: '' },
+  { name: 'Poppy', room: 'South', educator: '' }, { name: 'Lavender', room: 'South', educator: '' }, { name: 'Iris', room: 'South', educator: '' }];
 
 module.exports = function signupSync({ store, log, readFeed, noteChange, scheduleSave }) {
   const state = { lastRun: '', filled: 0, unmatched: 0, error: '' };

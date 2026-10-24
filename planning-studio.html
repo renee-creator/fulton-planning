@@ -532,10 +532,10 @@ const CLASSROOMS=["West","North","South"];
 // printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
 let PRINT={schoolDocs:false,schoolRecords:true,names:"first"};
 let GROUPS=[
-  {name:"Cosmos",room:"West",educator:"Lauren M"},{name:"Yarrow",room:"West",educator:"Lauren M"},{name:"Zinnia",room:"West",educator:"Lauren F"},{name:"Borage",room:"West",educator:"Lauren F"},
-  {name:"Marigold",room:"North",educator:"Hannah"},{name:"Morning Glory",room:"North",educator:"Justine"},{name:"Sunflower",room:"North",educator:"Yarely"},
-  {name:"Poppy",room:"South",educator:"Jessica"},{name:"Lavender",room:"South",educator:"Ahlina"},{name:"Iris",room:"South",educator:"Chris"}];
-const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()],{name:"Felila",room:""},{name:"Ellie",room:""}];
+  {name:"Cosmos",room:"West",educator:""},{name:"Yarrow",room:"West",educator:""},{name:"Zinnia",room:"West",educator:""},{name:"Borage",room:"West",educator:""},
+  {name:"Marigold",room:"North",educator:""},{name:"Morning Glory",room:"North",educator:""},{name:"Sunflower",room:"North",educator:""},
+  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:""},{name:"Iris",room:"South",educator:""}];
+const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()]];
 let roster=DEFAULT_ROSTER.slice();
 function rosterNames(){return roster.map(r=>r.name).filter(n=>!isShared(n))}
 let PLACES=["Library","Classroom","Art atelier","Nature atelier","Culinary atelier","Indoor piazza","Outdoor piazza","North yard","Rabbit yard","Garden","Tire swing yard","Tire swing studio","Log yard","Log studio","Long yard","Goat yard"];
@@ -923,7 +923,7 @@ function renderMain(){
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words Claude could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
   if(sample)h+=`<section class="ai"><div class="lbl">Start from your notes</div>
     <p>Paste or dictate your quick jottings from the week. Claude sorts them into the empty sections below using only what you wrote. Review and edit everything before you mark it ready.</p>
-    <textarea id="notes" rows="4" placeholder="Ex. Juniper and Esther spent all of free choice lining up acorns by size again, third day. Esther said the big ones are the grandmas..."></textarea>
+    <textarea id="notes" rows="4" placeholder="Ex. Two children spent all of free choice lining up acorns by size again, third day. One said the big ones are the grandmas..."></textarea>
     <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></section>`;
   if(p.type==="smallgroup")h+=smallGroupMeta(p);
   if(p.type==="individual")h+=focusCard(p);
@@ -3581,7 +3581,7 @@ function renderThreads(){
 
   // Search
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Search all plans</h2></div>
-    <input type="text" id="tsearch" placeholder="Search every saved plan. Ex. shadows, Juniper, tunnels, clay" value="${esc(tSearch)}">
+    <input type="text" id="tsearch" placeholder="Search every saved plan. Ex. shadows, a child's name, tunnels, clay" value="${esc(tSearch)}">
     <div id="tresults" style="display:grid;gap:6px"></div></section>`;
   $("#main").innerHTML=h;
   $("#main").querySelectorAll("textarea").forEach(autoGrow);
