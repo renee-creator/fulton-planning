@@ -137,3 +137,21 @@ test('Presenting opens for the director and for a presenter on a phone, with no 
     assert.strictEqual((await f.as(bt, '/api/staff/pres/get', { id: trace.id })).status, 404);
   } finally { await b.close(); await f.stop(); }
 });
+
+test('the October presenting details are added once, where an entry does not have them', async () => {
+  const { h, trace, twos } = await school();
+  assert.strictEqual(h.staff.presentingDetails(), true);
+  const t = (await call(h.staff, 'Dir', 'pres/get', { id: trace.id })).body, w = (await call(h.staff, 'Dir', 'pres/get', { id: twos.id })).body;
+  const tt = t.entry || t, ww = w.entry || w;
+  assert.strictEqual(tt.start, '09:00'); assert.strictEqual(tt.end, '12:00');
+  assert.strictEqual(tt.place, 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa');
+  assert.ok(tt.readings.some(r => r.url === 'https://www.eventbrite.com/e/circ-roundtable-fulton-community-school-and-farm-tickets-2003430437369'));
+  assert.match(tt.meetingsNote, /Storybook Village Preschool hosts the series' Round Table on Saturday, April 17, 2027, a month before Fulton's\./);
+  assert.strictEqual(ww.audience, 'Sonoma County Director Seminar, hosted at Fulton, on starting a twos program');
+  assert.deepStrictEqual([ww.date, ww.start, ww.end, ww.dateNote], ['2027-05-18', '17:30', '19:00', 'To be confirmed with Squirl Booth']);
+  // a second time adds nothing twice
+  h.staff.presentingDetails();
+  const again = (await call(h.staff, 'Dir', 'pres/get', { id: trace.id })).body; const ta = again.entry || again;
+  assert.strictEqual(ta.readings.length, tt.readings.length); assert.strictEqual(ta.meetingsNote, tt.meetingsNote);
+  assert.doesNotMatch(JSON.stringify([tt, ww]), /[–—]/);
+});

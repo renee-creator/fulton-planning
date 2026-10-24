@@ -22,7 +22,7 @@ module.exports = function presentingModule(c) {
   /* ---------- the entries ---------- */
   const all = () => [...S.files].filter(([p, r]) => p.startsWith('staff/presenting/') && r && r.doc && r.doc.id && !r.doc.removed).map(([, r]) => r.doc);
   const one = id => { const d = ID.test(String(id || '')) ? get(prPath(id)) : null; return d && !d.removed ? d : null; };
-  const blank = (title, by) => ({ id: rid('pr'), title: txt(title, 160), subtitle: '', question: '', audience: '', date: '', minutes: 0, format: '', presenters: [], status: 'planning', names: 'none',
+  const blank = (title, by) => ({ id: rid('pr'), title: txt(title, 160), subtitle: '', question: '', audience: '', date: '', start: '', end: '', place: '', dateNote: '', minutes: 0, format: '', presenters: [], status: 'planning', names: 'none',
     look: [], youngest: false, lens: '', meetingsNote: '', notes: [], meetings: [], evidence: { kept: {}, aside: {} }, chosen: [], readings: [], plan: [], followup: { on: false, reads: [], prompts: [], checks: [] }, credit: {}, createdAt: Date.now(), createdBy: by });
   const save = (d, me) => { d.updatedAt = Date.now(); d.updatedBy = me; put(prPath(d.id), d); return d; };
 
@@ -60,7 +60,7 @@ module.exports = function presentingModule(c) {
     const out = JSON.parse(JSON.stringify(e)); out.agendas = agendasUsing(e.id); out.edit = canEdit(me, e);
     if (presents(e, me) && e.status === 'presented') out.mine = { hours: !!(e.credit || {})[pidOf(me)], moment: sharedFor(e, me) };
     if (out.edit) { out.library = (get('staff/readings.json') || {}).list || []; if (isDirector(me)) out.choices = choices(); else delete out.credit; return out; }
-    const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'minutes', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
+    const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
     const safe = Object.fromEntries(keep.map(k => [k, out[k]]));
     safe.readings = (e.readings || []).filter(r => r.kind !== 'drive').map(r => ({ id: r.id, kind: r.kind, title: r.title, url: r.url, source: r.source || '', note: r.note || '' }));
     safe.plan = (e.plan || []).map(s => Object.assign({}, s, { readings: (s.readings || []).filter(id => safe.readings.some(r => r.id === id)) }));
@@ -207,7 +207,8 @@ module.exports = function presentingModule(c) {
     if (P === 'evidence') { json(req, res, 200, evidence(e)); return; }
     if (P === 'save') {
       const b = body.fields || {};
-      for (const k of ['title', 'subtitle', 'question', 'audience', 'format', 'meetingsNote']) if (k in b) e[k] = txt(b[k], k === 'meetingsNote' ? 400 : 300);
+      for (const k of ['title', 'subtitle', 'question', 'audience', 'format', 'meetingsNote', 'place', 'dateNote']) if (k in b) e[k] = txt(b[k], k === 'meetingsNote' ? 600 : 300);
+      for (const k of ['start', 'end']) if (k in b) e[k] = /^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || '') ? b[k] : '';
       if ('title' in b && !e.title.trim()) return err(req, res, 400, 'Give the entry a title.');
       if ('date' in b) e.date = ISO.test(b.date || '') ? b.date : '';
       if ('minutes' in b) e.minutes = Math.max(0, Math.min(2400, Math.round(+b.minutes || 0)));
@@ -285,5 +286,28 @@ module.exports = function presentingModule(c) {
   }
   // what a PD day agenda block may carry, and what a reader of that agenda learns about the entry it opens
   const visibleTitle = (me, id) => { const e = one(id); return e && canRead(me, e) ? e.title : ''; };
-  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID };
+  /* The presenting details the director gave in October 2026, written once into the two starting entries by a
+     one-time step at the server's start. Each is added only where the entry does not already have it. */
+  const CIRC = 'https://www.eventbrite.com/e/circ-roundtable-fulton-community-school-and-farm-tickets-2003430437369';
+  const STORYBOOK = 'Storybook Village Preschool hosts the series\' Round Table on Saturday, April 17, 2027, a month before Fulton\'s.';
+  function details2027() {
+    if (!S.ready) return false;
+    const trace = all().find(x => x.seed === 'trace'), twos = all().find(x => x.seed === 'twos');
+    if (trace) {
+      if (!trace.start && !trace.end) Object.assign(trace, { start: '09:00', end: '12:00' });
+      if (!trace.place) trace.place = 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa';
+      if (!(trace.readings || []).some(r => r.url === CIRC)) trace.readings = [...(trace.readings || []), { id: rid('r'), kind: 'link', title: 'CIRC Round Table at Fulton Community School and Farm, on Eventbrite', url: CIRC, source: 'Eventbrite', note: '' }];
+      if (!String(trace.meetingsNote || '').includes('Storybook Village')) trace.meetingsNote = [String(trace.meetingsNote || '').trim(), STORYBOOK].filter(Boolean).join(' ');
+      save(trace, 'TREE');
+    }
+    if (twos) {
+      twos.audience = 'Sonoma County Director Seminar, hosted at Fulton, on starting a twos program';
+      if (!twos.date) Object.assign(twos, { date: '2027-05-18', start: '17:30', end: '19:00', dateNote: 'To be confirmed with Squirl Booth' });
+      if (!twos.minutes) twos.minutes = 90;
+      if (!twos.place) twos.place = 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa';
+      save(twos, 'TREE');
+    }
+    log('Presenting details added'); return true;
+  }
+  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID, details2027 };
 };

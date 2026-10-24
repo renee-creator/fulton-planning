@@ -58,17 +58,20 @@ async function entryPage(my){const e=E(),dir=D(),ed=edit();
     (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 
-/* the entry's own details, which every reader sees */
+/* the entry's own details, which every reader sees. The day reads with its times, such as Saturday, May 22, 2027,
+   9:00 am to 12:00 pm, and a day still to be settled says so. */
+const prWhen=e=>e.date?[fd(e.date)+(e.start?", "+clockTime(e.start)+(e.end?" to "+clockTime(e.end):""):""),e.dateNote||""].filter(Boolean).join(". "):"";
 function aboutCard(e){const ed=edit(),dir=D();
   const ag=(e.agendas||[]).map(a=>`${a.kind==="meeting"?"PD staff meeting":"PD day"}, ${fd(a.date)}${a.title?", "+a.title:""}`);
   const agLine=ag.length?`<div class="cnt" style="margin-top:6px">On the agenda of ${H(kList(ag))}. ${typeof staffSubOk==="function"&&staffSubOk("stpdd")?(e.agendas||[]).map(a=>`<button class="linkbtn" data-pragenda="${H(a.date)}">Open the agenda for ${H(fd(a.date))}</button>`).join(" "):""}</div>`:`<div class="cnt" style="margin-top:6px">No PD day or staff meeting agenda uses this entry yet.${dir?" A block on any agenda can open it.":""}</div>`;
-  if(!ed)return card("About this entry",`${e.question?`<div class="prwhy"><b>Guiding question.</b> ${H(e.question)}</div>`:""}<div class="cnt" style="margin-top:6px">${H([e.audience?"For "+e.audience:"",e.date?fd(e.date):"",dur(e.minutes),e.format].filter(Boolean).join(". "))}</div>${(e.presenters||[]).length?`<div class="cnt">Presented by ${H(kList(e.presenters))}</div>`:""}${agLine}`);
+  if(!ed)return card("About this entry",`${e.question?`<div class="prwhy"><b>Guiding question.</b> ${H(e.question)}</div>`:""}<div class="cnt" style="margin-top:6px">${H([e.audience?"For "+e.audience:"",prWhen(e),e.place?"At "+e.place:"",dur(e.minutes),e.format].filter(Boolean).join(". "))}</div>${(e.presenters||[]).length?`<div class="cnt">Presented by ${H(kList(e.presenters))}</div>`:""}${agLine}`);
   const f=(k,l,ph,span)=>`<label${span?' style="grid-column:span 2"':""}>${l}<input type="text" data-prf="${k}" value="${H(e[k]||"")}" placeholder="${H(ph||"")}"></label>`;
   const pres=dir?`<div class="chiprow-label" style="margin-top:10px">Presenters</div><div class="chips">${[...new Set([...(e.choices||[]),...(e.presenters||[])])].map(n=>`<button class="chip ${(e.presenters||[]).includes(n)?"on":""}" type="button" data-prpres="${H(n)}" aria-pressed="${(e.presenters||[]).includes(n)}">${H(n)}</button>`).join("")||`<span class="cnt">No educator to add yet.</span>`}</div><div class="cnt">Each presenter sees this entry and works on it from their own Presenting page.</div>`
     :`<div class="cnt" style="margin-top:8px">${(e.presenters||[]).length?"Presented by "+H(kList(e.presenters))+".":""} The director chooses the presenters.</div>`;
   return card("About this entry",`<div class="kfields">${f("title","Title","",1)}${f("subtitle","Subtitle","",1)}</div>
     <label class="fld-label">Guiding question<input type="text" data-prf="question" value="${H(e.question||"")}" placeholder="The question the session follows"></label>
-    <div class="kfields">${f("audience","Audience","Who it is for")}<label>Date<input type="date" data-prf="date" value="${H(e.date||"")}"></label><label>Length, in minutes<input type="number" min="0" step="15" data-prf="minutes" value="${H(e.minutes||"")}"></label></div>
+    <div class="kfields">${f("audience","Audience","Who it is for",1)}<label>Date<input type="date" data-prf="date" value="${H(e.date||"")}"></label><label>Length, in minutes<input type="number" min="0" step="15" data-prf="minutes" value="${H(e.minutes||"")}"></label>
+      <label>Starts<input type="time" data-prf="start" value="${H(e.start||"")}"></label><label>Ends<input type="time" data-prf="end" value="${H(e.end||"")}"></label>${f("place","Place","Where it is held",1)}${f("dateNote","About the date","Such as to be confirmed with the host",1)}</div>
     <label class="fld-label">How it is offered<input type="text" data-prf="format" value="${H(e.format||"")}" placeholder="Such as a facilitated session with a self-paced follow-up"></label>
     <div class="cnt" id="pr-saved">${e.minutes?H(dur(e.minutes))+". ":""}Changes save as you go.</div>${pres}${agLine}`)}
 
@@ -192,7 +195,7 @@ function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(
 function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],checks:[]},e.followup);if(!f.on)return [];const R=e.readings||[];
   return [{t:"sub",text:"Self-paced follow-up"},f.reads.length?{t:"list",label:"Short readings",items:f.reads.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+(x.url?" ("+x.url+")":""))}:null,
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
-function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",e.date?fd(e.date):""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
+function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
   R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,...followBlocks(e)].filter(Boolean))}
 // panels, one idea to a page. The opening, the guiding question, each moment, and the question again to close.
 function sheet(o){return Object.assign({centered:true,display:true,type:"report",acc:"story",title:"",details:[],photos:[],blocks:[]},o)}
