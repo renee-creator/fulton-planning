@@ -503,6 +503,8 @@ const polName=k=>k==="family"?"Family Handbook":"Teacher Policies and Procedures
 const polKey=k=>k==="family"?"family:"+(st.fhYear||""):"teacher";
 async function loadPol(k,force){const key=polKey(k);if(!st.pol[key]||force){const d=await api("policies/doc",{doc:k,edition:k==="family"?st.fhYear||undefined:undefined});st.pol[key]=d;if(k==="family"&&!st.fhYear)st.pol["family:"+d.edition]=d}return st.pol[key]}
 const polSecs=d=>(d.parts||[]).flatMap(p=>p.sections.map(s=>Object.assign({partId:p.id,partTitle:p.title,partSize:p.sections.length},s)));
+// the whole book prints only what every reader may read, never a section kept for the director alone or one removed
+const polBook=d=>(d.parts||[]).map(p=>Object.assign({},p,{sections:p.sections.filter(s=>!s.directorOnly&&!s.removed)})).filter(p=>p.sections.length);
 // a picture in a section is read through the server with the sign-in, then kept for the visit
 const PICS=new Map();
 async function picBlob(p){if(PICS.has(p))return PICS.get(p);const r=await fetch(window.FP_SERVER+"/api/staff/policies/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({path:p})});
@@ -702,7 +704,7 @@ function polAckPage(doc,d,P){P.newPage();P.words([{text:"Family Handbook Acknowl
 function polFooters(doc,d,cover){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RULE);doc.setLineWidth(.6);doc.line(PAGE.l,PAGE.h-50,PAGE.w-PAGE.r,PAGE.h-50);
   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text(pdfText(d.footer||"Fulton Community School & Farm"),PAGE.l,PAGE.h-36);doc.text(`Page ${i} of ${n}`,PAGE.w-PAGE.r,PAGE.h-36,{align:"right"})}}
 async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;
-  const parts=sec?[{title:sec.title,sections:[sec]}]:d.parts;const pics=await polPictures(d,parts.flatMap(p=>p.sections));
+  const parts=sec?[{title:sec.title,sections:[sec]}]:polBook(d);const pics=await polPictures(d,parts.flatMap(p=>p.sections));
   const file=sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`;
   if(sec){const doc=planDoc({unit:"pt",format:"letter"});doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.setTextColor(...MOSS);doc.text(pdfText(`${name.toUpperCase()}, ${d.edition}`),PAGE.l,PAGE.t-24);
     polBody(doc,pics,d,parts,{});polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf");return}
@@ -712,7 +714,7 @@ async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);co
   const {P}=polBody(doc,pics,d,parts,{newFirst:true});if(k==="family")polAckPage(doc,d,P);polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf")}
 async function polWord(k,d,which){let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,ExternalHyperlink,Table,TableRow,TableCell,WidthType,ImageRun,Footer,PageNumber,HeadingLevel,AlignmentType,TableOfContents,PageBreak,BorderStyle}=X;
-  const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;const parts=sec?[{title:sec.title,sections:[sec]}]:d.parts;const pics=await polPictures(d,parts.flatMap(p=>p.sections));
+  const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;const parts=sec?[{title:sec.title,sections:[sec]}]:polBook(d);const pics=await polPictures(d,parts.flatMap(p=>p.sections));
   const F=PF.buf?PF.word.fr:"Arial";let listNo=0;
   const run=(r,o)=>r.br?new TextRun({break:1}):new TextRun(Object.assign({text:r.text,bold:!!r.b,italics:!!r.i,underline:r.u||r.link?{}:undefined,font:F,color:r.link?"2F5A43":undefined},o||{}));
   const inl=(rs,o)=>rs.map(r=>r.link&&!r.br?new ExternalHyperlink({link:r.link,children:[run(r,o)]}):run(r,o));
