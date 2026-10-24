@@ -17,4 +17,13 @@ test('TREE in the browser', async t => {
     assert.match(await h2(s.p), /Good (morning|afternoon|evening)/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
+
+  await t.test('a check-in reads its day in full and its time in words', async () => {
+    const s = await signedIn(fx, b, 'Bea', '1357');
+    await s.p.evaluate(() => goView('stci')); await s.p.waitForFunction(() => /My next check-in/.test(document.querySelector('#main').innerText), null, { timeout: 15000 });
+    const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
+    assert.match(text, /quarter past ten/);
+    assert.doesNotMatch(text, /\d:\d\d/);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
 });

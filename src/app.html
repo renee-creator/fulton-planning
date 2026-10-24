@@ -875,7 +875,7 @@ function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"
 function parseIso(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
 function addDays(s,n){const d=parseIso(s);d.setDate(d.getDate()+n);return iso(d)}
 // one date formatter, and each day worded once, since long pages word the same weeks many times
-const DATE_FMT=new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}),fmtDateMemo=new Map();
+const DATE_FMT=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",year:"numeric"}),fmtDateMemo=new Map();
 function fmtDate(s){if(!s)return"";const k=String(s);let v=fmtDateMemo.get(k);if(v==null){v=DATE_FMT.format(parseIso(s));if(fmtDateMemo.size>5000)fmtDateMemo.clear();fmtDateMemo.set(k,v)}return v}
 function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -3622,7 +3622,7 @@ function portfolioDrdpDoc(c,mode,view){
     blocks.push(dSub(DRDP_DOM[dm]||dm));
     for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),focusText(x.evidence||"",c),x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",[drdpLevelText(x.level,x.emerging)]))}}
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
-  return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-","–")]],blocks};
+  return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-"," to ")]],blocks};
 }
 // how the DRDP sits in a portfolio. Within the moments, each accepted level prints on the page of the moment or slide it
 // was read from, so the reading stays with the experience and is seen over time. At the end keeps the summary page.
@@ -3632,7 +3632,7 @@ function portfolioDocs(c,mode,drdp){
   mode=mode||PRINT.names;drdp=drdp||pfDrdpMode();const items=portfolioItems(c);
   const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   const who=[...new Set(items.map(x=>x.kind==="slides"?x.s.by:x.kind==="stories"?x.st.by:x.n.by).filter(Boolean))];
-  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-","–"),who.length&&who.length<=3?"With "+who.join(", ").replace(/, ([^,]*)$/," and $1"):""],photos:[],
+  const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-"," to "),who.length&&who.length<=3?"With "+who.join(", ").replace(/, ([^,]*)$/," and $1"):""],photos:[],
     blocks:[{t:"para",text:(()=>{const whose=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${whose} story`;
       const d0=longDate(iso(new Date(items[0].at))),d1=longDate(iso(new Date(items[items.length-1].at)));
       return d0===d1?`${whose} story on ${d0}`:`${whose} story from ${d0} to ${d1}`})()},{t:"para",text:mode==="none"?"In the child's own words and the educators'.":`In ${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s own words and the educators'.`}]};
@@ -3775,7 +3775,14 @@ new MutationObserver(()=>placeSubnav()).observe(document.getElementById("main"),
 function myRoom(){if(VIEW_AS){if(VIEW_AS.room)return VIEW_AS.room;const m=VIEW_AS.name.toLowerCase();const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
 const myGroups=()=>{const m=me().toLowerCase();return m?GROUPS.filter(g=>(g.educator||"").toLowerCase()===m):[]};
 const fmtLong=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-const tlabel=t=>{if(!t)return"";let [h,m]=String(t).split(":").map(Number);const ap=h>=12?"pm":"am";h=h%12||12;return h+(m?":"+String(m).padStart(2,"0"):"")+ap};
+function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
+  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
+  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
+  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
+  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
+  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
+const tlabel=t=>t?timeWords(t):"";
 
 /* ---------- Today ---------- */
 let todayCal={at:0,day:"",items:null,error:""};
@@ -3795,7 +3802,7 @@ async function loadTodayCal(force){
   }catch(e){todayCal={at:Date.now(),day,items:null,error:e&&e.message||"The calendar could not be reached."}}
   if(view==="today")renderToday();
 }
-function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?"–"+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${x.menuMonth?`<span class="cnt"><button class="linkbtn" data-print="kmenu" data-id="${esc(x.menuMonth)}|all">Print the monthly menu</button></span>`:""}</div>`}
+function evRow(x){return `<div class="ev ${x.kind}"><span class="t">${x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):x.week?"All week":"All day"}</span><b>${esc(x.title)}</b>${x.sub?`<span class="cnt">${esc(x.sub)}</span>`:""}${x.menuMonth?`<span class="cnt"><button class="linkbtn" data-print="kmenu" data-id="${esc(x.menuMonth)}|all">Print the monthly menu</button></span>`:""}</div>`}
 function todayWaiting(){
   const out=[],m=me(),dir=isDirector(),wk=mondayOf(new Date());
   const all=[...plans.values()].filter(p=>p.id!=="example");
@@ -3806,7 +3813,7 @@ function todayWaiting(){
     out.push({dot:"sky",t:`Waiting for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
   // the director and the office see a family's visit coming up, so the forms are printed and ready to sign
   if(isOffice()){const t0=iso(new Date()),t2=addDays(t0,2);for(const c of kidsAt().filter(c=>c.visit&&c.visit.date>=t0&&c.visit.date<=t2&&!(c.onboarding||{}).paperwork).sort((a,b)=>(a.visit.date+a.visit.time).localeCompare(b.visit.date+b.visit.time)))
-    out.push({dot:"mari",t:`${c.first}'s visit, ${parseIso(c.visit.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.visit.time?" at "+tlabel(c.visit.time):""}`,s:c.enrollForm?(c.enrollForm.done?"Print the forms for the family to sign.":"The enrollment information is not finished yet."):"The family has not typed the enrollment information yet.",act:`data-kid="${esc(c.id)}" data-ktab="details"`,b:"Open"})}
+    out.push({dot:"mari",t:`${c.first}'s visit, ${parseIso(c.visit.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}${c.visit.time?" at "+tlabel(c.visit.time):""}`,s:c.enrollForm?(c.enrollForm.done?"Print the forms for the family to sign.":"The enrollment information is not finished yet."):"The family has not typed the enrollment information yet.",act:`data-kid="${esc(c.id)}" data-ktab="details"`,b:"Open"})}
   // an educator hears when the director has reviewed a plan, until the plan is opened
   if(!dir){for(const p of all.filter(p=>p.status==="reviewed"&&p.reviewedAt&&p.reviewedAt>Date.now()-14*864e5&&isMine(p,m)&&(p.reviewSeenAt||0)<p.reviewedAt).slice(0,4))
     out.push({dot:"moss",t:`The director reviewed your ${FORMS[p.type].short} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Open"})}
@@ -3857,7 +3864,7 @@ function todayWaiting(){
     if(!unnamed)continue;
     const subj=(n.kaymbu.subject||"").trim(),by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];
     const ats=early.map(x=>x.at||0).sort((a,b)=>a-b);const span=!ats.length?"":ats.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
-    out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
+    out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
   // on Friday the director sees how many Kaymbu moments came in from each educator this week, so a missing one is easy to spot
   if(dir&&new Date().getDay()===5){const wk0=parseIso(mondayOf(new Date())).getTime();const cnt={};for(const r of roster)if(r.room&&!isShared(r.name))cnt[r.name]=0;
     for(const n of notices.values())if(n.kaymbu&&(n.kaymbu.keptAt||0)>=wk0){const b=String(n.by||"").trim()||"No educator named";cnt[b]=(cnt[b]||0)+1}
@@ -3886,13 +3893,13 @@ function todayWaiting(){
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
   const mineC=upcoming.filter(c=>{const k=children.get(c.childId);const t=(c.teacher||"").toLowerCase();return m&&t===m.toLowerCase()||(!dir&&room&&k.classroom===room)});
-  if(dir&&!mineC.length){if(upcoming.length)out.push({dot:"mari",n:upcoming.length,t:`${upcoming.length} family conference${upcoming.length===1?"":"s"} in the next three weeks`,s:`The first is ${parseIso(upcoming[0].confDate).toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}.`,act:`data-tview="conferences"`,b:"See them"});return out}
+  if(dir&&!mineC.length){if(upcoming.length)out.push({dot:"mari",n:upcoming.length,t:`${upcoming.length} family conference${upcoming.length===1?"":"s"} in the next three weeks`,s:`The first is ${parseIso(upcoming[0].confDate).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}.`,act:`data-tview="conferences"`,b:"See them"});return out}
   for(const c of mineC.slice(0,6)){
     const k=children.get(c.childId);
     // what is still missing, so the row says it at a glance and opens on the first empty section
     const miss=confIsReady(c)?[]:CONF_READY_FIELDS.filter(f=>!String(c.fields?.[f]||"").trim());const steps=confIsReady(c)?[]:CONF_READY_STEPS.filter(f=>!c.prep?.[f]);
     const missTxt=miss.length||steps.length?[miss.length?(miss.length>4?miss.length+" sections empty, starting with "+miss.slice(0,2).map(f=>CONF_SHORT[f]).join(" and "):miss.map(f=>CONF_SHORT[f]).join(", ")+(miss.length===1?" empty":" empty")):"",steps.length?steps.map(f=>CONF_STEP_SHORT[f]).join(", ")+" not ticked":""].filter(Boolean).join(". ")+".":"";
-    out.push({dot:"mari",t:`Conference with ${k.first}'s family, ${parseIso(c.confDate).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.confTime?" at "+tlabel(c.confTime):""}`,s:[confIsReady(c)?"Ready.":missTxt,c.teacher?"With "+c.teacher+".":""].filter(Boolean).join(" "),act:`data-tconf="${esc(c.id)}"${miss.length?` data-tsecf="fields.${miss[0]}"`:""}`,b:confIsReady(c)?"Open":"Prepare"});
+    out.push({dot:"mari",t:`Conference with ${k.first}'s family, ${parseIso(c.confDate).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}${c.confTime?" at "+tlabel(c.confTime):""}`,s:[confIsReady(c)?"Ready.":missTxt,c.teacher?"With "+c.teacher+".":""].filter(Boolean).join(" "),act:`data-tconf="${esc(c.id)}"${miss.length?` data-tsecf="fields.${miss[0]}"`:""}`,b:confIsReady(c)?"Open":"Prepare"});
     if(out.length>14)break}
   return out;
 }
@@ -4110,7 +4117,7 @@ function kUses(food,days,farm){const re=kFoodRe(food),e=kEntry(food,farm),fruit=
     else if(e&&sn.some(t=>e.dish.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>e.dish.test(t)),cooked:true});
     else if(fruit&&sn.some(t=>/fruit/i.test(t)))out.push({d,meal:"snack",dish:sn.find(t=>/fruit/i.test(t))})}
   return out}
-const kShort=d=>parseIso(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+const kShort=d=>parseIso(d).toLocaleDateString("en-US",{month:"long",day:"numeric"});
 const kDish=t=>{t=String(t||"").trim();return t?t[0].toLowerCase()+t.slice(1):""};
 const K_SHOW_MET=false;
 /* every snack comes with seasonal fruit and every lunch with a salad and seasonal vegetables, as the month's menu notes say,
@@ -4179,7 +4186,7 @@ let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
 function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
   const farms=new Set(w.items.map(i=>i.farm)).size,foods=new Set(w.items.map(i=>i.food||i.name)).size;const first=w.items.map(i=>i.day).filter(Boolean).sort()[0];
-  const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}):"";
+  const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
   return `<details class="card kitchen" style="margin-top:14px" ${kOpen?"open":""}><summary><h3>Produce coming</h3><span class="cnt">${foods} food${foods===1?"":"s"} from ${farms} farm${farms===1?"":"s"}${when?", "+esc(when):""}</span></summary>
     <div class="klist">${w.items.map(it=>{const town=farmTown(it.farm),sv=it.serve,ask=kCanServe();
       // once someone has said how it is served, that replaces TREE's guess for everyone
@@ -4253,7 +4260,7 @@ function renderWeekBoard(){
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Plans</span><h2 style="margin-top:4px">Week of ${esc(parseIso(week).toLocaleDateString("en-US",{month:"long",day:"numeric"}))}</h2>
     <div class="sub">Individual plans come first on Monday. The team writes the Classroom plan from them, and nobody's absence holds it up.</div></div>
     <span class="actions"><button class="btn small ghost" id="importbtn">Upload a plan or photo</button></span></div></div>
-  <div class="spread" style="margin:4px 0 14px"><div class="weekbar"><button class="iconbtn" id="prevwk" aria-label="Previous week">‹</button><b>${esc(parseIso(week).toLocaleDateString("en-US",{month:"short",day:"numeric"}))}</b><button class="iconbtn" id="nextwk" aria-label="Next week">›</button>${week!==thisWk?`<button class="linkbtn" data-tthisweek="1">This week</button>`:""}</div>
+  <div class="spread" style="margin:4px 0 14px"><div class="weekbar"><button class="iconbtn" id="prevwk" aria-label="Previous week">‹</button><b>${esc(parseIso(week).toLocaleDateString("en-US",{month:"long",day:"numeric"}))}</b><button class="iconbtn" id="nextwk" aria-label="Next week">›</button>${week!==thisWk?`<button class="linkbtn" data-tthisweek="1">This week</button>`:""}</div>
     <div class="tseg" role="group" aria-label="Classroom">${CLASSROOMS.map(r=>`<button data-room="${r}" aria-pressed="${r===room}">${r}</button>`).join("")}</div></div>
   <div class="tgrid2">
     <section class="card"><div class="lbl">Individual plans</div><div class="tlist">
@@ -7217,14 +7224,14 @@ const kTimers={};
 function kSaveSoon(month,day,k,val){const key=day+"|"+k;clearTimeout(kTimers[key]);kTimers[key]=setTimeout(()=>kWrite(month,{days:{[day]:{[k]:val}}}).then(()=>setConn("Menu saved")).catch(e=>toast((e&&e.message)||"Could not save the menu.")),600)}
 function kWeeks(month){const days=menuSchoolDays(month);const weeks=[];for(const d of days){const m=mondayOf(parseIso(d));let w=weeks.find(x=>x.m===m);if(!w){w={m,days:[]};weeks.push(w)}w.days.push(d)}return weeks}
 function kCellHtml(month,d){const x=(((menus.get(month)||{}).days)||{})[d]||{},dr=kDraft&&kDraft.month===month?(kDraft.days[d]||{}):{};const closed=!!x.closed;
-  const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});const shut=(kClosed[month]||new Set()).has(d);
+  const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});const shut=(kClosed[month]||new Set()).has(d);
   return `<div class="kday${closed?" closed":""}"><div class="kdayh"><b>${esc(lab)}</b><label class="cnt"><input type="checkbox" data-kclosed="${d}" ${closed?"checked":""}> No school</label></div>
     ${shut&&!closed?`<div class="cnt warnline">The calendar shows the school closed</div>`:""}
     ${closed?"":kMealsOf(d).map(k=>{const v=x[k]||"",dv=!has(v)&&dr[k]?dr[k]:"";return `<label class="kmeal">${K_MEAL[k]}<textarea rows="1" data-kday="${d}" data-kk="${k}" class="kin${dv?" kdraft":""}" ${kSel&&kSel.day===d&&kSel.k===k?'data-ksel="1"':""}>${esc(v||dv)}</textarea>
       <textarea rows="1" class="kin kside" data-kday="${d}" data-kk="${k}Side" placeholder="${k==="lunch"?"Salad and vegetable":"Fruit"}" aria-label="${K_MEAL[k]} sides">${esc(x[k+"Side"]||"")}</textarea></label>`}).join("")}</div>`}
 function kLastYearHtml(month){const ref=kSel?kSel.day:(menuSchoolDays(month)[0]||month+"-01");const m=mondayOf(parseIso(ref));const days=[0,1,2,3,4].map(i=>addDays(m,i));
-  const rows=days.map(d=>{const ly=kLastYear(d),x=(((menus.get(ly.slice(0,7))||{}).days)||{})[ly]||{};return x.closed?`<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}))}</b><span class="cnt">No school</span></div>`:
-    `<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}))}</b>${["am","lunch","pm"].filter(k=>has(x[k])).map(k=>`<button class="kdish" type="button" data-kput="${esc(x[k])}" draggable="true">${esc(x[k])}</button>`).join("")||`<span class="cnt">No menu kept</span>`}</div>`}).join("");
+  const rows=days.map(d=>{const ly=kLastYear(d),x=(((menus.get(ly.slice(0,7))||{}).days)||{})[ly]||{};return x.closed?`<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b><span class="cnt">No school</span></div>`:
+    `<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b>${["am","lunch","pm"].filter(k=>has(x[k])).map(k=>`<button class="kdish" type="button" data-kput="${esc(x[k])}" draggable="true">${esc(x[k])}</button>`).join("")||`<span class="cnt">No menu kept</span>`}</div>`}).join("");
   return `<div class="card kside-card"><div class="lbl">The same week last year</div><div class="cnt">Week of ${esc(fmtDate(addDays(m,-364)))}. Tap a dish to put it in the chosen meal.</div>${rows}</div>`}
 function kLibraryHtml(){const want=kSel?(kSel.k==="lunch"?"lunch":"snack"):"";const q=kLibQ.toLowerCase();
   const L=kLibrary().filter(e=>(!want||e.kinds.has(want))&&(!q||e.dish.toLowerCase().includes(q))).slice(0,60);
@@ -7259,7 +7266,7 @@ document.addEventListener("keydown",e=>{const t=e.target;if(view!=="kitchen"||!t
 document.addEventListener("input",e=>{const t=e.target;if(t.classList&&t.classList.contains("kin"))autoGrow(t)});
 // Today for a kitchen sign-in, the produce coming and the week's menu
 function renderKitchenToday(){const wk=planWeekNow();const days=[0,1,2,3,4].map(i=>addDays(wk,i));const now=new Date();
-  const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     return `<tr><td><b>${esc(lab)}</b></td>${x.closed?`<td colspan="3" class="cnt">No school</td>`:`<td>${esc(x.am||"")}</td><td>${esc(x.lunch||"")}</td><td>${parseIso(d).getDay()===1?"":esc(x.pm||"")}</td>`}</tr>`}).join("");
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">${esc(now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</span><h2 style="margin-top:4px">Good ${now.getHours()<12?"morning":now.getHours()<17?"afternoon":"evening"}, ${esc(me()||"")}</h2></div>
     ${kitchenCardHtml(wk,false)}
@@ -7457,7 +7464,7 @@ function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
   return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
     ${(d.read||[]).length?`<div class="cnt" style="margin-bottom:8px">Read from ${d.read.map(esc).join(" and ")}.</div>`:""}
     <div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Morning snack</th><th>Afternoon snack</th><th>Lunch</th><th>No school</th></tr></thead><tbody>
-    ${days.map(day=>{const x=d.days[day]||{};const lab=parseIso(day).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+    ${days.map(day=>{const x=d.days[day]||{};const lab=parseIso(day).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
       return `<tr${x.closed?' class="closed"':""}><td class="cnt" style="white-space:nowrap">${esc(lab)}</td>${["am","pm","lunch"].map(k=>{const mon=k==="pm"&&parseIso(day).getDay()===1;return `<td><input type="text" data-menuday="${day}" data-menuk="${k}" value="${esc(mon?"":x[k]||"")}" ${x.closed||mon?"disabled":""} ${mon?'placeholder="Morning only"':""}></td>`}).join("")}<td style="text-align:center"><input type="checkbox" data-menuday="${day}" data-menuk="closed" ${x.closed?"checked":""}></td></tr>`}).join("")}
     </tbody></table></div>
     <div class="kfields" style="margin-top:10px">${[["am","Morning snack at"],["lunch","Lunch at"],["pm","Afternoon snack at"]].map(([k,l])=>`<label class="cnt">${l}<input type="time" data-menutime="${k}" value="${esc(((d.times||{})[k])||"")}"></label>`).join("")}</div>
@@ -9202,7 +9209,7 @@ document.addEventListener("change",e=>{
    Every page is offered as a PDF and as a Word file, so the layout can be adjusted by hand. */
 const RANGE_WORDS={"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year",all:"All saved plans"};
 const safeFile=n=>String(n).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim();
-const shortWeek=w=>w?parseIso(w).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";
+const shortWeek=w=>w?parseIso(w).toLocaleDateString("en-US",{month:"long",day:"numeric"}):"";
 function weeksSpan(ws){const s=[...new Set(ws||[])].filter(Boolean).sort();return s.length?(s.length===1?`Week of ${fmtDate(s[0])}`:`${shortWeek(s[0])} to ${fmtDate(s[s.length-1])}`):""}
 // who a moment comes from, kept short for the page
 function whoLine(p){
@@ -10272,7 +10279,7 @@ function renderThreads(){
   if(scan&&scan.threads?.length){
     const open=x=>!x.trackedId||!threads.has(x.trackedId)||!!threads.get(x.trackedId).undone;
     const fresh=scan.threads.filter(x=>open(x)&&(!x.dismissed||tShowDismissed));const nDis=scan.threads.filter(x=>open(x)&&x.dismissed).length;
-    h+=`<div class="chiprow-label">Found by TREE, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
+    h+=`<div class="chiprow-label">Found by TREE, ${new Date(scan.createdAt).toLocaleDateString("en-US",{month:"long",day:"numeric"})}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n}${j.closed?", closed, children have returned to it":""})`).join(", ")}</div>`}
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
@@ -11453,7 +11460,7 @@ function renderChildren(){
     const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;
     // every card has the same lines in the same order, so children compare at a glance
     const line=(on,t)=>`<span class="kline ${on?"ksoon":""}">${esc(t)}</span>`;
-    const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":"")]
+    const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"long",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":"")]
       :[line(false,`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+longDate(kidLeftDay(c)):""}`)];
     return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${rows.join("")}</button>`};
   const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
@@ -11541,7 +11548,7 @@ function renderChild(){
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
-      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-","–")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}${x.sharedWithFamily?" · Shared with the family":""}</div></div></button>${isOffice()&&x.term!=="Historical"?`<div class="actions" style="margin:-4px 0 8px 12px"><button class="linkbtn" data-confshare="${esc(x.id)}">${x.sharedWithFamily?"Stop sharing the notes":"Share the notes with the family"}</button></div>`:""}`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
+      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}${x.sharedWithFamily?" · Shared with the family":""}</div></div></button>${isOffice()&&x.term!=="Historical"?`<div class="actions" style="margin:-4px 0 8px 12px"><button class="linkbtn" data-confshare="${esc(x.id)}">${x.sharedWithFamily?"Stop sharing the notes":"Share the notes with the family"}</button></div>`:""}`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
     body=kidInfoEdit===c.id?kidInfoForm(c):`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">${esc(kidName(c))}</h3><button class="btn small ghost" data-kinfoedit="${esc(c.id)}">Change</button></div><div class="kgrid">
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
@@ -11758,7 +11765,7 @@ function spaceCardHtml(p){
   if(!window.FP_HOSTED)return"";
   if(!calSpaces){loadCalSpaces();return `<section class="card" id="spacecard"><div class="lbl">Space for the small group</div><div class="empty"><span class="spin"></span> Reading the spaces</div></section>`}
   const sp=planSpace(p);const busy=spaceBusy[p.id];const space=calSpaces.find(x=>x.id===sp.spaceId);
-  const dayName=d=>parseIso(addDays(p.weekOf,d-1)).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  const dayName=d=>parseIso(addDays(p.weekOf,d-1)).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   return `<section class="card" id="spacecard"><div class="secthead"><div class="lbl">Space for the small group</div><button class="linkbtn" data-tview="calendar">Calendar</button></div>
     <div class="hint">Small groups meet Tuesday to Friday, 9 to 10:30. Change the days or times when this group meets at another time.</div>
     <div class="kfields"><label>Space<select data-spsel="1"><option value="">Choose a space</option>${calSpaces.map(x=>`<option value="${esc(x.id)}" ${x.id===sp.spaceId?"selected":""}>${esc(x.name)}${x.byWeek?", by the week":""}</option>`).join("")}</select></label>

@@ -158,8 +158,9 @@ module.exports = function reminders(o) {
   const calDays = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
   function schoolDaysUntil(a, b) { if (b < a) return -1; let n = 0; for (let d = a; d < b; d = addDays(d, 1)) { const w = new Date(d + 'T12:00:00Z').getUTCDay(); if (d !== a && w > 0 && w < 6) n++; } const w = new Date(b + 'T12:00:00Z').getUTCDay(); return a === b ? 0 : n + (w > 0 && w < 6 ? 1 : 0); }
   function addSchoolDays(d, n) { let x = d; while (n < 0) { x = addDays(x, -1); const w = new Date(x + 'T12:00:00Z').getUTCDay(); if (w > 0 && w < 6) n++; } return x; }
-  const dayWord = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'short', day: 'numeric' });
-  const timeWord = t => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
+  const dayWord = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' });
+  // a time is said the way people say it, quarter past one, never with a colon
+  const timeWord = require('./time-words.js');
   // what one educator has open now, each with where tapping it should lead
   function openFor(e, when, S) {
     const { week } = when; const start = S.start || week; const off = new Set(personOf(S, e.name).off || []); const on = t => S.types[t] && !off.has(t);

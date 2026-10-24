@@ -487,13 +487,20 @@ const dow = s => new Date(dayNum(s)*864e5).getUTCDay();
 // the school week starts on Monday, so weeks and months are laid out Monday first
 const mdow = s => (dow(s)+6)%7;
 const mondayOf = s => addDays(s, -((dow(s)+6)%7));
-const weekLabel = monday => "Week of "+fmt(monday,{weekday:"short",month:"short",day:"numeric"});
+const weekLabel = monday => "Week of "+fmt(monday,{weekday:"long",month:"long",day:"numeric"});
 const fmt = (s,o) => new Date(dayNum(s)*864e5).toLocaleDateString("en-US",Object.assign({timeZone:"UTC"},o));
 const localToday = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
-function clock(min){ const h=Math.floor(min/60), m=min%60, h12=h%12===0?12:h%12; return h12+":"+String(m).padStart(2,"0")+(h>=12&&h<24?" pm":" am"); }
-function shortClock(min){ const h=Math.floor(min/60), m=min%60, h12=h%12===0?12:h%12; return h12+(m?":"+String(m).padStart(2,"0"):"")+(h>=12&&h<24?"p":"a"); }
+function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
+  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
+  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
+  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
+  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
+  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
+function clock(min){ return timeWords(min); }
+function shortClock(min){ return timeWords(min); }
 function hourLabel(min){ const h=Math.floor(min/60), h12=h%12===0?12:h%12; return h12+(h>=12&&h<24?" pm":" am"); }
-function span(a,b){ const A=clock(a), B=clock(b); return A.slice(-2)===B.slice(-2) ? A.slice(0,-3)+" to "+B : A+" to "+B; }
+function span(a,b){ return clock(a)+" to "+clock(b); }
 const mins = iso => Number(iso.slice(11,13))*60+Number(iso.slice(14,16));
 
 /* ---------- state ---------- */
@@ -678,7 +685,7 @@ function renderAgenda(idx){
   for(const d of weekDays(S.anchor)){
     const v=idx.get(d)||{allDay:[],timed:[]};
     const day=h("div",{class:"ag-day"});
-    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:fmt(d,{weekday:"long",month:"short",day:"numeric"})+(d===t?", today":"")}), h("small",{text:"Open day"})));
+    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:fmt(d,{weekday:"long",month:"long",day:"numeric"})+(d===t?", today":"")}), h("small",{text:"Open day"})));
     const rows=v.allDay.filter(x=>x.kind==="event").concat(v.timed);
     if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
     for(const x of rows) day.append(agRow(x));
@@ -741,7 +748,7 @@ function renderSide(){
   const list=(S.data&&S.data.mine)||[]; const byId=new Map(st.spaces.map(s=>[s.id,s]));
   if(!list.length) mine.append(h("p",{class:"empty",text:S.shared&&!S.who? "Your sign-ups will be listed here after your first one." : "You have no upcoming sign-ups."}));
   for(const b of list){ const space=byId.get(b.spaceId); if(!space) continue;
-    mine.append(h("button",{type:"button",class:"mine-row c-"+space.color,onclick:()=>{ go("day",b.date); openBookDialog({edit:b}); }}, h("span",{class:"sw"}), h("span",{}, h("b",{text:space.name+(forOf(b)?", "+forOf(b):"")}), h("span",{class:"sub",text:(b.week? weekLabel(b.date) : fmt(b.date,{weekday:"short",month:"short",day:"numeric"})+", "+span(b.start,b.end))+(b.seriesId?", weekly":"")}))));
+    mine.append(h("button",{type:"button",class:"mine-row c-"+space.color,onclick:()=>{ go("day",b.date); openBookDialog({edit:b}); }}, h("span",{class:"sw"}), h("span",{}, h("b",{text:space.name+(forOf(b)?", "+forOf(b):"")}), h("span",{class:"sub",text:(b.week? weekLabel(b.date) : fmt(b.date,{weekday:"long",month:"long",day:"numeric"})+", "+span(b.start,b.end))+(b.seriesId?", weekly":"")}))));
   }
 }
 
@@ -752,7 +759,7 @@ function titleText(){
   if(S.view==="day") return fmt(S.anchor,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
   const days=weekDays(S.anchor), a=days[0], b=days[days.length-1];
   if(a.slice(0,7)===b.slice(0,7)) return fmt(a,{month:"long"})+" "+Number(a.slice(8))+" to "+Number(b.slice(8))+", "+b.slice(0,4);
-  return fmt(a,{month:"short",day:"numeric"})+" to "+fmt(b,{month:"short",day:"numeric"})+", "+b.slice(0,4);
+  return fmt(a,{month:"long",day:"numeric"})+" to "+fmt(b,{month:"long",day:"numeric"})+", "+b.slice(0,4);
 }
 function render(){
   $("title").textContent=titleText();
@@ -832,7 +839,7 @@ function bkHint(){
   if(!space){ box.textContent="Choose a space to see whether it is free."; return; }
   if(!v.date){ box.textContent="Choose a date."; return; }
   if(week){
-    const mon=mondayOf(v.date), span5=fmt(mon,{month:"short",day:"numeric"})+" to "+fmt(addDays(mon,4),{month:"short",day:"numeric"});
+    const mon=mondayOf(v.date), span5=fmt(mon,{month:"long",day:"numeric"})+" to "+fmt(addDays(mon,4),{month:"long",day:"numeric"});
     if(!S.range || mon<S.range.from || mon>S.range.to){ box.textContent="This week is outside the days on screen, so it is checked when you save."; return; }
     const taken=(S.data.bookings||[]).filter(b=>b.spaceId===space.id&&b.date===mon&&(!Bk.edit||b.id!==Bk.edit.id));
     if(!taken.length){ box.className="nudge ok"; box.textContent=space.name+" is free for the week of "+span5+"."; return; }
@@ -886,7 +893,7 @@ function openEventInfo(e, cal){
   let when;
   if(e.allDay) when = e.start===e.end ? fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+"\nAll day" : fmt(e.start,{weekday:"short",month:"long",day:"numeric"})+" to "+fmt(e.end,{weekday:"short",month:"long",day:"numeric"});
   else { const sd=e.start.slice(0,10), ed=e.end.slice(0,10);
-    when = sd===ed ? fmt(sd,{weekday:"long",month:"long",day:"numeric"})+"\n"+span(mins(e.start),mins(e.end)) : fmt(sd,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.start))+" to "+fmt(ed,{weekday:"short",month:"short",day:"numeric"})+", "+clock(mins(e.end)); }
+    when = sd===ed ? fmt(sd,{weekday:"long",month:"long",day:"numeric"})+"\n"+span(mins(e.start),mins(e.end)) : fmt(sd,{weekday:"long",month:"long",day:"numeric"})+", "+clock(mins(e.start))+" to "+fmt(ed,{weekday:"long",month:"long",day:"numeric"})+", "+clock(mins(e.end)); }
   // a PD day or monthly PD staff meeting opens its agenda in TREE
   const agenda = e.agenda || (/\bP\.?D\.?\b|professional development|staff development|in.?service|staff meeting/i.test(e.title||"") ? String(e.start||"").slice(0,10) : "");
   showInfo({ tag:"School calendar, view only", locked:true, agenda, story:{id:e.id,title:e.title,when:when.replace(/\n/g,", "),where:e.location||"",desc:e.desc||""}, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
@@ -919,8 +926,8 @@ async function saveBooking(e){
       const r=await api("/api/book",Object.assign({},v,repeat?{repeatUntil:$("bk-until").value}:{}));
       const space=settings().spaces.find(s=>s.id===v.spaceId), name=space?space.name:"the space";
       if(r.made.length===1 && !r.skipped.length && r.made[0].week) toast("You are signed up for "+name+" for the "+weekLabel(r.made[0].date).replace(/^W/,"w")+".");
-      else if(r.made.length===1 && !r.skipped.length) toast("You are signed up for "+name+", "+fmt(v.date,{weekday:"short",month:"short",day:"numeric"})+", "+span(v.start,v.end)+".");
-      else toast("You are signed up for "+name+" for "+r.made.length+(r.made.length===1?" week":" weeks")+"."+(r.skipped.length? " Skipped "+r.skipped.map(s=>fmt(s.date,{month:"short",day:"numeric"})+" ("+s.by+" has it)").join(", ")+"." : ""));
+      else if(r.made.length===1 && !r.skipped.length) toast("You are signed up for "+name+", "+fmt(v.date,{weekday:"long",month:"long",day:"numeric"})+", "+span(v.start,v.end)+".");
+      else toast("You are signed up for "+name+" for "+r.made.length+(r.made.length===1?" week":" weeks")+"."+(r.skipped.length? " Skipped "+r.skipped.map(s=>fmt(s.date,{month:"long",day:"numeric"})+" ("+s.by+" has it)").join(", ")+"." : ""));
     }
     closeDlg($("dlg-book")); S.anchor = S.view==="month"? S.anchor : v.date; await refresh(true);
   }catch(err){ msg.textContent=err.message||"That could not be saved. Try again."; btn.disabled=false; }

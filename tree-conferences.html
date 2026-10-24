@@ -540,8 +540,15 @@ function toISODate(s){
   const d = new Date(s.replace(/(\d)(st|nd|rd|th)\b/gi,"$1")); if(!isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   return "";
 }
-function fmtDate(iso, opts={month:"short",day:"numeric",year:"numeric"}){ if(!iso) return ""; const d=new Date(iso.length===10?iso+"T12:00:00":iso); return isNaN(d)?iso:d.toLocaleDateString(undefined,opts); }
-function fmtTime(t){ if(!t) return ""; const [h,m]=t.split(":").map(Number); if(isNaN(h)) return t; const d=new Date(); d.setHours(h,m||0); return d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}); }
+function fmtDate(iso, opts={month:"long",day:"numeric",year:"numeric"}){ if(!iso) return ""; const d=new Date(iso.length===10?iso+"T12:00:00":iso); return isNaN(d)?iso:d.toLocaleDateString(undefined,opts); }
+function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
+  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
+  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
+  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
+  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
+  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
+function fmtTime(t){ return timeWords(t); }
 function ageAt(dob, at){
   if(!dob) return ""; const b=new Date(dob+"T12:00:00"), a=at?new Date(at+"T12:00:00"):new Date();
   if(isNaN(b)||isNaN(a)) return "";
@@ -778,7 +785,7 @@ function viewOverview(){
 const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0,none:0}; rooms.forEach(r=>{ const c=counts(r); for(const k in tot) tot[k]+=c[k]; });
   const today0 = todayISO();
   const when = cf => (cf.confDate||"")+" "+(cf.confTime||"99:99");
-  const whenText = cf => { const d=new Date(cf.confDate+"T12:00:00"); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+(cf.confTime?", "+fmtTime(cf.confTime):""); };
+  const whenText = cf => { const d=new Date(cf.confDate+"T12:00:00"); return d.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})+(cf.confTime?", "+fmtTime(cf.confTime):""); };
   const sched = r => { const k=kids.filter(c=>c.classroom===r).map(c=>({c,cf:periodConf(c.id)}));
     const up=k.filter(x=>x.cf&&x.cf.confDate&&x.cf.confDate>=today0&&x.cf.status!=="complete"&&!NO_SIGNUP[x.cf.signup]).sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
     const passed=k.filter(x=>confStatus(x.cf).key==="held").sort((a,b)=>when(a.cf).localeCompare(when(b.cf)));
@@ -806,7 +813,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0
       <td>${esc(c.classroom||"")}</td>
       <td>${esc(educatorOf(c))}</td>
       <td>${chip(st)}${cf&&cf.term!=="Historical"&&!["complete","nosignup"].includes(st.key)&&confReady(cf).ready?' <span class="chip st-complete">\u2713 Ready</span>':""}</td>
-      <td class="mono small">${cf?.confDate? esc(fmtDate(cf.confDate,{month:"short",day:"numeric"}))+(cf.confTime?" "+esc(fmtTime(cf.confTime)):""):""}</td>
+      <td class="mono small">${cf?.confDate? esc(fmtDate(cf.confDate,{month:"long",day:"numeric"}))+(cf.confTime?" "+esc(fmtTime(cf.confTime)):""):""}</td>
       <td class="mono small">${cf? filledCount(cf)+"/"+TOTAL_FIELDS:""}</td>
     </tr>`; }).join("");
   // upcoming + follow-ups
@@ -848,7 +855,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0
         ${waiting.length?`<div class="stack" style="gap:8px"><button class="btn sm" data-act="copy-emails">Copy their parent emails</button>${signupUrl()?`<button class="btn sm" data-act="copy-signup">Copy the sign-up link</button><a class="btn sm ghost" href="${esc(signupUrl())}" target="_blank" rel="noopener">Open SignUpGenius</a>`:""}${canEdit()&&window.FC_SIGNUP_FEED?`<button class="btn sm" data-act="sug-check">Fill in times from SignUpGenius</button>`:""}${window.FC_SIGNUP_FEED?`<p class="small muted" style="margin:0">TREE checks SignUpGenius every hour and fills in the families it can match. Use the button for any it could not.</p>`:""}${canEdit()?`<button class="btn sm ghost" data-act="mark-noresponse">Mark them as no response</button>`:""}</div>`:""}
         </div>`; })()}
       ${(()=>{ const nw=kids.filter(isNewChild).sort((a,b)=>(a.enrollDate||"").localeCompare(b.enrollDate||""));
-        return nw.length? `<div class="panel"><h3>New children getting started</h3><ul class="list-plain">${nw.slice(0,10).map(c=>`<li><span><a href="#" data-go="child" data-id="${esc(c.id)}"><b>${esc(childName(c))}</b></a><div class="small muted">${esc(c.classroom||"")}${c.enrollDate?" · starts "+esc(fmtDate(c.enrollDate,{month:"short",day:"numeric"})):""}</div></span><span class="mono small">${onboardCount(c)}/${ONBOARD.length}</span></li>`).join("")}</ul></div>` : ""; })()}
+        return nw.length? `<div class="panel"><h3>New children getting started</h3><ul class="list-plain">${nw.slice(0,10).map(c=>`<li><span><a href="#" data-go="child" data-id="${esc(c.id)}"><b>${esc(childName(c))}</b></a><div class="small muted">${esc(c.classroom||"")}${c.enrollDate?" · starts "+esc(fmtDate(c.enrollDate,{month:"long",day:"numeric"})):""}</div></span><span class="mono small">${onboardCount(c)}/${ONBOARD.length}</span></li>`).join("")}</ul></div>` : ""; })()}
       <div class="panel"><h3>Follow-ups due</h3>
         ${follow.length? `<ul class="list-plain">${follow.map(c=>li(c,c.followUpDate, esc(c.followUpNote||"Check in with the family")+(c.followUpDate<today?' · <span style="color:var(--danger)">past due</span>':""))).join("")}</ul>` : `<p class="small muted">Follow-up check-ins set inside a conference appear here two weeks ahead.</p>`}
       </div>
@@ -1132,7 +1139,7 @@ function attachList(cf){
   const a=cf.attachments||[];
   if(!a.length) return `<p class="small muted" style="margin:0">Uploaded forms are kept here for reference.</p>`;
   return a.map(x=>{ const url=blobUrl(x.id); const img=/^image\//.test(x.type||"");
-    return `<div class="attach">${img?`<img src="${esc(url)}" alt="">`:`<span class="mono small">${esc((x.name||"").split(".").pop().toUpperCase())}</span>`}<a href="${esc(url)}" target="_blank" rel="noopener">${esc(x.name||"File")}</a><span class="small muted">${esc(fmtDate(x.at,{month:"short",day:"numeric"}))}</span></div>`; }).join("");
+    return `<div class="attach">${img?`<img src="${esc(url)}" alt="">`:`<span class="mono small">${esc((x.name||"").split(".").pop().toUpperCase())}</span>`}<a href="${esc(url)}" target="_blank" rel="noopener">${esc(x.name||"File")}</a><span class="small muted">${esc(fmtDate(x.at,{month:"long",day:"numeric"}))}</span></div>`; }).join("");
 }
 
 /* autosave */
@@ -1198,7 +1205,7 @@ async function updateLastEdit(){
   const cf=S.confs[S.view.id]; const el=$("#last-edit"); if(!cf||!el) return;
   if(!cf.updatedAt){ el.textContent=""; return; }
   await resolveNames([cf.updatedBy]);
-  el.textContent = `Last edited ${new Date(cf.updatedAt).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} by ${whoName(cf.updatedBy)}`;
+  el.textContent = `Last edited ${new Date(cf.updatedAt).toLocaleString([], {month:"long",day:"numeric",hour:"numeric",minute:"2-digit"})} by ${whoName(cf.updatedBy)}`;
 }
 function syncEditor(){
   const cf=S.confs[S.view.id]; if(!cf){ render(); return; }
