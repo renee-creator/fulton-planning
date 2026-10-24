@@ -273,7 +273,7 @@ module.exports = function growthModule(c) {
       let rooms = false;
       for (const [n, pr] of Object.entries(sd.people || {})) {
         const doc = person(n); doc.profile = Object.assign({}, doc.profile);
-        for (const k of ['role', 'planHour', 'startDate', 'checkin', 'partTime', 'noMondays', 'journalEvery', 'lighter', 'curriculumFrom', 'neverGoTo']) if (k in pr) doc.profile[k] = pr[k];
+        for (const k of ['role', 'planHour', 'startDate', 'checkin', 'partTime', 'noMondays', 'journalEvery', 'lighter', 'curriculumFrom', 'neverGoTo', 'supervises']) if (k in pr) doc.profile[k] = pr[k];
         if (pr.room) { const a = accountFor(n); if (a && a.room !== pr.room) { a.room = pr.room; rooms = true; } }
         put(pPath(n), doc);
         if (pr.blankPlan) { const g = growth(n); const y = sd.id; if (!g.plans[y]) { g.plans[y] = { source: 'tree', goals: [], wentWell: { choice: 'last', text: '' }, challenges: '', need: { director: '', team: '', training: '' }, feedback: '', at: Date.now(), by: 'TREE' }; put(gPath(n), g); } }
