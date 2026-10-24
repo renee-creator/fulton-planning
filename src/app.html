@@ -1697,12 +1697,21 @@ function showKept(n){if(view!=="moments"){renderAll();return ""}const said=[];
   const i=momentsIn().findIndex(x=>x.id===n.id);if(i>=0&&typeof mShow==="number")mShow=Math.max(mShow,i+10);
   renderAll();setTimeout(()=>{const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}},120);
   return said.join(" and ")}
-// an observation opened from another page. Observations shows every class and everything kept, enough of the list to reach it,
-// and the card is brought into view
-document.addEventListener("click",e=>{const t=e.target.closest("[data-obsgo]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();const id=t.dataset.obsgo;if(!notices.has(id)){toast("That observation is no longer kept.");return}
+// an observation opened from another page. Observations shows every class and everything kept, enough of the list to reach
+// it or the multi-photo post that holds it, and the card is brought into view
+function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observation is no longer kept.");return}
   if(document.getElementById("evpanel")&&window.innerWidth<=760){evOpen=false;LS.set("fps.evopen","0")}
-  nRoom="All";mRange="all";mGroup="recent";LS.set("fps.nroom",nRoom);const i=momentsIn().findIndex(n=>n.id===id);mShow=Math.max(mShow,i+10);
-  goView("moments");setTimeout(()=>{const el=noteGroup(notices.get(id)).map(g=>document.getElementById("nw-"+g.id)).find(Boolean);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}else toast("Opened Observations.")},350)},true);
+  const ids=new Set(noteGroup(n0).map(g=>g.id));
+  nRoom="All";mRange="all";mGroup="recent";LS.set("fps.nroom",nRoom);LS.set("fps.mrange",mRange);LS.set("fps.mgroup",mGroup);
+  let k=0,at=-1;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>ids.has(n.id));if(i>=0){at=k+i;break}k+=g.items.length}
+  if(at>=0&&at>=mShow)mShow=Math.ceil((at+1)/30)*30;
+  const find=()=>[id,...ids].map(g=>document.getElementById("nw-"+g)).find(Boolean);
+  goView("moments");
+  // a photo of a post that is folded away under the post's first card opens its fold
+  const show=tries=>{const el=find();if(!el){if(tries>0)setTimeout(()=>show(tries-1),150);else toast("That observation could not be found on Observations.");return}
+    const d=el.closest("details");if(d&&!d.open)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
+  setTimeout(()=>show(8),120)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-obsgo]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();openObservation(t.dataset.obsgo)},true);
 // a page's long introduction folds under About this page, so the page opens on its work
 function foldIntros(){const m=$("#main");if(!m)return;
   for(const hd of m.querySelectorAll(".head")){if(hd.querySelector(".pageabout"))continue;
@@ -6180,6 +6189,7 @@ function noticesClick(t){
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
   // an observation past the thirty shown, or outside the class and range, is brought into view rather than refused
+  if(t.dataset.mjump&&view!=="moments"){openObservation(t.dataset.mjump);return true}
   if(t.dataset.mjump){const id=t.dataset.mjump,go=()=>{const el=document.getElementById("nw-"+id);if(!el)return false;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400);return true};
     if(go())return true;if(!notices.has(id)){toast("That observation was removed.");return true}
     const at=()=>{let k=0;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>n.id===id);if(i>=0)return k+i;k+=g.items.length}return -1};
