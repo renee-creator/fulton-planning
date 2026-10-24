@@ -213,7 +213,24 @@ function accountView(a) { return { name: a.name, room: a.room || '', director: !
   never: !a.code && !a.setAt && !a.lastAt, phones: (a.push || []).length }; }
 
 /* ---------- GitHub storage ---------- */
+/* Every change to the records goes through one queue, one at a time. GitHub makes each change a commit on the same
+   branch, and two commits made in the same moment refuse each other, so a dozen saves that arrived together used to
+   fail together. Reading is never queued. GitHub asks for a pause of about a second between changes, and while the
+   server is stopping for an update the pause is shorter, so what is waiting is written before it stops. */
+let ghWrites = Promise.resolve(), ghWroteAt = 0, ghWaiting = 0, ghHurry = false;
+const WRITE_GAP_MS = /^\d+$/.test(process.env.WRITE_GAP_MS || '') ? Number(process.env.WRITE_GAP_MS) : 1000;
 function gh(method, path, body) {
+  if (method === 'GET' || path === '/graphql') return ghNow(method, path, body);
+  ghWaiting++;
+  const job = ghWrites.then(async () => {
+    const gap = ghHurry ? Math.min(WRITE_GAP_MS, 150) : WRITE_GAP_MS;
+    const wait = ghWroteAt + gap - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    try { return await ghNow(method, path, body); } finally { ghWroteAt = Date.now(); ghWaiting--; }
+  });
+  ghWrites = job.catch(() => {});
+  return job;
+}
+function ghNow(method, path, body) {
   return new Promise((resolve, reject) => {
     const url = new URL(GITHUB_API + path);
     const data = body ? JSON.stringify(body) : null;
@@ -794,32 +811,85 @@ function flushPath(path) {
 // true when everything waiting reached GitHub
 async function flushEverything() { await Promise.all([...dirtyPaths.keys()].map(flushPath)); await Promise.all([...chains.values()]); return dirtyPaths.size === 0; }
 // the address changes each time, so GitHub never hands back a copy from before the last save
+// the messages of the latest commits that changed a file, kept a minute, or null when GitHub cannot be asked just now
+const commitCache = new Map();
+async function commitMessages(path) {
+  const c = commitCache.get(path); if (c && Date.now() - c.at < 60000) return c.msgs;
+  try { const r = await gh('GET', `/repos/${RECORDS_REPO}/commits?path=${encodeURIComponent(path)}&sha=${encodeURIComponent(store.branch)}&per_page=100&fresh=${Date.now()}`);
+    if (r.status !== 200 || !Array.isArray(r.json)) return null;
+    const msgs = r.json.map(x => String((x.commit && x.commit.message) || '')); commitCache.set(path, { at: Date.now(), msgs }); if (commitCache.size > 500) commitCache.delete(commitCache.keys().next().value); return msgs; }
+  catch (e) { return null; }
+}
 async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); return r.status === 200 ? r.json.sha : null; }
+/* Each save from a device carries a save id. The id rides in the commit's message, so once GitHub has the commit the
+   save is known to be written, even after the server restarts. A device keeps its copy of a save until it hears so. */
+const SID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{5,63}$/;
+const sidsWaiting = new Map(), sidsWritten = new Map(), sidsByPath = new Map();   // save id to its file, save id to when it was written, and a file to the save ids it holds
+function sidWritten(sid) { sidsWaiting.delete(sid); sidsWritten.set(sid, Date.now()); if (sidsWritten.size > 20000) sidsWritten.delete(sidsWritten.keys().next().value); }
+// a save that needed more than three tries is noted for the director's Today, with the record's name
+const HARD_TRIES = 3;
+function recordLabel(kind, id, doc) {
+  doc = doc || {};
+  const one = { children: 'Child', notices: 'Observation', plans: 'Plan', threads: 'Thread', projects: 'Project', conferences: 'Conference', participation: 'Participation', settings: 'Settings', slides: 'Slide', stories: 'Story', inquiries: 'Team inquiry', menus: 'Menu', grant: 'Grant record', bins: 'Weekly bin', family: 'Family', scans: 'Scan', newsletters: 'Newsletter', posts: 'Post' }[kind] || kind;
+  const kidName = c => c ? [c.first || c.firstName || c.name || '', c.last || c.lastName || ''].join(' ').trim() : '';
+  let name = '';
+  if (kind === 'children') name = kidName(doc);
+  else if (kind === 'conferences') { const c = store.recs.children.get(doc.childId || ''); name = (c && !c.deleted ? kidName(c.doc) : '') || doc.childName || ''; }
+  else if (kind === 'notices') name = doc.at ? new Date(doc.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' }) + (doc.by || doc.createdByName ? ', kept by ' + (doc.by || doc.createdByName) : '') : '';
+  else name = doc.title || doc.name || doc.question || '';
+  return (one + (name ? ', ' + String(name).slice(0, 80) : '')).trim();
+}
+function noteHardSave(kind, id, tries) {
+  if (kind === 'settings' && id === 'saves') return;
+  const rec = store.recs[kind] && store.recs[kind].get(id);
+  const cur = store.recs.settings.get('saves'); const doc = cur && !cur.deleted ? cur.doc : { id: 'saves', hard: [] };
+  const cut = Date.now() - 30 * 86400e3;
+  const hard = (doc.hard || []).filter(h => h.at > cut).slice(-49);
+  hard.push({ path: `${kind}/${id}.json`, label: recordLabel(kind, id, rec && rec.doc), tries, at: Date.now() });
+  log('Save needed', tries, 'tries', `${kind}/${id}.json`);
+  store.recs.settings.set('saves', { doc: Object.assign({}, doc, { id: 'saves', hard, updatedByName: 'TREE' }), sha: cur && cur.sha, path: 'settings/saves.json', local: true });
+  noteChange('settings', 'saves'); scheduleSave('settings', 'saves');
+}
+const ghPause = ms => new Promise(res => setTimeout(res, ms));
 async function writeFile(kind, id) {
   const rec = store.recs[kind].get(id); const path = `${kind}/${id}.json`;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    // after a refusal, GitHub is given a moment to catch up with a save that has just been made elsewhere
-    if (attempt) await new Promise(res => setTimeout(res, 1500 * attempt));
-    let r;
-    if (!rec || rec.deleted) {
-      const shaNow = (rec && rec.sha) || await currentSha(path);
-      const forget = () => { const now = store.recs[kind].get(id); if (!now || now === rec) store.recs[kind].delete(id); };   // keep a record made again since the delete
-      if (!shaNow) { forget(); return; }
-      r = await gh('DELETE', `/repos/${RECORDS_REPO}/contents/${path}`, { message: `Remove ${kind} ${id}`, sha: shaNow, branch: store.branch });
-      if (r.status === 200 || r.status === 404) { forget(); return; }
-    } else {
-      const content = Buffer.from(JSON.stringify(rec.doc, null, 2) + '\n', 'utf8').toString('base64');
-      const by = rec.doc.updatedByName ? ` by ${rec.doc.updatedByName}` : '';
-      r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/${path}`, { message: `Update ${kind} ${id}${by}`, content, branch: store.branch, ...(rec.sha ? { sha: rec.sha } : {}) });
-      if (r.status === 200 || r.status === 201) { rec.sha = r.json.content.sha; store.saveError = ''; return; }
+  // the save ids this write carries. They count as written only once GitHub has the commit.
+  const sids = sidsByPath.get(path) || []; sidsByPath.delete(path);
+  const tag = sids.length ? ` (saves ${sids.join(' ')})` : '';
+  const done = tries => { for (const s of sids) sidWritten(s); if (tries > HARD_TRIES) noteHardSave(kind, id, tries); };
+  let tries = 0;
+  try {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      // after a refusal, GitHub is given a moment, and the save is tried again on the newest version of the file
+      if (attempt) await ghPause(Math.min(8000, 600 * attempt));
+      tries++;
+      let r;
+      if (!rec || rec.deleted) {
+        const shaNow = (rec && rec.sha) || await currentSha(path);
+        const forget = () => { const now = store.recs[kind].get(id); if (!now || now === rec) store.recs[kind].delete(id); };   // keep a record made again since the delete
+        if (!shaNow) { forget(); done(tries); return; }
+        r = await gh('DELETE', `/repos/${RECORDS_REPO}/contents/${path}`, { message: `Remove ${kind} ${id}${tag}`, sha: shaNow, branch: store.branch });
+        if (r.status === 200 || r.status === 404) { forget(); done(tries); return; }
+      } else {
+        const content = Buffer.from(JSON.stringify(rec.doc, null, 2) + '\n', 'utf8').toString('base64');
+        const by = rec.doc.updatedByName ? ` by ${rec.doc.updatedByName}` : '';
+        r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/${path}`, { message: `Update ${kind} ${id}${by}${tag}`, content, branch: store.branch, ...(rec.sha ? { sha: rec.sha } : {}) });
+        if (r.status === 200 || r.status === 201) { rec.sha = r.json.content.sha; store.saveError = ''; done(tries); return; }
+      }
+      // changed on GitHub since, or the branch moved under it. The app's copy is kept and written on the newest version.
+      if (r.status === 409 || r.status === 422) { const s = await currentSha(path); if (rec) rec.sha = s || undefined; continue; }
+      if (isRateLimit(r)) { log('GitHub asked to slow down'); await ghPause(Math.min(60000, 1000 * (Number(r.headers && r.headers['retry-after']) || 10))); continue; }
+      if (r.status >= 500) continue;   // GitHub could not write it just then, such as Could not create file
+      if (r.status === 401) { store.saveError = KEY_PROBLEM; log('GitHub rejected the token'); }
+      if (r.status === 403) { store.saveError = KEY_NO_WRITE; log('GitHub key cannot write'); }
+      throw new Error('GitHub answered ' + r.status + ' ' + (r.json && r.json.message || ''));
     }
-    if (r.status === 409 || r.status === 422) { const s = await currentSha(path); if (rec) rec.sha = s || undefined; continue; }   // changed on GitHub directly, keep the app's copy
-    if (isRateLimit(r)) { log('GitHub asked to slow down'); throw new Error('GitHub rate limit, trying again shortly'); }
-    if (r.status === 401) { store.saveError = KEY_PROBLEM; log('GitHub rejected the token'); }
-    if (r.status === 403) { store.saveError = KEY_NO_WRITE; log('GitHub key cannot write'); }
-    throw new Error('GitHub answered ' + r.status + ' ' + (r.json && r.json.message || ''));
+    throw new Error('GitHub kept refusing the save after ' + tries + ' tries');
+  } catch (e) {
+    // nothing is dropped. The save ids wait with the record for the next try.
+    if (sids.length) sidsByPath.set(path, [...sids, ...(sidsByPath.get(path) || [])]);
+    throw e;
   }
-  throw new Error('GitHub kept refusing the save');
 }
 
 async function probeKey() {
@@ -974,7 +1044,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping')))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping' || id === 'saves')))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -1375,7 +1445,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -1401,17 +1471,23 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping' || c.id === 'saves')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
     if (store.saveError) { err(req, res, 503, store.saveError + ' Your last change was not saved, so keep a copy of it.'); return; }
-    if (stopping) { err(req, res, 503, 'The server is restarting. Your change was not saved yet, so type it again in a minute.'); return; }
+    if (stopping) { err(req, res, 503, 'The server is restarting. Your change is kept on this device and sends in a minute.'); return; }
     const { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
-    if (cidKey && writeCids.has(cidKey)) { const r = store.recs[kind].get(id); json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, again: true }); return; }
+    // every save from a device carries a save id. A save already here is never made twice, and its answer says whether
+    // it is written to the records yet, so the device knows when it may let its own copy go.
+    const sid = typeof body.sid === 'string' && SID_RE.test(body.sid) ? body.sid : '';
+    const fpath = `${kind}/${id}.json`;
+    const sidNow = () => { if (!sid) return {}; if (sidsWritten.has(sid)) return { sid, written: true }; if (!sidsWaiting.has(sid)) { if (dirtyPaths.has(fpath) || sidsByPath.has(fpath)) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); } else sidWritten(sid); } return { sid, written: sidsWritten.has(sid) }; };
+    if (sid && (sidsWaiting.has(sid) || sidsWritten.has(sid))) { const r = store.recs[kind].get(id); json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, again: true, ...sidNow() }); return; }
+    if (cidKey && writeCids.has(cidKey)) { const r = store.recs[kind].get(id); json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, again: true, ...sidNow() }); return; }
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
@@ -1492,24 +1568,36 @@ async function handle(req, res) {
     }
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
-      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true }); return; }
+      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true, ...sidNow() }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
     else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio', 'transitionSummary']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
     else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; } deepMerge(cur.doc, body.patch || {}); if ('id' in cur.doc) cur.doc.id = id; cur.doc.updatedByName = me.name; }
-    else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev }); return; } }
+    else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev, ...sidNow() }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; }
     noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey);
+    if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
     const r = map.get(id);
-    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
+    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, ...(sid ? { sid, written: false } : {}) }); return;
+  }
+  // a device asks which of the saves it still holds are written to the records. A save this server does not know, such
+  // as one sent before an update, is looked for in the records' own history by its save id. One found nowhere is
+  // answered unknown, and the device sends it again.
+  if (path === '/api/saved') {
+    const items = (Array.isArray(body.items) ? body.items : []).filter(x => x && typeof x.sid === 'string' && SID_RE.test(x.sid) && KINDS.includes(x.kind) && typeof x.id === 'string' && ID_RE.test(x.id)).slice(0, 60);
+    const out = { written: [], waiting: [], unknown: [] }; const look = new Map();
+    for (const x of items) { if (sidsWritten.has(x.sid)) out.written.push(x.sid); else if (sidsWaiting.has(x.sid)) out.waiting.push(x.sid); else { const fp = `${x.kind}/${x.id}.json`; if (!look.has(fp)) look.set(fp, []); look.get(fp).push(x.sid); } }
+    for (const [fp, sids] of [...look].slice(0, 20)) { const msgs = await commitMessages(fp); for (const s0 of sids) { if (msgs === null) out.waiting.push(s0); else if (msgs.some(m => m.includes(s0))) { sidWritten(s0); out.written.push(s0); } else out.unknown.push(s0); } }
+    for (const [, sids] of [...look].slice(20)) out.waiting.push(...sids);
+    json(req, res, 200, Object.assign({ bootId: BOOT_ID }, out)); return;
   }
   // the director makes, renews or turns off the staff room display's link
   if (path === '/api/display') {
@@ -1788,7 +1876,7 @@ process.on('uncaughtException', e => log('Unexpected error, server kept running'
 process.on('unhandledRejection', e => log('Unexpected rejection, server kept running', e));
 // Render stops the server when it redeploys or restarts. Save anything waiting first.
 async function stop(sig) {
-  if (stopping) return; stopping = true; log('Stopping on', sig, 'saving waiting changes');
+  if (stopping) return; stopping = true; ghHurry = true; log('Stopping on', sig, 'saving waiting changes');
   try { server.close(); } catch (e) {}
   const until = Date.now() + 25000;
   while (Date.now() < until) {

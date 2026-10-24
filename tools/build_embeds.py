@@ -33,7 +33,7 @@ shim = rep(shim, '''  const DEFAULT_SERVER="https://fulton-conferences.onrender.
   const SERVER= local? want : DEFAULT_SERVER;''', "  " + SERVER_JS)
 shim = shim.replace('"fc-token"', '"fp-token"').replace('"fc-name"', '"fp-name"')
 # signed out inside TREE, TREE's own sign-in takes over
-shim = rep(shim, 'const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra});', 'const write=async(op,extra)=>{ if(window.TREE_VA){ if(!window.__vaSaid){ window.__vaSaid=1; try{ toast("Nothing is saved while you see TREE as "+window.TREE_VA.name+"."); }catch(e){} } return (extra&&extra.data)||Store.data[kind]?.[id]||null; } const r=await api("/api/write",{op,kind,id,...extra});')
+shim = rep(shim, 'const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra});', 'const write=async(op,extra)=>{ if(window.TREE_VA){ if(!window.__vaSaid){ window.__vaSaid=1; try{ toast("Nothing is saved while you see TREE as "+window.TREE_VA.name+"."); }catch(e){} } return (extra&&extra.data)||Store.data[kind]?.[id]||null; } const viaTree=(()=>{try{return window.parent!==window&&window.parent.TREE_SAVE||null}catch(e){return null}})(); const r=viaTree? {doc:await viaTree(op,kind,id,extra)} : await api("/api/write",{op,kind,id,...extra});')
 shim = rep(shim, "if(!Auth.token) await showGate();", "if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return new Promise(()=>{}); } await showGate(); }")
 shim = shim.replace("Fulton conference server", "TREE server").replace("conference server", "TREE server")
 # TREE's colours and typefaces, and no second header inside TREE

@@ -1012,6 +1012,7 @@ async function boot(){
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.doc("settings/weekly").onSnapshot(snap=>{weeklyRec=snap.exists?snap.data():null;setTimeout(()=>weeklyReads().catch(()=>{}),20000);if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{weeklyRec=null});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
+    db.doc("settings/saves").onSnapshot(snap=>{savesInfo=snap.exists?snap.data():null;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.doc("settings/backup").onSnapshot(snap=>{backupInfo=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()});
     db.doc("settings/readable").onSnapshot(snap=>{readableInfo=snap.exists?snap.data():null;readableSeen=true;rcSoon();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.doc("settings/stories").onSnapshot(snap=>{storySet=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sf-card"))renderSettings()},()=>{});
@@ -3724,8 +3725,11 @@ function draftHold(key){if(draftHeld.has(key))return Promise.resolve(true);if(!n
   return new Promise(ok=>{navigator.locks.request("tree-draft:"+key,{ifAvailable:true},l=>{if(!l){ok(false);return}return new Promise(done=>{draftHeld.set(key,done);ok(true)})}).catch(()=>ok(true))})}
 function draftLet(key){const f=draftHeld.get(key);draftHeld.delete(key);if(f)f()}
 const waitingToSend=id=>draftMem.has(draftWho()+"|o|"+id);
-const draftWaiting=()=>[...draftMem.values()].filter(r=>r.kind==="obs").length+planWait.size;
+// any other save waiting on this phone, until the server says it is written, shows the same quiet note
+const savesWaiting=()=>window.TREE_SAVES_WAITING?window.TREE_SAVES_WAITING():0;
+const draftWaiting=()=>[...draftMem.values()].filter(r=>r.kind==="obs").length+planWait.size+savesWaiting();
 function draftNote(){const el=$("#draftnote");if(el)el.hidden=!draftWaiting()}
+window.addEventListener("tree-saves",()=>draftNote());setInterval(draftNote,15000);
 
 // the observation being written, its photos and the photos waiting after it
 let obsDraftT=null;
@@ -3813,8 +3817,9 @@ setInterval(draftSend,30000);
 // signing out with words not yet sent says so first. Signing out anyway keeps them on this phone for the next sign-in.
 window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const id of [...pendingSaves])await planDraftNow(id);
   const rs=[...draftMem.values()],obs=rs.filter(r=>r.kind==="obs").length,form=rs.some(r=>r.kind==="form"),pl=new Set([...pendingSaves,...rs.filter(r=>r.kind==="plan").map(r=>r.id)]).size;
-  const all=obs+(form?1:0)+pl;if(!all)return true;
-  const bits=[obs?(obs>1?obs+" observations":"An observation"):"",form?(obs?"the observation you are writing":"The observation you are writing"):"",pl?(pl>1?pl+" plans":obs||form?"a plan":"A plan"):""].filter(Boolean);
+  if(window.TREE_SAVES_SEND)await window.TREE_SAVES_SEND();const sv=savesWaiting();
+  const all=obs+(form?1:0)+pl+sv;if(!all)return true;
+  const bits=[obs?(obs>1?obs+" observations":"An observation"):"",form?(obs?"the observation you are writing":"The observation you are writing"):"",pl?(pl>1?pl+" plans":obs||form?"a plan":"A plan"):"",sv?(sv>1?(obs||form||pl?sv+" other changes":sv+" changes"):(obs||form||pl?"another change":"A change")):""].filter(Boolean);
   const what=bits.length>1?bits.slice(0,-1).join(", ")+" and "+bits[bits.length-1]:bits[0];
   return new Promise(ok=>{const old=$("#soask");if(old)old.remove();const sh=document.createElement("div");sh.className="combshade";const d=document.createElement("div");d.id="soask";d.className="sendask soask";d.setAttribute("role","dialog");d.setAttribute("aria-label","Not sent yet");
     d.innerHTML=`<b>Not sent yet</b><div>${esc(what)} ${all>1?"are":"is"} saved on this phone and not sent yet.</div><div class="cnt">If you sign out, ${all>1?"they stay":"it stays"} on this phone for when you sign in here again.</div>
@@ -4374,7 +4379,7 @@ function renderToday(){
   </div>
   ${askFam?askFamHtml(room):""}
   ${keepTodayHtml()}
-  ${setupTodayHtml()}
+  ${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
@@ -12257,6 +12262,16 @@ function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   return `<section class="card" id="setuptoday" style="margin-top:14px"><details class="fold" data-fold="today:setup" ${foldOpen.has("today:setup")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Not set up yet</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
     <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
     <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div><div class="actions"><button class="linkbtn" data-tview="settings">Sign-ins</button></div></div></details></section>`}
+// a save that needed more than three tries to reach the records shows once a day on the director's Today, by name,
+// so a problem is seen early. Seen keeps it away until the next day.
+let savesInfo=null;
+function hardSavesHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS||!savesInfo||!Array.isArray(savesInfo.hard))return"";
+  const seen=LS.get("tree.hardseen",{})||{},day=iso(new Date());if(seen.day===day)return"";
+  const L=savesInfo.hard.filter(h=>h&&h.at>(seen.at||0)).slice(-12).reverse();if(!L.length)return"";
+  return `<section class="card" id="hardsaves" style="margin-top:14px"><h3 style="font-size:17px">Saves that needed several tries</h3>
+    <div class="tlist">${L.map(h=>`<div class="prow"><b>${esc(h.label||h.path)}</b><span class="cnt">${esc(h.tries)} tries, ${esc(longDate(iso(new Date(h.at))))}, ${esc(clockTime(new Date(h.at).getHours()*60+new Date(h.at).getMinutes()))}</span></div>`).join("")}</div>
+    <div class="hint">Each one reached the records in the end. A save that needs many tries can mean GitHub is slow, so it is worth a look if this shows often.</div><div class="actions"><button class="btn small" data-hardseen>Seen</button></div></section>`}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-hardseen]");if(!b)return;LS.set("tree.hardseen",{day:iso(new Date()),at:Date.now()});const c=$("#hardsaves");if(c)c.remove()});
 function viewAsHtml(){
   const list=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));

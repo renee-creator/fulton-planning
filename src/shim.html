@@ -86,7 +86,7 @@
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
   async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
     /* a new educator reaches only the New Educator section until the director turns on full access */
-    window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); if(j.staff&&j.staff.loading) staffAgain(0); }
+    window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); if(j.staff&&j.staff.loading) staffAgain(0); obReapply(); }
   /* signed in while the educator records were still loading after an update, TREE asks again until Educators can open */
   function staffAgain(n){ if(n>40) return; setTimeout(async()=>{ try{ const r=await api("/api/staff/info",{}); if(r.staff&&!r.staff.loading){ window.FP_STAFF=r.staff; notify(); if(typeof renderNav==="function") renderNav(); return; } }catch(e){} staffAgain(n+1); }, 3000); }
   let polling=false;
@@ -164,17 +164,91 @@
       doc(id){ return docRef(kind+"/"+id); } };
     return q;
   }
+  /* ---------- Saves are never lost ----------
+     Every save is kept in this device's own store before it is sent, with a save id made once, and stays there until
+     the server says it is written to the records. A save the server could not take waits under the same quiet note as
+     drafts and sends itself. One the server took but lost, such as one waiting while the server was updated, is sent
+     again, with every later save to the same record after it, in the order they were made. A save the server
+     refuses for a reason, such as one only the director may make, is let go and says why. */
+  const OB={mem:new Map(),dbp:null,busy:false,told:0,n:0};
+  const obWho=()=>window.TREE_VIEW_AS?"":String(Auth.name||"").trim().toLowerCase();
+  function obDb(){ if(OB.dbp) return OB.dbp; OB.dbp=new Promise(res=>{ try{ const q=indexedDB.open("tree-saves",1); q.onupgradeneeded=()=>{ const d=q.result; if(!d.objectStoreNames.contains("s")) d.createObjectStore("s",{keyPath:"sid"}); }; q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); q.onblocked=()=>res(null); }catch(e){ res(null); } }); return OB.dbp; }
+  function obTx(mode,fn){ return obDb().then(d=>d&&new Promise(res=>{ try{ const t=d.transaction("s",mode), st=t.objectStore("s"); let out=null; const r=fn(st); if(r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out===null?true:out); t.onerror=t.onabort=()=>res(null); }catch(e){ res(null); } })); }
+  const obPut=e=>{ OB.mem.set(e.sid,e); return obTx("readwrite",st=>{ st.put(e); }).catch(()=>null); };
+  const obDel=sid=>{ OB.mem.delete(sid); return obTx("readwrite",st=>{ st.delete(sid); }).catch(()=>null); };
+  async function obAll(){ const w=obWho(); if(!w) return []; const a=await obTx("readonly",st=>st.getAll()).catch(()=>null);
+    if(Array.isArray(a)){ const keep=new Map(a.map(e=>[e.sid,e])); for(const [sid,e] of OB.mem) if(!keep.has(sid)&&Date.now()-e.at<3000) keep.set(sid,e); OB.mem=keep; }
+    return [...OB.mem.values()].filter(e=>e.who===w).sort((x,y)=>(x.at-y.at)||((x.n||0)-(y.n||0))); }
+  const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504);
+  const newSid=()=>"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+  // how many saves on this device are not written yet, counting those the server took only once a couple of minutes pass
+  window.TREE_SAVES_WAITING=()=>{ const w=obWho(); if(!w) return 0; let n=0; for(const e of OB.mem.values()) if(e.who===w&&((!e.sent&&e.failed)||(e.sent&&Date.now()-e.sent>120000))) n++; return n; };
+  window.TREE_SAVES_SEND=()=>obSend();
+  function obChanged(){ try{ window.dispatchEvent(new Event("tree-saves")); }catch(e){} }
+  function obMerge(t,p){ for(const [k,v] of Object.entries(p||{})){ if(k==="__proto__"||k==="constructor"||k==="prototype") continue; if(v&&typeof v==="object"&&v.__delete__===true){ delete t[k]; continue; } if(v&&typeof v==="object"&&!Array.isArray(v)){ if(!t[k]||typeof t[k]!=="object"||Array.isArray(t[k])) t[k]={}; obMerge(t[k],v); } else t[k]=v; } return t; }
+  // a save waiting on this device shows on this device as if it were saved
+  function obLocal(e){ const k=e.kind; Store.data[k]=Store.data[k]||{}; const cur=Store.data[k][e.id], x=e.extra||{};
+    if(e.op==="delete") delete Store.data[k][e.id];
+    else if(e.op==="set"||(e.op==="create"&&!cur)){ const d=JSON.parse(JSON.stringify(x.data||{})); if("id" in d) d.id=e.id; Store.data[k][e.id]=d; }
+    else if(e.op==="update"&&cur){ const d=obMerge(JSON.parse(JSON.stringify(cur)),JSON.parse(JSON.stringify(x.patch||{}))); if("id" in d) d.id=e.id; Store.data[k][e.id]=d; }
+    Store.wroteAt[k+"/"+e.id]=Date.now(); }
+  function obTell(err){ if(Date.now()-OB.told<60000) return; OB.told=Date.now(); const m="A change could not be saved. "+((err&&err.message)||""); try{ (window.toast||alert)(m.trim()); }catch(e){} }
+  function obTook(e,r){ if(!r||r.doc===undefined) return; Store.data[e.kind]=Store.data[e.kind]||{}; if(r.doc) Store.data[e.kind][e.id]=r.doc; else delete Store.data[e.kind][e.id]; Store.wroteAt[e.kind+"/"+e.id]=Date.now(); }
+  async function obSendNow(){
+    let any=false;
+    try{
+      // saves the server has not taken go first, in the order they were made
+      for(const e of (await obAll()).filter(x=>!x.sent)){
+        if(navigator.onLine===false) break;
+        try{ const r=await api("/api/write",{op:e.op,kind:e.kind,id:e.id,...(e.extra||{}),sid:e.sid}); obTook(e,r); any=true; if(r.written) await obDel(e.sid); else { e.sent=Date.now(); e.failed=0; await obPut(e); } }
+        catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } e.failed=Date.now(); await obPut(e); break; } }
+      // then the server is asked which of the rest are written
+      const list=(await obAll()).filter(x=>x.sent); if(!list.length) return;
+      const j=await api("/api/saved",{items:list.slice(0,60).map(e=>({sid:e.sid,kind:e.kind,id:e.id}))});
+      const done=new Set(j.written||[]); for(const sid of done) await obDel(sid);
+      const unk=new Set(j.unknown||[]), again=new Set(list.filter(e=>unk.has(e.sid)).map(e=>e.kind+"/"+e.id));
+      for(const e of list) if(again.has(e.kind+"/"+e.id)&&!done.has(e.sid)){ e.sent=0; await obPut(e); }
+      if(again.size) setTimeout(obSend,300);
+    }catch(e){} finally{ obChanged(); if(any) notify(); }
+  }
+  async function obSend(){ if(OB.busy||!Auth.token||!obWho()) return; OB.busy=true;
+    try{ if(navigator.locks&&navigator.locks.request) await navigator.locks.request("tree-saves",{ifAvailable:true},l=>l?obSendNow():null); else await obSendNow(); }
+    catch(e){ await obSendNow(); } finally{ OB.busy=false; } }
+  let obT=null; function obSoon(ms){ clearTimeout(obT); obT=setTimeout(obSend,ms||4000); }
+  // after the records are read again, saves still waiting here are laid over them
+  async function obReapply(){ const list=await obAll(); for(const e of list) if(!e.sent) obLocal(e); if(list.length){ notify(); obChanged(); obSoon(1500); } }
+  setInterval(()=>{ if(OB.mem.size||OB.n) obSend(); },10000);
+  window.addEventListener("online",()=>obSoon(800));
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) obSoon(800); });
+
   function docRef(path){
     const [kind,id]=path.split("/");
     // while the director sees TREE as an educator, nothing is sent to be saved
     const write=async(op,extra)=>{ if(window.TREE_VIEW_AS){ if(!window.__vaSaid){ window.__vaSaid=1; try{ (window.toast||alert)("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."); }catch(e){} } return extra&&extra.data||Store.data[kind]?.[id]||null; }
-      const r=await api("/api/write",{op,kind,id,...extra}); Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); return r.doc; };
+      // a save from a draft takes its id from the draft's client id, so the two are the same save
+      const sid=extra&&extra.cid? ("d."+extra.cid).replace(/[^A-Za-z0-9._:-]/g,"").slice(0,64) : newSid();
+      const e={sid,who:obWho(),op,kind,id,extra:JSON.parse(JSON.stringify(extra||{})),at:Date.now(),n:++OB.n,sent:0,failed:0};
+      // a save made while earlier ones to the same record still wait here goes after them
+      const before=(await obAll()).filter(x=>!x.sent&&x.kind===kind&&x.id===id);
+      await obPut(e);
+      if(before.length){ await obSend(); if(OB.mem.has(sid)&&!OB.mem.get(sid).sent){ obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; } return Store.data[kind]?.[id]??null; }
+      let r;
+      try{ r=await api("/api/write",{op,kind,id,...extra,sid}); }
+      catch(err){
+        if(!obKeep(err)){ await obDel(sid); throw err; }
+        // a draft keeps its own copy and sends it under the same save id, so only one of them is kept here
+        if(extra&&extra.cid){ await obDel(sid); throw err; }
+        e.failed=Date.now(); await obPut(e); obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; }
+      if(r.written) await obDel(sid); else { e.sent=Date.now(); await obPut(e); obSoon(20000); }
+      Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); obChanged(); return r.doc; };
     return { id, path,
       async get(){ return snap(id, Store.data[kind]?.[id]); },
       onSnapshot(next){ const fire=()=>next(snap(id, Store.data[kind]?.[id])); Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
       // a save from a draft carries the draft's client id, so the server keeps it once however often it arrives
-      set:(data,o)=>write("set",{data,...(o&&o.cid?{cid:o.cid}:{})}), create:(data)=>write("create",{data}), update:(patch,o)=>write("update",{patch,...(o&&o.cid?{cid:o.cid}:{})}), delete:()=>write("delete",{}) };
+      set:(data,o)=>write("set",{data,...(o&&o.cid?{cid:o.cid}:{})}), create:(data)=>write("create",{data}), update:(patch,o)=>write("update",{patch,...(o&&o.cid?{cid:o.cid}:{})}), delete:()=>write("delete",{}), __write:write };
   }
+  // the Conferences page inside TREE saves through TREE, so its saves are kept on the device the same way
+  window.TREE_SAVE=(op,kind,id,extra)=>docRef(kind+"/"+id).__write(op,extra||{});
   const db={ collection:query, doc:docRef };
   const user={ id:async()=>Auth.name, can:async()=>true, canEdit:()=>!!Auth.director, isOwner:()=>!!Auth.director, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
 

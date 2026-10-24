@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const blobSha = buf => crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob ' + buf.length + '\0'), buf])).digest('hex');
 
 function start(dir, port, opt) {
-  opt = opt || {}; let trees = 0;
+  opt = opt || {}; let trees = 0, busy = false;
   const writes = [];
   const walk = (d, pre = '') => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.name === '.git' ? [] : e.isDirectory() ? walk(path.join(d, e.name), pre + e.name + '/') : [pre + e.name]);
   const blobs = () => { const m = new Map(); for (const p of walk(dir)) { const b = fs.readFileSync(path.join(dir, p)); m.set(blobSha(b), b); } return m; };
@@ -39,14 +39,28 @@ function start(dir, port, opt) {
         const file = path.join(dir, rel); const has = fs.existsSync(file) && fs.statSync(file).isFile();
         const cur = has ? fs.readFileSync(file) : null; const curSha = cur ? blobSha(cur) : null;
         if (req.method === 'GET') return has ? send(200, { sha: curSha, size: cur.length, content: cur.toString('base64'), encoding: 'base64' }) : send(404, { message: 'Not Found' });
+        // GitHub makes every change a commit on the branch. With opt.branchRace a change that arrives while another is
+        // still being made is refused, the way GitHub refuses two commits made in the same moment.
+        if ((req.method === 'PUT' || req.method === 'DELETE') && opt.branchRace) {
+          if (busy) { writes.push({ path: rel, refused: true, race: true }); return send(409, { message: 'refs/heads/main is at a but expected b' }); }
+          busy = true; setTimeout(() => { busy = false; finish(); }, opt.branchRace); return;
+        }
+        finish();
+        function finish() {
+        const has = fs.existsSync(file) && fs.statSync(file).isFile(), cur = has ? fs.readFileSync(file) : null, curSha = cur ? blobSha(cur) : null;
         if (req.method === 'PUT') {
           if (has && body.sha !== curSha) { writes.push({ path: rel, refused: true }); return send(409, { message: 'sha does not match' }); }
           if (!has && body.sha) { writes.push({ path: rel, refused: true }); return send(422, { message: 'sha given for a new file' }); }
           const buf = Buffer.from(body.content || '', 'base64'); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, buf);
           writes.push({ path: rel, message: body.message, at: Date.now() }); return send(has ? 200 : 201, { content: { sha: blobSha(buf), path: rel } });
         }
-        if (req.method === 'DELETE') { if (!has) return send(404, {}); if (body.sha !== curSha) return send(409, {}); fs.unlinkSync(file); writes.push({ path: rel, removed: true }); return send(200, {}); }
+        if (req.method === 'DELETE') { if (!has) return send(404, {}); if (body.sha !== curSha) return send(409, {}); fs.unlinkSync(file); writes.push({ path: rel, removed: true, message: body.message, at: Date.now() }); return send(200, {}); }
+        send(404, { message: 'Not Found' });
+        }
+        return;
       }
+      // the latest commits that changed a file, newest first, with their messages
+      if (rest === '/commits') { const fp = u.searchParams.get('path'); return send(200, writes.filter(w => !w.refused && (!fp || w.path === fp)).slice().reverse().slice(0, 100).map(w => ({ commit: { message: w.message || '' } }))); }
       send(404, { message: 'Not Found' });
     });
   });
