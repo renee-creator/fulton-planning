@@ -162,6 +162,8 @@ module.exports = function growthModule(c) {
   /* ---------- what an educator receives of their own growth ---------- */
   function forViewer(name, me) {
     const g = growth(name), dir = isDirector(me), y = thisYear(); const out = JSON.parse(JSON.stringify(g));
+    // what they led, from Presenting entries marked presented
+    out.led = c.ledBy ? c.ledBy(name) : [];
     out.profile = { role: roleOf(name), room: roomOf(name), lighter: lighter(name), curriculumFrom: profileOf(name).curriculumFrom || '', startDate: profileOf(name).startDate || '', partTime: !!profileOf(name).partTime, journalEvery: +profileOf(name).journalEvery || 1, checkin: profileOf(name).checkin || '' };
     if (dir) {
       out.trend = (g.checkins || []).filter(x => x.date).sort((a, b) => a.date.localeCompare(b.date)).map(x => ({ date: x.date, self: (x.temp || {}).self || 0, dir: (x.temp || {}).dir || 0, align: (x.align || {}).rating || 0, effect: x.effect || 0 }));
@@ -214,6 +216,8 @@ module.exports = function growthModule(c) {
   const DEFAULT_TIMES = { meeting: ['13:15', '14:30'], pdday: ['08:30', '15:30'] };
   function agendaHours(a) { const t = a.kind === 'meeting' ? [(school().meeting || {}).start || '13:15', (school().meeting || {}).end || '14:30'] : DEFAULT_TIMES.pdday; const s = a.start || t[0], e = a.end || t[1]; return Math.max(0.25, Math.round((toMin(e) - toMin(s)) / 15) / 4); }
   const visibleToStaff = a => !!a && (a.blocks || []).length > 0 && daysBetween(today(), a.date) <= 14;
+  // a block can open a Presenting entry. Its title travels only to someone who may read that entry.
+  const withPres = (a, me) => a && Object.assign({}, a, { blocks: (a.blocks || []).map(b => { if (!b.presenting) return b; const t = c.presTitle ? c.presTitle(me, b.presenting) : ''; const x = Object.assign({}, b, { presTitle: t }); if (!t) { delete x.presenting; delete x.presTitle; } return x; }) });
 
   // topics TREE suggests for a PD day, each with the reasons it noticed. Nothing from an individual check-in, journal or
   // evaluation is shown with a name, and areas and modules many share are named without saying who.
@@ -497,12 +501,12 @@ module.exports = function growthModule(c) {
     if (P === 'pd/list') {
       const from = addDays(today(), -75), to = addDays(today(), 150); const dates = await pdDates(from, to); const ag = pdd().agendas;
       const list = dates.map(d => { const a = ag[d.id]; const base = Object.assign({}, d, { hours: agendaHours(Object.assign({}, d, a || {})) });
-        if (dir) return Object.assign(base, { agenda: a ? Object.assign({}, a, { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })), plusDeltaCount: undefined }) : null });
+        if (dir) return Object.assign(base, { agenda: a ? Object.assign({}, withPres(a, me), { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })), plusDeltaCount: undefined }) : null });
         if (!visibleToStaff(a)) return null;
-        const mine = (a.plusDelta || {})[pidOf(me)] || null; return Object.assign(base, { agenda: Object.assign({}, a, { plusDelta: undefined, logged: undefined }), mine });
+        const mine = (a.plusDelta || {})[pidOf(me)] || null; return Object.assign(base, { agenda: Object.assign({}, withPres(a, me), { plusDelta: undefined, logged: undefined }), mine });
       }).filter(Boolean);
       // an agenda kept for a day no longer on the calendar still shows to the director
-      if (dir) for (const a of Object.values(ag)) if (!list.some(x => x.id === a.id) && a.date >= from) list.push({ id: a.id, date: a.date, kind: a.kind, title: a.title || '', from: 'tree', hours: agendaHours(a), agenda: Object.assign({}, a, { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })) }) });
+      if (dir) for (const a of Object.values(ag)) if (!list.some(x => x.id === a.id) && a.date >= from) list.push({ id: a.id, date: a.date, kind: a.kind, title: a.title || '', from: 'tree', hours: agendaHours(a), agenda: Object.assign({}, withPres(a, me), { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })) }) });
       json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), readings: ((get(READ) || {}).list || []) }); return;
     }
     if (P === 'pd/add') {
@@ -514,7 +518,7 @@ module.exports = function growthModule(c) {
     if (P === 'pd/save') {
       if (!dir) return deny('The director builds each agenda.'); const b = body.agenda || {}; if (!ISO.test(b.date || '')) return err(req, res, 400, 'Choose the day.');
       const kind = b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
-      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing }));
+      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '' }));
       // every agenda ends with plus delta
       const body0 = blocks.filter(x => !x.closing && x.title.trim());
       const close = blocks.find(x => x.closing) || { id: rid('k'), closing: true, title: 'Plus delta', why: 'Each educator writes what went well and what to change in TREE on their phone, and a few are shared aloud before leaving.', how: 'quiet', prepare: '', readings: [], time: '' };

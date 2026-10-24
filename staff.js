@@ -102,6 +102,8 @@ module.exports = function staffModule(o) {
       }
       seed(); pieceCache = null; G.invalidate(); S.ready = true;
       try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
+      // the two starting Presenting entries, made once
+      try { PR.seed(); } catch (e) { log('Presenting entries could not be started', e.message); }
       log(`Loaded educator records, ${[...S.files.keys()].filter(p => p.startsWith('staff/people/')).length} people, ${[...S.files.keys()].filter(p => p.startsWith('staff/handbook/')).length} handbook sections`);
     })().catch(e => { S.loading = null; throw e; });
     return S.loading;
@@ -218,6 +220,8 @@ module.exports = function staffModule(o) {
     // a kitchen sign-in reaches its own records page and nothing else here
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
+    // Presenting, in presenting.js, decides itself who receives each entry
+    if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
     if (P === 'moment/file') {
       const fid = String(body.fid || ''); if (!/^staff-[a-f0-9]+\.[a-z]+$/.test(fid) || !G.momentFile(me, fid)) { err(req, res, 404, 'That photo is not here.'); return; }
       try { const buf = await readOriginal(fid); send(req, res, 200, { 'Content-Type': /\.png$/.test(fid) ? 'image/png' : 'image/jpeg', 'Cache-Control': 'private, no-store' }, buf); } catch (e) { err(req, res, 502, 'The photo could not be read. ' + e.message); }
@@ -506,14 +510,15 @@ module.exports = function staffModule(o) {
   // a shared sign-in reads the PD library and the Teacher Policies and Procedures, and has no records or growth of its own
   function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false };
     if (isKitchen(name) || profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false }; }
-    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)) }; }
+    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), presenting: !!S.ready && PR.anyFor(name) }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name) }; }
   // the weekly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
+  let PR = null;
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
-    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator });
+    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
   function hasFiles(name) { if ([pPath(name), G.gPath(name), G.jPath(name)].some(p => S.files.has(p))) return true; return G.momentsOf(name).length > 0; }
   // the last day kept on the educator's profile as leftOn, or taken off when they stay or come back
@@ -535,5 +540,7 @@ module.exports = function staffModule(o) {
     const ms = G.momentsOf(name); if (ms.length) { const ids = new Set(ms.map(m => m.id)); put('staff/moments.json', Object.assign({}, get('staff/moments.json'), { list: ((get('staff/moments.json') || {}).list || []).filter(m => !ids.has(m.id)) })); n += ms.length; }
     return n;
   }
+  // Presenting, kept in presenting.js, beside the PD days and the growth pages
+  PR = require('./presenting.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart: n => G.takesPart(n), isNewHire });
   return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

@@ -1,7 +1,7 @@
 /* ---------- Educators in TREE ----------
    Each educator's records page, the director's view of every educator, October 1, 2027, the drill log, paper personnel
    files, the New Educator section, the PD library with Licensing at Fulton and the TREE How To guides, and the Teacher
-   Policies and Procedures. TREE loads this file only when someone opens one of these pages, and the server sends each
+   Policies and Procedures, and Presenting. TREE loads this file only when someone opens one of these pages, and the server sends each
    record only to the educator it belongs to and the director. It uses TREE's own helpers, $, esc, toast, the PDF and
    Word makers, and the sign-in. */
 (function(){
@@ -150,6 +150,8 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="stformer")return await pageFormer(my);
     // growth, the journal, check-ins, Proud Moments and PD days live in the second half of this file
     if(window.TreeGrowth&&TreeGrowth.views.includes(v))return await TreeGrowth.render(v,my);
+    // Presenting lives at the end of this file, after the growth pages
+    if(v==="stpres"&&window.TreePres)return await TreePres.render(my);
   }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
 // only the page opened last draws, so a slow page never covers the one the educator moved to
 let RT=0;
@@ -159,10 +161,10 @@ const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=wi
    the kept words go. Passcodes are never kept. */
 const DRAFTS=new Map();
 // the boxes that start something new are empty again once it is added. An agenda's blocks are kept by the agenda itself.
-const CREATE=["sth-title","sth-hours","std-note","stn-name","gm-text","gpd-title"];
+const CREATE=["sth-title","sth-hours","std-note","stn-name","gm-text","gpd-title","prn-title","prn-note","prr-url","prr-title","prr-note","prr-libnote","prd-url","prd-title","prd-note","prf-prompts","prf-checks"];
 const draftKey=el=>{const own=el.id||Object.entries(el.dataset).map(([a,b])=>a+"="+b).join("&");if(!own||el.type==="password"||"gbk" in el.dataset)return "";
   const G=window.TreeGrowth&&TreeGrowth.st||{};const recs=view==="strec"||view==="stnew";
-  return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",view==="sthb"?st.hbSec:"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",own].join("|")};
+  return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",view==="sthb"?st.hbSec:"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",view==="stpres"?(window.TreePres&&TreePres.st.sel)||"":"",own].join("|")};
 const typed=el=>el&&el.closest&&el.closest("#main")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&/^(text|search|url|number|)$/.test(el.type)));
 document.addEventListener("input",e=>{if(typeof view==="undefined"||!STAFF_VIEWS.includes(view)||!typed(e.target)||VIEW_AS)return;const k=draftKey(e.target);if(k)DRAFTS.set(k,e.target.value)},true);
 function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,input").forEach(el=>{if(!typed(el))return;const k=draftKey(el);if(!k||!DRAFTS.has(k))return;const v=DRAFTS.get(k);
