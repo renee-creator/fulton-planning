@@ -630,7 +630,7 @@ const scoreCell=v=>v==="nys"?`<span class="gnys">Not yet seen</span>`:v?`<span c
 /* ---------- pages ---------- */
 Gr.render=async function(v,my){await Gr.ready();if(!B()){draw(my,head("Educators","Growth")+card("Not open yet",`<div class="hint">Growth opens once the director turns it on in Settings.</div>`));return}
   st.view=v;
-  try{st.moments=st.moments||(await ga("moments")).list}catch(e){st.moments=[]}
+  try{st.moments=st.moments||(X.boot().me&&X.boot().me.newHire?[]:(await ga("moments")).list)}catch(e){st.moments=[]}
   if(v==="stgrow")return isDir()&&!st.sel?growList(my):growPage(my);
   if(v==="stplan")return planPage(my);
   if(v==="stjour")return journalPage(my);
