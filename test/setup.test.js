@@ -26,8 +26,13 @@ test('Never signed in and Reminders off on this phone show beside each name and 
       assert.match(text, /Bea\s+Reminders off on this phone/); assert.match(text, /Cy\s+Never signed in/);
       assert.doesNotMatch(text, /Ann|Gone|Dee/);
       assert.strictEqual((text.match(/Not set up yet/g) || []).length, 1);
-      await s.p.evaluate(() => goView('settings')); await s.p.waitForSelector('#signins table', { timeout: 15000 });
-      assert.match(await s.p.innerText('#signins'), /Cy\s+Never signed in/);
+      // Sign-ins is a closed card with a short row for each person
+      await s.p.evaluate(() => goView('settings')); await s.p.waitForSelector('#signins .sgrow', { state: 'attached', timeout: 15000 });
+      await s.p.click('#signins .setcard > summary');
+      assert.match(await s.p.innerText('#signins'), /Cy\s+No Class\s+Never signed in/);
+      await s.p.click('#signins .sgrow[data-sgopen="Bea"] > summary');
+      assert.match(await s.p.innerText('#signins .sgrow[data-sgopen="Bea"]'), /Reminders off on this phone/);
+      assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'never scrolls sideways');
       assert.deepStrictEqual(s.errors, []); await s.close();
       const e = await signedIn(fx, b, 'Bea', '1357', 390); await e.p.evaluate(() => goView('today')); await e.p.waitForTimeout(800);
       assert.strictEqual(await e.p.$('#setuptoday'), null, 'only the director sees the list');

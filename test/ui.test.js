@@ -80,7 +80,7 @@ test('TREE in the browser', async t => {
 
   await t.test('every choice in the Educators settings has a name a screen reader can read', async () => {
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
-    await s.p.evaluate(() => goView('settings')); await s.p.waitForSelector('[data-stprof]', { timeout: 15000 });
+    await s.p.evaluate(() => goView('settings')); await s.p.waitForSelector('[data-stprof]', { state: 'attached', timeout: 15000 });
     const bare = await s.p.evaluate(() => [...document.querySelectorAll('#main select,#main input:not([type=hidden]),#main textarea')].filter(el => !el.getAttribute('aria-label') && !el.closest('label') && !(el.id && document.querySelector(`label[for="${el.id}"]`)) && !el.title && !el.placeholder).map(el => el.outerHTML.slice(0, 80)));
     assert.deepStrictEqual(bare, []);
     await s.close();

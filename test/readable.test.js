@@ -97,8 +97,8 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 390);
     await s.p.evaluate(() => { rcSoon(); clearTimeout(rcTimer); }); await s.p.evaluate(() => { if (!rcNow && readableSeen && rcCan() && rcDue()) rcMake(false); });
     assert.strictEqual(await s.p.evaluate(() => !!rcNow), false);
-    await s.p.evaluate(() => goView('settings')); await s.p.waitForTimeout(600);
-    const card = await s.p.evaluate(() => [...document.querySelectorAll('#main section.card')].find(x => /Backups/.test(x.querySelector('.lbl')?.textContent || '')).innerText);
+    await s.p.evaluate(() => { setOpen = 'Backups'; goView('settings'); }); await s.p.waitForTimeout(600);
+    const card = await s.p.evaluate(() => (() => { const d = document.querySelector('.setcard[data-set="Backups"]'); d.open = true; return d.closest('section').innerText; })());
     assert.match(card, /No readable copies yet/); assert.match(card, /A phone never makes them/); assert.doesNotMatch(card, /Make readable copies now/);
     assert.ok(!d.calls.some(c => /^readable/.test(c.op || '')));
     assert.deepStrictEqual(s.errors, []); await s.close();
@@ -106,7 +106,7 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
   await t.test('an educator has no readable copies and no card', async () => {
     const s = await signedIn(fx, b, 'Bea', '1357', 1280);
     assert.strictEqual(await s.p.evaluate(() => rcCan()), false);
-    await s.p.evaluate(() => goView('settings')); await s.p.waitForTimeout(600);
+    await s.p.evaluate(() => { setOpen = 'Backups'; goView('settings'); }); await s.p.waitForTimeout(600);
     assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /Readable copies/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
@@ -128,8 +128,8 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     // health details stay out of each educator's records page, as journals and check-ins do
     for (const f of d.tree().filter(x => / records\./.test(x))) assert.doesNotMatch(d.file(f).toString('utf8'), /Immunization|Flu vaccine|Pertussis|Measles|TB and health/i, f);
     assert.strictEqual(await s.p.evaluate(() => rcDue()), false);
-    await s.p.evaluate(() => goView('settings')); await s.p.waitForFunction(() => /Last readable copies/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
-    const card = await s.p.evaluate(() => [...document.querySelectorAll('#main section.card')].find(x => /Backups/.test(x.querySelector('.lbl')?.textContent || '')).innerText);
+    await s.p.evaluate(() => { setOpen = 'Backups'; goView('settings'); }); await s.p.waitForFunction(() => /Last readable copies/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const card = await s.p.evaluate(() => (() => { const d = document.querySelector('.setcard[data-set="Backups"]'); d.open = true; return d.closest('section').innerText; })());
     assert.match(card, new RegExp(`${d.tree().length} files`)); assert.match(card, /Make readable copies now/); assert.doesNotMatch(card, /missed/);
     assert.match(card, /1 file could not be made, so the set leaves it out\. It is Team inquiry Rest time full\.docx\./);
     // Make readable copies now makes a new set the same day, and the last set goes to the trash once it is whole

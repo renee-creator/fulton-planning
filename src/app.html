@@ -113,6 +113,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .nextbar .actions{display:flex;gap:6px}.sendmiss .linkbtn{font-size:14px}
 .sendask{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:6px}
 /* a quiet note while words saved on this phone wait for a connection, never an error */
+.sethead{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 4px 6px;font-weight:700}.setcard>summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.setcard>summary::-webkit-details-marker{display:none}.setcard>summary b{font-size:16px}.setcard[open]>summary{margin-bottom:10px}.setbody>.lbl:first-child{display:none}section.card.inset{box-shadow:none;border:1px solid var(--line);margin:10px 0 0}
 .sglist{display:grid;gap:0;border-top:1px solid var(--line)}.sgrow{border-bottom:1px solid var(--line)}.sgrow>summary{display:grid;grid-template-columns:minmax(5.5em,1fr) auto auto;align-items:baseline;gap:2px 12px;padding:10px 4px;cursor:pointer;list-style:none;min-height:44px;box-sizing:border-box}.sgrow>summary::-webkit-details-marker{display:none}.sgrow>summary b{overflow-wrap:anywhere}.sgrow .sglast{text-align:right;min-width:6.5em}.sgbody{display:grid;gap:8px;padding:4px 4px 12px}.sgf{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.sgf>span:first-child{min-width:5.5em;color:var(--muted);font-size:13px}.sgf select{width:auto}
 .draftnote{max-width:1180px;margin:0 auto;padding:2px 16px 6px;font-size:13px;color:var(--muted);text-align:center}.draftline{color:var(--muted)}
 .soask{top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:72}
@@ -7607,9 +7608,8 @@ function staffBdaysHtml(){
   const rows=staffBdays.map((p,i)=>({p,i})).sort((a,b)=>String(a.p.date).localeCompare(String(b.p.date)));
   return `<section class="card" id="sb-card"><div class="lbl">Staff birthdays</div>
     <div class="hint">Each one shows on the calendar under Birthdays every year, and on Today that day. Only the month and day are kept, so no age is shown. Write the name the way the team knows it.</div>
-    ${rows.length?`<div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Name</th><th>Month</th><th>Day</th><th></th></tr></thead><tbody>
-    ${rows.map(({p,i})=>`<tr><td><input type="text" data-sbname="${i}" value="${esc(p.name||"")}" aria-label="Name"></td><td>${sbSelects(i,p.date)}</td><td><button class="linkbtn" data-sbdel="${i}">Remove</button></td></tr>`).join("")}
-    </tbody></table></div>`:`<div class="cnt">No staff birthdays yet.</div>`}
+    ${rows.length?`<div class="sglist">${rows.map(({p,i})=>{const [m,d]=String(p.date||"").split("-").map(Number);return `<details class="sgrow" data-rowkey="sb:${esc(p.name||i)}" ${rowOpen==="sb:"+(p.name||i)?"open":""}><summary><b>${esc(p.name||"No name")}</b><span></span><span class="cnt sglast">${m&&d?esc(SB_MONTHS[m-1]+" "+d):""}</span></summary>
+      <div class="sgbody"><label class="sgf"><span>Name</span><input type="text" data-sbname="${i}" value="${esc(p.name||"")}" aria-label="Name" style="flex:1"></label><div class="sgf"><span>Birthday</span>${sbSelects(i,p.date)}</div><span class="actions" style="margin:0"><button class="linkbtn" data-sbdel="${i}">Remove</button></span></div></details>`}).join("")}</div>`:`<div class="cnt">No staff birthdays yet.</div>`}
     <div class="actions"><input type="text" id="sb-name" placeholder="Name" style="width:160px"><select id="sb-month" aria-label="Month" style="width:150px">${SB_MONTHS.map((n,k)=>`<option value="${k+1}">${n}</option>`).join("")}</select><select id="sb-day" aria-label="Day" style="width:80px">${Array.from({length:31},(_,k)=>`<option>${k+1}</option>`).join("")}</select><button class="btn small" id="sb-add">Add birthday</button></div></section>`}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!isDirector())return;
   if(t.id==="sb-add"){const n=($("#sb-name")?.value||"").trim();if(!n){toast("Type a name first.");return}
@@ -7635,8 +7635,12 @@ function menusHtml(){
     <div class="hint">Add the month's snack and lunch menus as PDFs or photos. TREE reads them into days for you to check, then they show on the calendar as Snack and lunch, and on Today. The menus and farm sheets TREE prints are on the Kitchen page.</div>
     <div class="actions"><label class="btn small ghost" style="cursor:pointer">Add menus<input type="file" id="menu-files" accept="application/pdf,image/*" multiple hidden></label>${menuBusy?`<span class="cnt"><span class="spin"></span> Reading ${menuBusy} menu${menuBusy===1?"":"s"}</span>`:""}</div>`;
   if(menuDraft)h+=menuDraftHtml();
-  if(kept.length)h+=`<div class="tlist" style="margin-top:10px">${kept.map(m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
-    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">The kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
+  // this month and next show, and earlier months fold under Earlier menus
+  const ym=iso(new Date()).slice(0,7),row=m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
+    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">The kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`};
+  const now=kept.filter(m=>m.month>=ym),past=kept.filter(m=>m.month<ym);
+  if(now.length)h+=`<div class="tlist" style="margin-top:10px">${now.slice().reverse().map(row).join("")}</div>`;
+  if(past.length)h+=`<details class="fold" data-fold="set:oldmenus" ${foldOpen.has("set:oldmenus")?"open":""} style="margin-top:8px"><summary class="foldhead"><span class="cnt">Earlier menus</span><span class="cnt">${past.length}</span></summary><div class="foldbody tlist">${past.map(row).join("")}</div></details>`;
   return h+staplesHtml()+`</section>`}
 function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
   return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
@@ -12339,7 +12343,10 @@ function signinsHtml(){
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
 }
-document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("sgrow")){if(d.open){signins.open=d.dataset.sgopen;document.querySelectorAll(".sgrow[open]").forEach(x=>{if(x!==d)x.open=false})}else if(signins.open===d.dataset.sgopen)signins.open=""}},true);
+// a short row opens its person's or item's choices, one at a time, and stays open when the page is drawn again
+let rowOpen="";
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("sgrow")){const k=d.dataset.sgopen?"sg:"+d.dataset.sgopen:d.dataset.rowkey||"";
+  if(d.open){rowOpen=k;if(d.dataset.sgopen)signins.open=d.dataset.sgopen;document.querySelectorAll(".sgrow[open]").forEach(x=>{if(x!==d)x.open=false})}else if(rowOpen===k){rowOpen="";if(d.dataset.sgopen&&signins.open===d.dataset.sgopen)signins.open=""}}},true);
 async function signinCall(path,body,msg){signins.busy=true;try{const j=await window.FP_API(path,body);signins.list=j.accounts||signins.list;if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}signins.busy=false;if(view==="settings")renderSettings()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
@@ -12584,6 +12591,49 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
   if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
+/* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
+   and opening one closes the others. A card not named here goes under the closest heading. */
+const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Small groups","Staff birthdays","Names on plans"]],
+  ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
+  ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records"]]];
+let setOpen="";
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+function setStatus(t,x){try{
+  const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
+  if(t==="See TREE as an educator")return "Any page, as an educator sees it";
+  if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
+  if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
+  if(t==="Educators")return plural(rosterNames().length,"educator");
+  if(t==="Small groups")return plural(GROUPS.length,"group");
+  if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
+  if(t==="Names on plans")return plural(rosterNames().length,"name");
+  if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
+  if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
+  if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
+  if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
+  if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
+  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
+  if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
+  if(t==="Story frames")return plural(x.querySelectorAll("details").length,"frame");
+  const n=x.querySelectorAll(".chip,.sgrow,.rchip").length;if(n)return plural(n,"item");
+  const h=x.querySelector(".hint");return h?sentFit(h.textContent,70):"";
+}catch(e){return ""}}
+function settingsFold(){const m=$("#main");if(!m||!isDirector())return;const secs=[...m.querySelectorAll(":scope > section.card")];if(!secs.length)return;
+  let lens=null;const cards=[];
+  for(const x of secs){const lbl=x.querySelector(":scope > .lbl");const t=lbl?lbl.textContent.trim():"";
+    // each lens's own card sits inside Lenses
+    if(!t&&lens&&x.querySelector(":scope > .secthead h3")){lens.body.append(x);x.classList.add("inset");continue}
+    const name=t||((x.querySelector("h3")||{}).textContent||"").trim();if(!name)continue;
+    const d=document.createElement("details");d.className="setcard";d.dataset.set=name;if(setOpen===name)d.open=true;
+    const body=document.createElement("div");body.className="setbody";while(x.firstChild)body.append(x.firstChild);if(lbl)lbl.remove();
+    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt">${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
+    cards.push([name,x]);if(name==="Lenses")lens={x,body}}
+  const hd=m.querySelector(".head");let at=hd;
+  for(const [g,ts] of SET_GROUPS){const mine=cards.filter(([n])=>ts.includes(n)||(g==="People"&&!SET_GROUPS.some(([,l])=>l.includes(n)))).sort((a,b)=>(ts.indexOf(a[0])+1||99)-(ts.indexOf(b[0])+1||99));if(!mine.length)continue;
+    const h=document.createElement("h3");h.className="sethead";h.textContent=g;at.after(h);at=h;for(const [,x] of mine){at.after(x);at=x}}}
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.classList||!d.classList.contains("setcard"))return;
+  if(d.open){setOpen=d.dataset.set;document.querySelectorAll(".setcard[open]").forEach(x=>{if(x!==d)x.open=false})}else if(setOpen===d.dataset.set)setOpen=""},true);
 function renderSettings(){
   if(!isDirector()){const nm=VIEW_AS?VIEW_AS.name:(window.FP_NAME?window.FP_NAME():me());const rm=myRoom();
     $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
@@ -12626,10 +12676,11 @@ function renderSettings(){
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
-    <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
-    ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name"></td><td><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
-      <td><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
-    </tbody></table></div>
+    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
+      <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
+      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label class="sgf"><span>Lead</span><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
+      <span class="actions" style="margin:0"><button class="linkbtn" data-gdel="${i}">Remove</button></span></div></details>`).join("")}</div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
   <section class="card"><div class="lbl">Names on plans</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
   <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places where small groups meet, indoors and outdoors.</div>
@@ -12650,10 +12701,9 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
-  {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
-    const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}
+  settingsFold();
 }
 document.addEventListener("click",e=>{const j=e.target.closest("[data-setjump]");if(!j)return;const el=document.getElementById(j.dataset.setjump);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})});
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings")return;
