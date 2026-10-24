@@ -125,6 +125,8 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     // last year's plans and a child with nothing in the portfolio are not among them
     assert.ok(!files.some(f => /2025-10-13|Oak Test/.test(f)));
     for (const f of d.tree()) { const t2 = d.file(f).toString('utf8'); assert.doesNotMatch(t2, /private joy|journal|check-?in|evaluation|1357|director-pass/i, f); }
+    // health details stay out of each educator's records page, as journals and check-ins do
+    for (const f of d.tree().filter(x => / records\./.test(x))) assert.doesNotMatch(d.file(f).toString('utf8'), /Immunization|Flu vaccine|Pertussis|Measles|TB and health/i, f);
     assert.strictEqual(await s.p.evaluate(() => rcDue()), false);
     await s.p.evaluate(() => goView('settings')); await s.p.waitForFunction(() => /Last readable copies/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
     const card = await s.p.evaluate(() => [...document.querySelectorAll('#main section.card')].find(x => /Backups/.test(x.querySelector('.lbl')?.textContent || '')).innerText);

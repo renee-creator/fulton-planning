@@ -774,11 +774,14 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
     <div class="actions"><button class="btn small ghost" data-streload="1">Read the PD pieces again</button><span class="cnt">After a new piece is added to the records.</span></div>`};
 
 /* ---------- printouts and Word files ---------- */
-function recordDocs(p){const pr=p.profile||{};const it=itemsFor(p).map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,fd(r.date),s.ex?fd(s.ex):"",s.t]});
+// the readable copies in Drive leave out health details, the flu shot, immunizations, the TB and health screening and
+// any medical note, as they leave out evaluations, journals and check-ins. The records page and its own print keep them.
+const HEALTH_ITEMS=["tb"];
+function recordDocs(p,noHealth){const pr=p.profile||{};const it=itemsFor(p).filter(i=>!(noHealth&&HEALTH_ITEMS.includes(i.k))).map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,fd(r.date),s.ex?fd(s.ex):"",s.t]});
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};const hy=hoursYear(p);
   return report(p.name+", records",[["Role",whoRole(p)],["Class",roomName(p)],["Start date",fd(pr.startDate)],["Printed",fd(today())]],[
     {t:"table",label:"Records and certificates",head:["Record","Date","Renews","In place"],rows:it,widths:[.42,.18,.18,.22]},
-    {t:"table",label:"Immunizations",head:["Immunization","On file","Date"],rows:[["Flu vaccine, "+fl.season,fl.t,fd(f.date)],...["pertussis","measles"].map(k=>{const r=(p.once||{})[k]||{};return [k==="pertussis"?"Pertussis":"Measles",onceState(r).t,fd(r.date)]})]},
+    noHealth?null:{t:"table",label:"Immunizations",head:["Immunization","On file","Date"],rows:[["Flu vaccine, "+fl.season,fl.t,fd(f.date)],...["pertussis","measles"].map(k=>{const r=(p.once||{})[k]||{};return [k==="pertussis"?"Pertussis":"Measles",onceState(r).t,fd(r.date)]})]},
     {t:"text",label:"Early childhood units",text:(p.units&&p.units.completed!==undefined&&p.units.completed!=="")?`${p.units.completed} units completed.`:"Not recorded yet."},
     {t:"table",label:"Continuing hours, this school year",head:["Date","Course","Hours","Counts toward"],rows:hy.list.map(h=>[fd(h.date),h.title,String(h.hours),h.approved?"Approved hours":"Fulton PD hours"]),widths:[.16,.5,.1,.24]},
     {t:"text",text:`${r1(hy.approved)} of 12 approved hours and ${r1(hy.fulton)} Fulton PD hours this school year.`}])}
@@ -828,10 +831,10 @@ async function printKind(k,word){const kind=word?"word":"pdf";
 // each educator's records page as it prints, for the director's weekly readable copies. Records only, never growth.
 // An educator whose last day has passed is a former educator.
 T.readable=async function(){await boot(true);await loadPeople();const t=today(),past=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||"")&&d<t;
-  const now=(st.people||[]).map(p=>({name:p.name,room:p.room||"",former:past(p.leaveOn)||past((p.profile||{}).leftOn),doc:recordDocs(p)}));
+  const now=(st.people||[]).map(p=>({name:p.name,room:p.room||"",former:past(p.leaveOn)||past((p.profile||{}).leftOn),doc:recordDocs(p,true)}));
   // educators who have left are no longer in the people list, so their records are read one by one from Former educators
   const gone=((await api("former").catch(()=>({}))).people||[]).filter(x=>!now.some(n=>n.name===x.name));
-  for(const x of gone){const p=await api("person",{name:x.name}).catch(()=>null);if(p)now.push({name:x.name,room:x.room||"",former:true,doc:recordDocs(p)})}
+  for(const x of gone){const p=await api("person",{name:x.name}).catch(()=>null);if(p)now.push({name:x.name,room:x.room||"",former:true,doc:recordDocs(p,true)})}
   return now};
 
 /* ---------- taps ---------- */

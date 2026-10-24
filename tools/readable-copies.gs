@@ -8,8 +8,8 @@
   such as 2026-10-26 2. There is one folder for each Class, one for the school, one for former children and one for
   former educators. Only once the whole new set has arrived are the earlier sets moved to the Drive trash, so only the
   newest complete set is kept. A file whose records have not changed since the last whole set is copied from that set
-  here, inside Drive, so TREE makes only the files that changed. Evaluations, journals, check-ins and growth are never
-  sent here.
+  here, inside Drive, so TREE makes only the files that changed. Evaluations, journals, check-ins, growth and health
+  details are never sent here.
 
   To update from the version before the copy step, paste this whole file over the readable-copies script file, save,
   and do step 4 below, Deploy, Manage deployments, New version. Until then TREE makes every file itself, as before.
