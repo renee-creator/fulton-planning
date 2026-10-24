@@ -499,11 +499,13 @@ function backupBundle(saved) {
   let st = 0; try { for (const [p, d] of Object.entries(staff.dump())) { files[p] = d; st++; } } catch (e) { log('Educator records could not be added to the backup', e.message); }
   counts.staff = st;
   if (DRDP_DESC) { files[DRDP_PATH] = DRDP_DESC; counts.drdp = 1; }
+  // who is the director and the office holds names only, never a passcode, so it comes back with a restore
+  if (roles.directors.length || roles.office.length) { files[ROLES_PATH] = { note: 'Who TREE treats as the director and as the office. Kept here in the private records so no name is in TREE\'s public code.', directors: roles.directors, office: roles.office }; counts.roles = 1; }
   const photos = [...store.originals.entries()].map(([id, o]) => Object.assign({ id, size: Number(o.size) || 0 }, o.drive ? { drive: o.drive, ref: o.ref } : { path: o.path }));
   const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   return { manifest: { kind: 'TREE backup', date: day, at: new Date().toISOString(), version: process.env.RENDER_GIT_COMMIT || 'unknown', repo: RECORDS_REPO, branch: store.branch, files: Object.keys(files).length, counts, savedFirst: saved,
       photos: { total: photos.length, inDrive: photos.filter(p => p.drive).length, list: photos },
-      left: 'Sign-ins, access/accounts.json, are not in the backup because they hold passcodes. Photos are listed by id and Drive id, and the photo files stay in Google Drive and the records.' }, files };
+      left: 'Sign-ins, access/accounts.json, are not in the backup because they hold passcodes. The director and office names, access/roles.json, are. Photos are listed by id and Drive id, and the photo files stay in Google Drive and the records.' }, files };
 }
 async function recheckRecords() {
   const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);

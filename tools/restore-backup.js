@@ -5,7 +5,8 @@
 //
 // The folder can be a fresh clone of the records repository. Each file is written at its own path, such as
 // plans/abc.json or calendar/bookings/2026-10.json, and the folder can then be committed and pushed.
-// Sign-ins, access/accounts.json, are not in a backup, so an existing file there is left as it is.
+// Sign-ins, access/accounts.json, are not in a backup, so an existing file there is left as it is. The director and office
+// names, access/roles.json, are restored.
 // Photos are listed in the manifest with their Google Drive ids. The photo files themselves stay in Google Drive.
 'use strict';
 const fs = require('fs');
@@ -31,12 +32,14 @@ for (const [rel, doc] of Object.entries(bundle.files)) {
   const clean = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
   // records are JSON, and the PD library's pieces under staff/pd are Markdown, kept as written
   const md = /^staff\/pd\/[\w.~/-]+\.md$/.test(clean.split(path.sep).join('/')) && typeof doc === 'string';
-  if ((!md && !/^[\w.-]+(\/[\w.~-]+)*\.json$/.test(clean.split(path.sep).join('/'))) || clean.startsWith('access')) { console.error('Skipped', rel); continue; }
+  if ((!md && !/^[\w.-]+(\/[\w.~-]+)*\.json$/.test(clean.split(path.sep).join('/'))) || (clean.startsWith('access') && clean.split(path.sep).join('/') !== 'access/roles.json')) { console.error('Skipped', rel); continue; }
   const file = path.join(root, clean);
   if (!file.startsWith(root + path.sep)) { console.error('Skipped', rel); continue; }
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  // the DRDP descriptors are kept with one space of indent, every other record with two, as the server writes them
-  const indent = clean.split(path.sep).join('/') === 'drdp/descriptors.json' ? 1 : 2;
+  // the DRDP descriptors and the educator records under staff/ are kept with one space of indent, every other record with
+  // two, as the server writes them
+  const rp = clean.split(path.sep).join('/');
+  const indent = rp === 'drdp/descriptors.json' || rp.startsWith('staff/') ? 1 : 2;
   fs.writeFileSync(file, md ? doc : JSON.stringify(doc, null, indent) + '\n');
   n++;
 }
