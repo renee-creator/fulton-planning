@@ -1241,6 +1241,7 @@ async function boot(){
     db.doc("settings/weekly").onSnapshot(snap=>{weeklyRec=snap.exists?snap.data():null;setTimeout(()=>weeklyReads().catch(()=>{}),20000);if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{weeklyRec=null});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/backup").onSnapshot(snap=>{backupInfo=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()});
+    db.doc("settings/readable").onSnapshot(snap=>{readableInfo=snap.exists?snap.data():null;readableSeen=true;rcSoon();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.doc("settings/stories").onSnapshot(snap=>{storySet=snap.exists?snap.data():null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sf-card"))renderSettings()},()=>{});
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()},()=>{});
@@ -2298,14 +2299,14 @@ window.TREE_DRDP_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
   for(const x of all){const b=best[x.code];const r=drdpRank(x.view||v,x.code,x.level)+(x.emerging?.5:0),rb=b?drdpRank(b.view||v,b.code,b.level)+(b.emerging?.5:0):-1;if(!b||r>rb||(r===rb&&x.at>b.at))best[x.code]=x}
   return Object.values(best).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}))};
 // the documentation for a conference, as pages that print after the form, in date order with the child's age, as in the portfolio
-window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
+window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only,quiet)=>{const c=children.get(childId);if(!c)return null;const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
   // with a list, only those pieces print, the ones listed on the conference form
   const want=Array.isArray(only)?new Set(only):null;
   const its=portfolioItems(c).filter(x=>want?want.has(x.kind+"|"+pfItemId(x)):x.at>=t0&&x.at<=t1);if(!its.length)return null;const mode=PRINT.names;
   const aged=(d,t)=>{const a=kidAgeAt(c,t);if(a){const dt=d.details||[];d.details=[dt[1]||longDate(iso(new Date(t))),"Age "+a,dt[2]||""]}return d};
   const docs=its.map(x=>aged(x.kind==="stories"?storyPortfolioDoc(x.st,mode,c):x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c),x.at));
-  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
-  return word?await makeDocx(docs,"documentation.docx",true):await makePdf(docs,"documentation.pdf",true)};
+  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs,!!quiet);
+  return word?await makeDocx(docs,"documentation.docx",quiet?"quiet":true):await makePdf(docs,"documentation.pdf",quiet?"quiet":true)};
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pfdrdp)LS.set("tree.pfdrdp",t.value);
   if(t&&t.dataset&&t.dataset.pftick){const [id,yr,m]=t.dataset.pftick.split("|");const c=children.get(id);if(c){kidDrdpPatch(c,{portfolio:{[yr]:{[m]:t.checked}}});const cell=t.closest(".pfm");if(cell)cell.classList.toggle("late",!t.checked&&pfMonthTimes(yr,PF_MONTHS.indexOf(m))[1]<Date.now())}}});
 // the Conferences page opens a child's documentation in TREE
@@ -4075,7 +4076,7 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=84a7313795","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=aa30c277a9","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
@@ -5538,8 +5539,9 @@ const PG0={top1:126,topN:74,bottom:PH-50,gap:9,strip:19,padT:15,lh:14,fs:10,padB
 const PG=Object.assign({},PG0);
 // a long plan is set a little smaller rather than spilling onto a third sheet
 function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=PG0.padB*z;PG.gap=PG0.gap*z;PG.strip=PG0.strip*Math.max(z,.92)}
+// with ret the file comes back rather than opening, and "quiet" also keeps every message off the screen
 async function makePdf(list,filename,ret){
-  if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
+  if(!window.jspdf){if(ret!=="quiet")toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);await loadPrintFonts();
   const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
   const fmt=p=>p&&p.centered&&p.sq?[PW,PW]:"letter";
@@ -5553,7 +5555,7 @@ async function makePdf(list,filename,ret){
     doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(.6);
     doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
     if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(110,124,115);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-15,{align:"center"})}}
-  if(ret){overWarn();return doc.output("blob")}
+  if(ret){if(ret==="quiet")centerOver=[];else overWarn();return doc.output("blob")}
   saveFile(doc.output("blob"),filename);overWarn();
 }
 // a sheet with more words than fit still prints, and the educator hears which one to shorten
@@ -5784,8 +5786,8 @@ function webSvgString(web,blank,A){
 function svgToPng(svg){if(PF.b64)svg=svg.replace(/<svg\b[^>]*>/,m=>m+`<defs><style>@font-face{font-family:TA;src:url(data:font/ttf;base64,${PF.b64.fr})}@font-face{font-family:TA;font-weight:700;src:url(data:font/ttf;base64,${PF.b64.bs})}</style></defs>`);return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
 function planPageCount(p){try{const t=planDoc({unit:"pt",format:"letter"});drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
 async function makeDocx(list,filename,ret){
-  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
-  toast("Preparing the Word file");centerOver=[];
+  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){if(ret!=="quiet")toast("The Word tool did not load. Check your connection and reload.");return}
+  if(ret!=="quiet")toast("Preparing the Word file");centerOver=[];
   const disp=list.some(p=>p.display);await loadPrintFonts();
   // plan text written for Helvetica takes Andika, with bold kept
   const TextRun=class extends D.TextRun{constructor(o){if(o&&typeof o==="object"&&o.font==="Helvetica"){o=Object.assign({},o);o.font=PF.buf?PF.word.fr:"Arial"}super(o)}};
@@ -5840,7 +5842,7 @@ async function makeDocx(list,filename,ret){
   const wf=wordFonts();
   const docx=new Document(Object.assign({creator:"TREE, Fulton Community School & Farm",title:filename.replace(/\.docx$/,""),sections},{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}},wf.length?{fonts:wf}:{}));
   const blob=await Packer.toBlob(docx);
-  if(ret){overWarn();return blob}
+  if(ret){if(ret==="quiet")centerOver=[];else overWarn();return blob}
   saveFile(blob,filename);overWarn();
 }
 
@@ -8355,7 +8357,7 @@ function inquiryDoc(x,long){
   if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
   const obs=long?ns:ns.slice(0,3);
   if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true))})}
-  if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",shortDate(e.at))))}}
+  if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",[shortDate(e.at)])))}}
   const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
   if(x.lookAgain)meta.push(["Look again",fmtDate(x.lookAgain)]);
   const ths=(x.threads||[]).map(id=>threads.get(id)).filter(Boolean);if(ths.length)meta.push(["Threads",ths.map(t=>t.name).join(", ")]);
@@ -9626,18 +9628,18 @@ async function decodeImage(blob){
   return await new Promise((res,rej)=>{const u=URL.createObjectURL(blob);const im=new Image();im.onload=()=>{res(im);setTimeout(()=>URL.revokeObjectURL(u),1000)};im.onerror=()=>rej(new Error("image"));im.src=u});
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
-async function loadPhotos(docs){
+async function loadPhotos(docs,quiet){const say=quiet?()=>{}:progress;
   const want=[];for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
-  let missed=0,got=0;const n=want.length;if(n)progress(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
+  let missed=0,got=0;const n=want.length;if(n)say(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
     const bmp=await decodeImage(blob);const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
     const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
     const jb=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));
     photoCache.set(b.key,{url:c.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:c.width,h:c.height})}catch(e){missed++}
-    got++;if(n>1)progress(`Getting photos, ${got} of ${n}`)}));
-  if(n&&!missed)progress("Making the file");
-  if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the printout leaves ${missed>1?"them":"it"} out.`);
+    got++;if(n>1)say(`Getting photos, ${got} of ${n}`)}));
+  if(n&&!missed)say("Making the file");
+  if(missed&&!quiet)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the printout leaves ${missed>1?"them":"it"} out.`);
 }
 const SECT_SHORT={"Intentions and questions for the week":"intentions","Meeting time questions, concepts and ideas":"meeting time","Expressed interests of individual and small group":"expressed interests","Provocations and environmental changes, indoor":"indoor provocations","Provocations and environmental changes, outdoor":"outdoor provocations","Possible activities and materials":"possible materials","Observation rationale":"observation","The thread we are following":"the thread"};
 const sectName=l=>SECT_SHORT[l]||String(l||"").toLowerCase();
@@ -12587,7 +12589,112 @@ function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastA
   const old=at&&Date.now()-at>50*3600000;
   return `<section class="card"><div class="lbl">Backups</div>
     <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}${old?" The last one is more than two days old, so check the mailbox script.":""}</div></div></div>
-    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive, and the newest 60 are kept, about two months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
+    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive, and the newest 60 are kept, about two months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div>
+    ${readableHtml()}</section>`}
+/* Readable copies. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her
+   TREE quietly makes the Word and PDF files it already prints and keeps them in Google Drive, in TREE readable copies
+   beside the backups. There is one folder for each Class and one for the school, and former children and former
+   educators have their own. Each file is made by the same print as its button, handed back here instead of saved, and
+   sent on one at a time. The mailbox script trashes last week's set only once the whole new one has arrived.
+   Evaluations, journals, check-ins and growth are never among them, since they are kept only for the director. A phone
+   never makes the set. */
+let readableInfo=null,readableSeen=false,rcNow=null,rcTried=0,rcTimer=null;
+const RC_DEVICE=uid(),RC_CHUNK=4*1024*1024;
+const rcBig=()=>{try{return Math.min(screen.width,screen.height)>=600}catch(e){return false}};
+// the week starts after Sunday night, and a set made before then belongs to an earlier week
+const rcWeek=()=>parseIso(mondayOf(new Date())).getTime();
+const rcDue=()=>!(readableInfo&&readableInfo.lastAt>=rcWeek());
+const rcMissed=()=>{const at=readableInfo&&readableInfo.lastAt;return !!at&&at<rcWeek()-7*864e5};
+const rcDrive=()=>!!(window.FP_STORAGE&&window.FP_STORAGE.driveOn);
+const rcCan=()=>isDirector()&&!VIEW_AS&&!!window.FP_API&&rcBig()&&rcDrive();
+function rcSoon(){clearTimeout(rcTimer);rcTimer=setTimeout(()=>{if(!rcNow&&readableSeen&&rcCan()&&rcDue()&&Date.now()-rcTried>6*3600e3)rcMake(false)},45000)}
+// TREE left open over Sunday night starts the new week's set too
+setInterval(()=>{if(!rcNow)rcSoon()},30*60e3);
+const rcSize=b=>b>=1024**2?Math.round(b/1024**2).toLocaleString()+" MB":Math.max(1,Math.round(b/1024))+" KB";
+const rcText=()=>rcNow?`Making readable copies now, ${rcNow.done.toLocaleString()} of about ${Math.max(rcNow.done,rcNow.total).toLocaleString()} files. Keep TREE open until the time of the new set shows here.`:"";
+function rcShow(){const el=$("#rc-now");if(el)el.textContent=rcText();const b=document.querySelector("[data-rcnow]");if(b)b.disabled=!!rcNow}
+function readableHtml(){const r=readableInfo||{},at=r.lastAt,day=ms=>whenAt(ms,{weekday:"long",month:"long",day:"numeric"});
+  const t=r.tried&&r.tried.at>(at||0)?r.tried:null;
+  const lines=[at?`${(r.files||0).toLocaleString()} files${r.bytes?", "+rcSize(r.bytes):""}, in TREE readable copies in the mailbox's Google Drive.`:"No set has been made yet."];
+  if(rcMissed())lines.push("Last week's set was missed, so the newest set is more than a week old.");
+  const sk=Array.isArray(r.skipped)?r.skipped:[];
+  if(at&&sk.length)lines.push(`${sk.length} file${sk.length===1?"":"s"} could not be made, so the set leaves ${sk.length===1?"it":"them"} out. ${sk.length===1?"It is":"They are"} ${sk.slice(0,5).map(x=>x.split("/").pop()).join(", ").replace(/, ([^,]*)$/," and $1")}${sk.length>5?" and more":""}. Printing ${sk.length===1?"it":"them"} from TREE shows the same problem.`);
+  if(t)lines.push(`The set started ${day(t.at)} did not finish${t.total?`, and ${t.done.toLocaleString()} of about ${t.total.toLocaleString()} files arrived`:""}. Last week's set stays until a new one is whole. TREE tries again the next time it opens on a computer or iPad.`);
+  return `<div class="lbl" style="margin-top:14px">Readable copies</div>
+    <div class="prow"><div><b>${at?"Last readable copies "+esc(day(at)):"No readable copies yet"}</b><div class="cnt">${esc(lines.join(" "))}</div><div class="cnt" id="rc-now" aria-live="polite">${esc(rcText())}</div></div></div>
+    ${!rcDrive()?`<div class="cnt">Readable copies are kept in Google Drive beside the photos, and TREE's Google Drive is not set up yet.</div>`:rcBig()?`<div class="actions"><button class="btn small ghost" data-rcnow="1" ${rcNow?"disabled":""}>Make readable copies now</button></div>`:`<div class="cnt">A phone never makes them. Open TREE on a computer or iPad to make them now.</div>`}
+    <div class="hint">Once a week, the first time you open TREE on a computer or iPad after Sunday night, TREE quietly saves readable copies beside the backups. They are the Word and PDF files TREE already prints, with a folder for each Class and one for the school. Former children and former educators have their own folders. They hold each child's portfolio, this year's plans by week, threads, projects, team inquiries, conference notes and each educator's records page. Each week's set replaces the last one once it is whole. Evaluations, journals and check-ins stay out, since they are kept only for you.</div>`}
+// every file in the set, each made by its own print. The folder is the Class, or School for the rest.
+function rcJobs(){const F=r=>CLASSROOMS.includes(r)?r+" Class":"School",out=[];
+  for(const c of [...children.values()].filter(c=>c&&!c.deleted&&c.first).sort((a,b)=>kidName(a).localeCompare(kidName(b))))
+    if(portfolioItems(c).length)out.push({folder:kidAt(c)?F(c.classroom):"Former children",name:`Portfolio ${c.first}${c.last?" "+c.last:""}`,docs:()=>portfolioDocs(c)});
+  // this school year's plans, one file for each Class and week, as the week's plans download makes them
+  const y0=schoolYearStart(),wk=new Map();
+  for(const p of plans.values())if(p&&p.id!=="example"&&!p.deleted&&FORMS[p.type]&&p.type!=="notice"&&p.weekOf>=y0){const r=CLASSROOMS.includes(p.classroom)?p.classroom:"",k=p.weekOf+"|"+r;if(!wk.has(k))wk.set(k,[]);wk.get(k).push(p)}
+  for(const [k,ps] of [...wk].sort((a,b)=>a[0].localeCompare(b[0]))){const [w,r]=k.split("|");out.push({folder:F(r),name:`Fulton plans week of ${w}${r?" "+r:""}`,docs:()=>ps})}
+  for(const t of threads.values())if(t&&!t.unfollowed&&!t.deleted)out.push({folder:F(t.classroom),name:`Thread ${t.name||"untitled"}`,docs:()=>[threadDoc(t)]});
+  for(const x of projects.values())if(x&&!x.deleted)out.push({folder:F(x.home),name:`Project ${x.name||"untitled"} full`,docs:()=>[projectDoc(x,true)]});
+  for(const x of inqAll())out.push({folder:F(x.room),name:`Team inquiry ${x.name||"untitled"} full`,docs:()=>[inquiryDoc(x,true)]});
+  return out}
+function rcB64(u8){let s="";for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)}
+// one file, in pieces of 4 MB, each tried three times
+async function rcSend(run,folder,name,blob){const u8=new Uint8Array(await blob.arrayBuffer()),parts=Math.max(1,Math.ceil(u8.length/RC_CHUNK)),upload=uid();
+  for(let k=0;k<parts;k++){const data=rcB64(u8.subarray(k*RC_CHUNK,(k+1)*RC_CHUNK));let last=null;
+    for(let t=0;t<3;t++){try{await window.FP_API("/api/readable",{action:"put",device:RC_DEVICE,run,folder,name,data,part:k,parts,total:u8.length,start:k*RC_CHUNK,upload});last=null;break}
+      catch(e){last=e;if(e&&e.status===409)break;await new Promise(r=>setTimeout(r,4000*(t+1)))}}
+    if(last)throw last}
+  return u8.length}
+// the Conferences page, opened out of sight, makes each conference's files as its own buttons do
+async function rcConferences(each){const fr=document.createElement("iframe");fr.src=embedSrc("conferences").split("#")[0];fr.title="Readable copies";fr.setAttribute("aria-hidden","true");fr.tabIndex=-1;
+  fr.style.cssText="position:fixed;left:-12000px;top:0;width:1100px;height:900px;border:0;visibility:hidden";document.body.appendChild(fr);
+  try{let list=null;for(let i=0;i<120&&!list;i++){await new Promise(r=>setTimeout(r,1000));try{const w=fr.contentWindow;list=w&&w.TREE_CONF_LIST&&w.TREE_CONF_LIST()}catch(e){}}
+    if(!list)throw new Error("The conferences did not open");
+    await each(list,id=>fr.contentWindow.TREE_CONF_FILES(id))}
+  finally{fr.remove()}}
+async function rcMake(manual){
+  if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[]};rcShow();
+  const keep=new Set(photoCache.keys()),clear=()=>{for(const k of [...photoCache.keys()])if(!keep.has(k))photoCache.delete(k)};let run="";
+  try{
+    const st=await window.FP_API("/api/readable",{action:"start",device:RC_DEVICE});
+    if(st.busy){rcNow=null;rcShow();if(manual)toast("Another computer or iPad is making the readable copies now.");return}
+    run=st.run;const have=new Set(st.have||[]),used=new Set();let files=0;
+    // two pieces with the same name in one folder are told apart by a number
+    const uniq=(folder,n)=>{const b=safeFile(n)||"Untitled";let k=b,i=2;while(used.has(folder+"/"+k)){k=b+" "+i;i++}used.add(folder+"/"+k);return k};
+    // a print that cannot be made is left out and named on the card, and the set still finishes. A file that cannot be sent stops the set.
+    const put=async(folder,name,blob)=>{if(have.has(folder+"/"+name)){files++;rcNow.done++;rcShow();return}
+      if(!blob||!blob.size){rcNow.skipped.push(folder+"/"+name);rcNow.done++;rcShow();return}
+      files++;try{rcNow.bytes+=await rcSend(run,folder,name,blob)}catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why=(e&&e.message)||""}
+      rcNow.done++;rcShow();await new Promise(r=>setTimeout(r,150))};
+    const jobs=rcJobs();rcNow.total=jobs.length*2;rcShow();
+    for(const j of jobs){const base=uniq(j.folder,j.name);
+      if(have.has(j.folder+"/"+base+".pdf")&&have.has(j.folder+"/"+base+".docx")){files+=2;rcNow.done+=2;rcShow();continue}
+      let docs=[];try{docs=j.docs();if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,true)}catch(e){docs=[];rcNow.skipped.push(j.folder+"/"+base+".pdf",j.folder+"/"+base+".docx");rcNow.done+=2}
+      if(docs.length){await put(j.folder,base+".pdf",await makePdf(docs,base+".pdf","quiet").catch(()=>null));await put(j.folder,base+".docx",await makeDocx(docs,base+".docx","quiet").catch(()=>null))}
+      clear()}
+    // each educator's records page, a former educator's in Former educators
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=aa30c277a9","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+      for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records");
+        for(const ext of [".pdf",".docx"])await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null))}}
+    catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The educators' records could not be read. "+((e&&e.message)||"")}
+    // each conference as it prints, in the child's Class, or Former children
+    try{await rcConferences(async(list,make)=>{rcNow.total+=list.length*2;rcShow();
+      for(const x of list){const c=children.get(x.childId),folder=!c?"School":kidAt(c)?(CLASSROOMS.includes(c.classroom)?c.classroom+" Class":"School"):"Former children";
+        const got=await make(x.id).catch(()=>[]);if(!got.length){rcNow.skipped.push(folder+"/Conference "+(c?kidName(c):"form"));rcNow.done+=2}
+        const names=new Map();for(const f of got){const m=String(f.filename||"").match(/^(.*)(\.pdf|\.docx)$/i);if(!m)continue;if(!names.has(m[1]))names.set(m[1],uniq(folder,m[1].replace(/-+$/,"")));await put(folder,names.get(m[1])+m[2].toLowerCase(),f.blob)}
+        clear()}})}
+    catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The conferences could not be read. "+((e&&e.message)||"")}
+    if(rcNow.failed)throw new Error(`${rcNow.failed} file${rcNow.failed===1?"":"s"} could not be sent to Google Drive. ${rcNow.why}`.trim());
+    const fin=await window.FP_API("/api/readable",{action:"finish",device:RC_DEVICE,run,files,bytes:rcNow.bytes,skipped:rcNow.skipped});
+    // the card shows the new set at once, before the server's own record reaches this page
+    readableInfo=Object.assign({},readableInfo,{lastAt:Date.now(),run,files:Number(fin.kept)||files,bytes:rcNow.bytes,skipped:rcNow.skipped.slice(0,20),pending:null,tried:null});
+    if(manual)toast(`The readable copies are in Google Drive, ${Number(fin.kept||files).toLocaleString()} files.`)}
+  catch(e){const why=(e&&e.message)||"The readable copies did not finish.";
+    if(run&&!(e&&e.status===409)){await window.FP_API("/api/readable",{action:"fail",device:RC_DEVICE,run,done:rcNow.done,total:rcNow.total,why}).catch(()=>{});readableInfo=Object.assign({},readableInfo,{tried:{at:Date.now(),run,done:rcNow.done,total:rcNow.total,why}})}
+    if(manual)toast(why)}
+  finally{clear();rcNow=null;rcShow();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()}}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rcnow]");if(!t||view!=="settings"||rcNow)return;
+  if(!rcCan()){toast(rcBig()?"Readable copies need TREE's Google Drive to be set up.":"Open TREE on a computer or iPad to make the readable copies.");return}
+  toast("Making readable copies. Keep TREE open until the time of the new set shows on this card.");rcMake(true)});
 /* the staff room display, a screen that turns slowly through what is alive in TREE. The director makes its link here,
    opens it once on the staff room computer, and can make a new link or turn it off, which stops the old one at once. */
 let displayInfo=null,displayAsked=false;
@@ -12672,7 +12779,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=84a7313795","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=aa30c277a9","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}

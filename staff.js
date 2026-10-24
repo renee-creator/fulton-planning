@@ -270,7 +270,7 @@ module.exports = function staffModule(o) {
       if (!dir) return deny('Only the director sees every educator\'s records.');
       const sf = school().files || {};
       const withShared = d => { const txt = JSON.stringify(d); return Object.fromEntries(Object.entries(sf).filter(([f]) => txt.includes(f))); };
-      json(req, res, 200, { people: staffNames().sort().map(n => { const d = person(n); return Object.assign(d, { shared: withShared(d), room: roomOf(n), role: whoRole(n), newHire: isNewHire(n), newEd: inNewEd(n) }); }), drills: (get(DRILLS) || {}).list || [] }); return;
+      json(req, res, 200, { people: staffNames().sort().map(n => { const d = person(n); return Object.assign(d, { shared: withShared(d), room: roomOf(n), role: whoRole(n), newHire: isNewHire(n), newEd: inNewEd(n), leaveOn: (accountFor(n) || {}).leaveOn || '' }); }), drills: (get(DRILLS) || {}).list || [] }); return;
     }
     if (P === 'save') {
       if (!canSee(me, who)) return deny('Only you and the director change your records.');

@@ -489,6 +489,14 @@ async function printKind(k,word){const kind=word?"word":"pdf";
   if(k.startsWith("pieces:")){const d=k.slice(7);const pcs=await loadPd();const dn=((P().pd||{}).done)||{};return out(kind,[report(d==="licensing"?"Licensing at Fulton":"TREE How To",[["Educator",meName()]],[{t:"table",label:"",noRule:true,head:["Piece","Regulation","Minutes","Read"],rows:(pcs[d]||[]).map(x=>[x.title,x.source,String(x.minutes),dn[x.id]?fms(dn[x.id].at):""]),widths:[.4,.36,.1,.14]}])],d==="licensing"?"Licensing at Fulton":"TREE How To")}
   if(k==="hball"||k==="hbsec"){const hb=await loadHb();const secs=(hb.sections||[]).filter(s=>!s.removed&&(k==="hball"||s.id===st.hbSec));
     return out(kind,secs.map(s=>report(s.title,[["Teacher Policies and Procedures",""]].filter(x=>x[1]),mdBlocks(s.body))),k==="hball"?"Teacher Policies and Procedures":"Teacher Policies and Procedures, "+(secs[0]||{}).title)}}
+// each educator's records page as it prints, for the director's weekly readable copies. Records only, never growth.
+// An educator whose last day has passed is a former educator.
+T.readable=async function(){await boot(true);await loadPeople();const t=today(),past=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||"")&&d<t;
+  const now=(st.people||[]).map(p=>({name:p.name,room:p.room||"",former:past(p.leaveOn)||past((p.profile||{}).leftOn),doc:recordDocs(p)}));
+  // educators who have left are no longer in the people list, so their records are read one by one from Former educators
+  const gone=((await api("former").catch(()=>({}))).people||[]).filter(x=>!now.some(n=>n.name===x.name));
+  for(const x of gone){const p=await api("person",{name:x.name}).catch(()=>null);if(p)now.push({name:x.name,room:x.room||"",former:true,doc:recordDocs(p)})}
+  return now};
 
 /* ---------- taps ---------- */
 // a button tapped twice while its first tap is still working does its work once. The tap's work starts at once, so

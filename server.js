@@ -346,6 +346,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
+const readable = require('./readable.js')({ drive: photosDrive, store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const reminders = require('./reminders.js')({ store, accounts, accountFor, isFormer: n => isFormerEducator(n), saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const signupSync = require('./signup-sync.js')({ store, log, readFeed: l => readSignupFeed(l, true), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 // a family's sign-in code goes out through the school's Google Workspace mailbox script, set as FAMILY_MAIL_URL and FAMILY_MAIL_KEY
@@ -1493,6 +1494,13 @@ async function handle(req, res) {
     if (body.action === 'new') { setDisplay({ key: b64u(crypto.randomBytes(18)), madeAt: Date.now(), madeBy: me.name }, me.name); log('Display link made by', me.name); }
     else if (body.action === 'off') { setDisplay({ key: '', madeAt: 0, madeBy: '' }, me.name); log('Display turned off by', me.name); }
     json(req, res, 200, displayView()); return;
+  }
+  // the director's TREE sends the week's readable copies, file by file, on to the mailbox script for Google Drive
+  if (path === '/api/readable') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director\'s TREE makes the readable copies.'); return; }
+    const r = await readable.handle(body || {}, me.name);
+    if (r.error) { err(req, res, r.status || 400, r.error); return; }
+    json(req, res, 200, r); return;
   }
   if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
   if (path === '/api/original') {

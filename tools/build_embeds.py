@@ -162,13 +162,13 @@ const attached=(cf,id)=>{const text=String((cf&&cf.fields&&cf.fields.documentati
   return P.TREE_DOCS_FOR(id,"","").filter(d=>text.includes(d.title+", "+long(iso(d.at)))).map(d=>d.kind+"|"+d.id)};
 if(typeof downloadPdf==="function"&&P.TREE_CONF_DOCS_FILE){const pdf0=downloadPdf,docx0=downloadDocx;
   window.downloadPdf=async function(items,filename){if(!items||items.length!==1)return pdf0(items,filename);
-    try{toast("Preparing the PDF…");const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const cid=it.cf.childId||(it.child&&it.child.id);const ids=attached(it.cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",false,ids):null;
+    try{toast("Preparing the PDF…");const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const cid=it.cf.childId||(it.child&&it.child.id);const ids=attached(it.cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",false,ids,window.__treeCapture?"quiet":""):null;
       if(!extra){await saveFile(filename,form);return}
       const L=window.PDFLib;const out=await L.PDFDocument.load(await form.arrayBuffer());const add=await L.PDFDocument.load(new Uint8Array(await extra.arrayBuffer()));
       (await out.copyPages(add,add.getPageIndices())).forEach(pg=>out.addPage(pg));await saveFile(filename,new Blob([await out.save()],{type:"application/pdf"}))}
     catch(e){console.error(e);return pdf0(items,filename)}};
   window.downloadDocx=async function(list,child){await docx0(list,child);if(!list||list.length!==1)return;
-    try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids):null;
+    try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids,window.__treeCapture?"quiet":""):null;
       if(extra)await saveFile(slug(childName(child))+"-conference-documentation-"+String(cf.term||"").toLowerCase()+"-"+(cf.schoolYear||"")+".docx",new Blob([new Uint8Array(await extra.arrayBuffer())],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}))}catch(e){console.error(e)}};}
 let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["readonly","disabled"]});})();</script>
 """

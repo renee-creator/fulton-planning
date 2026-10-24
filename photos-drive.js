@@ -130,5 +130,8 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
 
   async function ping() { if (!on()) return 'Google Drive photos are not set up'; try { const j = await call({ op: 'ping' }, 30000); return 'Google Drive photos answer, folder ' + (j.folder || ''); } catch (e) { return 'Google Drive photos did not answer. ' + e.message; } }
 
-  return { on, seen, keep, read, moveAll, ping };
+  // any other request to the same mailbox script, such as the weekly readable copies
+  const ask = (body, timeout) => call(body, timeout);
+
+  return { on, seen, keep, read, moveAll, ping, ask };
 };

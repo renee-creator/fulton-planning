@@ -135,6 +135,8 @@ function checkFeedOrders() {
   2. Execute as Me. Who has access, Anyone. Press Deploy and allow the access Google asks for.
   3. Copy the Web app URL and send it to be saved on Render as DRIVE_PHOTOS_URL.
   Anyone with the address still needs the key above, so no one else can read or add photos.
+  The same web app also keeps the weekly readable copies, through the readable-copies script file. Its setup is at the
+  top of tools/readable-copies.gs in the planning app. After doPost changes, deploy the web app again as a new version.
 */
 const PHOTO_FOLDER = 'TREE photos';
 
@@ -154,6 +156,8 @@ function doPost(e) {
   let body = {};
   try { body = JSON.parse(e.postData.contents); } catch (x) { return reply_({ error: 'The request could not be read' }); }
   if (!body.key || body.key !== TREE_KEY) return reply_({ error: 'Not allowed' });
+  // the weekly readable copies, kept by the readable-copies script file beside this one
+  if (/^readable-/.test(String(body.op || ''))) return reply_(readableCopies_(body));
   const folder = photoFolder_();
   if (body.op === 'ping') return reply_({ ok: true, folder: folder.getName() });
   if (body.op === 'put') {

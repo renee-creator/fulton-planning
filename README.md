@@ -227,6 +227,23 @@ To set it up, or to change from the Monday backup, follow these steps.
 
 The web app needs no new deployment for the backup, since it does not change doPost. Until setup is run, the old Monday time still makes a backup each Monday, since weeklyBackup now runs the nightly one.
 
+## Readable copies in Google Drive
+
+The backup is for putting TREE back. Readable copies are for reading the school's records without TREE. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her TREE quietly makes the Word and PDF files it already prints and keeps them in a folder called TREE readable copies in the TREE mailbox's Google Drive, beside TREE backups. A phone never makes them. Each file is made by the same print as its button, so it looks exactly as it does when printed, and it is handed back to TREE instead of saved on the device. Photos are drawn into the files as they are for printing.
+
+Inside TREE readable copies is one folder for the week, named by the date the set was started, such as 2026-10-26. A second set started the same day is numbered, such as 2026-10-26 2. In it is a folder for each Class, North Class, South Class and West Class, one called School, one called Former children and one called Former educators. A Class folder holds each child's portfolio, this school year's plans, one file for each week as the week's plans download makes it, the Class's threads, the projects whose home is the Class, its team inquiries, the conference forms of its children, and the records page of each educator in the Class. Projects and threads with no home Class, team inquiries for the whole school, and the records pages of people with no Class, the office and the kitchen among them, go in School. Children who have left, with status withdrawn, keep their portfolios and conference forms in Former children. Educators whose last day has passed, by leaveOn on their sign-in or leftOn on their record, have their records page in Former educators. Projects and team inquiries are the full prints, and conference forms are the PDF and Word file the conference form makes, with its documentation. A child with nothing in the portfolio yet has no portfolio file. Evaluations, journals, check-ins, the Growth Plan and its reflection, anything else kept only for the director, and passcodes are never made into these files.
+
+The files go one at a time, each in pieces of no more than 4 MB, through the server's /api/readable, which only the director's sign-in may use, to the same mailbox web app that keeps TREE's photos (DRIVE_PHOTOS_URL with KAYMBU_INBOX_KEY). Only one device makes a set at a time. A set that stops partway, because TREE was closed or the connection dropped, carries on the next time TREE opens, in the same week's folder, and files already there are not sent again. Only once every file of the new set has arrived does the mailbox script move earlier weeks' folders to the Drive trash, so the newest complete set is always kept and only one is kept. Settings shows the director, under Backups, when the last complete set was made, how many files it holds, a set in progress, a set that did not finish, and a week that was missed. Make readable copies now makes a set at once on a computer or iPad, and it replaces the week's set.
+
+To set it up, the TREE mailbox's Apps Script project needs a new script file and one new line in doPost, and the web app is deployed again.
+
+1. In script.google.com, signed in as the TREE mailbox, open the TREE mailbox's Apps Script project.
+2. Open the Kaymbu inbox script file and find function doPost. Right below its line `if (!body.key || body.key !== TREE_KEY) return reply_({ error: 'Not allowed' });` add the line `if (/^readable-/.test(String(body.op || ''))) return reply_(readableCopies_(body));` and save. The doPost in tools/kaymbu-apps-script.gs already has it, so pasting that whole function over the old one does the same.
+3. Choose the plus beside Files, then Script, name it readable-copies, paste tools/readable-copies.gs into it, and save.
+4. Choose Deploy, then Manage deployments. Choose the web app, then the pencil to edit it. Under Version choose New version, and press Deploy. The address stays the same, so DRIVE_PHOTOS_URL on Render does not change.
+5. Choose setupReadableCopies in the toolbar and press Run, and allow the access Google asks for. It makes the TREE readable copies folder and names it in the log.
+6. To test, open TREE on a computer as the director, go to Settings, and under Backups press Make readable copies now. Keep TREE open until the card shows the time of the new set, then open TREE readable copies in Drive.
+
 ## Restore
 
 1. Download the backup you want from TREE backups in the mailbox's Google Drive.
@@ -248,6 +265,7 @@ Photos are not inside the backup. Those moved to Google Drive stay in the TREE p
 | `RECORDS_REPO` | Optional. Defaults to `renee-creator/fulton-planning-records` |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to use the server |
 | `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the mailbox Apps Script. Turns on Observations from Kaymbu, order emails and the nightly backup |
+| `DRIVE_PHOTOS_URL` | Optional. The address of the mailbox Apps Script's web app. With `KAYMBU_INBOX_KEY` it keeps photos and the weekly readable copies in the mailbox's Google Drive |
 | `READS_PER_HOUR`, `CAREFUL_PER_HOUR` | Optional. Hourly Claude request limits, 800 and 400 by default, sized for a whole-school scan |
 
 ## Who can do what
