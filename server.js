@@ -1130,7 +1130,9 @@ async function handle(req, res) {
     if (!store.ready) await loadAll();
     if (!store.ready) { err(req, res, 503, 'The records could not be loaded, so there is nothing to back up yet.'); return; }
     if (!calendar.ready) { try { await calendar.loadAll(); } catch (e) { log('The calendar could not be loaded for the backup', e.message); } }
-    const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)])).every(Boolean);
+    // the educator records load after the rest, so a backup that wakes the server waits for them too
+    try { await staff.load(); } catch (e) { log('Educator records could not be loaded for the backup', e.message); }
+    const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
     const bundle = backupBundle(saved);
     const gz = zlib.gzipSync(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 9 });
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };

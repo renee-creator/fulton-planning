@@ -8,11 +8,11 @@ const mock = require('./mock-github.js');
 
 const put = (dir, rel, doc, indent) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof doc === 'string' ? doc : JSON.stringify(doc, null, indent == null ? 2 : indent) + '\n'); };
 async function server(dir) {
-  const gh = await mock.start(dir, 0);
+  const gh = await mock.start(dir, 0, { treeDelay: 1500 });
   const port = 4600 + Math.floor(Math.random() * 300);
   const p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_TOKEN: 't', PORT: String(port), KAYMBU_INBOX_KEY: 'test-key', TEACHER_PASSCODES: 'Dee=director-pass-1' }), stdio: 'ignore' });
   const url = 'http://127.0.0.1:' + port;
-  for (let i = 0; i < 60; i++) { try { await fetch(url + '/'); break; } catch (e) { await new Promise(r => setTimeout(r, 200)); } }
+  for (let i = 0; i < 60; i++) { try { await fetch(url + '/nothing'); break; } catch (e) { await new Promise(r => setTimeout(r, 200)); } }
   return { url, stop: async () => { p.kill(); await gh.close(); } };
 }
 

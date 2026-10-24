@@ -12,7 +12,8 @@ const crypto = require('crypto');
 
 const blobSha = buf => crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob ' + buf.length + '\0'), buf])).digest('hex');
 
-function start(dir, port) {
+function start(dir, port, opt) {
+  opt = opt || {}; let trees = 0;
   const writes = [];
   const walk = (d, pre = '') => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.name === '.git' ? [] : e.isDirectory() ? walk(path.join(d, e.name), pre + e.name + '/') : [pre + e.name]);
   const blobs = () => { const m = new Map(); for (const p of walk(dir)) { const b = fs.readFileSync(path.join(dir, p)); m.set(blobSha(b), b); } return m; };
@@ -25,6 +26,8 @@ function start(dir, port) {
       if (!m) return send(404, { message: 'Not Found' });
       const rest = m[1] || '';
       if (!rest) return send(200, { default_branch: 'main', size: 1000 });
+      // a slow GitHub, for the educator records that are listed after the rest
+      if (/^\/git\/trees\//.test(rest) && opt.treeDelay && trees++ > 0) { setTimeout(() => send(200, { truncated: false, tree: walk(dir).map(p => { const b = fs.readFileSync(path.join(dir, p)); return { type: 'blob', path: p, sha: blobSha(b), size: b.length }; }) }), opt.treeDelay); return; }
       if (/^\/git\/trees\//.test(rest)) return send(200, { truncated: false, tree: walk(dir).map(p => { const b = fs.readFileSync(path.join(dir, p)); return { type: 'blob', path: p, sha: blobSha(b), size: b.length }; }) });
       const bl = rest.match(/^\/git\/blobs\/([a-f0-9]+)$/);
       if (bl) { const b = blobs().get(bl[1]); if (!b) return send(404, { message: 'Not Found' });
