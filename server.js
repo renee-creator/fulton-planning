@@ -1511,7 +1511,7 @@ const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('
 server.on('clientError', (e, socket) => { try { socket.destroy(); } catch (x) {} });
 process.on('uncaughtException', e => log('Unexpected error, server kept running', e && e.stack));
 process.on('unhandledRejection', e => log('Unexpected rejection, server kept running', e));
-// Render stops the server when it sleeps or redeploys. Save anything waiting first.
+// Render stops the server when it redeploys or restarts. Save anything waiting first.
 async function stop(sig) {
   if (stopping) return; stopping = true; log('Stopping on', sig, 'saving waiting changes');
   try { server.close(); } catch (e) {}

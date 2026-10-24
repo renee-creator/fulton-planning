@@ -60,7 +60,7 @@
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Records can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
   async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
   let polling=false;
-  /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
+  /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
   function noteActive(){ lastActive=Date.now(); if(idle){ idle=false; poll(); } }
   ["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,noteActive,{passive:true,capture:true}));
@@ -87,7 +87,7 @@
       tries++; gateMsg(tries<2? "Connecting…" : (loading? "Opening the school's records. This takes a moment after TREE is updated." : "Still connecting. Check this device's internet connection."));
       await new Promise(r=>setTimeout(r, tries<3?2000:4000));
     }
-    gateMsg("The server did not wake up. Try again in a minute.",true); return false;
+    gateMsg("The server could not be reached. Try again in a minute.",true); return false;
   }
   function showGate(){
     const g=document.getElementById("gate"); g.hidden=false;

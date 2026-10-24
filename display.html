@@ -263,7 +263,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       const cur=list[pos];list=build();
       // keep going from where the screen was, so a refresh never restarts the turn
       if(first){pos=-1;next()}else if(cur){const at=list.findIndex(x=>x.id===cur.id);pos=at>=0?at:Math.min(pos,list.length-1)}
-    }catch(e){if(Date.now()-lastOk>FETCH_MS*1.5)dot.style.display="block";if(!feed){note("TREE is waking up","The display tries again in a minute.");setTimeout(load,60000);return}}
+    }catch(e){if(Date.now()-lastOk>FETCH_MS*1.5)dot.style.display="block";if(!feed){note("Lost the connection for a moment","The display tries again in a minute.");setTimeout(load,60000);return}}
   }
 
   /* the clock in the corner */
