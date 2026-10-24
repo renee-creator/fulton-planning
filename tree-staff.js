@@ -94,7 +94,8 @@ async function loadHb(force){if(!st.hb||force)st.hb=await api("handbook");return
 const ITEMS=()=>B.defs.items,PAPERS=()=>B.defs.papers;
 // Fulton's own trainings are for everyone who cares for children, so the office and the kitchen do not see them
 const careFor=p=>!["Office","Kitchen","Staff","Director"].includes(p.role||whoRole(p))&&!((p.profile||{}).role==="staff");
-const itemsFor=p=>ITEMS().filter(i=>!i.fulton||careFor(p));
+// an office member who also works as an educator supervises children, so Fulton's own training is hers too
+const itemsFor=p=>ITEMS().filter(i=>!i.fulton||careFor(p)||!!(p.profile||{}).supervises);
 // the CCLD video and the active supervision handouts from the school's Google Drive
 const asLinks=()=>{const a=B.activeSupervision;if(!a)return "";return `<div class="stfiles">${a.video?`<a class="linkbtn" href="${H(a.video.url)}" target="_blank" rel="noopener">Watch ${H(a.video.title)}</a>`:""}${(a.handouts||[]).map(x=>`<a class="linkbtn" href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>`).join("")}</div>`};
 function itemState(it,rec){if(!rec||!rec.date)return it.fulton?{s:"soon",t:"Due",ex:""}:{s:"missing",t:"Not on file yet",ex:""};
