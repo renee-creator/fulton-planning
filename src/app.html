@@ -63,7 +63,13 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .iconbtn{border:1px solid var(--line);background:transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:var(--moss-soft)}
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}#proofpanel{position:fixed;z-index:70;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}#combpanel{position:fixed;z-index:72;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 32px));max-height:min(84vh,760px);overflow:auto;background:var(--card,#fff);box-shadow:var(--shadow);border-radius:12px;padding:16px 18px}
+#combpanel .cbrow{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;align-items:center;text-align:left;width:100%;background:none;border:1px solid var(--line);border-radius:10px;padding:8px;margin:0 0 8px;cursor:pointer;font:inherit;color:inherit}
+#combpanel .cbrow img,#combpanel .cbnone{width:56px;height:56px;object-fit:cover;border-radius:6px;background:var(--line);display:block}
+#combpanel .cbtwo{display:grid;grid-template-columns:1fr 1fr;gap:10px}#combpanel ul{margin:6px 0 10px;padding-left:20px}#combpanel li{margin:3px 0}
+.combshade{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:71}
+@media (max-width:760px){#combpanel{left:0;top:auto;bottom:0;transform:none;width:100vw;max-height:88vh;border-radius:12px 12px 0 0}#combpanel .cbtwo{grid-template-columns:1fr}}
+#proofpanel{position:fixed;z-index:70;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
 .newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
@@ -5465,6 +5471,115 @@ function patchNotice(id,patch){const n=notices.get(id);if(!n||VIEW_AS)return;pap
   db.doc("notices/"+id).update(Object.assign(jclone(patch),{updatedAt:n.updatedAt})).catch(e=>{if(e&&e.status===404)return;toast(e&&e.message||"Could not save. Check your connection.")})}
 function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
 function removeNotice(id){notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.notices",[...notices.values()])}
+/* ---------- Combine two observations ----------
+   Any educator can make two observations one. Every photo stays at full size with its own children, both sets of words
+   are kept, and what pointed at the second one, plans, threads, projects, slides, stories, team inquiries, DRDP evidence
+   and the small group, points at the one kept. The second observation is then removed. */
+let comb=null;
+const combPanel=(()=>{const sh=document.createElement("div");sh.className="combshade";sh.hidden=true;document.body.appendChild(sh);
+  const p=document.createElement("div");p.id="combpanel";p.hidden=true;p.setAttribute("role","dialog");p.setAttribute("aria-label","Combine two observations");document.body.appendChild(p);
+  sh.addEventListener("click",()=>{comb=null;combPaint()});return p})();
+const combLine=n=>firstLine(String(n.noticed||n.wonder||"").replace(/\s+/g," ").trim(),90)||"No words yet";
+function combRow(n,attr){const g=noteGroup(n),ph=g.find(x=>x.photo);
+  return `<button class="cbrow" type="button" ${attr}>${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="cbnone"></span>`}<span><b>${esc(combLine(g[0]))}</b><span class="cnt" style="display:block">${esc(g[0].by||"An educator")} \u00b7 ${esc(shortDate(g[0].at))}${momentRooms(g[0]).length?" \u00b7 "+esc(momentRooms(g[0]).map(r=>r+" Class").join(" and ")):""}${g.filter(x=>x.photo).length>1?` \u00b7 ${g.filter(x=>x.photo).length} photos`:""}</span></span></button>`}
+// every saved place that holds one of these observation ids. With a map of old id to new id, each is changed and saved.
+function combRefs(ids,to){const out=[],has=id=>ids.has(id),swap=id=>has(id)?to:id,uniq=a=>[...new Set(a)];
+  const note=(kind,name,fix)=>{out.push({kind,name});if(to)fix()};
+  for(const p of plans.values()){if(p.id==="example")continue;
+    const hit=[...(p.noticeAdded||[]),...(p.noticeUsed||[]),...((p.source&&p.source.ids)||[])].some(has)||(p.evidenceRefs||[]).some(r=>r&&r.kind==="obs"&&has(r.id))||(p.binAdded||[]).some(k=>has(String(k).replace(/^o:/,"")));
+    if(hit)note("plan",obsPlanLabel(p),()=>{for(const k of ["noticeAdded","noticeUsed"])if(p[k])p[k]=uniq(p[k].map(swap));if(p.source&&p.source.ids)p.source.ids=uniq(p.source.ids.map(swap));
+      if(p.evidenceRefs){const seen=new Set();p.evidenceRefs=p.evidenceRefs.map(r=>r&&r.kind==="obs"&&has(r.id)?Object.assign({},r,{id:to}):r).filter(r=>{if(!r||r.kind!=="obs")return true;if(seen.has(r.id))return false;seen.add(r.id);return true})}
+      if(p.binAdded)p.binAdded=uniq(p.binAdded.map(k=>/^o:/.test(k)&&has(k.slice(2))?"o:"+to:k));persist(p)})}
+  for(const t of threads.values())if((t.evidence||[]).some(e=>e&&has(e.planId||e.id)))note("thread",t.name||"A thread",()=>{const seen=new Set();
+    t.evidence=t.evidence.map(e=>e&&has(e.planId||e.id)?Object.assign({},e,{planId:to}):e).filter(e=>{const k=e&&(e.planId||e.id);if(!e||!notices.has(k)&&k!==to)return true;if(seen.has(k))return false;seen.add(k);return true});saveThread(t)});
+  for(const x of projects.values()){const w=x.wall||{};
+    if((x.evidence||[]).some(e=>e&&has(e.planId||e.id))||(w.skip||[]).some(has)||(w.sheets||[]).some(sh=>(sh.photos||[]).some(has)||has(sh.photo)))note("project",x.name||"A project",()=>{
+      if(x.evidence)x.evidence=x.evidence.map(e=>e&&has(e.planId||e.id)?Object.assign({},e,{planId:to,id:undefined}):e);if(w.skip)w.skip=uniq(w.skip.map(swap));
+      for(const sh of w.sheets||[]){if(sh.photos)sh.photos=uniq(sh.photos.map(swap));if(has(sh.photo))sh.photo=to}saveProject(x)})}
+  for(const x of slides.values())if([...(x.photos||[]),...(x.momentIds||[])].some(has))note("slide",x.title||"A slide",()=>{if(x.photos)x.photos=uniq(x.photos.map(swap));if(x.momentIds)x.momentIds=uniq(x.momentIds.map(swap));saveSlide(x)});
+  for(const st of stories.values())if([...(st.sources||[]),st.coverPhoto,st.care&&st.care.photo,...(st.pages||[]).map(pg=>pg&&pg.photo)].some(has))note("story",stTitle(st),()=>{const rv=st.reviewed;
+    if(st.sources)st.sources=uniq(st.sources.map(swap));if(has(st.coverPhoto))st.coverPhoto=to;if(st.care&&has(st.care.photo))st.care.photo=to;for(const pg of st.pages||[])if(pg&&has(pg.photo))pg.photo=to;
+    if(rv)st._seen=stContent(st);saveStory(st)});
+  for(const x of inquiries.values())if((x.obs||[]).some(has)||(x.evidence||[]).some(e=>e&&has(e.planId||e.id)))note("inquiry",x.name||"A team inquiry",()=>{if(x.obs)x.obs=uniq(x.obs.map(swap));
+    if(x.evidence)x.evidence=x.evidence.map(e=>e&&has(e.planId||e.id)?Object.assign({},e,{planId:to}):e);saveInquiry(x)});
+  for(const c of children.values()){const items=kidDrdpItems(c).filter(i=>i&&i.src&&i.src.kind==="notices"&&has(i.src.id));const out0=Object.keys((c.portfolio&&c.portfolio.out)||{}).filter(k=>/^notices:/.test(k)&&has(k.slice(8)));
+    if(items.length||out0.length)note("drdp",(items.length?"DRDP evidence for ":"Portfolio choice for ")+(c.first||"a child"),()=>{const patch={};
+      if(items.length)patch.drdp={items:Object.fromEntries(items.map(i=>[i.id,{src:Object.assign({},i.src,{id:to})}]))};
+      if(out0.length)patch.portfolio={out:Object.assign(Object.fromEntries(out0.map(k=>[k,{__delete__:true}])),{["notices:"+to]:true})};kidDrdpPatch(c,patch)})}
+  // readings of the week, Find threads and the lens, keep the ids they quote
+  for(const sc of scans.values()){let hit=false;const walk=a=>(a||[]).forEach(o=>{if(o&&(has(o.planId)||(o.ids||[]).some(has)))hit=true;(o&&o.evidence||[]).forEach(e=>{if(e&&has(e.planId))hit=true})});
+    walk(sc.patterns);walk(sc.moments);walk(sc.threads);
+    if(hit&&to){const fix=a=>(a||[]).forEach(o=>{if(!o)return;if(has(o.planId))o.planId=to;if(o.ids)o.ids=uniq(o.ids.map(swap));(o.evidence||[]).forEach(e=>{if(e&&has(e.planId))e.planId=to})});fix(sc.patterns);fix(sc.moments);fix(sc.threads);saveScan(sc)}}
+  return out}
+// what joining gone into keep would do, shown before anything changes
+function combPlan(keep,gone){const K=noteGroup(keep),G=noteGroup(gone),lead=K[0],gl=G[0];
+  const moved=G.filter(x=>x.photo),dropped=G.filter(x=>!x.photo);
+  const refs=combRefs(new Set(G.map(x=>x.id)),null);
+  const sg=[...new Set([...K,...G].map(x=>x.smallGroup).filter(Boolean))];
+  const kids=[...new Set(G.flatMap(x=>x.children||[]))].map(id=>(children.get(id)||{}).first).filter(Boolean);
+  return {K,G,lead,gl,moved,dropped,refs,sg,kids}}
+function combPaint(){const p=combPanel,sh=p.previousElementSibling;if(!comb){p.hidden=true;sh.hidden=true;p.innerHTML="";return}p.hidden=false;sh.hidden=false;
+  const keep=notices.get(comb.keep);if(!keep){comb=null;combPaint();return}
+  const cancel=`<button class="linkbtn" data-comb="cancel">Cancel</button>`;
+  if(!comb.gone){const ids=new Set(noteGroup(keep).map(x=>x.id)),rooms=momentRooms(keep),q=String(comb.q||"").trim().toLowerCase();
+    const seen=new Set(),list=[];
+    for(const n of [...notices.values()].sort((a,b)=>Math.abs((a.at||0)-(keep.at||0))-Math.abs((b.at||0)-(keep.at||0)))){if(ids.has(n.id))continue;const g=noteGroup(n),k=g[0].group||g[0].id;if(seen.has(k))continue;seen.add(k);
+      if(!comb.all&&rooms.length&&!momentRooms(g[0]).some(r=>rooms.includes(r))&&g[0].classroom)continue;
+      if(q&&!(String(g[0].noticed||"")+" "+String(g[0].wonder||"")+" "+(g[0].by||"")).toLowerCase().includes(q))continue;list.push(g[0])}
+    p.innerHTML=`<h3 style="font-size:17px;margin:0 0 4px">Combine with another observation</h3><div class="cnt" style="margin-bottom:8px">Choose the observation to bring into this one. Nothing changes until you see what moves and press Combine.</div>
+      <div style="margin-bottom:10px">${combRow(keep,'data-comb="nop" disabled')}</div>
+      <label class="cnt" style="display:block;margin-bottom:8px">Find one <input type="search" id="comb-q" value="${esc(comb.q||"")}" placeholder="Words, or an educator's name" style="width:100%"></label>
+      <div id="comb-list">${list.slice(0,comb.more||12).map(n=>combRow(n,`data-comb="pick" data-id="${esc(n.id)}"`)).join("")||`<div class="empty">No other observation${comb.all?"":" in this class"} matches.</div>`}</div>
+      <div class="actions">${list.length>(comb.more||12)?`<button class="btn small ghost" data-comb="more">Show more</button>`:""}${rooms.length&&!comb.all?`<button class="linkbtn" data-comb="all">Show every class</button>`:""}${cancel}</div>`;return}
+  const gone=notices.get(comb.gone);if(!gone){comb.gone="";combPaint();return}
+  const P=combPlan(keep,gone);const kinds={plan:"Plan",thread:"Thread",project:"Project",slide:"Slide",story:"Story",inquiry:"Team inquiry",drdp:""};
+  const items=[];
+  if(P.moved.length)items.push(`${P.moved.length} photo${P.moved.length===1?"":"s"}, at full size, each with its own children tagged${P.kids.length?`, ${esc(kList(P.kids))}`:""}`);
+  else if(P.kids.length)items.push(`The children tagged, ${esc(kList(P.kids))}`);
+  if(String(P.gl.noticed||"").trim()&&String(P.gl.noticed).trim()!==String(P.lead.noticed||"").trim())items.push("Its words, What I noticed, added after the words kept here");
+  if(String(P.gl.wonder||"").trim()&&String(P.gl.wonder).trim()!==String(P.lead.wonder||"").trim())items.push("Its What I wonder, added after this one's");
+  for(const r of P.refs)items.push(`${kinds[r.kind]?kinds[r.kind]+", ":""}${esc(r.name)}`);
+  const own=[["smallGroup","Small group"],["planId","Plan"],["projectId","Project"],["threadId","Thread"]];
+  for(const [k,l] of own){const v=P.G.map(x=>x[k]).find(Boolean);if(v&&!P.K.some(x=>x[k]===v)){const nm=k==="smallGroup"?v+" group":k==="planId"?(plans.get(v)?obsPlanLabel(plans.get(v)):""):k==="projectId"?(projects.get(v)||{}).name:(threads.get(v)||{}).name;
+    if(nm&&!items.some(i=>i.endsWith(esc(nm))))items.push(`${l}, ${esc(nm)}`)}}
+  const langs=(P.gl.languages||[]).filter(x=>!(P.lead.languages||[]).includes(x));if(langs.length)items.push(`Languages, ${esc(kList(langs))}`);
+  p.innerHTML=`<h3 style="font-size:17px;margin:0 0 8px">Before you combine</h3>
+    <div class="cbtwo"><div><div class="lbl" style="margin:0 0 4px">Kept</div>${combRow(keep,'data-comb="nop" disabled')}</div><div><div class="lbl" style="margin:0 0 4px">Brought in, then removed</div>${combRow(gone,'data-comb="nop" disabled')}</div></div>
+    <div style="margin-top:6px"><b>What moves to the one kept</b><ul>${items.map(i=>`<li>${i}</li>`).join("")||"<li>Nothing else is linked to it.</li>"}</ul></div>
+    <div class="cnt" style="margin-bottom:8px">Then the second observation is removed. Its photos and words live on in the one kept.</div>
+    <div class="actions"><button class="btn" data-comb="go">Combine</button><button class="btn small ghost" data-comb="swap">Keep the other one instead</button><button class="linkbtn" data-comb="back">Choose another</button>${cancel}</div>`}
+function combineNotices(keepId,goneId){const keep=notices.get(keepId),gone=notices.get(goneId);if(!keep||!gone)return false;
+  const P=combPlan(keep,gone),lead=P.lead,gl=P.gl,K=P.K,G=P.G;if(K.some(x=>G.includes(x)))return false;
+  const join=(a,b)=>{a=String(a||"").trim();b=String(b||"").trim();return !b||a.includes(b)?a:!a||b.includes(a)?b:a+"\n\n"+b};
+  const words={noticed:join(lead.noticed,gl.noticed),wonder:join(lead.wonder,gl.wonder)};
+  const pick=k=>lead[k]||K.map(x=>x[k]).find(Boolean)||G.map(x=>x[k]).find(Boolean)||"";
+  const shared={classroom:pick("classroom"),projectId:pick("projectId"),threadId:pick("threadId"),smallGroup:pick("smallGroup"),planId:pick("planId"),bin:pick("bin")};
+  const languages=[...new Set([...(lead.languages||[]),...G.flatMap(x=>x.languages||[])])];
+  const group=lead.group||"g"+lead.id,who=whoAmI(),now=Date.now();
+  // a photo-less record of the second observation hands its children, and its DRDP reading when this one has none, to the one kept
+  const extraKids=P.dropped.flatMap(x=>x.children||[]);const drdpFrom=!lead.drdp&&P.dropped.find(x=>x.drdp);
+  const all=[...K,...P.moved];
+  all.forEach((x,i)=>{const base=jclone(x);Object.assign(x,words);for(const [k,v] of Object.entries(shared)){if(v)x[k]=v;else delete x[k]}
+    x.languages=[...languages];x.group=group;if(x===lead){x.children=[...new Set([...(x.children||[]),...extraKids])];if(drdpFrom){x.drdp=drdpFrom.drdp;if(drdpFrom.drdpAuto)x.drdpAuto=drdpFrom.drdpAuto}x.combinedFrom=[...(x.combinedFrom||[]),...G.map(g=>g.id)]}
+    if(P.moved.includes(x)){x.at=(lead.at||now)+K.length+P.moved.indexOf(x);x.week=lead.week||mondayOf(new Date(x.at))}
+    x.editedBy=who;x.editedAt=now;saveNotice(x,base)});
+  // everything that pointed at the second observation points at the one kept
+  combRefs(new Set(G.map(x=>x.id)),lead.id);
+  for(const x of P.dropped)removeNotice(x.id);
+  obsIdx=null;return true}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-comb],[data-nwcomb]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  if(t.dataset.nwcomb){if(VIEW_AS){toast("Nothing is changed while you see TREE as "+VIEW_AS.name+".");return}if(!me()){needName();return}comb={keep:noteGroup(notices.get(t.dataset.nwcomb))[0]?.id||t.dataset.nwcomb,gone:"",q:""};combPaint();setTimeout(()=>$("#comb-q")?.focus({preventScroll:true}),50);return}
+  const d=t.dataset.comb;if(!comb)return;
+  if(d==="cancel"){comb=null;combPaint();return}
+  if(d==="pick"){comb.gone=t.dataset.id;combPaint();combPanel.scrollTop=0;return}
+  if(d==="more"){comb.more=(comb.more||12)+12;combPaint();return}
+  if(d==="all"){comb.all=true;combPaint();return}
+  if(d==="back"){comb.gone="";combPaint();return}
+  if(d==="swap"){const k=comb.keep;comb.keep=noteGroup(notices.get(comb.gone))[0].id;comb.gone=k;combPaint();return}
+  if(d==="go"){const k=comb.keep,g=comb.gone;comb=null;combPaint();if(!combineNotices(k,g)){toast("Those two could not be combined.");return}
+    if(noticeForm&&!notices.has(noticeForm.id))noticeForm=null;renderMain();toast("Combined into one observation.")}},true);
+document.addEventListener("input",e=>{if(e.target.id!=="comb-q"||!comb)return;comb.q=e.target.value;const pos=e.target.selectionStart;combPaint();const q=$("#comb-q");if(q){q.focus();try{q.setSelectionRange(pos,pos)}catch(er){}}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&comb){comb=null;combPaint()}});
 // a notice is read by the same machinery that reads plans, so it is evidence in the same way
 function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||momentRooms(n)[0]||"",rooms:momentRooms(n),educator:n.by||"",group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
   fields:{noticed:n.noticed||"",wonder:n.wonder||""},createdAt:n.at,updatedAt:n.updatedAt||n.at,notice:n}:null}
@@ -5828,7 +5943,7 @@ function noticeCard(n){
     ${momentDrdpHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
-      ${moreMenu(`${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
+      ${moreMenu(`${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
