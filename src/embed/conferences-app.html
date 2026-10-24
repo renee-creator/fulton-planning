@@ -202,15 +202,12 @@ details summary{cursor:pointer;font-weight:600}
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 28V15M15 15c-4-1-7-4-8-8M15 15c4-1 7-4 8-8M15 19c-3 0-5-2-6-4M15 19c3 0 5-2 6-4M15 11V3" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 28h16" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round"/></svg>
       <div><b>Family Conferences</b><span>Fulton Community School &amp; Farm</span></div>
     </div>
-    <nav class="tabs" id="tabs">
-      <button data-go="overview">Overview</button>
-      <button data-go="children">Children</button>
-      <button data-go="portfolios">Portfolios</button>
-      <button data-go="nextyear">Next year</button>
-      <button data-go="settings">Conference settings</button>
-    </nav>
+    <!-- one row of tabs, TREE's own. Each child's conferences and next year are on TREE's Children page, so this page
+         opens on the season's conferences, with Conference settings one tap away for the director. -->
     <div class="top-actions">
+      <button class="btn" data-go="overview" id="btn-conf-back" hidden>‹ Conferences</button>
       <button class="btn primary" data-act="import-form" id="btn-import-top">Fill from a completed form</button>
+      <button class="btn ghost" data-go="settings" id="btn-conf-settings">Conference settings</button>
     </div>
   </div>
 </header>
@@ -548,7 +545,7 @@ document.addEventListener("click", e=>{
 
 /* ---------- render ---------- */
 function render(){
-  $$("#tabs [data-go]").forEach(b=>b.setAttribute("aria-current", (b.dataset.go===S.view.name || (S.view.name==="child"&&b.dataset.go==="children") || (S.view.name==="conf"&&b.dataset.go==="overview"))?"page":"false"));
+  { const home=S.view.name==="overview"; const back=$("#btn-conf-back"), set=$("#btn-conf-settings"); if(back) back.hidden=home; if(set) set.hidden=S.view.name==="settings"; }
   $("#btn-import-top").hidden = !canEdit();
   const app=$("#app");
   if(S.dbState==="absent"){ app.innerHTML = `<div class="panel stack" style="max-width:640px;margin:40px auto"><h2>Open this page inside TREE</h2><p>Conference records are saved to a shared store that is available when this page is opened from TREE while signed in. Open it from your TREE artifacts to see the roster and conference records.</p></div>`; return; }
@@ -1025,8 +1022,8 @@ function viewSettings(){
     <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${canEdit()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${canEdit()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${canEdit()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
-    <div class="stack" style="gap:10px"><div class="lbl" style="font-weight:600">Educators by class</div><div class="hint small muted"><i>Names, separated by commas. These are listed under Settings for reference and for the small groups below.</i></div>
-      ${s.classrooms.map(r=>`<div class="field"><label for="s-ed-${esc(r)}">${esc(r)}</label><input id="s-ed-${esc(r)}" data-room="${esc(r)}" value="${esc((s.educators?.[r]||[]).join(", "))}" ${canEdit()?"":"disabled"}></div>`).join("")}
+    <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Educator names are kept in one list, in TREE under Settings, Educators. They show here as that list has them.</div>
+      ${s.classrooms.map(r=>`<div class="cnt"><b>${esc(r)}</b> ${esc((s.educators?.[r]||[]).join(", ")||"No one yet")}</div>`).join("")}
     </div>
     <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, Class, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${canEdit()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
     ${canEdit()?`<div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>`:""}
@@ -1157,7 +1154,7 @@ const actions = {
     const classrooms=lines($("#s-rooms").value); const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
     if(!classrooms.length){ toast("Add at least one class"); return; }
     if(!years.length){ toast("Write school years like 2026-27"); return; }
-    const educators={}; $$("[data-room]").forEach(i=>{ educators[i.dataset.room]=i.value.split(",").map(s=>s.trim()).filter(Boolean); });
+    const educators=Object.assign({},S.settings.educators||{});   // kept from TREE's one list of educator names
     classrooms.forEach(r=>{ if(!educators[r]) educators[r]=S.settings.educators?.[r]||[]; });
     const groups=lines($("#s-groups").value).map(l=>l.split(",").map(s=>s.trim())).filter(x=>x[0]).map(([name,room,educator])=>({name,room:room||"",educator:educator||""}));
     const su=$("#s-signup").value.trim(); if(su && !/^https:\/\//i.test(su)){ toast("The sign-up link should start with https://"); return; }

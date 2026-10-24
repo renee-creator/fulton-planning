@@ -106,14 +106,16 @@ module.exports = function reminders(o) {
     const s = docOf('settings', 'notify') || {};
     return { start: s.start || '', perWeek: s.perWeek > 0 ? +s.perWeek : 3, types: Object.assign({ remarks: true, plan: true, classroom: true, obs: true, conf: true, confform: true, summary: true, review: true, reviewed: true }, s.types || {}), people: s.people || {} };
   }
-  // how often each person plans. Most plan weekly. Some plan monthly, and some keep observations only
-  const PLAN_DEFAULTS = {  };
+  // how often each person plans. Most plan weekly. Some plan monthly, and some keep observations only. Each person's
+  // choice is in the reminder settings. Until the one-time step moves them there, the private records' plandefaults
+  // settings hold the starting choices, by first name, so no educator's name is in this public code.
+  const planDefaults = () => { const d = docOf('settings', 'plandefaults'); const out = {}; for (const [k, v] of Object.entries((d && d.people) || {})) out[key(k).split(' ')[0]] = v; return out; };
   function personOf(S, name) {
     if (S.people[name]) return S.people[name];
     const f = key(name).split(' ')[0]; const k = Object.keys(S.people).find(n => key(n).split(' ')[0] === f);
     return k ? S.people[k] : {};
   }
-  const planEvery = (S, name) => personOf(S, name).plans || PLAN_DEFAULTS[key(name).split(' ')[0]] || 'weekly';
+  const planEvery = (S, name) => personOf(S, name).plans || planDefaults()[key(name).split(' ')[0]] || 'weekly';
   function ensureStart() {
     const s = docOf('settings', 'notify'); if (s && s.start) return;
     const doc = Object.assign({}, s || {}, { start: nowLA().week, updatedByName: 'TREE' });

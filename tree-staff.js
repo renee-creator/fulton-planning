@@ -401,10 +401,11 @@ async function pageNew(my){const dir=D();let who=meName();
   const start=pr.startDate||"",wk=start?Math.max(1,Math.floor(daysTo(start,today())/7)+1):0;const starting=start?addMonths(start,2):"";
   const papers=PAPERS();const pw=p.paperwork||{};const links=B.school.formLinks||{};
   const paperRow=x=>{const r=pw[x.k]||{};const blank=links[x.k]||x.blank;
-    const state=x.director?(r.done?chip("ok","Complete"):chip("missing","Not yet")):x.ack?((r.ack||(r.files||[]).length)?chip("ok",r.ack?"Read "+fms(r.ack):"Uploaded"):chip("missing","Not yet")):((r.files||[]).length?chip("ok","Uploaded"):chip("missing","Not yet"));
+    const ackAt=r.ack||(p.policy&&p.policy.yearAt)||0;
+    const state=x.director?(r.done?chip("ok","Complete"):chip("missing","Not yet")):x.ack?((ackAt||(r.files||[]).length)?chip("ok",ackAt?"Read "+fms(ackAt):"Uploaded"):chip("missing","Not yet")):((r.files||[]).length?chip("ok","Uploaded"):chip("missing","Not yet"));
     return `<div class="strow"><div class="sttop"><b>${H(x.form)}</b><span class="actions" style="margin:0"><span class="cnt">${H(x.num)}</span>${state}</span></div><div class="cnt">${H(x.why)}</div>
       <div class="stfiles">${blank?`<a class="linkbtn" href="${H(blank)}" target="_blank" rel="noopener">Blank form</a>`:""}${x.director?(dir?`<label class="radio"><input type="checkbox" data-stdirpaper="${x.k}" ${r.done?"checked":""}><span>The invitation is complete</span></label>`:`<span class="cnt">The director marks this once your invitation is complete. Payroll and tax forms stay in QuickBooks.</span>`)
-        :x.ack?`<button class="btn small ghost" data-tview="sthb">Read it and say so</button>${fileList(p,r.files,who)}<button class="linkbtn" data-stup="paper|${x.k}">Or upload the signed page</button>`
+        :x.ack?`<span class="cnt">${dir?"Done":"You do this"} under Teacher Policies and Procedures, before the first day, on this page. It counts here too.</span>${(r.files||[]).length?fileList(p,r.files,who):""}`
         :`${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="paper|${x.k}">Upload the completed form</button>${!blank&&!x.director&&x.k!=="immun"?`<span class="cnt">${x.k==="livescan"?"The director arranges Live Scan.":"Ask the director for this form."}</span>`:""}`}</div></div>`};
   const idr=pw.idseen||{};
   const ck=checklist(p,pcs,start);const goTo=p.goTo||B.goTo||"";
@@ -548,7 +549,9 @@ function ackCard(a){if(!a)return "";
   if(!a.due)return card("Your acknowledgment",`<div class="actions" style="margin:0">${chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt))}</div>`);
   const ch=a.yearAt&&(a.changed||[]).length;
   return card("Your acknowledgment",ch?`<div class="hint">The director marked ${a.changed.length===1?"a section":"these sections"} as a significant change. Read ${a.changed.length===1?"it":"them"}, then say so.</div>${a.changed.map(c=>`<div class="prow"><button class="linkbtn" data-stpol="${H(c.id)}">${H(c.title)}</button><span class="cnt">Changed ${H(fms(c.changedAt))}</span></div>`).join("")}<div class="actions"><button class="btn small" data-stpolack="1">I have read the changes</button></div>`
-    :`<div class="hint">Each school year, every educator reads the Teacher Policies and Procedures and says so. ${a.newHire||a.start>today()?"A new educator does this before their first day.":"This is for the "+H(yearSpan(a.year))+" school year."}</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button></div>`)}
+    // a new educator says so in one place, the New Educator section, so this page points there
+    :a.newHire||a.start>today()?`<div class="hint">A new educator reads the sections chosen for them before their first day and says so in the New Educator section.</div><div class="actions"><button class="btn small" data-tview="stnew">Open the New Educator section</button></div>`
+    :`<div class="hint">Each school year, every educator reads the Teacher Policies and Procedures and says so. This is for the ${H(yearSpan(a.year))} school year.</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button></div>`)}
 function mustReadCard(d){const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));if(!secs.length)return "";
   return card("Before your first day",`<div class="hint">Begin with these sections. The rest are here whenever you need them.</div>${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-stpol="${H(s.id)}">${H(s.title)}</button></div>`).join("")}`)}
 function fhDirCards(d){const draft=!d.live;const pb=d.public||{};const cur=d.current;

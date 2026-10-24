@@ -1606,7 +1606,7 @@ function renderMain(){
   if(prev)h+=refCard(prev);
   h+=threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
-  h+=dupHtml(p);
+  if(isDirector())h+=dupHtml(p);
   if(p.importedFrom)h+=`<section class="ref"><b>Transcribed from ${esc(p.importedFrom)}</b><div>Check each section against the original. Words TREE could not read are marked [unclear].</div>${p.importNotes?`<div><span class="muted">Writing that did not fit a section.</span> ${esc(p.importNotes)}</div>`:""}${p.importNoDate?`<div class="nudge" style="justify-self:start">No week was written on this plan. Set the Week of above.</div>`:""}<div><button class="linkbtn" id="importok">Done checking, hide this note</button></div></section>`;
   // on a phone, a short index of the sections shows how many are written and jumps to any of them
   {const fsx=F.fields;const done=fsx.filter(f=>String(p.fields[f.k]||"").trim()).length;
@@ -4178,7 +4178,7 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=d571235cec","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=6003ab596b","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
@@ -4214,7 +4214,7 @@ function renderTreeNav(){
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
 // the director's Educators pages, in four groups
-const ST_GROUPS=[["People",["stteam","stnew","stmom","stformer"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","stpres","sthb","stfh","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
+const ST_GROUPS=[["People",["stteam","stnew","stmom"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","stpres","sthb","stfh","st27"]],["Records",["strec","stdrill","stfiles","stformer"]]],stGroupLast={};
 // the pages under a section, shown at the top of the page. A plan that is open shows the way back to its week.
 function subnavHtml(){
   const s=secOf(view);let back="";
@@ -10771,7 +10771,7 @@ function renderThreads(){
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Waiting for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
    <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
    ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
-     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}${ni||ns?`<span class="cnt">${r||teams.length?"· ":""}${[ni&&ni+" individual",ns&&ns+" small group"].filter(Boolean).join(" · ")}</span>`:""}${nd?`<span class="cnt" style="color:var(--marigold)">· ${nd} possible duplicate${nd>1?"s":""}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
+     return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}${ni||ns?`<span class="cnt">${r||teams.length?"· ":""}${[ni&&ni+" individual",ns&&ns+" small group"].filter(Boolean).join(" · ")}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
    </tbody></table></div></section>`;
 
   // Recurring ideas
@@ -11193,7 +11193,7 @@ function jobLine(j){
   const st={waiting:'<span class="status">Waiting</span>',working:`<span class="status ready">${j.kind==="sort"?"Sorting":"Transcribing"}</span>`,done:'<span class="status reviewed">Done</span>',failed:'<span class="status" style="color:var(--clay);border-color:var(--clay)">Did not work</span>'}[j.status];
   const made=j.planIds.map(id=>plans.get(id)).filter(Boolean);
   return `<div class="result" style="cursor:default"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${st} <b>${esc(j.name)}</b></span>
-    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${esc(p.id)}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}${p.dupOf&&plans.has(p.dupOf)?'<span class="nudge">May be a duplicate. Open it to choose which to keep</span>':""}</span>`).join("")}
+    ${made.map(p=>`<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${p.type}">${FORMS[p.type].short}</span><button class="linkbtn" data-open="${esc(p.id)}">${esc(planTitle(p))}, week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</button>${p.importNoDate?'<span class="nudge">No date found. Set the week</span>':""}</span>`).join("")}
     ${j.kind==="sort"&&j.progress?`<span class="cnt">${esc(j.progress)}</span>`:""}
     ${j.note&&j.status==="working"?`<span class="cnt">${esc(j.note)}</span>`:""}
     ${j.status==="failed"?`<span class="cnt" style="color:var(--clay)">${esc(j.error||"")}</span> <button class="linkbtn" data-retry="${esc(j.id)}">${j.kind==="sort"&&j.next?"Try again from page "+(j.next+1):"Try again"}</button>`:""}
@@ -11593,6 +11593,20 @@ function sweepDuplicates(){
     const d=findDup(p);if(d&&!(d.dupOf===p.id)){p.dupOf=d.id;persist(p);n++}}
   if(n){toast(`${n} saved plan${n>1?"s look like duplicates":" looks like a duplicate"}. Find them in All plans.`);renderList();if(view==="threads")renderMain()}
 }
+// plans that may repeat another are listed once, at the top of All plans, for the director to keep or remove.
+// Nothing is removed until she chooses, and Remove asks once more.
+function dupListHtml(){if(!isDirector()||VIEW_AS)return"";
+  const L=[...plans.values()].filter(p=>p.id!=="example"&&p.dupOf&&plans.has(p.dupOf)).sort((a,b)=>String(a.weekOf).localeCompare(String(b.weekOf)));if(!L.length)return"";
+  const what=q=>`${esc(FORMS[q.type]?FORMS[q.type].name:"Plan")}${q.classroom?", "+esc(q.classroom):""}, week of ${fmtDate(q.weekOf)}. ${filledCount(q)} sections filled`;
+  return `<section class="card" id="duplist"><details class="fold" data-fold="all:dups" ${foldOpen.has("all:dups")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Plans that may be duplicates</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
+    <div class="hint">Each of these looks like another plan. Keep both, or remove the one you do not need. Nothing is removed until you choose.</div>
+    ${L.map(p=>{const o=plans.get(p.dupOf);return `<div class="strow" style="padding:8px 0;border-top:1px solid var(--line)" id="dup-${esc(p.id)}"><div><b>${esc(planTitle(p))}</b><div class="cnt">${what(p)}</div><div class="cnt">Looks like <b>${esc(planTitle(o))}</b>, ${what(o)}</div></div>
+      <div class="actions"><button class="btn small ghost" data-open="${esc(p.id)}">Open</button><button class="btn small ghost" data-open="${esc(o.id)}">Open the other</button><button class="btn small" data-dupkeep="${esc(p.id)}">Keep both</button><span id="duprm-${esc(p.id)}"><button class="btn small ghost" data-duprm="${esc(p.id)}">Remove this one</button></span></div></div>`}).join("")}
+  </div></details></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-dupkeep],[data-duprm],[data-duprm2]");if(!t||!isDirector())return;
+  if(t.dataset.dupkeep){const p=plans.get(t.dataset.dupkeep);if(!p)return;p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Kept both.");return}
+  if(t.dataset.duprm){const w=document.getElementById("duprm-"+t.dataset.duprm);if(w)w.innerHTML=`<button class="btn small" style="background:var(--danger);border-color:var(--danger)" data-duprm2="${esc(t.dataset.duprm)}">Remove it for good</button>`;return}
+  if(t.dataset.duprm2){const p=plans.get(t.dataset.duprm2);if(!p)return;const o=plans.get(p.dupOf);if(o&&o.dupOf===p.id){delete o.dupOf;persist(o)}removePlan(p.id);toast("Plan removed.");setTimeout(renderMain,300);return}});
 function isGroupPlan(p){return p.type==="smallgroup"||(p.type==="individual"&&(p.focus==="smallgroup"||(p.groups||[]).length>0))}
 function dupHtml(p){
   const o=p.dupOf&&plans.get(p.dupOf);
@@ -11705,11 +11719,11 @@ function renderAllPlans(){aMode="list";
   let h=`<div class="head"><div><span class="eyebrow">Every saved plan</span><h2 style="margin-top:4px">All plans</h2>
     <div class="sub">Every plan from every week and class. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
     <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>observations kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
-    <section class="card" style="gap:10px">
+    ${dupListHtml()}<section class="card" style="gap:10px">
 ${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       ${aMode!=="list"?"":`<div class="actions">
         <select id="atype" style="width:auto" aria-label="Kind of form">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
-        <select id="astatus" style="width:auto" aria-label="Status">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="astatus" style="width:auto" aria-label="Status">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>`}
 `}
@@ -11724,7 +11738,7 @@ function allListHtml(ps){
   const weeks=[...new Set(ps.map(p=>p.weekOf))];
   return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:6px"><div class="chiprow-label">Week of ${fmtDate(w)} · ${countShown(wp).replace(" shown","")}</div>
     <div class="tablewrap"><table class="grid2 plist" style="table-layout:fixed"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:130px"><col style="width:160px"></colgroup><thead><tr><th>Form</th><th>Plan</th><th>Class</th><th>Sections filled</th><th>Status</th></tr></thead><tbody>
-    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${esc(p.id)}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.type==="notice"?`<div class="cnt">Kept by ${esc(p.educator||"an educator")}, ${esc(shortDate(p.createdAt))}</div>`:""}${p.dupOf&&plans.has(p.dupOf)?' <span class="status" style="color:var(--marigold);border-color:var(--marigold)">May be a duplicate</span>':""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="Sections filled">${filledCount(p)}</td><td>${p.type==="notice"?`<span class="status ready">Kept</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
+    ${wp.map(p=>`<tr><td><span class="tag ${p.type}">${FORMS[p.type].short}</span></td><td><button class="linkbtn" data-open="${esc(p.id)}" style="text-align:left">${esc(planTitle(p))}</button>${p.importNoDate?' <span class="cnt">no date found</span>':""}${p.type==="notice"?`<div class="cnt">Kept by ${esc(p.educator||"an educator")}, ${esc(shortDate(p.createdAt))}</div>`:""}${p.type!=="notice"&&needsRemarks(p)?' <span class="status" style="color:var(--clay);border-color:var(--clay)">Final remarks due</span>':""}</td><td>${esc(p.classroom||"Not set")}</td><td class="cnt" data-l="Sections filled">${filledCount(p)}</td><td>${p.type==="notice"?`<span class="status ready">Kept</span>`:`<span class="status ${p.status}">${STATUS[p.status]||"Draft"}</span>`}</td></tr>`).join("")}
     </tbody></table></div></section>`}).join("");
 }
 // How it connects. Every connection across the school, newest first, with who made it or that TREE did, how, and TREE's reason in
@@ -12617,9 +12631,7 @@ function signinsHtml(){
         <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. Give it to ${esc(a.name)} for their first sign-in.</span>`}</td>
         <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at Fulton</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving Fulton</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
-    ${F.length?`<details class="fold" data-fold="set:former" ${foldOpen.has("set:former")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Former educators</span><span class="cnt">${F.length}</span></summary><div class="foldbody">
-      ${F.map(a=>`<div class="prow"><div><b>${esc(a.name)}</b><div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div></div><span class="actions" style="margin:0" id="sgback-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgback="${esc(a.name)}">Bring back</button></span></div>`).join("")}
-      <div class="hint">Bringing someone back keeps all their history. They choose a new code at their next sign-in.</div></div></details>`:""}
+    ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left Fulton. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
     <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
@@ -12798,7 +12810,7 @@ async function rcMake(manual){
       if(docs.length){await put(j.folder,base+".pdf",await makePdf(docs,base+".pdf","quiet").catch(()=>null));await put(j.folder,base+".docx",await makeDocx(docs,base+".docx","quiet").catch(()=>null))}
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=d571235cec","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=6003ab596b","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records");
         for(const ext of [".pdf",".docx"])await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null))}}
     catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The educators' records could not be read. "+((e&&e.message)||"")}
@@ -12905,7 +12917,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=d571235cec","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=6003ab596b","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}

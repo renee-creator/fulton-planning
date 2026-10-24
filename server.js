@@ -411,6 +411,51 @@ async function readOriginal(id) {
 // educator records, the New Educator section, the PD library pieces and the Teacher Policies and Procedures, in staff.js
 function lensNow() { const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; const ls = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
   const l = ls.find(x => x && x.year) || ls[0]; return l ? { name: String(l.name || ''), description: String(l.description || '') } : null; }
+/* One-time steps. A change the server makes to records already there, such as a setting moved out of TREE's public
+   code, is a step run once at start, through the save queue. settings/once records each step that has run, so none runs
+   twice, and until a step has run TREE reads the old values. A step that is not ready yet, because what it needs has not
+   loaded, says so and is tried again at the next start of that part. */
+const ONCE = [];
+function onceDone(id) { const r = store.recs.settings.get('once'); return !!(r && !r.deleted && r.doc && r.doc.done && r.doc.done[id]); }
+function runOnce() {
+  if (!store.ready) return;
+  for (const [id, fn] of ONCE) {
+    if (onceDone(id)) continue;
+    try {
+      if (fn() === false) continue;
+      const r = store.recs.settings.get('once'); const doc = r && !r.deleted && r.doc ? r.doc : { done: {} };
+      setSetting('once', Object.assign({}, doc, { done: Object.assign({}, doc.done || {}, { [id]: new Date().toISOString() }) }));
+      log('One-time step done,', id);
+    } catch (e) { log('One-time step could not run,', id, e.message); }
+  }
+}
+// the educator names are one list, settings/educators. Conference settings keep the names by Class, made from that list.
+function syncEducators() {
+  const ed = store.recs.settings.get('educators'), mn = store.recs.settings.get('main');
+  if (!ed || ed.deleted || !ed.doc || !Array.isArray(ed.doc.names) || !mn || mn.deleted || !mn.doc) return;
+  const by = {}; for (const r of (Array.isArray(mn.doc.classrooms) ? mn.doc.classrooms : [])) by[r] = [];
+  for (const x of ed.doc.names) { if (!x || !x.name || !x.room || isFormerEducator(x.name)) continue; (by[x.room] = by[x.room] || []).push(String(x.name)); }
+  if (JSON.stringify(by) === JSON.stringify(mn.doc.educators || {})) return;
+  mn.doc.educators = by; mn.local = true; noteChange('settings', 'main'); scheduleSave('settings', 'main'); log('Educators by Class copied from the educator list');
+}
+ONCE.push(['educatorList', () => { syncEducators(); }]);
+// how often four educators plan was kept in TREE's public code. It moves into the reminder settings once, from a file
+// added to the private records for this step, which then leaves the records.
+ONCE.push(['planDefaults', () => {
+  const pd = store.recs.settings.get('plandefaults'); if (!pd || pd.deleted || !pd.doc || !pd.doc.people) return false;
+  const nf = store.recs.settings.get('notify'); const doc = nf && !nf.deleted && nf.doc ? nf.doc : {};
+  const people = Object.assign({}, doc.people || {}); const first = n => nameKey(n).split(' ')[0];
+  const names = [...accounts.list.map(a => a.name), ...rosterNames()];
+  for (const [f, plans] of Object.entries(pd.doc.people)) {
+    if (!['weekly', 'monthly', 'none'].includes(plans)) continue;
+    const known = Object.keys(people).find(n => first(n) === first(f));
+    if (known) { if (!people[known].plans) people[known] = Object.assign({}, people[known], { plans }); continue; }
+    const full = names.find(n => first(n) === first(f)) || f;
+    people[full] = { plans };
+  }
+  setSetting('notify', Object.assign({}, doc, { people }));
+  pd.deleted = true; noteChange('settings', 'plandefaults'); scheduleSave('settings', 'plandefaults');
+}]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
@@ -527,6 +572,7 @@ async function doLoadGraph() {
   store.ready = true; store.error = ''; store.loadedAt = Date.now();
   try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
+  runOnce();
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
 }
 async function doLoad() {
@@ -574,7 +620,8 @@ async function doLoad() {
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
     // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
-    staff.load().catch(e => log('Educator records could not be read', e.message));
+    runOnce();
+    staff.load().then(() => runOnce(), e => log('Educator records could not be read', e.message));
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();
     if (photosDrive.on()) setTimeout(() => photosDrive.moveAll().catch(e => log('Photos could not move to Google Drive', e.message)), 60000).unref();
@@ -1598,6 +1645,7 @@ async function handle(req, res) {
     if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
+    if (kind === 'settings' && (id === 'educators' || id === 'main') && onceDone('educatorList')) syncEducators();
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
