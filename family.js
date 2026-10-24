@@ -13,6 +13,13 @@ const QUESTIONS = ['Are there any nicknames or a name that your child prefers to
 const REFLECTIONS = [['r1', 'What are you noticing about your child at home right now?'], ['r2', 'What are they especially interested in or talking about outside of school?'], ['r3', 'Are there any changes, new developments, or challenges you have noticed?'], ['r4', 'Which friends, educators, or small group projects does your child mention?'], ['r5', 'Looking back at the hopes and goals you shared at enrollment, what feels most important to you now?'], ['r6', 'Is there anything you are wondering about or would like us to think about together?']];
 // the sections of the conference form a family sees once the director shares the notes
 const CONF_FIELDS = [['interests', 'Main Interests'], ['friends', 'Friends'], ['smallGroup', 'Small Group Work and Current Inquiry'], ['favoriteAreas', 'Favorite Areas and Activities'], ['nature', 'Connection to Nature and the Farm'], ['approaches', 'Approaches to Learning and Self-Regulation'], ['social', 'Social and Emotional Development'], ['language', 'Language and Literacy'], ['cognition', 'Cognition (math and science)'], ['physical', 'Physical Development and Health'], ['expressive', 'Expressive Languages'], ['strengths', 'Strengths'], ['goals', 'Shared Goals (school and home)'], ['nextSteps', 'Next Steps']];
+// the parts of a transition summary for kindergarten or TK, as TREE writes them
+const TS_SECTIONS = [['who', 'Who this child is'], ['play', 'How they play and learn'], ['friends', 'Friends and relationships'], ['working', 'What they are working on'], ['helps', 'What helps']];
+const TS_NEXT = { k: 'Going to kindergarten next year', tk: 'Going to TK next year' };
+// a child's age in years and months today, from the birthday on file
+function ageText(dob) { const d = String(dob || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''; const [y, m, dd] = d.split('-').map(Number); const n = new Date();
+  let mo = (n.getFullYear() - y) * 12 + (n.getMonth() + 1 - m); if (n.getDate() < dd) mo--; if (mo < 0) return ''; const yr = Math.floor(mo / 12), r = mo % 12;
+  return yr ? `${yr} year${yr === 1 ? '' : 's'}${r ? ` ${r} month${r === 1 ? '' : 's'}` : ''}` : `${r} month${r === 1 ? '' : 's'}`; }
 // the enrollment information the state forms ask for, LIC 700, 702, 627 and the sunscreen consent on LIC 9221, typed once
 // by the family. Office staff print the filled forms for the family to sign at the pre-start visit.
 const enrollMissing = require('./enroll-rules.js');
@@ -173,6 +180,11 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
       shared.push({ id, label: d.term === 'Historical' ? 'An earlier conference' : `${d.term} ${d.schoolYear}`, date: d.confDate || '', sections: CONF_FIELDS.map(([key, l]) => [l, String((d.fields || {})[key] || '').trim()]).filter(([, v]) => v) }); }
     shared.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const files = (k.sharedFiles || []).filter(x => x && x.id).map(x => ({ id: x.id, title: x.title || 'A document', at: x.at || '' }));
+    // a transition summary for kindergarten or TK, only once the director has shared it, as it read when she shared it
+    const tsAll = k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary : {};
+    const tsY = Object.keys(tsAll).filter(y => tsAll[y] && tsAll[y].shared && tsAll[y].shared.sections && typeof tsAll[y].shared.sections === 'object').sort().pop();
+    const tsSh = tsY ? tsAll[tsY].shared : null;
+    const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, String(tsSh.sections[key] || '').trim()]).filter(([, v]) => v) } : null;
     const visit = k.visit && k.visit.date ? k.visit : null;
     const purpose = isNew(k) ? 'visit' : (c.confOpen ? 'conference' : '');
     const open = purpose ? slots().filter(s => s.purpose === purpose && !!s.test === f.test && s.date >= today && (!s.classroom || s.classroom === k.classroom) && (!s.booked || s.booked.childId === k.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => ({ id: s.id, date: s.date, time: s.time, minutes: s.minutes, with: s.with || '', mine: !!(s.booked && s.booked.childId === k.id) })) : [];
@@ -182,7 +194,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0] || '', last: w.length > 1 ? w[w.length - 1] : '' }; };
     const pa = (k.parents || []).filter(Boolean); const p1 = split(pa[0] && pa[0].name), p2 = split(pa[1] && pa[1].name);
     const prefill = { c_first: k.first || '', c_last: k.last || '', c_dob: String(k.dob || '').slice(0, 10), p1_first: p1.first, p1_last: p1.last, p1_home: (pa[0] && pa[0].cell) || '', p2_first: p2.first, p2_last: p2.last, p2_home: (pa[1] && pa[1].cell) || '' };
-    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
+    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
       aboutMe: (() => { const am = k.aboutMe || {}; const fk = fileKey(); const ph = p => (p.photos || []).map(id => ({ id, src: '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(fk) }));
         const fixed = AAM_PAGES.map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES.length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),

@@ -440,6 +440,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .kfields{display:flex;flex-wrap:wrap;gap:10px}.kfields label{display:grid;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 170px;min-width:0}
 .khist{font-size:12px;color:var(--muted);display:grid;gap:2px}
 .kmvlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 12px;margin:6px 0}.kmvlist .radio{margin:0}.kmvrow{display:grid;gap:1px;padding:7px 0;border-top:1px solid var(--line)}.kmvrow:first-child{border-top:0}.kmvrow .cnt{font-size:13px}
+.tslab{display:grid;gap:4px;margin:0 0 12px}.tslab textarea{width:100%}.tsdraft{border-left:3px solid var(--line);padding:4px 0 4px 12px;margin:-4px 0 14px;display:grid;gap:4px}
 .rname{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;background:var(--bg)}
 .rname button{border:none;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
 .radio{display:flex;gap:8px;align-items:flex-start;font-size:14px}
@@ -10310,6 +10311,7 @@ async function printsClick(t){
   // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
+  if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in an observation or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
@@ -11050,7 +11052,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
   if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo||proof.save){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
   if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
 // the moments writing leaves TREE: posting to the Family page, sending a plan to the director, printing, copying for Kaymbu
-const PROOF_GATES='#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
+const PROOF_GATES='[data-tsready="1"],#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
 document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
   proofRoot=null;if(!proofEls().length||proofHash()===proofClean)return;
@@ -11065,7 +11067,7 @@ document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.cl
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b))},true);
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
-const FAMILY_WORDS=new Set(["newsletter","share","story","binnote"]);
+const FAMILY_WORDS=new Set(["newsletter","share","story","binnote","transition"]);
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
     return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
   if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
@@ -11754,7 +11756,7 @@ function renderChild(){
   const nx=kidNext(c);const {v}=drdpViewOf(c);const its=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=its.filter(x=>x.status==="suggested").length,levelled=new Set(its.filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>x.code)).size,nMs=drdpMeasuresFor(c).length;
   const today=iso(new Date());const nextConf=cs.filter(x=>x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],["details","Details"]];
+  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],...(tsFor(c)?[["transition","Transition summary"]]:[]),["details","Details"]];
   if(!tabs.some(t=>t[0]===kidTab))kidTab="overview";
   let body="";
   if(kidTab==="overview"){
@@ -11777,6 +11779,7 @@ function renderChild(){
         <div class="aamstaff">${(c.aboutMe.pages||[]).map((p,i)=>`<div><b>${esc((i<AAM_TITLES.length?AAM_TITLES[i].replace("{first}",c.first):(p.title||"More about me")))}</b>${(p.photos||[]).length?`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.photos[0]):"")}" alt="" loading="lazy">`:""}<div class="cnt">${esc(firstLine(p.text,140))}</div></div>`).join("")}</div></section>`:""}
       ${(()=>{const sts=kidStories(c).sort((a,b)=>(b.at||0)-(a.at||0));return sts.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length}</span></div><div class="kmlist">${sts.map(st=>{const mine=storyPhotoIds(st).find(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)});const ph=notices.get(mine);return `<div class="kmwrap"><button class="kmrow" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(stTitle(st))}</b><span class="cnt">${stReviewed(st)?"":"Draft · "}${shortDate(st.at)} · ${esc(st.by||"")}</span></span></button>${stReviewed(st)?pfToggle(c,"stories",st.id,true):""}</div>`}).join("")}</div><div class="cnt">In the portfolio, a reviewed story prints with its words and only the photos ${esc(c.first)} is in. A draft waits for the team's review.</div></section>`:""})()}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
+  else if(kidTab==="transition"){body=tsHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
       ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}${x.sharedWithFamily?" · Shared with the family":""}</div></div></button>${isOffice()&&x.term!=="Historical"?`<div class="actions" style="margin:-4px 0 8px 12px"><button class="linkbtn" data-confshare="${esc(x.id)}">${x.sharedWithFamily?"Stop sharing the notes":"Share the notes with the family"}</button></div>`:""}`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
@@ -11848,7 +11851,7 @@ function kidFamilySideHtml(c){
     ${(q.questions||[]).map((qq,i)=>String((q.answers||[])[i]||"").trim()?`<div style="margin-top:8px"><div class="cnt">${esc(qq)}</div><div style="white-space:pre-line">${esc(q.answers[i])}</div></div>`:"").join("")}</details></section>`;
   if(st&&has(st.text))h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">What the family can share</h3></div><div style="white-space:pre-line">${esc(st.text)}</div></section>`;
   if(isOffice())h+=`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Shared with the family</h3><button class="btn small ghost" data-kshareport="${esc(c.id)}">Share the portfolio</button></div>
-    ${files.length?files.map((f,i)=>`<div class="ptlog"><span>${esc(f.title)}<span class="cnt"> · ${esc(shortDate(new Date(f.at).getTime()))}</span></span><button class="linkbtn" data-kunshare="${esc(c.id)}|${i}">Stop sharing</button></div>`).join(""):`<div class="cnt">Nothing shared yet. A portfolio shared here, and conference notes shared from the Conferences tab, appear on the Family page.</div>`}</section>`;
+    ${files.map((f,i)=>`<div class="ptlog"><span>${esc(f.title)}<span class="cnt"> · ${esc(shortDate(new Date(f.at).getTime()))}</span></span><button class="linkbtn" data-kunshare="${esc(c.id)}|${i}">Stop sharing</button></div>`).join("")}${tsShareRow(c)}${files.length||tsShareRow(c)?"":`<div class="cnt">Nothing shared yet. A portfolio shared here, and conference notes shared from the Conferences tab, appear on the Family page.</div>`}</section>`;
   return h}
 const ENROLL_LABELS={c_first:"Child's first name",c_middle:"Middle name",c_last:"Last name",c_sex:"Sex",c_dob:"Birthday",c_phone:"Home telephone",c_street:"Address",c_city:"City",c_state:"State",c_zip:"Zip",doc_name:"Doctor",doc_phone:"Doctor's telephone",doc_addr:"Doctor's address",doc_plan:"Medical plan",den_name:"Dentist",den_phone:"Dentist's telephone",h_allergies:"Allergies",med_allergy:"Medicine allergies",pickup_time:"Usual pickup time"};
 const AAM_TITLES=["All About {first}","My family","Things I like","Foods I like"];
@@ -12007,6 +12010,139 @@ document.addEventListener("change",e=>{if((view!=="children"&&view!=="child")||!
   if(t.dataset.knextset)set(t.dataset.knextset,c=>{c.transition=c.transition||{};const k=nextYearKey();if(t.value)c.transition[k]=Object.assign({},c.transition[k]||{},{plan:t.value});else delete c.transition[k];kidNote(c,t.value?NEXTPLAN[t.value]:"Next year not decided")});
 });
 document.addEventListener("input",e=>{if(view==="children"&&e.target.id==="kq"){kQ=e.target.value;const pos=e.target.selectionStart;renderChildren();const q=$("#kq");q.focus();q.setSelectionRange(pos,pos)}});
+
+/* ---------- Transition summary ----------
+   For a child going to kindergarten or TK next year, on the child's page. One to two pages drafted only from the child's
+   own observations, portfolio and conference notes, in the educators' words, never with DRDP levels, scores or rating
+   language. Educators change it, proofread it and mark it Ready. It is kept on the child's record by school year, so it is
+   in the weekly backup, and it reaches the family only when the director shares it, as it reads at that moment. */
+const TS_SECTIONS=[["who","Who this child is"],["play","How they play and learn"],["friends","Friends and relationships"],["working","What they are working on"],["helps","What helps"]];
+const TS_HINT={who:"Who {first} is at Fulton, and what {first} loves and brings to the Class.",play:"How {first} plays, explores and learns.",friends:"{first}'s friends, and how {first} is with other children and the educators.",working:"What {first} is practicing and growing in now.",helps:"What helps {first}, at the start of the day, somewhere new and in a hard moment."};
+// the DRDP and words that rate or compare a child stay out of the summary
+const TS_RATING=/\bDRDP\b|\b(levels?|scor(e|es|ed|ing)|ratings?|rated|meets? expectations|exceeds? expectations|below expectations|above average|below average|on track|ahead of|behind (his|her|their|other|peers)|advanced for|delayed?|(responding|exploring|building|integrating) (earlier|middle|later))\b/i;
+// the conference notes the draft reads, all but the DRDP evidence box
+const TS_CONF=Object.fromEntries(Object.entries(Object.assign({},CONF_SHORT,{goals:"Shared goals",nextSteps:"Next steps"})).filter(([k])=>k!=="documentation"));
+const tsYear=()=>yearFromTime(Date.now());
+const tsOf=c=>((c&&c.transitionSummary)||{})[tsYear()]||null;
+const tsFor=c=>["k","tk"].includes(kidNext(c))||!!tsOf(c);
+const tsNext=c=>({k:"Going to kindergarten next year",tk:"Going to TK next year"})[kidNext(c)]||NEXTPLAN[kidNext(c)]||"";
+const tsSame=(a,b)=>TS_SECTIONS.every(([k])=>String((a||{})[k]||"").trim()===String((b||{})[k]||"").trim());
+const tsChanged=x=>!!(x&&x.shared&&!tsSame(x.sections,x.shared.sections));
+const tsAny=x=>!!x&&TS_SECTIONS.some(([k])=>has((x.sections||{})[k]));
+let tsDrafts={},tsBusy={},tsWait={},tsTimer={};
+// a change is sent as a patch, so two educators writing different parts keep each other's words
+function tsPatch(c,patch){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const p=JSON.parse(JSON.stringify({transitionSummary:{[tsYear()]:Object.assign({updatedAt:Date.now(),updatedBy:whoAmI()},patch)}}));localMerge(c,JSON.parse(JSON.stringify(p)));children.set(c.id,c);
+  if(db)db.doc("children/"+c.id).update(p).catch(e=>toast(e&&e.message||"Could not save the transition summary. Check your connection."))}
+function tsFlush(id){clearTimeout(tsTimer[id]);const w=tsWait[id];delete tsWait[id];if(!w)return;const c=children.get(id);if(c)tsPatch(c,w)}
+// what the draft reads. Observations that tag the child and are in the portfolio, never one kept for a team inquiry, the
+// portfolio's slides and the conference notes. Other children are named by initial, as in the portfolio.
+function tsSources(c){const seen=new Set(),obs=[];
+  for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!inqHolds(n.id))){const k=(n.group||n.id)+"|"+String(n.noticed||"").trim();if(seen.has(k))continue;seen.add(k);
+    const a=focusText(String(n.noticed||"").trim(),c),b=focusText(String(n.wonder||"").trim(),c);if(!has(a)&&!has(b))continue;
+    obs.push({at:n.at||0,text:`${longDate(iso(new Date(n.at||Date.now())))}, ${n.by||"an educator"}. ${a}${has(b)?"\nI wonder. "+b:""}`})}
+  const pieces=kidSlides(c).filter(s=>kidInPortfolio(c,"slides",s.id)).map(s=>{const q=(s.quotes||[]).filter(x=>String(x.name||"").replace(/ \[\?\]$/,"")===c.first&&has(x.words)).map(x=>`${c.first} said "${x.words}"`);
+    return {at:s.at||0,text:[slideTitle(s),focusText(String(s.text||"").trim(),c),...q].filter(has).join("\n")}}).filter(x=>has(x.text));
+  const confs=kidConfs(c).map(x=>{const f=x.fields||{};const parts=Object.entries(TS_CONF).filter(([k])=>has(f[k])).map(([k,l])=>`${l}. ${focusText(String(f[k]).trim(),c)}`);
+    return parts.length?{text:`${x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear].filter(Boolean).join(" ")}\n${parts.join("\n")}`}:null}).filter(Boolean);
+  return {obs:obs.sort((a,b)=>b.at-a.at),pieces:pieces.sort((a,b)=>b.at-a.at),confs}}
+function tsPrompt(c,src){let room=60000;const take=xs=>xs.map(x=>x.text.slice(0,1500)).filter(t=>(room-=t.length)>=0);
+  const confs=take(src.confs),pieces=take(src.pieces),obs=take(src.obs);
+  return `You help the educators at Fulton Community School & Farm, a preschool, write a transition summary for ${c.first}, who is ${kidNext(c)==="tk"?"going to TK":"going to kindergarten"} next year. It is for ${c.first}'s family and next school, about one to two pages in all.
+
+Write it only from the educators' own words below, from ${c.first}'s observations, portfolio and conference notes. Keep their words and phrasing wherever you can, joined into short, warm, plain sentences. Never add an event, a skill, a feeling, a quote, a name or anything else the educators did not write, and never guess. When the notes say nothing for a part, leave that part as an empty string.
+Never mention the DRDP, measures, levels, scores or ratings, and never use words that rate or compare a child, such as ahead, behind, advanced, delayed, on track, meets or exceeds. Never diagnose or label a child.
+Call the child ${c.first}. Other children keep the initial the notes give them. Say educator, never teacher, and Class, never classroom. Never use a colon, a semicolon, an em dash or an en dash. Write paragraphs, with no lists or headings.
+
+The parts are
+who, Who this child is. Who ${c.first} is at Fulton, and what ${c.first} loves and brings.
+play, How they play and learn. How ${c.first} plays, explores and learns.
+friends, Friends and relationships. ${c.first}'s friends, and how ${c.first} is with other children and adults.
+working, What they are working on. What ${c.first} is practicing and growing in now, as the educators describe it.
+helps, What helps. What the educators found helps ${c.first}.
+
+Each part is one or two short paragraphs, about 60 to 150 words. Answer with JSON only, {"who":"","play":"","friends":"","working":"","helps":""}.
+
+${confs.length?`<conference_notes>\n${confs.join("\n\n")}\n</conference_notes>\n\n`:""}${pieces.length?`<portfolio_slides>\n${pieces.join("\n\n")}\n</portfolio_slides>\n\n`:""}${obs.length?`<observations>\n${obs.join("\n\n")}\n</observations>`:""}`}
+// a sentence of the draft that names the DRDP or rates the child is left out
+function tsClean(t){return String(t||"").split(/\n+/).map(p=>(p.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g)||[]).filter(x=>!TS_RATING.test(x)).join("").trim()).filter(Boolean).join("\n\n")}
+function tsRender(){if(view==="child"&&kidTab==="transition"){const y=window.scrollY;renderMain();window.scrollTo(0,y)}}
+// an empty part is filled with the draft, and a part already written keeps its words with the draft waiting beside it
+async function tsDraft(c){if(!sample){toast("Writing help is not available here.");return}if(tsBusy[c.id])return;const src=tsSources(c);
+  if(!src.obs.length&&!src.pieces.length&&!src.confs.length){toast(`Nothing is written about ${c.first} yet to draft from.`);return}
+  tsFlush(c.id);tsBusy[c.id]=true;tsRender();
+  try{const out=await askRead(tsPrompt(c,src),{modelTier:"complex",cache:false,purpose:"transition"});
+    const x=tsOf(c),cur=(x&&x.sections)||{},fill={},wait={};
+    for(const [k] of TS_SECTIONS){const v=tsClean(out&&out[k]);if(!has(v))continue;if(has(cur[k])){if(v!==String(cur[k]).trim())wait[k]=v}else fill[k]=v}
+    tsDrafts[c.id]=wait;const nf=Object.keys(fill).length,nw=Object.keys(wait).length;
+    const patch={draftedAt:Date.now(),draftedBy:whoAmI(),from:{observations:src.obs.length,slides:src.pieces.length,conferences:src.confs.length}};
+    if(nf){patch.sections=fill;if(x&&x.status==="ready")patch.status="draft"}if(!x)Object.assign(patch,{status:"draft",createdAt:Date.now(),createdBy:whoAmI()});
+    tsPatch(c,patch);
+    toast(nw?"The draft waits beside the parts already written.":nf?"Drafted. Read it through and change anything.":"The notes did not give enough to draft from.")}
+  catch(e){toast(assistError(e?.code||"unknown","Try again in a minute."))}
+  finally{tsBusy[c.id]=false;tsRender()}}
+function tsStateText(x){if(!tsAny(x))return "Not started";const ch=tsChanged(x);return x.status==="ready"?(x.shared?(ch?"Ready, changed since it was shared":"Ready and shared with the family"):"Ready"):(x.shared?"Draft, changed since it was shared":"Draft")}
+function tsWarn(s){const bad=TS_SECTIONS.filter(([k])=>TS_RATING.test((s||{})[k]||"")).map(x=>x[1]);
+  return bad.length?`<div class="hint warnline">${esc(bad.join(" and "))} ${bad.length===1?"has":"have"} words about the DRDP, a level, a score or a rating. The summary leaves those out.</div>`:""}
+function tsShareText(c,x){const go=isDirector()&&!VIEW_AS?` <button class="linkbtn" data-ktab="details">Shared with the family</button>`:"";
+  if(x&&x.shared)return `Shared with the family on ${esc(longDate(String(x.shared.at||"").slice(0,10)))}.${tsChanged(x)?" The Family page still shows it as it read then.":""}${go}`;
+  if(x&&x.status==="ready")return `Ready. The director shares it with the family from the Details tab, under Shared with the family.${go}`;
+  return "Mark it ready once the team has read it through. The director then shares it with the family."}
+function tsHtml(c){const x=tsOf(c),s=(x&&x.sections)||{},dr=tsDrafts[c.id]||{},busy=!!tsBusy[c.id],src=tsSources(c),age=kidAgeText(c),f=esc(c.first);
+  const n=src.obs.length,np=src.pieces.length,nc=src.confs.length,any=tsAny(x),nd=Object.keys(dr).length;
+  const cnt=(k,w)=>`${k} ${w}${k===1?"":"s"}`;
+  const reads=n+np+nc?`TREE reads ${[n&&cnt(n,"observation"),np&&cnt(np,"portfolio slide"),nc&&cnt(nc,"conference")].filter(Boolean).join(", ").replace(/, ([^,]*)$/," and $1")} for ${f}.`:`Nothing is written about ${f} yet to draft from. The draft reads observations that tag ${f}, slides in the portfolio and conference notes.`;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Transition summary</h3><span class="cnt" id="ts-state">${esc(tsStateText(x))}</span></div>
+    <div class="cnt">${esc([tsNext(c),age?"Age "+age:""].filter(Boolean).join(". "))}.</div>
+    <div class="cnt" style="margin-top:4px">One to two pages for ${f}'s family and next school, drafted only from ${f}'s own observations, portfolio and conference notes, in the educators' words. It never has DRDP levels, scores or ratings.</div>
+    <div class="cnt" style="margin-top:4px">${reads}</div>
+    <div class="actions"><button class="btn small${any?" ghost":""}" data-tsdraft="1" ${busy||!(n+np+nc)?"disabled":""}>${busy?'<span class="spin"></span> Drafting':any?"Draft again":"Draft the summary"}</button>${nd>1?`<button class="btn small" data-tsuseall="1">Use all ${nd} drafts</button>`:""}</div>
+    ${any||nd?"":`<div class="empty">Nothing is written yet. Draft it, or write each part below.</div>`}</section>
+  <section class="card">${TS_SECTIONS.map(([k,l])=>`<label class="tslab"><span class="lbl">${l}</span><textarea data-ts="${k}" rows="${Math.min(14,Math.max(4,Math.ceil(String(s[k]||"").length/65)+1))}" placeholder="${esc(TS_HINT[k].replace(/\{first\}/g,c.first))}">${esc(s[k]||"")}</textarea></label>${dr[k]?`<div class="tsdraft"><span class="cnt">The draft for ${l.toLowerCase()}</span><div style="white-space:pre-line">${esc(dr[k])}</div><div class="actions"><button class="btn small ghost" data-tsuse="${k}">Use this draft</button><button class="linkbtn" data-tsnot="${k}">Not this</button></div></div>`:""}`).join("")}
+    <div id="ts-warn">${tsWarn(s)}</div>
+    <div class="actions">${x&&x.status==="ready"?`<button class="btn small ghost" data-tsready="0">Back to draft</button>`:`<button class="btn small" data-tsready="1" ${any?"":"disabled"}>Mark ready</button>`}${any?printBtns("transition",c.id,"PDF"):""}</div>
+    <div class="cnt">${tsShareText(c,x)}</div></section>`}
+// the director shares it on the Details tab, under Shared with the family, and the office sees where it stands
+function tsShareRow(c){const x=tsOf(c);if(!tsAny(x))return "";const dir=isDirector()&&!VIEW_AS;
+  if(x.shared)return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ${esc(shortDate(new Date(x.shared.at).getTime()))}${tsChanged(x)?" · changed since":""}</span></span>${dir?`<span class="actions" style="margin:0">${tsChanged(x)&&x.status==="ready"?`<button class="linkbtn" data-tsshare="${esc(c.id)}">Share again</button>`:""}<button class="linkbtn" data-tsunshare="${esc(c.id)}">Stop sharing</button></span>`:""}</div>`;
+  if(x.status==="ready")return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ready, not shared yet</span></span>${dir?`<button class="btn small ghost" data-tsshare="${esc(c.id)}">Share it</button>`:""}</div>`;
+  return `<div class="cnt">The transition summary is still a draft. It can be shared once it is marked ready.</div>`}
+function transitionDoc(c){const x=tsOf(c)||{},s=x.sections||{},age=kidAgeText(c);
+  // each paragraph keeps its own lines, and the part's heading stays with its first one
+  const blocks=TS_SECTIONS.filter(([k])=>has(s[k])).flatMap(([k,l])=>String(s[k]).trim().split(/\n\s*\n/).filter(has).map((p,i)=>dText(i?"":l,p.trim())));
+  if(!blocks.length)blocks.push(dText("","Nothing is written in this summary yet."));
+  const meta=[["Child",kidName(c)],["Age",age],["Next year",({k:"Kindergarten",tk:"TK"})[kidNext(c)]||""],["Class",c.classroom?c.classroom+" Class":""],["Date",longDate(iso(new Date()))]].filter(m=>m[1]);
+  return {display:true,type:"report",acc:"story",title:"Transition summary",meta,blocks}}
+document.addEventListener("input",e=>{const t=e.target;if(view!=="child"||!t.dataset||!t.dataset.ts)return;const c=children.get(kidOpen);if(!c)return;
+  const x=tsOf(c),w=tsWait[c.id]=tsWait[c.id]||{sections:{}};w.sections[t.dataset.ts]=t.value;
+  if(!x)Object.assign(w,{status:"draft",createdAt:w.createdAt||Date.now(),createdBy:whoAmI()});
+  // a summary changed after it was marked ready goes back to draft, for the team to read again
+  else if(x.status==="ready"){w.status="draft";x.status="draft";const rb=$('[data-tsready="0"]');if(rb){rb.dataset.tsready="1";rb.className="btn small";rb.textContent="Mark ready"}}
+  const all={};document.querySelectorAll("#main [data-ts]").forEach(el=>all[el.dataset.ts]=el.value);
+  const st=$("#ts-state");if(st)st.textContent=tsStateText(Object.assign({},x||{status:"draft"},{sections:all}));
+  const wn=$("#ts-warn");if(wn)wn.innerHTML=tsWarn(all);const mr=$('[data-tsready="1"]');if(mr)mr.disabled=!TS_SECTIONS.some(([k])=>has(all[k]));
+  clearTimeout(tsTimer[c.id]);tsTimer[c.id]=setTimeout(()=>tsFlush(c.id),700)});
+document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.ts&&tsWait[kidOpen])tsFlush(kidOpen)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tsdraft],[data-tsuse],[data-tsnot],[data-tsuseall],[data-tsready]");if(!t||view!=="child")return;const c=children.get(kidOpen);if(!c)return;const d=t.dataset;
+  if(d.tsdraft){tsDraft(c);return}
+  tsFlush(c.id);const x=tsOf(c)||{},dr=tsDrafts[c.id]||{};
+  if(d.tsuse||d.tsuseall){const sec={};for(const k of d.tsuseall?Object.keys(dr):[d.tsuse])if(dr[k]!=null){sec[k]=dr[k];delete dr[k]}
+    if(Object.keys(sec).length)tsPatch(c,Object.assign({sections:sec},x.status==="ready"?{status:"draft"}:{}));tsRender();return}
+  if(d.tsnot){delete dr[d.tsnot];tsRender();return}
+  if(d.tsready==="1"){if(!tsAny(x)){toast("Write the summary first.");return}
+    const bad=TS_SECTIONS.find(([k])=>TS_RATING.test((x.sections||{})[k]||""));if(bad){toast(`${bad[1]} has words about the DRDP, a level, a score or a rating. Change them first, since the summary leaves those out.`);return}
+    tsPatch(c,{status:"ready",readyAt:Date.now(),readyBy:whoAmI()});toast("Marked ready.");tsRender();return}
+  if(d.tsready==="0"){tsPatch(c,{status:"draft"});tsRender()}});
+// only the director shares it on the Family page, as it reads now, and only she stops sharing it. The server keeps the same rule.
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tsshare],[data-tsunshare]");if(!t)return;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!isDirector())return;
+  const c=children.get(t.dataset.tsshare||t.dataset.tsunshare),x=tsOf(c);if(!c||!x)return;
+  if(t.dataset.tsshare){if(x.status!=="ready"){toast("Mark the summary ready first.");return}
+    if(!confirm(`Share ${c.first}'s transition summary on the Family page? ${c.first}'s family will see it as it reads now.`))return;
+    tsPatch(c,{shared:{at:new Date().toISOString(),by:whoAmI(),plan:kidNext(c),sections:Object.fromEntries(TS_SECTIONS.map(([k])=>[k,String((x.sections||{})[k]||"").trim()]))}});
+    renderMain();toast("The transition summary is on the Family page.");return}
+  if(!confirm(`Stop sharing ${c.first}'s transition summary? It comes off the Family page.`))return;
+  tsPatch(c,{shared:{__delete__:true}});renderMain();toast("The transition summary is no longer shared.")});
 
 /* ---------- School years ---------- */
 // a school year runs August to July. Records made before years were kept belong to the year they happened in.
