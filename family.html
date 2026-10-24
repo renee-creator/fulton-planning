@@ -102,14 +102,10 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(!r.ok)throw new Error(j.error||"Something went wrong. Try again.");return j;
   }
   const day=d=>{if(!d)return"";const t=new Date(d+"T12:00:00");return t.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})};
-  function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
-  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
-  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
-  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
-  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
-  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
-  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
-  const time=t=>t?timeWords(t):"";
+  function clockTime(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is a plain clock time, 1:15 pm or 9:00 am, the same on every page, print and reminder
+  h=((h%24)+24)%24;return (h%12||12)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")}
+  const time=t=>t?clockTime(t):"";
   const hrs=n=>n+" hour"+(n==1?"":"s");
   const many=(n,w)=>n+" "+w+(n==1?"":(w==="child"?"ren":"s"));
   const whoLine=(m,counts)=>[m.who,counts?many(m.adults||0,"adult")+", "+many(m.children||0,"child"):""].filter(Boolean).join(" · ");

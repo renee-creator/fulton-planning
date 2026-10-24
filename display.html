@@ -130,15 +130,11 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const whenOf=t=>{const d=new Date(t),today=new Date();const same=(a,b)=>a.toDateString()===b.toDateString();const y=new Date();y.setDate(y.getDate()-1);
     return same(d,today)?"Today":same(d,y)?"Yesterday":d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})};
-  function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
-  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
-  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
-  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
-  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
-  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
-  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
-  const timeOf=s=>{const m=/T(\d{2}):(\d{2})/.exec(s);return m?timeWords(m[1]+":"+m[2]):""};
-  const nowWords=()=>{const d=new Date();return timeWords(d.getHours()*60+d.getMinutes())};
+  function clockTime(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is a plain clock time, 1:15 pm or 9:00 am, the same on every page, print and reminder
+  h=((h%24)+24)%24;return (h%12||12)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")}
+  const timeOf=s=>{const m=/T(\d{2}):(\d{2})/.exec(s);return m?clockTime(m[1]+":"+m[2]):""};
+  const nowClock=()=>{const d=new Date();return clockTime(d.getHours()*60+d.getMinutes())};
   const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" Class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" Classes";
   const weekText=iso=>/^\d{4}-\d{2}-\d{2}$/.test(iso||"")?"Week of "+new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"}):"";
   const names=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a.slice(-1);
@@ -270,7 +266,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   function quiet(){if(stopped)return;if(!resting()){restEl=null;foot.classList.remove("away");pos=-1;return next()}
     foot.classList.add("away");
     if(!restEl||!restEl.isConnected){note("","");restEl=stage.lastElementChild;restEl.classList.add("rest");restEl.innerHTML=`<div class="clock"></div><div class="sub">TREE rests until morning. Click to see it now.</div>`}
-    restEl.querySelector(".clock").textContent=nowWords();
+    restEl.querySelector(".clock").textContent=nowClock();
     restEl.style.paddingTop=(Math.random()*30)+"vh";restEl.style.justifyContent="flex-start";
     clearTimeout(timer);timer=setTimeout(quiet,60000)}
 
@@ -289,7 +285,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
 
   /* the clock in the corner */
   const nowEl=document.getElementById("now");
-  function tick(){nowEl.textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+"   "+nowWords()}
+  function tick(){nowEl.textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+"   "+nowClock()}
   tick();setInterval(tick,15000);
 
   /* keep the screen awake, fill it on one click, and hide the pointer */

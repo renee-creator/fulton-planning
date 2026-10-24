@@ -193,7 +193,7 @@ button.tg-head:hover{background:var(--bg)}
 .ag-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;border:none;background:var(--bg);padding:8px 12px;text-align:left;font-family:var(--display);font-weight:500;font-size:15.5px}
 .ag-h.today{color:var(--marigold)}
 .ag-h small{font-family:var(--body);font-size:12.5px;color:var(--moss);font-weight:600}
-.ag-row{display:grid;grid-template-columns:168px 12px minmax(0,1fr);gap:8px;align-items:start;width:100%;border:none;border-top:1px solid var(--line-soft);background:transparent;padding:8px 12px;text-align:left}
+.ag-row{display:grid;grid-template-columns:140px 12px minmax(0,1fr);gap:8px;align-items:start;width:100%;border:none;border-top:1px solid var(--line-soft);background:transparent;padding:8px 12px;text-align:left}
 .ag-row:hover{background:var(--bg)}
 .ag-row .tm{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ag-row .sw{margin-top:4px;width:12px;height:12px}
@@ -236,7 +236,7 @@ button.tg-head:hover{background:var(--bg)}
   .mine-row{padding:10px 6px} .mine-row b{font-size:15.500px} .mine-row span.sub{font-size:14px}
   .linkbtn{font-size:15px;padding-block:11px}
   .ag-h{padding:12px;font-size:17px} .ag-h small{font-size:13.500px}
-  .ag-row{grid-template-columns:128px 14px minmax(0,1fr);gap:10px;padding:12px}
+  .ag-row{grid-template-columns:112px 14px minmax(0,1fr);gap:10px;padding:12px}
   .ag-row .tm{font-size:14px} .ag-row b{font-size:16px} .ag-row .sub{font-size:14px} .ag-row .sw{width:14px;height:14px}
   .ag-none{font-size:14.500px;padding:12px}
   .mo-cell{min-height:68px} .mo-num{font-size:16px;width:30px;height:30px}
@@ -490,17 +490,14 @@ const mondayOf = s => addDays(s, -((dow(s)+6)%7));
 const weekLabel = monday => "Week of "+fmt(monday,{weekday:"long",month:"long",day:"numeric"});
 const fmt = (s,o) => new Date(dayNum(s)*864e5).toLocaleDateString("en-US",Object.assign({timeZone:"UTC"},o));
 const localToday = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
-function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
-  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
-  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
-  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
-  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
-  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
-  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
-function clock(min){ return timeWords(min); }
-function shortClock(min){ return timeWords(min); }
+function clockTime(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is a plain clock time, 1:15 pm or 9:00 am, the same on every page, print and reminder
+  h=((h%24)+24)%24;return (h%12||12)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")}
+function clock(min){ return clockTime(min); }
+function shortClock(min){ return clockTime(min); }
 function hourLabel(min){ const h=Math.floor(min/60), h12=h%12===0?12:h%12; return h12+(h>=12&&h<24?" pm":" am"); }
-function span(a,b){ return clock(a)+" to "+clock(b); }
+// a span in one half of the day names am or pm once, 1:15 to 1:35 pm
+function span(a,b){ const A=clock(a), B=clock(b); return A.slice(-2)===B.slice(-2) ? A.slice(0,-3)+" to "+B : A+" to "+B; }
 const mins = iso => Number(iso.slice(11,13))*60+Number(iso.slice(14,16));
 
 /* ---------- state ---------- */
@@ -574,7 +571,7 @@ const restOf = b => { const first=firstOf(b); return [b.group&&b.what? b.what : 
 const isMine = b => b.by===S.me && (!S.shared || (!!S.who && b.who===S.who));
 const HH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hh")) || 60;
 function describe(t){
-  if(t.kind==="event") return t.ev.title+", "+(t.ev.allDay?"all day":span(t.start,t.end))+", "+t.cal.name+", view only";
+  if(t.kind==="event") return t.ev.title+", "+(t.ev.allDay?"all day":span(t.start,t.end))+(t.ev.conf?"":", "+t.cal.name+", view only");
   return t.space.name+", "+(t.bk.week?"all week":span(t.start,t.end))+", "+nameOf(t.bk)+(forOf(t.bk)?", "+forOf(t.bk):"");
 }
 function openEntry(t){ if(t.kind==="event") openEventInfo(t.ev,t.cal); else openBooking(t.bk); }
@@ -654,7 +651,7 @@ function agRow(x){
   const isEv=x.kind==="event";
   return h("button",{type:"button",class:"ag-row c-"+(isEv?x.cal.color:x.space.color),onclick:()=>openEntry(x)},
     h("span",{class:"tm",text: x.start==null? (isEv?"All day":"All week") : span(x.start,x.end)}), h("span",{class:"sw"+(isEv?" ring":"")}),
-    h("span",{}, h("b",{text:isEv?x.ev.title:x.space.name}), h("span",{class:"sub",text:isEv? x.cal.name+", view only" : (forOf(x.bk)? forOf(x.bk)+", "+nameOf(x.bk) : nameOf(x.bk))})));
+    h("span",{}, h("b",{text:isEv?x.ev.title:x.space.name}), h("span",{class:"sub",text:isEv? (x.ev.conf?"":x.cal.name+", view only") : (forOf(x.bk)? forOf(x.bk)+", "+nameOf(x.bk) : nameOf(x.bk))})));
 }
 function renderDayList(idx){
   const d=S.anchor, v=idx.get(d)||{allDay:[],timed:[]}, st=settings(), box=h("div",{});
@@ -891,11 +888,13 @@ function openBooking(b){
 }
 function openEventInfo(e, cal){
   let when;
-  if(e.allDay) when = e.start===e.end ? fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+"\nAll day" : fmt(e.start,{weekday:"short",month:"long",day:"numeric"})+" to "+fmt(e.end,{weekday:"short",month:"long",day:"numeric"});
+  if(e.allDay) when = e.start===e.end ? fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+"\nAll day" : fmt(e.start,{weekday:"long",month:"long",day:"numeric"})+" to "+fmt(e.end,{weekday:"long",month:"long",day:"numeric"});
   else { const sd=e.start.slice(0,10), ed=e.end.slice(0,10);
     when = sd===ed ? fmt(sd,{weekday:"long",month:"long",day:"numeric"})+"\n"+span(mins(e.start),mins(e.end)) : fmt(sd,{weekday:"long",month:"long",day:"numeric"})+", "+clock(mins(e.start))+" to "+fmt(ed,{weekday:"long",month:"long",day:"numeric"})+", "+clock(mins(e.end)); }
   // a PD day or monthly PD staff meeting opens its agenda in TREE
   const agenda = e.agenda || (/\bP\.?D\.?\b|professional development|staff development|in.?service|staff meeting/i.test(e.title||"") ? String(e.start||"").slice(0,10) : "");
+  // a conference shows only Conference, the child's name and Class, and when
+  if(e.conf){ showInfo({ tag:"Family conference", locked:true, title:e.title, rows:[["When",when]] }); return; }
   showInfo({ tag:"School calendar, view only", locked:true, agenda, story:{id:e.id,title:e.title,when:when.replace(/\n/g,", "),where:e.location||"",desc:e.desc||""}, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
 }
 function showInfo(o){

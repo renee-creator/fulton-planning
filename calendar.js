@@ -287,10 +287,26 @@ async function eventsFor(from, to, me) {
   if (opts.extraEvents) { try { const x = opts.extraEvents(from, to, me); const into = confCalId();
     Object.assign(status, x.status);
     const confs = x.events.filter(e => e.cal === 'tconf'), rest = x.events.filter(e => e.cal !== 'tconf'); out.push(...rest);
-    if (into) { delete status.tconf; const have = new Set(out.filter(e => e.cal === into).map(e => String(e.start).slice(0, 16)));
-      for (const e of confs) if (!have.has(String(e.start).slice(0, 16))) out.push(Object.assign({}, e, { cal: into })); }
+    if (into) { delete status.tconf; const left = slotsNamed(out, into, confs);
+      for (const e of left) out.push(Object.assign({}, e, { cal: into })); }
     else out.push(...confs); } catch (e) { log('Could not add conferences to the calendar', e.message); } }
   return { events: out, status };
+}
+// Each timed slot on the conference calendar reads as the conference booked in TREE for it, Conference, the child's
+// name and Class, and a slot nobody has booked reads Open conference time. The slot's own title and notes are left out.
+// A conference is matched to the slot that starts at its time, or else the slot its time falls inside, and to one slot
+// only. Returns the conferences no slot holds, so they still show. The cached feed entries are copied, never changed.
+function slotsNamed(out, calId, confs) {
+  const left = confs.slice();
+  const at = e => String(e.start).slice(0, 16);
+  const take = test => { const i = left.findIndex(test); return i < 0 ? null : left.splice(i, 1)[0]; };
+  const idx = out.map((e, i) => i).filter(i => out[i].cal === calId && !out[i].allDay).sort((a, b) => at(out[a]).localeCompare(at(out[b])));
+  const pick = new Map();
+  for (const i of idx) { const c = take(c => !c.allDay && at(c) === at(out[i])); if (c) pick.set(i, c); }
+  for (const i of idx) { if (pick.has(i)) continue; const s = out[i]; const c = take(c => !c.allDay && at(c) > at(s) && at(c) < String(s.end).slice(0, 16)); if (c) pick.set(i, c); }
+  for (const i of idx) { const c = pick.get(i);
+    out[i] = Object.assign({}, out[i], { conf: true, title: c ? c.title : 'Open conference time', desc: '', location: '' }, c ? { confId: c.id } : { open: true }); }
+  return left;
 }
 
 

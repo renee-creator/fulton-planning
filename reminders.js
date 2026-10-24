@@ -159,8 +159,8 @@ module.exports = function reminders(o) {
   function schoolDaysUntil(a, b) { if (b < a) return -1; let n = 0; for (let d = a; d < b; d = addDays(d, 1)) { const w = new Date(d + 'T12:00:00Z').getUTCDay(); if (d !== a && w > 0 && w < 6) n++; } const w = new Date(b + 'T12:00:00Z').getUTCDay(); return a === b ? 0 : n + (w > 0 && w < 6 ? 1 : 0); }
   function addSchoolDays(d, n) { let x = d; while (n < 0) { x = addDays(x, -1); const w = new Date(x + 'T12:00:00Z').getUTCDay(); if (w > 0 && w < 6) n++; } return x; }
   const dayWord = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' });
-  // a time is said the way people say it, quarter past one, never with a colon
-  const timeWord = require('./time-words.js');
+  // a time is a plain clock time, such as 1:15 pm
+  const timeWord = require('./clock-time.js');
   // what one educator has open now, each with where tapping it should lead
   function openFor(e, when, S) {
     const { week } = when; const start = S.start || week; const off = new Set(personOf(S, e.name).off || []); const on = t => S.types[t] && !off.has(t);

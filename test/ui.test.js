@@ -18,12 +18,12 @@ test('TREE in the browser', async t => {
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 
-  await t.test('a check-in reads its day in full and its time in words', async () => {
+  await t.test('a check-in reads its day in full and its time as a clock time', async () => {
     const s = await signedIn(fx, b, 'Bea', '1357');
     await s.p.evaluate(() => goView('stci')); await s.p.waitForFunction(() => /My next check-in/.test(document.querySelector('#main').innerText), null, { timeout: 15000 });
     const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
-    assert.match(text, /quarter past ten/);
-    assert.doesNotMatch(text, /\d:\d\d/);
+    assert.match(text, /Monday, November 2, 10:15 am/);
+    assert.doesNotMatch(text, /quarter past|o'clock|\d:\d\d ?(AM|PM)/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 
@@ -110,19 +110,107 @@ test('TREE in the browser', async t => {
     assert.match(await s.p.evaluate(() => document.querySelector('#main').innerText), /North Class/);
     await s.p.evaluate(() => goView('stci')); await s.p.waitForFunction(() => /My next check-in/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
     const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
-    assert.match(text, /quarter past ten/); assert.doesNotMatch(text, /could not open/);
+    assert.match(text, /10:15 am/); assert.doesNotMatch(text, /could not open/);
     await s.p.evaluate(() => goView('stgrow')); await s.p.waitForTimeout(1500);
     assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /could not open/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 
-  await t.test('the calendar reads days in full and no time with a colon', async () => {
+  await t.test('the calendar reads days in full and times as clock times', async () => {
     const s = await signedIn(fx, b, 'Ann', '1357', 1280);
     await s.p.evaluate(() => goView('calendar'));
     let text = '';
     for (let i = 0; i < 40 && !/The rest of the week|Nothing scheduled/.test(text); i++) { await s.p.waitForTimeout(250); const f = s.p.frames().find(f => /tree-calendar/.test(f.url())); text = f ? await f.evaluate(() => document.body.innerText).catch(() => '') : ''; }
     assert.match(text, /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d/);
-    assert.doesNotMatch(text, /\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d|\d:\d\d/);
+    assert.doesNotMatch(text, /\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d|quarter past|half past|o'clock/);
     await s.close();
+  });
+
+  await t.test('Write my plan shows on Today for a Class educator, and not for the director or the office', async () => {
+    for (const [n, pass, want] of [['Ann', '1357', true], ['Dee', 'director-pass-1', false], ['Gia', '1357', false]]) {
+      const s = await signedIn(fx, b, n, pass);
+      await s.p.evaluate(() => goView('today')); await s.p.waitForFunction(() => /Make documentation/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+      assert.strictEqual(/Write my plan/.test(await s.p.evaluate(() => document.querySelector('#main').innerText)), want, n);
+      assert.deepStrictEqual(s.errors, []); await s.close();
+    }
+  });
+
+  await t.test('the director\'s Educators pages sit under four tabs, every page two taps away, and the page starts on the first screen of a phone', async () => {
+    for (const w of [360, 1280]) {
+      const s = await signedIn(fx, b, 'Dee', 'director-pass-1', w);
+      await s.p.evaluate(() => goView('stteam')); await s.p.waitForSelector('#tsubnav .stgroups');
+      const groups = await s.p.$$eval('#tsubnav .stgroups button', bs => bs.map(x => x.textContent.trim()));
+      assert.deepStrictEqual(groups, ['People', 'Growth', 'PD and Licensing', 'Records']);
+      const seen = new Set();
+      for (let g = 0; g < groups.length; g++) {
+        await s.p.click(`#tsubnav .stgroups button:nth-child(${g + 1})`); await s.p.waitForTimeout(400);
+        const pages = await s.p.$$eval('#tsubnav .stpages button', bs => bs.map(x => x.dataset.tview));
+        const cur = await s.p.evaluate(() => view); seen.add(cur);
+        for (const v of pages) { await s.p.click(`#tsubnav .stpages button[data-tview="${v}"]`); await s.p.waitForTimeout(300); seen.add(await s.p.evaluate(() => view)); }
+      }
+      for (const v of ['stteam', 'strec', 'stnew', 'stgrow', 'stplan', 'stjour', 'stci', 'stmom', 'stpd', 'stpdd', 'sthb', 'st27', 'stdrill', 'stfiles']) assert.ok(seen.has(v), w + ' ' + v);
+      await s.p.evaluate(() => goView('stteam')); await s.p.waitForFunction(() => /Every educator/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+      const navBottom = await s.p.evaluate(() => document.querySelector('#tsubnav').getBoundingClientRect().bottom + window.scrollY);
+      assert.ok(navBottom < (w === 360 ? 380 : 260), 'the tabs end at ' + navBottom);
+      const cardTop = await s.p.evaluate(() => document.querySelector('#main section.card').getBoundingClientRect().top + window.scrollY);
+      assert.ok(cardTop < 640, 'the page starts at ' + cardTop);
+      assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+      assert.deepStrictEqual(s.errors, []); await s.close();
+    }
+  });
+
+  await t.test('tabs use the full page names, the same words as the page title', async () => {
+    const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+    await s.p.evaluate(() => goView('st27')); await s.p.waitForFunction(() => /Coming October 1, 2027/.test(document.querySelector('#main h2') && document.querySelector('#main h2').textContent), null, { timeout: 10000 });
+    const tabs = await s.p.$$eval('#tsubnav .stpages button', bs => bs.map(x => x.textContent.trim()));
+    assert.ok(tabs.includes('Coming October 1, 2027') && tabs.includes('Teacher Policies and Procedures'), tabs.join(', '));
+    await s.p.click('#tsubnav .stpages button[data-tview="sthb"]'); await s.p.waitForFunction(() => /Teacher Policies and Procedures/.test(document.querySelector('#main h2') && document.querySelector('#main h2').textContent), null, { timeout: 10000 });
+    await s.close();
+    const a = await signedIn(fx, b, 'Ann', '1357');
+    await a.p.evaluate(() => goView('sthb')); await a.p.waitForSelector('#tsubnav');
+    const mine = await a.p.$$eval('#tsubnav button.sub', bs => bs.map(x => x.textContent.trim()));
+    assert.ok(mine.includes('Teacher Policies and Procedures'), mine.join(', ')); assert.ok(!mine.includes('Policies'));
+    await a.close();
+  });
+
+  await t.test('the check-in has five parts in order, then After the check-in, and an earlier check-in keeps every answer', async () => {
+    for (const w of [360, 1280]) {
+      const s = await signedIn(fx, b, 'Dee', 'director-pass-1', w);
+      await s.p.evaluate(() => goView('stci')); await s.p.waitForSelector('[data-gci="Bea"]', { timeout: 10000 });
+      await s.p.click('[data-gci="Bea"]'); await s.p.waitForFunction(() => /After the check-in/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+      const heads = await s.p.$$eval('#main section.card h3', hs => hs.map(h => h.textContent.trim()));
+      const want = ['Professional temperature', 'Plus delta', 'Growth Plan check', 'One support', 'Focus Until Next Time', 'Earlier answers', 'After the check-in'];
+      const at = want.map(x => heads.findIndex(h => h.startsWith(x)));
+      assert.ok(at.every(i => i >= 0) && at.every((x, i) => !i || x > at[i - 1]), heads.join(' | '));
+      const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
+      assert.ok(!heads.some(h => /^(One challenge|Curriculum, environment and child goals|Team alignment|Follow-up notes|Check-in effectiveness)/.test(h)), heads.join(' | '));
+      assert.match(text, /The garden beds/); assert.match(text, /Rainy days indoors/);
+      const after = await s.p.evaluate(() => [...document.querySelectorAll('#main section.card')].find(c => /After the check-in/.test(c.querySelector('h3').textContent)).innerText);
+      assert.match(after, /Follow-up notes/); assert.match(after, /Team alignment/); assert.match(after, /Check-in effectiveness/);
+      if (w === 1280) {
+        await s.p.fill('[data-gcf="goalsLine"]', 'Both goals moving');
+        await s.p.click('[data-gcsave]'); await s.p.waitForTimeout(2500);
+        const g = JSON.parse(require('fs').readFileSync(require('path').join(fx.dir, 'staff/growth/bea.json'), 'utf8')).checkins[0];
+        assert.strictEqual(g.work, 'The garden beds'); assert.strictEqual(g.challenge, 'Rainy days indoors'); assert.strictEqual(g.align.note, 'More shared planning time');
+        assert.strictEqual(g.goals.g1, 'Halfway there'); assert.strictEqual(g.goalsLine, 'Both goals moving'); assert.strictEqual(g.followup, 'Order the easel');
+      }
+      assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+      assert.deepStrictEqual(s.errors, []); await s.close();
+    }
+  });
+
+  await t.test('the director, a Class educator and the kitchen open their pages at phone width and on a desktop with no errors and no sideways scroll', async () => {
+    const who = [['Dee', 'director-pass-1', ['today', 'moments', 'stteam', 'stci', 'calendar']], ['Ann', '1357', ['today', 'moments', 'stci', 'sthb', 'calendar']], ['Kit', '1357', ['kitchen', 'today', 'calendar']]];
+    for (const w of [360, 1280]) for (const [n, pass, views] of who) {
+      const s = await signedIn(fx, b, n, pass, w);
+      for (const v of views) {
+        await s.p.evaluate(v => goView(v), v); await s.p.waitForTimeout(1200);
+        assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, `${n} ${v} ${w}`);
+        const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
+        assert.doesNotMatch(text, /quarter past|half past|o'clock|[—–]/, `${n} ${v} ${w}`);
+      }
+      if (n === 'Kit') assert.doesNotMatch(await s.p.evaluate(() => document.body.innerText), /Write my plan|Proofread observations/);
+      assert.deepStrictEqual(s.errors, [], `${n} ${w}`); await s.close();
+    }
   });
 });

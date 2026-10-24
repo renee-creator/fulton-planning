@@ -371,9 +371,11 @@ module.exports = function growthModule(c) {
       const g = growth(who); const b = body.checkin || {}; const id = String(b.id || '') || rid('c'); const was = (g.checkins || []).find(x => x.id === id) || {};
       const r15 = v => { const n = Math.round(+v); return n >= 1 && n <= 5 ? n : 0; };
       const ci = Object.assign({}, was, { id, date: ISO.test(b.date || '') ? b.date : was.date || today(),
-        temp: { self: r15((b.temp || {}).self), dir: r15((b.temp || {}).dir), words: txt((b.temp || {}).words) }, align: { rating: r15((b.align || {}).rating), note: txt((b.align || {}).note) },
-        work: txt(b.work), challenge: txt(b.challenge), support: txt(b.support), plus: txt(b.plus), delta: txt(b.delta),
-        goals: Object.fromEntries(Object.entries(b.goals || {}).slice(0, 4).map(([k, v]) => [String(k).slice(0, 20), txt(v, 2000)])),
+        temp: { self: r15((b.temp || {}).self), dir: r15((b.temp || {}).dir), words: txt((b.temp || {}).words) },
+        // the check-in has five parts now. Answers kept before, to questions no longer asked, stay as they were written.
+        align: { rating: r15((b.align || {}).rating), note: 'note' in (b.align || {}) ? txt(b.align.note) : txt((was.align || {}).note) },
+        work: 'work' in b ? txt(b.work) : txt(was.work), challenge: 'challenge' in b ? txt(b.challenge) : txt(was.challenge), support: txt(b.support), plus: txt(b.plus), delta: txt(b.delta), goalsLine: txt(b.goalsLine, 600),
+        goals: Object.fromEntries(Object.entries(b.goals || was.goals || {}).slice(0, 4).map(([k, v]) => [String(k).slice(0, 20), txt(v, 2000)])),
         focus: { mine: txt((b.focus || {}).mine, 1500), seen: txt((b.focus || {}).seen, 1500), settled: txt((b.focus || {}).settled, 1500), area: AREA_KEYS.includes((b.focus || {}).area) ? b.focus.area : '', module: MODULE_LIST.some(m => m[0] === (b.focus || {}).module) ? b.focus.module : '' },
         followup: txt(b.followup), effect: r15(b.effect), at: was.at || Date.now(), updatedAt: Date.now(), by: me });
       g.checkins = [ci, ...(g.checkins || []).filter(x => x.id !== id)].sort((a, b) => String(b.date).localeCompare(String(a.date)));

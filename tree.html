@@ -476,6 +476,17 @@ body{margin:0}
 .subnav button.sub[aria-current="page"]{border-color:var(--moss);background:var(--moss-soft);color:var(--moss)}
 .subnav .back{margin-right:6px}
 .subnav .backrow,.subnav .subrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.subnav .stgroups{gap:0;border:1px solid var(--line);border-radius:999px;background:var(--paper);padding:3px;display:inline-flex;max-width:100%}
+.subnav .stgroups button.sub{border:0;background:transparent;color:var(--ink);font-weight:700;padding:7px 16px}
+.subnav .stgroups button.sub[aria-current]{background:var(--acc);color:#fff;border-color:transparent}
+.subnav .stpages{margin-top:10px}
+/* Proofread observations, what was written beside the proofread words */
+.pfrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0}
+.pftext{white-space:pre-line;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
+.pftext del{background:#f6d9d3;color:#7a2416;text-decoration:line-through}
+.pftext ins{background:#d6ead9;color:#1f4d2c;text-decoration:none;font-weight:600}
+.pfbar{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0 4px}.pfbar span{display:block;height:100%;background:var(--moss)}
+@media (max-width:760px){.pfrow{grid-template-columns:1fr}}
 .tabbar{display:none}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:0;background:var(--moss);color:var(--paper);border-radius:999px;padding:13px 20px;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.16);cursor:pointer;display:flex;gap:8px;align-items:center}
 .fab svg{width:18px;height:18px}
@@ -579,6 +590,9 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   /* the pages of a section wrap onto a second line, so every one is in view */
   .subnav .subrow{flex-wrap:wrap;gap:6px}
   .subnav .subrow button.sub{white-space:nowrap;flex:none;padding:5px 12px;font-size:14px}
+  .subnav .stgroups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:14px;width:100%}
+  .subnav .stgroups button.sub{padding:9px 8px;font-size:14px;border-radius:11px;min-height:40px}
+  .subnav .stpages{margin-top:8px}
   /* header figures sit two to a row and smaller, so the page's content starts sooner */
   .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .stat{padding:8px 10px}.stat b{font-size:22px}.stat span{font-size:12.5px;line-height:1.3}
@@ -1434,6 +1448,7 @@ function renderMain(){
   if(view==="bin"){renderBin();return}
   if(view==="lens"){renderLens();return}
   if(view==="moments"){renderMoments();return}
+  if(view==="proofobs"){renderProofObs();return}
   if(view==="import"){renderImport();return}
   if(view==="all"){renderAllPlans();return}
   if(view==="connect"||view==="school"){if(!isDirector()){view="plans";LS.set("fps.view",view);renderAll();return}if(view==="school"){view="connect";LS.set("fps.view",view)}renderConnect();return}
@@ -3948,13 +3963,13 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=f7268fcac8","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=92976e373c","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
-const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stpd","PD library"],["stpdd","PD days"],["sthb","Policies"],["st27","October 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stpd","PD library"],["stpdd","PD days"],["sthb","Teacher Policies and Procedures"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
 const SECTION_OF={stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -3977,10 +3992,12 @@ function renderTreeNav(){
   // seven sections share the phone's bar by the width of their names, so Documentation and Educators both fit
   const tb=$("#ttab");if(tb){const n=navSections().length;tb.style.gridTemplateColumns=n>6?`repeat(${n},auto)`:`repeat(${n},minmax(0,1fr))`;tb.style.justifyContent=n>6?"space-around":"";tb.style.columnGap=n>6?"2px":""}if(tb)tb.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
   {const sa=$("#tsearchall");if(sa)sa.hidden=isNewHire()}
-  const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||isNewHire()||STAFF_VIEWS.includes(view)||view==="calendar"||view==="conferences"||view==="kitchen"||(view==="moments"&&!!noticeForm);
+  const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||isNewHire()||STAFF_VIEWS.includes(view)||view==="calendar"||view==="conferences"||view==="kitchen"||view==="proofobs"||(view==="moments"&&!!noticeForm);
   const st=$("#tsettings");if(st){st.hidden=!window.FP_HOSTED&&!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
+// the director's Educators pages, in four groups
+const ST_GROUPS=[["People",["stteam","stnew","stmom"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","sthb","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
 // the pages under a section, shown at the top of the page. A plan that is open shows the way back to its week.
 function subnavHtml(){
   const s=secOf(view);let back="";
@@ -3992,6 +4009,10 @@ function subnavHtml(){
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
   const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
+  // the director's Educators pages sit under four tabs, and the pages of the open one show beneath, so a phone shows the page itself on the first screen
+  if(s==="staff"&&subs&&isDirector()&&!VIEW_AS){const g=ST_GROUPS.map(([n,ks])=>[n,ks.filter(k=>subs.some(x=>x[0]===k))]).filter(([,ks])=>ks.length),cur=g.find(([,ks])=>ks.includes(curSub))||g[0],lab=k=>(subs.find(x=>x[0]===k)||[])[1];
+    if(cur&&cur[1].includes(curSub))stGroupLast[cur[0]]=curSub;
+    return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}<div class="subrow stgroups" aria-label="Educators">${g.map(([n,ks])=>`<button class="sub grp" data-tview="${ks.includes(stGroupLast[n])?stGroupLast[n]:ks[0]}" ${n===cur[0]?'aria-current="true"':""}>${esc(n)}</button>`).join("")}</div>${cur[1].length>1?`<div class="subrow stpages">${cur[1].map(k=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${esc(lab(k))}</button>`).join("")}</div>`:""}</div>`}
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
 function placeSubnav(){
@@ -4005,16 +4026,12 @@ new MutationObserver(()=>placeSubnav()).observe(document.getElementById("main"),
 function myRoom(){if(VIEW_AS){if(VIEW_AS.room)return VIEW_AS.room;const m=VIEW_AS.name.toLowerCase();const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
 const myGroups=()=>{const m=me().toLowerCase();return m?GROUPS.filter(g=>(g.educator||"").toLowerCase()===m):[]};
 const fmtLong=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
-  // a time is said the way people say it, quarter past one or half past nine, never with a colon. Early morning and evening say so.
-  h=((h%24)+24)%24;if(m===0&&h===12)return "noon";if(m===0&&h===0)return "midnight";
-  const N=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"],M=["","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","quarter","sixteen","seventeen","eighteen","nineteen","twenty"];
-  const mw=n=>(n<=20?M[n]:"twenty-"+M[n-20])+(n%5===0||n===15?"":n===1?" minute":" minutes");
-  const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
-  return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
-const tlabel=t=>t?timeWords(t):"";
-// a moment as its day and its time in words, such as Saturday, October 24 at quarter past three
-const whenWords=(ms,o)=>{const d=new Date(ms);return d.toLocaleDateString("en-US",o)+" at "+timeWords(d.getHours()*60+d.getMinutes())};
+function clockTime(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number"){h=Math.floor(t/60);m=t%60}else{const x=String(t).match(/(\d{1,2}):(\d{2})/);if(!x)return String(t);h=+x[1];m=+x[2]}
+  // a time is a plain clock time, 1:15 pm or 9:00 am, the same on every page, print and reminder
+  h=((h%24)+24)%24;return (h%12||12)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")}
+const tlabel=t=>t?clockTime(t):"";
+// a moment as its day and its clock time, such as Saturday, October 24 at 3:15 pm
+const whenAt=(ms,o)=>{const d=new Date(ms);return d.toLocaleDateString("en-US",o)+" at "+clockTime(d.getHours()*60+d.getMinutes())};
 
 /* ---------- Today ---------- */
 let todayCal={at:0,day:"",items:null,error:""};
@@ -4024,7 +4041,7 @@ async function loadTodayCal(force){
   try{const j=await window.FP_API("/api/view",{from:day,to:day});
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
-    for(const e of j.events||[])out.push({kind:(e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
+    for(const e of j.events||[])out.push({kind:(e.conf||e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:e.conf?"":(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
     for(const b of j.bookings||[]){const sp=spaces[b.spaceId]||{};const mins=v=>typeof v==="number"?String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0"):"";
       out.push({kind:"space",start:b.week?"":mins(b.start),end:b.week?"":mins(b.end),week:!!b.week,title:sp.name||"A space",sub:[b.who||b.by,b.group||b.what].filter(Boolean).join(", ")})}
     out.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
@@ -4458,7 +4475,7 @@ function renderToday(){
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from observations</span></button>
-    ${waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
+    ${isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
@@ -6376,7 +6393,7 @@ function renderMoments(){
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
-    <div class="actions">${printTwo("moments","")}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
+    <div class="actions">${printTwo("moments","")}${isDirector()&&!VIEW_AS?(()=>{const n=pfLeft();return n?`<button class="btn small ghost" data-tview="proofobs">Proofread observations, ${n} left</button>`:""})():""}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
     ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   ${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
@@ -11110,16 +11127,19 @@ function proofPaint(){const p=proofPanel;if(!proof){p.hidden=true;p.innerHTML=""
     :(left.length?`<button class="btn small" data-proofall="1">Accept all</button>`:"")+close;
   p.innerHTML=`<div class="proof">${head}<div class="actions">${acts}</div>
     ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><button class="linkbtn cnt" data-proofshow="${f.k}">${esc(f.label||"Show")}</button><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">${sv?"Keep mine":"Leave it"}</button></span></div>`).join("")}</div>`}
-async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=proofFields();
-  if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
-  const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
-  const prompt=`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Keep names of children, people, farms and places exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
+// the one proofread TREE runs, before a save, from the Proofread button and on the Proofread observations page. F is a list of
+// texts, each {k, text}, and the answer is a list of fixes, each a short span and the same span corrected.
+const proofPrompt=F=>`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Never add or remove anything the writer saw or heard. Keep names of children, people, farms and places exactly. Keep every word inside quotation marks exactly as written, since those are a child's own words. Keep the names of the Classes and the words a Class uses for its places and groups exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
 
 Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","from":"a short span copied exactly from that text, with a few words around the error so it appears only once","to":"the same span corrected","why":"two to five words, such as Capital letter or Spelling"}]}. Answer {"fixes":[]} when nothing needs fixing.
 
 ${F.map(f=>`<text id="${f.k}">\n${f.text}\n</text>`).join("\n\n")}`;
-  try{const out=await askRead(prompt,{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
-    const fixes=(Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from)).map(x=>Object.assign(x,{label:by.get(x.k).label}));
+const proofFixes=(out,F)=>{const by=new Map(F.map(f=>[f.k,f]));return (Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from))};
+async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=proofFields();
+  if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
+  const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
+  try{const out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
+    const fixes=proofFixes(out,F).map(x=>Object.assign(x,{label:by.get(x.k).label}));
     if(!fixes.length)proofClean=hash;
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
     proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e?.code||"unknown","Try again in a minute.")}}
@@ -11161,6 +11181,97 @@ const FAMILY_WORDS=new Set(["newsletter","share","story","binnote"]);
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
     return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
   if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
+/* ---------- Proofread observations ----------
+   The director's page for proofreading many saved observations at once. It gathers every observation never proofread,
+   oldest first, and reads a few at a time with the same proofread as above, so no request runs long. Each shows what was
+   written beside the proofread words with the changes marked. Nothing is saved until the director approves, and an approved
+   observation keeps its educator as the author, while the words it had stay in the records' history. */
+const PF_BATCH=4,PF_AHEAD=12;
+let pf=null;
+const pfText=n=>String(n.noticed||"").trim().length+String(n.wonder||"").trim().length>=3;
+// observations never proofread, oldest first. Photos of one post with the same words are proofread once, together.
+function pfGather(){const seen=new Map();
+  for(const n of [...notices.values()].sort((a,b)=>(a.at||0)-(b.at||0)||String(a.id).localeCompare(String(b.id)))){
+    if(!n||n.proofread||!pfText(n))continue;const key=(n.group||n.id)+"\u0001"+(n.noticed||"")+"\u0001"+(n.wonder||"");
+    if(seen.has(key))seen.get(key).ids.push(n.id);else seen.set(key,{id:n.id,ids:[n.id]})}
+  return [...seen.values()]}
+const pfLeft=()=>pfGather().length;
+function pfStart(){const list=pfGather();pf={items:new Map(list.map(x=>[x.id,Object.assign(x,{status:"waiting"})])),order:list.map(x=>x.id),running:false,paused:false,error:"",read:0,saved:0,skipped:0};pfRun()}
+// a fix that would change a child's name, a Class or a child's quoted words is left out, whatever the proofread says
+function pfSafe(text,f){const at=text.indexOf(f.from);if(at<0)return false;const end=at+f.from.length;
+  const quotes=[...text.matchAll(/["“][^"”]{1,400}["”]/g)];
+  for(const m of quotes){const a=m.index,b=a+m[0].length;if(a<end&&b>at&&!(at<=a&&b<=end&&f.to.includes(m[0])))return false}
+  const names=new Set([...CLASSROOMS,...[...children.values()].map(c=>String(c&&c.first||"").trim()).filter(x=>x.length>1)]);
+  for(const w of f.from.match(/[A-Za-z][A-Za-z'’-]*/g)||[])if(names.has(w)&&!new RegExp("(^|[^A-Za-z])"+w.replace(/[^A-Za-z]/g,".")+"([^A-Za-z]|$)").test(f.to))return false;
+  // a fix that adds or takes away more than a few words is no longer a proofread
+  const words=x=>(x.match(/\S+/g)||[]).length;if(Math.abs(words(f.to)-words(f.from))>3)return false;
+  return true}
+function pfApply(text,fixes){let t=String(text||"");for(const f of fixes)if(t.includes(f.from)&&pfSafe(t,f))t=t.replace(f.from,f.to);return t}
+// more is read while some are still waiting and fewer than a page's worth wait for the director
+const pfWants=()=>!!pf&&!pf.running&&!pf.paused&&pf.order.some(id=>pf.items.get(id).status==="waiting")&&pf.order.filter(id=>pf.items.get(id).status==="ready").length<PF_AHEAD;
+async function pfRun(){if(!pfWants())return;pf.running=true;
+  try{for(;;){if(!pf||pf.paused||view!=="proofobs")break;
+    const ready=pf.order.filter(id=>pf.items.get(id).status==="ready").length;if(ready>=PF_AHEAD)break;
+    const batch=pf.order.filter(id=>pf.items.get(id).status==="waiting").slice(0,PF_BATCH).map(id=>pf.items.get(id));if(!batch.length)break;
+    const F=[];for(const x of batch){const n=notices.get(x.id);if(!n){x.status="gone";continue}x.status="reading";x.orig={noticed:String(n.noticed||""),wonder:String(n.wonder||"")};
+      if(x.orig.noticed.trim())F.push({k:x.id+"|n",text:x.orig.noticed});if(x.orig.wonder.trim())F.push({k:x.id+"|w",text:x.orig.wonder})}
+    pfPaint();if(!F.length)continue;
+    let out;try{out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",quick:true})}
+    catch(e){for(const x of batch)if(x.status==="reading")x.status="waiting";
+      pf.error=e&&(e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited")?"The proofreading service could not be reached just now. The observations below are kept, and nothing has changed. Try again in a minute.":"The proofreading did not work this time. "+assistError(e?.code||"unknown","Try again in a minute.");
+      pf.paused=true;break}
+    const fixes=proofFixes(out,F);
+    for(const x of batch){if(x.status!=="reading")continue;const mine=k=>fixes.filter(f=>f.k===x.id+"|"+k);
+      x.fixed={noticed:pfApply(x.orig.noticed,mine("n")),wonder:pfApply(x.orig.wonder,mine("w"))};x.status="ready";pf.read++}
+    pf.error="";pfPaint()}}
+  finally{if(pf)pf.running=false;setTimeout(pfPaint,0)}}
+// the words as written and as proofread, word by word, with what was taken out and what was put in marked
+function pfDiff(a,b){const A=String(a||"").split(/(\s+)/),B=String(b||"").split(/(\s+)/),n=A.length,m=B.length;
+  if(n*m>250000)return [esc(a),esc(b)];
+  const L=Array.from({length:n+1},()=>new Uint16Array(m+1));for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=A[i]===B[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+  let i=0,j=0,x="",y="";while(i<n&&j<m){if(A[i]===B[j]){x+=esc(A[i]);y+=esc(B[j]);i++;j++}else if(L[i+1][j]>=L[i][j+1]){x+=/^\s+$/.test(A[i])?esc(A[i]):`<del>${esc(A[i])}</del>`;i++}else{y+=/^\s+$/.test(B[j])?esc(B[j]):`<ins>${esc(B[j])}</ins>`;j++}}
+  for(;i<n;i++)x+=/^\s+$/.test(A[i])?esc(A[i]):`<del>${esc(A[i])}</del>`;for(;j<m;j++)y+=/^\s+$/.test(B[j])?esc(B[j]):`<ins>${esc(B[j])}</ins>`;return [x,y]}
+function pfItemHtml(x){const n=notices.get(x.id);if(!n)return "";
+  const head=`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:16px">${esc(momentHeading(n)||firstLine(n.noticed,60)||"An observation")}</h3><span class="cnt">${esc([longDate(n.day||iso(new Date(n.at||Date.now()))),n.by||"An educator",n.classroom?n.classroom+" Class":"",x.ids.length>1?x.ids.length+" photos":""].filter(Boolean).join(", "))}</span></div>`;
+  if(x.status!=="ready")return `<section class="card pfitem" data-pfid="${esc(x.id)}">${head}<div class="pftext">${esc([n.noticed,n.wonder].map(v=>String(v||"").trim()).filter(Boolean).join("\n"))}</div><div class="cnt" style="margin-top:6px">${x.status==="reading"?`<span class="spin"></span> Proofreading`:"Waiting to be proofread"}</div></section>`;
+  const parts=[["noticed","What I noticed"],["wonder","What I wonder"]].filter(([k])=>String(x.orig[k]||"").trim()||String(x.fixed[k]||"").trim());
+  const same=parts.every(([k])=>x.orig[k]===x.fixed[k]);
+  const body=x.edit?parts.map(([k,l])=>`<label class="fld-label">${l}, proofread<textarea rows="${Math.min(10,Math.max(3,Math.ceil(String(x.fixed[k]).length/70)))}" data-pfedit="${esc(x.id)}|${k}" style="width:100%">${esc(x.fixed[k])}</textarea></label><div class="cnt">As written. ${esc(x.orig[k])}</div>`).join("")
+    :parts.map(([k,l])=>{const [o,f]=pfDiff(x.orig[k],x.fixed[k]);return `<div class="pfrow"><div><div class="lbl">${l}, as written</div><div class="pftext">${o}</div></div><div><div class="lbl">${l}, proofread</div><div class="pftext">${f}</div></div></div>`}).join("");
+  return `<section class="card pfitem" data-pfid="${esc(x.id)}">${head}${same&&!x.edit?`<div class="cnt" style="margin-bottom:6px">No changes needed.</div>`:""}${body}
+    <div class="actions"><button class="btn small" data-pfok="${esc(x.id)}">Approve</button>${x.edit?"":`<button class="btn small ghost" data-pfedit1="${esc(x.id)}">Edit</button>`}<button class="linkbtn" data-pfskip="${esc(x.id)}">Skip</button></div></section>`}
+function renderProofObs(){
+  if(!isDirector()||VIEW_AS){view="moments";LS.set("fps.view",view);renderMain();return}
+  if(!pf)pfStart();
+  const left=pfLeft(),items=pf.order.map(id=>pf.items.get(id)).filter(x=>x.status!=="done"&&x.status!=="skipped"&&x.status!=="gone");
+  const ready=items.filter(x=>x.status==="ready"),reading=items.some(x=>x.status==="reading"),shown=items.slice(0,PF_AHEAD+PF_BATCH);
+  const total=pf.order.length,doneN=total-items.length;
+  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">Proofread observations</h2>
+    <div class="sub" style="max-width:74ch">Every saved observation never proofread, oldest first. Only spelling, grammar and punctuation are fixed. Children's names, their quoted words and Class words stay as written. Nothing is saved until you approve it, and the educator stays the author.</div></div></div>
+    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="moments">‹ Observations</button></div>
+    <section class="card"><div class="pfcount"><b id="pf-left">${left===0?"Every observation has been proofread.":left===1?"1 observation left to proofread.":left+" observations left to proofread."}</b>${pf.skipped?` <span class="cnt">${pf.skipped} skipped for now.</span>`:""}</div>
+      ${total?`<div class="pfbar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${pf.read}" aria-label="Proofread so far"><span style="width:${Math.round(100*pf.read/Math.max(1,total))}%"></span></div><div class="cnt">Proofread ${pf.read} of ${total}${doneN?`. ${pf.saved} approved`:""}.${reading?" Reading the next few.":pf.paused&&!pf.error?" Paused.":""}</div>`:""}
+      ${pf.error?`<div class="hint warnline" role="alert" style="margin-top:8px">${esc(pf.error)}</div>`:""}
+      <div class="actions">${ready.length?`<button class="btn small" data-pfall="1">Approve all ${ready.length}</button>`:""}${pf.error?`<button class="btn small ghost" data-pfgo="1">Try again</button>`:pf.paused?`<button class="btn small ghost" data-pfgo="1">Go on</button>`:items.some(x=>x.status==="waiting")?`<button class="btn small ghost" data-pfpause="1">Pause</button>`:""}</div></section>
+    ${shown.map(pfItemHtml).join("")||(left?"":`<div class="empty">Nothing is waiting to be proofread.</div>`)}`;
+  if(pfWants())setTimeout(pfRun,0)}
+function pfPaint(){if(view==="proofobs"){const y=window.scrollY;const ae=document.activeElement,k=ae&&ae.dataset&&ae.dataset.pfedit;if(k)return;renderProofObs();window.scrollTo(0,y)}}
+function pfSave(x){const n0=notices.get(x.id);if(!n0)return false;const at=Date.now(),by=whoAmI();
+  for(const id of x.ids){const n=notices.get(id);if(!n)continue;const patch={proofread:{at,by}};
+    if(n.noticed===x.orig.noticed&&x.fixed.noticed!==x.orig.noticed)patch.noticed=x.fixed.noticed;
+    if((n.wonder||"")===x.orig.wonder&&x.fixed.wonder!==x.orig.wonder)patch.wonder=x.fixed.wonder;
+    patchNotice(id,patch)}
+  x.status="done";pf.saved++;return true}
+document.addEventListener("input",e=>{const t=e.target.closest&&e.target.closest("[data-pfedit]");if(!t||!pf)return;const [id,k]=t.dataset.pfedit.split("|");const x=pf.items.get(id);if(x&&x.fixed)x.fixed[k]=t.value});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pfok],[data-pfskip],[data-pfedit1],[data-pfall],[data-pfgo],[data-pfpause]");if(!t||!pf||view!=="proofobs")return;const d=t.dataset;
+  if(d.pfok){const x=pf.items.get(d.pfok);if(x&&x.status==="ready"){pfSave(x);toast("Saved as proofread.")}}
+  else if(d.pfskip){const x=pf.items.get(d.pfskip);if(x){x.status="skipped";pf.skipped++}}
+  else if(d.pfedit1){const x=pf.items.get(d.pfedit1);if(x)x.edit=true}
+  else if(d.pfall){const r=pf.order.map(id=>pf.items.get(id)).filter(x=>x.status==="ready");r.forEach(pfSave);toast(r.length===1?"1 observation saved as proofread.":r.length+" observations saved as proofread.")}
+  else if(d.pfgo){pf.paused=false;pf.error=""}
+  else if(d.pfpause){pf.paused=true}
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  renderProofObs()});
 async function askRead(prompt,opts,j){
   // a check that holds a save tries again once, quickly, so the educator is not left waiting
   const waits=opts&&opts.quick?[4000]:[8000,25000,60000];
@@ -12115,7 +12226,7 @@ function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${
 // the weekly backup to Google Drive, made by the mailbox script on Monday evenings, and when the last one arrived
 let backupInfo=null;
 function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
-  const when=at?whenWords(at,{weekday:"long",month:"long",day:"numeric"}):"";
+  const when=at?whenAt(at,{weekday:"long",month:"long",day:"numeric"}):"";
   const old=at&&Date.now()-at>9*86400000;
   return `<section class="card"><div class="lbl">Backups</div>
     <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once the director has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
@@ -12126,7 +12237,7 @@ let displayInfo=null,displayAsked=false;
 function displayLink(){return displayInfo&&displayInfo.key?new URL("display.html",location.href).href+"#k="+displayInfo.key:""}
 async function displayCall(action){try{displayInfo=await window.FP_API("/api/display",action?{action}:{});if(action==="new")toast("The display link is ready.");if(action==="off")toast("The staff room display is off.")}catch(e){toast(e&&e.message||"That did not work. Try again.")}if(view==="settings")renderSettings()}
 function displayHtml(){if(!isDirector()||!window.FP_API)return"";if(!displayAsked){displayAsked=true;displayCall("")}
-  const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?whenWords(d.seenAt,{weekday:"long"}):"";
+  const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?whenAt(d.seenAt,{weekday:"long"}):"";
   return `<section class="card" id="display-card"><div class="lbl">Staff room display</div>
     <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div>
     ${!d?`<div class="cnt">Checking…</div>`:link?`<div class="prow"><div style="min-width:0;flex:1"><b>The display is on</b><div class="cnt">Made ${esc(shortDate(d.madeAt))}${d.madeBy?" by "+esc(d.madeBy):""}.${seen?" The screen last checked in "+esc(seen)+".":" No screen has opened it yet."}</div>
@@ -12203,7 +12314,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=f7268fcac8","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=92976e373c","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}

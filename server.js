@@ -265,11 +265,12 @@ function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
   for (const [id, r] of store.recs.conferences) {
     const c = r.doc; if (r.deleted || !c || !c.confDate || c.confDate < from || c.confDate > to) continue;
-    const k = store.recs.children.get(c.childId); const first = k && !k.deleted && k.doc.first ? k.doc.first : 'A child';
+    const k = store.recs.children.get(c.childId); const first = k && !k.deleted && k.doc.first ? k.doc.first : 'A child', room = k && !k.deleted && k.doc.classroom ? String(k.doc.classroom) : '';
     // a child who has left keeps their past conferences, and nothing after their last day shows as coming up
     if (k && !k.deleted && k.doc.status === 'withdrawn' && c.confDate > (k.doc.leftOn || String(k.doc.withdrawnAt || '').slice(0, 10) || '0000')) continue;
     const t = /^\d{2}:\d{2}$/.test(c.confTime || '') ? c.confTime : '';
-    events.push(Object.assign({ id: 'tconf.' + id, cal: 'tconf', title: `Conference, ${first}'s family`, desc: c.teacher ? 'With ' + c.teacher : '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
+    // a conference reads only Conference, the child's name and Class, such as Conference, Wren, North
+    events.push(Object.assign({ id: 'tconf.' + id, cal: 'tconf', conf: true, title: 'Conference, ' + first + (room ? ', ' + room : ''), desc: '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
   }
   // every child at Fulton has a birthday on the calendar each year, from the birthday on the roster
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
@@ -1000,7 +1001,7 @@ async function displayFeed() {
   let week = [];
   try { const c = await Promise.race([calendar.today({ director: false }, today, until), new Promise(r => setTimeout(() => r(null), 8000))]);
     if (c && Array.isArray(c.events)) { const names = new Map(((c.settings && c.settings.calendars) || []).map(x => [x.id, x.name]));
-      week = c.events.filter(e => e && e.cal !== 'tconf' && e.cal !== 'tmenu').map(e => ({ title: trim(e.title, 90), start: String(e.start || ''), end: String(e.end || ''), allDay: !!e.allDay, birthday: e.cal === 'tbday', cal: names.get(e.cal) || '' }))
+      week = c.events.filter(e => e && !e.conf && e.cal !== 'tconf' && e.cal !== 'tmenu').map(e => ({ title: trim(e.title, 90), start: String(e.start || ''), end: String(e.end || ''), allDay: !!e.allDay, birthday: e.cal === 'tbday', cal: names.get(e.cal) || '' }))
         .sort((a, b) => a.start.localeCompare(b.start)).slice(0, 14); } } catch (e) { log('The display could not read the calendar', e.message); }
   // today's food, from the month's menu, and this week's FEED bin
   let menu = null;
@@ -1382,7 +1383,8 @@ async function handle(req, res) {
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     // an observation's words, new or changed, are checked against the threads a little later
-    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || 'noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) queueThreadSuggest(id); }
+    // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
+    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null }); return;
   }
