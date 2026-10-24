@@ -420,6 +420,31 @@ function restoreFormer(a) {
     if (put) { setSetting('program', Object.assign({}, pg.doc, { groups: gs })); syncGroups('program'); } }
   delete a.leftFrom;
 }
+/* ---------- Keeping records. How long a former child's and a former educator's records are kept, from Title 22 as the
+   Department of Social Services publishes it, and the director's choice for each one once the period is reached.
+   Nothing is removed until she chooses Remove and confirms it. A period that cannot be confirmed there is left blank
+   for her to set. The removed files stay in the records' history on GitHub and in the weekly backups made before. ---------- */
+const KEEP_SOURCES = {
+  child: { years: 3, reg: 'Title 22, section 101221, Children\'s Records', words: 'Originals or photocopies of all children\'s records shall be kept for at least three years following termination of service to the child.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc5.pdf' },
+  staff: { years: 3, reg: 'Title 22, section 101217, Personnel Records', words: 'All personnel records shall be retained for at least three years following termination of employment.', url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc4.pdf' } };
+function keepDoc() { const r = store.recs.settings.get('keeping'); return r && !r.deleted && r.doc ? r.doc : {}; }
+const KEEP_FIELD = { child: 'childYears', staff: 'staffYears' };
+const keepYears = kind => { const d = keepDoc(), f = KEEP_FIELD[kind]; if (!(f in d)) return KEEP_SOURCES[kind].years || 0; return +d[f] > 0 ? +d[f] : 0; };
+function setKeep(fields, by) { const cur = store.recs.settings.get('keeping'); store.recs.settings.set('keeping', { doc: Object.assign({ id: 'keeping' }, keepDoc(), fields, { updatedByName: by, savedAt: Date.now() }), sha: cur && cur.sha, path: 'settings/keeping.json', local: true }); noteChange('settings', 'keeping'); scheduleSave('settings', 'keeping'); }
+const addYears = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCFullYear(d.getUTCFullYear() + n); return d.toISOString().slice(0, 10); };
+// the former children and former educators whose keeping period has passed, waiting for the director's choice
+function keepingDue() {
+  const t = laDay(), dec = keepDoc().decisions || {}, out = [], ISO_D = /^\d{4}-\d{2}-\d{2}$/;
+  const waits = (key, due) => { const until = (dec[key] || {}).until || ''; return due <= t && (!until || until <= t); };
+  const cy = keepYears('child'), sy = keepYears('staff');
+  if (cy) for (const [id, r] of store.recs.children) { const k = r && !r.deleted && r.doc; if (!k || k.status !== 'withdrawn') continue; const left = k.leftOn || String(k.withdrawnAt || '').slice(0, 10); if (!ISO_D.test(left)) continue;
+    const due = addYears(left, cy); if (waits('child:' + id, due)) out.push({ kind: 'child', id, name: [k.first, k.last].filter(Boolean).join(' ') || 'A child', left, due, years: cy, kept: (dec['child:' + id] || {}).until || '' }); }
+  if (sy) for (const a of accounts.list) { if (!isFormerAccount(a)) continue; const due = addYears(a.leaveOn, sy), key = 'staff:' + nameKey(a.name);
+    if (waits(key, due)) out.push({ kind: 'staff', id: a.name, name: a.name, left: a.leaveOn, due, years: sy, kept: (dec[key] || {}).until || '' }); }
+  return out.sort((a, b) => a.due.localeCompare(b.due));
+}
+const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
+function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
 const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), setSetting });
@@ -936,7 +961,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && id === 'display'))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping')))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -1345,7 +1370,7 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && c.id === 'display'))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -1558,6 +1583,42 @@ async function handle(req, res) {
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
       staff.markLeft(a.name, '').catch(e => log('The educator record could not be updated', a.name, e.message));
       log(former ? 'Brought back to Fulton,' : 'Staying at Fulton,', a.name, 'by', me.name); list(); return;
+    }
+    err(req, res, 404, 'Not found'); return;
+  }
+  // Keeping records, the director's alone. The server checks the period has passed before anything is removed.
+  if (path.startsWith('/api/keeping')) {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps records.'); return; }
+    const d0 = keepDoc();
+    const view = () => { const d = keepDoc(); json(req, res, 200, { sources: KEEP_SOURCES, childYears: keepYears('child') || '', staffYears: keepYears('staff') || '', due: keepingDue(), removed: (d.removed || []).slice(-30).reverse() }); };
+    if (path === '/api/keeping') { view(); return; }
+    if (path === '/api/keeping/set') {
+      const fields = {};
+      for (const f of ['childYears', 'staffYears']) if (f in body) { const v = body[f]; if (v === '' || v == null) { fields[f] = ''; continue; } const n = Math.round(+v); if (!(n >= 1 && n <= 50)) { err(req, res, 400, 'Choose a number of years from 1 to 50.'); return; } fields[f] = n; }
+      setKeep(fields, me.name); log('Keeping records periods set by', me.name, JSON.stringify(fields)); view(); return;
+    }
+    const it = keepingDue().find(x => x.kind === body.kind && (x.kind === 'staff' ? nameKey(x.id) === nameKey(body.id) : x.id === body.id));
+    if (path === '/api/keeping/keep') {
+      if (!it) { err(req, res, 404, 'That record is not waiting for a choice.'); return; }
+      const n = Math.round(+body.years); if (!(n >= 1 && n <= 10)) { err(req, res, 400, 'Choose how many more years to keep it.'); return; }
+      const dec = Object.assign({}, d0.decisions || {}); dec[keepKey(it)] = { until: addYears(laDay(), n), years: n, at: Date.now(), by: me.name };
+      setKeep({ decisions: dec }, me.name); log('Records kept longer,', it.kind, it.name, n, 'more years, by', me.name); view(); return;
+    }
+    if (path === '/api/keeping/remove') {
+      if (!it) { err(req, res, 404, 'That record is not waiting for a choice.'); return; }
+      if (body.sure !== true) { err(req, res, 400, 'Confirm the removal first.'); return; }
+      let n = 0;
+      if (it.kind === 'child') {
+        n += dropRecord('children', it.id);
+        for (const [cid, r] of store.recs.conferences) if (r && !r.deleted && r.doc && r.doc.childId === it.id) n += dropRecord('conferences', cid);
+      } else {
+        const a = accountFor(it.id);
+        try { n += await staff.removeFormer(it.id); } catch (e) { log('Former educator records could not be removed', it.id, e.message); err(req, res, 502, 'The records could not be removed just now. Nothing was lost. Try again in a minute.'); return; }
+        if (a) { accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); n++; }
+      }
+      const dec = Object.assign({}, d0.decisions || {}); delete dec[keepKey(it)];
+      setKeep({ decisions: dec, removed: [...(d0.removed || []), { kind: it.kind, name: it.name, left: it.left, at: Date.now(), by: me.name, files: n }].slice(-200) }, me.name);
+      log('Records removed after the keeping period,', it.kind === 'child' ? 'a former child' : 'a former educator', it.name, 'left', it.left, n, 'records, by', me.name, 'after confirming twice'); view(); return;
     }
     err(req, res, 404, 'Not found'); return;
   }

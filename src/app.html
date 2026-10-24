@@ -4251,6 +4251,7 @@ function renderToday(){
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}
+  ${keepTodayHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
@@ -11999,6 +12000,40 @@ function applyProgram(v){
   fillPlaceList();
 }
 function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
+/* Keeping records. How long a former child's and a former educator's records are kept, with the regulation it comes from,
+   and on the director's Today each one whose period has passed, with Keep longer and Remove. Nothing is removed until
+   she chooses Remove and confirms it, and the server checks the period too. */
+let keepInfo=null,keepBusy=false,keepAsk={};
+async function keepLoad(){if(keepBusy||!window.FP_API||!isDirector()||VIEW_AS)return;keepBusy=true;try{keepInfo=await window.FP_API("/api/keeping",{})}catch(e){keepInfo={error:e&&e.message||"Keeping records could not be read."}}keepBusy=false;if(view==="settings"||view==="today")renderMain()}
+async function keepCall(path,body,msg){try{keepInfo=await window.FP_API(path,body);keepAsk={};if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}if(view==="settings"||view==="today")renderMain()}
+function keepingHtml(){if(!window.FP_HOSTED||!isDirector())return"";if(!keepInfo){keepLoad();return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">Reading</div></section>`}
+  if(keepInfo.error)return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">${esc(keepInfo.error)}</div></section>`;
+  const K=keepInfo,S=K.sources||{};
+  const row=(k,f,label,after)=>{const s=S[k]||{},v=K[f];return `<div class="prow" style="align-items:flex-start"><div style="min-width:0;flex:1"><b>${label}</b>
+    <div class="cnt">${v?`Kept ${v} year${v>1?"s":""} ${after}.`:`Not set. Set the years ${after}.`}</div>
+    ${s.years?`<div class="cnt">${esc(s.reg)} says "${esc(s.words)}" <a href="${esc(s.url)}" target="_blank" rel="noopener">Child Care Center regulations, California Department of Social Services</a></div>`:`<div class="cnt">TREE could not confirm this period in the Department of Social Services' own pages, so it is left for you to set.</div>`}</div>
+    <label class="cnt" style="white-space:nowrap">Years <input type="number" min="1" max="50" data-keepyears="${f}" value="${esc(String(v||""))}" style="width:4.5em"></label></div>`};
+  return `<section class="card" id="keepcard"><div class="lbl">Keeping records</div>
+    <div class="hint">How long TREE keeps the records of a child or an educator who has left Fulton. When one reaches the period, your Today shows it once, with Keep longer and Remove. Nothing is ever removed until you choose Remove, and Remove asks once more before it happens. Removed records stay in the records' history on GitHub and in the weekly backups made before.</div>
+    ${row("child","childYears","Children's records","after a child leaves Fulton")}${row("staff","staffYears","Staff records","after an educator's last day")}
+    <div class="actions"><button class="btn small" data-keepsave="1">Save the periods</button>${K.due&&K.due.length?`<span class="cnt">${K.due.length} waiting for your choice on Today</span>`:""}</div>
+    ${(K.removed||[]).length?`<details class="fold" data-fold="set:keepremoved" ${foldOpen.has("set:keepremoved")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Removed</span><span class="cnt">${K.removed.length}</span></summary><div class="foldbody">${K.removed.map(r=>`<div class="cnt">${esc(r.name)}, ${r.kind==="child"?"a former child":"a former educator"} who left ${esc(longDate(r.left))}. Removed ${esc(shortDate(r.at))} by ${esc(r.by)}.</div>`).join("")}</div></details>`:""}</section>`}
+// on the director's Today, each former child or educator whose keeping period has passed, once, until she chooses
+function keepTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";if(!keepInfo){keepLoad();return""}const due=(keepInfo.due||[]);if(!due.length)return"";
+  return `<section class="card" id="keeptoday" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Records past their keeping period</h3><span class="cnt">${due.length}</span></div>
+    <div class="hint">Nothing is removed until you choose. Settings, Keeping records, has the periods and where they come from.</div>
+    ${due.map(it=>{const k=it.kind+"|"+it.id,a=keepAsk[k];return `<div class="prow" style="align-items:flex-start;flex-wrap:wrap"><div style="min-width:0;flex:1"><b>${esc(it.name)}</b><div class="cnt">${it.kind==="child"?"A former child":"A former educator"}, left ${esc(longDate(it.left))}. Kept ${it.years} year${it.years>1?"s":""}, to ${esc(longDate(it.due))}.${it.kept?` You chose to keep them to ${esc(longDate(it.kept))}.`:""}</div></div>
+      <span class="actions" style="margin:0">${a==="keep"?`<label class="cnt">Keep for <select data-keepfor="${esc(k)}" style="width:auto">${[1,2,3,5].map(n=>`<option value="${n}">${n} more year${n>1?"s":""}</option>`).join("")}</select></label><button class="btn small" data-keepyes="${esc(k)}">Keep</button><button class="linkbtn" data-keepno="1">Cancel</button>`
+        :a==="remove"?`<span class="confirm" style="white-space:normal">Remove ${esc(it.name)}'s records from TREE for good? <button class="btn warn small" data-keeprmyes="${esc(k)}">Remove</button><button class="linkbtn" data-keepno="1">Cancel</button></span>`
+        :`<button class="btn small ghost" data-keepask="${esc(k)}|keep">Keep longer</button><button class="linkbtn" data-keepask="${esc(k)}|remove">Remove</button>`}</span></div>`}).join("")}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],[data-keepask],[data-keepyes],[data-keeprmyes],[data-keepno]");if(!t||!keepInfo||(view!=="settings"&&view!=="today"))return;const d=t.dataset;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const it=k=>{const i=k.indexOf("|");return {kind:k.slice(0,i),id:k.slice(i+1)}};
+  if(d.keepsave){const b={};document.querySelectorAll("[data-keepyears]").forEach(x=>b[x.dataset.keepyears]=x.value.trim());keepCall("/api/keeping/set",b,"Saved.");return}
+  if(d.keepask){const i=d.keepask.lastIndexOf("|");keepAsk={[d.keepask.slice(0,i)]:d.keepask.slice(i+1)};renderMain();return}
+  if(d.keepno){keepAsk={};renderMain();return}
+  if(d.keepyes){const sel=document.querySelector(`[data-keepfor="${CSS.escape(d.keepyes)}"]`);const n=+(sel&&sel.value||1);keepCall("/api/keeping/keep",Object.assign(it(d.keepyes),{years:n}),`Kept ${n} more year${n>1?"s":""}. Today asks again then.`);return}
+  if(d.keeprmyes){keepCall("/api/keeping/remove",Object.assign(it(d.keeprmyes),{sure:true}),"Removed. The removal is noted in Settings, Keeping records.");return}});
 let progTimer=null;
 function saveProgram(){
   const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()};
@@ -12050,6 +12085,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
+  ${keepingHtml()}
   ${storyFramesHtml()}
   ${displayHtml()}
   ${backupHtml()}

@@ -77,3 +77,13 @@ test('Leaving Fulton ends the sign-in after the last day, and Bring back keeps t
     assert.ok(!saved.leaveOn && !saved.leftFrom);
   } finally { await fx.stop(); }
 });
+
+test('a former educator\'s records are removed only once they have left, and only through the server', async () => {
+  const h = await loaded(LIST);
+  await call(h.staff, 'Dir', 'g/plan', { name: 'Ann', plan: { challenges: 'Rain days' } });
+  await assert.rejects(h.staff.removeFormer('Ann'), /former educator/);
+  h.accounts.list.find(a => a.name === 'Ann').leaveOn = '2020-06-30';
+  assert.ok((await h.staff.removeFormer('Ann')) >= 2);
+  assert.strictEqual(h.staff.hasFiles('Ann'), false);
+  assert.ok(h.staff.hasFiles('Bea'), 'everyone else keeps their records');
+});

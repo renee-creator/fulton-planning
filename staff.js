@@ -522,5 +522,18 @@ module.exports = function staffModule(o) {
     const doc = person(name); doc.profile = Object.assign({}, doc.profile); if (day) doc.profile.leftOn = day; else delete doc.profile.leftOn;
     if (has && (get(pPath(name)).profile || {}).leftOn === doc.profile.leftOn) return; put(pPath(name), doc);
   }
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  // a former educator's records, removed once the keeping period has passed and the director confirmed it twice. The
+  // files stay in the records' history on GitHub and in earlier weekly backups.
+  async function removeFormer(name) {
+    await ready(); if (!isFormerEducator(name)) throw new Error('Only a former educator\'s records are removed.'); let n = 0;
+    for (const p of [pPath(name), G.gPath(name), G.jPath(name)]) {
+      if (!S.files.has(p)) continue; clearTimeout(S.timers.get(p)); S.timers.delete(p); await (S.saving.get(p) || Promise.resolve());
+      const r = S.files.get(p);
+      if (r && r.sha) { const res = await gh('DELETE', `/repos/${repo}/contents/${p}`, { message: 'Remove ' + p.replace(/^staff\//, 'educator records ').replace(/\.json$/, '') + ' after the keeping period', sha: r.sha, branch: store.branch }); if (res.status !== 200 && res.status !== 404) throw new Error('GitHub answered ' + res.status + ' when removing ' + p); }
+      S.files.delete(p); n++;
+    }
+    const ms = G.momentsOf(name); if (ms.length) { const ids = new Set(ms.map(m => m.id)); put('staff/moments.json', Object.assign({}, get('staff/moments.json'), { list: ((get('staff/moments.json') || {}).list || []).filter(m => !ids.has(m.id)) })); n += ms.length; }
+    return n;
+  }
+  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
