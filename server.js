@@ -539,7 +539,7 @@ async function runOrders() {
 async function readOrderPart(part, by) {
   const raw = typeof part.raw === 'string' ? part.raw : '';
   if (raw && /FEED Cooperative/i.test(raw.slice(0, 200000) + (part.subject || ''))) { const r = keepOrder(raw, by); if (!r.error) return r; }
-  if (!anthropicKey()) return { error: 'Claude assist is not set up, so only FEED orders can be read.' };
+  if (!anthropicKey()) return { error: 'Reading orders is not set up yet, so only FEED orders can be read.' };
   let content;
   if (part.data && /pdf/i.test(part.type + part.name)) content = [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: part.data } }];
   else if (part.data && /^image\//i.test(part.type)) content = [{ type: 'image', source: { type: 'base64', media_type: part.type, data: part.data } }];
@@ -548,7 +548,7 @@ async function readOrderPart(part, by) {
 For an order, return a JSON object with "order": true, "vendor", who sold it, "number", the order or invoice number, "date", the delivery or invoice date as YYYY-MM-DD, "items", an array of objects with "item", "producer", the farm or company that grew or made it when the document names one, otherwise the vendor, "unit", "qty" as a number, "price" as a number and "total" as a number, and then "subtotal", "delivery" and "total" as numbers.
 Copy names and numbers exactly as written. Never invent a number, and use null when one is missing. Leave taxes, delivery and fees out of the items. Return only the JSON.` });
   const r = await askClaude(content, true);
-  if (r.status !== 200) return { error: 'Claude answered ' + r.status + '.' };
+  if (r.status !== 200) { log('Order reading answered', r.status); return { error: 'The order could not be read just now.' }; }
   let o; try { const t = (JSON.parse(r.text).content || []).filter(x => x.type === 'text').map(x => x.text).join(''); o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { return { error: 'The answer could not be read.' }; }
   if (!o || o.order === false) return { skip: String((o && o.why) || '') };
   const items = (Array.isArray(o.items) ? o.items : []).filter(x => x && x.item).map(x => ({ item: String(x.item), producer: String(x.producer || o.vendor || ''), unit: String(x.unit || ''), qty: Number(x.qty) || 0, price: x.price == null ? null : Number(x.price), total: x.total == null ? null : Number(x.total), use: 'meals' }));
@@ -1411,18 +1411,18 @@ async function handle(req, res) {
   }
   if (path === '/api/read') {
     const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
-    if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads with Claude.', 'thread search by an educator'); return; }
+    if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads.', 'thread search by an educator'); return; }
     if ((body.purpose === 'newsletter' || body.purpose === 'newsletter-reading') && !isDirector(me.name)) { refuse(403, 'Only the director makes the family newsletter.', 'newsletter by an educator'); return; }
     if (body.purpose === 'share' && !isDirector(me.name)) { refuse(403, 'Only the director makes posts.', 'share by an educator'); return; }
-    if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can ask Claude to read through the lens.', 'lens reading by an educator'); return; }
-    if (!anthropicKey()) { refuse(503, 'Claude assist is not set up. Add the Anthropic key on Render.', 'no key'); return; }
+    if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can read through the lens.', 'lens reading by an educator'); return; }
+    if (!anthropicKey()) { refuse(503, 'TREE\'s writing help is not set up yet. The director adds its key on Render.', 'no key'); return; }
     const content = body.content;
     if (!Array.isArray(content) || !content.length || content.length > 12) { refuse(400, 'Nothing to read', 'empty or too many parts'); return; }
     const okBlock = b => b && ((b.type === 'text' && typeof b.text === 'string') || (b.type === 'image' && b.source && b.source.type === 'base64' && /^image\/(jpeg|png|webp|gif)$/.test(b.source.media_type)));
-    if (!content.every(okBlock)) { refuse(400, 'That upload could not be sent to Claude.', 'unreadable part'); return; }
+    if (!content.every(okBlock)) { refuse(400, 'That upload could not be read. Try a smaller photo or fewer pages.', 'unreadable part'); return; }
     const now = Date.now(); readTimes = readTimes.filter(t => t.at > now - 36e5);
-    if (readTimes.length >= READS_PER_HOUR || (body.careful && readTimes.filter(t => t.careful).length >= CAREFUL_PER_HOUR)) { refuse(429, 'Claude has been asked many times in the last hour. Wait a little and try again.', 'hourly limit'); return; }
-    if (readsRunning >= READS_AT_ONCE) { refuse(429, 'Claude is working on several requests right now. Try again in a moment.', readsRunning + ' already running'); return; }
+    if (readTimes.length >= READS_PER_HOUR || (body.careful && readTimes.filter(t => t.careful).length >= CAREFUL_PER_HOUR)) { refuse(429, 'TREE\'s writing help has been asked many times in the last hour. Wait a little and try again.', 'hourly limit'); return; }
+    if (readsRunning >= READS_AT_ONCE) { refuse(429, 'TREE\'s writing help is working on several requests right now. Try again in a moment.', readsRunning + ' already running'); return; }
     readTimes.push({ at: now, careful: !!body.careful }); readsRunning++;
     // a DRDP request carries the official definitions and level descriptors for its view
     let drdpUsed;
@@ -1435,12 +1435,12 @@ async function handle(req, res) {
       // suggested reading for families is searched for on the web, only on sites families can trust
       const extra = body.purpose === 'newsletter-reading' || body.purpose === 'pd-reading' ? { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6, allowed_domains: READING_SITES }] } : null;
       const r = await askClaude(content, !!body.careful || !!extra, extra);
-      if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
+      if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'TREE\'s writing help is busy. Wait a minute and try again.' : 'TREE\'s writing help could not answer just now. Try again in a minute.'); return; }
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
       log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
       json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens', drdp: drdpUsed });
-    } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'Could not reach Claude. ' + e.message); }
+    } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'TREE\'s writing help could not be reached just now. Check the connection and try again.'); }
     finally { readsRunning--; }
     return;
   }
