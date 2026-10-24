@@ -42,11 +42,11 @@ async function start() {
 
 // a browser page signed in as someone, or null when Playwright is not installed here
 async function browser() { try { return require('playwright').chromium; } catch (e) { return null; } }
-async function signedIn(fx, b, name, passcode, width) {
+async function signedIn(fx, b, name, passcode, width, viewAs) {
   const j = await fx.login(name, passcode);
   const ctx = await b.newContext({ viewport: { width: width || 360, height: 800 } }); const p = await ctx.newPage();
   const errors = []; p.on('pageerror', e => errors.push(e.message));
-  await p.addInitScript(([t, n, d]) => { localStorage.setItem('fp-token', t); localStorage.setItem('fp-name', n); localStorage.setItem('fp-director', d ? '1' : ''); }, [j.token, j.name, j.director]);
+  await p.addInitScript(([t, n, d, va]) => { localStorage.setItem('fp-token', t); localStorage.setItem('fp-name', n); localStorage.setItem('fp-director', d ? '1' : ''); if (va) sessionStorage.setItem('tree.viewas', JSON.stringify(va)); }, [j.token, j.name, j.director, viewAs || null]);
   await p.goto(fx.page); await p.waitForFunction(() => typeof goView === 'function' && window.FP_NAME && window.FP_NAME(), null, { timeout: 15000 }); await p.waitForTimeout(1500);
   return { p, errors, close: () => ctx.close() };
 }

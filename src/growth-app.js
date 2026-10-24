@@ -279,7 +279,7 @@ const rate=(attr,v)=>`<div class="tseg" role="group">${[1,2,3,4,5].map(n=>`<butt
 const tm=t=>t?X.hourText(t):"";
 const dur=n=>n===90?"an hour and a half":n===60?"an hour":n%60===0?(n/60)+" hours":n>60?Math.floor(n/60)+" hours and "+(n%60)+" minutes":n+" minutes";
 async function checkinPage(my){const dir=isDir();const b=B();
-  if(!dir){const d=await doc(meName(),true);const s=[b.schedule.now,b.schedule.next].filter(Boolean).flatMap(x=>x.list).filter(x=>x.date>=today());const nxt=s[0];const mode=d.profile.checkin;
+  if(!dir){const d=await doc(meName(),true);const s=[b.schedule.now,b.schedule.next].filter(Boolean).flatMap(x=>x.list).filter(x=>x.date>=today()&&x.name===meName());const nxt=s[0];const mode=d.profile.checkin;
     const ym=today().slice(0,7);const pre=(d.pre||{})[ym]||{};const cis=d.checkins||[];const last=cis.find(c=>c.focus&&c.focus.settled);
     draw(my,head("Check-ins","My check-ins","A regular, supportive space to talk about your practice, your Class and the children, and to agree together on what comes next. Nothing needs to be prepared beforehand.")+
       card("My next check-in",nxt?`<div><b>${H(new Date(nxt.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b>${nxt.time?", "+H(tm(nxt.time)):""}, about twenty minutes${nxt.kind==="second"?", on the short second Monday":nxt.kind==="slot"?", during your Monday planning hour":""}.</div><div class="cnt">It is on the TREE calendar too.</div>`:`<div class="cnt">${mode==="asneeded"?"Your check-ins happen as needed. The director sets a time with you.":"The next check-in appears here once it is on the calendar."}</div>`)+

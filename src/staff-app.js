@@ -27,7 +27,8 @@ const semester=()=>{const t=today(),y=t.slice(0,4),m=+t.slice(5,7);return m>=8?y
 const semLabel=k=>k?(k.endsWith("fall")?"Fall ":"Spring ")+k.slice(0,4):"";
 const D=()=>isDirector()&&!VIEW_AS;
 const P=()=>st.doc||{};
-const meName=()=>(B&&B.me&&B.me.name)||me();
+// seeing TREE as an educator shows that educator's own pages
+const meName=()=>VIEW_AS?VIEW_AS.name:(B&&B.me&&B.me.name)||me();
 
 /* ---------- looks ---------- */
 if(!document.getElementById("staffcss")){const c=document.createElement("style");c.id="staffcss";c.textContent=`
