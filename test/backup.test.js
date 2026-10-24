@@ -46,7 +46,7 @@ test('the backup holds every staff folder and the director and office names, nev
 function runGs(file, files, day) {
   const vm = require('vm');
   const triggers = [{ h: 'weeklyBackup' }, { h: 'checkKaymbu' }], made = [], trashed = [], log = [];
-  const fileOf = n => ({ getName: () => n, setTrashed: () => { trashed.push(n); files.splice(files.indexOf(n), 1); } });
+  const fileOf = n => { let name = n; return { getName: () => name, setTrashed: () => { trashed.push(name); files.splice(files.indexOf(name), 1); }, setName: x => { files[files.indexOf(name)] = x; name = x; } }; };
   const folder = { getId: () => 'f1', getName: () => 'TREE backups', getFilesByName: n => { const l = files.filter(x => x === n).map(fileOf); return { hasNext: () => l.length > 0, next: () => l.shift() }; },
     getFiles: () => { const l = files.slice().map(fileOf); return { hasNext: () => l.length > 0, next: () => l.shift() }; }, createFile: b => { files.push(b.name); return b; } };
   const gz = zlib.gzipSync(JSON.stringify({ manifest: { date: day, files: 3, counts: { plans: 1 } }, files: {} }));
@@ -61,7 +61,7 @@ function runGs(file, files, day) {
   vm.createContext(ctx); vm.runInContext(fs.readFileSync(file, 'utf8'), ctx);
   return { ctx, triggers, made, trashed, log };
 }
-test('the mailbox script backs up every night, replaces the Monday time, and keeps the newest 60 with the Monday files among them', () => {
+test('the mailbox script backs up every night, replaces the Monday time, keeps the newest 30 nightly and 26 weekly backups, and keeps one from each past week first', () => {
   const gs = path.join(__dirname, '..', 'tools', 'weekly-backup.gs');
   // 26 Monday backups from before, then 40 nights
   const files = ['notes.txt'];
@@ -75,12 +75,18 @@ test('the mailbox script backs up every night, replaces the Monday time, and kee
   for (let i = 0; i < 40; i++) { g.ctx.Utilities.formatDate = () => ''; const d = new Date(Date.UTC(2026, 9, 1) + i * 864e5).toISOString().slice(0, 10);
     g.ctx.UrlFetchApp.fetch = () => ({ getResponseCode: () => 200, getBlob: () => { const gz = zlib.gzipSync(JSON.stringify({ manifest: { date: d } })); return { setContentType() { return this; }, setName(n) { this.name = n; return this; }, copyBlob() { return { getBytes: () => gz }; }, getBytes: () => gz }; }, getContentText: () => '' });
     (i % 2 ? g.ctx.weeklyBackup : g.ctx.nightlyBackup)(); }
-  const kept = files.filter(f => /^TREE backup/.test(f)).sort();
-  assert.strictEqual(kept.length, 60);
+  const nightly = files.filter(f => /^TREE backup/.test(f)).sort(), weekly = files.filter(f => /^TREE weekly backup/.test(f)).sort();
+  assert.strictEqual(nightly.length, 30);
   assert.ok(files.includes('notes.txt'), 'other files stay');
-  assert.strictEqual(kept[kept.length - 1], 'TREE backup 2026-11-09.json.gz');
-  assert.ok(kept.some(f => f < 'TREE backup 2026-10-01'), 'the newest Monday backups count among the 60');
-  assert.ok(!kept.includes('TREE backup 2026-04-06.json.gz'), 'the oldest Monday backup went to the trash');
+  assert.strictEqual(nightly[nightly.length - 1], 'TREE backup 2026-11-09.json.gz');
+  assert.strictEqual(nightly[0], 'TREE backup 2026-10-11.json.gz');
+  // one from each past week is kept as that week's backup, the newest 26, so the backups reach back about six months
+  assert.strictEqual(weekly.length, 26);
+  const mon = n => { const t = new Date(n.match(/\d{4}-\d{2}-\d{2}/)[0] + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+  assert.strictEqual(new Set(weekly.map(mon)).size, 26, 'one for each week');
+  assert.ok(weekly.includes('TREE weekly backup 2026-10-10.json.gz'), 'the newest night of a past week is that week\'s backup');
+  assert.ok(weekly.some(f => f < 'TREE weekly backup 2026-10-01'), 'the Monday backups from before start the weekly set');
+  assert.ok(!files.includes('TREE backup 2026-04-06.json.gz') && !files.includes('TREE weekly backup 2026-04-06.json.gz'), 'the oldest week went to the trash');
   // the same part, pasted with the whole mailbox script, is the same code
   const part = s => s.slice(s.indexOf('/*\n  Nightly backup of TREE')).split('\n/*\n  Readable copies')[0].trim();
   assert.strictEqual(part(fs.readFileSync(path.join(__dirname, '..', 'tools', 'kaymbu-apps-script.gs'), 'utf8')), part(fs.readFileSync(gs, 'utf8')));

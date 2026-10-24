@@ -12,9 +12,12 @@
   Nightly backup of TREE to Google Drive
 
   Every night at 10 pm, Pacific time, this asks the TREE server for every record it keeps, as one file, and saves it in
-  the TREE backups folder of this mailbox's Google Drive as TREE backup YYYY-MM-DD.json.gz. The newest 60 are kept,
-  about two months, and older ones go to the Drive trash. The Monday backups made before are named the same way, so
-  they count among the 60 and leave in turn. Sign-ins are not in a backup, since they hold passcodes.
+  the TREE backups folder of this mailbox's Google Drive as TREE backup YYYY-MM-DD.json.gz. The newest 30 nightly
+  backups are kept. Before any older one leaves, one from each past week, the newest of that week, is kept as that
+  week's backup, renamed TREE weekly backup YYYY-MM-DD.json.gz, and the newest 26 weekly backups are kept, so the
+  backups reach back about six months. The rest go to the Drive trash. The Monday backups made before are named the
+  same way as the nightly ones, so the first run keeps one from each of their weeks too. Sign-ins are not in a backup,
+  since they hold passcodes.
   The server may be restarting when the time comes, so the script asks again.
 
   Setup, once, also when changing from the Monday backup
@@ -26,7 +29,7 @@
   To put a backup back, see Restore in the README of the planning app.
 */
 const BACKUP_FOLDER = 'TREE backups';
-const BACKUP_KEEP = 60;
+const BACKUP_KEEP = 30, BACKUP_WEEKS = 26;
 
 function setupNightlyBackup() {
   // the Monday time ran weeklyBackup, so both names are cleared before the nightly time is set
@@ -74,11 +77,30 @@ function nightlyBackup() {
   // a second run on the same day replaces that day's file
   const same = folder.getFilesByName(name); while (same.hasNext()) same.next().setTrashed(true);
   folder.createFile(gz.setName(name));
-  // the newest 60 stay, the Monday ones from before among them, and older ones go to the Drive trash
-  const all = []; const it = folder.getFiles();
-  while (it.hasNext()) { const f = it.next(); if (/^TREE backup \d{4}-\d{2}-\d{2}\.json\.gz$/.test(f.getName())) all.push(f); }
-  all.sort((a, b) => b.getName() < a.getName() ? -1 : b.getName() > a.getName() ? 1 : 0);
-  all.slice(BACKUP_KEEP).forEach(f => f.setTrashed(true));
+  const kept = keepBackups_(folder);
   Logger.log('Saved ' + name + ', ' + Math.round(gz.getBytes().length / 1024) + ' KB, ' + (manifest.files || '?') + ' records. ' +
-    Object.keys(manifest.counts || {}).map(k => k + ' ' + manifest.counts[k]).join(', ') + '. ' + Math.min(all.length, BACKUP_KEEP) + ' backups kept.');
+    Object.keys(manifest.counts || {}).map(k => k + ' ' + manifest.counts[k]).join(', ') + '. ' + kept.nightly + ' nightly and ' + kept.weekly + ' weekly backups kept.');
+}
+
+// the newest 30 nightly backups stay. Before an older one leaves, the newest of each past week is kept as that week's
+// backup, and the newest 26 weekly backups stay. Everything else goes to the Drive trash.
+function keepBackups_(folder) {
+  const DAY = /^TREE backup (\d{4}-\d{2}-\d{2})\.json\.gz$/, WEEK = /^TREE weekly backup (\d{4}-\d{2}-\d{2})\.json\.gz$/;
+  const monday = d => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+  const nightly = [], weekly = []; const it = folder.getFiles();
+  while (it.hasNext()) { const f = it.next(); const n = f.getName(); if (DAY.test(n)) nightly.push(f); else if (WEEK.test(n)) weekly.push(f); }
+  const newest = (a, b) => b.getName().slice(-18) < a.getName().slice(-18) ? -1 : b.getName().slice(-18) > a.getName().slice(-18) ? 1 : 0;
+  nightly.sort(newest);
+  // nights leave one at a time, oldest first, so a later night of the same week takes the place of the one kept before,
+  // and each week ends with its newest night
+  const weeks = {}; weekly.forEach(f => { weeks[monday(f.getName().match(WEEK)[1])] = f; });
+  nightly.slice(BACKUP_KEEP).reverse().forEach(f => {
+    const d = f.getName().match(DAY)[1], w = monday(d), was = weeks[w];
+    if (was && was.getName().match(WEEK)[1] >= d) { f.setTrashed(true); return; }
+    if (was) { was.setTrashed(true); weekly.splice(weekly.indexOf(was), 1); }
+    f.setName('TREE weekly backup ' + d + '.json.gz'); weekly.push(f); weeks[w] = f;
+  });
+  weekly.sort(newest);
+  weekly.slice(BACKUP_WEEKS).forEach(f => f.setTrashed(true));
+  return { nightly: Math.min(nightly.length, BACKUP_KEEP), weekly: Math.min(weekly.length, BACKUP_WEEKS) };
 }

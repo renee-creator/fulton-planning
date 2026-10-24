@@ -12751,7 +12751,7 @@ function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastA
   const old=at&&Date.now()-at>50*3600000;
   return `<section class="card"><div class="lbl">Backups</div>
     <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}${old?" The last one is more than two days old, so check the mailbox script.":""}</div></div></div>
-    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive, and the newest 60 are kept, about two months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div>
+    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive. The newest 30 nightly backups are kept, and one from each past week is kept as that week's backup, the newest 26 weeks, so the backups reach back about six months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div>
     ${readableHtml()}</section>`}
 /* Readable copies. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her
    TREE quietly makes the Word and PDF files it already prints and keeps them in Google Drive, in TREE readable copies
