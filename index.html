@@ -167,6 +167,7 @@ textarea{resize:vertical;line-height:1.55;min-height:84px}
 .card .lbl{font-family:var(--display);font-weight:500;font-size:18px}
 .card .hint{color:var(--muted);font-size:13.5px;max-width:72ch}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.kidsgrp{margin:8px 0 4px}
 .chip{border:1px dashed var(--line);background:var(--bg);border-radius:999px;padding:2px 10px;font-size:12.5px;cursor:pointer}
 .chip:hover{border-color:var(--moss);border-style:solid}
 .chip.on{background:var(--moss-soft);border-style:solid;border-color:var(--moss);color:var(--moss)}
@@ -4088,7 +4089,7 @@ function redrawToday(){if(view!=="today")return;const y=window.scrollY;renderMai
 /* ---------- quick tasks on Today ----------
    Final remarks, words on a copied photo, the children in a Kaymbu photo and the DRDP view for a child turning three are
    done under their row, each closing as it is done, with the next one beneath it. */
-let tqOpen="",tqKids=null,tqRoom="";
+let tqOpen="",tqKids=null,tqRoom="",tqGroup=null;
 // the photos that came in one email. Older ones have no mark of their email, so their subject and day stand for it.
 const kBatchOf=n=>n.kaymbu.mail?"m|"+n.kaymbu.mail+"|"+(n.kaymbu.subject||""):[(n.kaymbu.subject||"").trim().toLowerCase(),new Date(n.kaymbu.keptAt||0).toDateString()].join("|");
 // the children to offer first on a Kaymbu photo, from the children already tagged or suggested on its post: the ones most often
@@ -4110,9 +4111,15 @@ function tqHtml(w){
     if(!tqKids)tqKids=Object.fromEntries(grp.map(x=>[x.id,[...new Set([...(x.children||[]),...((x.kaymbu&&x.kaymbu.suggest&&!x.kaymbu.maybe)?x.kaymbu.suggest:[])])]]));
     const kids=kidsAt().filter(c=>!room||c.classroom===room).sort((a,b)=>(a.first||"").localeCompare(b.first||""));
     const sugg=kaySuggest(n,room).filter(c=>kids.some(k=>k.id===c.id));
+    if(tqGroup==null)tqGroup=n.smallGroup||"";const gs=GROUPS.filter(g=>!room||g.room===room);
+    const others=room?kidsAt().filter(c=>c.classroom!==room).sort((a,b)=>(a.first||"").localeCompare(b.first||"")):[];
+    const chipFor=x=>c=>`<button class="chip ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`;
     return `<div class="cnt" style="white-space:pre-line">${esc(n.noticed||"")}</div>${sugg.length?`<div class="cnt" style="margin-top:6px">Often in observations with them, or in the same small group. Tap to tag.</div>`:""}
       ${momentRooms(n).length?"":`<label class="fld-label">Class<select id="tqroom"><option value="">Choose</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${esc(r)}</option>`).join("")}</select></label>`}
-      ${grp.map(x=>`<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}<div class="chips">${kids.map(c=>`<button class="chip ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")||`<span class="cnt">Choose the class to see its children.</span>`}</div></div>`).join("")}
+      ${gs.length?`<label class="cnt">Small group <select id="tqgroup" style="width:auto"><option value="">None</option>${gs.map(g=>`<option value="${esc(g.name)}" ${tqGroup===g.name?"selected":""}>${esc(g.name)}${g.educator?", "+esc(g.educator):""}</option>`).join("")}</select></label>`:""}
+      ${grp.map(x=>{const others1=others.filter(c=>!(tqKids[x.id]||[]).includes(c.id)),kids1=[...kids,...others.filter(c=>(tqKids[x.id]||[]).includes(c.id))];
+        return `<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length&&!tqGroup?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}${kids1.length?groupFirstHtml(kids1,tqGroup,room,chipFor(x)):`<div class="chips"><span class="cnt">Choose the class to see its children.</span></div>`}
+        ${others1.length?`<details class="tqother" style="margin-top:6px"><summary class="cnt">Show all classes, ${others1.length} more children</summary><div class="chips" style="margin-top:6px">${others1.map(chipFor(x)).join("")}</div></details>`:""}</div>`}).join("")}
       <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button>${full}</div>`}
   if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb).sort((a,b)=>(a.at||0)-(b.at||0));
     const by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];const rm=momentRooms(n)[0]||"";const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=rosterNames().filter(x=>!mine.includes(x));
@@ -4129,7 +4136,7 @@ function tqHtml(w){
     return `<div class="cnt">Which DRDP view should ${esc(c.first)} be read against?</div><div class="actions"><button class="btn small ghost" data-tqsave="three|${esc(id)}|it">Infant and Toddler</button><button class="btn small ghost" data-tqsave="three|${esc(id)}|ptk">Preschool Transitional Kindergarten</button>${full}</div>`}
   return full}
 document.addEventListener("click",e=>{
-  const o=e.target.closest("[data-tq]");if(o){tqOpen=tqOpen===o.dataset.tq?"":o.dataset.tq;tqKids=null;tqRoom="";redrawToday();const b=$("#tqbox");if(b){const ta=b.querySelector("textarea");if(ta&&window.innerWidth>700)ta.focus({preventScroll:true})}return}
+  const o=e.target.closest("[data-tq]");if(o){tqOpen=tqOpen===o.dataset.tq?"":o.dataset.tq;tqKids=null;tqRoom="";tqGroup=null;redrawToday();const b=$("#tqbox");if(b){const ta=b.querySelector("textarea");if(ta&&window.innerWidth>700)ta.focus({preventScroll:true})}return}
   const k=e.target.closest("[data-tqkid]");if(k&&tqKids){const [pid,cid]=k.dataset.tqkid.split("|");const a=tqKids[pid]||(tqKids[pid]=[]);const i=a.indexOf(cid);i>=0?a.splice(i,1):a.push(cid);k.classList.toggle("on");return}
   const s=e.target.closest("[data-tqsave]");if(!s)return;const [kind,id,v]=s.dataset.tqsave.split("|");
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -4137,7 +4144,7 @@ document.addEventListener("click",e=>{
     p.fields[AFTER_KEY[p.type]]=txt;persist(p);toast("Saved to the plan.")}
   else if(kind==="photo"){const n=notices.get(id);const txt=($("#tqtext")?.value||"").trim();if(!n||!txt)return;const base=jclone(n);n.noticed=txt;n.editedBy=whoAmI();n.editedAt=Date.now();saveNotice(n,base);toast("Saved.")}
   else if(kind==="kay"){const n=notices.get(id);if(!n||!tqKids)return;const room=tqRoom||momentRooms(n)[0]||"";
-    for(const x of noteGroup(n)){const base=jclone(x);x.children=[...(tqKids[x.id]||[])];if(room&&!x.classroom)x.classroom=room;
+    for(const x of noteGroup(n)){const base=jclone(x);x.children=[...(tqKids[x.id]||[])];if(room&&!x.classroom)x.classroom=room;if(tqGroup!=null&&tqGroup!==(x.smallGroup||"")){if(tqGroup)x.smallGroup=tqGroup;else delete x.smallGroup}
       if(x.kaymbu&&x.kaymbu.check){x.kaymbu=Object.assign({},x.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete x.kaymbu.unsure;delete x.kaymbu.suggest;delete x.kaymbu.maybe}
       x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
     toast("Saved.")}
@@ -4149,10 +4156,10 @@ document.addEventListener("click",e=>{
   else if(kind==="famfit"){LS.set("tree.famfitOff",[...LS.get("tree.famfitOff",[]),id+"|"+v].slice(-100))}
   else if(kind==="three"){const c=children.get(id);if(!c)return;kidDrdpPatch(c,{drdp:{view:v}});toast(`${c.first} is read against the ${v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten"} View.`)}
   // the next task of the same kind opens beneath, so a run of them is done without leaving Today
-  const done=tqOpen;tqOpen="";tqKids=null;tqRoom="";
+  const done=tqOpen;tqOpen="";tqKids=null;tqRoom="";tqGroup=null;
   const left=todayWaiting().filter(w=>w.q&&w.q!==done&&w.q.split("|")[0]===kind);if(left.length)tqOpen=left[0].q;
   redrawToday()});
-document.addEventListener("change",e=>{if(e.target.id!=="tqroom")return;tqRoom=e.target.value;redrawToday()});
+document.addEventListener("change",e=>{if(e.target.id==="tqgroup"){tqGroup=e.target.value;redrawToday();return}if(e.target.id!=="tqroom")return;tqRoom=e.target.value;tqGroup="";redrawToday()});
 /* ---------- the Next bar ----------
    A task opened from Waiting for you carries a slim bar, with how far through that kind of task the educator is, Next,
    and Back to Today. Next opens the following one still waiting. After the last one it goes back to Today. */
@@ -5895,9 +5902,15 @@ function nfKidsHtml(n,ph){
   const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
   if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
-  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>${n.kaymbu.maybe?"Is this child in the observation?":"Who is in this photo?"}</b><div class="cnt">${n.kaymbu.maybe?"This name is in the title, or is also an everyday word, so TREE did not tag it. Tap the children in this observation, then save.":"These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save."}</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}${ph!=null?`Children in photo ${ph+1}`:"Children in this observation, optional"}${ph==null&&named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}<div class="chips">${kids.map(chip).join("")||`<span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class above to tag children."}</span>`}</div>
+  const sg=n.smallGroup||(noticeForm&&formPhotos(noticeForm).includes(n)&&noticeForm.smallGroup)||"";
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>${n.kaymbu.maybe?"Is this child in the observation?":"Who is in this photo?"}</b><div class="cnt">${n.kaymbu.maybe?"This name is in the title, or is also an everyday word, so TREE did not tag it. Tap the children in this observation, then save.":"These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save."}</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}${ph!=null?`Children in photo ${ph+1}`:"Children in this observation, optional"}${ph==null&&named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}${kids.length?groupFirstHtml(kids,sg,n.classroom,chip):`<div class="chips"><span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class above to tag children."}</span></div>`}
     ${others.length?`<details class="nfother" ${nfOtherOpen&&ph==null?"open":""}><summary class="cnt">Show all classes, ${others.length} more children</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
 }
+// with a small group chosen, its children come first, then the rest of the class
+function groupFirstHtml(kids,sg,room,chip){const mine=sg?kids.filter(c=>c.group===sg):[];
+  if(!mine.length)return `<div class="chips">${kids.map(chip).join("")}</div>`;
+  const rest=kids.filter(c=>c.group!==sg);
+  return `<div class="cnt kidsgrp">${esc(sg)} group</div><div class="chips">${mine.map(chip).join("")}</div>${rest.length?`<div class="cnt kidsgrp">${room?"The rest of "+esc(room)+" Class":"Everyone else"}</div><div class="chips">${rest.map(chip).join("")}</div>`:""}`}
 function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml(n);
   return `<div class="nf-pgroups">${ps.map((p,i)=>`<div class="nf-pg"><a class="nf-pgimg" href="${esc(photoSrc(p))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(p))}" alt="Photo ${i+1} in this observation"></a>
     <div style="min-width:0">${nfKidsHtml(p,i)}${i?sibStatusHtml(p):""}</div></div>`).join("")}</div>
@@ -6331,8 +6344,8 @@ document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-room"){noticeForm.classroom=t.value;for(const s of noticeForm.siblings||[])s.classroom=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
   else if(t.id==="nf-thread")noticeForm.threadId=t.value;
-  else if(t.id==="nf-sgroup"){noticeForm.smallGroup=t.value;for(const sb of noticeForm.siblings||[])sb.smallGroup=t.value}
-  else if(t.id==="nf-plan"){noticeForm.planId=t.value;for(const sb of noticeForm.siblings||[])sb.planId=t.value;const pl=plans.get(t.value);if(pl&&!noticeForm.smallGroup){const g=(pl.groups||[])[0]||pl.group;if(g){noticeForm.smallGroup=g;const el=$("#nf-sgroup");if(el)el.value=g}}}
+  else if(t.id==="nf-sgroup"){noticeForm.smallGroup=t.value;for(const sb of noticeForm.siblings||[])sb.smallGroup=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
+  else if(t.id==="nf-plan"){noticeForm.planId=t.value;for(const sb of noticeForm.siblings||[])sb.planId=t.value;const pl=plans.get(t.value);if(pl&&!noticeForm.smallGroup){const g=(pl.groups||[])[0]||pl.group;if(g){noticeForm.smallGroup=g;for(const sb of noticeForm.siblings||[])sb.smallGroup=g;const el=$("#nf-sgroup");if(el)el.value=g;const ks=$("#nf-kids");if(ks)ks.innerHTML=kidsAreaHtml(noticeForm)}}}
   else if(t.id==="nf-day")noticeForm.day=t.value;});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photo"&&t.id!=="nf-photo2")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addMomentPhotos(fs)});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photoadd")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addPhotosToForm(fs)});
