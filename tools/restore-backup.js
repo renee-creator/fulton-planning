@@ -39,7 +39,7 @@ for (const [rel, doc] of Object.entries(bundle.files)) {
   // the DRDP descriptors and the educator records under staff/ are kept with one space of indent, every other record with
   // two, as the server writes them
   const rp = clean.split(path.sep).join('/');
-  const indent = rp === 'drdp/descriptors.json' || rp.startsWith('staff/') ? 1 : 2;
+  const indent = rp === 'drdp/descriptors.json' || rp.startsWith('staff/') || rp.startsWith('family/handbook/') ? 1 : 2;
   fs.writeFileSync(file, md ? doc : JSON.stringify(doc, null, indent) + '\n');
   n++;
 }

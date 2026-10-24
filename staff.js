@@ -10,12 +10,13 @@
 
    The director keeps each part visible only to her until she turns it on for educators in Settings.
    A new hire signs in before their first day and reaches only the New Educator section, with their own records, the
-   PD library and the handbook, until the director turns on full access. */
+   PD library and the handbook, until the director turns on full access.
+   The Teacher Policies and Procedures and the Family Handbook, section by section, are in policies.js. */
 const crypto = require('crypto');
 
 module.exports = function staffModule(o) {
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
-  const S = { files: new Map(), timers: new Map(), saving: new Map(), ready: false, loading: null };
+  const S = { files: new Map(), timers: new Map(), saving: new Map(), imgs: new Map(), imgCache: new Map(), ready: false, loading: null };
   const DAY = 864e5;
 
   /* ---------- what a record holds ---------- */
@@ -59,21 +60,22 @@ module.exports = function staffModule(o) {
   const pidOf = name => nameKey(name).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const pPath = name => `staff/people/${pidOf(name)}.json`;
   const SCHOOL = 'staff/school.json', DRILLS = 'staff/drills.json', SENT = 'staff/sent.json';
-  const hbPath = id => `staff/handbook/${id}.json`;
 
   /* ---------- reading and saving ---------- */
   const get = p => { const r = S.files.get(p); return r ? r.doc : null; };
   function put(p, doc) { const r = S.files.get(p); S.files.set(p, { doc, sha: r && r.sha, local: true }); soon(p); return doc; }
+  // a Markdown piece is kept as its own text
+  function putText(p, text) { const r = S.files.get(p); S.files.set(p, { text, sha: r && r.sha, local: true }); soon(p); return text; }
   function soon(p) { clearTimeout(S.timers.get(p)); const t = setTimeout(() => { S.timers.delete(p); flush(p).catch(e => log('Educator record not saved', p, e.message)); }, 1200); if (t.unref) t.unref(); S.timers.set(p, t); }
   function flush(p) {
     const prev = S.saving.get(p) || Promise.resolve();
     const job = prev.then(async () => {
       const r = S.files.get(p); if (!r || !r.local) return true;
-      const doc = r.doc, content = Buffer.from(JSON.stringify(doc, null, 1) + '\n', 'utf8').toString('base64');
+      const doc = r.doc !== undefined ? r.doc : r.text, content = Buffer.from(r.doc !== undefined ? JSON.stringify(doc, null, 1) + '\n' : String(doc), 'utf8').toString('base64');
       for (let k = 0; k < 4; k++) {
         if (k) await new Promise(ok => setTimeout(ok, 1500 * k));
         const res = await gh('PUT', `/repos/${repo}/contents/${p}`, { message: 'Update ' + p.replace(/^staff\//, 'educator records ').replace(/\.json$/, ''), content, branch: store.branch, ...(r.sha ? { sha: r.sha } : {}) });
-        if (res.status === 200 || res.status === 201) { r.sha = res.json.content.sha; if (r.doc === doc) r.local = false; return true; }
+        if (res.status === 200 || res.status === 201) { r.sha = res.json.content.sha; if ((r.doc !== undefined ? r.doc : r.text) === doc) r.local = false; return true; }
         if (res.status === 409 || res.status === 422) { const g = await gh('GET', `/repos/${repo}/contents/${p}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); r.sha = g.status === 200 ? g.json.sha : undefined; continue; }
         if (res.status < 500 && res.status !== 429) break;
       }
@@ -90,7 +92,11 @@ module.exports = function staffModule(o) {
       if (tree.status !== 200 && tree.status !== 409) throw new Error('GitHub answered ' + tree.status + ' when listing educator records');
       // the records hold the people, the handbook and the school's settings as JSON, and the PD library's pieces as
       // Markdown files, one piece each, so a new piece is added as a file with no change to TREE
-      const want = ((tree.json && tree.json.tree) || []).filter(f => f.type === 'blob' && /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path));
+      const all = ((tree.json && tree.json.tree) || []).filter(f => f.type === 'blob');
+      // the Family Handbook's editions are read here too, beside the Teacher Policies and Procedures
+      const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
+      // the pictures in the policies are read only when someone opens them
+      for (const f of all) if (/^(staff\/policies|family\/handbook)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
       const seen = new Set(want.map(f => f.path));
       for (const p of [...S.files.keys()]) if (/\.md$/.test(p) && !seen.has(p)) S.files.delete(p);
       for (const f of want) {
@@ -115,7 +121,7 @@ module.exports = function staffModule(o) {
   }
   async function ready() { if (!S.ready) await load(); }
   const school = () => get(SCHOOL) || {};
-  const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false }, school().open || {});
+  const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false, family: false }, school().open || {});
 
   /* ---------- the PD library's pieces, one file each in pd/, so a new piece needs no code ---------- */
   let pieceCache = null;
@@ -245,21 +251,15 @@ module.exports = function staffModule(o) {
       const secs = [...S.files].filter(([p]) => p.startsWith('staff/handbook/')).map(([, r]) => r.doc).filter(Boolean).sort((a, b) => (a.order || 0) - (b.order || 0));
       json(req, res, 200, { sections: secs.filter(x => !x.removed || dir), doc: get('staff/handbook-doc.json') || {} }); return;
     }
-    if (P === 'handbook/save') {
-      if (!dir) return deny('Only the director edits the Teacher Policies and Procedures.');
-      const id = String(body.id || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60); if (!id) { err(req, res, 400, 'Give the section a title.'); return; }
-      if (body.remove) { const r = S.files.get(hbPath(id)); if (r) { put(hbPath(id), Object.assign({}, r.doc, { removed: true, updatedAt: Date.now(), updatedBy: me })); } json(req, res, 200, { ok: true }); return; }
-      const cur = get(hbPath(id)) || { id, group: 'new', order: Math.max(0, ...[...S.files].filter(([p]) => p.startsWith('staff/handbook/')).map(([, r]) => r.doc.order || 0)) + 1 };
-      const doc = Object.assign({}, cur, { title: String(body.title || cur.title || '').slice(0, 120), body: String(body.body || '').slice(0, 60000), updatedAt: Date.now(), updatedBy: me });
-      delete doc.removed; put(hbPath(id), doc); json(req, res, 200, doc); return;
-    }
+    // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
+    if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'person') {
       if (!canSee(me, who)) return deny('Only you and the director see your records.');
       if (!dir && !allowed(me, 'records') && !allowed(me, 'newed')) return deny();
       // a shared file on this record, such as a class roster, comes with its name
       const doc0 = person(who), sf = school().files || {}, txt = JSON.stringify(doc0);
       const shared = Object.fromEntries(Object.entries(sf).filter(([f]) => txt.includes(f)));
-      json(req, res, 200, Object.assign(doc0, { shared, planStarted: G.planStarted(who), goTo: goToOf(who), paired: pairedWith(who).map(n => ({ name: n, startDate: profileOf(n).startDate || '', checkins: person(n).gotoCheckins || [] })) })); return;
+      json(req, res, 200, Object.assign(doc0, { shared, planStarted: G.planStarted(who), goTo: goToOf(who), policy: S.ready && POL.readers().some(n => nameKey(n) === nameKey(who)) ? POL.ackOf(who) : null, paired: pairedWith(who).map(n => ({ name: n, startDate: profileOf(n).startDate || '', checkins: person(n).gotoCheckins || [] })) })); return;
     }
     // the director's list of educators who have left Fulton, with their last day. Each opens to their records and growth.
     if (P === 'former') {
@@ -281,7 +281,7 @@ module.exports = function staffModule(o) {
       if (dir) { doc = Object.assign(JSON.parse(JSON.stringify(cur)), next, { name: cur.name, files: cur.files }); }
       else doc = mergeOwn(cur, next);
       // what the page was sent alongside the record is never kept in it
-      for (const k of ['shared', 'paired', 'goTo', 'room', 'role', 'newHire', 'newEd']) delete doc[k];
+      for (const k of ['shared', 'paired', 'goTo', 'room', 'role', 'newHire', 'newEd', 'policy', 'planStarted']) delete doc[k];
       doc.updatedAt = Date.now(); doc.updatedBy = me;
       put(pPath(who), doc); json(req, res, 200, doc); return;
     }
@@ -344,7 +344,7 @@ module.exports = function staffModule(o) {
     if (P === 'school') {
       if (!dir) return deny('Only the director changes these settings.');
       const sc = Object.assign({}, school()); const b = body.school || {};
-      if (b.open) sc.open = Object.assign({}, opened(), Object.fromEntries(Object.entries(b.open).filter(([k]) => ['records', 'pd', 'handbook', 'newed', 'growth'].includes(k)).map(([k, v]) => [k, !!v])));
+      if (b.open) sc.open = Object.assign({}, opened(), Object.fromEntries(Object.entries(b.open).filter(([k]) => ['records', 'pd', 'handbook', 'newed', 'growth', 'family'].includes(k)).map(([k, v]) => [k, !!v])));
       // the go-to person for every new educator. Someone marked never to be assigned is refused.
       if ('goTo' in b) { const g = String(b.goTo || '').slice(0, 40); if (g && (!staffNames().some(n => nameKey(n) === nameKey(g)) || profileOf(g).neverGoTo)) { err(req, res, 400, 'Choose someone else as the go-to person.'); return; } sc.goTo = g; }
       if (b.checkin && typeof b.checkin === 'object') sc.checkin = { week: Math.min(4, Math.max(1, Math.round(+b.checkin.week || 1))), secondTime: /^\d{2}:\d{2}$/.test(b.checkin.secondTime || '') ? b.checkin.secondTime : '', minutes: 20 };
@@ -508,11 +508,13 @@ module.exports = function staffModule(o) {
 
   /* ---------- for the server ---------- */
   // a shared sign-in reads the PD library and the Teacher Policies and Procedures, and has no records or growth of its own
-  function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false };
-    if (isKitchen(name) || profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false }; }
-    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), presenting: !!S.ready && PR.anyFor(name) }; }
+  // the Family Handbook is for every staff sign-in but the kitchen, once the director turns it on
+  function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false, family: allowed(name, 'family') };
+    if (isKitchen(name)) return { records: allowed(name, 'records'), pd: false, handbook: false, newed: false, growth: false, family: false };
+    if (profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false, family: allowed(name, 'family') }; }
+    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
-    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name) }; }
+    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current() }; }
   // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
@@ -542,5 +544,14 @@ module.exports = function staffModule(o) {
   }
   // Presenting, kept in presenting.js, beside the PD days and the growth pages
   PR = require('./presenting.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart: n => G.takesPart(n), isNewHire });
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  // a picture in the policies, read from the records the first time it is asked for
+  async function readImage(p) {
+    if (S.imgCache.has(p)) return S.imgCache.get(p); const sha = S.imgs.get(p); if (!sha) throw new Error('not here');
+    const b = await gh('GET', `/repos/${repo}/git/blobs/${sha}`); if (b.status !== 200) throw new Error('GitHub answered ' + b.status);
+    const buf = Buffer.from(b.json.content, 'base64'); S.imgCache.set(p, buf); return buf;
+  }
+  const POL = require('./policies.js')({ get, put, putText, S, log, person, pPath, staffNames, isDirector, isKitchen, nameKey, today, allowed, hasOwn, profileOf, accountFor, store, readImage, roleNames: o.roleNames || (() => []), piecesChanged: () => { pieceCache = null; } });
+  // the Family page and the public page read the Family Handbook through these
+  const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
+  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

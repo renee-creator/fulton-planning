@@ -273,6 +273,8 @@ async function journalPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().peo
   draw(my,h)}
 
 /* ---------- the monthly check-in ---------- */
+// each check-in page links to How Check-Ins Work, in the Teacher Policies and Procedures
+const ciLink=()=>staffSubOk("sthb")?` Read <button class="linkbtn" data-hbopen="how-check-ins-work">How Check-Ins Work</button> in the Teacher Policies and Procedures.`:"";
 // five parts in about twenty minutes, in this order, then what the director writes on her own after the educator leaves
 const Q=[["temp","Professional temperature, about 2 minutes","How has the last month felt? The educator gives their own number from 1 to 5, and you add yours beside it."],
   ["plusdelta","Plus delta, about 7 minutes","What went well this month, and what they would change, side by side. This is the place for strong moments, stretches and challenges."],
@@ -286,7 +288,7 @@ const dur=n=>n===90?"an hour and a half":n===60?"an hour":n%60===0?(n/60)+" hour
 async function checkinPage(my){const dir=isDir();const b=B();
   if(!dir){const d=await doc(meName(),true);const s=[b.schedule.now,b.schedule.next].filter(Boolean).flatMap(x=>x.list).filter(x=>x.date>=today()&&x.name===meName());const nxt=s[0];const mode=d.profile.checkin;
     const ym=today().slice(0,7);const pre=(d.pre||{})[ym]||{};const cis=d.checkins||[];const last=cis.find(c=>c.focus&&c.focus.settled);
-    draw(my,head("Check-ins","My check-ins","A regular, supportive space to talk about your practice, your Class and the children, and to agree together on what comes next. Nothing needs to be prepared beforehand.")+
+    draw(my,head("Check-ins","My check-ins","A regular, supportive space to talk about your practice, your Class and the children, and to agree together on what comes next. Nothing needs to be prepared beforehand."+ciLink())+
       card("My next check-in",nxt?`<div><b>${H(new Date(nxt.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b>${nxt.time?", "+H(tm(nxt.time)):""}, about twenty minutes${nxt.kind==="second"?", on the short second Monday":nxt.kind==="slot"?", during your Monday planning hour":""}.</div><div class="cnt">It is on the TREE calendar too.</div>`:`<div class="cnt">${mode==="asneeded"?"Your check-ins happen as needed. The director sets a time with you.":"The next check-in appears here once it is on the calendar."}</div>`)+
       card("Before we meet",`<div class="hint">You name what you want to focus on first, if you like. You are always welcome to bring a journal entry, a proud moment, a question or a piece of documentation.</div><label class="fld-label">What I want to focus on<textarea rows="3" id="gc-pre">${H(pre.focus||"")}</textarea></label><div class="actions"><button class="btn small" data-gcpre="1">Save</button>${pre.at?`<span class="cnt">Saved ${H(fms(pre.at))}</span>`:""}</div>`)+
       card("Focus Until Next Time",last?`<div class="gq">${md(last.focus.settled)}</div><div class="cnt">${last.focus.area?"Linked to "+H(areaName(last.focus.area))+". ":""}From the check-in on ${H(fd(last.date))}.</div>${last.focus.module&&modReady(last.focus.module)?`<div class="actions"><button class="btn small ghost" data-tview="stpd" data-stmod="m:${H(last.focus.module)}">${H(modTitle(last.focus.module))}</button></div>`:""}
@@ -295,7 +297,7 @@ async function checkinPage(my){const dir=isDir();const b=B();
   // the director's month, and one check-in
   if(st.ciWho){return checkinForm(my,st.ciWho)}
   const S2=[b.schedule.now,b.schedule.next].filter(Boolean);const asNeeded=b.people.filter(p=>p.checkin==="asneeded");
-  draw(my,head("Check-ins","Check-ins","Each educator has one check-in a month in their Monday planning slot, about twenty minutes. TREE lays out each month from the planning hours in Settings, moving a holiday or the Monday after a long break to the next open Monday, and rotating the order within each slot.")+
+  draw(my,head("Check-ins","Check-ins","Each educator has one check-in a month in their Monday planning slot, about twenty minutes. TREE lays out each month from the planning hours in Settings, moving a holiday or the Monday after a long break to the next open Monday, and rotating the order within each slot."+ciLink())+
     S2.map(s=>card(new Date(s.ym+"-01T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}),`${s.moved?`<div class="cnt">Moved from ${H(fd(s.moved))}, which is a holiday or the Monday after a long break.</div>`:""}
       ${s.list.length?`<div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Day</th><th>Time</th><th>Educator</th><th></th></tr></thead><tbody>${s.list.map(x=>`<tr><td>${H(fd(x.date))}${x.kind==="second"?` <span class="cnt">short second Monday</span>`:""}</td><td>${H(tm(x.time))}</td><td><b>${H(x.name)}</b></td><td><button class="btn small ghost" data-gci="${H(x.name)}" data-gcidate="${H(x.date)}">Open</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="cnt">No check-ins this month yet.</div>`}`)).join("")+
     card("As needed",`<div class="hint">${asNeeded.length?H(asNeeded.map(p=>p.name).join(" and "))+" have check-ins as needed.":"Everyone meets in a planning slot."} Set a day here and it joins the TREE calendar.</div>
@@ -310,7 +312,7 @@ async function checkinForm(my,name){const d=await doc(name,true);const y=yr();co
   const sugArea=c.focus.area||suggestArea([c.focus.settled,c.focus.mine,c.focus.seen].join(" "));const sugMod=c.focus.module||(B().modules.find(m=>m.ready&&m.areas.includes(sugArea)&&!["howto","licensing"].includes(m.slug))||{}).slug||"";
   const past=(d.checkins||[]).filter(x=>x.id!==c.id);
   const fld=(k,rows)=>`<textarea rows="${rows||3}" data-gcf="${k}" style="width:100%">${H(c[k]||"")}</textarea>`;
-  draw(my,head("Check-ins","Check-in with "+name,`About twenty minutes. Nothing needs to be prepared beforehand. You ask the questions in the conversation and capture the answers.`)+
+  draw(my,head("Check-ins","Check-in with "+name,`About twenty minutes. Nothing needs to be prepared beforehand. You ask the questions in the conversation and capture the answers.`+ciLink())+
     `<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-gciback="1">‹ Check-ins</button><label class="cnt">Day <input type="date" id="gc-date" value="${H(c.date||today())}"></label></div>`+
     card("Their last month",prep.length?exHtml(prep):`<div class="cnt">Nothing kept in TREE in the last month yet.</div>`,"")+
     card(Q[0][1],`<div class="cnt gq">${H(Q[0][2])}</div><div class="gcols"><div><div class="cnt">Their number, from 1 to 5</div>${rate("gctemps",c.temp.self)}</div><div><div class="cnt">Your number beside it</div>${rate("gctempd",c.temp.dir)}</div></div><textarea rows="2" data-gcf="temp.words" style="width:100%;margin-top:6px" aria-label="Their words">${H(c.temp.words||"")}</textarea>`)+

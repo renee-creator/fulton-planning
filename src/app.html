@@ -1750,6 +1750,8 @@ function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observ
     const d=el.closest("details");if(d&&!d.open)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
   setTimeout(()=>show(8),120)}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hbopen]");if(!t)return;e.preventDefault();LS.set("tree.hb",t.dataset.hbopen);goView("sthb")});
+// a link to the exact section of the Family Handbook, such as Behavior and Discipline
+document.addEventListener("click",e=>{const t=e.target.closest("[data-fhopen]");if(!t)return;e.preventDefault();LS.set("tree.fh",t.dataset.fhopen);goView("stfh")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-obsgo]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();openObservation(t.dataset.obsgo)},true);
 // a page's long introduction folds under About this page, so the page opens on its work
 function foldIntros(){const m=$("#main");if(!m)return;
@@ -3830,28 +3832,28 @@ const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],[
 const isNewHire=()=>!VIEW_AS&&!!(window.FP_NEWHIRE&&window.FP_NEWHIRE());
 const staffInfo=()=>window.FP_STAFF||null;
 function staffNavOn(){const s=staffInfo();if(!s)return isDirector();if(VIEW_AS)return Object.values(s.open||{}).some(Boolean);return isDirector()||!!(s.can&&Object.values(s.can).some(Boolean))}
-const STAFF_VIEWS=["stteam","strec","stnew","stgrow","stplan","stjour","stci","stmom","stpd","stpdd","stpres","sthb","st27","stdrill","stfiles","stformer"];
+const STAFF_VIEWS=["stteam","strec","stnew","stgrow","stplan","stjour","stci","stmom","stpd","stpdd","stpres","sthb","stfh","st27","stdrill","stfiles","stformer"];
 const GROW_VIEWS=["stgrow","stplan","stjour","stci","stmom","stpdd"];
 function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{});if(isDirector()&&!VIEW_AS)return true;
   if(isKitchenUser())return k==="strec"&&!!c.records;
   // Presenting, for the director and for an educator who presents an entry or can read one presented. The server holds to the same.
   if(k==="stpres")return !VIEW_AS&&!isNewHire()&&!!c.presenting;
   // a new hire's own four pages, which the server also holds them to
-  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
+  if(isNewHire())return ["strec","stnew","stpd","sthb","stfh"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
   if(["stteam","st27","stdrill","stfiles","stformer"].includes(k))return false;
   // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
   if(GROW_VIEWS.includes(k))return !!c.growth;
-  return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):false}
+  return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):k==="stfh"?!!(c.family||c.newed):false}
 function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo()||{};if(isNewHire()||(s.can&&s.can.newed))return "stnew";return SUBS.staff.map(x=>x[0]).find(staffSubOk)||"today"}
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
-const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
-const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -3880,7 +3882,7 @@ function renderTreeNav(){
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
 // the director's Educators pages, in four groups
-const ST_GROUPS=[["People",["stteam","stnew","stmom","stformer"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","stpres","sthb","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
+const ST_GROUPS=[["People",["stteam","stnew","stmom","stformer"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","stpres","sthb","stfh","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
 // the pages under a section, shown at the top of the page. A plan that is open shows the way back to its week.
 function subnavHtml(){
   const s=secOf(view);let back="";
@@ -7959,7 +7961,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}</div></div>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -8013,7 +8015,7 @@ function renderInquiry(x){
       <span class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}. It stays with the team, and its observations stay out of portfolios and walls.</span>${isDirector()?`<label class="cnt">Staff room display <select data-iqdisplay="1" style="width:auto"><option value="show" ${inqOnDisplay(x)?"selected":""}>Shows</option><option value="off" ${inqOnDisplay(x)?"":"selected"}>Stays off</option></select></label>`:""}</div>
     <div id="iqplan-pick"></div></div>`;
 
-  h+=`<div class="ref iqphil">${esc(IQ_PHIL)}</div>`;
+  h+=`<div class="ref iqphil">${esc(IQ_PHIL)}${staffSubOk("stfh")?` <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline, in the Family Handbook</button>`:""}</div>`;
   h+=`<section class="card"><div class="lbl">What we see</div>
     <div class="hint">What the team sees, in plain words and without judgment. The observations below hold the detail.</div>
     <textarea data-iqf="see" rows="2">${esc(x.see||"")}</textarea>${iqAssistHtml(x,"see")}
@@ -11836,6 +11838,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-kinfoedit]
 function kidFamilySideHtml(c){
   const ob=c.onboarding||{},ef=c.enrollForm,q=c.familyQuestionnaire,st=c.familyStrengths,files=(c.sharedFiles||[]).filter(Boolean);
   let h="";
+  // whether the family has acknowledged the Family Handbook that is current, which they do on the Family page
+  const fy=(staffInfo()||{}).fh;if(kidAt(c)){const acks=Object.assign((c.familyChecks||{}).handbook?{"2026":{at:c.familyChecks.handbook}}:{},c.handbookAck||{});const last=Object.keys(acks).sort().pop();
+    const line=[last?`The ${esc(last)} edition, acknowledged ${esc(longDate(String(acks[last].at).slice(0,10)))}.`:"",fy&&!acks[fy]?`The ${esc(fy)} edition is not acknowledged yet. The family does this on the Family page.`:""].filter(Boolean).join(" ");
+    if(line)h+=`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Family Handbook</h3>${staffSubOk("stfh")?`<button class="linkbtn" data-fhopen="__contents">Open it</button>`:""}</div><div class="cnt">${line}</div></section>`}
   // the Welcome tab on the Family page shows by itself around a child's first day, and the office can turn it on for any child
   const wsw=isOffice()?`<label class="radio" style="margin:6px 0 0"><input type="checkbox" data-kwelcome="${esc(c.id)}" ${c.welcomeOn?"checked":""}><span>Show the Welcome steps on the Family page</span></label>`:"";
   const newKid=!!c.enrollDate&&String(c.enrollDate).slice(0,10)>=iso(new Date(Date.now()-21*864e5));

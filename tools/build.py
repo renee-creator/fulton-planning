@@ -23,8 +23,9 @@ out = head + body.replace(marker, shim + "\n" + marker) + "\n</body>\n</html>\n"
 # the Educators pages are their own script, loaded only when opened. Its address carries a short fingerprint of what is
 # in it, so a phone never keeps an old copy after a change.
 import hashlib
-# the growth pages and Presenting sit after the Educators pages in the same file, and share their helpers
-staff = (root / "src/staff-app.js").read_text() + "\n" + (root / "src/growth-app.js").read_text() + "\n" + (root / "src/presenting-app.js").read_text()
+# the growth pages and Presenting sit after the Educators pages in the same file, and share their helpers. The policies'
+# Markdown reader comes first, the same file the Family page and the public Family Handbook page load.
+staff = (root / "policy-md.js").read_text() + "\n" + (root / "src/staff-app.js").read_text() + "\n" + (root / "src/growth-app.js").read_text() + "\n" + (root / "src/presenting-app.js").read_text()
 (root / "tree-staff.js").write_text(staff)
 out = out.replace("__STAFF_V__", hashlib.sha1(staff.encode()).hexdigest()[:10])
 print("tree-staff.js", len(staff), "bytes")

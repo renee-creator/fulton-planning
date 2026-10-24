@@ -62,7 +62,11 @@ const DEFAULT_WELCOME = "We are so excited to welcome your family to Fulton Comm
 const CALENDAR_URL = 'https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles';
 const HANDBOOK_URL = 'https://docs.google.com/document/d/1rV5B3qqimv6iAdAL_pCUiOuZ5UU443Gh/edit?usp=sharing';
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, fileKey, keepPhoto }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, fileKey, keepPhoto, handbook }) {
+  // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
+  // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
+  const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
+  const hbAck = (k, y) => (k.handbookAck || {})[y] || (y === '2026' && k.familyChecks && k.familyChecks.handbook ? { at: k.familyChecks.handbook } : null);
   const KIND = 'participation';
   const recs = () => store.recs[KIND];
   const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '' }; };
@@ -164,7 +168,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const anyNew = kidsOut.some(k => k.isNew);
     const pace = (() => { const t = new Date(), y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; const a = new Date(y, 7, 15).getTime(), b = new Date(y + 1, 4, 31).getTime(); return Math.floor(c.goal * Math.min(1, Math.max(0, (t.getTime() - a) / (b - a)))); })();
     const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
-    return { test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: HANDBOOK_URL,
+    const hy = hbYear();
+    return { test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 
@@ -198,7 +203,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
       aboutMe: (() => { const am = k.aboutMe || {}; const fk = fileKey(); const ph = p => (p.photos || []).map(id => ({ id, src: '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(fk) }));
         const fixed = AAM_PAGES.map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES.length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),
-      checks: isNew(k) ? Object.assign({}, k.familyChecks || {}) : null, agreement: isNew(k) ? (k.familyAgreement || null) : null, schedule: k.schedule || '', classroom: k.classroom || '' };
+      checks: isNew(k) ? Object.assign({}, k.familyChecks || {}) : null, agreement: isNew(k) ? (k.familyAgreement || null) : null, schedule: k.schedule || '', classroom: k.classroom || '',
+      handbook: (() => { const y = hbYear(); const a = y && hbAck(k, y); return y ? { year: y, at: a ? a.at : '' } : null; })() };
   }
   function book(f, slotId, childId, on) {
     const s0 = getRec(KIND, slotId), s = s0 && Object.assign(s0, { id: slotId }); const k = f.kids.find(x => x.id === childId);
@@ -281,7 +287,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
     if (![...CHECKS.map(c => c[0]), ...PACK.map(c => 'pack_' + c[0]), 'notices', 'handbook'].includes(key)) return { error: 'That step is not on the list.' };
     remember(f, 'children', childId); const kd = getRec('children', childId); const ch = Object.assign({}, kd.familyChecks || {}); if (on) ch[key] = nowIso(); else delete ch[key];
-    saveRec('children', childId, Object.assign({}, kd, { familyChecks: ch, updatedAt: nowIso() })); return { ok: true };
+    const extra = {};
+    // reading the Family Handbook is kept for the edition that is current, with who said so
+    if (key === 'handbook') { const y = hbYear(); if (y) { const a = Object.assign({}, kd.handbookAck || {}); if (on) a[y] = { at: nowIso(), by: f.email }; else delete a[y]; extra.handbookAck = a; } }
+    saveRec('children', childId, Object.assign({}, kd, { familyChecks: ch, updatedAt: nowIso() }, extra)); return { ok: true };
   }
   // the Admission Agreement, completed, initialed and signed by the family. Once signed it is kept as it is, and the office reopens it for a change.
   function agreement(f, childId, b, submit) {

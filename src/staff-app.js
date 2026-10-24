@@ -1,14 +1,14 @@
 /* ---------- Educators in TREE ----------
    Each educator's records page, the director's view of every educator, October 1, 2027, the drill log, paper personnel
    files, the New Educator section, the PD library with Licensing at Fulton and the TREE How To guides, and the Teacher
-   Policies and Procedures, and Presenting. TREE loads this file only when someone opens one of these pages, and the server sends each
+   Policies and Procedures, the Family Handbook, and Presenting. TREE loads this file only when someone opens one of these pages, and the server sends each
    record only to the educator it belongs to and the director. It uses TREE's own helpers, $, esc, toast, the PDF and
    Word makers, and the sign-in. */
 (function(){
 "use strict";
 const T={};window.TreeStaff=T;
 let B=null;
-const st={who:"",doc:null,people:null,drills:null,pd:null,hb:null,piece:"",mod:"",hbSec:"",hbEdit:false,newWho:"",adding:false,group:false,busy:"",viewer:null};
+const st={who:"",doc:null,people:null,drills:null,pd:null,pol:{},polSec:"",polEdit:false,polHist:-1,fhYear:"",polAcks:null,piece:"",mod:"",newWho:"",adding:false,group:false,busy:"",viewer:null};
 const api=(p,b)=>window.FP_API("/api/staff/"+p,b||{});
 const fail=e=>toast((e&&(e.message||e.error))||"That did not work. Check the connection and try again.");
 const H=s=>esc(String(s==null?"":s));
@@ -47,7 +47,11 @@ if(!document.getElementById("staffcss")){const c=document.createElement("style")
 .stview .bar{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 .stview iframe,.stview img{width:100%;height:100%;border:0;object-fit:contain;background:#f4f4f2}
 .stq{border-left:3px solid var(--marigold);padding-left:10px}
-.strow a,.stmd a{color:var(--moss)}
+.strow a,.stmd a,.pmd a{color:var(--moss)}
+/* the policies, read in full */
+.pmd{max-width:72ch}.pmd h4{font-size:16px;margin:16px 0 6px}.pmd h5{font-size:14.5px;margin:12px 0 4px}.pmd p{margin:0 0 9px;line-height:1.55}.pmd ul,.pmd ol{margin:0 0 10px;padding-left:22px}.pmd li{margin:3px 0;line-height:1.5}.pmd li.pmnest{list-style:none}
+.pmd blockquote{margin:0 0 9px;padding-left:14px;border-left:3px solid var(--line)}.pmd table{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 12px}.pmd td,.pmd th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}.pmd .tw{max-width:100%;overflow-x:auto}.pmd figure{margin:8px 0}
+details.stpart{border-top:1px solid var(--line);padding:8px 0}details.stpart>summary{cursor:pointer;padding:4px 0}details.stpart .prow{padding-left:12px}
 .stgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .stmod{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper);display:grid;gap:6px;align-content:start}
 @media (max-width:760px){.stview{padding:0}.stview>div{height:100vh;border-radius:0}}
@@ -93,7 +97,6 @@ async function loadPerson(name){st.doc=await api("person",{name});st.who=name;re
 async function save(doc,msg){try{st.doc=await api("save",{name:doc.name,doc});if(msg)toast(msg);return st.doc}catch(e){fail(e);return null}}
 async function loadPeople(){const r=await api("people");st.people=r.people;st.drills=r.drills;return r}
 async function loadPd(){if(!st.pd)st.pd=await api("pd");return st.pd}
-async function loadHb(force){if(!st.hb||force)st.hb=await api("handbook");return st.hb}
 const ITEMS=()=>B.defs.items,PAPERS=()=>B.defs.papers;
 // Fulton's own trainings are for everyone who cares for children, so the office and the kitchen do not see them
 const careFor=p=>!["Office","Kitchen","Staff","Director"].includes(p.role||whoRole(p))&&!((p.profile||{}).role==="staff");
@@ -143,7 +146,7 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="strec")return await pageRecords(my);
     if(v==="stnew")return await pageNew(my);
     if(v==="stpd")return await pagePd(my);
-    if(v==="sthb")return await pageHb(my);
+    if(v==="sthb"||v==="stfh")return await pagePol(my,POLV[v]);
     if(v==="st27")return await page27(my);
     if(v==="stdrill")return await pageDrills(my);
     if(v==="stfiles")return await pageFiles(my);
@@ -161,10 +164,10 @@ const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=wi
    the kept words go. Passcodes are never kept. */
 const DRAFTS=new Map();
 // the boxes that start something new are empty again once it is added. An agenda's blocks are kept by the agenda itself.
-const CREATE=["sth-title","sth-hours","std-note","stn-name","gm-text","gpd-title","prn-title","prn-note","prr-url","prr-title","prr-note","prr-libnote","prd-url","prd-title","prd-note","prf-prompts","prf-checks"];
+const CREATE=["sth-title","sth-hours","std-note","stn-name","gm-text","gpd-title","stpol-note","prn-title","prn-note","prr-url","prr-title","prr-note","prr-libnote","prd-url","prd-title","prd-note","prf-prompts","prf-checks"];
 const draftKey=el=>{const own=el.id||Object.entries(el.dataset).map(([a,b])=>a+"="+b).join("&");if(!own||el.type==="password"||"gbk" in el.dataset)return "";
   const G=window.TreeGrowth&&TreeGrowth.st||{};const recs=view==="strec"||view==="stnew";
-  return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",view==="sthb"?st.hbSec:"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",view==="stpres"?(window.TreePres&&TreePres.st.sel)||"":"",own].join("|")};
+  return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",POLV[view]?st.polSec+"@"+(view==="stfh"?st.fhYear:""):"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",view==="stpres"?(window.TreePres&&TreePres.st.sel)||"":"",own].join("|")};
 const typed=el=>el&&el.closest&&el.closest("#main")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&/^(text|search|url|number|)$/.test(el.type)));
 document.addEventListener("input",e=>{if(typeof view==="undefined"||!STAFF_VIEWS.includes(view)||!typed(e.target)||VIEW_AS)return;const k=draftKey(e.target);if(k)DRAFTS.set(k,e.target.value)},true);
 function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,input").forEach(el=>{if(!typed(el))return;const k=draftKey(el);if(!k||!DRAFTS.has(k))return;const v=DRAFTS.get(k);
@@ -180,7 +183,7 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
     const ok=sts.filter(s=>s==="ok").length,due=st0.filter(x=>x.it.fulton&&x.none).length,soon=st0.filter(x=>x.s==="soon"&&!(x.it.fulton&&x.none)).length,outn=sts.filter(s=>s==="out").length;
     return `<tr data-stperson="${H(p.name)}" style="cursor:pointer"><td><b>${H(p.name)}</b>${p.newHire?` ${chip("soonish","New, New Educator section only")}`:p.newEd?` ${chip("soonish","New educator")}`:""}</td><td>${H(p.role)}</td><td>${H(p.room?p.room+" Class":"")}</td>
       <td>${ok} of ${itemsFor(p).length} in place${due?` ${chip("soon",due+" due")}`:""}${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
-  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section"}[k]));
+  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
       <div class="hint" style="margin-top:6px">Tap an educator to open their records page.</div>`,printBar("team"))+
@@ -249,6 +252,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
     ${card("Immunizations",`<div class="hint">California requires everyone who works at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995. Records and exemptions are seen only by ${mine?"you":"the educator"} and the director.</div>${imm}`)}
     ${card("Early childhood units",units)}
     ${card("Continuing hours, this school year",hours)}
+    ${p.policy?polRecordCard(p.policy,mine):""}
     ${careFor(p)?card("Licensing at Fulton",`<div class="actions" style="margin:0"><span class="stchip ${doneN===pcs.length&&pcs.length?"ok":"missing"}">${doneN} of ${pcs.length} pieces read</span><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Open the pieces</button></div>`):""}
     ${dir&&!mine?licensingListHtml(p,pcs):""}
     ${focus.length?card("Suggested Focus Until Next Time",`<div class="hint">A licensing item marked Let's review together becomes a suggested focus, which ${mine?"you":"the educator"} and the director confirm together.</div>${focus.map(f=>`<div class="strow"><div class="sttop"><b>${H(f.label)}</b>${f.educatorOk&&f.directorOk?chip("ok","Confirmed together"):chip("soonish","Suggested")}</div>
@@ -316,6 +320,7 @@ async function pageNew(my){const dir=D();let who=meName();
       ${dir?`<div class="actions">${(st.people.find(x=>x.name===who)||{}).newHire?`<button class="btn small" data-staccess="full" data-who="${H(who)}">Turn on full access to the school, the children and their work</button>`:`<span class="cnt">Full access is on.</span><button class="linkbtn" data-staccess="limit" data-who="${H(who)}">Limit to the New Educator section</button>`}</div>`:""}`)}
     ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.done?chip("ok",c.note||"Done"):chip(c.note==="Due"?"soon":"missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto&&!dir?"":c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}${c.links?asLinks():""}${c.view&&B.can&&B.can.growth?`<button class="linkbtn" data-tview="${c.view}">Open</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
     ${welcomeHtml(p,dir)}
+    ${await newPolCard(p,dir)}
     ${card("Who's who",`<div class="tablewrap"><table class="grid2" style="min-width:360px"><thead><tr><th>Name</th><th>Role</th><th>Class</th></tr></thead><tbody>${B.whosWho.map(w=>`<tr><td><b>${H(w.name)}</b></td><td>${H(w.role)}</td><td>${H(w.room?w.room+" Class":"")}</td></tr>`).join("")}</tbody></table></div>
       ${!dir?`<div class="actions">${(p.pd&&p.pd.read||{}).whoswho?chip("ok","Read"):`<button class="btn small ghost" data-stread="whoswho">I have read Who's who</button>`}</div>`:""}`)}
     ${card("Paperwork",`<div class="hint">Each form has a blank copy to download and print, and a place to upload the completed form as a photo or PDF. Uploads save to the school's Google Drive. Payroll and tax forms are completed in QuickBooks Workforce.</div>${papers.map(paperRow).join("")}
@@ -392,27 +397,258 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
       <div class="actions"><button class="btn" data-stdone="${H(x.id)}">${d?"Save my answer":"Finish this piece"}</button>${nx?`<button class="btn small ghost" data-stpiece="${H(nx.id)}">Next, ${H(nx.title)}</button>`:""}</div></section>`:
       `<section class="card"><div class="actions" style="margin:0"><button class="btn" data-stdone="${H(x.id)}">${d?"Read":"Finish this guide"}</button>${nx?`<button class="btn small ghost" data-stpiece="${H(nx.id)}">Next, ${H(nx.title)}</button>`:""}</div></section>`}`);
   jumpTop()}
-const HB_TITLES={"positive-discipline-for-educators":"Positive Discipline for Educators","emergency-and-disaster-plan":"Emergency and Disaster Plan","mandated-reporting":"Mandated Reporting","diapering":"Diapering","training-and-certification-requirements":"Training and Certification Requirements","changes-coming-october-1-2027":"Changes Coming October 1, 2027"};
-const hbTitle=id=>(st.hb&&(st.hb.sections||[]).find(s=>s.id===id)||{}).title||HB_TITLES[id]||id.replace(/-/g," ");
+const hbTitle=id=>{const d=st.pol.teacher;const s=d&&d.parts.flatMap(p=>p.sections).find(x=>x.id===id);return s?s.title:id.replace(/-/g," ").replace(/^./,c=>c.toUpperCase())};
 
-/* the Teacher Policies and Procedures */
-async function pageHb(my){const hb=await loadHb();const want=LS.get("tree.hb","");if(want){st.hbSec=want;st.hbEdit=false;LS.set("tree.hb",null)}const dir=D();const secs=(hb.sections||[]).filter(s=>!s.removed);
-  if(!st.doc||st.doc.name!==meName())await loadPerson(meName()).catch(()=>{});
-  const ack=((P().paperwork||{}).tppack||{}).ack;
-  if(st.hbSec==="__new"&&dir)return draw(my,head("Teacher Policies and Procedures","A new section")+card("New section",hbEditor({id:"",title:"",body:""})));
-  const s=secs.find(x=>x.id===st.hbSec);
-  if(s){draw(my,`${head("Teacher Policies and Procedures",s.title,s.updatedAt?`Updated ${H(fms(s.updatedAt))}${s.updatedBy&&s.updatedBy!=="TREE"?" by "+H(s.updatedBy):""}.`:"")}
-      <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-sthb="">‹ All sections</button></div>
-      ${st.hbEdit&&dir?card("Edit",hbEditor(s)):`<section class="card">${md(s.body)}<div class="actions">${printBar("hbsec")}${dir?`<button class="btn small ghost" data-sthbedit="1">Edit</button>`:""}</div></section>`}`);jumpTop();return}
-  const grp=(t,g)=>{const L=secs.filter(x=>x.group===g);return L.length?`<h4 style="margin:10px 0 2px">${H(t)}</h4>${L.map(x=>`<div class="prow"><button class="linkbtn" style="font-size:15px;text-align:left" data-sthb="${H(x.id)}">${H(x.title)}</button></div>`).join("")}`:""};
-  const doc=hb.doc||{};
-  draw(my,head("Teacher Policies and Procedures","Teacher Policies and Procedures","How Fulton works, for every educator. The new and revised sections are here in TREE, and the rest stays in the Google Doc until those sections are updated. The Google Doc stays as the archive.")+
-    card("In TREE",grp("New sections","new")+grp("Revised sections","revised")+grp("Notes","note")+(dir?`<div class="actions"><button class="btn small ghost" data-sthb="__new">Add a section</button></div>`:""),printBar("hball"))+
-    (doc.doc?card("The rest, in the Google Doc",`<div class="hint">These sections are read in the current Google Doc until they are updated here.</div>${(doc.sections||[]).map(x=>`<div class="prow"><a href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a></div>`).join("")}<div class="actions"><a class="btn small ghost" href="${H(doc.doc)}" target="_blank" rel="noopener">Open the whole Google Doc</a></div>`):"")+
-    card("Acknowledgment",ack?`<div class="actions" style="margin:0">${chip("ok","You read it "+fms(ack))}</div>`:`<div class="hint">Confirms you have read how Fulton works. It counts as your Teacher Policies and Procedures acknowledgment.</div><div class="actions"><button class="btn small" data-stread="handbook">I have read the Teacher Policies and Procedures</button></div>`))}
-const hbEditor=s=>`<div class="hint">Write in plain text. A line starting with ### is a heading, a line starting with a dash is a list, and [words](link) is a link. Colons and dashes in sentences read as commas on screen.</div>
-  <label class="fld-label">Title<input type="text" id="sthb-title" value="${H(s.title)}"></label><label class="fld-label">Text<textarea id="sthb-body" rows="18">${H(s.body)}</textarea></label>
-  <div class="actions"><button class="btn" data-sthbsave="${H(s.id)}">Save</button><button class="linkbtn" data-sthbcancel="1">Cancel</button>${s.id?`<button class="linkbtn" data-sthbrm="${H(s.id)}">Remove this section</button>`:""}</div>`;
+/* ---------- the Teacher Policies and Procedures and the Family Handbook ----------
+   Both are read section by section from the records, in the Markdown policy-md.js reads. The director edits any section
+   on its own, each change is kept with its day, who and a short note, and an earlier version can be read or restored. */
+const PM=()=>window.PolicyMd;
+const POLV={sthb:"teacher",stfh:"family"};
+const polName=k=>k==="family"?"Family Handbook":"Teacher Policies and Procedures";
+const polKey=k=>k==="family"?"family:"+(st.fhYear||""):"teacher";
+async function loadPol(k,force){const key=polKey(k);if(!st.pol[key]||force){const d=await api("policies/doc",{doc:k,edition:k==="family"?st.fhYear||undefined:undefined});st.pol[key]=d;if(k==="family"&&!st.fhYear)st.pol["family:"+d.edition]=d}return st.pol[key]}
+const polSecs=d=>(d.parts||[]).flatMap(p=>p.sections.map(s=>Object.assign({partId:p.id,partTitle:p.title,partSize:p.sections.length},s)));
+// a picture in a section is read through the server with the sign-in, then kept for the visit
+const PICS=new Map();
+async function picBlob(p){if(PICS.has(p))return PICS.get(p);const r=await fetch(window.FP_SERVER+"/api/staff/policies/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({path:p})});
+  if(!r.ok)throw new Error("The picture could not be read.");const b=await r.blob();PICS.set(p,b);return b}
+const PICURL=new Map();
+async function picUrl(p){if(!PICURL.has(p))PICURL.set(p,URL.createObjectURL(await picBlob(p)));return PICURL.get(p)}
+function fillPics(){document.querySelectorAll("#main img[data-pimg]").forEach(async im=>{try{im.src=await picUrl(im.dataset.pimg)}catch(e){im.replaceWith(Object.assign(document.createElement("span"),{className:"cnt",textContent:im.alt||"The picture could not be shown."}))}})}
+const pic=(src,alt)=>`<img data-pimg="${H(src)}" alt="${H(alt||"A picture from the policies")}" style="max-width:100%;height:auto;display:block;margin:8px auto">`;
+const polHtml=b=>String(b||"").trim()?PM().html(b,pic):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
+const yearSpan=y=>y?y+" to "+(+y+1):"";
+
+async function pagePol(my,k){const dir=D();const want=LS.get(k==="family"?"tree.fh":"tree.hb","");if(want){st.polSec=want==="__contents"?"":want;st.polEdit=false;st.polHist=-1;LS.set(k==="family"?"tree.fh":"tree.hb",null)}
+  const d=await loadPol(k);if(my!==RT)return;const secs=polSecs(d);const name=polName(k);const ed=k==="family"?d.edition:d.edition;
+  if(st.polSec==="__new"&&dir)return draw(my,head(name,"A new section")+`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stpol="">‹ Contents</button></div>`+card("New section",polEditor(k,d,{id:"",title:"",body:""},true)));
+  const s=secs.find(x=>x.id===st.polSec);
+  if(s)return polSectionPage(my,k,d,secs,s);
+  st.polSec="";
+  const ack=d.ack;const mine=k==="teacher"&&!dir&&ack;
+  const draft=k==="family"&&!d.live;
+  const sub=k==="teacher"?`How Fulton works, for every educator. The ${H(ed)} edition, every section in TREE. Open a section to read it, and print the whole book or any one section.`
+    :draft?`The ${H(ed)} draft. Families keep reading the ${H(d.current)} edition until the publish date you choose.`:`For families and staff. The ${H(ed)} edition${d.current&&d.current!==ed?", an earlier edition":""}. Families read it on the Family page and acknowledge it at enrollment.`;
+  const edPills=k==="family"&&(d.editions||[]).length>1?`<div class="actions" style="margin:0 0 10px">${d.editions.map(e=>`<button class="pill" aria-pressed="${e.year===ed}" data-stfhed="${H(e.year)}">${H(e.year)}${e.current?", current":!e.live?", draft":", earlier"}</button>`).join("")}</div>`:"";
+  const list=d.parts.map(p=>{const one=p.sections.length===1&&p.sections[0].title===p.title;
+    const row=x=>`<div class="prow"><button class="linkbtn" style="font-size:15px;text-align:left" data-stpol="${H(x.id)}">${H(x.title)}</button><span class="actions" style="margin:0">${polChips(k,d,x)}</span></div>`;
+    return one?row(p.sections[0]):`<details class="stpart"><summary><b>${H(p.title)}</b> <span class="cnt">${p.sections.length===1?"1 section":p.sections.length+" sections"}</span></summary>${p.sections.map(row).join("")}</details>`}).join("");
+  draw(my,head(name,k==="family"?`Family Handbook, ${H(ed)}`:name,sub)+edPills+
+    (mine?ackCard(ack):"")+
+    (k==="teacher"&&(B.me.newHire||B.me.newEd)&&!dir?mustReadCard(d):"")+
+    card("Contents",`${list}${dir?`<div class="actions"><button class="btn small ghost" data-stpol="__new">Add a section</button></div>`:""}`,printBar("pol:"+k))+
+    (dir&&k==="family"?fhDirCards(d):"")+
+    (dir?`<div id="stpolacks">${card(k==="family"?"Families who have read it":"Who has acknowledged it",`<div class="empty"><span class="spin"></span> Opening</div>`)}</div>`:""));
+  if(dir)polAcksCard(k,d,my)}
+// what a section shows beside its title in the contents
+function polChips(k,d,x){const out=[];const ack=d.ack;
+  if(ack&&(ack.changed||[]).some(c=>c.id===x.id))out.push(chip("soon","Changed, read again"));
+  if(x.directorOnly)out.push(chip("missing","Only you"));if(x.removed)out.push(chip("out","Removed"));
+  if(k==="family"&&!d.live&&D())out.push(x.same?chip("missing","As in "+(x.from||d.from)):chip("soonish","Changed for "+d.edition));
+  if(k==="teacher"&&D()&&(d.mustRead||[]).includes(x.id))out.push(chip("soonish","Before the first day"));
+  return out.join("")}
+function ackCard(a){if(!a)return "";
+  if(!a.due)return card("Your acknowledgment",`<div class="actions" style="margin:0">${chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt))}</div>`);
+  const ch=a.yearAt&&(a.changed||[]).length;
+  return card("Your acknowledgment",ch?`<div class="hint">The director marked ${a.changed.length===1?"a section":"these sections"} as a significant change. Read ${a.changed.length===1?"it":"them"}, then say so.</div>${a.changed.map(c=>`<div class="prow"><button class="linkbtn" data-stpol="${H(c.id)}">${H(c.title)}</button><span class="cnt">Changed ${H(fms(c.changedAt))}</span></div>`).join("")}<div class="actions"><button class="btn small" data-stpolack="1">I have read the changes</button></div>`
+    :`<div class="hint">Each school year, every educator reads the Teacher Policies and Procedures and says so. ${a.newHire||a.start>today()?"A new educator does this before their first day.":"This is for the "+H(yearSpan(a.year))+" school year."}</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button></div>`)}
+function mustReadCard(d){const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));if(!secs.length)return "";
+  return card("Before your first day",`<div class="hint">Begin with these sections. The rest are here whenever you need them.</div>${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-stpol="${H(s.id)}">${H(s.title)}</button></div>`).join("")}`)}
+function fhDirCards(d){const draft=!d.live;const pb=d.public||{};const cur=d.current;
+  return (draft?card("Publishing the "+d.edition+" edition",`<div class="hint">Families keep reading the ${H(cur)} edition. On the publish date the ${H(d.edition)} edition becomes current, and each family acknowledges it at their next enrollment or re-enrollment. The ${H(cur)} edition stays readable as an earlier edition.</div>
+      <div class="kfields"><label>Publish date<input type="date" id="stfh-pub" value="${H(d.publishOn||"")}"></label></div><div class="actions"><button class="btn small" data-stfhpub="${H(d.edition)}">Save the date</button>${d.publishOn?`<span class="cnt">Becomes current ${H(fd(d.publishOn))}</span>`:`<span class="cnt">No date chosen yet</span>`}</div>`)
+    :(d.edition===cur&&!(d.editions||[]).some(e=>!e.live)?card("Next year's edition",`<div class="hint">Start a draft of the ${+cur+1} edition from this one. Edit it section by section while families keep reading ${H(cur)}.</div><div class="actions"><button class="btn small ghost" data-stfhnew="1">Start the ${+cur+1} draft</button></div>`):""))+
+    (d.edition===cur?card("The public link",`<div class="hint">A read-only page of the current Family Handbook for prospective families and the website, with no sign-in. It stays off until you read the list of names and private details TREE finds in the handbook and turn it on.</div>
+      <div class="actions"><span class="stchip ${pb.open?"ok":"missing"}">${pb.open?"On":"Off"}</span>${pb.on&&!pb.open?`<span class="cnt">The ${H(cur)} edition's list has not been read yet, so the link is closed.</span>`:""}<button class="btn small ghost" data-stfhreview="1">Read the list</button>${pb.on?`<button class="linkbtn" data-stfhpublic="0">Turn it off</button>`:""}</div>
+      ${pb.open?`<div class="cnt" style="margin-top:6px">The link, <a href="${H(publicLink())}" target="_blank" rel="noopener">${H(publicLink())}</a></div>`:""}<div id="stfhrev"></div>`):"")}
+const publicLink=()=>new URL("handbook.html",location.href.split("#")[0].replace(/[^/]*$/,"")).href.split("?")[0];
+async function polAcksCard(k,d,my){let r;try{r=st.polAcks||(st.polAcks=await api("policies/acks"))}catch(e){return}if(my!==RT)return;const el=$("#stpolacks");if(!el)return;
+  if(k==="teacher"){const L=r.teacher||[];const n=L.filter(x=>!x.due).length;
+    el.innerHTML=card("Who has acknowledged it",L.length?`<div class="tablewrap"><table class="grid2" style="min-width:460px"><thead><tr><th>Educator</th><th>This school year</th><th>Changed sections</th></tr></thead><tbody>${L.map(x=>`<tr data-stperson="${H(x.name)}" style="cursor:pointer"><td><b>${H(x.name)}</b>${x.newHire?` ${chip("soonish","New")}`:""}</td><td>${x.yearAt?chip("ok",fms(x.yearAt)):chip("soon","Not yet")}</td><td>${x.changed.length?chip("soon",x.changed.length+" to read"):x.yearAt?chip("ok","Up to date"):""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No educator reads it yet.</div>`,`${n} of ${L.length}`);return}
+  const F=r.family||{list:[]};const n=F.list.filter(x=>x.at).length;
+  el.innerHTML=card("Families who have read it",`<div class="hint">Each family acknowledges the current edition, the ${H(F.edition)} edition, on the Family page at enrollment and re-enrollment.</div>${F.list.length?`<details><summary class="linkbtn">${n} of ${F.list.length} children's families</summary><div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Child</th><th>Class</th><th>${H(F.edition)} edition</th></tr></thead><tbody>${F.list.map(x=>`<tr><td><b>${H(x.first)} ${H(x.last)}</b></td><td>${H(x.classroom)}</td><td>${x.at?chip("ok",fd(String(x.at).slice(0,10))):chip("missing",x.earlier?"Read "+x.earlier+", not yet "+F.edition:"Not yet")}</td></tr>`).join("")}</tbody></table></div></details>`:`<div class="empty">No children at Fulton yet.</div>`}`,`${n} of ${F.list.length}`)}
+
+function polSectionPage(my,k,d,secs,s){const dir=D();const keep=T._keep;const i=secs.indexOf(s),pv=secs[i-1],nx=secs[i+1];const name=polName(k);
+  const meta=[s.updatedAt?"Updated "+fms(s.updatedAt)+(s.updatedBy&&s.updatedBy!=="TREE"&&dir?" by "+s.updatedBy:""):"",s.partTitle!==s.title?"In "+s.partTitle:""].filter(Boolean).join(". ");
+  const hist=dir?(s.history||[]):[];
+  const edit=st.polEdit&&dir;
+  draw(my,`${head(k==="family"?"Family Handbook, "+d.edition:name,s.title,H(meta)+(meta?".":""))}
+    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stpol="">‹ Contents</button>${polChips(k,d,s)}</div>
+    ${edit?card("Edit",polEditor(k,d,s)):`<section class="card">${polHtml(s.body)}${s.kind==="piece"?`<div class="actions"><button class="btn small ghost" data-stpolpiece="${H(s.piece)}">In the PD library, Licensing at Fulton</button></div>`:""}
+      <div class="actions">${printBar("polsec:"+k)}${dir?`<button class="btn small ghost" data-stpoledit="1">Edit</button>`:""}${d.ack&&(d.ack.changed||[]).some(c=>c.id===s.id)?`<button class="btn small" data-stpolack="1">I have read the changes</button>`:""}</div></section>`}
+    ${dir&&!edit?polDirCard(k,d,s):""}
+    ${dir&&hist.length&&!edit?card("Earlier versions",`<details ${st.polHist>=0?"open":""}><summary class="linkbtn">${hist.length} earlier version${hist.length===1?"":"s"}</summary>${hist.map((h,j)=>({h,j})).reverse().map(({h,j})=>`<div class="strow"><div class="sttop"><b>${H(h.at?fms(h.at):"Before TREE")}</b><span class="cnt">${H(h.by||"")}</span></div>${h.note?`<div class="cnt">${H(h.note)}</div>`:""}
+        <div class="actions" style="margin:0"><button class="btn small ghost" data-stpolhist="${j}">${st.polHist===j?"Close":"Read it"}</button><button class="linkbtn" data-stpolrestore="${j}">Restore this version</button></div>${st.polHist===j?`<div class="stq" style="margin-top:6px"><b>${H(h.title)}</b>${polHtml(h.body)}</div>`:""}</div>`).join("")}</details>`):""}
+    <div class="actions">${pv?`<button class="btn small ghost" data-stpol="${H(pv.id)}">‹ ${H(pv.title)}</button>`:""}${nx?`<button class="btn small ghost" data-stpol="${H(nx.id)}">${H(nx.title)} ›</button>`:""}</div>`);
+  fillPics();if(!keep)jumpTop()}
+function polDirCard(k,d,s){const out=[];
+  if(k==="teacher"){out.push(`<label class="radio"><input type="checkbox" data-stpolmust="${H(s.id)}" ${(d.mustRead||[]).includes(s.id)?"checked":""}><span>A new educator reads this before their first day</span></label>`);
+    if(s.kind==="own")out.push(`<label class="radio"><input type="checkbox" data-stpolonly="${H(s.id)}" ${s.directorOnly?"checked":""}><span>Only you see this section</span></label>`);}
+  if(s.note)out.push(`<div class="cnt">The last change, ${H(s.note)}</div>`);
+  if(s.changedAt)out.push(`<div class="cnt">Marked as a significant change ${H(fms(s.changedAt))}. Every educator acknowledges it again.</div>`);
+  if(s.kind==="handbook"||s.kind==="piece")out.push(`<div class="cnt">TREE keeps this section ${s.kind==="piece"?"as a Licensing at Fulton piece in the PD library":"with the Educators pages"}, and it is the same words in both places.</div>`);
+  out.push(`<div class="actions" style="margin:4px 0 0"><button class="linkbtn" data-stpolrm="${H(s.id)}|${s.removed?0:1}">${s.removed?"Put this section back":"Remove this section"}</button></div>`);
+  return card("For you",out.join(""))}
+function polEditor(k,d,s,isNew){return `<div class="hint">Write in plain text. A line starting with ### is a heading. A dash starts a list item, a number and a full stop a numbered item, and two spaces in front put an item inside the one above. A line starting with &gt; is set in. **Words** are bold, and [words](link) is a link. A line ending in two spaces breaks there.</div>
+  ${isNew?`<label class="fld-label">Part<select id="stpol-part"><option value="">A new part at the end</option>${d.parts.map(p=>`<option value="${H(p.id)}">${H(p.title)}</option>`).join("")}</select></label>`:""}
+  <label class="fld-label">Title<input type="text" id="stpol-title" value="${H(s.title)}"></label><label class="fld-label">Text<textarea id="stpol-body" rows="20">${H(s.body)}</textarea></label>
+  <label class="fld-label">A short note about this change<input type="text" id="stpol-note" placeholder="Such as Updated the pickup time" maxlength="300"></label>
+  ${k==="teacher"&&!isNew?`<label class="radio"><input type="checkbox" id="stpol-sig"><span>A significant change. Every educator reads this section again and says so.</span></label>`:""}
+  <div class="actions"><button class="btn" data-stpolsave="${H(s.id)}">Save</button><button class="linkbtn" data-stpolcancel="1">Cancel</button></div>`}
+// the director's list of names and private details in the Family Handbook, read before the public link opens
+async function fhReview(){const el=$("#stfhrev");if(!el)return;el.innerHTML=`<div class="empty"><span class="spin"></span> Reading the handbook</div>`;
+  try{const r=await api("policies/review");const pb=r.public||{};const hide=pb.hide||{};const by={};for(const f of r.findings)(by[f.section]=by[f.section]||{title:f.title,part:f.part,list:[]}).list.push(f);
+    el.innerHTML=`<h4 style="margin:12px 0 4px">What TREE found in the ${H(r.edition)} edition</h4><div class="hint">Staff names, children's and family members' names, phone numbers, email addresses and street addresses other than the school's own. Choose any section to leave out of the public link, then turn it on.</div>
+      ${Object.keys(by).length?Object.entries(by).map(([id,x])=>`<div class="strow"><div class="sttop"><b>${H(x.title)}</b><label class="radio" style="margin:0"><input type="checkbox" data-stfhhide="${H(id)}" ${hide[id]?"checked":""}><span>Leave out of the public link</span></label></div>${x.list.map(f=>`<div class="cnt">${H(f.kind)}, <b>${H(f.what)}</b>. <span>${H(f.near)}</span></div>`).join("")}</div>`).join(""):`<div class="empty">Nothing was found.</div>`}
+      <div class="actions"><button class="btn small" data-stfhpublic="1">I have read the list. Turn the public link on</button></div>`}catch(e){el.innerHTML=`<div class="hint warnline">${H(e.message||"The list could not be read.")}</div>`}}
+
+// an educator's acknowledgment, on their records page and the director's view of it
+function polRecordCard(a,mine){const who=mine?"you":"they";
+  return card("Teacher Policies and Procedures",`<div class="actions" style="margin:0">${a.yearAt?chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt)):chip("soon","Not acknowledged for "+yearSpan(a.year)+" yet")}${(a.changed||[]).length?chip("soon",a.changed.length+" changed section"+(a.changed.length===1?"":"s")+" to read"):""}<button class="btn small ghost" data-tview="sthb">Open them</button></div>
+    <div class="hint" style="margin-top:6px">Each school year ${who} read${mine?"":"s"} the Teacher Policies and Procedures and say${mine?"":"s"} so, and again for any section the director marks as a significant change.</div>`)}
+// the policies a new educator reads before their first day, in the New Educator section
+async function newPolCard(p,dir){let d=null;try{d=await loadPol("teacher")}catch(e){return ""}const a=p.policy;const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));
+  const mine=!dir&&p.name===meName();
+  return card("Teacher Policies and Procedures, before the first day",`<div class="hint">${dir?"What "+H(p.name)+" reads before their first day. You choose these sections in the Teacher Policies and Procedures.":"Read these sections before your first day, then say so. The rest are there whenever you need them."}</div>
+    ${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-hbopen="${H(s.id)}">${H(s.title)}</button></div>`).join("")}
+    <div class="actions">${a&&a.yearAt?chip("ok","Acknowledged "+fms(a.yearAt)):mine?`<button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button>`:chip("missing","Not acknowledged yet")}<button class="btn small ghost" data-tview="sthb">All of them</button></div>`)}
+async function polTap(d,t){const pk=POLV[view]||"teacher";
+  if(d.stpol!=null){st.polSec=d.stpol;st.polEdit=false;st.polHist=-1;if(!POLV[view])goView("sthb");else T.render(view);return true}
+  if(d.stfhed){st.fhYear=d.stfhed;st.polSec="";redraw();return true}
+  if(d.stpolhist!=null){const j=+d.stpolhist;st.polHist=st.polHist===j?-1:j;redraw();return true}
+  if(d.stpolpiece){st.mod="licensing";st.piece=d.stpolpiece;goView("stpd");return true}
+  if(d.stpolack){try{const r=await api("policies/ack");st.pol={};st.doc=null;toast(r.ack&&!r.ack.due?"Thank you. It is on your records.":"Thank you.");redraw()}catch(er){fail(er)}return true}
+  if(d.stpoledit){st.polEdit=true;redraw();return true}
+  if(d.stpolcancel){st.polEdit=false;if(st.polSec==="__new")st.polSec="";redraw();return true}
+  if(d.stpolsave!=null){const title=($("#stpol-title")?.value||"").trim(),body=$("#stpol-body")?.value||"",note=($("#stpol-note")?.value||"").trim();
+    if(!title){toast("Give the section a title.");return true}if(!note&&d.stpolsave){toast("Write a short note about this change.");$("#stpol-note")?.focus();return true}
+    try{const dd=st.pol[polKey(pk)];const r=await api("policies/save",{doc:pk,edition:pk==="family"?dd.edition:undefined,id:d.stpolsave,part:$("#stpol-part")?.value||"",title,body,note,significant:!!$("#stpol-sig")?.checked});
+      st.polSec=r.id;st.polEdit=false;st.polAcks=null;await loadPol(pk,true);toast(r.same?"Nothing changed.":"Saved, with the earlier wording kept.");T.render(view)}catch(er){fail(er)}return true}
+  if(d.stpolrm){const [id,on]=d.stpolrm.split("|");if(on==="1"&&!confirm("Remove this section? It stays in the records, and you can put it back."))return true;
+    try{const dd=st.pol[polKey(pk)];await api("policies/save",{doc:pk,edition:pk==="family"?dd.edition:undefined,id,remove:on==="1"});await loadPol(pk,true);redraw()}catch(er){fail(er)}return true}
+  if(d.stpolrestore!=null){const dd=st.pol[polKey(pk)];if(!confirm("Restore this version? The wording there now is kept as an earlier version."))return true;
+    try{await api("policies/restore",{doc:pk,edition:pk==="family"?dd.edition:undefined,id:st.polSec,index:+d.stpolrestore});st.polHist=-1;st.polAcks=null;await loadPol(pk,true);toast("Restored.");redraw()}catch(er){fail(er)}return true}
+  if(d.stfhpub){const v=$("#stfh-pub")?.value||"";if(v&&v<=today()&&!confirm(`Publish the ${d.stfhpub} edition today? Families read it from now on.`))return true;
+    try{await api("policies/settings",{doc:"family",edition:d.stfhpub,publishOn:v});st.pol={};toast(v?"Saved. It becomes current on "+fd(v)+".":"The publish date is cleared.");redraw()}catch(er){fail(er)}return true}
+  if(d.stfhnew){try{const r=await api("policies/settings",{doc:"family",newDraft:true});st.pol={};st.fhYear=r.edition;toast(`The ${r.edition} draft is started from the current edition.`);redraw()}catch(er){fail(er)}return true}
+  if(d.stfhreview){await fhReview();return true}
+  if(d.stfhpublic){const on=d.stfhpublic==="1";try{await api("policies/public",{on,reviewed:on});st.pol={};toast(on?"The public link is on.":"The public link is off.");redraw()}catch(er){fail(er)}return true}
+  return false}
+async function polChange(t,d){
+  if(d.stpolmust){const dd=st.pol.teacher;const set=new Set(dd.mustRead||[]);if(t.checked)set.add(d.stpolmust);else set.delete(d.stpolmust);
+    try{await api("policies/settings",{doc:"teacher",mustRead:[...set]});dd.mustRead=[...set];toast("Saved.")}catch(er){t.checked=!t.checked;fail(er)}return}
+  if(d.stpolonly){try{await api("policies/save",{doc:"teacher",id:d.stpolonly,directorOnly:t.checked});await loadPol("teacher",true);toast(t.checked?"Only you see it now.":"Every educator sees it.");redraw()}catch(er){t.checked=!t.checked;fail(er)}return}
+  if(d.stfhhide){try{await api("policies/public",{hide:{[d.stfhhide]:t.checked}});toast("Saved.")}catch(er){t.checked=!t.checked;fail(er)}}}
+
+/* ---------- the policies in print, the whole book or one section, as a PDF and a Word file ----------
+   The whole book has a cover with the edition year, a table of contents with page numbers, a page number on every
+   page, and each part starting on a new page. The Family Handbook ends with a page for a family to sign on paper. */
+const PAGE={w:612,h:792,l:60,r:60,t:64,b:78};
+const INK=[34,51,42],MOSS=[47,90,67],MUTED=[93,110,99],RULE=[200,210,202];
+// a character Andika cannot draw becomes the nearest one it can, so no word is lost on paper
+const pdfText=s=>{s=String(s||"").replace(/→/g,"->").replace(/◊/g,"•");return (typeof PF!=="undefined"&&PF.b64)?s:clean(s)};
+async function picData(p){const b=await picBlob(p);const url=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(b)});
+  const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});return {url,w:im.naturalWidth,h:im.naturalHeight,type:/png/.test(b.type)?"PNG":"JPEG",buf:await b.arrayBuffer()}}
+async function polPictures(d,list){const want=new Set();if(d.image)want.add(d.image);for(const s of list)for(const b of PM().blocks(s.body))if(b.t==="img")want.add(b.src);
+  const out={};for(const p of want){try{out[p]=await picData(p)}catch(e){}}return out}
+function pdfWriter(doc,pics){let y=PAGE.t;const W=PAGE.w-PAGE.l-PAGE.r;const marks=[];
+  const newPage=()=>{doc.addPage("letter","portrait");y=PAGE.t};
+  const room=h=>{if(y+h>PAGE.h-PAGE.b){newPage();return true}return false};
+  const font=(r,size)=>{doc.setFont("helvetica",r&&r.b?"bold":"normal");doc.setFontSize(size)};
+  // words laid out a line at a time, each keeping its own bold and link
+  function words(rs,size,x,w,lh,color){const toks=[];for(const r of rs){if(r.br){toks.push({br:true});continue}for(const p of pdfText(r.text).split(/(\s+)/))if(p)toks.push({text:p,r,sp:/^\s+$/.test(p)})}
+    const lines=[];let line=[],lw=0;
+    for(const t of toks){if(t.br){lines.push(line);line=[];lw=0;continue}font(t.r,size);const tw=doc.getTextWidth(t.sp?" ":t.text);
+      if(t.sp){if(line.length){line.push({text:" ",r:t.r,w:tw,sp:true});lw+=tw}continue}
+      if(lw+tw>w&&line.length){while(line.length&&line[line.length-1].sp)line.pop();lines.push(line);line=[];lw=0}
+      if(tw>w){let cur="";for(const ch of t.text){font(t.r,size);if(doc.getTextWidth(cur+ch)>w&&cur){lines.push([{text:cur,r:t.r,w:doc.getTextWidth(cur)}]);cur=""}cur+=ch}t.text=cur;font(t.r,size)}
+      line.push({text:t.text,r:t.r,w:doc.getTextWidth(t.text)});lw+=line[line.length-1].w}
+    if(line.length)lines.push(line);
+    for(const ln of lines){room(lh);let cx=x;for(const t of ln){font(t.r,size);doc.setTextColor(...(t.r.link?MOSS:color||INK));if(!t.sp){if(t.r.link)doc.textWithLink(t.text,cx,y,{url:t.r.link});else doc.text(t.text,cx,y);
+      if(t.r.u||t.r.link){doc.setDrawColor(...(t.r.link?MOSS:color||INK));doc.setLineWidth(.4);doc.line(cx,y+1.6,cx+t.w,y+1.6)}}cx+=t.w}y+=lh}
+    if(!lines.length)y+=lh}
+  function table(rows){if(!rows.length)return;const n=Math.max(...rows.map(r=>r.length));const cw=W/n,pad=4,size=9,lh=12;
+    for(let ri=0;ri<rows.length;ri++){const row=rows[ri];
+      const hts=row.map(c=>{const t=pdfText(c.map(r=>r.br?"\n":r.text).join(""));font({b:ri===0},size);return Math.max(1,doc.splitTextToSize(t||" ",cw-2*pad).length)*lh+2*pad});const h=Math.max(...hts,lh+2*pad);
+      room(h);for(let ci=0;ci<n;ci++){const c=row[ci]||[];doc.setDrawColor(...RULE);doc.setLineWidth(.6);doc.rect(PAGE.l+ci*cw,y-lh+2,cw,h);font({b:ri===0||c.some(r=>r.b)},size);doc.setTextColor(...INK);
+        const t=pdfText(c.map(r=>r.br?"\n":r.text).join(""));doc.splitTextToSize(t||"",cw-2*pad).forEach((l,k)=>doc.text(l,PAGE.l+ci*cw+pad,y+pad+k*lh))}
+      y+=h}y+=6}
+  function image(src,alt){const p=pics[src];if(!p){words([{text:alt||"A picture"}],9,PAGE.l,W,12,MUTED);return}
+    const maxH=PAGE.h-PAGE.t-PAGE.b-20;let w=Math.min(W,p.w*.6),h=w*p.h/p.w;if(h>maxH){h=maxH;w=h*p.w/p.h}if(h>300&&y>PAGE.t+40)room(h+8);else room(h+8);
+    doc.addImage(p.url,p.type,PAGE.l+(W-w)/2,y-8,w,h);y+=h+6}
+  function body(text){for(const b of PM().blocks(text)){const ind=b.quote?18:0;
+    if(b.t==="h"){const size=b.level<=2?13.5:b.level===3?12:11;room(size*3);y+=6;words(b.runs.map(r=>Object.assign({},r,{b:true})),size,PAGE.l+ind,W-ind,size*1.35,MOSS);y+=2}
+    else if(b.t==="p"){words(b.runs,10.5,PAGE.l+ind,W-ind,14.5);y+=5}
+    else if(b.t==="list"){for(const it of b.items){const x=PAGE.l+ind+it.level*16;room(14.5);font({},10.5);doc.setTextColor(...INK);doc.text(it.ordered?it.n+".":"•",x,y);words(it.runs,10.5,x+16,W-ind-it.level*16-16,14.5);y+=2}y+=4}
+    else if(b.t==="table")table(b.rows);
+    else if(b.t==="img")image(b.src,b.alt)}}
+  return {get y(){return y},set y(v){y=v},newPage,room,words,body,W,marks,page:()=>doc.getNumberOfPages()}}
+// the parts and sections, each part on a new page. It returns the page each part and section starts on.
+function polBody(doc,pics,d,parts,opt){const P=pdfWriter(doc,pics);const starts=[];let first=true;
+  for(const p of parts){if(!first||opt.newFirst)P.newPage();first=false;starts.push({title:p.title,page:P.page(),level:1});
+    P.words([{text:p.title,b:true}],20,PAGE.l,P.W,25,MOSS);P.y+=6;
+    for(const s of p.sections){const own=p.sections.length>1||s.title!==p.title;if(own){P.room(60);P.y+=6;starts.push({title:s.title,page:P.page(),level:2});P.words([{text:s.title,b:true}],15,PAGE.l,P.W,19,INK);P.y+=4}
+      P.body(s.body);P.y+=8}}
+  return {starts,P}}
+function polCover(doc,pics,d,name){const W=PAGE.w;doc.setTextColor(...MOSS);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text("FULTON COMMUNITY SCHOOL & FARM",W/2,110,{align:"center"});
+  doc.setFontSize(32);doc.setTextColor(...INK);doc.splitTextToSize(name,W-140).forEach((l,i)=>doc.text(l,W/2,170+i*38,{align:"center"}));
+  doc.setFontSize(54);doc.setTextColor(...MOSS);doc.text(String(d.edition||""),W/2,300,{align:"center"});
+  const p=pics[d.image];if(p){const h=340,w=h*p.w/p.h;doc.addImage(p.url,p.type,(W-w)/2,340,w,h)}}
+function polToc(doc,starts,offset,perPage){let i=0;for(const e of starts){if(i%perPage===0){if(i)doc.addPage("letter","portrait");doc.setFont("helvetica","bold");doc.setFontSize(20);doc.setTextColor(...MOSS);doc.text(i?"Contents, continued":"Contents",PAGE.l,PAGE.t+10)}
+    const y=PAGE.t+46+(i%perPage)*17;const x=PAGE.l+(e.level===2?18:0);doc.setFont("helvetica",e.level===1?"bold":"normal");doc.setFontSize(e.level===1?11:10);doc.setTextColor(...INK);
+    const t=doc.splitTextToSize(pdfText(e.title),PAGE.w-PAGE.r-x-50)[0];doc.text(t,x,y);const tw=doc.getTextWidth(t);const pg=String(e.page+offset);
+    doc.setTextColor(...MUTED);const dots=x+tw+6;const end=PAGE.w-PAGE.r-doc.getTextWidth(pg)-6;if(end>dots){doc.setLineDashPattern([1,3],0);doc.setDrawColor(...RULE);doc.line(dots,y,end,y);doc.setLineDashPattern([],0)}
+    doc.text(pg,PAGE.w-PAGE.r,y,{align:"right"});doc.link(PAGE.l,y-10,PAGE.w-PAGE.l-PAGE.r,14,{pageNumber:e.page+offset});i++}}
+function polAckPage(doc,d,P){P.newPage();P.words([{text:"Family Handbook Acknowledgment",b:true}],20,PAGE.l,P.W,25,MOSS);P.y+=10;
+  P.words(PM().runs(`I have received and read the Fulton Community School & Farm Family Handbook, ${d.edition} edition. I understand its policies and agree to follow them.`),11.5,PAGE.l,P.W,16);P.y+=24;
+  const line=(label)=>{P.room(44);doc.setDrawColor(...INK);doc.setLineWidth(.7);doc.line(PAGE.l,P.y,PAGE.w-PAGE.r,P.y);doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(...MUTED);doc.text(label,PAGE.l,P.y+12);P.y+=42};
+  line("Child's name");line("Parent or guardian's name");line("Signature");line("Date");P.y+=10;line("Second parent or guardian's name");line("Signature");line("Date");
+  P.words(PM().runs("Please return this page to the office. It is kept in your child's file."),10,PAGE.l,P.W,14,MUTED)}
+function polFooters(doc,d,cover){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RULE);doc.setLineWidth(.6);doc.line(PAGE.l,PAGE.h-50,PAGE.w-PAGE.r,PAGE.h-50);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text(pdfText(d.footer||"Fulton Community School & Farm"),PAGE.l,PAGE.h-36);doc.text(`Page ${i} of ${n}`,PAGE.w-PAGE.r,PAGE.h-36,{align:"right"})}}
+async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;
+  const parts=sec?[{title:sec.title,sections:[sec]}]:d.parts;const pics=await polPictures(d,parts.flatMap(p=>p.sections));
+  const file=sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`;
+  if(sec){const doc=planDoc({unit:"pt",format:"letter"});doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.setTextColor(...MOSS);doc.text(pdfText(`${name.toUpperCase()}, ${d.edition}`),PAGE.l,PAGE.t-24);
+    polBody(doc,pics,d,parts,{});polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf");return}
+  // a first pass finds the page each part starts on, then the book is made with its contents ahead of it
+  const scratch=planDoc({unit:"pt",format:"letter"});const {starts}=polBody(scratch,pics,d,parts,{});
+  const per=38,tocPages=Math.ceil(starts.length/per);const doc=planDoc({unit:"pt",format:"letter"});polCover(doc,pics,d,name);doc.addPage("letter","portrait");polToc(doc,starts,1+tocPages,per);
+  const {P}=polBody(doc,pics,d,parts,{newFirst:true});if(k==="family")polAckPage(doc,d,P);polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf")}
+async function polWord(k,d,which){let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
+  await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,ExternalHyperlink,Table,TableRow,TableCell,WidthType,ImageRun,Footer,PageNumber,HeadingLevel,AlignmentType,TableOfContents,PageBreak,BorderStyle}=X;
+  const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;const parts=sec?[{title:sec.title,sections:[sec]}]:d.parts;const pics=await polPictures(d,parts.flatMap(p=>p.sections));
+  const F=PF.buf?PF.word.fr:"Arial";let listNo=0;
+  const run=(r,o)=>r.br?new TextRun({break:1}):new TextRun(Object.assign({text:r.text,bold:!!r.b,italics:!!r.i,underline:r.u||r.link?{}:undefined,font:F,color:r.link?"2F5A43":undefined},o||{}));
+  const inl=(rs,o)=>rs.map(r=>r.link&&!r.br?new ExternalHyperlink({link:r.link,children:[run(r,o)]}):run(r,o));
+  const img=(src,alt)=>{const p=pics[src];if(!p)return new Paragraph({children:[new TextRun({text:alt||"A picture",italics:true,font:F})]});let w=Math.min(600,p.w*.8),h=w*p.h/p.w;if(h>760){h=760;w=h*p.w/p.h}
+    return new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:80,after:120},children:[new ImageRun({type:p.type==="PNG"?"png":"jpg",data:p.buf,transformation:{width:Math.round(w),height:Math.round(h)}})]})};
+  const bodyOf=text=>{const out=[];for(const b of PM().blocks(text)){const ind=b.quote?{left:440}:undefined;
+    if(b.t==="h")out.push(new Paragraph({heading:b.level<=3?HeadingLevel.HEADING_3:HeadingLevel.HEADING_4,keepNext:true,spacing:{before:160,after:60},children:inl(b.runs,{bold:true,color:"2F5A43"})}));
+    else if(b.t==="p")out.push(new Paragraph({indent:ind,spacing:{after:120},children:inl(b.runs,{size:21})}));
+    else if(b.t==="list"){listNo++;for(const it of b.items)out.push(it.ordered?new Paragraph({numbering:{reference:"pnum",level:Math.min(3,it.level),instance:listNo},spacing:{after:60},children:inl(it.runs,{size:21})}):new Paragraph({bullet:{level:Math.min(3,it.level)},spacing:{after:60},children:inl(it.runs,{size:21})}))}
+    else if(b.t==="table"){const n=Math.max(...b.rows.map(r=>r.length));const bd={style:BorderStyle.SINGLE,size:4,color:"C8D2CA"};
+      out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:b.rows.map((r,ri)=>new TableRow({tableHeader:ri===0,children:Array.from({length:n},(_,ci)=>new TableCell({width:{size:Math.floor(100/n),type:WidthType.PERCENTAGE},borders:{top:bd,bottom:bd,left:bd,right:bd},margins:{top:60,bottom:60,left:100,right:100},children:[new Paragraph({children:inl(r[ci]||[],{size:19,bold:ri===0?true:undefined})})]}))}))}));out.push(new Paragraph({children:[]}))}
+    else if(b.t==="img")out.push(img(b.src,b.alt))}return out};
+  const ch=[];
+  if(!sec){ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:600,after:200},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:24,color:"2F5A43",font:F})]}),
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:200},children:[new TextRun({text:name,bold:true,size:64,font:F})]}),
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:300},children:[new TextRun({text:String(d.edition||""),bold:true,size:108,color:"2F5A43",font:F})]}));
+    if(pics[d.image])ch.push(img(d.image,""));
+    ch.push(new Paragraph({children:[new PageBreak()]}),new Paragraph({heading:HeadingLevel.TITLE,children:[new TextRun({text:"Contents",bold:true,font:F,color:"2F5A43"})]}),new TableOfContents("Contents",{hyperlink:true,headingStyleRange:"1-2"}))}
+  else ch.push(new Paragraph({children:[new TextRun({text:`${name.toUpperCase()}, ${d.edition}`,bold:true,size:16,color:"2F5A43",font:F})]}));
+  for(const p of parts){ch.push(new Paragraph({heading:HeadingLevel.HEADING_1,pageBreakBefore:!sec,spacing:{after:160},children:[new TextRun({text:p.title,bold:true,size:40,color:"2F5A43",font:F})]}));
+    for(const s of p.sections){if(p.sections.length>1||s.title!==p.title)ch.push(new Paragraph({heading:HeadingLevel.HEADING_2,keepNext:true,spacing:{before:240,after:100},children:[new TextRun({text:s.title,bold:true,size:30,font:F})]}));ch.push(...bodyOf(s.body))}}
+  if(k==="family"&&!sec){ch.push(new Paragraph({heading:HeadingLevel.HEADING_1,pageBreakBefore:true,spacing:{after:200},children:[new TextRun({text:"Family Handbook Acknowledgment",bold:true,size:40,color:"2F5A43",font:F})]}),
+      new Paragraph({spacing:{after:480},children:[new TextRun({text:`I have received and read the Fulton Community School & Farm Family Handbook, ${d.edition} edition. I understand its policies and agree to follow them.`,size:23,font:F})]}));
+    for(const l of ["Child's name","Parent or guardian's name","Signature","Date","Second parent or guardian's name","Signature","Date"])ch.push(new Paragraph({spacing:{before:420},border:{top:{style:BorderStyle.SINGLE,size:6,color:"22302A",space:2}},children:[new TextRun({text:l,size:18,color:"5D6E63",font:F})]}));
+    ch.push(new Paragraph({spacing:{before:360},children:[new TextRun({text:"Please return this page to the office. It is kept in your child's file.",size:20,color:"5D6E63",font:F})]}))}
+  const foot=new Footer({children:[new Paragraph({border:{top:{style:BorderStyle.SINGLE,size:4,color:"C8D2CA",space:6}},children:[new TextRun({text:(d.footer||"Fulton Community School & Farm")+"     ",size:15,color:"5D6E63",font:F}),new TextRun({children:["Page ",PageNumber.CURRENT," of ",PageNumber.TOTAL_PAGES],size:15,color:"5D6E63",font:F})]})]});
+  const wf=wordFonts();
+  const docx=new Document(Object.assign({creator:"TREE, Fulton Community School & Farm",title:sec?`${name}, ${sec.title}`:name,features:{updateFields:true},
+    numbering:{config:[{reference:"pnum",levels:[0,1,2,3].map(l=>({level:l,format:"decimal",text:`%${l+1}.`,alignment:AlignmentType.START,style:{paragraph:{indent:{left:440*(l+1),hanging:300}}}}))}]},
+    styles:{default:{document:{run:{font:F}}}},sections:[{properties:{page:{margin:{top:1000,bottom:1000,left:1100,right:1100}}},footers:{default:foot},children:ch}]},wf.length?{fonts:wf}:{}));
+  const blob=await Packer.toBlob(docx);await saveFile(blob,safeFile(sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`)+".docx")}
 
 /* ---------- Settings, the director's ---------- */
 T.settings=async function(el){try{await boot(true);await loadPeople();if(window.TreeGrowth)await TreeGrowth.ready().catch(()=>{})}catch(e){el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
@@ -420,7 +656,7 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
   const sw=(k,l,d)=>`<div class="prow"><div><b>${H(l)}</b><div class="cnt">${H(d)}</div></div><div class="seg" role="group" aria-label="${H(l)}"><button data-stsw="${k}|1" aria-pressed="${!!o[k]}">On</button><button data-stsw="${k}|0" aria-pressed="${!o[k]}">Off</button></div></div>`;
   const rm=B.school.remind||{};
   el.innerHTML=`<div class="lbl">Educators</div><div class="hint">Each part shows only to you until you turn it on for educators. A new educator reaches only the New Educator section until you turn on full access.</div>
-    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The new and revised sections, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
+    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The new and revised sections, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("family","Family Handbook","The current edition, readable by every staff sign-in but the kitchen")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
     <div class="prow"><div><b>Go-to person</b><div class="cnt">One go-to person for every new educator. The Class team still helps on the floor.</div></div><select id="sts-goto" aria-label="Go-to person"><option value="">None</option>${ps.filter(p=>p.role!=="Director"&&p.role!=="Kitchen"&&!(p.profile||{}).neverGoTo).map(p=>`<option ${B.school.goTo===p.name?"selected":""}>${H(p.name)}</option>`).join("")}</select></div>
     <div class="prow"><div><b>Records reminders</b><div class="cnt">Always on for every educator. Only you change them.</div></div><label class="cnt">Days ahead <input type="number" id="sts-days" min="7" max="120" value="${H(B.school.remindDays||30)}" style="width:70px"></label></div>
     <div class="chips" style="margin-top:6px">${Object.entries(B.defs.remind).map(([k,l])=>`<button class="chip ${rm[k]!==false?"on":""}" type="button" data-stremind="${k}">${H(l)}</button>`).join("")}</div>
@@ -487,8 +723,8 @@ async function printKind(k,word){const kind=word?"word":"pdf";
     if(k==="checklist"){const ck=checklist(p,pcs,(p.profile||{}).startDate||"");return out(kind,[report("First weeks checklist, "+p.name,[["Start date",fd((p.profile||{}).startDate)]],[{t:"table",label:"",noRule:true,head:["","Step",""],rows:ck.map((c,i)=>[String(i+1),c.label,c.done?"Done":(c.note||"Not yet")]),widths:[.06,.66,.28]}])],"First weeks checklist "+p.name)}
     return out(kind,[report("New Educator paperwork",[["Educator",p.name]],[{t:"table",label:"",noRule:true,head:["Form","Number","Why it matters","Uploaded"],rows:PAPERS().map(x=>{const r=(p.paperwork||{})[x.k]||{};return [x.form,x.num,x.why,(r.files||[]).length||r.done||r.ack?"Yes":"Not yet"]}),widths:[.3,.14,.42,.14]},{t:"text",text:"Payroll and tax forms are completed in QuickBooks Workforce. Social Security cards and driver's licenses are shown in person and copied for the paper personnel file only."}])],"New Educator paperwork "+p.name)}
   if(k.startsWith("pieces:")){const d=k.slice(7);const pcs=await loadPd();const dn=((P().pd||{}).done)||{};return out(kind,[report(d==="licensing"?"Licensing at Fulton":"TREE How To",[["Educator",meName()]],[{t:"table",label:"",noRule:true,head:["Piece","Regulation","Minutes","Read"],rows:(pcs[d]||[]).map(x=>[x.title,x.source,String(x.minutes),dn[x.id]?fms(dn[x.id].at):""]),widths:[.4,.36,.1,.14]}])],d==="licensing"?"Licensing at Fulton":"TREE How To")}
-  if(k==="hball"||k==="hbsec"){const hb=await loadHb();const secs=(hb.sections||[]).filter(s=>!s.removed&&(k==="hball"||s.id===st.hbSec));
-    return out(kind,secs.map(s=>report(s.title,[["Teacher Policies and Procedures",""]].filter(x=>x[1]),mdBlocks(s.body))),k==="hball"?"Teacher Policies and Procedures":"Teacher Policies and Procedures, "+(secs[0]||{}).title)}}
+  // the policies print as a book, or one section on its own
+  if(k.startsWith("pol:")||k.startsWith("polsec:")){const pk=k.split(":")[1];const d=await loadPol(pk);const which=k.startsWith("polsec:")?"sec":"all";try{return word?await polWord(pk,d,which):await polPdf(pk,d,which)}catch(e){fail(e)}}}
 // each educator's records page as it prints, for the director's weekly readable copies. Records only, never growth.
 // An educator whose last day has passed is a former educator.
 T.readable=async function(){await boot(true);await loadPeople();const t=today(),past=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||"")&&d<t;
@@ -507,13 +743,13 @@ function tapOnce(t,f){const k=Object.entries(t.dataset).map(([a,b])=>a+"="+b).jo
   if(!r||typeof r.then!=="function")return;INFLIGHT.add(k);t.setAttribute("aria-busy","true");
   r.then(()=>{for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id)))DRAFTS.delete(x)},()=>{}).catch(()=>{});
   r.catch(fail).finally(()=>{INFLIGHT.delete(k);t.removeAttribute("aria-busy")})}
-document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.hbSec="";st.hbEdit=false},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw],[data-stformer],[data-stback]");
+document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.polSec="";st.polEdit=false;st.polHist=-1},true);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-stpol],[data-stpoledit],[data-stpolsave],[data-stpolcancel],[data-stpolrm],[data-stpolhist],[data-stpolrestore],[data-stpolack],[data-stpolpiece],[data-stfhed],[data-stfhpub],[data-stfhnew],[data-stfhreview],[data-stfhpublic],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw],[data-stformer],[data-stback]");
   if(!t)return;tapOnce(t,()=>stTap(e,t))},true);
 async function stTap(e,t){const d=t.dataset;
   if(d.stprint||d.stword){e.preventDefault();progress("Making the file");await printKind(d.stprint||d.stword,!!d.stword);return}
   if(d.stmod!=null&&d.tview){LS.set("tree.stmod",d.stmod);return}
-  if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.sthb==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.stpol==null&&!d.stpolhist&&!d.stfhed&&!d.stpolpiece){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.stperson){st.who=d.stperson;st.doc=null;goView("strec");return}
   if(d.stformer!=null){st.formerWho=d.stformer;redraw();jumpTop();return}
   if(d.stback){const n=d.stback,w=$("#stbackrow");if(!t.dataset.sure){if(w)w.innerHTML=`<span class="confirm">Bring ${H(n)} back with their history? <button class="btn small" data-stback="${H(n)}" data-sure="1">Bring back</button><button class="linkbtn" data-stformer="${H(n)}">Cancel</button></span>`;return}
@@ -559,14 +795,10 @@ async function stTap(e,t){const d=t.dataset;
   if(d.stmodback){st.mod="";st.piece="";redraw();return}
   if(d.stpiece!=null){st.piece=d.stpiece;if(!d.stpiece){redraw()}else T.render("stpd");return}
   if(d.stdone){const a=$("#stp-answer");try{st.doc=await api("pd/done",{id:d.stdone,answer:a?a.value:""});toast("Finished. It shows as read, and its minutes count toward your hours.");redraw()}catch(er){fail(er)}return}
-  if(d.sthb!=null){st.hbSec=d.sthb;st.hbEdit=false;T.render("sthb");return}
-  if(d.sthbedit){st.hbEdit=true;redraw();return}if(d.sthbcancel){st.hbEdit=false;if(st.hbSec==="__new")st.hbSec="";redraw();return}
-  if(d.sthbsave!=null){const title=($("#sthb-title")?.value||"").trim();if(!title){toast("Give the section a title.");return}
-    try{const r=await api("handbook/save",{id:d.sthbsave||title,title,body:$("#sthb-body")?.value||""});await loadHb(true);st.hbSec=r.id;st.hbEdit=false;toast("Saved. The Google Doc stays as the archive.");T.render("sthb")}catch(er){fail(er)}return}
-  if(d.sthbrm){if(!confirm("Remove this section from TREE? It stays in the backups."))return;try{await api("handbook/save",{id:d.sthbrm,remove:true});await loadHb(true);st.hbSec="";T.render("sthb")}catch(er){fail(er)}return}
+  if(await polTap(d,t))return;
   if(d.stremind){const rm=Object.assign({},B.school.remind);rm[d.stremind]=rm[d.stremind]===false;try{await api("school",{school:{remind:rm}});await boot(true);t.classList.toggle("on")}catch(er){fail(er)}return}
   if(d.stforms){const fl={};document.querySelectorAll("[data-stform]").forEach(x=>fl[x.dataset.stform]=x.value.trim());try{await api("school",{school:{formLinks:fl}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
-  if(d.streload){try{const r=await api("reload");st.pd=null;st.hb=null;toast(`Read again, ${r.pieces} pieces.`)}catch(er){fail(er)}return}
+  if(d.streload){try{const r=await api("reload");st.pd=null;st.pol={};toast(`Read again, ${r.pieces} pieces.`)}catch(er){fail(er)}return}
 }
 // dates and choices save as they change
 document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.closest("#main"))return;const d=t.dataset;
@@ -577,6 +809,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(d.stonce){const p=P();p.once=p.once||{};p.once[d.stonce]=Object.assign({},p.once[d.stonce],{[d.f]:t.value});await save(p,"Saved.");redraw();return}
   if(d.stunits){const p=P();p.units=Object.assign({},p.units,{completed:t.value===""?"":Number(t.value)});await save(p,"Saved.");redraw();return}
   if(d.stprof){const [name,k]=d.stprof.split("|");try{await api("profile",{name,profile:{[k]:t.value}});toast("Saved.")}catch(er){fail(er)}return}
+  if(d.stpolmust||d.stpolonly||d.stfhhide){if(VIEW_AS)return;await polChange(t,d);return}
   if(t.id==="sts-days"){try{await api("school",{school:{remindDays:+t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
   if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
 });

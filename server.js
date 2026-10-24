@@ -355,7 +355,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ store, log, sign, fileKey: () => makeFileKey(), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page') });
+const familyPage = require('./family.js')({ store, log, sign, fileKey: () => makeFileKey(), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -455,7 +455,7 @@ const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
 const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
-  checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), setSetting });
+  checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
@@ -1258,10 +1258,19 @@ async function handle(req, res) {
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
-  if (path.startsWith('/family/') || path === '/public/menu') {
+  if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/handbook' || path === '/public/handbook/img') {
     if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, 'The school records are still loading. Try again in a moment.'); return; } }
     const ip = who(req);
     if (path === '/public/menu') { json(req, res, 200, familyPage.publicMenu(body.month)); return; }
+    // the Family Handbook for prospective families and the website, read only, and only once the director turns it on
+    const imgType = p => /\.png$/i.test(p) ? 'image/png' : /\.gif$/i.test(p) ? 'image/gif' : /\.webp$/i.test(p) ? 'image/webp' : 'image/jpeg';
+    const hbImage = async isPublic => { try { const buf = await staff.handbook.image(String(body.path || ''), isPublic); send(req, res, 200, { 'Content-Type': imgType(String(body.path || '')), 'Cache-Control': isPublic ? 'public, max-age=86400' : 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } };
+    if (path.startsWith('/public/handbook')) {
+      try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The Family Handbook is still loading. Try again in a moment.'); return; }
+      if (path === '/public/handbook/img') { await hbImage(true); return; }
+      const hb = staff.handbook.forPublic(); if (!hb) { err(req, res, 403, 'The Family Handbook is not open to the public yet.'); return; }
+      json(req, res, 200, hb); return;
+    }
     if (path === '/family/code') { const r = await familyPage.sendCode(body.email, ip); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
     if (path === '/family/login') { const r = familyPage.signIn(body.email, body.code, ip); if (r.error) { err(req, res, 403, r.error); return; } json(req, res, 200, r); return; }
     const f = familyPage.readFamily(req); if (!f) { err(req, res, 401, 'Please sign in again.'); return; }
@@ -1280,6 +1289,12 @@ async function handle(req, res) {
     else if (path === '/family/check') r = familyPage.check(f, String(body.childId || ''), String(body.key || ''), body.on !== false);
     else if (path === '/family/aboutme') r = familyPage.aboutMe(f, String(body.childId || ''), body.pages, !!body.done);
     else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
+    else if (path === '/family/handbook' || path === '/family/handbook/img') {
+      try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The Family Handbook is still loading. Try again in a moment.'); return; }
+      if (path === '/family/handbook/img') { await hbImage(false); return; }
+      const hb = staff.handbook.forFamily(String(body.edition || '')); if (!hb) { err(req, res, 404, 'The Family Handbook is not here yet.'); return; }
+      json(req, res, 200, hb); return;
+    }
     else { err(req, res, 404, 'Not found'); return; }
     if (r.error) { err(req, res, 400, r.error); return; }
     // the family's children are read again after a change, so the page shows what was just saved

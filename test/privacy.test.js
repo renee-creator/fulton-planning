@@ -60,6 +60,6 @@ test('an educator\'s save keeps the hours TREE logged', async () => {
 
 test('a shared sign-in sees no Educators pages of its own', async () => {
   const h = await loaded(LIST);
-  assert.deepStrictEqual(h.staff.bootInfo('Shared').can, { records: false, pd: true, handbook: true, newed: false, growth: false });
+  assert.deepStrictEqual(h.staff.bootInfo('Shared').can, { records: false, pd: true, handbook: true, newed: false, growth: false, family: false });
   assert.strictEqual(h.staff.bootInfo('Ann').can.records, true);
 });

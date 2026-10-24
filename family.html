@@ -57,6 +57,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 .mweek{display:grid;gap:8px}.mday{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:15px}.mday.today{border-color:var(--moss);background:var(--moss-soft)}.mday.closed{color:var(--muted)}.mday .k{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
 .esec{border-top:1px solid var(--line);padding:10px 0}.esec>summary{font-size:16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}.grid .wide{grid-column:1/-1}
 .chk{display:flex;gap:8px;align-items:center;font-weight:700;grid-column:1/-1}.chk input{width:auto}.ills{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:6px}.ill{font-weight:400}
+.pmd h4{font-size:17px;margin:14px 0 4px;color:var(--moss)}.pmd h5{font-size:15px;margin:12px 0 4px}.pmd p{margin:6px 0}.pmd ul,.pmd ol{margin:6px 0;padding-left:22px}.pmd li{margin:3px 0}.pmd li.pmnest{list-style:none}.pmd blockquote{margin:6px 0;padding-left:12px;border-left:3px solid var(--line)}.pmd img{max-width:100%;height:auto;display:block;margin:8px auto}.pmd table{border-collapse:collapse;width:100%;font-size:14px}.pmd td,.pmd th{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.pmd .tw{overflow-x:auto}
+.hbpart{border-top:1px solid var(--line);padding:10px 0}.hbpart>summary{font-size:17px}.hbsec{margin:10px 0 0}.hbsec h3{font-size:16px;margin:12px 0 2px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -84,6 +86,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 </div>
 <script src="enroll-rules.js"></script>
 <script src="agreement.js"></script>
+<script src="policy-md.js"></script>
 <script>
 (function(){
   const qs=new URLSearchParams(location.search);
@@ -143,7 +146,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   function welcomeHtml(){const ks=D.children.filter(k=>k.isNew);
     return `<section class="card"><h2>Welcome to Fulton</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
     ks.map(k=>{const e=k.enroll||{},q=k.questionnaire;const steps=[
-      [!!(k.checks&&k.checks.handbook),"Read the Family Handbook",k.checks&&k.checks.handbook?"Read.":"Required before enrollment. Please read the Family Handbook in full.",`<button class="btn sm ${k.checks&&k.checks.handbook?"ghost":""}" data-chk="${esc(k.id)}|handbook">${k.checks&&k.checks.handbook?"Undo":"I have read it"}</button>`,D.handbookUrl?`<a class="link small" href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">Open the Family Handbook</a>`:""],
+      [hbRead(k),"Read the Family Handbook",hbRead(k)?(k.handbook?`Read the ${k.handbook.year} edition.`:"Read."):"Required before enrollment. Please read the Family Handbook in full.",`<button class="btn sm ${hbRead(k)?"ghost":""}" data-chk="${esc(k.id)}|handbook">${hbRead(k)?"Undo":"I have read it"}</button>`,hbLink()],
       [!!e.done,"Enrollment information",e.done?"Complete. The state licensing forms will be ready for your signature at your visit.":e.at?"In progress. Every box is required before your visit.":"Required. Your answers complete the state licensing forms, which you sign at your visit.",`<button class="btn sm ${e.done?"ghost":""}" data-form="enroll|${esc(k.id)}">${e.done?"Review":e.at?"Continue":"Start"}</button>`],
       [!!(k.agreement&&k.agreement.done),"Admission agreement",k.agreement&&k.agreement.done?`Signed electronically on ${new Date(k.agreement.signedAt).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}.`:k.agreement&&k.agreement.at?"In progress. Every section, initial and signature is required before your visit.":"Required. Complete every section, initial each term and sign.",`<button class="btn sm ${k.agreement&&k.agreement.done?"ghost":""}" data-form="agree|${esc(k.id)}">${k.agreement&&k.agreement.done?"Review":k.agreement&&k.agreement.at?"Continue":"Start"}</button>`],
       [!!q,"Family Questionnaire",q?"Received. Your child's educators will read it before your visit.":"Required. Your answers help your child's educators get to know your family.",`<button class="btn sm ${q?"ghost":""}" data-form="q|${esc(k.id)}">${q?"Review":"Start"}</button>`],
@@ -224,7 +227,23 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       ${m.recipe?`<section class="card"><details><summary><b>${esc(m.recipe.name)}</b>, a recipe from our kitchen</summary><p style="white-space:pre-line;margin:8px 0 0">${esc(m.recipe.text)}</p></details></section>`:""}
       <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
-      <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · <a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a></p></section>`}
+      <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:`<a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a>`}</p></section>`}
+  // the Family Handbook, read here in full. The current edition opens, and an earlier edition stays readable.
+  const hbRead=k=>!!(k.handbook?k.handbook.at:(k.checks&&k.checks.handbook));
+  const hbLink=()=>D.handbook?`<button class="link small" data-hbread="">Open the Family Handbook</button>`:D.handbookUrl?`<a class="link small" href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">Open the Family Handbook</a>`:"";
+  const HB={};const HBPIC=new Map();
+  async function hbPic(p){if(HBPIC.has(p))return HBPIC.get(p);const r=await fetch(SERVER+"/family/handbook/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({path:p})});if(!r.ok)throw new Error("");const u=URL.createObjectURL(await r.blob());HBPIC.set(p,u);return u}
+  function handbookHtml(){const y=form.split("|")[1]||"";const h=HB[y];
+    if(!h){api("/family/handbook",{edition:y}).then(j=>{HB[y]=j;if(!y)HB[j.edition]=j;if(form&&form.startsWith("hb|"))render()}).catch(er=>{const el=$("#hbmsg");if(el)el.textContent=er.message});
+      return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook</h2><p class="muted" id="hbmsg">Opening the handbook.</p></section>`}
+    const pic=(src,alt)=>`<img data-fimg="${esc(src)}" alt="${esc(alt||"A picture from the Family Handbook")}">`;
+    const ks=D.children.filter(k=>k.isNew&&k.handbook&&!k.handbook.at&&h.edition===h.current);
+    return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook, ${esc(h.edition)}</h2>
+      <p class="small muted" style="margin:0">${h.edition===h.current?"The current edition.":"An earlier edition, kept to read."} Open a part to read it.</p>
+      ${(h.editions||[]).length>1?`<div class="tabs" style="margin:10px 0 0">${h.editions.map(e=>`<button data-hbread="${esc(e.year)}" ${e.year===h.edition?'aria-current="page"':""}>${esc(e.year)}${e.current?", current":""}</button>`).join("")}</div>`:""}
+      ${h.parts.map(p=>`<details class="hbpart"><summary>${esc(p.title)}</summary>${p.sections.map(s=>`<div class="hbsec">${s.title!==p.title||p.sections.length>1?`<h3>${esc(s.title)}</h3>`:""}${window.PolicyMd.html(s.body,pic)}</div>`).join("")}</details>`).join("")}
+      ${ks.map(k=>`<div class="step"><div style="flex:1"><b>${esc(k.first)}</b><div class="small muted">Required before enrollment.</div></div><button class="btn sm" data-chk="${esc(k.id)}|handbook">I have read it</button></div>`).join("")}</section>`}
+  document.addEventListener("toggle",e=>{if(!e.target.classList||!e.target.classList.contains("hbpart")||!e.target.open)return;e.target.querySelectorAll("img[data-fimg]").forEach(async im=>{if(im.src)return;try{im.src=await hbPic(im.dataset.fimg)}catch(er){im.alt="The picture could not be shown."}})},true);
   // the Admission Agreement, laid out as the school's document, with what the school already knows filled in
   function agreeDraft(k){const A=window.FultonAgreement,ag=k.agreement||{};if(ag.fields)return ag;
     const e=k.enroll||{},v=Object.assign({},e.prefill||{},e.data||{});const nm=p=>[v[p+"first"],v[p+"last"]].filter(Boolean).join(" ");
@@ -289,6 +308,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(!m)return;const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const rel=()=>{m.style.minHeight=""};
     if(!imgs.length){rHold=setTimeout(rel,60);return}let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(rHold);rHold=setTimeout(rel,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});rHold=setTimeout(rel,4000)}
   function renderInner(){
+    if(form&&form.startsWith("hb|")){$("#main").innerHTML=handbookHtml();return}
     if(form){$("#main").innerHTML=(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml();return}
     const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
@@ -341,7 +361,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       else if(d.agsave){const [cid,sub]=d.agsave.split("|");const ag=readAgree();if(sub){const miss=window.FultonAgreement.missing(ag);if(miss.length){$("#eg").textContent="Please complete "+miss.slice(0,5).join(", ")+(miss.length>5?", and "+(miss.length-5)+" more":"")+".";return}}
         try{D=await api("/family/agree",{childId:cid,agreement:ag,submit:!!sub});if(!sub){render();$("#eg").textContent="Saved. The agreement is not signed yet.";return}form=null;render();window.scrollTo(0,0)}catch(er){$("#eg").textContent=er.message}}
       else if(d.readok){D=await api("/family/check",{childId:d.readok,key:"notices",on:true});form=null;render();window.scrollTo(0,0)}
-      else if(d.chk){const [id,key]=d.chk.split("|");const k=D.children.find(x=>x.id===id);D=await api("/family/check",{childId:id,key,on:!(k&&k.checks&&k.checks[key])});render()}
+      else if(d.chk){const [id,key]=d.chk.split("|");const k=D.children.find(x=>x.id===id);D=await api("/family/check",{childId:id,key,on:key==="handbook"&&k?!hbRead(k):!(k&&k.checks&&k.checks[key])});render()}
+      else if(d.hbread!=null){form="hb|"+d.hbread;render();window.scrollTo(0,0)}
       else if(d.packopen){packOpen=packOpen===d.packopen?null:d.packopen;render()}
       else if(d.aamnew){const k=D.children.find(x=>x.id===d.aamnew);if(k){aamText(k);k.aboutMe.pages.push({title:"",custom:true,text:"",photos:[]});render();const ts=document.querySelectorAll("[data-aamtitle]");if(ts.length)ts[ts.length-1].focus()}}
       else if(d.aamdel){const [id,i]=d.aamdel.split("|");const k=D.children.find(x=>x.id===id);if(k){aamText(k);k.aboutMe.pages.splice(+i,1);await aamSave(k,false);render()}}
