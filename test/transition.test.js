@@ -140,3 +140,17 @@ test('Transition summary', async t => {
     assert.deepStrictEqual(errors, []); await ctx.close();
   });
 });
+
+test('the family copy of a transition summary never names another child, and the staff copy stays as written', () => {
+  const kids = new Map([['pip', { doc: { first: 'Pip', last: 'Test', dob: '2021-11-03', status: 'active', transitionSummary: { '2026-27': { sections: { friends: 'Plays with Rue most days.' }, shared: { at: '2026-10-01', plan: 'k', sections: { friends: 'Pip plays with Rue and Oak Lane. R. and Pip dug. Rue\'s tower fell. Bea, an educator, helped.' } } } } } }],
+    ['rue', { doc: { first: 'Rue', last: 'Moss', status: 'active', familyQuestionnaire: { answers: ['We call her Bunny'] } } }], ['oak', { doc: { first: 'Oak', last: 'Lane', status: 'active' } }]]);
+  const store = { recs: { participation: new Map(), children: kids, conferences: new Map(), menus: new Map(), grant: new Map(), newsletters: new Map(), bins: new Map() } };
+  const fam = require('../family.js')({ store, log: () => {}, sign: s => s, noteChange: () => {}, scheduleSave: () => {}, mailCode: async () => {}, photoSrc: id => id, keepPhoto: async () => {}, handbook: () => null });
+  const f = { email: 'p@x.test', kids: [Object.assign({ id: 'pip' }, kids.get('pip').doc)], test: false };
+  const tr = fam.familyView(f).children[0].transition;
+  const text = tr.sections.map(x => x[1]).join(' ');
+  assert.doesNotMatch(text, /\bRue\b|\bOak\b|\bLane\b|\bMoss\b|\bR\./);
+  assert.match(text, /Pip plays with friends\. A friend and Pip dug\. A friend's tower fell\. Bea, an educator, helped\./);
+  assert.strictEqual(fam.withoutOthers('Bunny laughed.', { id: 'pip', first: 'Pip' }, [...kids].map(([id, r]) => Object.assign({ id }, r.doc))), 'A friend laughed.');
+  assert.strictEqual(kids.get('pip').doc.transitionSummary['2026-27'].sections.friends, 'Plays with Rue most days.');
+});

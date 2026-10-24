@@ -62,6 +62,32 @@ const DEFAULT_WELCOME = "We are so excited to welcome your family to Fulton Comm
 const CALENDAR_URL = 'https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles';
 const HANDBOOK_URL = 'https://docs.google.com/document/d/1rV5B3qqimv6iAdAL_pCUiOuZ5UU443Gh/edit?usp=sharing';
 
+/* The transition summary a family reads never names or shows another child. Other children's first and last names,
+   the nicknames their families gave in the Family Questionnaire and their initials, such as R. or R.T., become a friend,
+   and the educators' words are otherwise kept. The staff copy stays as written. */
+const NOT_NAMES = new Set(['We', 'She', 'He', 'Her', 'His', 'They', 'Them', 'Their', 'No', 'None', 'Yes', 'Our', 'The', 'A', 'An', 'And', 'Or', 'But', 'Sometimes', 'Usually', 'Mostly', 'Just', 'Only', 'Call', 'Calls', 'Called', 'Likes', 'Prefers', 'Goes', 'By', 'Name', 'Nickname', 'Nicknames', 'Family', 'Mom', 'Dad', 'Mama', 'Papa', 'Grandma', 'Grandpa', 'Not', 'Na', 'Also', 'At', 'Home', 'School', 'It', 'Is', 'In', 'Of', 'To', 'For', 'With', 'Sister', 'Brother', 'Baby']);
+const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function nicknamesOf(c) { const a = c && c.familyQuestionnaire && Array.isArray(c.familyQuestionnaire.answers) ? String(c.familyQuestionnaire.answers[0] || '') : ''; return (a.match(/\b[A-Z][a-z]{1,20}\b/g) || []).filter(w => !NOT_NAMES.has(w)); }
+function withoutOthers(text, child, all) {
+  let t = String(text || ''); if (!t) return t;
+  const own = new Set([child.first, child.last, ...nicknamesOf(child)].filter(Boolean).map(x => String(x).toLowerCase()));
+  const words = new Set(), inits = new Set();
+  for (const c of all) {
+    if (!c || c === child || (c.id && c.id === child.id)) continue;
+    for (const w of [c.first, c.last, ...nicknamesOf(c)]) { const x = String(w || '').trim(); if (x.length >= 2 && !own.has(x.toLowerCase())) words.add(x); }
+    const f = String(c.first || '').trim()[0], l = String(c.last || '').trim()[0];
+    if (f && f.toUpperCase() !== String(child.first || ' ')[0].toUpperCase()) { inits.add(f.toUpperCase() + '\\.'); if (l) inits.add(f.toUpperCase() + '\\.\\s?' + l.toUpperCase() + '\\.'); }
+  }
+  // full names first, then single names, each with a possessive
+  const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
+  if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos) => 'a friend' + (pos ? '\'s' : ''));
+  if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), '$1a friend');
+  // two friends named together read as friends, and a sentence that starts with one starts with a capital
+  t = t.replace(/\ba friend(?:,\s*a friend)*,?\s+and\s+a friend\b/g, 'friends').replace(/\ba friend(?:,\s*a friend)+\b/g, 'friends').replace(/\ba friend\s+and\s+friends\b/g, 'friends');
+  t = t.replace(/(^|[.!?]\s+|\n\s*)a friend/g, (m, p1) => p1 + 'A friend').replace(/(^|[.!?]\s+|\n\s*)friends\b/g, (m, p1) => p1 + 'Friends');
+  return t;
+}
+
 module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
@@ -189,7 +215,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const tsAll = k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary : {};
     const tsY = Object.keys(tsAll).filter(y => tsAll[y] && tsAll[y].shared && tsAll[y].shared.sections && typeof tsAll[y].shared.sections === 'object').sort().pop();
     const tsSh = tsY ? tsAll[tsY].shared : null;
-    const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, String(tsSh.sections[key] || '').trim()]).filter(([, v]) => v) } : null;
+    const others = tsSh ? [...store.recs.children.entries()].filter(([, r]) => r && !r.deleted && r.doc).map(([id, r]) => Object.assign({ id }, r.doc)) : [];
+    const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, withoutOthers(String(tsSh.sections[key] || '').trim(), Object.assign({ id: k.id }, k), others)]).filter(([, v]) => v) } : null;
     const visit = k.visit && k.visit.date ? k.visit : null;
     const purpose = isNew(k) ? 'visit' : (c.confOpen ? 'conference' : '');
     const open = purpose ? slots().filter(s => s.purpose === purpose && !!s.test === f.test && s.date >= today && (!s.classroom || s.classroom === k.classroom) && (!s.booked || s.booked.childId === k.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => ({ id: s.id, date: s.date, time: s.time, minutes: s.minutes, with: s.with || '', mine: !!(s.booked && s.booked.childId === k.id) })) : [];
@@ -379,5 +406,5 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { menu, prev, bins, farms, towns, months, grantEnd: '2027-06-30' };
   }
 
-  return { agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL, DEFAULT_WELCOME };
+  return { withoutOthers, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL, DEFAULT_WELCOME };
 };
