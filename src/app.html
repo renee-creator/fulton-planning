@@ -72,6 +72,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 #proofpanel{position:fixed;z-index:70;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
+/* on a phone, Today shows the first three lines of each recent observation, and All observations has the rest */
+@media (max-width:640px){.todayobs .mclip{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
 .newbtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;cursor:pointer}
 .newbtn:hover{border-color:var(--moss)}
 .newbtn b{font-weight:600}
@@ -4047,7 +4049,7 @@ function todayWaiting(){
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
-    <div style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
+    <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
 let todayAll=false;
@@ -4382,7 +4384,7 @@ function renderToday(){
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
   </div>
   <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Recent observations${room?" in "+esc(room):""}</h3><button class="linkbtn" data-tview="moments">All observations</button></div>
-    ${recent.length?`<div class="tlist">${recent.map(momentMini).join("")}</div>`:`<div class="empty">No observations yet.</div>`}</section>`;
+    ${recent.length?`<div class="tlist todayobs">${recent.map(momentMini).join("")}</div>`:`<div class="empty">No observations yet.</div>`}</section>`;
   loadTodayCal();
 }
 
