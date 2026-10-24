@@ -117,6 +117,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .pfold>summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.pfold>summary::-webkit-details-marker{display:none}.pfold>summary b{font-family:var(--display);font-size:17px}.pfold[open]>summary{margin-bottom:8px}.pfbody{display:grid;gap:8px}
 .nfcol{display:grid;gap:8px;margin:6px 0 10px}.nfrow{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px}.nfrow select,.nfrow input{width:100%;min-width:0;max-width:100%}.nfrow>span{color:var(--muted)}.nfrow .chip-btn{white-space:normal;text-align:left;max-width:100%}.nfrow:has(.chip-btn){align-items:start}
 .pmenu{position:relative;display:inline-block}.pmenu>summary{list-style:none;cursor:pointer}.pmenu>summary::-webkit-details-marker{display:none}.pmenu-list{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:180px;display:grid;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px 10px}.pmenu-list .linkbtn{text-align:left;padding:8px 2px;min-height:36px}
+.tabdrop{margin:2px 0 6px}.tabdrop>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;cursor:pointer;border:1.5px solid var(--moss);border-radius:999px;padding:9px 16px;font-weight:700;color:var(--moss);background:var(--paper);min-height:44px;box-sizing:border-box}.tabdrop>summary::-webkit-details-marker{display:none}.tabdrop>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;margin-top:-4px}.tabdrop[open]>summary::after{transform:rotate(-135deg);margin-top:4px}.tabdrop-list{display:grid;gap:2px;margin-top:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px}.tabdrop-list .sub{text-align:left;width:100%;min-height:42px}
+.pfhide{display:none!important}.pfmore{margin:8px 0}section.pfdone>details.autofold>summary b{font-family:var(--display);font-size:17px}
 .sethead{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 4px 6px;font-weight:700}.setcard>summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.setcard>summary::-webkit-details-marker{display:none}.setcard>summary b{font-size:16px}.setcard[open]>summary{margin-bottom:10px}.setbody>.lbl:first-child{display:none}section.card.inset{box-shadow:none;border:1px solid var(--line);margin:10px 0 0}
 .sglist{display:grid;gap:0;border-top:1px solid var(--line)}.sgrow{border-bottom:1px solid var(--line)}.sgrow>summary{display:grid;grid-template-columns:minmax(5.5em,1fr) auto auto;align-items:baseline;gap:2px 12px;padding:10px 4px;cursor:pointer;list-style:none;min-height:44px;box-sizing:border-box}.sgrow>summary::-webkit-details-marker{display:none}.sgrow>summary b{overflow-wrap:anywhere}.sgrow .sglast{text-align:right;min-width:6.5em}.sgbody{display:grid;gap:8px;padding:4px 4px 12px}.sgf{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.sgf>span:first-child{min-width:5.5em;color:var(--muted);font-size:13px}.sgf select{width:auto}
 .draftnote{max-width:1180px;margin:0 auto;padding:2px 16px 6px;font-size:13px;color:var(--muted);text-align:center}.draftline{color:var(--muted)}
@@ -3971,9 +3973,52 @@ function placeSubnav(){
   const m=$("#main");if(!m)return;const want=subnavHtml();const have=$("#tsubnav");
   if(!want){if(have)have.remove();return}
   if(have&&m.firstElementChild===have&&have.__src===want)return;
-  if(have)have.remove();m.insertAdjacentHTML("afterbegin",want);m.firstElementChild.__src=want;
+  if(have)have.remove();m.insertAdjacentHTML("afterbegin",want);m.firstElementChild.__src=want;tabFit(m.firstElementChild);
 }
-new MutationObserver(()=>placeSubnav()).observe(document.getElementById("main"),{childList:true});
+/* On a phone, a row of tabs that does not fit on one line becomes one dropdown labelled with the open tab, such as the
+   director's eight Plans tabs. The tabs inside it are the same buttons. */
+function tabFit(root){if(!root||window.innerWidth>700)return;
+  for(const row of root.querySelectorAll(".subrow")){const bs=[...row.querySelectorAll(":scope > button")];if(bs.length<2)continue;
+    const top=bs[0].offsetTop;if(!bs.some(b=>b.offsetTop>top+4))continue;
+    const cur=bs.find(b=>b.getAttribute("aria-current")==="page"||b.getAttribute("aria-current")==="true")||bs[0];
+    const d=document.createElement("details");d.className="tabdrop "+[...row.classList].filter(c=>c!=="subrow").join(" ");
+    d.innerHTML=`<summary><span>${esc(cur.textContent.trim())}</span><span class="cnt">${bs.length} pages</span></summary>`;
+    const list=document.createElement("div");list.className="tabdrop-list";bs.forEach(b=>list.append(b));d.append(list);row.replaceWith(d)}}
+let tabFitW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-tabFitW)<40)return;tabFitW=window.innerWidth;const h=$("#tsubnav");if(h){h.__src=null;h.remove();placeSubnav()}});
+new MutationObserver(()=>{placeSubnav();phoneFoldSoon()}).observe(document.getElementById("main"),{childList:true});
+/* On a phone, a page longer than three screens folds its secondary sections closed, each with its heading and one line
+   saying what it holds, and a long list shows its first twelve with Show all. The page's main section stays open, and
+   the plan form, Settings and the observation form have their own folds. What a person opens stays open. */
+const PF_MAIN={moments:"Observations kept",strec:"Records and certificates",stnew:"First weeks checklist",newsletter:"Topic for families",lens:"A closer reading",threads:"Threads"};
+const pfOpen=new Set(),pfAll=new Set();let pfT=null;
+function phoneFoldSoon(){clearTimeout(pfT);pfT=setTimeout(phoneFold,60)}
+function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySelector("#nf-card,.nfmore")||(view==="plans"&&currentId)||view==="settings"||view==="today")return;
+  if(document.documentElement.scrollHeight<=window.innerHeight*3)return;
+  const head=x=>{const h=x.querySelector(":scope > .lbl, :scope > h2, :scope > h3, :scope > .chiprow-label, :scope > .secthead .lbl, :scope > .secthead h3, :scope > .secthead h2, :scope > .head-row h3, :scope > .head-row h2");return h?h.textContent.trim():""};
+  const secs=[...m.querySelectorAll(":scope > section.card, :scope > section.review, :scope > section:not([class]), :scope > div.card")].filter(x=>!x.classList.contains("pfdone")&&head(x));
+  if(secs.length>1){const want=PF_MAIN[view];const main=secs.find(x=>want&&head(x).startsWith(want))||secs[0];
+    for(const x of secs){if(x===main||x.querySelector(":focus"))continue;const t=head(x),k=view+"|"+t;
+      const line=(()=>{const c=x.querySelector(".hint,.cnt,p,.sub");return c?sentFit(c.textContent,80):""})();
+      const d=document.createElement("details");d.className="pfold autofold";d.dataset.pf=k;d.open=pfOpen.has(k);
+      d.innerHTML=`<summary><b>${esc(t)}</b>${line&&line!==t?`<span class="cnt">${esc(line)}</span>`:""}</summary>`;const body=document.createElement("div");body.className="pfbody";
+      const hd=x.querySelector(":scope > .lbl, :scope > h2, :scope > h3, :scope > .secthead");while(x.firstChild)body.append(x.firstChild);if(hd&&hd.parentNode===body&&!hd.querySelector("button,a,select,input"))hd.remove();
+      d.append(body);x.append(d);x.classList.add("pfdone")}}
+  // a long list shows its first eight, with Show all. All plans folds each week after the first two.
+  const al=m.querySelector("#alist");
+  if(al&&!al.dataset.pfl){al.dataset.pfl="1";[...al.children].slice(2).forEach(x=>{const t=head(x);if(!t)return;const k=view+"|"+t;const d=document.createElement("details");d.className="pfold autofold";d.dataset.pf=k;d.open=pfOpen.has(k);
+    d.innerHTML=`<summary><b>${esc(t)}</b></summary>`;const body=document.createElement("div");body.className="pfbody";const hd=x.querySelector(":scope > h2, :scope > h3, :scope > .lbl, :scope > .chiprow-label, :scope > .secthead");while(x.firstChild)body.append(x.firstChild);if(hd&&hd.parentNode===body&&!hd.querySelector("button,a,select,input"))hd.remove();d.append(body);x.append(d)})}
+  const sig=c=>c.tagName+"."+(c.classList[0]||"");
+  for(const list of m.querySelectorAll("div,section,tbody,ul,ol")){if(list.dataset.pfl||list===al||list.closest(".chips,.tseg,nav,.pfmenu,.pfhide"))continue;
+    const kids=[...list.children];if(kids.length<6||list.offsetHeight<window.innerHeight*2)continue;
+    const cnt=new Map();for(const c of kids)cnt.set(sig(c),(cnt.get(sig(c))||0)+1);const [top,n]=[...cnt].sort((x,y)=>y[1]-x[1])[0];if(n<kids.length*0.6||n<6)continue;
+    const items=kids.filter(c=>sig(c)===top);list.dataset.pfl="1";const key=view+"|"+(list.id||list.className||top);if(pfAll.has(key))continue;
+    // as many as fill about a screen and a half, at least three
+    let h=0,keep=0;for(const c of items){if(keep>=3&&h>window.innerHeight*1.5)break;h+=c.offsetHeight;keep++}if(keep>=items.length)continue;
+    items.slice(keep).forEach(c=>c.classList.add("pfhide"));
+    const b=document.createElement("button");b.className="btn small ghost pfmore";b.type="button";b.textContent=`Show all ${items.length}`;b.dataset.pfkey=key;
+    if(list.tagName==="TBODY"){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=20;td.append(b);tr.append(td);list.append(tr)}else list.append(b)}}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".pfmore");if(!b)return;pfAll.add(b.dataset.pfkey);const l=b.closest("tbody")||b.parentElement;[...l.children].forEach(c=>c.classList.remove("pfhide"));(b.closest("tr")||b).remove()});
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("autofold")){if(d.open)pfOpen.add(d.dataset.pf);else pfOpen.delete(d.dataset.pf)}},true);
 // the director looks after every classroom, so no one classroom is theirs, whatever a plan last used on this device
 function myRoom(){if(VIEW_AS){if(VIEW_AS.room)return VIEW_AS.room;const m=VIEW_AS.name.toLowerCase();const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}if(isDirector())return"";const r=LS.get("fps.myroom","");if(r)return r;const m=me().toLowerCase();if(!m)return"";const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===m);if(g)return g.room;const e=roster.find(x=>(x.name||"").toLowerCase()===m);return e&&e.room||""}
 const myGroups=()=>{const m=me().toLowerCase();return m?GROUPS.filter(g=>(g.educator||"").toLowerCase()===m):[]};

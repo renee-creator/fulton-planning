@@ -138,15 +138,17 @@ test('TREE in the browser', async t => {
   await t.test('the director\'s Educators pages sit under four tabs, every page two taps away, and the page starts on the first screen of a phone', async () => {
     for (const w of [360, 1280]) {
       const s = await signedIn(fx, b, 'Dee', 'director-pass-1', w);
-      await s.p.evaluate(() => goView('stteam')); await s.p.waitForSelector('#tsubnav .stgroups');
+      // on a phone a row of tabs that does not fit is one dropdown, opened before a tab inside it is tapped
+      const tap = async sel => { await s.p.evaluate(q => { const b = document.querySelector(q); const d = b && b.closest('details.tabdrop'); if (d) d.open = true; }, sel); await s.p.click(sel); };
+      await s.p.evaluate(() => goView('stteam')); await s.p.waitForSelector('#tsubnav .stgroups', { state: 'attached' });
       const groups = await s.p.$$eval('#tsubnav .stgroups button', bs => bs.map(x => x.textContent.trim()));
       assert.deepStrictEqual(groups, ['People', 'Growth', 'PD and Licensing', 'Records']);
       const seen = new Set();
       for (let g = 0; g < groups.length; g++) {
-        await s.p.click(`#tsubnav .stgroups button:nth-child(${g + 1})`); await s.p.waitForTimeout(400);
+        await tap(`#tsubnav .stgroups button:nth-child(${g + 1})`); await s.p.waitForTimeout(400);
         const pages = await s.p.$$eval('#tsubnav .stpages button', bs => bs.map(x => x.dataset.tview));
         const cur = await s.p.evaluate(() => view); seen.add(cur);
-        for (const v of pages) { await s.p.click(`#tsubnav .stpages button[data-tview="${v}"]`); await s.p.waitForTimeout(300); seen.add(await s.p.evaluate(() => view)); }
+        for (const v of pages) { await tap(`#tsubnav .stpages button[data-tview="${v}"]`); await s.p.waitForTimeout(300); seen.add(await s.p.evaluate(() => view)); }
       }
       for (const v of ['stteam', 'strec', 'stnew', 'stgrow', 'stplan', 'stjour', 'stci', 'stmom', 'stpd', 'stpdd', 'sthb', 'st27', 'stdrill', 'stfiles']) assert.ok(seen.has(v), w + ' ' + v);
       await s.p.evaluate(() => goView('stteam')); await s.p.waitForFunction(() => /Every educator/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });

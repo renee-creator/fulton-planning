@@ -365,6 +365,13 @@ While an educator writes an observation or a plan, TREE keeps the words and any 
 
 Each save from a draft carries a client id made once, and each photo one made from its observation's, so a save sent again after its answer was lost on the way back is the same save. The server hands back what it already kept instead of keeping it twice, so a retry never makes a second observation or a second copy of a photo. A draft is removed only once it is sent. If an educator signs out with something unsent, TREE says so first, with Stay signed in and Sign out anyway. Signing out keeps the draft on that phone, and it sends when she signs in there again.
 
+## Less clutter
+
+- Settings, for the director, is five headings, People, Teaching lists, Kitchen, Display and printing and Keeping records, each holding closed cards that show the card's name and a one-line status. Opening one closes the others. Sign-ins, Educators, Staff birthdays and Small groups show one short row each, and tapping a row opens its choices. Monthly menus shows this month and next, with earlier months under Earlier menus.
+- On a plan, each section shows its title and its box, with the description, starter phrases, See an example and Strengthen wording under Help me start. Small groups show the plan's own Class, with Show other Classes. Where it happens is one card, with the calendar space and the words. The evidence panel opens closed on phones and tablets, and a computer remembers it. The Proofread button steps aside when a box or a choice is under it. Family update for Kaymbu, Director feedback and Final remarks fold closed until used, and Final remarks opens on its own from the Friday of the plan's week.
+- On an observation, More holds Day it happened, Small group, Plan, Project, Thread and the weekly bin in one column, with the languages last. The bin button says what it does. Pages with a summary and a full print show one Print or download menu.
+- On a phone, a row of tabs that does not fit on one line, such as the director's eight Plans tabs, is one dropdown labelled with the open tab. A page longer than three phone screens folds its secondary sections closed, each with its heading and a line about what it holds, and a long list shows about a screen and a half with Show all.
+
 ## One place each
 
 - A new educator says they have read the Teacher Policies and Procedures in one place, the card Teacher Policies and Procedures, before the first day, in the New Educator section. It counts for the Paperwork row too, and the policies page sends a new educator there.
