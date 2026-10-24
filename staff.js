@@ -465,7 +465,8 @@ module.exports = function staffModule(o) {
       const u = doc.units || {}; const sem = semesterOf(day);
       if (sem && Number(u.completed) < 12 && (u.completed !== undefined && u.completed !== '') && !((u.semesters || {})[sem] || {}).files?.length) {
         const start = sem.endsWith('fall') ? day.slice(0, 4) + '-08-20' : day.slice(0, 4) + '-01-20';
-        if (day >= start && once(`${pidOf(name)}|sem|${sem}|${mondayOf(day)}`)) out.push('Proof of enrollment for this semester, until you reach twelve units');
+        // once each semester, from the day it starts
+        if (day >= start && once(`${pidOf(name)}|sem|${sem}`)) out.push('Proof of enrollment for this semester, until you reach twelve units');
       }
     }
     return out;
@@ -484,7 +485,7 @@ module.exports = function staffModule(o) {
         summary.push(`${n}, ${items.join('; ').toLowerCase()}`);
       }
       const sc = school(); const drills = (get(DRILLS) || {}).list || [];
-      if (sc.remind?.drill !== false) { const last = drills.map(d => d.date).sort().pop(); if ((!last || daysBetween(last, day) >= 90) && dow === 1 && once('drill|' + day)) summary.push(last ? `No emergency drill since ${longDay(last)}. Drills happen at least every three months.` : 'No emergency drill is in the log yet. Drills happen at least every three months.'); }
+      if (sc.remind?.drill !== false) { const last = drills.map(d => d.date).sort().pop(); if ((!last || daysBetween(last, day) >= 90) && dow === 1 && once('drill|' + (last || 'none'))) summary.push(last ? `No emergency drill since ${longDay(last)}. Drills happen at least every three months.` : 'No emergency drill is in the log yet. Drills happen at least every three months.'); }
       if (summary.length) for (const d of dirs) await reminders.sendTo(d, { title: 'TREE, educator records', body: summary.join('\n'), url: 'tree.html?go=records', tag: 'tree-records-dir' });
     } catch (e) { log('Educator record reminders failed,', e.message); } finally { busy = false; }
   }
