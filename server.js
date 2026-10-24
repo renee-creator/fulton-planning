@@ -4,10 +4,10 @@
 // requests (drafting, strengthening, transcribing plans) to Anthropic. Every failure returns a clear message.
 //
 // Render settings (Environment)
-//   TEACHER_PASSCODES   Name=passcode pairs separated by commas, like  Hannah=maple garden 42,Chris=river stone 7
+//   TEACHER_PASSCODES   Name=passcode pairs separated by commas, like  FirstName=a long passcode,OtherName=another long passcode
 //   GITHUB_TOKEN        fine-grained token with Contents read and write on the records repository only
 //   RECORDS_REPO        owner/name of the private records repository (default renee-creator/fulton-planning-records)
-//   DIRECTOR_NAMES      names from TEACHER_PASSCODES who may change Program settings and delete plans, like  Renee
+//   DIRECTOR_NAMES      names from TEACHER_PASSCODES who may change Program settings and delete plans, as a list of first names
 //   ANTHROPIC_API_KEY   the same key TREE uses
 //   ALLOWED_ORIGINS     extra websites allowed to use this server, separated by commas (optional)
 //   KAYMBU_INBOX_KEY    a long secret shared with the Kaymbu Apps Script, which turns on the Kaymbu inbox (optional)
@@ -35,7 +35,7 @@ const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', '
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy'];
-// every box on the Individual and Classroom plans has writing before a plan is sent to Renee, except Final remarks
+// every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
 const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
 // an educator sends a plan only once its boxes are written. Once sent or reviewed it stays so, and only the director
 // marks it reviewed or sends it back to draft. The older Small Group plan keeps its own status row, never reviewed by an educator.
@@ -70,8 +70,11 @@ const TEACHERS = PASS_RAW.split(',').map(e => e.trim()).filter(Boolean).map(e =>
   const code = normCode(cut > 0 ? e.slice(cut + 1) : e);
   return { name: /^[A-Za-z0-9 _.&'-]{1,40}$/.test(name) ? name : (cut > 0 ? '' : 'Staff'), code, hash: sha(code) };
 }).filter(t => t.name && t.code.length >= 6 && t.name !== 'Staff');   // the shared Staff passcode is retired, so every educator signs in with their own name
-const DIRECTORS = String(process.env.DIRECTOR_NAMES || 'Renee').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-function isDirector(name) { if (DIRECTORS.includes(String(name || '').toLowerCase())) return true; const a = accountFor(name); return !!(a && a.director); }
+// the director's and the office's names are kept in the private records, access/roles.json, or set on Render, never in this file
+const DIRECTORS = String(process.env.DIRECTOR_NAMES || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const roles = { directors: [], office: [] };
+const inRole = (list, name) => list.some(n => String(n || '').trim().toLowerCase() === String(name || '').trim().toLowerCase());
+function isDirector(name) { if (DIRECTORS.includes(String(name || '').toLowerCase()) || inRole(roles.directors, name)) return true; const a = accountFor(name); return !!(a && a.director); }
 const SKIPPED_PASSCODES = PASS_RAW.split(',').filter(e => e.trim() && !/^staff=/i.test(e.trim()) && e.includes('=')).length - TEACHERS.length;
 const SECRET = sha('fulton-planning|' + (process.env.SESSION_SECRET || '') + '|' + githubToken() + '|' + PASS_RAW);
 const SESSION_DAYS = 60;
@@ -134,7 +137,8 @@ function noteWrong(ip) { const now = Date.now(); if (wrongTries.size > 5000) for
 /* ---------- TREE sign-ins. Each educator signs in with their first name and a 4-digit passcode they set the first time.
    The director adds educators, can see their codes, and can clear a code so it is set again. The file lives under access/
    in the records, never in what is sent to a browser, and only the director's Settings asks for it. ---------- */
-const ACCOUNTS_PATH = 'access/accounts.json';
+const ACCOUNTS_PATH = 'access/accounts.json', ROLES_PATH = 'access/roles.json';
+function takeRoles(text) { try { const d = JSON.parse(text || '{}'); roles.directors = Array.isArray(d.directors) ? d.directors.map(String) : []; roles.office = Array.isArray(d.office) ? d.office.map(String) : []; } catch (e) { log('The roles file could not be read'); } }
 const accounts = { list: [], sha: null, loaded: false, saving: Promise.resolve() };
 const nameKey = n => String(n || '').normalize('NFKC').replace(/\./g, ' ').trim().replace(/\s+/g, ' ').toLowerCase();
 function accountFor(name) { const k = nameKey(name); return k ? accounts.list.find(a => nameKey(a.name) === k) : null; }
@@ -142,6 +146,8 @@ async function loadAccounts() {
   const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`);
   if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } let gave = false; for (const a of accounts.list) if (!a.code && !a.start) { a.start = newStart(); gave = true; } if (gave) saveAccounts('TREE'); }
   else if (r.status !== 404) throw new Error('GitHub answered ' + r.status + ' when reading the sign-ins.');
+  const rr = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ROLES_PATH}?ref=${encodeURIComponent(store.branch)}`);
+  if (rr.status === 200) takeRoles(Buffer.from(rr.json.content || '', 'base64').toString('utf8'));
   accounts.loaded = true;
 }
 function saveAccounts(by) {
@@ -171,10 +177,10 @@ const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.
 const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
 function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
-// a kitchen sign-in, such as Sally's, reaches the Kitchen page, Today and the calendar, and nothing about children or money
-// the office, Destiny by default, works with the director on families, enrollment and participation
-const OFFICE_NAMES = String(process.env.OFFICE_NAMES || 'Destiny').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.includes(String(name || '').toLowerCase())) return true; const a = accountFor(name); return !!(a && a.office); };
+// a kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money
+// the office, named in access/roles.json in the records, works with the director on families, enrollment and participation
+const OFFICE_NAMES = String(process.env.OFFICE_NAMES || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.includes(String(name || '').toLowerCase()) || inRole(roles.office, name)) return true; const a = accountFor(name); return !!(a && a.office); };
 // what only the director and the office see, the families' participation
 const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
@@ -253,9 +259,9 @@ function readPhoto(sha) {
   return job;
 }
 // the calendar keeps its own part of the records, under calendar/
-const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents, extraRev: () => rev });
+const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
-function conferenceEvents(from, to) {
+function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
   for (const [id, r] of store.recs.conferences) {
     const c = r.doc; if (r.deleted || !c || !c.confDate || c.confDate < from || c.confDate > to) continue;
@@ -306,7 +312,9 @@ function conferenceEvents(from, to) {
       if (pm) meal('pm', 'Afternoon snack, ' + pm, note.snack);
     }
   }
-  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true } } };
+  // check-in Mondays with each educator's own time, and PD days set in TREE, from staff.js. Each educator sees their own.
+  if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
+  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true } } };
 }
 const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
@@ -323,7 +331,7 @@ async function mailCode(to, code) {
 const familyPage = require('./family.js')({ store, log, sign, fileKey: () => makeFileKey(), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page') });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
-// the month's menus, opened from the links in Sally's Kitchen Digest and read by Claude
+// the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
   if (photosDrive.on() && await photosDrive.keep(id, buf, type)) return id;
@@ -349,7 +357,15 @@ async function readOriginal(id) {
 function lensNow() { const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; const ls = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
   const l = ls.find(x => x && x.year) || ls[0]; return l ? { name: String(l.name || ''), description: String(l.description || '') } : null; }
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
-const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames });
+// the journal opens with the reader's own passcode each time, checked here as at sign-in
+function checkPasscode(name, given) {
+  given = String(given || ''); const a = accountFor(name); let ok = false;
+  if (a && a.code) ok = sameText(given, a.code); else { const t = matchPasscode(given); ok = !!t && nameKey(t.name) === nameKey(name); }
+  if (!ok) nameWrong(name); return ok;
+}
+function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
+const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+  checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), setSetting });
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
@@ -371,17 +387,19 @@ async function doLoadGraph() {
   const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`);
   store.branch = ((d.repository || {}).defaultBranchRef || {}).name || 'main';
   const files = await gqlFiles(store.branch);
-  const jobs = [];let accSha = '';
+  const jobs = [];let accSha = '', rolesSha = '';
   for (const f of files) {
     const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/);
     if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
     if (f.path === DRDP_PATH) drdpSha = f.sha;
     if (f.path === ACCOUNTS_PATH) accSha = f.sha;
+    if (f.path === ROLES_PATH) rolesSha = f.sha;
     const o = f.path.match(/^originals\/([^/]+)$/);
     if (o) { const cur = store.originals.get(o[1]); if (cur && cur.drive) cur.leftover = { path: f.path, sha: f.sha }; else store.originals.set(o[1], { path: f.path, sha: f.sha, size: 0 }); }
     if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
   }
-  const texts = await gqlTexts([...jobs.map(j => j.sha), ...(accSha ? [accSha] : []), ...(drdpSha ? [drdpSha] : [])]);
+  const texts = await gqlTexts([...jobs.map(j => j.sha), ...(accSha ? [accSha] : []), ...(rolesSha ? [rolesSha] : []), ...(drdpSha ? [drdpSha] : [])]);
+  if (rolesSha) takeRoles(texts.get(rolesSha));
   if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(texts.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
   accounts.loaded = true;
   for (const j of jobs) { const tx = texts.get(j.sha); if (tx == null) { log('Skipped unreadable record', j.path); continue; } try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (e) { log('Skipped unreadable record', j.path); } }
@@ -865,7 +883,7 @@ function statusPage(req, res) {
   const lines = [
     [store.ready, store.ready ? `Records are connected. ${store.recs.plans.size} plans and ${store.recs.threads.size} followed threads are loaded from ${RECORDS_REPO}.` : (store.error || 'Records are still loading.')],
     [!!anthropicKey(), anthropicKey() ? 'An Anthropic key is saved, so Claude assist is available.' : 'No Anthropic key is saved. Add ANTHROPIC_API_KEY under Environment to turn on Claude assist.'],
-    [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. Director access for ${TEACHERS.filter(t => isDirector(t.name)).map(t => t.name).join(', ') || 'nobody yet, so set DIRECTOR_NAMES'}.` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like Hannah=maple garden 42.'],
+    [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. Director access for ${TEACHERS.filter(t => isDirector(t.name)).map(t => t.name).join(', ') || 'nobody yet, so set DIRECTOR_NAMES'}.` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like FirstName=a long passcode.'],
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
@@ -1031,7 +1049,9 @@ async function displayFeed() {
   const FOODW = /\b(cook|cooking|bake|baking|bread|dough|soup|salad|tast(e|ed|ing)|harvest(ed|ing)?|garden|seeds?|chop|peel|wash(ed|ing)? the|fruit|vegetables?|apples?|pumpkins?|squash|kale|lettuce|carrots?|tomato(es)?|eggs?|feed bin|farm bin|snack)\b/i;
   const fm = shown.find(n => now - (n.at || 0) < 21 * 864e5 && FOODW.test(String(n.noticed || '') + ' ' + String(n.wonder || '')));
   const foodMoment = fm ? { id: fm.id, at: fm.at || 0, photo: photoOf(fm), noticed: trim(fm.noticed, 300), wonder: trim(fm.wonder, 200), rooms: roomsOf(fm), children: [] } : null;
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides };
+  // Proud Moments and Kudos shared with everyone at Fulton
+  let proud = []; try { proud = staff.displayMoments(); } catch (e) {}
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
 // initial, initials, or no names at all. The educators' words never change otherwise.
@@ -1173,10 +1193,10 @@ async function handle(req, res) {
     const ip = who(req);
     if (blocked(ip)) { err(req, res, 429, 'Too many wrong passcodes. Wait ten minutes and try again.'); return; }
     const name = cleanName(body.name);
-    const NOPE = 'That name and passcode do not match. Check with Renee if you have forgotten your passcode.';
+    const NOPE = 'That name and passcode do not match. Check with the director if you have forgotten your passcode.';
     if (name) {
       if (!store.ready) await loadAll();
-      if (nameBlocked(name)) { err(req, res, 429, 'Too many wrong passcodes for that name. Wait ' + waitWords(name) + ' and try again, or ask Renee.'); return; }
+      if (nameBlocked(name)) { err(req, res, 429, 'Too many wrong passcodes for that name. Wait ' + waitWords(name) + ' and try again, or ask the director.'); return; }
       let a = accountFor(name);
       const given = String(body.passcode || '');
       // two educators can share a first name, so a first name that starts several sign-ins asks for the full name
@@ -1187,7 +1207,7 @@ async function handle(req, res) {
       }
       if (a) {
         if (!a.code) {
-          // the first sign-in sets the educator's own four numbers, as Renee wants
+          // the first sign-in sets the educator's own four numbers, as the director wants
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
@@ -1207,7 +1227,7 @@ async function handle(req, res) {
     }
     if (!TEACHERS.length) { err(req, res, 503, 'No educator passcodes are set on the server yet.'); return; }
     const t = matchPasscode(body.passcode);
-    if (!t) { noteWrong(ip); if (name) nameWrong(name); err(req, res, 403, 'That name and passcode do not match. Check with Renee if you have forgotten your passcode.'); return; }
+    if (!t) { noteWrong(ip); if (name) nameWrong(name); err(req, res, 403, 'That name and passcode do not match. Check with the director if you have forgotten your passcode.'); return; }
     log('Signed in', t.name);
     json(req, res, 200, { token: makeSession(t.name), name: t.name, director: isDirector(t.name), teachers: teacherNames() });
     return;
@@ -1235,7 +1255,8 @@ async function handle(req, res) {
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
     const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
-    const bad = !OPEN.includes(path) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
+    // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
+    const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
   }
   // a new hire, before the director turns on full access, reaches only the New Educator section. Nothing about children,
@@ -1285,7 +1306,7 @@ async function handle(req, res) {
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
     }
-    if (((kind === 'settings' && id !== 'educators' && id !== 'main' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask Renee if this needs to be removed.'); return; }
+    if (((kind === 'settings' && id !== 'educators' && id !== 'main' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change
     if (kind === 'menus' && !isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen add the monthly menus.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
@@ -1408,7 +1429,7 @@ async function handle(req, res) {
     const kb = Math.round(JSON.stringify(content).length / 1024);
     try {
       // suggested reading for families is searched for on the web, only on sites families can trust
-      const extra = body.purpose === 'newsletter-reading' ? { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6, allowed_domains: READING_SITES }] } : null;
+      const extra = body.purpose === 'newsletter-reading' || body.purpose === 'pd-reading' ? { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6, allowed_domains: READING_SITES }] } : null;
       const r = await askClaude(content, !!body.careful || !!extra, extra);
       if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); let m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) {} err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'Claude is busy. Wait a minute and try again.' : 'Claude could not read this. ' + m); return; }
       const msg = JSON.parse(r.text);
