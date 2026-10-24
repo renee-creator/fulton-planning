@@ -32,7 +32,7 @@ print("tree-staff.js", len(staff), "bytes")
 import sys
 (root / "tree.html").write_text(out)
 print("tree.html", len(out), "bytes")
-# TREE is the main address. The old Planning Studio is kept as planning-studio.html.
+# TREE is the main address. planning-studio.html only sends everyone to TREE.
 (root / "index.html").write_text(out)
 print("index.html is TREE")
 import subprocess

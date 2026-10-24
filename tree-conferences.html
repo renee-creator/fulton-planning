@@ -274,7 +274,21 @@ header.top{position:static!important;border-bottom:0!important;background:transp
   const Auth={token:LS.get("fp-token"), name:LS.get("fp-name")};
   const Store={data:{children:{},conferences:{},settings:{}}, rev:0, bootId:"", listeners:new Set(), ready:null, fileKey:"", wroteAt:{}};
   window.CAREFUL_READ=true;
-  window.BLOB_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
+  /* a photo's address carries a key for that photo alone, made from the page's short-lived secret and the photo's id
+     with HMAC-SHA256, worked out here at once because an img address cannot wait */
+  const PK=(()=>{const K=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];
+    const utf8=s=>Array.from(unescape(encodeURIComponent(s)),c=>c.charCodeAt(0));
+    function sha(b){const m=b.slice(),l=b.length*8;m.push(128);while(m.length%64!==56)m.push(0);for(let i=7;i>=0;i--)m.push(i>3?0:(l>>>(i*8))&255);
+      let h=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];const w=new Array(64);
+      for(let o=0;o<m.length;o+=64){for(let i=0;i<16;i++)w[i]=(m[o+i*4]<<24)|(m[o+i*4+1]<<16)|(m[o+i*4+2]<<8)|m[o+i*4+3];
+        for(let i=16;i<64;i++){const a=w[i-15],c=w[i-2];const s0=((a>>>7)|(a<<25))^((a>>>18)|(a<<14))^(a>>>3),s1=((c>>>17)|(c<<15))^((c>>>19)|(c<<13))^(c>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}
+        let [A,B,C,D,E,F,G,H]=h;for(let i=0;i<64;i++){const S1=((E>>>6)|(E<<26))^((E>>>11)|(E<<21))^((E>>>25)|(E<<7)),ch=(E&F)^(~E&G),t1=(H+S1+ch+K[i]+w[i])|0,S0=((A>>>2)|(A<<30))^((A>>>13)|(A<<19))^((A>>>22)|(A<<10)),mj=(A&B)^(A&C)^(B&C),t2=(S0+mj)|0;H=G;G=F;F=E;E=(D+t1)|0;D=C;C=B;B=A;A=(t1+t2)|0}
+        h=[h[0]+A|0,h[1]+B|0,h[2]+C|0,h[3]+D|0,h[4]+E|0,h[5]+F|0,h[6]+G|0,h[7]+H|0]}
+      const out=[];for(const x of h)out.push((x>>>24)&255,(x>>>16)&255,(x>>>8)&255,x&255);return out}
+    function hmac(k,msg){let kb=utf8(k);if(kb.length>64)kb=sha(kb);while(kb.length<64)kb.push(0);return sha(kb.map(x=>x^0x5c).concat(sha(kb.map(x=>x^0x36).concat(utf8(msg)))))}
+    const b64u=a=>btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    return (fileKey,id)=>{const i=String(fileKey||"").indexOf(".");if(i<0)return "";return fileKey.slice(0,i)+"."+b64u(hmac(fileKey.slice(i+1),String(id))).slice(0,32)};})();
+  window.BLOB_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,id));
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
   function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); location.reload(); }
@@ -1406,7 +1420,7 @@ function childForm(c){
       <div class="field"><label for="c-last">Last name</label><input id="c-last" value="${esc(c.last||"")}"></div>
       <div class="field"><label for="c-dob">Birthdate</label><input id="c-dob" type="date" value="${esc(c.dob||"")}"></div>
       <div class="field"><label for="c-gender">Gender</label><input id="c-gender" value="${esc(c.gender||"")}"></div>
-      <div class="field"><label for="c-room">Class</label><select id="c-room">${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label for="c-room">Class</label><select id="c-room" ${(()=>{try{return localStorage.getItem("fp-director")==="1"}catch(e){return false}})()?"":"disabled title=\"The director changes a child's Class, in Move children on the Children page.\""}>${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-group">Small group</label><select id="c-group"><option value="">Choose</option>${c.group&&!groupsList().some(g=>g.name===c.group)?`<option selected value="${esc(c.group)}">${esc(c.group)}</option>`:""}${groupsList().map(g=>`<option ${c.group===g.name?"selected":""} value="${esc(g.name)}">${esc(g.name)} · ${esc(g.room)} · ${esc(g.educator)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-edu">Primary educator</label><input id="c-edu" value="${esc(c.primaryEducator||"")}" autocomplete="off" placeholder="From the small group"></div>
       <div class="field"><label for="c-program">Program</label><input id="c-program" value="${esc(c.program||"")}"></div>

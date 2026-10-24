@@ -86,12 +86,20 @@ const SESSION_DAYS = 60;
 function b64u(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function sign(body) { return b64u(crypto.createHmac('sha256', SECRET).update(body).digest()); }
 function makeSession(name, v) { const body = b64u(JSON.stringify(Object.assign({ n: name, e: Date.now() + SESSION_DAYS * 864e5 }, v != null ? { v } : {}))); return body + '.' + sign(body); }
-function makeFileKey() { const body = b64u(JSON.stringify({ f: 1, e: Date.now() + 12 * 36e5 })); return body + '.' + sign(body); }
-function checkFileKey(tok) {
-  if (!tok || tok.length > 300) return false;
-  const [body, mac] = tok.split('.'); if (!body || !mac) return false;
-  const want = sign(body); if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac))) return false;
-  try { const s = JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); return s && s.f === 1 && s.e > Date.now(); } catch (e) { return false; }
+/* A photo's address carries a key for that photo alone. A signed-in page holds a twelve-hour secret and makes each
+   photo's key from it and the photo's id, so an address copied out of TREE opens only that one photo, and only until
+   the key runs out. Pages the server builds, the Family page and the staff room display, get each photo's key made here. */
+function photoSecret(e) { return b64u(crypto.createHmac('sha256', SECRET).update('photos|' + e).digest()); }
+function makeFileKey() { const e = Date.now() + 12 * 36e5; return e.toString(36) + '.' + photoSecret(e); }
+function photoMac(secret, id) { return b64u(crypto.createHmac('sha256', Buffer.from(secret, 'utf8')).update(String(id), 'utf8').digest()).slice(0, 32); }
+function photoKey(id) { const e = Date.now() + 12 * 36e5; return e.toString(36) + '.' + photoMac(photoSecret(e), id); }
+function photoSrc(id) { return '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(photoKey(id)); }
+function checkPhotoKey(tok, id) {
+  if (!tok || tok.length > 120 || !id) return false;
+  const [e36, mac] = tok.split('.'); const e = parseInt(e36, 36);
+  if (!mac || !(e > Date.now()) || e > Date.now() + 13 * 36e5) return false;
+  const want = photoMac(photoSecret(e), id);
+  return want.length === mac.length && crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac));
 }
 function readSession(req) {
   const h = String(req.headers.authorization || '');
@@ -375,7 +383,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ store, log, sign, fileKey: () => makeFileKey(), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook });
+const familyPage = require('./family.js')({ store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -1095,7 +1103,7 @@ async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };
   const trim = (s, n) => { s = String(s || '').replace(/\s+\n/g, '\n').replace(/[ \t]+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n); const sp = cut.lastIndexOf(' '); return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;.\s]+$/, '') + '…'; };
   const fk = makeFileKey();
-  const photoOf = n => (n && n.photo && typeof n.photo.id === 'string' && ID_RE.test(n.photo.id)) ? { src: '/original/' + encodeURIComponent(n.photo.id) + '?t=' + encodeURIComponent(fk), w: Number(n.photo.w) || 0, h: Number(n.photo.h) || 0 } : null;
+  const photoOf = n => (n && n.photo && typeof n.photo.id === 'string' && ID_RE.test(n.photo.id)) ? { src: photoSrc(n.photo.id), w: Number(n.photo.w) || 0, h: Number(n.photo.h) || 0 } : null;
   const kids = new Map(live('children').filter(c => c.status !== 'withdrawn').map(c => [c.id, c]));
   const roomsOf = n => { const r = []; if (n.classroom) r.push(n.classroom); for (const id of n.children || []) { const c = kids.get(id); if (c && c.classroom && !r.includes(c.classroom)) r.push(c.classroom); } return r; };
   const notices = live('notices');
@@ -1248,8 +1256,8 @@ async function handle(req, res) {
   if (req.method === 'GET' && path.startsWith('/original/')) {
     // the key in the address is the permission, so any page of TREE may read the picture, and the answer never depends on who asked
     const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
-    if (!checkFileKey(url.searchParams.get('t') || '')) { log('Photo refused, the key has expired or is not valid'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
+    if (!checkPhotoKey(url.searchParams.get('t') || '', id)) { log('Photo refused, the key has expired or is for another photo'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     // an educator's certificates and forms open only through their records, for them and the director
     if (/^staff-/.test(id)) { log('Educator record file refused through a photo link'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Open this from the records page in TREE.'); return; }
     let o = store.originals.get(id);
@@ -1497,10 +1505,18 @@ async function handle(req, res) {
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
+    // conference notes reach a family only when the director or the office shares them, the same check the Family page
+    // makes, so an educator's save never shares notes or takes them away
+    if (kind === 'conferences' && !isOffice(me.name)) {
+      const SH = ['sharedWithFamily', 'sharedAt'];
+      if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of SH) delete body.patch[k]; }
+      if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); for (const k of SH) { if (cur && !cur.deleted && cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } }
+    }
     if (kind === 'children' && !isDirector(me.name)) {
       // an educator keeps a child's details current. Adding a child to the roster is the director's.
       if (!cur || cur.deleted) { log('New child refused for', me.name, id); err(req, res, 403, 'Only the director adds a child to the roster.'); return; }
-      const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn'];
+      // a child's Class is the director's to change, through Move children, so a save from Conferences or anywhere else keeps it
+      const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn', 'classroom'];
       const keepSt = d => { for (const k of ST) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'status') d[k] = 'active'; else delete d[k]; } };
       if (op === 'delete') { err(req, res, 403, 'Only the director can remove a child.'); return; }
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }

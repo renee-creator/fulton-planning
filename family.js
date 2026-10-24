@@ -62,7 +62,7 @@ const DEFAULT_WELCOME = "We are so excited to welcome your family to Fulton Comm
 const CALENDAR_URL = 'https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles';
 const HANDBOOK_URL = 'https://docs.google.com/document/d/1rV5B3qqimv6iAdAL_pCUiOuZ5UU443Gh/edit?usp=sharing';
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, fileKey, keepPhoto, handbook }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
   const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
@@ -200,7 +200,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const pa = (k.parents || []).filter(Boolean); const p1 = split(pa[0] && pa[0].name), p2 = split(pa[1] && pa[1].name);
     const prefill = { c_first: k.first || '', c_last: k.last || '', c_dob: String(k.dob || '').slice(0, 10), p1_first: p1.first, p1_last: p1.last, p1_home: (pa[0] && pa[0].cell) || '', p2_first: p2.first, p2_last: p2.last, p2_home: (pa[1] && pa[1].cell) || '' };
     return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
-      aboutMe: (() => { const am = k.aboutMe || {}; const fk = fileKey(); const ph = p => (p.photos || []).map(id => ({ id, src: '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(fk) }));
+      aboutMe: (() => { const am = k.aboutMe || {}; const ph = p => (p.photos || []).map(id => ({ id, src: photoSrc(id) }));
         const fixed = AAM_PAGES.map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES.length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),
       checks: isNew(k) ? Object.assign({}, k.familyChecks || {}) : null, agreement: isNew(k) ? (k.familyAgreement || null) : null, schedule: k.schedule || '', classroom: k.classroom || '',
@@ -270,7 +270,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     if (!(buf[0] === 0xff && buf[1] === 0xd8)) return { error: 'Choose a photo, such as a JPEG.' };
     const id = crypto.randomBytes(6).toString('hex') + '-aboutme.jpg';
     try { await keepPhoto(id, buf); } catch (e) { return { error: 'The photo could not be kept just now. Try again in a minute.' }; }
-    return { id, src: '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(fileKey()) };
+    return { id, src: photoSrc(id) };
   }
   function aboutMe(f, childId, pages, done) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
@@ -311,7 +311,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { ok: true };
   }
   function file(f, id) {
-    for (const k of f.kids) { const kd = getRec('children', k.id); if ((kd.sharedFiles || []).some(x => x && x.id === id)) return { path: '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(fileKey()) }; }
+    for (const k of f.kids) { const kd = getRec('children', k.id); if ((kd.sharedFiles || []).some(x => x && x.id === id)) return { path: photoSrc(id) }; }
     return { error: 'That document is not shared with you.' };
   }
   // this week's and next week's menu, and the closures coming up, from the menus the kitchen keeps
@@ -325,9 +325,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     let binNote = ''; for (const [id, r] of store.recs.grant || []) { const d = r && !r.deleted && r.doc; if (!d || !/^binnote-/.test(id) || d.status !== 'posted') continue; if (String(d.week || '') >= days[0].date.slice(0, 10) && (!binNote || String(d.week) > binNote.week)) binNote = { week: d.week, text: d.text || '' }; }
     const mr = getRec('menus', today.slice(0, 7)) || {};
     // the newsletters the director posted to the Family page, the latest first
-    const fk = fileKey(); const news = [];
+    const news = [];
     for (const [id, r] of store.recs.newsletters || []) { const d = r && !r.deleted && r.doc; if (!d || !d.posted || !Array.isArray(d.posted.blocks)) continue;
-      news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: '/original/' + encodeURIComponent(x.id) + '?t=' + encodeURIComponent(fk), cap: String(x.cap || '') })) })) }); }
+      news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: photoSrc(x.id), cap: String(x.cap || '') })) })) }); }
     news.sort((a, b) => String(b.month).localeCompare(String(a.month)));
     return { news: news.slice(0, 6), days, closures, binNote: binNote ? binNote.text : '', recipe: mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null };
   }

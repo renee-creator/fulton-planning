@@ -116,7 +116,7 @@ test('the public link stays closed until the director reads the list of names an
 test('a family acknowledges the edition that is current', () => {
   const store = { recs: { participation: new Map(), children: new Map([['k1', { doc: { first: 'Tamsin', familyChecks: { handbook: '2026-08-20T10:00:00Z' } } }]]), conferences: new Map(), menus: new Map(), grant: new Map(), newsletters: new Map(), bins: new Map() } };
   let year = '2026';
-  const fam = require('../family.js')({ store, log: () => {}, sign: s => s, noteChange: () => {}, scheduleSave: () => {}, mailCode: async () => {}, fileKey: () => 'k', keepPhoto: async () => {}, handbook: () => ({ current: () => year }) });
+  const fam = require('../family.js')({ store, log: () => {}, sign: s => s, noteChange: () => {}, scheduleSave: () => {}, mailCode: async () => {}, photoSrc: id => '/original/' + id, keepPhoto: async () => {}, handbook: () => ({ current: () => year }) });
   const f = { email: 'r@x.test', kids: [Object.assign({ id: 'k1' }, store.recs.children.get('k1').doc)], test: false };
   assert.ok(fam.familyView(f).children[0].handbook.at, 'the tick from before is the 2026 edition');
   year = '2027';
