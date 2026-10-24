@@ -1336,7 +1336,10 @@ const actions = {
     const cid = await createConf(id, S.period.year, S.period.term); if(cid) go("conf",{id:cid});
   },
   "conf-new-additional": async a=>{ const p=S.period; const cid=await createConf(a.dataset.id, p.year, "Additional"); if(cid) go("conf",{id:cid}); },
-  "toggle-complete": async ()=>{ await flushAll(); const cf=S.confs[S.view.id]; const done = cf.status!=="complete";
+  "toggle-complete": async (a,e,passed)=>{ const cf0=S.confs[S.view.id];
+    // inside TREE, with Proofread before save on, the conference form is proofread before it is marked complete
+    if(!passed&&cf0&&cf0.status!=="complete"){ try{ const P=window.parent!==window&&window.parent.TREE_PROOF; if(P&&P(document.getElementById("app"),"Mark conference complete",()=>actions["toggle-complete"](a,e,true))) return; }catch(err){} }
+    await flushAll(); const cf=S.confs[S.view.id]; const done = cf.status!=="complete";
     try{ await dbUpdate("conferences/"+cf.id, {status: done?"complete":"open", completedAt: done?nowISO():"", updatedAt:nowISO(), ...(S.uid?{updatedBy:S.uid}:{})}); toast(done?"Marked complete":"Reopened"); }catch(e){} },
   "conf-delete": ()=>{
     openModal(`<h2>Delete this conference record?</h2><p>All notes and family reflections in this record will be removed for everyone. Attached original files stay in storage.</p>
