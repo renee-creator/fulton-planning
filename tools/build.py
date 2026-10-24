@@ -20,6 +20,13 @@ head = ('<!doctype html>\n<html lang="en" data-theme="light">\n<head>\n<meta cha
         '<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}'
         'body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>\n</head>\n<body>\n')
 out = head + body.replace(marker, shim + "\n" + marker) + "\n</body>\n</html>\n"
+# the Educators pages are their own script, loaded only when opened. Its address carries a short fingerprint of what is
+# in it, so a phone never keeps an old copy after a change.
+import hashlib
+staff = (root / "src/staff-app.js").read_text()
+(root / "tree-staff.js").write_text(staff)
+out = out.replace("__STAFF_V__", hashlib.sha1(staff.encode()).hexdigest()[:10])
+print("tree-staff.js", len(staff), "bytes")
 import sys
 (root / "tree.html").write_text(out)
 print("tree.html", len(out), "bytes")

@@ -787,10 +787,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_NAME=()=>Auth.name||"";
   window.FP_DIRECTOR=()=>!!Auth.director;
   window.FP_KITCHEN=()=>!!Auth.kitchen;
+  window.FP_NEWHIRE=()=>LS.get("fp-newhire")==="1";
   window.FP_OFFICE=()=>!!Auth.office;
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
-  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); location.reload(); }
+  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); LS.set("fp-newhire",null); location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
   async function api(path, body, signal, retried){
@@ -815,12 +816,14 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
   // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
-  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week"];
+  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person"];
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; } notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
+    /* a new educator reaches only the New Educator section until the director turns on full access */
+    window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -834,7 +837,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     polling=true; const sent=Date.now();
     try{
       const j=await api("/api/changes",{since:Store.rev, bootId:Store.bootId});
-      if(j.reload){ await loadAll(); return; }
+      if(j.reload||!!j.newHire!==(LS.get("fp-newhire")==="1")){ await loadAll(); return; }
       let any=false;
       for(const [kind,docs] of Object.entries(j.changes||{})) for(const [id,doc] of Object.entries(docs)){
         if((Store.wroteAt[kind+"/"+id]||0)>=sent) continue;   // this browser saved it after the check left, so its copy is newer
@@ -1421,6 +1424,8 @@ function renderMain(){
   queueMicrotask(()=>{try{renderWaitBar()}catch(e){}});
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
+  if(isNewHire()&&!STAFF_VIEWS.includes(view)&&view!=="settings"){view="stnew";LS.set("fps.view",view)}
+  if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
@@ -1911,7 +1916,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -1937,6 +1942,7 @@ function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observ
   const show=tries=>{const el=find();if(!el){if(tries>0)setTimeout(()=>show(tries-1),150);else toast("That observation could not be found on Observations.");return}
     const d=el.closest("details");if(d&&!d.open)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
   setTimeout(()=>show(8),120)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-hbopen]");if(!t)return;e.preventDefault();LS.set("tree.hb",t.dataset.hbopen);goView("sthb")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-obsgo]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();openObservation(t.dataset.obsgo)},true);
 // a page's long introduction folds under About this page, so the page opens on its work
 function foldIntros(){const m=$("#main");if(!m)return;
@@ -3912,13 +3918,31 @@ const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["doc
 // a kitchen sign-in sees the Kitchen, Today and the calendar
 const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
-const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:SECTIONS;
-const SUBS={plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
+/* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Teacher Policies and
+   Procedures live in tree-staff.js, loaded only when someone opens them, so this page stays the same size. The server
+   decides what each person receives. Each part shows only to the director until she turns it on for educators. ---------- */
+const isNewHire=()=>!VIEW_AS&&!!(window.FP_NEWHIRE&&window.FP_NEWHIRE());
+const staffInfo=()=>window.FP_STAFF||null;
+function staffNavOn(){const s=staffInfo();if(!s)return isDirector();if(VIEW_AS)return Object.values(s.open||{}).some(Boolean);return isDirector()||!!(s.can&&Object.values(s.can).some(Boolean))}
+const STAFF_VIEWS=["stteam","strec","stnew","stpd","sthb","st27","stdrill","stfiles"];
+function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{});if(isDirector()&&!VIEW_AS)return true;
+  // a new hire's own four pages, which the server also holds them to
+  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k);
+  if(["stteam","st27","stdrill","stfiles"].includes(k))return false;
+  return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):false}
+function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo()||{};if(isNewHire()||(s.can&&s.can.newed))return "stnew";return SUBS.staff.map(x=>x[0]).find(staffSubOk)||"today"}
+let staffLoad=null;
+function renderStaff(){const m=$("#main");if(!m)return;
+  if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=084ffffa8b","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stpd","PD library"],["sthb","Policies"],["st27","October 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
-const SECTION_OF={drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
-const TICON={connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
+const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
@@ -3929,7 +3953,7 @@ function goView(v,opts){
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
 }
-function goSection(s){if(s==="kitchen")return goView("kitchen");if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
+function goSection(s){if(s==="kitchen")return goView("kitchen");if(s==="staff")return goView(lastSub.staff&&staffSubOk(lastSub.staff)?lastSub.staff:staffHome());if(s==="today")return goView("today");if(s==="obs")return goView("moments");if(s==="calendar")return goView("calendar");const subs=SUBS[s];goView(lastSub[s]&&subs.some(x=>x[0]===lastSub[s])?lastSub[s]:subs[0][0])}
 function renderTreeNav(){
   const cur=secOf(view);document.body.dataset.sec=cur;
   // the band sits in the page above the header, so the header stays readable, and the header names the educator being viewed
@@ -3937,8 +3961,10 @@ function renderTreeNav(){
     b.innerHTML=`<span>Seeing TREE as <b>${esc(VIEW_AS.name)}</b>${myRoom()?", "+esc(myRoom())+" class":""}. Nothing is saved while you look.</span><button class="btn small" id="vaend">Back to my view</button>`;hd.parentNode.insertBefore(b,hd)}}
   if(VIEW_AS){const c=document.querySelector(".who-chip span");if(c&&c.dataset.va!=="1"){c.dataset.va="1";c.textContent="Seeing as "+VIEW_AS.name}}
   const nav=$("#tnav");if(nav)nav.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
-  const tb=$("#ttab");if(tb){tb.style.gridTemplateColumns=`repeat(${navSections().length},minmax(0,1fr))`}if(tb)tb.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
-  const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||view==="calendar"||view==="conferences"||view==="kitchen"||(view==="moments"&&!!noticeForm);
+  // seven sections share the phone's bar by the width of their names, so Documentation and Educators both fit
+  const tb=$("#ttab");if(tb){const n=navSections().length;tb.style.gridTemplateColumns=n>6?`repeat(${n},auto)`:`repeat(${n},minmax(0,1fr))`;tb.style.justifyContent=n>6?"space-around":"";tb.style.columnGap=n>6?"2px":""}if(tb)tb.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
+  {const sa=$("#tsearchall");if(sa)sa.hidden=isNewHire()}
+  const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||isNewHire()||STAFF_VIEWS.includes(view)||view==="calendar"||view==="conferences"||view==="kitchen"||(view==="moments"&&!!noticeForm);
   const st=$("#tsettings");if(st){st.hidden=!window.FP_HOSTED&&!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
@@ -3951,7 +3977,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
 }
@@ -8001,7 +8027,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></div></div>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -12102,6 +12128,7 @@ function renderSettings(){
   ${viewAsHtml()}
   ${remindersHtml()}
   ${signinsHtml()}
+  ${window.FP_HOSTED?`<section class="card" id="staffset"><div class="lbl">Educators</div><div class="empty"><span class="spin"></span> Opening</div></section>`:""}
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
@@ -12151,6 +12178,8 @@ function renderSettings(){
 
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
+  // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=084ffffa8b","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}
