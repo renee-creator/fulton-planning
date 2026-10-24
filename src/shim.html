@@ -85,7 +85,7 @@
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
   async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; } notify(); }
   let polling=false;
-  /* stop checking for changes after 10 quiet minutes, so a forgotten open tab lets the free server sleep */
+  /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
   function noteActive(){ lastActive=Date.now(); if(idle){ idle=false; poll(); } }
   ["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,noteActive,{passive:true,capture:true}));
@@ -114,9 +114,9 @@
       tries++; gateMsg(tries<2? "Connecting…" : (loading? "Opening the school's records. This takes a moment after TREE is updated." : "Still connecting. Check this device's internet connection."));
       await new Promise(r=>setTimeout(r, tries<3?2000:4000));
     }
-    gateMsg("The server did not wake up. Try again in a minute.",true); return false;
+    gateMsg("The server could not be reached. Try again in a minute.",true); return false;
   }
-  // used by the app to wake the server quietly before retrying a Claude request
+  // used by the app to check the server is answering before retrying a Claude request
   window.FP_WAKE=async function(){ const t0=Date.now(); while(Date.now()-t0<120000){ try{ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);const r=await fetch(SERVER+"/health",{cache:"no-store",signal:ac.signal}).finally(()=>clearTimeout(tm)); if(r.ok){ const j=await r.json(); if(j.ready) return true; } }catch(e){} await new Promise(r=>setTimeout(r,4000)); } return false; };
   function showGate(){
     const g=document.getElementById("gate"); g.hidden=false;

@@ -13,7 +13,7 @@
   Every Monday at 6 pm, Pacific time, this asks the TREE server for every record it keeps, as one file, and saves it in
   the TREE backups folder of this mailbox's Google Drive as TREE backup YYYY-MM-DD.json.gz. The newest 26 are kept,
   about six months, and older ones go to the Drive trash. Sign-ins are not in a backup, since they hold passcodes.
-  The server may be asleep when the time comes, so the first request wakes it and the script asks again.
+  The server may be restarting when the time comes, so the script asks again.
 
   Setup, once
   1. Run setupWeeklyBackup from the toolbar and allow the access Google asks for. It sets the Monday 6 pm time,
@@ -44,7 +44,7 @@ function weeklyBackup() {
   const url = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/backup');
   const ask = () => UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
     headers: { 'X-Tree-Key': TREE_KEY }, payload: JSON.stringify({ key: TREE_KEY }) });
-  // a sleeping server can take a minute to wake, so the script asks up to three times within about five minutes
+  // a restarting server can take a minute to answer, so the script asks up to three times within about five minutes
   let res = null, why = '';
   for (let k = 0; k < 3; k++) {
     if (k) Utilities.sleep(45000);

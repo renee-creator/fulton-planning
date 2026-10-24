@@ -10647,13 +10647,13 @@ function queueRender(){if(view==="import")renderImport()}
 function readError(err){
   const c=err?.code;
   const m={image_rejected:"A page image could not be prepared. Try a clearer photo or scan.",images_unavailable:"Photos cannot be sent from this view. Try again from TREE.",not_granted:"Reading help was not allowed for this page.",session_expired:"You were signed out. Sign in again, then press Try again.",not_allowed:"The server would not allow this request.",
-    too_big:"These pages are too large to send. Press Try again and they will be sent smaller.",unavailable:"The server could not be reached, even after waking it. Check the internet connection, then press Try again.",
+    too_big:"These pages are too large to send. Press Try again and they will be sent smaller.",unavailable:"The server could not be reached. Check the internet connection, then press Try again.",
     invalid_json:"The answer came back garbled several times. Press Try again.",empty:"TREE found no plan writing on these pages. Check them, then press Try again."};
   if(m[c])return m[c];
   if(err?.message)return String(err.message);
   return `Something went wrong (${c||"unknown"}). Press Try again.`;
 }
-// every TREE reading call goes through here, so a sleeping server, a busy moment, or a garbled answer is retried before anything is marked as failed
+// every TREE reading call goes through here, so a dropped connection, a busy moment, or a garbled answer is retried before anything is marked as failed
 /* ---------- Proofread ----------
    One Proofread button in the top bar reads everything written on the page. Before writing leaves TREE, by posting to the
    Family page, sending a plan to Renee, printing or copying for Kaymbu, TREE reads it first and shows any fixes. A fix shows
@@ -10735,7 +10735,7 @@ async function askRead(prompt,opts,j){
     catch(err){
       const c=err?.code;
       if(!["rate_limited","unavailable","server_error","invalid_json"].includes(c)||a>=waits.length)throw err;
-      if(j){j.note=c==="unavailable"?"The server is waking up. Trying again":c==="rate_limited"?"TREE is busy. Trying again shortly":"Trying again";queueRender()}
+      if(j){j.note=c==="unavailable"?"Lost the connection for a moment. Trying again":c==="rate_limited"?"TREE is busy. Trying again shortly":"Trying again";queueRender()}
       if(c==="unavailable"&&window.FP_WAKE)await window.FP_WAKE();else await sleep(waits[a]);
     }
   }
