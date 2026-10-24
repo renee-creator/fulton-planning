@@ -216,7 +216,7 @@ cal = rep(cal, '<div class="wrap" id="app">\n  <header class="top">', '''<style>
 cal = rep(cal, 'const S = { view: ["day","week","month"].includes(LS.get("fc-view")) ? LS.get("fc-view") : "week",', 'const S = { view: "next",')
 cal = rep(cal, '<button type="button" data-view="day" aria-pressed="false">Day</button>', '<button type="button" data-view="next" aria-pressed="false">From today</button><button type="button" data-view="day" aria-pressed="false">Day</button>')
 cal = rep(cal, 'function computeRange(){\n', 'function computeRange(){\n  if(S.view==="next") return {from:S.anchor, to:addDays(S.anchor,6)};\n')
-cal = rep(cal, 'function titleText(){\n', 'function titleText(){\n  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"short",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"short",day:"numeric"});\n')
+cal = rep(cal, 'function titleText(){\n', 'function titleText(){\n  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"long",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"long",day:"numeric"});\n')
 cal = rep(cal, '  if(S.view==="month") body=renderMonth(idx);\n', '  if(S.view==="next") body=renderNext(idx);\n  else if(S.view==="month") body=renderMonth(idx);\n')
 cal = rep(cal, "else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; }", "else { S.data=j; S.stamp=j.stamp; S.me=j.me; S.director=!!j.director; S.shared=!!j.shared; if(window.TREE_VA){ S.me=window.TREE_VA.name; S.director=false; S.shared=false; } }")
 cal = rep(cal, "async function api(path, body, retried){\n  if(PREVIEW) return PREVIEW.call(path, body||{});", "async function api(path, body, retried){\n  if(PREVIEW) return PREVIEW.call(path, body||{});\n  if(window.TREE_VA && path!=='/api/view'){ const e=new Error('Nothing is saved while you see TREE as '+window.TREE_VA.name+'.'); e.code='view_as'; throw e; }")
@@ -242,7 +242,7 @@ function renderNext(idx){
     const d=addDays(S.anchor,i);
     const v=idx.get(d)||{allDay:[],timed:[]};
     const day=h("div",{class:"ag-day"});
-    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"short",day:"numeric"})}), h("small",{text:"Open day"})));
+    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"long",day:"numeric"})}), h("small",{text:"Open day"})));
     const rows=v.allDay.concat(v.timed);
     if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
     for(const x of rows) day.append(agRow(x));

@@ -4013,6 +4013,8 @@ function timeWords(t){if(t==null||t==="")return "";let h,m;if(typeof t==="number
   const t2=m===0?N[h%12]+" o'clock":m===30?"half past "+N[h%12]:m<30?mw(m)+" past "+N[h%12]:mw(60-m)+" to "+N[(h+1)%12];
   return t2+(h<7?" in the morning":h>=18?" in the evening":"")}
 const tlabel=t=>t?timeWords(t):"";
+// a moment as its day and its time in words, such as Saturday, October 24 at quarter past three
+const whenWords=(ms,o)=>{const d=new Date(ms);return d.toLocaleDateString("en-US",o)+" at "+timeWords(d.getHours()*60+d.getMinutes())};
 
 /* ---------- Today ---------- */
 let todayCal={at:0,day:"",items:null,error:""};
@@ -12113,7 +12115,7 @@ function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${
 // the weekly backup to Google Drive, made by the mailbox script on Monday evenings, and when the last one arrived
 let backupInfo=null;
 function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
-  const when=at?new Date(at).toLocaleString("en-US",{weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+  const when=at?whenWords(at,{weekday:"long",month:"long",day:"numeric"}):"";
   const old=at&&Date.now()-at>9*86400000;
   return `<section class="card"><div class="lbl">Backups</div>
     <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once the director has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
@@ -12124,7 +12126,7 @@ let displayInfo=null,displayAsked=false;
 function displayLink(){return displayInfo&&displayInfo.key?new URL("display.html",location.href).href+"#k="+displayInfo.key:""}
 async function displayCall(action){try{displayInfo=await window.FP_API("/api/display",action?{action}:{});if(action==="new")toast("The display link is ready.");if(action==="off")toast("The staff room display is off.")}catch(e){toast(e&&e.message||"That did not work. Try again.")}if(view==="settings")renderSettings()}
 function displayHtml(){if(!isDirector()||!window.FP_API)return"";if(!displayAsked){displayAsked=true;displayCall("")}
-  const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?new Date(d.seenAt).toLocaleString("en-US",{weekday:"long",hour:"numeric",minute:"2-digit"}):"";
+  const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?whenWords(d.seenAt,{weekday:"long"}):"";
   return `<section class="card" id="display-card"><div class="lbl">Staff room display</div>
     <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div>
     ${!d?`<div class="cnt">Checking…</div>`:link?`<div class="prow"><div style="min-width:0;flex:1"><b>The display is on</b><div class="cnt">Made ${esc(shortDate(d.madeAt))}${d.madeBy?" by "+esc(d.madeBy):""}.${seen?" The screen last checked in "+esc(seen)+".":" No screen has opened it yet."}</div>

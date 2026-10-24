@@ -1004,7 +1004,7 @@ async function updateLastEdit(){
   const cf=S.confs[S.view.id]; const el=$("#last-edit"); if(!cf||!el) return;
   if(!cf.updatedAt){ el.textContent=""; return; }
   await resolveNames([cf.updatedBy]);
-  el.textContent = `Last edited ${new Date(cf.updatedAt).toLocaleString([], {month:"long",day:"numeric",hour:"numeric",minute:"2-digit"})} by ${whoName(cf.updatedBy)}`;
+  el.textContent = `Last edited ${new Date(cf.updatedAt).toLocaleDateString("en-US",{month:"long",day:"numeric"})} at ${timeWords(new Date(cf.updatedAt).getHours()*60+new Date(cf.updatedAt).getMinutes())} by ${whoName(cf.updatedBy)}`;
 }
 function syncEditor(){
   const cf=S.confs[S.view.id]; if(!cf){ render(); return; }

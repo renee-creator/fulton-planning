@@ -115,4 +115,14 @@ test('TREE in the browser', async t => {
     assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /could not open/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
+
+  await t.test('the calendar reads days in full and no time with a colon', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357', 1280);
+    await s.p.evaluate(() => goView('calendar'));
+    let text = '';
+    for (let i = 0; i < 40 && !/The rest of the week|Nothing scheduled/.test(text); i++) { await s.p.waitForTimeout(250); const f = s.p.frames().find(f => /tree-calendar/.test(f.url())); text = f ? await f.evaluate(() => document.body.innerText).catch(() => '') : ''; }
+    assert.match(text, /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d/);
+    assert.doesNotMatch(text, /\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d|\d:\d\d/);
+    await s.close();
+  });
 });

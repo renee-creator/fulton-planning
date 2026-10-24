@@ -205,7 +205,7 @@ button.tg-head:hover{background:var(--bg)}
 .ag-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;border:none;background:var(--bg);padding:8px 12px;text-align:left;font-family:var(--display);font-weight:500;font-size:15.5px}
 .ag-h.today{color:var(--marigold)}
 .ag-h small{font-family:var(--body);font-size:12.5px;color:var(--moss);font-weight:600}
-.ag-row{display:grid;grid-template-columns:112px 12px minmax(0,1fr);gap:8px;align-items:start;width:100%;border:none;border-top:1px solid var(--line-soft);background:transparent;padding:8px 12px;text-align:left}
+.ag-row{display:grid;grid-template-columns:168px 12px minmax(0,1fr);gap:8px;align-items:start;width:100%;border:none;border-top:1px solid var(--line-soft);background:transparent;padding:8px 12px;text-align:left}
 .ag-row:hover{background:var(--bg)}
 .ag-row .tm{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ag-row .sw{margin-top:4px;width:12px;height:12px}
@@ -248,7 +248,7 @@ button.tg-head:hover{background:var(--bg)}
   .mine-row{padding:10px 6px} .mine-row b{font-size:15.500px} .mine-row span.sub{font-size:14px}
   .linkbtn{font-size:15px;padding-block:11px}
   .ag-h{padding:12px;font-size:17px} .ag-h small{font-size:13.500px}
-  .ag-row{grid-template-columns:104px 14px minmax(0,1fr);gap:10px;padding:12px}
+  .ag-row{grid-template-columns:128px 14px minmax(0,1fr);gap:10px;padding:12px}
   .ag-row .tm{font-size:14px} .ag-row b{font-size:16px} .ag-row .sub{font-size:14px} .ag-row .sw{width:14px;height:14px}
   .ag-none{font-size:14.500px;padding:12px}
   .mo-cell{min-height:68px} .mo-num{font-size:16px;width:30px;height:30px}
@@ -750,7 +750,7 @@ function renderNext(idx){
     const d=addDays(S.anchor,i);
     const v=idx.get(d)||{allDay:[],timed:[]};
     const day=h("div",{class:"ag-day"});
-    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"short",day:"numeric"})}), h("small",{text:"Open day"})));
+    day.append(h("button",{type:"button",class:"ag-h"+(d===t?" today":""),onclick:()=>go("day",d)}, h("span",{text:(d===t?"Today, ":"")+fmt(d,{weekday:"long",month:"long",day:"numeric"})}), h("small",{text:"Open day"})));
     const rows=v.allDay.concat(v.timed);
     if(!rows.length) day.append(h("div",{class:"ag-none",text:"Nothing scheduled"}));
     for(const x of rows) day.append(agRow(x));
@@ -820,7 +820,7 @@ function renderSide(){
 /* ---------- main render ---------- */
 function canSignUp(){ return settings().spaces.some(s=>!s.hidden); }
 function titleText(){
-  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"short",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"short",day:"numeric"});
+  if(S.view==="next") return S.anchor===today()? "Today and the week ahead" : fmt(S.anchor,{month:"long",day:"numeric"})+" to "+fmt(addDays(S.anchor,6),{month:"long",day:"numeric"});
   if(S.view==="month") return fmt(S.anchor,{month:"long",year:"numeric"});
   if(S.view==="day") return fmt(S.anchor,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
   const days=weekDays(S.anchor), a=days[0], b=days[days.length-1];
