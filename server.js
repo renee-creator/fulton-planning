@@ -547,6 +547,8 @@ async function doLoad() {
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
+    // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
+    try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
     staff.load().catch(e => log('Educator records could not be read', e.message));
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();

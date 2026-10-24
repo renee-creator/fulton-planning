@@ -12258,7 +12258,7 @@ document.addEventListener("change",e=>{if((view!=="children"&&view!=="child")||!
   if(t.dataset.kroomset)set(t.dataset.kroomset,c=>kidSetRoom(c,t.value));
   if(t.dataset.kgroupset)set(t.dataset.kgroupset,c=>kidSetGroup(c,t.value));
   if(kMove&&t.dataset.kmvval!=null){kMove.val=t.value;renderChildren();return}
-  if(kMove&&t.dataset.kmvtick){if(t.checked)kMove.ticked.add(t.dataset.kmvtick);else kMove.ticked.delete(t.dataset.kmvtick);renderChildren();return}
+  if(kMove&&t.dataset.kmvtick){if(t.checked)kMove.ticked.add(t.dataset.kmvtick);else kMove.ticked.delete(t.dataset.kmvtick);const y=window.scrollY;renderChildren();window.scrollTo(0,y);return}
   if(kMove&&t.dataset.kmvroom!=null){kMove.room=t.value;if(kMove.group&&!GROUPS.some(g=>g.name===kMove.group&&g.room===kMove.room))kMove.group="";renderChildren();return}
   if(kMove&&t.dataset.kmvgroup!=null){kMove.group=t.value;renderChildren();return}
   if(t.dataset.knextset)set(t.dataset.knextset,c=>{c.transition=c.transition||{};const k=nextYearKey();if(t.value)c.transition[k]=Object.assign({},c.transition[k]||{},{plan:t.value});else delete c.transition[k];kidNote(c,t.value?NEXTPLAN[t.value]:"Next year not decided")});

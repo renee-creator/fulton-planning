@@ -123,7 +123,7 @@ module.exports = function policies(o) {
     const SCHOOL_PHONE = '7075238035', SCHOOL_BOXES = ['north', 'south', 'west', 'studio', 'office', 'info', 'tree'];
     for (const p of ed.parts) for (const s of p.sections) {
       const text = s.title + '\n' + plainMd(s.body); const seen = new Set();
-      const hit = (kind, what, at) => { const k = kind + '|' + what; if (seen.has(k)) return; seen.add(k); const i = Math.max(0, at - 50); out.push({ section: s.id, title: s.title, part: p.title, kind, what, near: text.slice(i, at + what.length + 50).replace(/\s+/g, ' ').trim() }); };
+      const hit = (kind, what, at) => { const k = kind + '|' + what; if (seen.has(k)) return; seen.add(k); const i = Math.max(0, at - 50); out.push({ section: s.id, title: s.title, part: p.title, kind, what, near: (i ? '\u2026' : '') + text.slice(i, at + what.length + 50).replace(/^\S*\s/, i ? '' : '$&').replace(/\s\S*$/, at + what.length + 50 < text.length ? '' : '$&').replace(/\s+/g, ' ').trim() + (at + what.length + 50 < text.length ? '\u2026' : '') }); };
       for (const m of text.matchAll(/\b[A-Z][A-Za-z’'-]{2,}\b/g)) { const w = m[0].replace(/[’']s$/, ''); if (names.has(w)) hit(names.get(w), w, m.index); }
       for (const m of text.matchAll(/\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]\d{4}\b/g)) if (m[0].replace(/\D/g, '') !== SCHOOL_PHONE) hit('A phone number', m[0], m.index);
       for (const m of text.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) { const [u, dom] = m[0].toLowerCase().split('@'); if (!(dom === 'childfamilycommunity.com' && SCHOOL_BOXES.includes(u))) hit('An email address', m[0], m.index); }
