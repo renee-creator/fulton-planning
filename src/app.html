@@ -2589,6 +2589,24 @@ function shDrawSoft(g,im,dx,dy,dw,dh,marks){
     const a=document.createElement("canvas");a.width=6;a.height=6;const ag=a.getContext("2d");ag.imageSmoothingEnabled=true;ag.drawImage(im,sx,sy,sw,sh,0,0,6,6);
     const b=document.createElement("canvas");b.width=40;b.height=40;const bg=b.getContext("2d");bg.imageSmoothingEnabled=true;bg.drawImage(a,0,0,40,40);
     g.save();g.beginPath();g.arc(dx+cx*sc,dy+cy*sc,r*sc,0,Math.PI*2);g.clip();g.imageSmoothingEnabled=true;g.drawImage(b,dx+sx*sc,dy+sy*sc,sw*sc,sh*sc);g.restore()}}
+/* Anything people take away, a handout, panels, a guide, a shared copy of slides, or a Word or PDF file, is made with
+   every child's face softened, by the same face check Share uses, on this device. The photos are loaded first. When
+   faces cannot be checked on this device, the photos are left out of the file rather than shown as they are. */
+async function softenDocPhotos(docs){
+  const keys=new Set();for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[])])if((b.t==="photo"||!b.t)&&b.key&&photoCache.has(b.key))keys.add(b.key);
+  if(!keys.size)return true;
+  let ok=true;try{await shFaceModel()}catch(e){ok=false}
+  const done=new Map();
+  if(ok)for(const k of keys){try{const c0=photoCache.get(k);const im=await decodeImage(await (await fetch(c0.url)).blob());const marks=await shFindFaces(im);
+      const c=document.createElement("canvas");c.width=im.width;c.height=im.height;const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);shDrawSoft(g,im,0,0,c.width,c.height,marks);
+      const jb=await new Promise(res=>c.toBlob(res,"image/jpeg",.88));const nk="soft:"+k;photoCache.set(nk,{url:c.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:c.width,h:c.height});done.set(k,nk)}
+    catch(e){ok=false}}
+  for(const d of docs){
+    if(d.photos)d.photos=d.photos.filter(x=>done.has(x.key)).map(x=>Object.assign({},x,{key:done.get(x.key)}));
+    if(d.blocks)d.blocks=d.blocks.filter(b=>b.t!=="photo"||done.has(b.key)).map(b=>b.t==="photo"?Object.assign({},b,{key:done.get(b.key)}):b)}
+  if(!ok)toast("Faces could not be checked on this device, so photos that were not checked are left out of this file.");
+  return ok}
+window.softenDocPhotos=softenDocPhotos;
 // every set-aside photo is softened in one go, then waits for the director to look at it and choose Use this photo
 let shBatch=null,shAsideOpen=false;
 document.addEventListener("toggle",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("shaside"))shAsideOpen=e.target.open},true);

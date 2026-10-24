@@ -179,7 +179,9 @@ function printsFold(e){const dir=D();const nm=e.names||"none";
   const row=(k,l,d)=>`<div class="prow"><span><b>${l}</b><div class="cnt">${d}</div></span><span class="actions" style="margin:0"><button class="btn small ghost" data-prprint="${k}">PDF</button><button class="linkbtn" data-prword="${k}">Word</button></span></div>`;
   return fold("prints","Prints",NM[nm]||"No names",`<div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on these prints</span>${dir?`<div class="tseg" role="group" aria-label="Children's names on these prints">${NAME_MODES.map(([k,l])=>`<button data-prnames="${k}" aria-pressed="${nm===k}">${l}</button>`).join("")}</div>`:`<b>${H(NM[nm]||"No names")}</b>`}</div>
     <div class="cnt">No names unless the director changes it for this entry, since many audiences are from other schools.</div>
-    ${row("guide","Facilitator guide","The session plan, section by section, with its moments, readings and files.")}${row("panels","Panels","Printed panels, one idea to a page, clean and uncrowded.")}${row("handout","Handout","For participants, with the guiding question, readings, reflection prompts and the brief check.")}${row("slides","Slide set","A large photo and the words, one moment to a slide.")}`)}
+    ${row("guide","Facilitator guide","The session plan, section by section, with its moments, readings and files.")}${row("panels","Panels","Printed panels, one idea to a page, clean and uncrowded.")}${row("handout","Handout","For participants, with the guiding question, readings, reflection prompts and the brief check.")}${row("slides","Slide set","A large photo and the words, one moment to a slide. Faces are softened, so it can be shared.")}
+    <div class="prow"><span><b>Slide set to show</b><div class="cnt">For showing on the screen during the session only. Children's faces are kept, so it is never handed out or shared.</div></span><span class="actions" style="margin:0"><button class="btn small ghost" data-prprint="slides" data-prshow="1">PDF</button></span></div>
+    <div class="cnt">Every print and Word file people take away is made with children's faces softened, checked on this device.</div>`)}
 
 /* ---------- printouts and Word files ---------- */
 const nmOf=e=>e.names||"none";
@@ -210,10 +212,12 @@ function slideDocs(e){const C=e.chosen||[];const land=(o,ph)=>ph.length?sheet(Ob
   return [land({title:e.title,details:[e.subtitle||"",e.date?fd(e.date):""],blocks:e.question?[{t:"box",text:e.question}]:[]},first),
     ...C.map(x=>land({title:titleOf(x,e),details:[where(x)],blocks:[{t:"para",text:clip(words(x,e),360)}]},photoOf(x))),
     ...(e.question?[land({title:"",bare:true,blocks:[{t:"quote",words:e.question,by:""}]},last)]:[])]}
-async function print(k,word){const e=E();const kind=word?"word":"pdf";progress("Making the file");
+// slides shown during the presentation itself may keep children's faces. Everything participants take away, and every
+// Word file, is made with faces softened.
+async function print(k,word,toShow){const e=E();const kind=word?"word":"pdf";progress("Making the file");
   const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(e)]:k==="panels"?panelDocs(e):slideDocs(e);
-  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
-  return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:"slides"}[k])}
+  if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs);if(!(toShow&&k==="slides"&&!word))await softenDocPhotos(docs)}
+  return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:toShow&&!word?"slides to show":"slides"}[k])}
 
 /* ---------- writing help, drawn only from the notes, chosen moments and attached files ---------- */
 async function draftPlan(){const e=E();if(!sample){toast("Writing help is not available right now. Write the sections yourself.");return}
@@ -241,7 +245,7 @@ async function prTap(e,t){const d=t.dataset;const en=E();
   if(VIEW_AS&&d.prsel==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.prsel!=null){Pr.open(d.prsel);T.render("stpres");window.scrollTo(0,0);return}
   if(d.pragenda){if(window.TreeGrowth)TreeGrowth.openAgenda(d.pragenda);goView("stpdd");return}
-  if(d.prprint||d.prword){return print(d.prprint||d.prword,!!d.prword)}
+  if(d.prprint||d.prword){return print(d.prprint||d.prword,!!d.prword,!!d.prshow)}
   if(d.prnew){const title=val("#prn-title").trim();if(!title){toast("Give the entry a title.");return}const r=await pa("new",{title});Pr.open(r.id);toast("Started.");T.render("stpres");return}
   if(d.prpres){const cur=new Set(en.presenters||[]);cur.has(d.prpres)?cur.delete(d.prpres):cur.add(d.prpres);set(await pa("save",{id:en.id,fields:{presenters:[...cur]}}));toast(cur.has(d.prpres)?`${d.prpres} can see and work on this entry now.`:`${d.prpres} is no longer a presenter.`);X.redraw();return}
   if(d.prnames){set(await pa("save",{id:en.id,fields:{names:d.prnames}}));X.redraw();return}

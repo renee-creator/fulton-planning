@@ -186,6 +186,8 @@ The records under staff/ also hold continuum.json, readings.json, modules.json, 
 
 Presenting sits under Educators, in the PD and Licensing tab. It holds every talk, PD session or module presented at Fulton or for other schools, each its own entry with a title, a subtitle, a guiding question, the audience, the date and the length. Only the director starts an entry. She adds educators as presenters, and they see and work on the entry from their own Presenting page. No other educator receives an entry from the server until it is marked presented, and then only the details, the plan, the chosen moments, the readings and the follow-up, read only. Notes, meetings, evidence and Drive files stay with the director and the presenters. TREE started with two entries, Leaving a Trace, Ephemeral Encounters, Enduring Possibilities, for the CIRC Round Table at Fulton on May 22, 2027, and Serving Two-Year-Olds, for the director's group, made once when TREE starts.
 
+Faces. Slides shown on the screen during a presentation may keep children's faces, from Slide set to show, which is never handed out. Everything participants take away, the facilitator guide, panels, handout, the slide set to share and every Word file, is made with each child's face softened by the same face check Share uses, on the device. When faces cannot be checked on the device, the photos are left out of the file. Children's names stay off by default.
+
 Each entry has the same parts, each folded into a closed dropdown that says plainly what belongs there when it is empty.
 
 - **Ideas and notes**, quick dated notes added any time.
