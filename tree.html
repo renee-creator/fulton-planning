@@ -1772,7 +1772,7 @@ function renderRoster(){
   const el=$("#roster");if(!el)return;
   const groups=[...CLASSROOMS,""].map(r=>({r,names:roster.map((x,i)=>({...x,i})).filter(x=>(x.room||"")===r)})).filter(g=>g.names.length);
   el.innerHTML=groups.map(g=>`<div class="cnt">${g.r||"Specialty and floating"}</div><div class="chips">${g.names.map(x=>`<span class="rname">${esc(x.name)}<button data-rdel="${x.i}" aria-label="Remove ${esc(x.name)}">&times;</button></span>`).join("")}</div>`).join("")+
-   `<div style="display:grid;gap:6px;margin-top:6px"><input type="text" id="r-name" placeholder="Add an educator's name"><div style="display:flex;gap:6px"><select id="r-room" style="flex:1"><option value="">Specialty or floating</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="r-add">Add</button></div></div>`;
+   `<div style="display:grid;gap:6px;margin-top:6px"><input type="text" id="r-name" placeholder="Add an educator's name"><div style="display:flex;gap:6px"><select id="r-room" style="flex:1" aria-label="Class"><option value="">Specialty or floating</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="r-add">Add</button></div></div>`;
 }
 function addToRoster(name,room){name=name.trim();if(!name||isShared(name))return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
 function saveRoster(){LS.set("fps.roster",roster);renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
@@ -3947,7 +3947,7 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=2631ea1a46","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=236ef33fd5","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stpd","PD library"],["stpdd","PD days"],["sthb","Policies"],["st27","October 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
@@ -10489,7 +10489,7 @@ function renderThreads(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
     <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following. A question about our own practice sits beside a thread, in a team inquiry.</div></div></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===tRoom}" data-troom="${r}">${r}</button>`).join("")}</div>
-    <select id="trange" style="width:auto">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
+    <select id="trange" style="width:auto" aria-label="How far back">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
   <div class="stats">
     ${realPs.length?`<div class="stat"><b>${realPs.length}</b><span>plans saved in this range</span></div>`:""}
     ${obsN?`<div class="stat"><b>${obsN}</b><span>observations kept in this range</span></div>`:""}
@@ -11361,8 +11361,8 @@ function renderAllPlans(){aMode="list";
     <section class="card" style="gap:10px">
 ${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       ${aMode!=="list"?"":`<div class="actions">
-        <select id="atype" style="width:auto">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
-        <select id="astatus" style="width:auto">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="atype" style="width:auto" aria-label="Kind of form">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
+        <select id="astatus" style="width:auto" aria-label="Status">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"],["dup","Possible duplicates"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
         <input type="text" id="aq" placeholder="Search by educator, group, or any word" value="${esc(aQ)}" style="flex:1;min-width:200px">
       </div>`}
 `}
@@ -12044,7 +12044,7 @@ function viewAsHtml(){
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));
   if(!people.length)return"";
   return `<section class="card"><div class="lbl">See TREE as an educator</div><div class="hint">Look at TREE the way an educator sees it, with their name and their class, on Today, Observations, Plans and every other page. Nothing is saved while you look.</div>
-    <div class="actions"><select id="va-who" style="width:auto">${people.sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}" data-room="${esc(a.room)}" data-kitchen="${a.kitchen?"1":""}">${esc(a.name)}${a.kitchen?", kitchen":a.room?", "+esc(a.room):""}</option>`).join("")}</select>
+    <div class="actions"><select id="va-who" style="width:auto" aria-label="See TREE as">${people.sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}" data-room="${esc(a.room)}" data-kitchen="${a.kitchen?"1":""}">${esc(a.name)}${a.kitchen?", kitchen":a.room?", "+esc(a.room):""}</option>`).join("")}</select>
     <button class="btn small" id="va-go">See TREE as them</button></div></section>`}
 function signinsHtml(){
   if(!window.FP_HOSTED)return"";
@@ -12055,13 +12055,13 @@ function signinsHtml(){
     <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
-        <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
+        <td><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
         <td><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""} aria-label="${esc(a.name)} signs in for the kitchen"></td>
         <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`}</td>
         <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
-    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
+    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
 }
@@ -12127,7 +12127,7 @@ function displayHtml(){if(!isDirector()||!window.FP_API)return"";if(!displayAske
   return `<section class="card" id="display-card"><div class="lbl">Staff room display</div>
     <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div>
     ${!d?`<div class="cnt">Checking…</div>`:link?`<div class="prow"><div style="min-width:0;flex:1"><b>The display is on</b><div class="cnt">Made ${esc(shortDate(d.madeAt))}${d.madeBy?" by "+esc(d.madeBy):""}.${seen?" The screen last checked in "+esc(seen)+".":" No screen has opened it yet."}</div>
-      <textarea id="display-link" rows="2" readonly style="margin-top:6px;font-size:13px">${esc(link)}</textarea></div></div>
+      <textarea id="display-link" aria-label="Staff room display link" rows="2" readonly style="margin-top:6px;font-size:13px">${esc(link)}</textarea></div></div>
       <div class="actions"><button class="btn small" data-dispcopy="1">Copy the link</button><a class="btn small" href="${esc(link)}&amp;preview=1" target="_blank" rel="noopener">Preview it now</a><button class="linkbtn" data-dispnew="1">Make a new link</button><button class="linkbtn" data-dispoff="1">Turn the display off</button></div>
       <div class="hint">Preview it now opens it on this device straight away, even in the evening. On the staff room computer, open the link itself, drag the window onto the TV, and click once to fill the screen. Turn off sleep on that computer. A new link stops the old one. Each team inquiry has its own switch for the display, and one whose observations name a single child stays off until you turn it on.</div>`
     :`<div class="actions"><button class="btn small" data-dispnew="1">Make the display link</button></div>`}</section>`}
@@ -12177,8 +12177,8 @@ function renderSettings(){
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
-    ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
-      <td><select data-ged="${i}"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
+    ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name"></td><td><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
+      <td><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
     </tbody></table></div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
   <section class="card"><div class="lbl">Educators</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
@@ -12200,7 +12200,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=2631ea1a46","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=236ef33fd5","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}
