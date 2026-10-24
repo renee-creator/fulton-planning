@@ -105,7 +105,8 @@ function itemState(it,rec){if(!rec||!rec.date)return it.fulton?{s:"soon",t:"Due"
 function fluState(doc){const s=fluSeason(),f=(doc.flu||{})[s];const stt=(doc.profile||{}).startDate||"";
   if(f&&f.status)return {s:"ok",t:{vaccinated:"Flu shot on file",declined:"Declined in writing",medical:"Medical exemption on file"}[f.status]||"On file",season:s};
   if(stt&&stt>s+"-12-01"&&stt<(+s+1)+"-08-01")return {s:"ok",t:"Not needed in the first year",season:s};
-  const t=today();return {s:t.slice(5)>="12-01"&&t.slice(5)<"08-01"&&t.slice(0,4)>s?"out":"missing",t:"Due between August 1 and December 1",season:s}}
+  // from December 1 until the next season begins, a flu shot not on file is past due
+  const t=today();return t>=s+"-12-01"?{s:"out",t:"Past due, it was due by December 1",season:s}:{s:"missing",t:"Due between August 1 and December 1",season:s}}
 const onceState=r=>r&&r.status?{s:"ok",t:{record:"Record on file",immune:"Immunity shown",medical:"Medical exemption on file",statement:"Written statement, 30 days to gather records"}[r.status]||"On file"}:{s:"missing",t:"Not on file yet"};
 function hoursYear(doc){const y=yearStart();const hs=(doc.hours||[]).filter(h=>(h.date||"")>=y);return {approved:hs.filter(h=>h.approved).reduce((a,h)=>a+(+h.hours||0),0),fulton:hs.filter(h=>!h.approved).reduce((a,h)=>a+(+h.hours||0),0),list:hs}}
 const r1=n=>Math.round(n*10)/10;

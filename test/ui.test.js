@@ -48,4 +48,13 @@ test('TREE in the browser', async t => {
     assert.strictEqual(await s.p.inputValue('#gp-ch'), 'Rain days indoors');
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
+
+  await t.test('a flu shot not on file shows as past due after December 1, in words and not only in color', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357');
+    await s.p.route('**/api/staff/boot', async r => { const res = await r.fetch(); const j = await res.json(); j.today = '2026-12-15'; await r.fulfill({ response: res, json: j }); });
+    await s.p.evaluate(() => goView('strec')); await s.p.waitForFunction(() => /Flu vaccine/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
+    assert.match(text, /Past due, it was due by December 1/);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
 });
