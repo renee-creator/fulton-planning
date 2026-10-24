@@ -12350,14 +12350,14 @@ function saveProgram(){
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
-// the weekly backup to Google Drive, made by the mailbox script on Monday evenings, and when the last one arrived
+// the nightly backup to Google Drive, made by the mailbox script every night, and when the last one arrived
 let backupInfo=null;
 function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
   const when=at?whenAt(at,{weekday:"long",month:"long",day:"numeric"}):"";
-  const old=at&&Date.now()-at>9*86400000;
+  const old=at&&Date.now()-at>50*3600000;
   return `<section class="card"><div class="lbl">Backups</div>
-    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once the director has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
-    <div class="hint">Every Monday evening the whole set of TREE's records is kept in Google Drive, and the newest 26 are kept. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
+    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}${old?" The last one is more than two days old, so check the mailbox script.":""}</div></div></div>
+    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive, and the newest 60 are kept, about two months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
 /* the staff room display, a screen that turns slowly through what is alive in TREE. The director makes its link here,
    opens it once on the staff room computer, and can make a new link or turn it off, which stops the old one at once. */
 let displayInfo=null,displayAsked=false;

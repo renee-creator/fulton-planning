@@ -513,7 +513,7 @@ module.exports = function staffModule(o) {
     return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), presenting: !!S.ready && PR.anyFor(name) }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name) }; }
-  // the weekly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
+  // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;

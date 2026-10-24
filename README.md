@@ -164,7 +164,7 @@ The director adds a new educator from Educators. They sign in with their first n
 
 Records reminders go to the educator and the director through TREE's reminders, always on, for certificates and trainings before they expire, the flu shot before August 1 and in November, the Healthy Schools Act training each year, and proof of enrollment each semester below twelve units. The director hears on a Monday when three months pass without a drill.
 
-The PD library's pieces are Markdown files in the records under staff/pd/licensing and staff/pd/howto, one piece each, so a new piece is added as a file with no change to TREE, and Read the PD pieces again in Settings picks it up. The format is in staff/pd/licensing/README.md. The handbook's sections are under staff/handbook, the welcome and the school's settings in staff/school.json, and the list of sections still kept in the Google Doc in staff/handbook-doc.json. These stay in the private records, since TREE's own code can be read by anyone. The weekly backup holds all of staff/.
+The PD library's pieces are Markdown files in the records under staff/pd/licensing and staff/pd/howto, one piece each, so a new piece is added as a file with no change to TREE, and Read the PD pieces again in Settings picks it up. The format is in staff/pd/licensing/README.md. The handbook's sections are under staff/handbook, the welcome and the school's settings in staff/school.json, and the list of sections still kept in the Google Doc in staff/handbook-doc.json. These stay in the private records, since TREE's own code can be read by anyone. The nightly backup holds all of staff/.
 
 Print the file makes a cover sheet for an educator's paper personnel file in the order of CCLD's records list, LIC 311A, with every uploaded form and certificate behind it. Paper files lists the files that need a new page, and prints only the new pages with an updated cover sheet.
 
@@ -214,11 +214,18 @@ When a former child or former educator reaches the period, the director's Today 
 
 This repository holds code only. It never holds plans, children's names, or keys.
 
-## Weekly backup to Google Drive
+## Nightly backup to Google Drive
 
-Every Monday at 6 pm, Pacific time, the TREE mailbox's Apps Script asks the server for a backup. The server first writes any saves still waiting, then answers with one gzipped JSON file holding every record it keeps, plans, observations, threads, projects, settings, children, conferences, slides, inquiries, newsletters, bins, menus, the grant records, scans, the calendar's sign-ups and settings, and the DRDP descriptors. A manifest inside names the date, the number of records of each kind, the server version, and every photo by its id with its Google Drive id. Sign-ins, access/accounts.json, are left out because they hold passcodes. The director and office names, access/roles.json, are kept, and the educator records under staff/, the journal included. The script saves the file as TREE backup YYYY-MM-DD.json.gz in the TREE backups folder of the mailbox's Google Drive, keeps the newest 26, about six months, and moves older ones to the Drive trash. The request goes to /inbound/backup with the same key as the other mailbox routes, and a sleeping server is asked again after it wakes. Settings shows the director a Backups card with the time the last backup arrived. Photos already live in Google Drive, and every record also keeps its full history in GitHub.
+Every night at 10 pm, Pacific time, the TREE mailbox's Apps Script asks the server for a backup. The server first writes any saves still waiting, then answers with one gzipped JSON file holding every record it keeps, plans, observations, threads, projects, settings, children, conferences, slides, inquiries, newsletters, bins, menus, the grant records, scans, the calendar's sign-ups and settings, and the DRDP descriptors. A manifest inside names the date, the number of records of each kind, the server version, and every photo by its id with its Google Drive id. Sign-ins, access/accounts.json, are left out because they hold passcodes. The director and office names, access/roles.json, are kept, and the educator records under staff/, the journal included. The script saves the file as TREE backup YYYY-MM-DD.json.gz in the TREE backups folder of the mailbox's Google Drive, keeps the newest 60, about two months, and moves older ones to the Drive trash. The Monday backups made before are named the same way, so they count among the 60 and leave in turn. The request goes to /inbound/backup with the same key as the other mailbox routes, and a sleeping server is asked again after it wakes. Settings shows the director a Backups card with the time the last backup arrived. Photos already live in Google Drive, and every record also keeps its full history in GitHub.
 
-To set it up, open the TREE mailbox's Apps Script project, add a script file named weekly-backup, paste tools/weekly-backup.gs into it, run setupWeeklyBackup once and allow the access Google asks for. Run weeklyBackup once to test it. The web app needs no new deployment, since doPost is unchanged.
+To set it up, or to change from the Monday backup, follow these steps.
+
+1. In script.google.com, signed in as the TREE mailbox, open the TREE mailbox's Apps Script project.
+2. Open the script file named weekly-backup, select everything in it, and paste tools/weekly-backup.gs over it. Without that file yet, choose the plus beside Files, then Script, name it weekly-backup and paste. Save.
+3. Choose setupNightlyBackup in the toolbar and press Run, and allow the access Google asks for. It sets the nightly 10 pm time and removes the Monday time. setupWeeklyBackup, the name used before, does the same.
+4. To test, run nightlyBackup and read the log. A new file appears in TREE backups, and the Backups card in Settings shows the time.
+
+The web app needs no new deployment for the backup, since it does not change doPost. Until setup is run, the old Monday time still makes a backup each Monday, since weeklyBackup now runs the nightly one.
 
 ## Restore
 
@@ -240,7 +247,7 @@ Photos are not inside the backup. Those moved to Google Drive stay in the TREE p
 | `ANTHROPIC_API_KEY` | The same key TREE uses |
 | `RECORDS_REPO` | Optional. Defaults to `renee-creator/fulton-planning-records` |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to use the server |
-| `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the mailbox Apps Script. Turns on Observations from Kaymbu, order emails and the weekly backup |
+| `KAYMBU_INBOX_KEY` | Optional. A long secret shared with the mailbox Apps Script. Turns on Observations from Kaymbu, order emails and the nightly backup |
 | `READS_PER_HOUR`, `CAREFUL_PER_HOUR` | Optional. Hourly Claude request limits, 800 and 400 by default, sized for a whole-school scan |
 
 ## Who can do what

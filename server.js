@@ -1212,7 +1212,7 @@ async function handle(req, res) {
     if (!store.ready) await loadAll();
     await kaymbuInbox.handle(req, res, url, b, (status, obj) => json(req, res, status, obj)); return;
   }
-  // the weekly backup, asked for by the mailbox script on Monday evenings. Waiting saves are written first, then every
+  // the nightly backup, asked for by the mailbox script every night. Waiting saves are written first, then every
   // record kind comes back as one gzipped JSON bundle the script keeps in Google Drive. Sign-ins stay out, since they hold passcodes.
   if (path === '/inbound/backup') {
     let b = {}; try { b = await readBody(req, 64 * 1024); } catch (e) { b = {}; }
@@ -1229,7 +1229,7 @@ async function handle(req, res) {
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
     // the time is kept in the records too, so the director's Settings shows it after the server has slept
     const cur = store.recs.settings.get('backup');
-    store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Weekly backup' } }));
+    store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Nightly backup' } }));
     noteChange('settings', 'backup'); scheduleSave('settings', 'backup');
     log('Backup sent,', bundle.manifest.files, 'files,', Math.round(gz.length / 1024), 'KB');
     send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store' }, gz);
