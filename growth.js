@@ -154,6 +154,9 @@ module.exports = function growthModule(c) {
     return out;
   }
 
+  // the Reflection part of the Growth Plan, the August form's other answers
+  const REFLECTION = ['difficult', 'proud', 'natural', 'drains', 'pattern', 'why'];
+
   /* ---------- what an educator receives of their own growth ---------- */
   function forViewer(name, me) {
     const g = growth(name), dir = isDirector(me), y = thisYear(); const out = JSON.parse(JSON.stringify(g));
@@ -319,9 +322,11 @@ module.exports = function growthModule(c) {
       if (b.wentWell) plan.wentWell = { choice: b.wentWell.choice === 'new' ? 'new' : 'last', text: txt(b.wentWell.text, 6000) };
       if (Array.isArray(b.goals)) plan.goals = b.goals.slice(0, 3).map(x => ({ id: String(x.id || rid('g')).slice(0, 20), text: txt(x.text, 2000), area: AREA_KEYS.includes(x.area) ? x.area : '', areaOk: !!x.areaOk && AREA_KEYS.includes(x.area), from: x.from ? String(x.from).slice(0, 20) : undefined }));
       if ('challenges' in b) plan.challenges = txt(b.challenges, 6000);
+      // the rest of the August form's answers, kept as written
+      if (b.reflection) plan.reflection = Object.fromEntries(REFLECTION.map(k => [k, txt(b.reflection[k], 6000)]));
       if (b.need) plan.need = { director: txt(b.need.director, 3000), team: txt(b.need.team, 3000), training: txt(b.need.training, 3000) };
       if ('feedback' in b) plan.feedback = FEEDBACK.includes(b.feedback) ? b.feedback : '';
-      // an answer to the meeting frequency question, which the plan no longer asks, stays as a note only
+      // an answer to the meeting frequency or check-in plan question stays as a note only, since check-ins are set monthly
       if (dir && 'note' in b) plan.note = txt(b.note, 2000);
       if (dir && b.source) plan.source = b.source === 'august' ? 'august' : 'tree';
       plan.at = Date.now(); plan.by = me; g.plans[yr] = plan; put(gPath(who), g); bump(); json(req, res, 200, forViewer(who, me)); return;
