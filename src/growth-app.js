@@ -342,11 +342,11 @@ async function momentsPage(my){st.moments=(await ga("moments")).list;const f=st.
 async function loadMods(force){if(!st.mods||force)st.mods=await ga("modules");return st.mods}
 Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await doc(meName()).catch(()=>({modules:{}}));const m=d.modules||{};
   const last=(d.checkins||[]).find(c=>c.focus&&c.focus.area);const fit=last?b.modules.find(x=>x.ready&&x.areas.includes(last.focus.area)&&!["howto","licensing"].includes(x.slug)):null;
-  const ready=b.modules.filter(x=>x.ready),later=b.modules.filter(x=>!x.ready);
+  const ready=b.modules.filter(x=>x.ready);
   const stat=x=>x.slug==="licensing"||x.slug==="howto"?((pcs[x.slug]||[]).length&&(pcs[x.slug]||[]).every(p=>dn[p.id])?chip("ok","Finished"):(pcs[x.slug]||[]).some(p=>dn[p.id])?chip("soonish","Started"):""):m[x.slug]&&m[x.slug].done?chip("ok","Finished "+fms(m[x.slug].done)):m[x.slug]&&m[x.slug].opened?chip("soonish","Started"):"";
   return card("Modules",`<div class="hint">You choose the order you take modules in.${fit?` TREE suggests ${H(fit.title)}, which fits your Focus Until Next Time.`:""} Each module ends with a practice to try in your own Class and a few minutes of sharing at a staff meeting.</div>
     <div class="stgrid" style="margin-top:8px">${ready.map(x=>`<div class="stmod"><b>${H(x.title)}</b><div class="cnt">${H(x.desc)}</div>${x.minutes?`<div class="cnt">About ${dur(x.minutes)}</div>`:""}<div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${x.slug==="licensing"||x.slug==="howto"?x.slug:"m:"+x.slug}">Open</button>${stat(x)}${fit&&fit.slug===x.slug?chip("soonish","Fits your focus"):""}</div></div>`).join("")}</div>
-    ${later.length?`<div class="cnt" style="margin-top:10px">Written next, ${H(later.map(x=>x.title).join(", "))}.</div>`:""}`)};
+`)};
 Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();const m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
   const d=await doc(meName(),true);const pr=(d.modules||{})[slug]||{};const dir=isDir();const ex=(ms.examples||{})[slug]||{examples:[]};
   const sec=h=>m.sections.find(s=>s.heading.toLowerCase().startsWith(h));

@@ -57,4 +57,16 @@ test('TREE in the browser', async t => {
     assert.match(text, /Past due, it was due by December 1/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
+
+  await t.test('the PD library holds no coming soon line, and the go-to person is named rather than called she', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357');
+    await s.p.evaluate(() => goView('stpd')); await s.p.waitForFunction(() => /Modules/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /Written next|coming soon/i);
+    await s.close();
+    const n = await signedIn(fx, b, 'Neo', '1357');
+    await n.p.evaluate(() => goView('stnew')); await n.p.waitForFunction(() => /Your first two months/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const text = await n.p.evaluate(() => document.querySelector('#main').innerText);
+    assert.match(text, /Gia answers your questions/);
+    assert.deepStrictEqual(n.errors, []); await n.close();
+  });
 });
