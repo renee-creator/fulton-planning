@@ -181,6 +181,10 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   function reflectionHtml(r){return `<div class="body"><div class="kind">${esc(r.label)} <span>${esc([r.room?r.room+" Class":"",r.group?String(r.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", "))}</span></div>
       <div class="when">${esc([r.by,weekText(r.week)].filter(Boolean).join(", "))}</div>
       <div class="words" style="white-space:pre-line">${esc(r.text)}</div></div>`}
+  // a proud moment or a Kudos shared with everyone at Fulton, with first names only
+  function proudHtml(x){return `<div class="body"><div class="kind">${x.kind==="kudos"?"Kudos":"A proud moment"} <span>${esc(x.kind==="kudos"?"for "+x.to:"")}</span></div>
+      <div class="when">${esc(x.kind==="kudos"?"From "+x.by:x.by)}</div>
+      <div class="words" style="white-space:pre-line">${esc(x.text)}</div></div>`}
   // a moment found through a lens, the educator's own words and where they were written
   function lensMomentHtml(x){return `<div class="body"><div class="kind">Seen through the lens <span>${esc([x.lens,x.language].filter(Boolean).join(", "))}</span></div>
       <div class="q" style="max-width:36ch">${esc(x.quote)}</div>
@@ -215,7 +219,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const SL=(feed.slides||[]).map(x=>({k:"slide",cls:"m",id:"sl"+x.id,html:()=>docSlideHtml(x),src:x.photo&&x.photo.src}));
     const R=(feed.reflections||[]).map(r=>({k:"reflection",cls:"t",id:"r"+r.id,html:()=>reflectionHtml(r)}));
     const L=(feed.lensMoments||[]).map(x=>({k:"lensmoment",cls:"t",id:"lm"+x.id,html:()=>lensMomentHtml(x)}));
-    const n=Math.max(P.length,T.length,I.length,D.length,S.length,SL.length,R.length,L.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(SL[i])O.push(SL[i]);if(R[i])O.push(R[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
+    const PR=(feed.proud||[]).map(x=>({k:"reflection",cls:"t",id:"pr"+x.id,html:()=>proudHtml(x)}));
+    const n=Math.max(P.length,T.length,I.length,D.length,S.length,SL.length,R.length,L.length,PR.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(SL[i])O.push(SL[i]);if(R[i])O.push(R[i]);if(PR[i])O.push(PR[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin
