@@ -728,10 +728,10 @@ let PROOF_SAVE=false;
 // the educator's name under a display printout's title, unless the director turned it off for every printout
 const pBy=b=>PRINT.by===false?"":(b||"");
 let GROUPS=[
-  {name:"Cosmos",room:"West",educator:"Delia M"},{name:"Yarrow",room:"West",educator:"Delia M"},{name:"Zinnia",room:"West",educator:"Delia F"},{name:"Borage",room:"West",educator:"Delia F"},
-  {name:"Marigold",room:"North",educator:"Maren"},{name:"Morning Glory",room:"North",educator:"Odette"},{name:"Sunflower",room:"North",educator:"Ines"},
-  {name:"Poppy",room:"South",educator:"Corinne"},{name:"Lavender",room:"South",educator:"Talia"},{name:"Iris",room:"South",educator:"Tobin"}];
-const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()],{name:"Noor",room:""},{name:"Bea",room:""}];
+  {name:"Cosmos",room:"West",educator:""},{name:"Yarrow",room:"West",educator:""},{name:"Zinnia",room:"West",educator:""},{name:"Borage",room:"West",educator:""},
+  {name:"Marigold",room:"North",educator:""},{name:"Morning Glory",room:"North",educator:""},{name:"Sunflower",room:"North",educator:""},
+  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:""},{name:"Iris",room:"South",educator:""}];
+const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()]];
 let roster=DEFAULT_ROSTER.slice();
 function rosterNames(){return roster.map(r=>r.name).filter(n=>!isShared(n))}
 let PLACES=["Library","Classroom","Art atelier","Nature atelier","Culinary atelier","Indoor piazza","Outdoor piazza","North yard","Rabbit yard","Garden","Tire swing yard","Tire swing studio","Log yard","Log studio","Long yard","Goat yard"];
@@ -1101,8 +1101,8 @@ function planTitle(p){
   const foc=(p.groups||[]).length?p.groups.join(" and "):(p.focus==="area"&&p.where?p.where:"");
   return (p.educator||"Educator")+(foc?" · "+foc:(p.fields?.area?" · "+p.fields.area:""));
 }
-const STATUS={draft:"Draft",ready:"Waiting for Renee's review",reviewed:"Reviewed"};
-/* Sending a plan to Renee. Every box on the Individual and Classroom plans needs writing before it is sent, except Final
+const STATUS={draft:"Draft",ready:"Waiting for the director's review",reviewed:"Reviewed"};
+/* Sending a plan to the director. Every box on the Individual and Classroom plans needs writing before it is sent, except Final
    remarks, which is written after the week. Any writing counts. The older Small Group plan keeps its own status row. */
 const SEND_NEED={individual:["area","dates","observation","intent","materials","questions"],classroom:["observation","intentions","meeting","interests","indoor","outdoor","brainstorm"]};
 const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
@@ -1140,9 +1140,9 @@ function renderFeedbackPanel(){
 function sendHtml(p){
   if(!sendable(p)||isDirector())return "";
   const when=ms=>ms?" on "+shortDate(ms):"";
-  if(p.status==="reviewed")return `<section class="sendsec done" id="sendsec"><b>Reviewed by Renee${when(p.reviewedAt)}</b></section>`;
-  if(p.status==="ready")return `<section class="sendsec done" id="sendsec"><b>Sent to Renee${when(p.sentAt)}</b><div class="cnt">Waiting for her review. You can keep adding to the plan, and Final remarks after the week.</div></section>`;
-  return `<section class="sendsec" id="sendsec"><button class="btn" id="sendplan">Send to Renee</button><div id="sendmsg" aria-live="polite"></div></section>`;
+  if(p.status==="reviewed")return `<section class="sendsec done" id="sendsec"><b>Reviewed by the director${when(p.reviewedAt)}</b></section>`;
+  if(p.status==="ready")return `<section class="sendsec done" id="sendsec"><b>Sent to the director${when(p.sentAt)}</b><div class="cnt">Waiting for her review. You can keep adding to the plan, and Final remarks after the week.</div></section>`;
+  return `<section class="sendsec" id="sendsec"><button class="btn" id="sendplan">Send to the director</button><div id="sendmsg" aria-live="polite"></div></section>`;
 }
 function feedbackHtml(p){
   const fb=String(p.feedback||"").trim();const rep=p.feedbackReply&&String(p.feedbackReply.text||"").trim()?p.feedbackReply:null;
@@ -1248,7 +1248,7 @@ function renderMain(){
     </div>
     <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
     ${sendable(p)&&!isDirector()?`<div class="actions"><span class="muted" style="font-size:13px">Status</span><span class="status ${p.status}">${esc(STATUS[p.status]||"Draft")}</span></div>`:`<div class="actions"><span class="muted" style="font-size:13px">Status</span>
-      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"Renee marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"The director marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
     </div>`}
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
@@ -1262,8 +1262,8 @@ function renderMain(){
    h+=`<nav class="secidx" aria-label="Sections of this plan"><span class="cnt"><b>${done} of ${fsx.length}</b> sections written</span><div class="chips">${fsx.map(f=>`<button class="chip ${String(p.fields[f.k]||"").trim()?"on":""}" data-secjump="${f.k}" type="button">${esc(f.label)}</button>`).join("")}</div></nav>`}
   const planStarted=F.fields.some(f=>String(p.fields[f.k]||"").trim());
   if(sample)h+=`<${planStarted?"details":"section"} class="ai">${planStarted?`<summary class="lbl" style="cursor:pointer">Start from your notes</summary>`:`<div class="lbl">Start from your notes</div>`}
-    <p>Paste or dictate your quick jottings from the week. TREE sorts them into the empty sections below using only what you wrote. Review and edit everything before you send it to Renee.</p>
-    <textarea id="notes" rows="4" placeholder="Ex. Tamsin and Mira spent all of free choice lining up acorns by size again, third day. Mira said the big ones are the grandmas..."></textarea>
+    <p>Paste or dictate your quick jottings from the week. TREE sorts them into the empty sections below using only what you wrote. Review and edit everything before you send it to the director.</p>
+    <textarea id="notes" rows="4" placeholder="Ex. Two children spent all of free choice lining up acorns by size again, third day. One said the big ones are the grandmas..."></textarea>
     <div class="actions"><button class="btn small" id="draft">Fill empty sections from my notes</button><span class="savestate" id="draftstate"></span></div></${planStarted?"details":"section"}>`;
   if(p.type==="smallgroup")h+=smallGroupMeta(p);
   if(p.type==="individual")h+=focusCard(p);
@@ -1357,11 +1357,19 @@ function focusCard(p){
     <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button></div>
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
-      <label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>`
+      <label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>${gardenNote(p)}`
     :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="arealist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
       <div class="chips">${AREAS.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-area="${esc(x)}">${esc(x)}</button>`).join("")}</div>`}
   </section>`;
 }
+// the garden is always one adult for every six children, so a group set there with more shows a gentle note
+const gardenAdults=a=>a===1?"one adult":["","","two","three","four","five","six"][a]+" adults";
+function gardenState(p){if(!/garden/i.test(String(p.where||""))||!(p.groups||[]).length)return null;
+  const n=kidsAt().filter(c=>(p.groups||[]).includes(c.group)&&(!p.classroom||!c.classroom||c.classroom===p.classroom)).length;const adults=Math.max(1,+p.adults||1);const over=n>adults*6;
+  return {over,text:over?`<b>A note for the garden.</b> The garden is always one adult for every six children, and this group has ${n} children with ${gardenAdults(adults)}. ${Math.ceil(n/6)===2?"A second adult, such as a co-educator, a parent volunteer or an apprentice,":Math.ceil(n/6)+" adults"} would keep it at one to six.`
+    :`The garden is one adult for every six children. With ${gardenAdults(adults)} and ${n} ${n===1?"child":"children"}, this group keeps it there.`}}
+function gardenNote(p){const g=gardenState(p);return `<div id="gardennote" class="${g&&g.over?"talknote":"cnt"}" role="note" style="margin-top:6px;${g?"":"display:none"}"><span id="gardentext">${g?g.text:""}</span> <label class="cnt" style="white-space:nowrap">Adults with the group <input type="number" min="1" max="6" id="f-adults" value="${Math.max(1,+p.adults||1)}" style="width:56px"></label></div>`}
+function gardenRefresh(p){const el=$("#gardennote");if(!el)return;const g=gardenState(p);el.style.display=g?"":"none";el.className=g&&g.over?"talknote":"cnt";const tx=$("#gardentext");if(tx)tx.innerHTML=g?g.text:""}
 function smallGroupMeta(p){
   return `<section class="card"><div class="lbl">Where</div>
     <div class="hint">The setting can change with the intention but should stay consistent across the week.</div>
@@ -1561,7 +1569,7 @@ function renderWelcome(){
     <div class="steps">
       <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"TREE can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
       <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, Fulton's outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
-      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team. Send each one to Renee for review when every box has writing.</p></div>
+      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team. Send each one to the director for review when every box has writing.</p></div>
       <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
     </div>
     <div class="actions"><button class="btn" data-new="classroom">Start this week's Classroom Plan</button><button class="btn ghost" id="sample">Download a sample filled plan</button></div>
@@ -1687,7 +1695,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -1741,7 +1749,7 @@ function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
     if(el.tagName==="SELECT"||el.type==="color"||el.type==="date"||el.type==="time"||el.type==="file")el.disabled=true;else el.readOnly=true;
     const z=el.closest("section,.card,.meta,.kfields,.two,.pdir");if(z)zones.add(z)}
   for(const z of zones)for(const b of z.querySelectorAll("button"))if(!b.closest(LOCK_KEEP)&&!b.dataset.print&&!b.dataset.unlock)b.disabled=true;
-  // Renee marks a plan reviewed while reading it, without pressing Edit first
+  // the director marks a plan reviewed while reading it, without pressing Edit first
   for(const b of main.querySelectorAll(".seg button,[data-status],.palrow button,.wrapseg button,[data-sfph],[data-sfq],[data-sfkid],[data-sfset]"))if(!b.closest(LOCK_KEEP)&&!(b.dataset.status&&isDirector()&&!b.dataset.keepoff))b.disabled=true;
   if(!main.querySelector(".lockbar")){const what=k.startsWith("plan")?"plan":k.startsWith("slide")?"slide":k.startsWith("proj")?"project":"page";
     const bar=document.createElement("div");bar.className="lockbar";bar.innerHTML=`<span>Saved. Press Edit to change it.</span><button class="btn small" data-unlock="1">Edit</button>`;
@@ -3075,7 +3083,7 @@ function renderStory(){
   </section>
   <section class="card"><div class="lbl">The cover</div>
     <label class="fld-label">Title<input data-stf="title" value="${esc(st.title||"")}" placeholder="We Are a Community of Kindness"></label>
-    <label class="fld-label">Line under the photo<input data-stf="cover" value="${esc(st.cover||"")}" placeholder="Ione and the Lavender Group"></label>
+    <label class="fld-label">Line under the photo<input data-stf="cover" value="${esc(st.cover||"")}" placeholder="The Lavender Group"></label>
     <div class="lbl" style="margin-top:6px">Cover photo</div>${stPhotoChoice(st,"cover",st.coverPhoto)}
     <div class="tgrid2" style="margin-top:8px"><label class="fld-label">Class<select data-stf="classroom"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${r===room?"selected":""}>${r}</option>`).join("")}</select></label>
       <label class="fld-label">Group<select data-stf="group"><option value="">No group</option>${groups.map(g=>`<option ${g.name===st.group?"selected":""}>${esc(g.name)}</option>`).join("")}${st.group&&!groups.some(g=>g.name===st.group)?`<option selected>${esc(st.group)}</option>`:""}</select></label></div>
@@ -3123,7 +3131,7 @@ Also write two or three open invitations or questions for after reading, about t
 Also write a short note for families, three or four plain sentences in the educators' voice, as we. Say why our community made this story and give one or two ways to share it at home, such as looking at the photos together and saying what you notice, or inviting your child with Tell me about this story. Never suggest a parent ask What did you make, What is it, or a yes or no question. No jargon, no assessment words, no colons.
 
 Return only JSON in this shape
-{"title":"a short title for the story","cover":"a short line naming the children or group, like Ione and the Lavender Group","pages":[{"heading":"","photo":"P1","lines":["",""]}],"questions":["",""],"families":""}
+{"title":"a short title for the story","cover":"a short line naming the children or group, like the Lavender Group","pages":[{"heading":"","photo":"P1","lines":["",""]}],"questions":["",""],"families":""}
 
 Photos available ${ph.length?ph.map((id,i)=>`P${i+1}`).join(", "):"none"}.
 ${has(st.about)?`
@@ -3688,19 +3696,23 @@ setInterval(outboxSend,30000);
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 // a kitchen sign-in sees the Kitchen, Today and the calendar
 const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
-const KITCHEN_VIEWS=["kitchen","today","calendar","settings"];
-const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"]]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
+const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec"];
+const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"],...(staffSubOk("strec")?[["staff","My records"]]:[])]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
 /* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Teacher Policies and
    Procedures live in tree-staff.js, loaded only when someone opens them, so this page stays the same size. The server
    decides what each person receives. Each part shows only to the director until she turns it on for educators. ---------- */
 const isNewHire=()=>!VIEW_AS&&!!(window.FP_NEWHIRE&&window.FP_NEWHIRE());
 const staffInfo=()=>window.FP_STAFF||null;
 function staffNavOn(){const s=staffInfo();if(!s)return isDirector();if(VIEW_AS)return Object.values(s.open||{}).some(Boolean);return isDirector()||!!(s.can&&Object.values(s.can).some(Boolean))}
-const STAFF_VIEWS=["stteam","strec","stnew","stpd","sthb","st27","stdrill","stfiles"];
+const STAFF_VIEWS=["stteam","strec","stnew","stgrow","stplan","stjour","stci","stmom","stpd","stpdd","sthb","st27","stdrill","stfiles"];
+const GROW_VIEWS=["stgrow","stplan","stjour","stci","stmom","stpdd"];
 function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{});if(isDirector()&&!VIEW_AS)return true;
+  if(isKitchenUser())return k==="strec"&&!!c.records;
   // a new hire's own four pages, which the server also holds them to
-  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k);
+  if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd");
   if(["stteam","st27","stdrill","stfiles"].includes(k))return false;
+  // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
+  if(GROW_VIEWS.includes(k))return !!c.growth;
   return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):false}
 function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo()||{};if(isNewHire()||(s.can&&s.can.newed))return "stnew";return SUBS.staff.map(x=>x[0]).find(staffSubOk)||"today"}
 let staffLoad=null;
@@ -3708,17 +3720,17 @@ function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
-const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stpd","PD library"],["sthb","Policies"],["st27","October 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stpd","PD library"],["stpdd","PD days"],["sthb","Policies"],["st27","October 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
-const SECTION_OF={stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
-  // the newsletter, the grant and the kitchen are the director's and Kitchen's, so an educator who reaches one goes to Today
+  // the newsletter, the grant and the kitchen are the director's and the kitchen's, so an educator who reaches one goes to Today
   else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen"].includes(v))v="today";
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
@@ -3795,9 +3807,9 @@ function todayWaiting(){
   // the director and the office see a family's visit coming up, so the forms are printed and ready to sign
   if(isOffice()){const t0=iso(new Date()),t2=addDays(t0,2);for(const c of kidsAt().filter(c=>c.visit&&c.visit.date>=t0&&c.visit.date<=t2&&!(c.onboarding||{}).paperwork).sort((a,b)=>(a.visit.date+a.visit.time).localeCompare(b.visit.date+b.visit.time)))
     out.push({dot:"mari",t:`${c.first}'s visit, ${parseIso(c.visit.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${c.visit.time?" at "+tlabel(c.visit.time):""}`,s:c.enrollForm?(c.enrollForm.done?"Print the forms for the family to sign.":"The enrollment information is not finished yet."):"The family has not typed the enrollment information yet.",act:`data-kid="${esc(c.id)}" data-ktab="details"`,b:"Open"})}
-  // an educator hears when Renee has reviewed a plan, until the plan is opened
+  // an educator hears when the director has reviewed a plan, until the plan is opened
   if(!dir){for(const p of all.filter(p=>p.status==="reviewed"&&p.reviewedAt&&p.reviewedAt>Date.now()-14*864e5&&isMine(p,m)&&(p.reviewSeenAt||0)<p.reviewedAt).slice(0,4))
-    out.push({dot:"moss",t:`Renee reviewed your ${FORMS[p.type].short} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Open"})}
+    out.push({dot:"moss",t:`The director reviewed your ${FORMS[p.type].short} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Open"})}
   // the Individual plan comes first on Monday, so the team can write the Classroom plan from it
   const mg=myGroups();if(!dir&&mg.length&&!all.some(p=>p.weekOf===planWeekNow()&&(p.type==="individual"||p.type==="smallgroup")&&isMine(p,m)))
     out.push({dot:"mari",t:"Your Individual plan for this week",s:"Monday is the day for Individual plans, so the team can write the Classroom plan from them.",act:`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`,b:"Start it"});
@@ -4180,18 +4192,18 @@ function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";cons
   return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
 // a Class team asks families for help. It goes to the director, who posts it to the Family page.
 let askFam=false;
-function askFamHtml(room){return `<section class="card ptform" style="margin-top:12px"><h3 style="font-size:17px">Ask families for help</h3><div class="cnt">Renee sees it first and posts it to the Family page. Helping counts toward each family's hours.</div>
+function askFamHtml(room){return `<section class="card ptform" style="margin-top:12px"><h3 style="font-size:17px">Ask families for help</h3><div class="cnt">The director sees it first and posts it to the Family page. Helping counts toward each family's hours.</div>
   <label class="fld-label">What you need<input type="text" id="af-title" placeholder="Ex. Two parents for the creek walk"></label>
   <div class="gsrow"><label>Day, if it has one<input type="date" id="af-date"></label><label>Starts<input type="time" id="af-start"></label><label>Ends<input type="time" id="af-end"></label></div>
   <div class="gsrow"><label>How many people<input type="number" min="0" id="af-spots"></label><label>Class<select id="af-room">${["",...CLASSROOMS].map(r=>`<option value="${esc(r)}" ${r===(room||"")?"selected":""}>${r?esc(r):"The whole school"}</option>`).join("")}</select></label></div>
   <label class="fld-label">A note, optional<textarea id="af-note" rows="2"></textarea></label>
-  <div class="actions"><button class="btn" data-afsend="1">Send to Renee</button><button class="btn ghost" data-askfam="1">Cancel</button></div></section>`}
+  <div class="actions"><button class="btn" data-afsend="1">Send to the director</button><button class="btn ghost" data-askfam="1">Cancel</button></div></section>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-askfam],[data-afsend]");if(!t||view!=="today")return;e.stopImmediatePropagation();
   if(t.dataset.askfam){if(isOffice()){ptForm={type:"task"};goView("participation");return}askFam=!askFam;renderMain();if(askFam)$("#af-title")?.focus();return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const v=k=>($("#af-"+k)?.value||"").trim();if(!v("title")){toast("Say what you need.");return}
   const id="rq-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  try{await db.doc("participation/"+id).create({kind:"item",type:"task",title:v("title"),date:v("date"),start:v("start"),end:v("end"),spots:Number(v("spots"))||0,classroom:v("room"),note:v("note"),hours:0,status:"requested",open:false,signups:[],createdAt:Date.now(),createdBy:myName()||""});askFam=false;renderMain();toast("Sent to Renee. She posts it to the Family page.")}
+  try{await db.doc("participation/"+id).create({kind:"item",type:"task",title:v("title"),date:v("date"),start:v("start"),end:v("end"),spots:Number(v("spots"))||0,classroom:v("room"),note:v("note"),hours:0,status:"requested",open:false,signups:[],createdAt:Date.now(),createdBy:myName()||""});askFam=false;renderMain();toast("Sent to the director. She posts it to the Family page.")}
   catch(er){toast(er&&er.message||"Could not send it.")}});
 function renderToday(){
   if(isKitchenUser()){renderKitchenToday();return}
@@ -4209,7 +4221,7 @@ function renderToday(){
     <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from observations</span></button>
     ${waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
-    <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to Renee to post"}</span></button>
+    <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}
   ${todayBinHtml()}
@@ -4832,6 +4844,7 @@ function openConference(id,sec){window.TREE_CONF_SEC=sec||"";embedRoute.conferen
 // a page inside TREE can ask TREE to open something of its own, such as a child's page
 window.addEventListener("message",e=>{if(e.origin!==location.origin||!e.data||typeof e.data!=="object")return;const d=e.data;
   // a day on the calendar can start a Getting ready story
+  if(d.treeOpenAgenda&&typeof d.treeOpenAgenda==="object"){LS.set("tree.pdwant",String(d.treeOpenAgenda.date||"").slice(0,10));if(staffSubOk("stpdd"))goView("stpdd");return}
   if(d.treeStoryEvent&&typeof d.treeStoryEvent==="object"){const ev=d.treeStoryEvent;newStory({event:{id:String(ev.id||"").slice(0,120),title:String(ev.title||"").slice(0,200),when:String(ev.when||"").slice(0,200),where:String(ev.where||"").slice(0,200),desc:String(ev.desc||"").slice(0,1200)}});return}
   if(d.tree==="child"&&d.id){kidOpen=d.id;goView("child")}
   if(d.tree==="moment"){document.getElementById("newnotice").click()}
@@ -4898,7 +4911,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.delkeep){renderMain();return}
   if(t.id==="dupok"){p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Marked as not a duplicate.");return}
   if(t.id==="sendplan"){sendPlan(p);return}
-  if(t.dataset.status){if(sendable(p)&&!isDirector())return;if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}if(t.dataset.status==="reviewed"&&p.status!=="reviewed"){p.reviewedAt=Date.now();p.reviewedBy=myName()||"Renee"}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
+  if(t.dataset.status){if(sendable(p)&&!isDirector())return;if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}if(t.dataset.status==="reviewed"&&p.status!=="reviewed"){p.reviewedAt=Date.now();p.reviewedBy=myName()||"the director"}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
   if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
     if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
@@ -4938,7 +4951,8 @@ document.addEventListener("input",e=>{
   if(t.dataset.f){p.fields[t.dataset.f]=t.value;autoGrow(t);sendAskSoon(p);{const m=$("#sendmsg");if(m&&m.innerHTML&&!planMissing(p).length)m.innerHTML=""}{const cd=t.closest("[data-card]");if(cd)cd.classList.toggle("filled",!!t.value.trim());const ch=document.querySelector(`[data-secjump="${t.dataset.f}"]`);if(ch)ch.classList.toggle("on",!!t.value.trim());const ix=document.querySelector(".secidx b");if(ix){const all=FORMS[p.type].fields;ix.textContent=`${all.filter(f=>String(p.fields[f.k]||"").trim()).length} of ${all.length}`}}const f=FORMS[p.type].fields.find(x=>x.k===t.dataset.f);$("#n-"+f.k).innerHTML=nudgeHtml(f,t.value);persist(p);return}
   if(t.id==="feedback"){if(!isDirector())return;p.feedback=t.value;p.feedbackBy=myName()||"The director";p.feedbackAt=Date.now();autoGrow(t);persist(p);return}
   if(t.id==="fbreply"){const v=t.value;p.feedbackReply={text:v,by:myName()||"An educator",at:Date.now()};autoGrow(t);persist(p);return}
-  if(t.id==="f-where"){p.where=t.value;persist(p);renderList();return}
+  if(t.id==="f-where"){p.where=t.value;persist(p);renderList();gardenRefresh(p);return}
+  if(t.id==="f-adults"){p.adults=Math.max(1,Math.min(6,+t.value||1));persist(p);gardenRefresh(p);return}
   if(t.id==="family"){p.familyUpdate=t.value;autoGrow(t);persist(p);return}
   if(t.id==="m-ed"){p.educator=t.value;persist(p);renderList();return}
   if(p.web){const w=p.web;
@@ -4961,7 +4975,7 @@ function sendPlan(p){
     const el=document.querySelector(`[data-card="${miss[0].k}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
   if(!p.educator&&needName())return;if(!p.educator&&me())p.educator=me();
   p.status="ready";p.sentAt=Date.now();p.sentBy=myName()||me()||"";sendAskedSet(p.id);persist(p);closeSendAsk();renderList();renderMain();
-  const s=$("#sendsec");if(s)s.scrollIntoView({block:"center"});toast("Sent to Renee for review.");
+  const s=$("#sendsec");if(s)s.scrollIntoView({block:"center"});toast("Sent to the director for review.");
 }
 // once a plan's last box gets writing and the educator pauses, TREE asks once whether to send it
 const sendAskedGet=()=>{try{return new Set(LS.get("tree.sendasked",[]))}catch(e){return new Set()}};
@@ -4970,7 +4984,7 @@ let sendAskT=null;
 function sendAskSoon(p){clearTimeout(sendAskT);if(!sendable(p)||isDirector()||p.status!=="draft"||planMissing(p).length||sendAskedGet().has(p.id))return;
   sendAskT=setTimeout(()=>{const q=currentId&&plans.get(currentId);if(!q||q.id!==p.id||view!=="plans"||q.status!=="draft"||planMissing(q).length||sendAskedGet().has(q.id))return;
     sendAskedSet(q.id);closeSendAsk();const d=document.createElement("div");d.id="sendask";d.className="sendask";d.setAttribute("role","dialog");d.setAttribute("aria-label","Send this plan");
-    d.innerHTML=`<b>Your plan looks complete.</b><div>Send it to Renee for review?</div><div class="actions"><button class="btn" data-sendask="go">Send</button><button class="btn ghost" data-sendask="no">Not yet</button></div>`;
+    d.innerHTML=`<b>Your plan looks complete.</b><div>Send it to the director for review?</div><div class="actions"><button class="btn" data-sendask="go">Send</button><button class="btn ghost" data-sendask="no">Not yet</button></div>`;
     document.body.appendChild(d)},2500)}
 function closeSendAsk(){const d=$("#sendask");if(d)d.remove()}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sendask]");if(!b)return;closeSendAsk();if(b.dataset.sendask==="go"){const p=currentId&&plans.get(currentId);if(p)sendPlan(p)}});
@@ -6451,14 +6465,14 @@ function gBinFarms(from,to){const m=new Map();for(const b of binAll())if(b.date>
 // hands-on food education, found by words in the educators' own observations and plans
 // the agreement's eight goals and planned activities, from the scope of work (draft of March 20, 2025), for reference
 const G_GOALS=[
-  {n:1,goal:"Increase procurement of California grown or produced, whole or minimally processed food for ECE meals and snacks.",plan:"Purchase California grown or produced food for the daily lunch program, with meals made from scratch on site. The nutrition coordinator's hours allow time to procure and prepare food from scratch rather than pre-prepared offerings.",by:"Kitchen plans the menus, buys and cooks, Office keeps the paperwork",where:"California food bought"},
-  {n:2,goal:"Increase procurement from small to midsize food producers in California.",plan:"Purchase wholesale produce from a local aggregator for the lunch program, including FEED Sonoma, and a CSA box subscription for each classroom to prepare.",by:"Kitchen plans the menus, buys and cooks, Office keeps the paperwork",where:"Producers and Farms behind the FEED bins"},
-  {n:3,goal:"Increase procurement from veteran, socially disadvantaged and limited resource food producers in California.",plan:"The fruit for snacks includes fruit from farmers with BIPOC and female representation, including Earthseed Farm in Sebastopol and L&N Produce Stand in Santa Rosa.",by:"Kitchen plans the menus, buys and cooks, Office keeps the paperwork",where:"Producers"},
-  {n:4,goal:"Increase procurement from California producers using climate smart practices or production systems, such as certified organic or transitioning to organic.",plan:"All items are certified organic or chosen from local growers using sustainable practices such as no till and rotational farming, including Singing Frogs Farm and Green Star Farm in Sebastopol.",by:"Kitchen plans the menus, buys and cooks, Office keeps the paperwork",where:"Producers"},
-  {n:5,goal:"Increase hands-on food education that complements the meal program's California food procurement.",plan:"Children gather, wash and deliver the fruit for snack to each classroom as part of daily engagement.",by:"Renee, with the educators",where:"Hands-on food education"},
-  {n:6,goal:"Increase hands-on food education that is standards aligned.",plan:"Children prepare snacks and fruit through hands-on cooking with a qualified educator, planned and reviewed to meet the California Preschool Learning Foundations and Quality Counts guidelines, daily.",by:"Renee, with the educators",where:"Hands-on food education"},
-  {n:7,goal:"Increase hands-on food education led by educators with a Child Development Teacher Permit.",plan:"Daily small groups in the classroom and garden, planting, harvesting, watering and measuring, with observation, documentation and reflection, led by educators at the Teacher Permit level or higher, who complete the curriculum plans and evaluation.",by:"Renee, with the educators",where:"Hands-on food education"},
-  {n:8,goal:"Increase hands-on food education that is culturally relevant.",plan:"A quarterly family meeting to understand the cultural dynamics of families, families invited to grow or bring foods that are culturally relevant to them, and a weekly parent participation opportunity.",by:"Renee, with the educators",where:"Families"}];
+  {n:1,goal:"Increase procurement of California grown or produced, whole or minimally processed food for ECE meals and snacks.",plan:"Purchase California grown or produced food for the daily lunch program, with meals made from scratch on site. The nutrition coordinator's hours allow time to procure and prepare food from scratch rather than pre-prepared offerings.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"California food bought"},
+  {n:2,goal:"Increase procurement from small to midsize food producers in California.",plan:"Purchase wholesale produce from a local aggregator for the lunch program, including FEED Sonoma, and a CSA box subscription for each classroom to prepare.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers and Farms behind the FEED bins"},
+  {n:3,goal:"Increase procurement from veteran, socially disadvantaged and limited resource food producers in California.",plan:"The fruit for snacks includes fruit from farmers with BIPOC and female representation, including Earthseed Farm in Sebastopol and L&N Produce Stand in Santa Rosa.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers"},
+  {n:4,goal:"Increase procurement from California producers using climate smart practices or production systems, such as certified organic or transitioning to organic.",plan:"All items are certified organic or chosen from local growers using sustainable practices such as no till and rotational farming, including Singing Frogs Farm and Green Star Farm in Sebastopol.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers"},
+  {n:5,goal:"Increase hands-on food education that complements the meal program's California food procurement.",plan:"Children gather, wash and deliver the fruit for snack to each classroom as part of daily engagement.",by:"The director, with the educators",where:"Hands-on food education"},
+  {n:6,goal:"Increase hands-on food education that is standards aligned.",plan:"Children prepare snacks and fruit through hands-on cooking with a qualified educator, planned and reviewed to meet the California Preschool Learning Foundations and Quality Counts guidelines, daily.",by:"The director, with the educators",where:"Hands-on food education"},
+  {n:7,goal:"Increase hands-on food education led by educators with a Child Development Teacher Permit.",plan:"Daily small groups in the classroom and garden, planting, harvesting, watering and measuring, with observation, documentation and reflection, led by educators at the Teacher Permit level or higher, who complete the curriculum plans and evaluation.",by:"The director, with the educators",where:"Hands-on food education"},
+  {n:8,goal:"Increase hands-on food education that is culturally relevant.",plan:"A quarterly family meeting to understand the cultural dynamics of families, families invited to grow or bring foods that are culturally relevant to them, and a weekly parent participation opportunity.",by:"The director, with the educators",where:"Families"}];
 // how the school is measuring up to each goal, for the chosen period, from the figures the page gathers
 function gGoalStatus(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
   const P=x=>gProducer(x.producer),pct=v=>all?Math.round(v/all*100)+"%":"0%";const prods=f=>new Set(L.filter(f).map(x=>gKey(x.producer))).size;
@@ -6501,7 +6515,7 @@ function gGoalsHtml(open,from,to,q){const rows=from?gGoalRows(from,to):[];
   <div class="gbody"><div class="gobj">${G_GOALS.map(g=>{const r=rows.find(x=>x[0]===g.n)||[];return `<div class="gobjrow"><span class="gnum">${g.n}</span><div style="min-width:0"><b>${esc(G_SHORT[g.n])}</b><div class="cnt">${esc(r[2]||"")}</div></div><b class="gval">${esc(r[1]||"")}</b></div>`}).join("")}</div>
   <details class="gmore"><summary class="linkbtn">The official wording, activities and who carries them out</summary>
   <div class="tlist" style="margin-top:6px">${G_GOALS.map(g=>`<div class="cnt" style="padding:6px 0;border-top:1px solid var(--line)"><b>${g.n}. ${esc(g.goal)}</b> ${esc(g.plan)} ${esc(g.by)}. Evidence under ${esc(g.where)}.</div>`).join("")}</div>
-  <div class="hint">Children's Sustainability Project, Track 3, Farm to Early Care and Education. Goals and activities from the draft scope of work of March 2025, which named the kitchen for purchasing and an educator for food education. Kitchen now plans the menus, buys the food and cooks, Office does the paperwork and communication with CDFA, and Renee leads food education with the educators. Goal 4 counts certified organic and local farms using sustainable practices, as the scope of work allows. If CDFA's executed agreement worded any goal differently, the agreement governs.</div></details></div></details>`}
+  <div class="hint">Children's Sustainability Project, Track 3, Farm to Early Care and Education. Goals and activities from the draft scope of work of March 2025, which named a purchasing lead and a food education lead. Today the chef plans the menus, buys the food and cooks, the office does the paperwork and communication with CDFA, and the director leads food education with the educators. Goal 4 counts certified organic and local farms using sustainable practices, as the scope of work allows. If CDFA's executed agreement worded any goal differently, the agreement governs.</div></details></div></details>`}
 // hands-on food education is found by words that are about food, and counts only once the director confirms it
 const G_OBJ=[
   {n:5,label:"Children gather, wash and deliver fruit for snack",re:/\b(fruits?|snacks?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|lemons?|quinces?|pomegranates?)\b/i},
@@ -6800,7 +6814,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
 
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
-   prints as a sheet for Kitchen's Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
+   prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
    family newsletter. The farms beside each dish are found the same way Coming for lunch and snack finds them. */
 function kName(item){let t=String(item||"").replace(/^\s*OG\b\s*/i,"").replace(/\([^)]*\)/g,"").replace(/\s*\*\s*/g,", ").replace(/\b\d+\s*-?\s*(cts?|count|lbs?|oz|#)(?![a-z])/gi,"").replace(/\s+/g," ").replace(/\s+,/g,",").trim();let [main,dash]=t.split(/\s+-\s+/);
   // a name such as Choi / Choy - Pak Choi is the food after the dash, and Mandarin / Tangerine is a mandarin
@@ -6822,7 +6836,7 @@ const kShortDish=t=>{t=String(t||"").trim();const w=t.split(/\s+/);return w.leng
    in every week. The director keeps the list in Settings, under Monthly menus, and staples found in a month's orders are
    added to it on that month's sheet. */
 const K_STAPLES0=[{food:"cheese",maker:"Petaluma Creamery",town:"Petaluma"},{food:"beans and rice",maker:"Next Generation Foods",town:"West Sacramento"},{food:"organic whole wheat flour",maker:"Central Milling",town:"Petaluma"},{food:"organic rice cakes",maker:"Lundberg Family Farms",town:"Richvale"},{food:"organic olive oil",maker:"Costco",town:""},{food:"organic avocado oil",maker:"Costco",town:""}];
-const K_STAPLE_NOTE0="Kitchen makes our meals from scratch, including every bread, dough and crust. The only foods we buy ready made are the rice cakes, the corn tortillas from our local molino, and the pasta.";
+const K_STAPLE_NOTE0="Our chef makes our meals from scratch, including every bread, dough and crust. The only foods we buy ready made are the rice cakes, the corn tortillas from our local molino, and the pasta.";
 let kStapleNote=null;
 const kNote=()=>kStapleNote==null?K_STAPLE_NOTE0:kStapleNote;
 let kStaples=null;
@@ -7234,9 +7248,9 @@ function renderKitchen(){
   h+=`<section class="card"><div class="lbl">The month's notes</div>
     <label class="fld-label">With every snack<textarea data-knote="snack" rows="2">${esc(notes.snack||"")}</textarea></label>
     <label class="fld-label">With every lunch<textarea data-knote="lunch" rows="2">${esc(notes.lunch||"")}</textarea></label>
-    <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. Kitchen's pumpkin focaccia"></label>
+    <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. pumpkin focaccia"></label>
     <label class="fld-label">The recipe, for families<textarea data-krecipecard="1" rows="6" placeholder="Ingredients, then the steps, sized for a family at home">${esc(mrec.recipeCard||"")}</textarea></label>
-    <div class="cnt">Families see it on the Family page, and Renee can print it as a recipe card.</div>
+    <div class="cnt">Families see it on the Family page, and the director can print it as a recipe card.</div>
     <div class="hint">The notes and the recipe of the month print on the Monthly menu, and the recipe on What we ate.</div></section>`;
   h+=`<section class="card">${staplesHtml().replace('<div class="binadd" id="staples-card">','<div id="staples-card">')}</section>`;
   $("#main").innerHTML=h;sizeBoxes($("#main"));
@@ -7437,7 +7451,7 @@ function menusHtml(){
     <div class="actions"><label class="btn small ghost" style="cursor:pointer">Add menus<input type="file" id="menu-files" accept="application/pdf,image/*" multiple hidden></label>${menuBusy?`<span class="cnt"><span class="spin"></span> Reading ${menuBusy} menu${menuBusy===1?"":"s"}</span>`:""}</div>`;
   if(menuDraft)h+=menuDraftHtml();
   if(kept.length)h+=`<div class="tlist" style="margin-top:10px">${kept.map(m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
-    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">Kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
+    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">The kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`}).join("")}</div>`;
   return h+staplesHtml()+`</section>`}
 function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
   return `<div class="binadd" style="margin-top:12px"><div class="secthead"><b>${esc(MENU_MONTH(d.month))}</b><span class="cnt">Check each day against the menu before saving</span></div>
@@ -7798,7 +7812,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures.</div>`:""}</div></div>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -8315,7 +8329,7 @@ const ptCfg=()=>Object.assign({test:true,goal:10,testers:[]},participation.get("
 const ptItems=()=>[...participation.values()].filter(x=>x.kind==="item");
 // ways to take part to start from, so posting one is a tap. At home gives working families real options.
 const PT_BANK=[
-  {g:"At school",items:[{type:"task",title:"Garden workday",hours:3,note:"Weeding, planting and watering with the children's small groups."},{type:"task",title:"Animal care morning",hours:2,note:"Feeding and cleaning with the chickens and goats, alongside the children."},{type:"task",title:"Kitchen prep with Kitchen",hours:2,note:"Washing and chopping for lunch in the school kitchen."},{type:"task",title:"Help on a creek walk",hours:2,note:"An extra adult so a small group can walk to the creek."},{type:"task",title:"Wash classroom materials",hours:2,note:"Washing blocks, baskets and loose parts."},{type:"task",title:"Fix and build",hours:3,note:"Repairs around the yards and studios."}]},
+  {g:"At school",items:[{type:"task",title:"Garden workday",hours:3,note:"Weeding, planting and watering with the children's small groups."},{type:"task",title:"Animal care morning",hours:2,note:"Feeding and cleaning with the chickens and goats, alongside the children."},{type:"task",title:"Kitchen prep with the chef",hours:2,note:"Washing and chopping for lunch in the school kitchen."},{type:"task",title:"Help on a creek walk",hours:2,note:"An extra adult so a small group can walk to the creek."},{type:"task",title:"Wash classroom materials",hours:2,note:"Washing blocks, baskets and loose parts."},{type:"task",title:"Fix and build",hours:3,note:"Repairs around the yards and studios."}]},
   {g:"At home",items:[{type:"task",title:"Sew or mend dress-up clothes",hours:2,note:"Pick up a bag at the office and bring it back mended."},{type:"task",title:"Wash classroom laundry",hours:1,note:"Take home a bag of towels and smocks on Friday, bring it back Monday."},{type:"task",title:"Prepare art materials at home",hours:2,note:"Cutting, sorting and bundling materials for the studios."},{type:"task",title:"Translate a family letter",hours:1,note:"For families who read another language."},{type:"task",title:"Make playdough",hours:1,note:"A batch for a classroom, with the recipe from the office."},{type:"task",title:"Collect materials for the children to reuse",hours:1,note:"Clean bottle caps, corks, jar lids, cardboard tubes, fabric scraps and ribbon for the studios. Fulton is nut free, so nothing that held nuts or nut butters, please."}]},
   {g:"Community events",items:[{type:"event",title:"Family potluck",hours:2,counts:true,question:"What dish will you bring?"},{type:"event",title:"Parent information night",hours:2,counts:true},{type:"event",title:"Family workday",hours:4,counts:true},{type:"event",title:"Second Saturday helper",hours:3,counts:true}]},
   {g:"Share a skill",items:[{type:"task",title:"Share a skill or craft with a small group",hours:2,note:"Knitting, woodworking, music, building, anything your family loves to do."},{type:"task",title:"Share a family tradition or recipe",hours:2},{type:"task",title:"Share a song or a language",hours:1}]},
@@ -8399,7 +8413,7 @@ function ptSlotsHtml(c,test){const today=iso(new Date());
     <div class="actions" style="margin:4px 0"><label class="radio"><input type="checkbox" data-ptconfopen="1" ${c.confOpen?"checked":""}><span>Conference sign-ups are open to families</span></label></div>
     ${f?`<div class="ptform" style="margin:8px 0"><b>${f.purpose==="visit"?"Visit times before the first day":"Conference times"}</b>
       <div class="gsrow"><label>Day<input type="date" id="ps-date" value="${esc(f.date||"")}"></label><label>From<input type="time" id="ps-from" value="${esc(f.from||"08:30")}"></label><label>Until<input type="time" id="ps-to" value="${esc(f.to||"11:30")}"></label><label>Minutes each<input type="number" id="ps-min" min="10" step="5" value="${esc(f.min||(f.purpose==="visit"?30:20))}"></label></div>
-      <div class="gsrow"><label>For<select id="ps-class"><option value="">Every class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>With, optional<input type="text" id="ps-with" placeholder="Ex. Corinne"></label></div>
+      <div class="gsrow"><label>For<select id="ps-class"><option value="">Every class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>With, optional<input type="text" id="ps-with" placeholder="Ex. a co-educator"></label></div>
       <div class="actions"><button class="btn small" data-ptslotsave="1">Add these times</button><button class="linkbtn" data-ptslotcancel="1">Cancel</button></div></div>`:""}
     <details ${ss.some(s=>s.purpose==="visit")?"open":""}><summary class="chiprow-label">Visits before the first day</summary>${group("visit")}</details>
     <details ${ss.some(s=>s.purpose==="conference")?"open":""}><summary class="chiprow-label">Conferences</summary>${group("conference")}</details></section>`}
@@ -8427,7 +8441,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.ptcancel){ptForm=null;renderMain();return}
   if(d.pttype&&ptForm){Object.assign(ptForm,ptRead());ptForm.type=d.pttype;if(!ptForm.id)ptForm.counts=d.pttype==="event";renderMain();return}
   if(d.ptedit){ptForm=Object.assign({},participation.get(d.ptedit));renderMain();$(".ptform")?.scrollIntoView({block:"start"});return}
-  if(d.ptcopyshort){const t2=$("#pt-shortlist")?.textContent||"";navigator.clipboard?.writeText(t2).then(()=>toast("Copied. Paste it for Office or into 1Core."),()=>toast("Select the list and copy it."));return}
+  if(d.ptcopyshort){const t2=$("#pt-shortlist")?.textContent||"";navigator.clipboard?.writeText(t2).then(()=>toast("Copied. Paste it for the office or into 1Core."),()=>toast("Select the list and copy it."));return}
   if(d.ptbank){const [i,j]=d.ptbank.split("|").map(Number);const x=(PT_BANK[i]||{}).items?.[j];if(x){ptForm=Object.assign({},x);renderMain()}return}
   if(d.ptapprove){const x=participation.get(d.ptapprove);if(x)ptSave(x.id,Object.assign({},x,{status:"",open:true,test:!!c.test,approvedBy:myName()||"",updatedAt:Date.now()})).then(()=>{renderMain();toast("Posted. Families see it on the Family page.")});return}
   if(d.ptsave&&ptForm){const v=Object.assign({},ptForm,ptRead());if(!v.title){toast("Say what it is.");return}if(v.status==="requested"){v.status="";v.open=true;v.approvedBy=myName()||""}
@@ -9310,7 +9324,7 @@ function projGrowHtml(x){
 function childLines(text,named){
   const out=[];const t=String(text||"");
   if(named)for(const raw of t.split("\n")){const m=raw.trim().match(/^([A-Z][A-Za-z.'’-]{0,24}(?: [A-Z][A-Za-z.'’-]{0,24})?(?: \[\?\])?) - (.{2,})$/);if(m)out.push({name:m[1],words:m[2].trim()})}
-  // the speaker can come before the words, as in Ada says "...", or after them, as in "...," said Remy or "...," Remy said
+  // the speaker can come before the words, as in a name says "...", or after them, as in "...," said a name or "...," a name said
   const SAY="said|says|asked|asks|told|tells|added|adds|wondered|wonders|shouted|shouts|whispered|whispers|explained|explains|replied|replies|called|calls|exclaimed|exclaims|yelled|sang|announced|answered|suggested|declared";
   const notName=/^(She|He|They|We|I|You|It|Then|And|But|So|When|The|A|An|Teacher|Teachers|Everyone|Someone|Mom|Dad)$/;
   const pick=v=>v&&!notName.test(v)?v:"";
@@ -10281,7 +10295,7 @@ function renderThreads(){
 
   // Search
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Search all plans</h2></div>
-    <input type="text" id="tsearch" placeholder="Search every saved plan. Ex. shadows, Tamsin, tunnels, clay" value="${esc(tSearch)}">
+    <input type="text" id="tsearch" placeholder="Search every saved plan. Ex. shadows, a child's name, tunnels, clay" value="${esc(tSearch)}">
     <div id="tresults" style="display:grid;gap:6px"></div></section>`;
   $("#main").innerHTML=h;
   sizeBoxes($("#main"));
@@ -10815,7 +10829,7 @@ function readError(err){
 // every TREE reading call goes through here, so a dropped connection, a busy moment, or a garbled answer is retried before anything is marked as failed
 /* ---------- Proofread ----------
    One Proofread button in the top bar reads everything written on the page. Before writing leaves TREE, by posting to the
-   Family page, sending a plan to Renee, printing or copying for Kaymbu, TREE reads it first and shows any fixes. A fix shows
+   Family page, sending a plan to the director, printing or copying for Kaymbu, TREE reads it first and shows any fixes. A fix shows
    what is there and what it becomes; nothing changes until it is accepted. Only spelling, capitals, punctuation, grammar and
    the school's words are fixed. */
 let proof=null,proofSels=[],proofClean="",proofRoot=null;
@@ -10888,7 +10902,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
   if(d.proofno!=null){const f=proof.fixes[+d.proofno];f.done=true;f.left=true;proofPaint();return}
   if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo||proof.save){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
   if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
-// the moments writing leaves TREE: posting to the Family page, sending a plan to Renee, printing, copying for Kaymbu
+// the moments writing leaves TREE: posting to the Family page, sending a plan to the director, printing, copying for Kaymbu
 const PROOF_GATES='#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
 document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
@@ -11603,7 +11617,7 @@ const AAM_TITLES=["All About {first}","My family","Things I like","Foods I like"
 // the office's checklist for a new family, ticking itself where TREE already knows, then the class team's steps
 const OFFICE_STEPS=[["o_1core","Accepted in 1Core, with schedule and first day set"],["o_tree","Added to TREE with the first day and parents' emails",c=>!!c.enrollDate&&(c.parents||[]).some(p=>p&&has(p.email))],["o_link","Family Page link sent"],["o_kaymbu","Family added to Kaymbu, in the child's class"],
   ["o_visit","Visit time booked",c=>!!c.visit],["o_print","Forms printed for the visit",c=>!!(c.onboarding||{}).printed],["o_signed","State forms, food allergy page and admission agreement signed",c=>!!(c.onboarding||{}).paperwork],["o_701","Original Physician's Report received"],["o_286","Immunization record received"],
-  ["o_allergy","Allergies and dietary needs shared with Kitchen and the class team"],["o_book","All About Me book printed and laminated"]];
+  ["o_allergy","Allergies and dietary needs shared with the kitchen and the class team"],["o_book","All About Me book printed and laminated"]];
 const TEAM_STEPS=[["questionnaire","Read the Family Questionnaire"],["welcomeCall","Welcome phone call with the family"],["visitDone","Visit completed and notes written"],["thankYou","Thank you sent after the visit"],["teamShared","Shared what we learned with the team"],["labels","Labels made for cup, cubby and cot"],["firstDay","First day at school"]];
 function officeChecklistHtml(c){const oc=c.officeChecks||{},ob=c.onboarding||{};
   const row=(on,auto,t,attr)=>`<label class="radio octick" style="margin:0"><input type="checkbox" ${attr} ${on?"checked":""} ${auto?"disabled":""}><span>${esc(t)}${auto?` <span class="cnt">by TREE</span>`:""}</span></label>`;
@@ -11802,7 +11816,7 @@ function signinsHtml(){
   if(signins.error)return `<section class="card"><div class="lbl">Sign-ins</div><div class="hint warnline">${esc(signins.error)}</div></section>`;
   const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
-    <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in, such as Kitchen's, reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
+    <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
       ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
@@ -11865,7 +11879,7 @@ function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastA
   const when=at?new Date(at).toLocaleString("en-US",{weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
   const old=at&&Date.now()-at>9*86400000;
   return `<section class="card"><div class="lbl">Backups</div>
-    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once Renee has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
+    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every Monday evening once the director has set it up."}${old?" The last one is more than a week old, so check the mailbox script.":""}</div></div></div>
     <div class="hint">Every Monday evening the whole set of TREE's records is kept in Google Drive, and the newest 26 are kept. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div></section>`}
 /* the staff room display, a screen that turns slowly through what is alive in TREE. The director makes its link here,
    opens it once on the staff room computer, and can make a new link or turn it off, which stops the old one at once. */
@@ -11979,7 +11993,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
-  if(t.id==="prog-reset-yes"){applyProgram(JSON.parse(JSON.stringify(PDEF)));saveProgram();renderSettings();toast("Original lists restored.");return}
+  if(t.id==="prog-reset-yes"){const keep=new Map(GROUPS.map(g=>[g.name,g.educator]));const d0=JSON.parse(JSON.stringify(PDEF));(d0.groups||[]).forEach(g=>{if(!g.educator&&keep.get(g.name))g.educator=keep.get(g.name)});applyProgram(d0);saveProgram();renderSettings();toast("Original lists restored.");return}
 });
 document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;
   if(t.dataset.gname!=null){const n=t.value.trim();if(n){GROUPS[+t.dataset.gname].name=n;saveProgram()}return}

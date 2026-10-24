@@ -55,7 +55,6 @@ const chip=(s,t)=>`<span class="stchip ${s}">${H(t)}</span>`;
 const card=(title,inner,side)=>`<section class="card"><div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">${H(title)}</h3>${side?`<span class="cnt">${side}</span>`:""}</div>${inner}</section>`;
 const printBar=k=>`<div class="actions" style="margin:0"><button class="btn small ghost" data-stprint="${k}">Print</button><button class="linkbtn" data-stword="${k}">Word</button></div>`;
 const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub" style="max-width:76ch">${sub}</div>`:""}</div></div>`;
-const comingSoon=t=>`<span class="stchip soonish">${H(t||"Coming soon")}</span>`;
 
 /* ---------- a little Markdown, for the handbook and the pieces ---------- */
 function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>")
@@ -93,7 +92,12 @@ async function loadPeople(){const r=await api("people");st.people=r.people;st.dr
 async function loadPd(){if(!st.pd)st.pd=await api("pd");return st.pd}
 async function loadHb(force){if(!st.hb||force)st.hb=await api("handbook");return st.hb}
 const ITEMS=()=>B.defs.items,PAPERS=()=>B.defs.papers;
-function itemState(it,rec){if(!rec||!rec.date)return {s:"missing",t:"Not on file yet",ex:""};
+// Fulton's own trainings are for everyone who cares for children, so the office and the kitchen do not see them
+const careFor=p=>!["Office","Kitchen","Staff","Director"].includes(p.role||whoRole(p))&&!((p.profile||{}).role==="staff");
+const itemsFor=p=>ITEMS().filter(i=>!i.fulton||careFor(p));
+// the CCLD video and the active supervision handouts from the school's Google Drive
+const asLinks=()=>{const a=B.activeSupervision;if(!a)return "";return `<div class="stfiles">${a.video?`<a class="linkbtn" href="${H(a.video.url)}" target="_blank" rel="noopener">Watch ${H(a.video.title)}</a>`:""}${(a.handouts||[]).map(x=>`<a class="linkbtn" href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>`).join("")}</div>`};
+function itemState(it,rec){if(!rec||!rec.date)return it.fulton?{s:"soon",t:"Due",ex:""}:{s:"missing",t:"Not on file yet",ex:""};
   const ex=rec.expires||(it.months?addMonths(rec.date,it.months):"");if(!ex)return {s:"ok",t:"In place",ex:""};
   const left=daysTo(today(),ex),lead=B.school.remindDays||30;
   return left<0?{s:"out",t:"Expired "+fd(ex),ex}:left<=lead?{s:"soon",t:"Renew by "+fd(ex),ex}:{s:"ok",t:"Current to "+fd(ex),ex}}
@@ -138,17 +142,21 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="st27")return await page27(my);
     if(v==="stdrill")return await pageDrills(my);
     if(v==="stfiles")return await pageFiles(my);
+    // growth, the journal, check-ins, Proud Moments and PD days live in the second half of this file
+    if(window.TreeGrowth&&TreeGrowth.views.includes(v))return await TreeGrowth.render(v,my);
   }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
 // only the page opened last draws, so a slow page never covers the one the educator moved to
 let RT=0;
 const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=window.scrollY;m.innerHTML=h;if(T._keep){window.scrollTo(0,y);T._keep=false}};
 const redraw=()=>{T._keep=true;T.render(view)};
+// what the growth pages share with these
+T._={api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
-  const rows=ps.map(p=>{const sts=ITEMS().map(it=>itemState(it,(p.items||{})[it.k]).s);const ok=sts.filter(s=>s==="ok").length,soon=sts.filter(s=>s==="soon").length,outn=sts.filter(s=>s==="out").length;
+  const rows=ps.map(p=>{const sts=itemsFor(p).map(it=>itemState(it,(p.items||{})[it.k]).s);const ok=sts.filter(s=>s==="ok").length,soon=sts.filter(s=>s==="soon").length,outn=sts.filter(s=>s==="out").length;
     return `<tr data-stperson="${H(p.name)}" style="cursor:pointer"><td><b>${H(p.name)}</b>${p.newHire?` ${chip("soonish","New, New Educator section only")}`:p.newEd?` ${chip("soonish","New educator")}`:""}</td><td>${H(p.role)}</td><td>${H(p.room?p.room+" Class":"")}</td>
-      <td>${ok} of ${ITEMS().length} in place${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
+      <td>${ok} of ${itemsFor(p).length} in place${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
   const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section"}[k]));
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
@@ -158,11 +166,11 @@ function addNewHtml(){const names=B.people||[];
   return card("Add a new educator",st.adding?`<div class="hint">They sign in with their first name before their first day and reach only the New Educator section. You turn on full access once their clearances are in.</div>
     <div class="kfields"><label>First name<input type="text" id="stn-name" placeholder="First name"></label><label>Class<select id="stn-room"><option value="">No Class</option>${CLASSROOMS.map(r=>`<option>${H(r)}</option>`).join("")}</select></label>
       <label>Role<select id="stn-role"><option value="educator">Educator</option><option value="apprentice">Apprentice</option></select></label><label>Start date<input type="date" id="stn-start"></label>
-      <label>Go-to team member<select id="stn-goto"><option value="">Choose later</option>${names.map(n=>`<option>${H(n)}</option>`).join("")}</select></label></div>
+</div><div class="hint">${B.goTo?H(B.goTo)+" is the go-to person for every new educator.":"Name the go-to person for new educators in Settings."}</div>
     <div class="actions"><button class="btn small" data-stnew="add">Add</button><button class="linkbtn" data-stnew="cancel">Cancel</button></div>`:`<div class="actions" style="margin:0"><button class="btn small ghost" data-stnew="open">Add a new educator</button></div>`)}
 function groupHtml(){const names=B.people||[];
   return card("Record a training for a group",st.group?`<div class="hint">For an in-house Pediatric First Aid and CPR class, or the yearly emergency and disaster plan training. Everyone chosen gets the same date, and the class roster is kept with each record.</div>
-    <div class="kfields"><label>Training<select id="stg-item">${ITEMS().filter(i=>["cpr","eplan","hsa","hs16","mandated","water"].includes(i.k)).map(i=>`<option value="${i.k}">${H(i.label)}</option>`).join("")}</select></label><label>Date<input type="date" id="stg-date" value="${today()}"></label></div>
+    <div class="kfields"><label>Training<select id="stg-item">${ITEMS().filter(i=>["cpr","eplan","hsa","hs16","mandated","water","activesup"].includes(i.k)).map(i=>`<option value="${i.k}">${H(i.label)}</option>`).join("")}</select></label><label>Date<input type="date" id="stg-date" value="${today()}"></label></div>
     <div class="chips" style="margin-top:8px">${names.map(n=>`<button class="chip on" type="button" data-stgname="${H(n)}">${H(n)}</button>`).join("")}</div>
     <div class="actions"><span class="cnt" id="stg-roster">No roster yet</span><button class="btn small ghost" data-stgroup="roster">Upload the roster</button><button class="btn small" data-stgroup="save">Record for everyone chosen</button><button class="linkbtn" data-stgroup="cancel">Cancel</button></div>`:
     `<div class="actions" style="margin:0"><button class="btn small ghost" data-stgroup="open">Record a group training</button></div>`)}
@@ -170,8 +178,8 @@ function groupHtml(){const names=B.people||[];
 /* a records page, the educator's own or, for the director, anyone's */
 async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc||st.doc.name!==who||!T._keep)await loadPerson(who);const p=P(),dir=D(),mine=who===meName();
   const pr=p.profile||{};const lead=B.school.remindDays||30;
-  const itemsHtml=ITEMS().map(it=>{const r=(p.items||{})[it.k]||{};const s=itemState(it,r);
-    return `<div class="strow"><div class="sttop"><b>${H(it.label)}</b>${chip(s.s,s.t)}</div><div class="cnt">${it.note?H(it.note)+". ":""}<a href="${REGS}" target="_blank" rel="noopener">${H(it.reg)}</a></div>
+  const itemsHtml=itemsFor(p).map(it=>{const r=(p.items||{})[it.k]||{};const s=itemState(it,r);
+    return `<div class="strow"><div class="sttop"><b>${H(it.label)}</b>${chip(s.s,s.t)}</div><div class="cnt">${it.note?H(it.note)+". ":""}${it.fulton?"A Fulton training":`<a href="${REGS}" target="_blank" rel="noopener">${H(it.reg)}</a>`}</div>${it.fulton?asLinks():""}
       <div class="kfields"><label>Date${it.k==="hs16"?" completed":""}<input type="date" data-stitem="${it.k}" data-f="date" value="${H(r.date||"")}"></label>${it.months||it.k==="water"?`<label>Expires, if the card says<input type="date" data-stitem="${it.k}" data-f="expires" value="${H(r.expires||"")}"></label>`:""}</div>
       <div class="stfiles">${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="item|${it.k}">Upload a photo or PDF</button>${dir?`<button class="linkbtn" data-stlink="item|${it.k}">Link one in Drive</button>`:""}</div></div>`}).join("");
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};
@@ -193,22 +201,22 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
     <div class="kfields" style="margin-top:8px"><label>Course<input type="text" id="sth-title" placeholder="Name of the course"></label><label>Date<input type="date" id="sth-date" value="${today()}"></label><label>Hours<input type="number" id="sth-hours" min="0.25" step="0.25" value="1"></label></div>
     <label class="radio" style="margin-top:6px"><input type="checkbox" id="sth-ok"><span>From a Department-approved source</span></label>
     <div class="actions"><button class="btn small ghost" data-sthadd="1">Add the hours</button><span class="cnt">Then upload the certificate from the course's line.</span></div>`;
-  const pcs=(await loadPd().catch(()=>({licensing:[]}))).licensing||[];const doneN=pcs.filter(x=>(p.pd&&p.pd.done||{})[x.id]).length;
+  const pcs=careFor(p)?((await loadPd().catch(()=>({licensing:[]}))).licensing||[]):[];const doneN=pcs.filter(x=>(p.pd&&p.pd.done||{})[x.id]).length;
   const focus=(p.focus||[]).filter(f=>!(f.educatorOk&&f.directorOk)).concat((p.focus||[]).filter(f=>f.educatorOk&&f.directorOk));
-  const goTo=p.goTo||pr.goTo,paired=p.paired||[];
+  const goTo=p.goTo||"",paired=p.paired||[];
   draw(my,`${head(mine?"My records":"Records",mine?"My records":p.name+"'s records",`Dates and certificates only, never health details. Only ${mine?"you":H(p.name)} and the director see this page. TREE reminds ${mine?"you":"them"} and the director ${H(lead)} days before anything expires.`)}
     ${!mine&&dir?`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="stteam">‹ All educators</button></div>`:""}
     ${card("About",`<div class="cnt">${H([whoRole(p),roomName(p),pr.startDate?"Started "+fd(pr.startDate):"",pr.planHour?"Monday planning hour "+hourText(pr.planHour):""].filter(Boolean).join(", "))}</div>
-      ${goTo?`<div style="margin-top:6px">Go-to team member, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to team member. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length} of 4 check-ins so far</span></div>`).join(""):""}
+      ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
     ${card("Records and certificates",itemsHtml)}
     ${card("Immunizations",`<div class="hint">California requires everyone who works at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995. Records and exemptions are seen only by ${mine?"you":"the educator"} and the director.</div>${imm}`)}
     ${card("Early childhood units",units)}
     ${card("Continuing hours, this school year",hours)}
-    ${card("Licensing at Fulton",`<div class="actions" style="margin:0"><span class="stchip ${doneN===pcs.length&&pcs.length?"ok":"missing"}">${doneN} of ${pcs.length} pieces read</span><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Open the pieces</button></div>`)}
+    ${careFor(p)?card("Licensing at Fulton",`<div class="actions" style="margin:0"><span class="stchip ${doneN===pcs.length&&pcs.length?"ok":"missing"}">${doneN} of ${pcs.length} pieces read</span><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Open the pieces</button></div>`):""}
     ${dir&&!mine?licensingListHtml(p,pcs):""}
     ${focus.length?card("Suggested Focus Until Next Time",`<div class="hint">A licensing item marked Let's review together becomes a suggested focus, which ${mine?"you":"the educator"} and the director confirm together.</div>${focus.map(f=>`<div class="strow"><div class="sttop"><b>${H(f.label)}</b>${f.educatorOk&&f.directorOk?chip("ok","Confirmed together"):chip("soonish","Suggested")}</div>
-      <div class="actions" style="margin:0">${(mine||!dir)?(!f.educatorOk?`<button class="btn small ghost" data-stfocus="${H(f.id)}">Confirm</button>`:`<span class="cnt">You confirmed ${H(fms(f.educatorOk))}</span>`):`<span class="cnt">${f.educatorOk?"Educator confirmed":"Waiting for the educator"}</span>`}${dir?`<button class="btn small ghost" data-stfocus="${H(f.id)}">${f.directorOk?"Undo your confirmation":"Confirm as director"}</button>`:""}</div></div>`).join("")}<div class="cnt" style="margin-top:6px">The full Focus Until Next Time, with check-ins, is ${comingSoon().replace(/<[^>]+>/g,"").toLowerCase()} in TREE.</div>`):""}`)}
+      <div class="actions" style="margin:0">${(mine||!dir)?(!f.educatorOk?`<button class="btn small ghost" data-stfocus="${H(f.id)}">Confirm</button>`:`<span class="cnt">You confirmed ${H(fms(f.educatorOk))}</span>`):`<span class="cnt">${f.educatorOk?"Educator confirmed":"Waiting for the educator"}</span>`}${dir?`<button class="btn small ghost" data-stfocus="${H(f.id)}">${f.directorOk?"Undo your confirmation":"Confirm as director"}</button>`:""}</div></div>`).join("")}${B.can&&B.can.growth?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-tview="stci">Focus Until Next Time and check-ins</button></div>`:""}`):""}`)}
 const whoRole=p=>p.role||(B.whosWho.find(w=>w.name===p.name)||{}).role||"Educator";
 const roomName=p=>{const r=p.room||(B.whosWho.find(w=>w.name===p.name)||{}).room||(p.name===meName()?B.me.room:"");return r?r+" Class":""};
 const hourText=h=>{const [a,b]=h.split(":").map(Number);return `${(a+11)%12+1}${b?":"+String(b).padStart(2,"0"):""} ${a<12?"AM":"PM"}`};
@@ -264,13 +272,13 @@ async function pageNew(my){const dir=D();let who=meName();
         :x.ack?`<button class="btn small ghost" data-tview="sthb">Read it and say so</button>${fileList(p,r.files,who)}<button class="linkbtn" data-stup="paper|${x.k}">Or upload the signed page</button>`
         :`${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="paper|${x.k}">Upload the completed form</button>${!blank&&!x.director&&x.k!=="immun"?`<span class="cnt">${x.k==="livescan"?"The director arranges Live Scan.":"Ask the director for this form."}</span>`:""}`}</div></div>`};
   const idr=pw.idseen||{};
-  const ck=checklist(p,pcs,start);const goTo=pr.goTo;
+  const ck=checklist(p,pcs,start);const goTo=p.goTo||B.goTo||"";
   draw(my,`${head("New Educator",dir?who+", New Educator":"Welcome to Fulton",dir?`What ${H(who)} sees in their New Educator section, with your marks.`:"Onboarding is designed so you arrive on your first day knowing what to expect, with your paperwork in order and a colleague ready to support you. Everything you complete here lands on your records page, so nothing is entered twice.")}
     ${dir?`<div class="actions" style="margin:0 0 10px">${st.people.filter(x=>x.newHire||x.newEd).map(x=>`<button class="pill" aria-pressed="${x.name===who}" data-stnewwho="${H(x.name)}">${H(x.name)}</button>`).join("")}</div>`:""}
     ${card("Your first two months",`<div class="cnt">${H([start?"Start date "+fd(start):"The director adds your start date",starting?"Starting-point conversation with the director around "+fd(starting):""].filter(Boolean).join(". "))}${start?".":""}</div>
-      ${goTo?`<div style="margin-top:6px">Your go-to team member is <b>${H(goTo)}</b>, someone from your own Class team you work beside every day. They answer the questions that come up on the floor, show you how routines really run, and check in briefly at the end of each of your first weeks.</div>`:`<div class="cnt" style="margin-top:6px">The director pairs you with a go-to team member from your Class.</div>`}
+      ${goTo?`<div style="margin-top:6px"><b>${H(goTo)}</b> is the go-to person for every new educator. ${dir?"She answers their questions, walks them through paperwork and routines, and checks in briefly at the end of each of their first weeks. The educators on their Class team help on the floor every day.":`She answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks. The educators on your Class team help you on the floor every day. You can bring ${H(goTo)} into your starting-point conversation if you like.`}</div>`:`<div class="cnt" style="margin-top:6px">The director names the go-to person in Settings.</div>`}
       ${dir?`<div class="actions">${(st.people.find(x=>x.name===who)||{}).newHire?`<button class="btn small" data-staccess="full" data-who="${H(who)}">Turn on full access to the school, the children and their work</button>`:`<span class="cnt">Full access is on.</span><button class="linkbtn" data-staccess="limit" data-who="${H(who)}">Limit to the New Educator section</button>`}</div>`:""}`)}
-    ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.soon?comingSoon():c.done?chip("ok",c.note||"Done"):chip("missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
+    ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.done?chip("ok",c.note||"Done"):chip(c.note==="Due"?"soon":"missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto&&!dir?"":c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}${c.links?asLinks():""}${c.view&&B.can&&B.can.growth?`<button class="linkbtn" data-tview="${c.view}">Open</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
     ${welcomeHtml(p,dir)}
     ${card("Who's who",`<div class="tablewrap"><table class="grid2" style="min-width:360px"><thead><tr><th>Name</th><th>Role</th><th>Class</th></tr></thead><tbody>${B.whosWho.map(w=>`<tr><td><b>${H(w.name)}</b></td><td>${H(w.role)}</td><td>${H(w.room?w.room+" Class":"")}</td></tr>`).join("")}</tbody></table></div>
       ${!dir?`<div class="actions">${(p.pd&&p.pd.read||{}).whoswho?chip("ok","Read"):`<button class="btn small ghost" data-stread="whoswho">I have read Who's who</button>`}</div>`:""}`)}
@@ -300,17 +308,20 @@ function checklist(p,pcs,start){const pw=p.paperwork||{},rd=(p.pd&&p.pd.read)||{
   return [{label:C[0],done:!!papersDone},{label:C[1],done:!!imm},{label:C[2],done:!!rd.welcome},{label:C[3],done:!!rd.whoswho},{label:C[4],done:how.length&&howDone===how.length,note:`${howDone} of ${how.length}`},
     {label:C[5],done:!!(((p.items||{}).mandated||{}).files||[]).length},{label:C[6],done:lic.length&&licDone===lic.length,note:`${licDone} of ${lic.length}`},
     {label:"Licensing and safety review with the director",done:(L.length&&marked===L.length)||!!(p.checklist||{}).review8,note:`${marked} of ${L.length} marked`,dirTick:true,key:"review8"},
-    {label:C[8],done:ci>=4,note:`${ci} of 4`,goto:true},{label:C[9],soon:true},
-    {label:C[10].replace(/^Starting-point conversation, scheduled two months from the start date/,"Starting-point conversation"),done:!!(p.checklist||{}).starting,note:sp?"Scheduled for "+fd(sp):"Once the start date is set",dirTick:true,key:"starting"}]}
+    {label:"Active Supervision Training",done:!!((p.items||{}).activesup||{}).date,note:((p.items||{}).activesup||{}).date?"Done "+fd(p.items.activesup.date):"Due",links:true},
+    {label:"First weeks check-ins with "+(p.goTo||B.goTo||"the go-to person"),done:ci>=4,note:ci?`Noted ${ci===1?"once":ci+" times"}`:"Not yet",goto:true},
+    {label:C[9],done:!!p.planStarted,note:p.planStarted?"Started":"Not yet",view:"stplan"},
+    {label:C[10].replace(/^Starting-point conversation, scheduled two months from the start date/,"Starting-point conversation"),done:!!(p.checklist||{}).starting,note:sp?(sp<=today()?"Due now, from "+fd(sp):"Scheduled for "+fd(sp)):"Once the start date is set",dirTick:true,key:"starting"}]}
 function seqHtml(wk,pcs,p){const dn=(p.pd&&p.pd.done)||{};const first=(pcs.licensing||[]).filter(x=>x.week===1);
-  const W=[[1,"Week one",`Welcome and philosophy, Who's who, the TREE How To guides, and the first Licensing at Fulton pieces on ${kList(first.map(x=>x.title.toLowerCase()))}.`,[["stnew","Welcome"],["stpd|howto","TREE How To"],["stpd|licensing","Licensing at Fulton"]]],
-    [2,"Week two","The rest of Licensing at Fulton, and keeping your first observations in TREE with your go-to team member.",[["stpd|licensing","Licensing at Fulton"]]],
-    [3,"Weeks three and four","The Language of Learning, then the reflective journal, written weekly from here on.",[]],
-    [5,"Weeks five and six","Documentation at Fulton, and writing your first curriculum plan with your team.",[]],
-    [7,"Weeks seven and eight","Beyond Discipline, the Educator Reflection and Growth Plan, and the starting-point conversation with the director at two months.",[]]];
+  const g=B.can&&B.can.growth;
+  const W=[[1,"Week one","Welcome and philosophy, Who's who, the TREE How To guides, and the first Licensing at Fulton pieces on supervision, with the CCLD active supervision video, ratios and emergencies.",[["stnew","Welcome"],["stpd|howto","TREE How To"],["stpd|licensing","Licensing at Fulton"]]],
+    [2,"Week two","The rest of Licensing at Fulton, and keeping your first observations in TREE alongside your Class team.",[["stpd|licensing","Licensing at Fulton"]]],
+    [3,"Weeks three and four","The Language of Learning, then the reflective journal, written weekly from here on.",[["stpd|m:language","The Language of Learning"],g?["stjour","Journal"]:null]],
+    [5,"Weeks five and six","Documentation at Fulton, and writing your first curriculum plan with your team.",[["stpd|m:documentation","Documentation at Fulton"],["plans","Plans"]]],
+    [7,"Weeks seven and eight","Beyond Discipline, the Educator Reflection and Growth Plan, and the starting-point conversation with the director at two months.",[["stpd|m:beyond","Beyond Discipline"],g?["stplan","Growth Plan"]:null,g?["stgrow","Starting point"]:null]]].map(w=>[w[0],w[1],w[2],w[3].filter(Boolean)]);
   const now=wk>0?W.filter(w=>w[0]<=wk).pop():null;
   return `<div class="hint">One short step at a time, mostly during nap.</div><div class="stseq" style="margin-top:8px">${W.map(w=>`<div class="${w===now?"now":""}"><div class="sttop" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${H(w[1])}</b>${w===now?chip("soonish","Now"):""}</div><div class="cnt">${H(w[2])}</div>
-    <div class="actions" style="margin:4px 0 0">${w[3].map(([v,l])=>`<button class="btn small ghost" data-tview="${v.split("|")[0]}" ${v.includes("|")?`data-stmod="${v.split("|")[1]}"`:""}>${H(l)}</button>`).join("")}${w[0]>=3?comingSoon("The modules and journal are coming soon"):""}</div></div>`).join("")}</div>`}
+    <div class="actions" style="margin:4px 0 0">${w[3].map(([v,l])=>`<button class="btn small ghost" data-tview="${v.split("|")[0]}" ${v.includes("|")?`data-stmod="${v.split("|")[1]}"`:""}>${H(l)}</button>`).join("")}</div></div>`).join("")}</div>${g?"":`<div class="hint" style="margin-top:6px">The journal and the Growth Plan open once the director turns on growth in Settings.</div>`}`}
 
 /* the PD library */
 const MODULES=[["The Educator as Researcher","Fulton's project cycle from informal observation to reflection, and writing plans that grow from observation.",""],["Documentation at Fulton","Writing observations that separate noticing from wondering, and documentation that makes children's thinking visible.",""],
@@ -318,9 +329,10 @@ const MODULES=[["The Educator as Researcher","Fulton's project cycle from inform
   ["The Home and School Partnership","Daily communication, conferences, and difficult conversations.",""],["Developmental Deep Dive","Development in the Twos and Threes and in the Fours and Fives, in a mixed-age community.",""],
   ["Spaces That Teach","The atelier, the outdoor classroom and the farm as spaces that teach.",""],["The Art of the Meeting","Meeting time as a place for listening and making space for others' words and bodies.",""],
   ["TREE How To","Short guides for keeping observations, writing plans and making documentation.","howto"],["Licensing at Fulton","Each Title 22 requirement and Fulton procedure in short pieces for nap time, with the official trainings linked.","licensing"]];
-async function pagePd(my){const pcs=await loadPd();const mine=meName();if(!st.doc||st.doc.name!==mine)await loadPerson(mine);const p=P();const dn=(p.pd&&p.pd.done)||{};
+async function pagePd(my){if(window.TreeGrowth)await TreeGrowth.ready().catch(()=>{});const pcs=await loadPd();const mine=meName();if(!st.doc||st.doc.name!==mine)await loadPerson(mine);const p=P();const dn=(p.pd&&p.pd.done)||{};
   const pending=LS.get("tree.stmod","");if(pending){st.mod=pending;st.piece="";LS.set("tree.stmod",null)}
   if(st.piece){const x=[...pcs.licensing,...pcs.howto].find(y=>y.id===st.piece);if(x)return pieceHtml(my,x,dn)}
+  if(st.mod&&st.mod.startsWith("m:")&&window.TreeGrowth)return TreeGrowth.module(my,st.mod.slice(2));
   if(st.mod){const list=pcs[st.mod]||[];const isLic=st.mod==="licensing";const nd=list.filter(x=>dn[x.id]).length;
     const grp=(t,f)=>{const g=list.filter(f);return g.length?`<h4 style="margin:10px 0 2px">${H(t)}</h4>${g.map(x=>`<div class="prow"><button class="linkbtn" style="font-size:15px;text-align:left" data-stpiece="${H(x.id)}">${H(x.title)}</button><span class="actions" style="margin:0"><span class="cnt">About ${x.minutes} minutes</span>${dn[x.id]?chip("ok","Read"):""}</span></div>`).join("")}`:""};
     draw(my,head("PD library",isLic?"Licensing at Fulton":"TREE How To",isLic?"Each Title 22 requirement and Fulton procedure in short pieces for nap time, about five to ten minutes each. Each piece gives a plain summary linked to the regulation, how Fulton carries it out, and one question answered in your own words, never scored. A finished piece shows as read on the licensing list, and its minutes count toward your yearly hours.":"Short guides for keeping observations, writing plans and making documentation. A finished guide counts toward your yearly hours.")+
@@ -330,8 +342,7 @@ async function pagePd(my){const pcs=await loadPd();const mine=meName();if(!st.do
   const sec=B.me.newEd||D();
   draw(my,head("PD library","PD library","Each module holds a short reading, examples from Fulton's own documentation, a practice to try in your own Class that week, and one reflection on what happened when you tried it. You choose the order. Finishing a module logs its hours on your records page.")+
     (sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
-    card("Modules",`<div class="stgrid">${MODULES.map(([t,d,k],i)=>{const n=k?(pcs[k]||[]).length:0,nd=k?(pcs[k]||[]).filter(x=>dn[x.id]).length:0;
-      return `<div class="stmod"><div class="cnt">${i+1}</div><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0">${k?`<button class="btn small ghost" data-stmod="${k}">Open</button><span class="cnt">${nd} of ${n} read</span>`:comingSoon()}</div></div>`}).join("")}</div>`))}
+    (window.TreeGrowth?await TreeGrowth.libraryHtml(pcs,dn):card("Modules",`<div class="stgrid">${MODULES.filter(m=>m[2]).map(([t,d,k])=>`<div class="stmod"><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${k}">Open</button></div></div>`).join("")}</div>`)))}
 function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i=list.indexOf(x),nx=list[i+1];
   const sec=h=>x.sections.find(s=>s.heading.toLowerCase().startsWith(h));const q=sec("one question");
   const hbs=x.handbook||[];
@@ -368,27 +379,30 @@ const hbEditor=s=>`<div class="hint">Write in plain text. A line starting with #
   <div class="actions"><button class="btn" data-sthbsave="${H(s.id)}">Save</button><button class="linkbtn" data-sthbcancel="1">Cancel</button>${s.id?`<button class="linkbtn" data-sthbrm="${H(s.id)}">Remove this section</button>`:""}</div>`;
 
 /* ---------- Settings, the director's ---------- */
-T.settings=async function(el){try{await boot(true);await loadPeople()}catch(e){el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
+T.settings=async function(el){try{await boot(true);await loadPeople();if(window.TreeGrowth)await TreeGrowth.ready().catch(()=>{})}catch(e){el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
   const o=B.open,ps=st.people;const names=ps.map(p=>p.name);
   const sw=(k,l,d)=>`<div class="prow"><div><b>${H(l)}</b><div class="cnt">${H(d)}</div></div><div class="seg" role="group" aria-label="${H(l)}"><button data-stsw="${k}|1" aria-pressed="${!!o[k]}">On</button><button data-stsw="${k}|0" aria-pressed="${!o[k]}">Off</button></div></div>`;
   const rm=B.school.remind||{};
   el.innerHTML=`<div class="lbl">Educators</div><div class="hint">Each part shows only to you until you turn it on for educators. A new educator reaches only the New Educator section until you turn on full access.</div>
-    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","Licensing at Fulton and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The new and revised sections, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}
+    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The new and revised sections, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
+    <div class="prow"><div><b>Go-to person</b><div class="cnt">One go-to person for every new educator. The Class team still helps on the floor.</div></div><select id="sts-goto"><option value="">None</option>${ps.filter(p=>p.role!=="Director"&&p.role!=="Kitchen"&&!(p.profile||{}).neverGoTo).map(p=>`<option ${B.school.goTo===p.name?"selected":""}>${H(p.name)}</option>`).join("")}</select></div>
     <div class="prow"><div><b>Records reminders</b><div class="cnt">Always on for every educator. Only you change them.</div></div><label class="cnt">Days ahead <input type="number" id="sts-days" min="7" max="120" value="${H(B.school.remindDays||30)}" style="width:70px"></label></div>
     <div class="chips" style="margin-top:6px">${Object.entries(B.defs.remind).map(([k,l])=>`<button class="chip ${rm[k]!==false?"on":""}" type="button" data-stremind="${k}">${H(l)}</button>`).join("")}</div>
-    <div class="tablewrap" style="margin-top:12px"><table class="grid2" style="min-width:720px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Monday planning hour</th><th>Start date</th><th>Go-to team member</th></tr></thead><tbody>
-    ${ps.map(p=>{const pr=p.profile||{};return `<tr><td><b>${H(p.name)}</b>${p.newHire?`<div class="cnt">New Educator section only</div>`:""}</td><td>${p.role==="Director"||p.role==="Kitchen"||p.role==="Office"?H(p.role):`<select data-stprof="${H(p.name)}|role"><option value="educator" ${pr.role!=="apprentice"?"selected":""}>Educator</option><option value="apprentice" ${pr.role==="apprentice"?"selected":""}>Apprentice</option></select>`}</td>
+    <div class="tablewrap" style="margin-top:12px"><table class="grid2" style="min-width:980px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Monday planning hour</th><th>Check-ins</th><th>Journal</th><th>Start date</th></tr></thead><tbody>
+    ${ps.map(p=>{const pr=p.profile||{};const staffRole=pr.role==="staff"||p.role==="Kitchen"||p.role==="Director";return `<tr><td><b>${H(p.name)}</b>${p.newHire?`<div class="cnt">New Educator section only</div>`:""}</td><td>${p.role==="Director"?"Director":`<select data-stprof="${H(p.name)}|role">${[["educator","Educator"],["apprentice","Apprentice"],["staff","Staff, records only"]].map(([v,l])=>`<option value="${v}" ${(pr.role||"educator")===v||(v==="educator"&&pr.role==="atelierista")?"selected":""}>${l}</option>`).join("")}</select>`}</td>
       <td><select data-stprof="${H(p.name)}|room"><option value="">None</option>${CLASSROOMS.map(r=>`<option value="${H(r)}" ${p.room===r?"selected":""}>${H(r)} Class</option>`).join("")}</select></td>
-      <td><select data-stprof="${H(p.name)}|planHour"><option value="">Not set</option>${["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"].map(h=>`<option value="${h}" ${pr.planHour===h?"selected":""}>${hourText(h)}</option>`).join("")}</select></td>
-      <td><input type="date" data-stprof="${H(p.name)}|startDate" value="${H(pr.startDate||"")}"></td>
-      <td><select data-stprof="${H(p.name)}|goTo"><option value="">None</option>${names.filter(n=>n!==p.name).sort((a,b)=>((ps.find(x=>x.name===b)||{}).room===p.room)-((ps.find(x=>x.name===a)||{}).room===p.room)||a.localeCompare(b)).map(n=>`<option ${pr.goTo===n?"selected":""}>${H(n)}</option>`).join("")}</select></td></tr>`}).join("")}</tbody></table></div>
+      <td>${staffRole?"":`<select data-stprof="${H(p.name)}|planHour"><option value="">Not set</option>${["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","13:00","14:00","15:00","16:00"].map(h=>`<option value="${h}" ${pr.planHour===h?"selected":""}>${hourText(h)}</option>`).join("")}</select>`}</td>
+      <td>${staffRole?`<span class="cnt">Records only</span>`:`<select data-stprof="${H(p.name)}|checkin">${[["","From the planning hour"],["slot","In the planning hour"],["second","Short second Monday"],["asneeded","As needed"]].map(([v,l])=>`<option value="${v}" ${(pr.checkin||"")===v?"selected":""}>${l}</option>`).join("")}</select>`}</td>
+      <td>${staffRole?"":`<select data-stprof="${H(p.name)}|journalEvery"><option value="1" ${+pr.journalEvery!==2?"selected":""}>Each week</option><option value="2" ${+pr.journalEvery===2?"selected":""}>Every other week, part time</option></select>`}</td>
+      <td><input type="date" data-stprof="${H(p.name)}|startDate" value="${H(pr.startDate||"")}"></td></tr>`}).join("")}</tbody></table></div>
+    ${window.TreeGrowth?TreeGrowth.settingsHtml(B):""}
     <details style="margin-top:10px"><summary class="linkbtn">Blank form links for the New Educator paperwork</summary><div class="hint" style="margin-top:6px">The state forms link to the CDSS forms page. Replace any link with the copy the school uses.</div>
       ${PAPERS().filter(x=>!x.director&&!x.ack&&x.k!=="immun").map(x=>`<label class="fld-label">${H(x.form)}, ${H(x.num)}<input type="url" data-stform="${x.k}" value="${H((B.school.formLinks||{})[x.k]||x.blank||"")}" placeholder="A link to the blank form"></label>`).join("")}
       <div class="actions"><button class="btn small" data-stforms="1">Save the links</button></div></details>
     <div class="actions"><button class="btn small ghost" data-streload="1">Read the PD pieces again</button><span class="cnt">After a new piece is added to the records.</span></div>`};
 
 /* ---------- printouts and Word files ---------- */
-function recordDocs(p){const pr=p.profile||{};const it=ITEMS().map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,fd(r.date),s.ex?fd(s.ex):"",s.t]});
+function recordDocs(p){const pr=p.profile||{};const it=itemsFor(p).map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,fd(r.date),s.ex?fd(s.ex):"",s.t]});
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};const hy=hoursYear(p);
   return report(p.name+", records",[["Role",whoRole(p)],["Class",roomName(p)],["Start date",fd(pr.startDate)],["Printed",fd(today())]],[
     {t:"table",label:"Records and certificates",head:["Record","Date","Renews","In place"],rows:it,widths:[.42,.18,.18,.22]},
@@ -399,7 +413,7 @@ function recordDocs(p){const pr=p.profile||{};const it=ITEMS().map(i=>{const r=(
 function coverDoc(p,only){const pw=p.paperwork||{};const yes=b=>b?"In place":"Not yet";
   const rows=PAPERS().map(x=>{const r=pw[x.k]||{};const n=(r.files||[]).length;return [x.form,x.num,r.done?fms(r.done):r.ack?fms(r.ack):n?fms(fileMeta(p,r.files[n-1]).at):"","",yes(r.done||r.ack||n)]});
   rows.push(["Social Security card and driver's license, seen and filed","Paper only",(pw.idseen||{}).done?fms(pw.idseen.done):"","",yes((pw.idseen||{}).done)]);
-  const items=ITEMS().map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,i.reg,fd(r.date),s.ex?fd(s.ex):"",s.s==="ok"||s.s==="soon"?"In place":s.s==="out"?"Expired":"Not yet"]});
+  const items=itemsFor(p).map(i=>{const r=(p.items||{})[i.k]||{};const s=itemState(i,r);return [i.label,i.reg,fd(r.date),s.ex?fd(s.ex):"",s.s==="ok"||s.s==="soon"?"In place":s.s==="out"?"Expired":"Not yet"]});
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};
   const imm=[["Flu vaccine, "+fl.season+" to "+(+fl.season+1),"H&S Code 1596.7995",fd(f.date),"Each year, August 1 to December 1",fl.s==="ok"?"In place":"Not yet"],...["pertussis","measles"].map(k=>{const r=(p.once||{})[k]||{};return [k==="pertussis"?"Pertussis":"Measles","H&S Code 1596.7995",fd(r.date),"Once",r.status?"In place":"Not yet"]})];
   return report("Personnel file, "+p.name,[["Class",roomName(p)],["Role",whoRole(p)],["Start date",fd((p.profile||{}).startDate)],["Cover sheet",fd(today())],only?["Pages",only]:null],[
@@ -427,12 +441,12 @@ async function printFile(name,mode){progress("Making the file");await loadPeople
   catch(e){fail(e)}}
 async function printKind(k,word){const kind=word?"word":"pdf";
   if(k==="record")return out(kind,[recordDocs(P())],P().name+" records");
-  if(k==="team"){await loadPeople();return out(kind,[report("Educators",[["Printed",fd(today())]],[{t:"table",label:"",noRule:true,head:["Educator","Role","Class","Records in place","Flu shot this season"],rows:st.people.map(p=>[p.name,p.role,p.room?p.room+" Class":"",ITEMS().filter(i=>{const s=itemState(i,(p.items||{})[i.k]).s;return s==="ok"||s==="soon"}).length+" of "+ITEMS().length,fluState(p).t]),widths:[.22,.16,.16,.2,.26]}])],"Educators")}
+  if(k==="team"){await loadPeople();return out(kind,[report("Educators",[["Printed",fd(today())]],[{t:"table",label:"",noRule:true,head:["Educator","Role","Class","Records in place","Flu shot this season"],rows:st.people.map(p=>[p.name,p.role,p.room?p.room+" Class":"",itemsFor(p).filter(i=>{const s=itemState(i,(p.items||{})[i.k]).s;return s==="ok"}).length+" of "+itemsFor(p).length,fluState(p).t]),widths:[.22,.16,.16,.2,.26]}])],"Educators")}
   if(k==="oct27"){await loadPeople();const cpr=ITEMS().find(i=>i.k==="cpr");return out(kind,[report("October 1, 2027",[["Printed",fd(today())]],[{t:"text",text:"Current pediatric first aid and CPR and 16 hours of health and safety training by October 1, 2027, then at least 12 hours a year of continuing education from Department-approved sources."},{t:"table",label:"",noRule:true,head:["Educator","First aid and CPR","16 hours","Approved hours","Fulton PD hours"],rows:st.people.filter(p=>p.role!=="Kitchen"&&p.role!=="Office").map(p=>{const hy=hoursYear(p);const h=(p.items||{}).hs16||{};return [p.name,itemState(cpr,(p.items||{}).cpr).t,h.date?"Done "+fd(h.date):"Not yet",r1(hy.approved)+" of 12",String(r1(hy.fulton))]}),widths:[.2,.26,.2,.17,.17]}])],"October 1 2027")}
   if(k==="drills"){await loadPeople();return out(kind,[report("Drill log",[["Printed",fd(today())]],[{t:"table",label:"",noRule:true,head:["Date","Time","Type","Note","Logged by"],rows:(st.drills||[]).map(d=>[fd(d.date),d.time?hourText(d.time):"",d.type,d.note||"",d.by||""]),widths:[.18,.12,.18,.36,.16]}])],"Drill log")}
   if(k==="files"){await loadPeople();return out(kind,[report("Paper files",[["Printed",fd(today())]],[{t:"table",label:"",noRule:true,head:["Educator","Last printed","New pages"],rows:st.people.map(p=>[p.name,printedAt(p)?fms(p.printed.at):"Not yet",String(newPages(p).length)])}])],"Paper files")}
   if(k==="checklist"||k==="paperwork"){const p=P();const pcs=await loadPd();
-    if(k==="checklist"){const ck=checklist(p,pcs,(p.profile||{}).startDate||"");return out(kind,[report("First weeks checklist, "+p.name,[["Start date",fd((p.profile||{}).startDate)]],[{t:"table",label:"",noRule:true,head:["","Step",""],rows:ck.map((c,i)=>[String(i+1),c.label,c.soon?"Coming soon":c.done?"Done":(c.note||"Not yet")]),widths:[.06,.66,.28]}])],"First weeks checklist "+p.name)}
+    if(k==="checklist"){const ck=checklist(p,pcs,(p.profile||{}).startDate||"");return out(kind,[report("First weeks checklist, "+p.name,[["Start date",fd((p.profile||{}).startDate)]],[{t:"table",label:"",noRule:true,head:["","Step",""],rows:ck.map((c,i)=>[String(i+1),c.label,c.done?"Done":(c.note||"Not yet")]),widths:[.06,.66,.28]}])],"First weeks checklist "+p.name)}
     return out(kind,[report("New Educator paperwork",[["Educator",p.name]],[{t:"table",label:"",noRule:true,head:["Form","Number","Why it matters","Uploaded"],rows:PAPERS().map(x=>{const r=(p.paperwork||{})[x.k]||{};return [x.form,x.num,x.why,(r.files||[]).length||r.done||r.ack?"Yes":"Not yet"]}),widths:[.3,.14,.42,.14]},{t:"text",text:"Payroll and tax forms are completed in QuickBooks Workforce. Social Security cards and driver's licenses are shown in person and copied for the paper personnel file only."}])],"New Educator paperwork "+p.name)}
   if(k.startsWith("pieces:")){const d=k.slice(7);const pcs=await loadPd();const dn=((P().pd||{}).done)||{};return out(kind,[report(d==="licensing"?"Licensing at Fulton":"TREE How To",[["Educator",meName()]],[{t:"table",label:"",noRule:true,head:["Piece","Regulation","Minutes","Read"],rows:(pcs[d]||[]).map(x=>[x.title,x.source,String(x.minutes),dn[x.id]?fms(dn[x.id].at):""]),widths:[.4,.36,.1,.14]}])],d==="licensing"?"Licensing at Fulton":"TREE How To")}
   if(k==="hball"||k==="hbsec"){const hb=await loadHb();const secs=(hb.sections||[]).filter(s=>!s.removed&&(k==="hball"||s.id===st.hbSec));
@@ -447,7 +461,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-stpe
   if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.sthb==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.stperson){st.who=d.stperson;st.doc=null;goView("strec");return}
   if(d.stnew==="open"){st.adding=true;redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
-  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value,goTo:$("#stn-goto")?.value};
+  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value};
     try{await api("newhire",b);st.adding=false;toast(`${b.newName} can sign in now with their first name and choose a passcode. They see only the New Educator section.`);await boot(true);st.newWho=b.newName;redraw()}catch(er){fail(er)}return}
   if(d.stgroup==="open"){st.group=true;st.roster="";redraw();return}if(d.stgroup==="cancel"){st.group=false;redraw();return}
   if(d.stgname){t.classList.toggle("on");return}
@@ -498,6 +512,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-stpe
 },true);
 // dates and choices save as they change
 document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.closest("#main"))return;const d=t.dataset;
+  if(t.id==="sts-goto"&&VIEW_AS)return;
   if(VIEW_AS&&(d.stitem||d.stflu||d.stonce||d.stunits||d.stprof))return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
   if(d.stitem){const p=P();p.items=p.items||{};const r=p.items[d.stitem]=Object.assign({},p.items[d.stitem]);if(d.f==="date"&&r.date&&r.date!==t.value)r.renewed=Date.now();r[d.f]=t.value;r.by=meName();r.at=Date.now();await save(p,"Saved.");redraw();return}
   if(d.stflu){const p=P();const s=fluSeason();p.flu=p.flu||{};p.flu[s]=Object.assign({},p.flu[s],{[d.stflu]:t.value});await save(p,"Saved.");redraw();return}
@@ -505,5 +520,6 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(d.stunits){const p=P();p.units=Object.assign({},p.units,{completed:t.value===""?"":Number(t.value)});await save(p,"Saved.");redraw();return}
   if(d.stprof){const [name,k]=d.stprof.split("|");try{await api("profile",{name,profile:{[k]:t.value}});toast("Saved.")}catch(er){fail(er)}return}
   if(t.id==="sts-days"){try{await api("school",{school:{remindDays:+t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
+  if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
 });
 })();
