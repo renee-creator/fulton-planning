@@ -712,6 +712,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 const CLASSROOMS=["West","North","South"];
 // printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
 let PRINT={schoolDocs:false,schoolRecords:true,names:"first",by:true};
+// Proofread before save, for every educator, set by the director in Settings
+let PROOF_SAVE=false;
 // the educator's name under a display printout's title, unless the director turned it off for every printout
 const pBy=b=>PRINT.by===false?"":(b||"");
 let GROUPS=[
@@ -1696,7 +1698,8 @@ function foldIntros(){const m=$("#main");if(!m)return;
     const long=[...hd.querySelectorAll(":scope .sub, :scope .hint.muted")].filter(el=>!el.closest("details")&&el.textContent.trim().length>110);
     if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
     long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
-function applyLock(){try{foldIntros()}catch(e){}
+function proofBtn(){const b=$("#tproof");if(b)b.hidden=proofOnSave()}
+function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
   const main=$("#main");if(!main)return;const k=lockKey();
   // the evidence beside a plan offers its add buttons only while the plan is open to edit
   queueMicrotask(()=>{try{if(typeof evSync==="function")evSync()}catch(e){}});
@@ -10659,66 +10662,82 @@ function readError(err){
    Family page, sending a plan to Renee, printing or copying for Kaymbu, TREE reads it first and shows any fixes. A fix shows
    what is there and what it becomes; nothing changes until it is accepted. Only spelling, capitals, punctuation, grammar and
    the school's words are fixed. */
-let proof=null,proofSels=[],proofClean="";
-const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...document.querySelectorAll("#main textarea,#main input,#main button")];return "nth:"+el.tagName+":"+all.indexOf(el)};
-const proofFind=sel=>{if(!sel)return null;if(sel.startsWith("nth:")){const [,tag,n]=sel.split(":");const el=[...document.querySelectorAll("#main textarea,#main input,#main button")][+n];return el&&el.tagName===tag?el:null}try{return document.querySelector(sel)}catch(e){return null}};
+let proof=null,proofSels=[],proofClean="",proofRoot=null;
+// the page being read, TREE's own or the Conferences page shown inside it
+const proofMain=()=>proofRoot&&proofRoot.isConnected?proofRoot:$("#main");
+// with Proofread before save on, Save and Send on plans, projects, threads, team inquiries and stories read the form first.
+// The director always has it, to try it, and educators have it once the director turns it on in Settings.
+function proofOnSave(){return !!me()&&(isDirector()||PROOF_SAVE)}
+const SAVE_GATES='#sendplan,#pf-go,[data-tesave],[data-iqmake],[data-streview="1"]';
+const proofSel=el=>{if(el.id)return "#"+CSS.escape(el.id);const a=[...el.attributes].filter(x=>x.name.startsWith("data-")&&!/^data-lock/.test(x.name)).map(x=>`[${x.name}="${CSS.escape(x.value)}"]`).join("");if(a)return el.tagName.toLowerCase()+a;const all=[...proofMain().querySelectorAll("textarea,input,button")];return "nth:"+el.tagName+":"+all.indexOf(el)};
+const proofFind=sel=>{if(!sel)return null;const m=proofMain();if(sel.startsWith("nth:")){const [,tag,n]=sel.split(":");const el=[...m.querySelectorAll("textarea,input,button")][+n];return el&&el.tagName===tag?el:null}try{return m.ownerDocument.querySelector(sel)}catch(e){return null}};
 const proofLabel=el=>{const l=el.closest("label");const t=(el.getAttribute("aria-label")||(l?[...l.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(" "):"")||"").trim();if(t)return t.slice(0,60);const c=el.closest("section,.card,details");const h=c&&c.querySelector("h2,h3,h4,summary,.lbl,b");return h?h.textContent.trim().slice(0,60):""};
 // every box with writing on the page, including a saved page that is closed until Edit
-function proofEls(){const m=$("#main");if(!m)return [];const locked=m.classList.contains("locked");
+function proofEls(){const m=proofMain();if(!m)return [];const locked=m.classList.contains("locked");
   return [...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&el.type!=="search"&&!el.disabled&&(!el.readOnly||locked)&&!el.closest(".proof,[data-noproof]")&&String(el.value).trim().length>=3)}
 const proofFields=()=>proofSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean);
 const proofHash=()=>proofEls().map(el=>el.value).join("\u0001");
 // a box takes the fix and saves the way it always does; the welcome letter and the bin note save here, since they have their own save buttons
 function proofApply(k,v){const el=proofFind(proofSels[+k]);if(!el||!el.isConnected)return false;const m=$("#main");
-  if(lockOn){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
-  el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}
+  if(lockOn&&m.contains(el)){lockOn=false;m.classList.remove("locked");m.querySelectorAll("[readonly]").forEach(x=>x.readOnly=false);m.querySelectorAll(":disabled").forEach(x=>{if(!x.dataset.keepoff)x.disabled=false});const b=m.querySelector(".lockbar");if(b)b.remove()}
+  el.value=v;const W=el.ownerDocument.defaultView||window;el.dispatchEvent(new W.Event("input",{bubbles:true}));el.dispatchEvent(new W.Event("change",{bubbles:true}));try{autoGrow(el)}catch(e){}
   if(el.id==="pt-welcome")ptSave("config",Object.assign({kind:"config"},ptCfg(),{welcome:v.trim(),updatedAt:Date.now()}));
   if(el.id==="g-binnote"){const b=binCurrent();if(b)gWrite("binnote-"+b.id,{text:v.trim()})}
   return true}
 const proofPanel=(()=>{const p=document.createElement("div");p.id="proofpanel";p.hidden=true;p.setAttribute("role","dialog");p.setAttribute("aria-label","Proofread");document.body.appendChild(p);return p})();
 function proofPaint(){const p=proofPanel;if(!proof){p.hidden=true;p.innerHTML="";return}p.hidden=false;
-  const gate=proof.gate;const close=gate?"":`<button class="linkbtn" data-proofx="1">Close</button>`;
-  if(proof.busy){p.innerHTML=`<div class="proof"><b>${gate?"Proofreading before it goes out":"Proofreading this page"}</b><span class="cnt">A moment.</span></div>`;return}
-  if(proof.error){p.innerHTML=`<div class="proof"><b>Proofreading did not run.</b><span class="cnt">${esc(proof.error)}</span><div class="actions">${gate?`<button class="btn small" data-proofgo="1">Continue</button>`:close}</div></div>`;return}
+  const gate=proof.gate,sv=proof.save;const close=gate?"":`<button class="linkbtn" data-proofx="1">Close</button>`;const back=`<button class="linkbtn" data-proofx="1">Back to writing</button>`;
+  if(proof.busy){p.innerHTML=`<div class="proof"><b>${sv?"Proofreading before it saves":gate?"Proofreading before it goes out":"Proofreading this page"}</b><span class="cnt">A moment.</span></div>`;return}
+  if(proof.error!=null){p.innerHTML=sv?`<div class="proof"><b>Proofreading could not run just now, so nothing was checked.</b><span class="cnt">You can still press ${esc(sv)}.</span><div class="actions"><button class="btn small" data-proofgo="1">${esc(sv)}</button>${back}</div></div>`
+    :`<div class="proof"><b>Proofreading did not run.</b><span class="cnt">${esc(proof.error)}</span><div class="actions">${gate?`<button class="btn small" data-proofgo="1">Continue</button>`:close}</div></div>`;return}
   const left=proof.fixes.filter(f=>!f.done),kept=proof.fixes.filter(f=>f.left).length;
   const show=f=>{let a=0;while(a<f.from.length&&a<f.to.length&&f.from[a]===f.to[a])a++;while(a>0&&/\S/.test(f.from[a-1]))a--;let b=0;while(b<f.from.length-a&&b<f.to.length-a&&f.from[f.from.length-1-b]===f.to[f.to.length-1-b])b++;while(b>0&&/\S/.test(f.from[f.from.length-b]))b--;
     return `${esc(f.from.slice(0,a))}<del>${esc(f.from.slice(a,f.from.length-b))}</del><ins>${esc(f.to.slice(a,f.to.length-b))}</ins>${esc(f.from.slice(f.from.length-b))}`};
-  const head=!left.length?`<b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as written.`:"All fixes accepted."}</b>`:`<b>${left.length} fix${left.length===1?"":"es"} to look at</b>`;
-  const acts=gate?(left.length?`<button class="btn small" data-proofall="1" data-thengo="1">Accept all and continue</button><button class="btn small ghost" data-proofgo="1">Continue as it is</button>`:`<button class="btn small" data-proofgo="1">Continue</button>`)
+  const head=sv&&left.length?`<b>${left.length} fix${left.length===1?"":"es"} to look at</b><span class="cnt">${esc(sv)} opens once each one is answered.</span>`:!left.length?`<b>${!proof.fixes.length?"Nothing to fix. It reads correctly.":kept?`Done. ${kept} left as written.`:"All fixes accepted."}</b>`:`<b>${left.length} fix${left.length===1?"":"es"} to look at</b>`;
+  const acts=sv?`${left.length?`<button class="btn small ghost" data-proofall="1">Accept all</button>`:""}<button class="btn small" data-proofgo="1" ${left.length?"disabled":""}>${esc(sv)}</button>${back}`
+    :gate?(left.length?`<button class="btn small" data-proofall="1" data-thengo="1">Accept all and continue</button><button class="btn small ghost" data-proofgo="1">Continue as it is</button>`:`<button class="btn small" data-proofgo="1">Continue</button>`)
     :(left.length?`<button class="btn small" data-proofall="1">Accept all</button>`:"")+close;
   p.innerHTML=`<div class="proof">${head}<div class="actions">${acts}</div>
-    ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><button class="linkbtn cnt" data-proofshow="${f.k}">${esc(f.label||"Show")}</button><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">Leave it</button></span></div>`).join("")}</div>`}
-async function proofRun(gate){proofSels=proofEls().map(proofSel);const F=proofFields();
+    ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><button class="linkbtn cnt" data-proofshow="${f.k}">${esc(f.label||"Show")}</button><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">${sv?"Keep mine":"Leave it"}</button></span></div>`).join("")}</div>`}
+async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=proofFields();
   if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
-  const hash=proofHash();proof={busy:true,fixes:[],gate,hash};proofPaint();
+  const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
   const prompt=`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Keep names of children, people, farms and places exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
 
 Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","from":"a short span copied exactly from that text, with a few words around the error so it appears only once","to":"the same span corrected","why":"two to five words, such as Capital letter or Spelling"}]}. Answer {"fixes":[]} when nothing needs fixing.
 
 ${F.map(f=>`<text id="${f.k}">\n${f.text}\n</text>`).join("\n\n")}`;
-  try{const out=await askRead(prompt,{modelTier:"complex",cache:false,purpose:"proofread"});const by=new Map(F.map(f=>[f.k,f]));
+  try{const out=await askRead(prompt,{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
     const fixes=(Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from)).map(x=>Object.assign(x,{label:by.get(x.k).label}));
     if(!fixes.length)proofClean=hash;
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
-    proof={busy:false,fixes,gate,hash}}catch(e){proof={busy:false,fixes:[],gate,error:assistError(e?.code||"unknown","Try again in a minute.")}}
+    proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e?.code||"unknown","Try again in a minute.")}}
   proofPaint()}
 function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=proofFind(proofSels[+f.k]);const cur=el?el.value:"";
   if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
 // the action the check was holding goes ahead
 let proofPassing=false;
-function proofPass(gate){const b=proofFind(gate);proofClean=proofHash();if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
+function proofPass(gate){proofClean=proofHash();if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
   if(t.id==="tproof"){if(proof&&proof.busy)return;proofRun(null);return}
   if(!proof)return;
   if(d.proofshow!=null){const el=proofFind(proofSels[+d.proofshow]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.classList.add("proofhl");setTimeout(()=>el.classList.remove("proofhl"),1600)}return}
-  if(d.proofx!=null){proof=null;proofPaint();return}
+  if(d.proofx!=null){proof=null;proofRoot=null;proofPaint();return}
   if(d.proofok!=null){proofAccept(+d.proofok);proofPaint();return}
   if(d.proofno!=null){const f=proof.fixes[+d.proofno];f.done=true;f.left=true;proofPaint();return}
-  if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
+  if(d.proofall!=null){proof.fixes.forEach((f,i)=>{if(!f.done)proofAccept(i)});if(d.thengo||proof.save){const g=proof.gate;proof=null;proofPaint();setTimeout(()=>proofPass(g),400);return}proofPaint();return}
   if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
 // the moments writing leaves TREE: posting to the Family page, sending a plan to Renee, printing, copying for Kaymbu
 const PROOF_GATES='#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
+document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
+  if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
+  proofRoot=null;if(!proofEls().length||proofHash()===proofClean)return;
+  e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b),(b.textContent||"Save").trim().slice(0,30)||"Save")},true);
+// the Conferences page asks before a conference is marked complete. It hands over its own page and what to do after.
+window.TREE_PROOF=(root,label,go)=>{if(!proofOnSave())return false;if(proof&&proof.busy)return true;proofRoot=root;
+  if(!proofEls().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
 document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
+  if(proofOnSave()&&b.matches(SAVE_GATES))return;proofRoot=null;
   if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
   if(!proofEls().length||proofHash()===proofClean)return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
@@ -10729,7 +10748,8 @@ function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|lin
     return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ")}
   if(Array.isArray(x))return x.map(v=>tidyWords(v,key));if(x&&typeof x==="object"){const o={};for(const [k,v] of Object.entries(x))o[k]=tidyWords(v,k);return o}return x}
 async function askRead(prompt,opts,j){
-  const waits=[8000,25000,60000];
+  // a check that holds a save tries again once, quickly, so the educator is not left waiting
+  const waits=opts&&opts.quick?[4000]:[8000,25000,60000];
   for(let a=0;;a++){
     try{let out=await sample.json(prompt,opts);if(opts&&FAMILY_WORDS.has(opts.purpose))out=tidyWords(out);if(j){j.note="";queueRender()}return out}
     catch(err){
@@ -11662,6 +11682,7 @@ function applyProgram(v){
   else if(v.lens&&typeof v.lens==="object")LENSES=[normLens(Object.assign({year:true},v.lens),0)];
   if(!LENSES.some(l=>l.year))LENSES[0].year=true;
   if(v.print&&typeof v.print==="object")PRINT=Object.assign({schoolDocs:false,schoolRecords:true,names:"first",by:true},v.print);
+  PROOF_SAVE=v.proofSave===true;proofBtn();
   setLens(lensId);
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
@@ -11669,7 +11690,7 @@ function applyProgram(v){
 function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
 let progTimer=null;
 function saveProgram(){
-  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,updatedAt:Date.now()};
+  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()};
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
@@ -11736,6 +11757,9 @@ function renderSettings(){
       <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div>
     <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of observation sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
       <div class="seg" role="group" aria-label="Educators' names"><button data-pby="1" aria-pressed="${PRINT.by!==false}">On</button><button data-pby="0" aria-pressed="${PRINT.by===false}">Off</button></div></div></section>
+  <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form proofreads it first, and the Proofread button leaves the top bar. Observations save straight away. You have it already, so you can try it before educators do.</div>
+    <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators keep the Proofread button in the top bar."}</div></div>
+      <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="tablewrap"><table class="grid2" style="min-width:480px"><thead><tr><th>Group</th><th>Class</th><th>Educator</th><th></th></tr></thead><tbody>
     ${GROUPS.map((g,i)=>`<tr><td><input type="text" data-gname="${i}" value="${esc(g.name)}"></td><td><select data-groom="${i}"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
@@ -11779,6 +11803,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.psr!=null){PRINT.schoolRecords=t.dataset.psr==="1";saveProgram();renderSettings();return}
   if(t.dataset.pnm){PRINT.names=t.dataset.pnm;saveProgram();renderSettings();return}
   if(t.dataset.pby){PRINT.by=t.dataset.pby==="1";saveProgram();renderSettings();return}
+  if(t.dataset.proofsave){if(!isDirector())return;PROOF_SAVE=t.dataset.proofsave==="1";proofBtn();saveProgram();renderSettings();return}
   if(t.dataset.mdel){const [c,i]=t.dataset.mdel.split("|");MATERIALS[c].splice(+i,1);saveProgram();renderSettings();return}
   if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
   if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
