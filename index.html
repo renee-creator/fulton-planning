@@ -4481,6 +4481,7 @@ function renderToday(){
   </div>
   ${askFam?askFamHtml(room):""}
   ${keepTodayHtml()}
+  ${setupTodayHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
@@ -12153,7 +12154,14 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="plans")return
 
 /* ---------- Sign-ins. Each educator signs in with their first name and four numbers they choose the first time. ---------- */
 let signins={list:null,error:"",show:{},busy:false,adding:false};
-async function loadSignins(){if(!window.FP_API||!db)return;try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||[];signins.render=j.render||[];signins.error=""}catch(e){signins.error=e&&e.message||"The sign-ins could not be read."}if(view==="settings")renderSettings()}
+async function loadSignins(){if(!window.FP_API||!db||signins.loading)return;signins.loading=true;try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||[];signins.render=j.render||[];signins.error=""}catch(e){signins.error=e&&e.message||"The sign-ins could not be read."}signins.loading=false;if(view==="settings")renderSettings();else if(view==="today")renderMain()}
+// who is not set up yet, beside each name on Sign-ins and once on the director's Today. The director and former educators are left out.
+const notSetUp=a=>a.director||a.former?"":a.never?"Never signed in":!a.phones?"Reminders off on this phone":"";
+function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";if(!signins.list){if(!signins.error)loadSignins();return""}
+  const L=signins.list.map(a=>({name:a.name,why:notSetUp(a)})).filter(x=>x.why);if(!L.length)return"";
+  return `<section class="card" id="setuptoday" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Not set up yet</h3><button class="linkbtn" data-tview="settings">Sign-ins</button></div>
+    <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
+    <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div></section>`}
 function viewAsHtml(){
   const list=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));
@@ -12172,7 +12180,7 @@ function signinsHtml(){
     <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     <div class="hint">Leaving Fulton is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
-      ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
+      ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${notSetUp(a)?`<div class="cnt warnline">${esc(notSetUp(a))}</div>`:""}${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
         <td><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""} aria-label="${esc(a.name)} signs in for the kitchen"></td>

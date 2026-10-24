@@ -203,7 +203,10 @@ const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
 const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
 function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0,
-  leaveOn: a.leaveOn || '', former: isFormerAccount(a), records: hasRecords(a.name) }; }
+  leaveOn: a.leaveOn || '', former: isFormerAccount(a), records: hasRecords(a.name),
+  // who is not set up yet. Never signed in is a sign-in still on its start code that never chose a passcode, and
+  // reminders are off when no phone takes them now, since a phone that stops taking them is dropped
+  never: !a.code && !a.setAt && !a.lastAt, phones: (a.push || []).length }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
