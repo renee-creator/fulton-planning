@@ -439,6 +439,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .kedit{display:grid;gap:10px;margin-top:10px;padding:12px;border-radius:10px;background:var(--bg)}
 .kfields{display:flex;flex-wrap:wrap;gap:10px}.kfields label{display:grid;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 170px;min-width:0}
 .khist{font-size:12px;color:var(--muted);display:grid;gap:2px}
+.kmvlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 12px;margin:6px 0}.kmvlist .radio{margin:0}.kmvrow{display:grid;gap:1px;padding:7px 0;border-top:1px solid var(--line)}.kmvrow:first-child{border-top:0}.kmvrow .cnt{font-size:13px}
 .rname{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;background:var(--bg)}
 .rname button{border:none;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
 .radio{display:flex;gap:8px;align-items:flex-start;font-size:14px}
@@ -11643,7 +11644,7 @@ document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.
    One roster for the whole school, the same records Family Conferences kept, so a child's classroom, group and family
    details are written once. Each child is At Fulton, Left Fulton, or Moved on to kindergarten. Nobody is removed. A child
    who leaves moves to Former children, and every record about them stays until the director chooses how long to keep them. */
-let children=new Map(), conferences=new Map(), kRoom=LS.get("fps.kroom","All"), kShow="at", kQ="", kEdit="", kAdding=false, kidOpen=LS.get("tree.kid","");
+let children=new Map(), conferences=new Map(), kRoom=LS.get("fps.kroom","All"), kShow="at", kQ="", kEdit="", kAdding=false, kidOpen=LS.get("tree.kid",""), kMove=null;
 // the same choices Family Conferences offered for next year
 const NEXTPLAN={staying:"Staying at Fulton next year",tk:"Going to TK next year",k:"Going to kindergarten next year",deciding:"Family still deciding about next year",other:"Another plan for next year"};
 const kidAt=c=>(c.status||"active")!=="withdrawn";
@@ -11706,7 +11707,7 @@ function renderChildren(){
       <label>Small group<select id="ka-group"><option value="">None</option>${GROUPS.map(g=>`<option>${esc(g.name)}</option>`).join("")}</select></label>
       <label>Birthday<input type="date" id="ka-dob"></label><label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
-    :`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button></div>`):"";
+    :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button></div>`):"";
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
     <div class="sub">Each child's documentation, conferences and years at Fulton in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At Fulton ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
@@ -11927,6 +11928,42 @@ function kidEditHtml(c){
     :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${esc(c.id)}">At Fulton again</button></div>`}
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
+// a child's move to another Class or small group, noted on the child with the day and who made it. Moving children
+// together does exactly this for each child ticked. The child keeps their id, so every observation, plan, conference
+// and portfolio stays with them.
+function kidSetRoom(c,room){const was=c.classroom;if(was===room)return false;c.classroom=room;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.classroom))c.group="";kidNote(c,`Moved from ${was||"no class"} to ${c.classroom}`);return true}
+function kidSetGroup(c,group){if((c.group||"")===(group||""))return false;c.group=group;kidNote(c,c.group?`Joined ${c.group}`:"No small group");return true}
+/* Move children, the director's, on the Children page. Children are picked by Class, small group or next year, the ones
+   to move are ticked, and the new Class and small group are chosen. One review shows every change before it is saved. */
+const kMoveBy={room:"Class",group:"Small group",next:"Next year"};
+function kMoveList(){const m=kMove;if(!m)return [];
+  return kidsAt().filter(c=>m.by==="room"?(m.val?c.classroom===m.val:!CLASSROOMS.includes(c.classroom)):m.by==="group"?(c.group||"")===m.val:kidNext(c)===m.val)
+    .sort((a,b)=>(CLASSROOMS.indexOf(a.classroom)-CLASSROOMS.indexOf(b.classroom))||(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first))}
+const kMoveWhere=(room,group)=>[room?room+" Class":"No class",group?group+" group":"no small group"].join(", ");
+function kMovePlan(){const m=kMove;if(!m)return [];
+  return [...m.ticked].map(id=>children.get(id)).filter(c=>c&&kidAt(c)).sort((a,b)=>(CLASSROOMS.indexOf(a.classroom)-CLASSROOMS.indexOf(b.classroom))||a.first.localeCompare(b.first))
+    .map(c=>{const from=[c.classroom||"",c.group||""],to=[m.room,m.group];return {c,from,to,same:from[0]===to[0]&&from[1]===to[1]}})}
+function kMoveHtml(){const m=kMove;
+  if(m.review){const plan=kMovePlan(),moves=plan.filter(x=>!x.same);
+    return `<section class="card" id="kmove"><div class="secthead"><h3 style="font-size:17px">Review the moves</h3><button class="linkbtn" data-kmvclose="1">Close</button></div>
+      <div class="cnt">${moves.length===1?"1 child moves":moves.length+" children move"} to ${esc(kMoveWhere(m.room,m.group))}. Nothing is saved until you save the moves. Every observation, plan, conference and portfolio stays with each child.</div>
+      <div style="margin-top:6px">${plan.map(x=>`<div class="kmvrow"><b>${esc(kidName(x.c))}</b>${x.same?`<span class="cnt">Stays as it is, already in ${esc(kMoveWhere(x.from[0],x.from[1]))}</span>`:`<span class="cnt">From ${esc(kMoveWhere(x.from[0],x.from[1]))}</span><span class="cnt">To ${esc(kMoveWhere(x.to[0],x.to[1]))}</span>`}</div>`).join("")}</div>
+      <div class="actions"><button class="btn small" data-kmvsave="1" ${moves.length?"":"disabled"}>${moves.length===1?"Save the move":"Save "+moves.length+" moves"}</button><button class="btn small ghost" data-kmvback="1">Change the moves</button></div></section>`}
+  const list=kMoveList(),n=m.ticked.size,allOn=list.length&&list.every(c=>m.ticked.has(c.id));
+  const vals=m.by==="room"?[...CLASSROOMS.map(r=>[r,r+" Class"]),...(kidsAt().some(c=>!CLASSROOMS.includes(c.classroom))?[["","No class chosen"]]:[])]
+    :m.by==="group"?[...GROUPS.map(g=>[g.name,g.name+(g.room?", "+g.room:"")]),["","No small group"]]:[...Object.entries(NEXTPLAN),["","Not decided"]];
+  const groups=GROUPS.filter(g=>g.room===m.room).map(g=>g.name);
+  return `<section class="card" id="kmove"><div class="secthead"><h3 style="font-size:17px">Move children</h3><button class="linkbtn" data-kmvclose="1">Close</button></div>
+    <div class="lbl">Choose children by</div><div class="tseg" role="group" aria-label="Choose children by">${Object.entries(kMoveBy).map(([k,l])=>`<button data-kmvby="${k}" aria-pressed="${m.by===k}">${l}</button>`).join("")}</div>
+    <div class="kfields" style="margin-top:8px"><label>${kMoveBy[m.by]}<select data-kmvval="1">${vals.map(([v,l])=>`<option value="${esc(v)}" ${m.val===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label></div>
+    ${list.length?`<div class="kmvlist">${list.map(c=>`<label class="radio"><input type="checkbox" data-kmvtick="${esc(c.id)}" ${m.ticked.has(c.id)?"checked":""}><span>${esc(kidName(c))} <span class="cnt">${esc([c.classroom,c.group].filter(Boolean).join(", "))}</span></span></label>`).join("")}</div>
+      <div class="actions"><button class="linkbtn" data-kmvall="1">${allOn?"Untick these":"Tick all "+list.length}</button></div>`:`<div class="empty">No children at Fulton here.</div>`}
+    <div class="cnt">${n?`${n===1?"1 child":n+" children"} ticked.`:"Tick the children to move."} Ticks stay when you choose by something else.</div>
+    <div class="lbl" style="margin-top:10px">Move them to</div>
+    <div class="kfields"><label>Class<select data-kmvroom="1">${CLASSROOMS.map(r=>`<option ${m.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label>Small group<select data-kmvgroup="1"><option value="">No small group</option>${groups.map(g=>`<option ${m.group===g?"selected":""}>${esc(g)}</option>`).join("")}</select></label></div>
+    <div class="actions"><button class="btn small" data-kmvreview="1" ${n?"":"disabled"}>Review ${n===1?"the move":n?n+" moves":"the moves"}</button></div>
+    <div class="cnt">Moving one child stays on that child's Details tab.</div></section>`}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.kid){if(t.dataset.drdpfocus||kidOpen!==t.dataset.kid){kidTab=t.dataset.drdpfocus?"drdp":t.dataset.ktab||"overview";LS.set("tree.kidtab",kidTab)}kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
   if(t.dataset.tconfchild){embedRoute.conferences="child="+t.dataset.tconfchild;embedGo.conferences=true;goView("conferences");return}
@@ -11941,7 +11978,17 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
     if(st==="at"){c.status="active";delete c.leftAs;delete c.leftOn;delete c.withdrawnAt;kidNote(c,"At Fulton again",{date})}
     else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left Fulton",{date})}
     saveKid(c);toast(st==="at"?`${c.first} is back on the roster.`:`${c.first} is now with Former children.`);renderMain();return}
-  if(t.id==="ka-open"){kAdding=true;renderChildren();const f=$("#ka-first");if(f){f.focus({preventScroll:true});formTop(f.closest("section"))}return}
+  if(t.dataset.kmvopen){const r=kRoom!=="All"?kRoom:CLASSROOMS[0];kMove={by:"room",val:r,ticked:new Set(),room:r,group:"",review:false};kAdding=false;renderChildren();formTop($("#kmove"));return}
+  if(kMove&&t.dataset.kmvclose){kMove=null;renderChildren();return}
+  if(kMove&&t.dataset.kmvby){const by=t.dataset.kmvby;kMove.by=by;kMove.val=by==="room"?(kRoom!=="All"?kRoom:CLASSROOMS[0]):by==="group"?((GROUPS.find(g=>kRoom==="All"||g.room===kRoom)||GROUPS[0]||{}).name||""):"k";renderChildren();return}
+  if(kMove&&t.dataset.kmvall){const ids=kMoveList().map(c=>c.id),all=ids.every(id=>kMove.ticked.has(id));ids.forEach(id=>all?kMove.ticked.delete(id):kMove.ticked.add(id));renderChildren();return}
+  if(kMove&&t.dataset.kmvreview){if(!kMovePlan().length){toast("Tick the children to move first.");return}kMove.review=true;renderChildren();formTop($("#kmove"));return}
+  if(kMove&&t.dataset.kmvback){kMove.review=false;renderChildren();formTop($("#kmove"));return}
+  if(kMove&&t.dataset.kmvsave){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+    const moves=kMovePlan().filter(x=>!x.same);if(!moves.length){toast("Nothing changes for the children ticked.");return}
+    for(const x of moves){kidSetRoom(x.c,x.to[0]);kidSetGroup(x.c,x.to[1]);saveKid(x.c)}
+    kMove=null;toast(moves.length===1?`${moves[0].c.first} is moved.`:`${moves.length} children are moved.`);renderChildren();return}
+  if(t.id==="ka-open"){kAdding=true;kMove=null;renderChildren();const f=$("#ka-first");if(f){f.focus({preventScroll:true});formTop(f.closest("section"))}return}
   if(t.id==="ka-cancel"){kAdding=false;renderChildren();return}
   if(t.id==="ka-save"){const first=($("#ka-first").value||"").trim(),last=($("#ka-last").value||"").trim(),dob=$("#ka-dob").value||"";if(!first){toast("Type the child's first name.");return}
     let id=kidSlug(first+"-"+last)+(dob?"-"+dob.replace(/-/g,""):"");if(!id)id="child";while(children.has(id))id+="-2";
@@ -11951,8 +11998,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
 });
 document.addEventListener("change",e=>{if((view!=="children"&&view!=="child")||!isDirector())return;const t=e.target;
   const set=(id,f)=>{const c=children.get(id);if(c){f(c);saveKid(c);renderMain()}};
-  if(t.dataset.kroomset)set(t.dataset.kroomset,c=>{const was=c.classroom;c.classroom=t.value;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.classroom))c.group="";kidNote(c,`Moved from ${was||"no class"} to ${c.classroom}`)});
-  if(t.dataset.kgroupset)set(t.dataset.kgroupset,c=>{c.group=t.value;kidNote(c,c.group?`Joined ${c.group}`:"No small group")});
+  if(t.dataset.kroomset)set(t.dataset.kroomset,c=>kidSetRoom(c,t.value));
+  if(t.dataset.kgroupset)set(t.dataset.kgroupset,c=>kidSetGroup(c,t.value));
+  if(kMove&&t.dataset.kmvval!=null){kMove.val=t.value;renderChildren();return}
+  if(kMove&&t.dataset.kmvtick){if(t.checked)kMove.ticked.add(t.dataset.kmvtick);else kMove.ticked.delete(t.dataset.kmvtick);renderChildren();return}
+  if(kMove&&t.dataset.kmvroom!=null){kMove.room=t.value;if(kMove.group&&!GROUPS.some(g=>g.name===kMove.group&&g.room===kMove.room))kMove.group="";renderChildren();return}
+  if(kMove&&t.dataset.kmvgroup!=null){kMove.group=t.value;renderChildren();return}
   if(t.dataset.knextset)set(t.dataset.knextset,c=>{c.transition=c.transition||{};const k=nextYearKey();if(t.value)c.transition[k]=Object.assign({},c.transition[k]||{},{plan:t.value});else delete c.transition[k];kidNote(c,t.value?NEXTPLAN[t.value]:"Next year not decided")});
 });
 document.addEventListener("input",e=>{if(view==="children"&&e.target.id==="kq"){kQ=e.target.value;const pos=e.target.selectionStart;renderChildren();const q=$("#kq");q.focus();q.setSelectionRange(pos,pos)}});
