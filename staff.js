@@ -492,7 +492,9 @@ module.exports = function staffModule(o) {
   setInterval(tick, 5 * 60e3).unref(); setTimeout(tick, 60e3).unref();
 
   /* ---------- for the server ---------- */
-  function canFor(name) { if (isKitchen(name) || profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false }; }
+  // a shared sign-in reads the PD library and the Teacher Policies and Procedures, and has no records or growth of its own
+  function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false };
+    if (isKitchen(name) || profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false }; }
     return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)) }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name) }; }

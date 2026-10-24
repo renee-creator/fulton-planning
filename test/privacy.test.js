@@ -57,3 +57,9 @@ test('an educator\'s save keeps the hours TREE logged', async () => {
   const r = await call(h.staff, 'Ann', 'save', { doc: { hours: [{ id: 'h1', by: 'TREE', hours: 40, title: 'PD day', approved: true }, { id: 'h2', by: 'Ann', hours: 2, title: 'A course', approved: true }] } });
   assert.deepStrictEqual(r.body.hours.map(x => [x.id, x.hours, x.approved]), [['h1', 1.5, false], ['h2', 2, true]]);
 });
+
+test('a shared sign-in sees no Educators pages of its own', async () => {
+  const h = await loaded(LIST);
+  assert.deepStrictEqual(h.staff.bootInfo('Shared').can, { records: false, pd: true, handbook: true, newed: false, growth: false });
+  assert.strictEqual(h.staff.bootInfo('Ann').can.records, true);
+});
