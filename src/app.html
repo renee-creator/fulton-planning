@@ -12253,9 +12253,10 @@ async function loadSignins(){if(!window.FP_API||!db||signins.loading)return;sign
 const notSetUp=a=>a.director||a.former?"":a.never?"Never signed in":!a.phones?"Reminders off on this phone":"";
 function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";if(!signins.list){if(!signins.error)loadSignins();return""}
   const L=signins.list.map(a=>({name:a.name,why:notSetUp(a)})).filter(x=>x.why);if(!L.length)return"";
-  return `<section class="card" id="setuptoday" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Not set up yet</h3><button class="linkbtn" data-tview="settings">Sign-ins</button></div>
+  // folded with its count, so a long list never pushes the rest of Today down
+  return `<section class="card" id="setuptoday" style="margin-top:14px"><details class="fold" data-fold="today:setup" ${foldOpen.has("today:setup")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Not set up yet</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
     <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
-    <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div></section>`}
+    <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div><div class="actions"><button class="linkbtn" data-tview="settings">Sign-ins</button></div></div></details></section>`}
 function viewAsHtml(){
   const list=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));

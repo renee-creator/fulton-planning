@@ -20,6 +20,8 @@ test('Never signed in and Reminders off on this phone show beside each name and 
     try {
       const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 390);
       await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('#setuptoday', { timeout: 15000 });
+      assert.strictEqual(await s.p.$eval('#setuptoday details', d => d.open), false, 'the list starts folded');
+      await s.p.click('#setuptoday summary');
       const text = await s.p.innerText('#setuptoday');
       assert.match(text, /Bea\s+Reminders off on this phone/); assert.match(text, /Cy\s+Never signed in/);
       assert.doesNotMatch(text, /Ann|Gone|Dee/);
