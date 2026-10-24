@@ -110,6 +110,9 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .nextbar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);z-index:55;width:min(560px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
 .nextbar .actions{display:flex;gap:6px}.sendmiss .linkbtn{font-size:14px}
 .sendask{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:6px}
+/* a quiet note while words saved on this phone wait for a connection, never an error */
+.draftnote{max-width:1180px;margin:0 auto;padding:2px 16px 6px;font-size:13px;color:var(--muted);text-align:center}.draftline{color:var(--muted)}
+.soask{top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:72}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
 .nav{flex-wrap:wrap;border-radius:20px}
@@ -715,7 +718,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     <button class="chip-btn" id="tsearchall" data-tview="search">Search</button>
     <button class="chip-btn" id="tsettings" data-view="settings" hidden>Settings</button>
   </div>
-</div></header>
+</div><div class="draftnote" id="draftnote" role="status" hidden>Saved on this phone, it will send when you are connected</div></header>
 <div class="wrap">
   <div class="grid noside">
     <div id="waitbar" hidden></div>
@@ -992,6 +995,7 @@ async function boot(){
       const remoteChangedCurrent=!!(before&&after&&after!==before&&(after.updatedAt||0)>(before.updatedAt||0))||(remoteCur&&view==="plans");
       plans=next;renderList();if(view==="all"&&$("#alist"))refreshAll();
       if(!dupSweepDone&&snap.docs.length){dupSweepDone=true;setTimeout(sweepDuplicates,1500)}
+      if(!plansSeen){plansSeen=true;setTimeout(draftSend,0)}
       if(remoteChangedCurrent&&!document.activeElement?.closest?.("#main"))renderMain();
       // a section another educator changed is shown fresh, and the one being typed in is left alone
       else if(changedCur.length&&view==="plans"&&plans.get(currentId)){const p=plans.get(currentId),typing=document.activeElement?.dataset?.f;for(const k of new Set(changedCur))if(k!==typing&&FORMS[p.type]?.fields.some(f=>f.k===k))try{rerenderCard(p,k)}catch(e){}}
@@ -1021,8 +1025,9 @@ async function boot(){
       posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);shStale()}
       if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
-    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    draftBoot();
   }else setConn("Saving on this device");
   renderAll();
 }
@@ -1057,35 +1062,39 @@ function persist(p){obsIdx=null;
   if(p.type==="individual")flowRemarks(p);
   try{flowToThreads(p)}catch(e){console.warn("Could not bring the reflection to its thread",e)}
   if(isEmptyPlan(p)&&!serverIds.has(p.id)){setConn("Saves once you write something");return}
-  pendingSaves.add(p.id);dirty=true;
-  setConn("Saving");
+  pendingSaves.add(p.id);dirty=true;planDraftSoon(p.id);
+  setConn(planWait.has(p.id)?DRAFT_NOTE:"Saving");
   clearTimeout(saveTimer);
   saveTimer=setTimeout(flushSaves,700);
 }
+let flushing=false;
 async function flushSaves(){
-  saveTimer=null;const ids=[...pendingSaves];
+  // one save at a time, so the same words never go twice at once
+  if(flushing){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,400);return}
+  saveTimer=null;const ids=[...pendingSaves];let ok=true;flushing=true;try{
   if(!db){LS.set("fps.local",[...plans.values()].filter(x=>x.id!=="example"&&!isEmptyPlan(x)));ids.forEach(id=>pendingSaves.delete(id));dirty=false;setConn("Saved on this device");return}
   // while the director sees TREE as an educator, nothing is sent, and what was typed stays on screen until going back
   if(VIEW_AS){ids.forEach(id=>pendingSaves.delete(id));dirty=false;setConn("Nothing is saved while looking");return}
-  let ok=true;
   for(const id of ids){const p=plans.get(id);if(!p){pendingSaves.delete(id);continue}const stamp=p.updatedAt;
     try{const base=planBase.get(id);let doc;
       if(base&&serverIds.has(id)){const patch=pdiff(base,p);
-        if(patch===undefined){if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id);continue}
+        if(patch===undefined){if((plans.get(id)?.updatedAt||0)<=stamp){pendingSaves.delete(id);planDraftDone(id)}continue}
         const sent=papply(jclone(base),patch);
         try{doc=await db.doc("plans/"+id).update(patch)}
         catch(e){if(e&&e.status===404){doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)))}else throw e}
         // what the server now holds, with anything typed since the save left laid on top
         if(doc){const rest=pdiff(sent,p);planBase.set(id,jclone(doc));replaceInPlace(p,papply(jclone(doc),rest||{}))}}
       else{doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)));if(doc){planBase.set(id,jclone(doc));serverIds.add(id)}}
-      if((plans.get(id)?.updatedAt||0)<=stamp)pendingSaves.delete(id)}catch(e){ok=false}}
+      if((plans.get(id)?.updatedAt||0)<=stamp){pendingSaves.delete(id);planDraftDone(id)}}catch(e){ok=false;if(!e||e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited"){planWait.add(id);planDraftNow(id)}}}
+  }finally{flushing=false}
   dirty=pendingSaves.size>0;
-  if(!ok){setConn("Not saved. Check your connection");clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,5000)}
+  // a plan that could not be sent waits on this phone, and goes once the connection is back
+  if(!ok){setConn(planWait.size?DRAFT_NOTE:"Not saved. Check your connection");clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,5000)}
   else if(dirty){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,300)}
   else setConn("Saved and shared");
 }
 async function removePlan(id){
-  deletedIds.add(id);pendingSaves.delete(id);plans.delete(id);
+  deletedIds.add(id);pendingSaves.delete(id);planDraftDone(id);plans.delete(id);
   if(db){try{await db.doc("plans/"+id).delete()}catch(e){toast(e?.message||"Could not delete. Try again.")}}
   else LS.set("fps.local",[...plans.values()]);
   if(currentId===id)currentId=null;renderAll();
@@ -3682,28 +3691,126 @@ function portfolioDocs(c,mode,drdp){
   return out;
 }
 
-/* ---------- Keeping a moment without signal ----------
-   A moment kept with no connection waits on this device and sends itself once the connection is back. A photo waits
-   with it and is stored first. Nothing is lost if the page is closed, since the waiting moments are kept on the device. */
-let outbox=LS.get("tree.outbox",[])||[];
-function outboxSave(){try{localStorage.setItem("tree.outbox",JSON.stringify(outbox))}catch(e){toast("This device is out of room for observations waiting to send. Keep TREE open until there is signal.")}}
-function outboxAdd(n){outbox=outbox.filter(x=>x.id!==n.id);outbox.push(JSON.parse(JSON.stringify(n)));outboxSave()}
-const waitingToSend=id=>outbox.some(x=>x.id===id);
-let outboxBusy=false;
-async function outboxSend(){
-  if(outboxBusy||!outbox.length||!db||!navigator.onLine)return;outboxBusy=true;
-  try{for(const n of outbox.slice()){
-    try{
-      if(n.photo&&!n.photo.id&&n.photo.data&&window.FP_KEEP_ORIGINAL){const blob=await (await fetch(n.photo.data)).blob();n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");const th=await keepThumb(blob);if(th)n.photo.thumb=th;delete n.photo.data;delete n.photo.pending}
-      await db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n)));
-      notices.set(n.id,n);outbox=outbox.filter(x=>x.id!==n.id);outboxSave();
-    }catch(e){break}}
-  }finally{outboxBusy=false}
-  if(!outbox.length)toast("The observations kept without signal are now saved.");
-  if(view==="moments"||view==="today")renderMain();
+/* ---------- Drafts on this phone ----------
+   While an educator writes an observation or a plan, the words and any photo are kept in this browser's own store,
+   under the educator signed in, so nobody else who signs in on the same phone sees them. A save that cannot reach the
+   server waits there and sends itself, one at a time, when the connection comes back, when TREE opens and when it comes
+   back into view. Each save carries a client id made once, so the server keeps it once however often it arrives, and a
+   lock held by one tab means two tabs never send the same draft. A draft is removed only once it is sent. */
+const DRAFT_NOTE="Saved on this phone, it will send when you are connected";
+const draftMem=new Map(),draftHeld=new Map(),planWait=new Set();let draftDbP=null,draftReady=false,plansSeen=false;
+const draftWho=()=>VIEW_AS||!window.FP_HOSTED||!window.FP_NAME?"":String(window.FP_NAME()||"").trim().toLowerCase();
+function draftDb(){if(draftDbP)return draftDbP;draftDbP=new Promise(res=>{try{const q=indexedDB.open("tree-drafts",1);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains("d"))d.createObjectStore("d",{keyPath:"key"})};
+  q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null)}catch(e){res(null)}});return draftDbP}
+function draftTx(mode,fn){return draftDb().then(d=>d&&new Promise(res=>{try{const t=d.transaction("d",mode),st=t.objectStore("d");let out=null;const r=fn(st);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>res(null)}catch(e){res(null)}}))}
+const draftGet=key=>draftTx("readonly",st=>st.get(key));
+const draftMine=()=>{const w=draftWho();return w?draftTx("readonly",st=>st.getAll(IDBKeyRange.bound(w+"|",w+"|￿"))).then(a=>a||[]):Promise.resolve([])};
+const draftMemOf=r=>({slot:r.slot,kind:r.kind,id:r.id,doc:r.doc,base:r.base,cid:r.cid});
+function draftPut(r){const w=draftWho();if(!w)return Promise.resolve();r.who=w;r.key=w+"|"+r.slot;r.at=Date.now();
+  draftMem.set(r.key,draftMemOf(r));draftNote();return draftTx("readwrite",st=>{st.put(r)})}
+function draftDel(slot){const w=draftWho();if(!w)return Promise.resolve();const key=w+"|"+slot;draftMem.delete(key);draftLet(key);draftNote();return draftTx("readwrite",st=>{st.delete(key)})}
+// a tab holds a draft while it has it, so another tab leaves it alone. A tab that closes lets go by itself.
+function draftHold(key){if(draftHeld.has(key))return Promise.resolve(true);if(!navigator.locks||!navigator.locks.request)return Promise.resolve(true);
+  return new Promise(ok=>{navigator.locks.request("tree-draft:"+key,{ifAvailable:true},l=>{if(!l){ok(false);return}return new Promise(done=>{draftHeld.set(key,done);ok(true)})}).catch(()=>ok(true))})}
+function draftLet(key){const f=draftHeld.get(key);draftHeld.delete(key);if(f)f()}
+const waitingToSend=id=>draftMem.has(draftWho()+"|o|"+id);
+const draftWaiting=()=>[...draftMem.values()].filter(r=>r.kind==="obs").length+planWait.size;
+function draftNote(){const el=$("#draftnote");if(el)el.hidden=!draftWaiting()}
+
+// the observation being written, its photos and the photos waiting after it
+let obsDraftT=null;
+function obsDraftSoon(){clearTimeout(obsDraftT);obsDraftT=setTimeout(obsDraftNow,500)}
+function obsDraftNow(){clearTimeout(obsDraftT);obsDraftT=null;if(!draftWho()||!draftReady)return Promise.resolve();const f=noticeForm;
+  const words=f&&(String(f.noticed||"").trim()||String(f.wonder||"").trim()||formPhotos(f).some(x=>x.photo)||(f.pick||[]).length);
+  if(!words)return draftMem.has(draftWho()+"|form")?draftDel("form"):Promise.resolve();
+  const lead=f.pick?f.pick[0]:f,q=[...(f.pick?f.pick.slice(1):[]),...nQueue];
+  const clean=x=>{const c=jclone(Object.assign({},x,{pick:undefined,siblings:undefined,restored:undefined}));if(c&&c.photo){delete c.photo.status;delete c.photo.error}return c};
+  const form=clean(lead);if(lead.siblings)form.siblings=lead.siblings.map(clean);
+  const ids=[lead,...(lead.siblings||[]),...q].map(x=>x.id),blobs={},bases={};for(const id of ids){if(nBlobs.has(id))blobs[id]=nBlobs.get(id);if(noticeBase.has(id))bases[id]=jclone(noticeBase.get(id))}
+  return draftPut({slot:"form",kind:"form",id:lead.id,form,queue:q.map(clean),blobs,bases})}
+document.addEventListener("input",e=>{if(noticeForm&&e.target.closest&&e.target.closest("#nf-card"))obsDraftSoon()});
+document.addEventListener("change",e=>{if(noticeForm&&e.target.closest&&e.target.closest("#nf-card"))obsDraftSoon()});
+document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#nf-card,.fab,[data-nwedit]"))setTimeout(obsDraftSoon,0)});
+// the observation that was being written comes back as it was left, photos and all
+function obsDraftBack(r){if(!r||!r.form||noticeForm)return false;
+  const all=[r.form,...(r.form.siblings||[]),...(r.queue||[])];
+  for(const x of all){const b=r.blobs&&r.blobs[x.id];if(b){nBlobs.set(x.id,b);nPreview.set(x.id,URL.createObjectURL(b))}if(x.photo&&!x.photo.id&&!x.photo.data)x.photo.status="done"}
+  for(const [id,b] of Object.entries(r.bases||{}))noticeBase.set(id,b);
+  noticeForm=Object.assign(r.form,{restored:true});nQueue=r.queue||[];
+  for(const x of all)if(x.photo&&!x.photo.id&&!x.photo.data&&nBlobs.has(x.id))storeMomentPhoto(x);
+  return true}
+
+// an observation kept while the connection is down waits here, with its photo. A newer change to one already waiting
+// joins it, so the two go as one save.
+function queueNotice(n,base,cid){const had=draftMem.get(draftWho()+"|o|"+n.id);
+  const r={slot:"o|"+n.id,kind:"obs",id:n.id,doc:jclone(n),base:had?had.base||null:base?jclone(base):null,cid:cid||n.id+"."+(n.updatedAt||Date.now())};
+  if(n.photo&&!n.photo.id&&nBlobs.has(n.id))r.blob=nBlobs.get(n.id);
+  return draftPut(r).then(()=>draftHold(draftWho()+"|"+r.slot))}
+async function sendQueued(r){const n=r.doc;
+  if(n.photo&&!n.photo.id&&(r.blob||n.photo.data)&&window.FP_KEEP_ORIGINAL){const blob=r.blob||await (await fetch(n.photo.data)).blob();
+    n.photo.id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg",n.id+".photo");const th=await keepThumb(blob,n.id+".thumb");if(th)n.photo.thumb=th;delete n.photo.data;delete n.photo.pending;
+    // the photo is kept now, so a later turn sends only the words
+    const m=draftMem.get(r.key);if(m&&m.cid===r.cid){delete r.blob;m.doc=n;await draftTx("readwrite",st=>{st.put(r)})}}
+  const o={cid:r.cid},patch=r.base?pdiff(r.base,jclone(n)):undefined,whole=()=>db.doc("notices/"+n.id).set(jclone(n),o);
+  const doc=patch?await db.doc("notices/"+n.id).update(patch,o).catch(e=>{if(e&&e.status===404)return whole();throw e}):await whole();
+  notices.set(n.id,doc||n)}
+// a plan with words not yet sent is kept whole, with the copy it was changed from
+const pdTimers={};
+function planDraftSoon(id){if(!draftWho()||id==="example")return;clearTimeout(pdTimers[id]);pdTimers[id]=setTimeout(()=>planDraftNow(id),400)}
+function planDraftNow(id){clearTimeout(pdTimers[id]);delete pdTimers[id];const p=plans.get(id);if(!p||!pendingSaves.has(id)||!draftWho())return Promise.resolve();
+  if(!navigator.onLine)planWait.add(id);const b=planBase.get(id);
+  return draftPut({slot:"p|"+id,kind:"plan",id,doc:jclone(p),base:b&&serverIds.has(id)?jclone(b):null}).then(()=>draftHold(draftWho()+"|p|"+id))}
+function planDraftDone(id){clearTimeout(pdTimers[id]);delete pdTimers[id];planWait.delete(id);if(draftMem.has(draftWho()+"|p|"+id))draftDel("p|"+id);else draftNote()}
+// a plan left unsent, here or in a tab now closed, joins this tab's saves, laid over what the server holds now
+function planDraftBack(r){const v=plans.get(r.id),mine=r.base?pdiff(r.base,r.doc):undefined;
+  const p=v&&r.base?papply(jclone(v),mine||{}):r.doc;if(v){planBase.set(r.id,jclone(v));serverIds.add(r.id)}
+  if(v)replaceInPlace(v,p);else plans.set(r.id,p);
+  pendingSaves.add(r.id);planWait.add(r.id);dirty=true}
+
+let draftBusy=false,draftToldAt=0;
+async function draftSend(){
+  if(draftBusy||!draftReady||!db||VIEW_AS||!draftWho())return;draftBusy=true;let sent=0,left=0;
+  try{const mine=(await draftMine()).sort((a,b)=>(a.at||0)-(b.at||0));
+    for(const r of mine)if(r.kind==="obs"&&!draftMem.has(r.key)){draftMem.set(r.key,draftMemOf(r));if(!notices.has(r.id))notices.set(r.id,r.doc)}
+    if(plansSeen)for(const r of mine.filter(r=>r.kind==="plan")){if(pendingSaves.has(r.id)||!(await draftHold(r.key)))continue;
+      draftMem.set(r.key,draftMemOf(r));planDraftBack(r);clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,300)}
+    draftNote();
+    if(!navigator.onLine)return;
+    for(const r0 of mine.filter(r=>r.kind==="obs")){
+      if(!(await draftHold(r0.key))){left++;continue}
+      const r=await draftGet(r0.key);if(!r){draftMem.delete(r0.key);draftLet(r0.key);continue}  // another tab sent it meanwhile
+      try{await sendQueued(r);
+        // a change made while it was on its way waits for the next turn
+        const now=await draftGet(r.key);if(now&&now.cid!==r.cid){left++;continue}
+        await draftDel(r.slot);sent++}
+      catch(e){left++;if(e&&(e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited"||e.code==="session_expired"))break;
+        if(Date.now()-draftToldAt>60000){draftToldAt=Date.now();toast(e&&e.message||"An observation saved on this phone could not be sent.")}}}
+  }finally{draftBusy=false;draftNote()}
+  if(sent&&!left)toast(sent>1?"The observations saved on this phone are sent.":"The observation saved on this phone is sent.");
+  if(sent&&(view==="moments"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain();
 }
-window.addEventListener("online",()=>setTimeout(outboxSend,1500));
-setInterval(outboxSend,30000);
+// the words already on this phone come back when TREE opens. Ones kept the old way, before drafts, move here.
+async function draftBoot(){if(draftReady||!draftWho())return;
+  const old=LS.get("tree.outbox",[])||[];for(const n of old)if(n&&n.id)await queueNotice(n,null,n.id+".old");if(old.length)try{localStorage.removeItem("tree.outbox")}catch(e){}
+  for(const r of await draftMine()){if(r.kind==="obs"){draftMem.set(r.key,draftMemOf(r));if(!notices.has(r.id))notices.set(r.id,r.doc);if(r.blob&&!nPreview.has(r.id))nPreview.set(r.id,URL.createObjectURL(r.blob))}
+    else if(r.kind==="form"&&obsDraftBack(r)){draftMem.set(r.key,draftMemOf(r));
+      if(view==="moments"){if(!document.activeElement?.closest?.("#main"))renderMain()}
+      else toastAct("The observation you were writing is kept on this phone.","Open it",()=>{view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop()})}}
+  draftReady=true;draftNote();if(view==="moments"&&!noticeForm&&!document.activeElement?.closest?.("#main"))renderMain();draftSend()}
+window.addEventListener("online",()=>{setTimeout(draftSend,800);if(pendingSaves.size){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,800)}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)draftSend();else{if(noticeForm)obsDraftNow();for(const id of Object.keys(pdTimers))planDraftNow(id)}});
+setInterval(draftSend,30000);
+// signing out with words not yet sent says so first. Signing out anyway keeps them on this phone for the next sign-in.
+window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const id of [...pendingSaves])await planDraftNow(id);
+  const rs=[...draftMem.values()],obs=rs.filter(r=>r.kind==="obs").length,form=rs.some(r=>r.kind==="form"),pl=new Set([...pendingSaves,...rs.filter(r=>r.kind==="plan").map(r=>r.id)]).size;
+  const all=obs+(form?1:0)+pl;if(!all)return true;
+  const bits=[obs?(obs>1?obs+" observations":"An observation"):"",form?(obs?"the observation you are writing":"The observation you are writing"):"",pl?(pl>1?pl+" plans":obs||form?"a plan":"A plan"):""].filter(Boolean);
+  const what=bits.length>1?bits.slice(0,-1).join(", ")+" and "+bits[bits.length-1]:bits[0];
+  return new Promise(ok=>{const old=$("#soask");if(old)old.remove();const sh=document.createElement("div");sh.className="combshade";const d=document.createElement("div");d.id="soask";d.className="sendask soask";d.setAttribute("role","dialog");d.setAttribute("aria-label","Not sent yet");
+    d.innerHTML=`<b>Not sent yet</b><div>${esc(what)} ${all>1?"are":"is"} saved on this phone and not sent yet.</div><div class="cnt">If you sign out, ${all>1?"they stay":"it stays"} on this phone for when you sign in here again.</div>
+      <div class="actions"><button class="btn" type="button" data-so="stay">Stay signed in</button><button class="btn ghost" type="button" data-so="go">Sign out anyway</button></div>`;
+    const end=v=>{d.remove();sh.remove();ok(v)};sh.addEventListener("click",()=>end(false));d.addEventListener("click",e=>{const b=e.target.closest("[data-so]");if(b)end(b.dataset.so==="go")});
+    document.body.append(sh,d);draftSend()})};
 
 /* ---------- TREE. Five sections, each with its own pages ----------
    Today, Plans, Documentation, Children and Calendar. Every page Planning Studio had lives under one of them,
@@ -5524,10 +5631,12 @@ const noticeBase=new Map();
 function saveNotice(n,base){n.updatedAt=Date.now();
   if(VIEW_AS)return;
   notices.set(n.id,n);
-  if(db&&(!navigator.onLine||(n.photo&&!n.photo.id&&n.photo.pending))){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.");return}
-  const whole=()=>db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n)));
+  // without signal, with a photo still to send, or behind a change already waiting, it waits on this phone
+  const cid=n.id+"."+n.updatedAt,wait=()=>{queueNotice(n,base,cid);toast(DRAFT_NOTE)};
+  if(db&&draftWho()&&(!navigator.onLine||(n.photo&&!n.photo.id&&n.photo.pending)||waitingToSend(n.id))){wait();return}
+  const whole=()=>db.doc("notices/"+n.id).set(JSON.parse(JSON.stringify(n)),{cid});
   const patch=base?pdiff(base,jclone(n)):undefined;
-  if(db)(patch?db.doc("notices/"+n.id).update(patch).catch(e=>{if(e&&e.status===404)return whole();throw e}):whole()).catch(e=>{if(e&&(e.code==="unavailable"||e.code==="server_error")){outboxAdd(n);toast("Kept on this device. It sends itself once there is signal.")}else toast(e&&e.message||"Could not save. Check your connection.")});
+  if(db)(patch?db.doc("notices/"+n.id).update(patch,{cid}).catch(e=>{if(e&&e.status===404)return whole();throw e}):whole()).catch(e=>{if(e&&(e.code==="unavailable"||e.code==="server_error")&&draftWho())wait();else toast(e&&e.message||"Could not save. Check your connection.")});
   else LS.set("fps.notices",[...notices.values()]);}
 // one field of an observation, such as its thread or its DRDP reading, changed without sending the rest
 // an observation joined to the wrong thread is taken out of it, every photo of its post with it, and TREE will not suggest that thread for it again
@@ -5699,7 +5808,7 @@ async function makeThumb(blob){
   const cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(bm.width*k));cv.height=Math.max(1,Math.round(bm.height*k));
   cv.getContext("2d").drawImage(bm,0,0,cv.width,cv.height);if(bm.close)bm.close();
   return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("The small copy could not be made")),"image/jpeg",.82))}
-async function keepThumb(blob){try{if(!window.FP_KEEP_ORIGINAL)return"";return await window.FP_KEEP_ORIGINAL(await makeThumb(blob),"moment-thumb.jpg")}catch(e){console.warn("No small copy",e);return""}}
+async function keepThumb(blob,cid){try{if(!window.FP_KEEP_ORIGINAL)return"";return await window.FP_KEEP_ORIGINAL(await makeThumb(blob),"moment-thumb.jpg",cid)}catch(e){console.warn("No small copy",e);return""}}
 function photoThumb(n){const ph=n&&n.photo;if(ph&&ph.thumb&&window.FP_ORIGINAL_URL&&!nPreview.get(n.id))return window.FP_ORIGINAL_URL(ph.thumb);return photoSrc(n)}
 // photos kept before small copies existed get one, a few at a time, from the director's browser while TREE is open
 let thumbRun=false;
@@ -5807,7 +5916,7 @@ async function addPhotosToForm(files){
 }
 // every photo in the open observation, the first one and those kept with it
 const formPhotos=f=>f?[f,...(f.siblings||[])]:[];
-const formStored=f=>formPhotos(f).every(x=>!x.photo||x.photo.id||x.photo.data);
+const formStored=f=>formPhotos(f).every(x=>!x.photo||x.photo.id||x.photo.data||(x.photo.pending&&nBlobs.has(x.id)));
 // the observations kept as one, photo by photo. Older ones made from Kaymbu share their words instead of a group.
 function noteGroup(n){if(!n)return [];if(!n.group)return [n];
   return [...notices.values()].filter(x=>x.group===n.group).sort((a,b)=>(a.at||0)-(b.at||0)||String(a.id).localeCompare(String(b.id)))}
@@ -5821,10 +5930,12 @@ function storeMomentPhoto(n){
   n.photo.status="reading";n.photo.error="";refreshPhotoDraft(n);
   const job=(async()=>{
     try{
-      if(window.FP_KEEP_ORIGINAL&&navigator.onLine){const id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg");const th=await keepThumb(blob);n.photo.id=id;if(th)n.photo.thumb=th}
+      // the photo's client id is made from the observation's, so a photo sent twice is kept once. Without signal it waits on this phone.
+      if(window.FP_KEEP_ORIGINAL&&navigator.onLine){const id=await window.FP_KEEP_ORIGINAL(blob,"moment-photo.jpg",n.id+".photo");const th=await keepThumb(blob,n.id+".thumb");n.photo.id=id;if(th)n.photo.thumb=th;delete n.photo.pending}
+      else if(window.FP_KEEP_ORIGINAL&&draftWho()){n.photo.pending=true;n.photo.status="done";refreshPhotoDraft(n);return "offline"}
       else{n.photo.data=await blobDataUrl(blob,1400);if(window.FP_KEEP_ORIGINAL)n.photo.pending=true}
       refreshPhotoDraft(n);return "ok";
-    }catch(e){if(e&&e.code==="unavailable"){n.photo.data=await blobDataUrl(blob,1400);n.photo.pending=true;n.photo.status="done";n.photo.error="";refreshPhotoDraft(n);return "offline"}
+    }catch(e){if(e&&e.code==="unavailable"){if(draftWho())delete n.photo.data;else n.photo.data=await blobDataUrl(blob,1400);n.photo.pending=true;n.photo.status="done";n.photo.error="";refreshPhotoDraft(n);return "offline"}
       n.photo.status="failed";n.photo.error=e?.message||"The photo could not be stored. Check your connection and press Try again.";refreshPhotoDraft(n);return "failed"}
   })();
   nStoring.set(n.id,job);job.finally(()=>nStoring.delete(n.id));return job;
@@ -6026,7 +6137,7 @@ function noticeCard(n){
       return bits.length?`<div class="cnt">Used in ${bits.join(", ")}${ps.length>4?`, and ${ps.length-4} more plans`:""}</div>`:""})()}
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}
-    ${waitingToSend(n.id)?`<div class="cnt warnline">Kept on this device. It sends itself once there is signal.</div>`:""}
+    ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
       ${moreMenu(`${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
 }
@@ -6252,7 +6363,7 @@ function noticeListHtml(list,title){
 }
 function noticesClick(t){
   if(t.dataset.newfor){const c=children.get(t.dataset.newfor);if(c){noticeForm=Object.assign(newNotice(),{children:[c.id],classroom:c.classroom||myRoom()||""});view="moments";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}return}
-  if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim());// kept from the bin page, the observation is linked to that week's bin
+  if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&(noticeForm.restored||!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim()));// kept from the bin page, the observation is linked to that week's bin
     if(!unfinished){const fromBin=view==="bin"&&typeof binCurrent==="function"&&binCurrent();noticeForm=fromBin?Object.assign(newNotice(),{bin:fromBin.id,classroom:binRoomNow()}):newNotice()}view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
   if(t.dataset.nroom&&(noticeForm||view==="moments")){nRoom=t.dataset.nroom;LS.set("fps.nroom",nRoom);renderMain();return true}
   if(t.id==="mread"){momentsRead();return true}
@@ -6299,10 +6410,11 @@ function noticesClick(t){
       if(s.kaymbu&&s.kaymbu.check){s.kaymbu=Object.assign({},s.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete s.kaymbu.unsure;delete s.kaymbu.suggest;delete s.kaymbu.maybe}
       saveNotice(s,had?noticeBase.get(s.id):undefined);noticeBase.delete(s.id)});
     saveNotice(n,editing?noticeBase.get(n.id):undefined);noticeBase.delete(n.id);noticeForm=null;
-    if(editing){showKept(n);toast("Changes saved.");return true}
-    if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast("Kept. The next photo is open.");return true}
+    const onPhone=waitingToSend(n.id);
+    if(editing){showKept(n);toast(onPhone?DRAFT_NOTE:"Changes saved.");return true}
+    if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast(onPhone?DRAFT_NOTE:"Kept. The next photo is open.");return true}
     // the moment the educator just wrote should be the first thing they see, not an empty page
-    const moved=showKept(n);toast(moved?`Kept, dated ${shortDate(n.at)}. Observations now shows ${moved}, so you can see it.`:"Kept. It waits in the record until something comes round to it.");return true}
+    const moved=showKept(n);toast(onPhone?DRAFT_NOTE:moved?`Kept, dated ${shortDate(n.at)}. Observations now shows ${moved}, so you can see it.`:"Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}
   if(t.dataset.patone){if(VIEW_AS)return true;const [i,nid]=t.dataset.patone.split("|");const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+i];const th=p&&patternMatch(p);const n=notices.get(nid);if(!th||!n)return true;
     addNoticesToThread(th,[n],{via:"pattern",why:p.why});renderMain();toast(`Added to the thread ${th.name}.`);return true}

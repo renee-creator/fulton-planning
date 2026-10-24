@@ -150,7 +150,7 @@
     setInterval(poll, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) noteActive(); });
     const top=document.querySelector(".who");
-    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":Auth.kitchen?", kitchen":""); w.lastChild.onclick=signOut; top.append(w); }
+    if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn small ghost" type="button">Sign out</button>`; w.firstChild.textContent=window.TREE_VIEW_AS?"Seeing as "+window.TREE_VIEW_AS.name:(Auth.name||"")+(Auth.director?", director":Auth.kitchen?", kitchen":""); w.lastChild.onclick=async()=>{ if(window.TREE_SIGN_OUT_ASK&&!(await window.TREE_SIGN_OUT_ASK())) return; signOut(); }; top.append(w); }
   }
   Store.ready=start();
 
@@ -170,7 +170,8 @@
     return { id, path,
       async get(){ return snap(id, Store.data[kind]?.[id]); },
       onSnapshot(next){ const fire=()=>next(snap(id, Store.data[kind]?.[id])); Store.listeners.add(fire); setTimeout(fire,0); return ()=>Store.listeners.delete(fire); },
-      set:(data)=>write("set",{data}), create:(data)=>write("create",{data}), update:(patch)=>write("update",{patch}), delete:()=>write("delete",{}) };
+      // a save from a draft carries the draft's client id, so the server keeps it once however often it arrives
+      set:(data,o)=>write("set",{data,...(o&&o.cid?{cid:o.cid}:{})}), create:(data)=>write("create",{data}), update:(patch,o)=>write("update",{patch,...(o&&o.cid?{cid:o.cid}:{})}), delete:()=>write("delete",{}) };
   }
   const db={ collection:query, doc:docRef };
   const user={ id:async()=>Auth.name, can:async()=>true, canEdit:()=>!!Auth.director, isOwner:()=>!!Auth.director, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
@@ -201,7 +202,7 @@
   const downloads={ async save({filename,data}){ const blob=data instanceof Blob? data : new Blob([data]); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); return {status:"saved"}; } };
   const caps={db,user,sample,downloads};
   // a photo kept with a moment is stored beside the records, and shown or printed from there
-  window.FP_KEEP_ORIGINAL=async function(blob,name){ if(window.TREE_VIEW_AS) throw new Error("Nothing is saved while you see TREE as an educator."); const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data}); return j.id; };
+  window.FP_KEEP_ORIGINAL=async function(blob,name,cid){ if(window.TREE_VIEW_AS) throw new Error("Nothing is saved while you see TREE as an educator."); const data=await blobToB64(blob); const j=await api("/api/original",{name:name||"photo.jpg",data,...(cid?{cid}:{})}); return j.id; };
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(Store.fileKey||"");
   // a fresh key for photos, taken at once when one is refused
   window.FP_RENEW_KEY=async()=>{try{const j=await api("/api/data");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}if(j&&j.storage)window.FP_STORAGE=j.storage;}catch(e){}};

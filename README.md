@@ -257,7 +257,7 @@ The page is built from two parts in `src`. `app.html` is Planning Studio and `sh
 
 ## Server notes
 
-The TREE server is on a paid Render plan and never sleeps. If the connection drops for a moment, TREE says so and tries again. Typing is gathered and saved to GitHub within about 15 seconds.
+The TREE server is on a paid Render plan and never sleeps. If the connection drops for a moment, TREE keeps the words on the device and sends them once it is back, as Drafts on the phone describes. Typing is gathered and saved to GitHub within about 15 seconds.
 
 The wall keeps up with its project. When the director opens the project, any photo observation kept since the wall was planned joins it as its own sheet, in date order before Where it is now, with every photo from its post, and the team's writing is untouched. A sheet the team removes stays removed. Draft every empty sheet drafts the sheets one at a time, and Use all drafts keeps them for the team to read. Each draft reads the sheet's thread, the team's reading and intent, nearby observations without photos, and the final remarks from the weeks around it.
 
@@ -305,6 +305,12 @@ A conference shows Ready once the thirteen sections an educator prepares have wr
 ## Sending a plan to the director
 
 Every box on the Individual and Classroom plans needs writing before the plan is sent, except Final remarks, which is written after the week. Send to the director sits at the end of the plan. Tapped with boxes still empty, it names them, each a link to its box, and opens a saved plan to edit. Once the last box has writing and the educator pauses, TREE asks once whether to send it. Leaving a draft with empty boxes brings a short note saying how many are left, and never stops anyone leaving. A sent plan shows as Waiting for the director's review, and only the director marks it Reviewed or sends it back to draft, which she can do while reading it. The server keeps the same rule, so a plan is never sent with a box empty. The director's Today lists every plan waiting for her review, and each school morning she hears how many are waiting. An educator hears a few minutes after the director marks a plan reviewed or leaves a note, and sees it on Today until the plan is opened. From Tuesday, an educator whose plan is written but still a draft is reminded to send it. The older Small Group plan keeps its own status row.
+
+## Drafts on the phone
+
+While an educator writes an observation or a plan, TREE keeps the words and any photo on that device, in the browser's own store, which holds photos that the smaller page storage could not. Drafts are kept under the educator signed in, so another educator signing in on a shared phone never sees them. If a save fails because the signal dropped, nothing is lost. A quiet note under the header, and on the observation's card, reads Saved on this phone, it will send when you are connected, and the draft sends by itself when the connection comes back, when TREE opens and when it comes back into view. Drafts go one at a time, and a tab holding a draft keeps another tab from sending it too. An observation being written comes back as it was left, photos and all, if TREE is closed before Keep.
+
+Each save from a draft carries a client id made once, and each photo one made from its observation's, so a save sent again after its answer was lost on the way back is the same save. The server hands back what it already kept instead of keeping it twice, so a retry never makes a second observation or a second copy of a photo. A draft is removed only once it is sent. If an educator signs out with something unsent, TREE says so first, with Stay signed in and Sign out anyway. Signing out keeps the draft on that phone, and it sends when she signs in there again.
 
 ## Waiting for you, done in place
 

@@ -48,6 +48,10 @@ function planStatusFor(cur, next) {
   return 'draft';
 }
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
+// a phone's client id for one save of a draft, so a save sent twice is kept once. The last few thousand are remembered.
+const CID_RE = /^[a-z0-9][a-z0-9._:-]{0,120}$/i;
+const writeCids = new Map(), originalsComing = new Map();
+function cidSeen(k) { writeCids.set(k, Date.now()); if (writeCids.size > 5000) writeCids.delete(writeCids.keys().next().value); }
 
 /* ---------- helpers ---------- */
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -1381,6 +1385,9 @@ async function handle(req, res) {
     if (stopping) { err(req, res, 503, 'The server is restarting. Your change was not saved yet, so type it again in a minute.'); return; }
     const { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
+    // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
+    const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
+    if (cidKey && writeCids.has(cidKey)) { const r = store.recs[kind].get(id); json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, again: true }); return; }
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
@@ -1467,7 +1474,7 @@ async function handle(req, res) {
     else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; }
-    noteChange(kind, id); scheduleSave(kind, id);
+    noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey);
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     // an observation's words, new or changed, are checked against the threads a little later
@@ -1490,7 +1497,12 @@ async function handle(req, res) {
     if (!ext || typeof body.data !== 'string') { err(req, res, 400, 'Only PDF, JPEG, PNG and WebP files can be kept as originals.'); return; }
     const buf = Buffer.from(body.data, 'base64');
     if (buf.length > 15 * 1024 * 1024) { err(req, res, 413, 'That file is larger than 15 MB. Save it smaller or as fewer pages.'); return; }
-    const id = crypto.randomBytes(6).toString('hex') + '-' + name.replace(/^[^a-z0-9]+/, '');
+    // a photo sent again from a phone with the same client id is the photo already kept, never a second copy
+    const cid = typeof body.cid === 'string' && CID_RE.test(body.cid) ? body.cid : '';
+    const id = (cid ? crypto.createHash('sha256').update(nameKey(me.name) + '|' + cid).digest('hex').slice(0, 12) : crypto.randomBytes(6).toString('hex')) + '-' + name.replace(/^[^a-z0-9]+/, '');
+    if (cid && originalsComing.has(id)) await originalsComing.get(id).catch(() => {});
+    if (cid && store.originals.has(id)) { json(req, res, 200, { id, sizeBytes: store.originals.get(id).size || buf.length, again: true }); return; }
+    let done; if (cid) originalsComing.set(id, new Promise(ok => { done = ok; })); try {
     if (await photosDrive.keep(id, buf, { pdf: 'application/pdf', png: 'image/png', webp: 'image/webp' }[ext] || 'image/jpeg')) { json(req, res, 200, { id, sizeBytes: buf.length }); return; }
     const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/originals/${id}`, { message: `Add ${/^moment/.test(name) ? 'moment photo' : 'original form'} by ${me.name}`, content: buf.toString('base64'), branch: store.branch });
     if (isRateLimit(r)) { err(req, res, 429, 'GitHub is busy. Wait a minute and try again.'); return; }
@@ -1498,6 +1510,7 @@ async function handle(req, res) {
     if (r.status !== 201 && r.status !== 200) { err(req, res, 502, 'GitHub would not store the file. ' + ((r.json && r.json.message) || r.status)); return; }
     store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length }); cacheFile(id, buf);
     json(req, res, 200, { id, sizeBytes: buf.length }); return;
+    } finally { if (cid) { originalsComing.delete(id); done(); } }
   }
   if (path === '/api/read') {
     const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
