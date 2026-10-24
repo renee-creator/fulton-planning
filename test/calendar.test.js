@@ -28,5 +28,7 @@ test('conference slots read as the family booked in them, and an open slot reads
   assert.ok(ann.some(e => e.title === 'Conference, Juno, North'));
   const kit = await view('Kit', '1357');
   assert.ok(kit.some(e => e.title === "Ivy's birthday"), 'the kitchen keeps children\'s birthdays');
-  assert.ok(kit.filter(e => e.conf).every(e => /^(Conference, \w+, \w+|Open conference time)$/.test(e.title)));
+  assert.ok(kit.filter(e => e.conf).every(e => e.title === 'Open conference time'), 'the kitchen never sees whose conference it is');
+  // no calendar entry carries a child's record id, which holds their full name and birthday
+  for (const list of [dir, ann, kit]) for (const e of list) assert.ok(!/(juno|pip|rue|ivy)/.test(String(e.id) + String(e.confId || '')), 'no child record id in ' + e.id);
 });

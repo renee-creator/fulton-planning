@@ -288,14 +288,17 @@ const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: 
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
 function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
-  for (const [id, r] of store.recs.conferences) {
+  // a calendar entry's id never carries a child's record id, which holds their full name and birthday
+  const hid = s => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 12);
+  // the kitchen sees birthdays and meals, never family conferences
+  if (!(me && isKitchen(me.name))) for (const [id, r] of store.recs.conferences) {
     const c = r.doc; if (r.deleted || !c || !c.confDate || c.confDate < from || c.confDate > to) continue;
     const k = store.recs.children.get(c.childId); const first = k && !k.deleted && k.doc.first ? k.doc.first : 'A child', room = k && !k.deleted && k.doc.classroom ? String(k.doc.classroom) : '';
     // a child who has left keeps their past conferences, and nothing after their last day shows as coming up
     if (k && !k.deleted && k.doc.status === 'withdrawn' && c.confDate > (k.doc.leftOn || String(k.doc.withdrawnAt || '').slice(0, 10) || '0000')) continue;
     const t = /^\d{2}:\d{2}$/.test(c.confTime || '') ? c.confTime : '';
     // a conference reads only Conference, the child's name and Class, such as Conference, Wren, North
-    events.push(Object.assign({ id: 'tconf.' + id, cal: 'tconf', conf: true, title: 'Conference, ' + first + (room ? ', ' + room : ''), desc: '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
+    events.push(Object.assign({ id: 'tconf.' + hid(id), cal: 'tconf', conf: true, title: 'Conference, ' + first + (room ? ', ' + room : ''), desc: '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
   }
   // every child at Fulton has a birthday on the calendar each year, from the birthday on the roster
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
@@ -307,7 +310,7 @@ function conferenceEvents(from, to, me) {
       const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
       const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
       if (day < from || day > to) continue;
-      events.push({ id: 'tbday.' + id + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
+      events.push({ id: 'tbday.' + hid(id) + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
     }
   }
   // staff birthdays, kept by the director in Settings with the month and day only, so no age is shown
@@ -976,8 +979,8 @@ function statusPage(req, res) {
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const lines = [
     [store.ready, store.ready ? `Records are connected. ${store.recs.plans.size} plans and ${store.recs.threads.size} followed threads are loaded from ${RECORDS_REPO}.` : (store.error || 'Records are still loading.')],
-    [!!anthropicKey(), anthropicKey() ? 'An Anthropic key is saved, so Claude assist is available.' : 'No Anthropic key is saved. Add ANTHROPIC_API_KEY under Environment to turn on Claude assist.'],
-    [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. Director access for ${TEACHERS.filter(t => isDirector(t.name)).map(t => t.name).join(', ') || 'nobody yet, so set DIRECTOR_NAMES'}.` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like FirstName=a long passcode.'],
+    [!!anthropicKey(), anthropicKey() ? 'The writing help key is saved, so writing help is available.' : 'No writing help key is saved. Add ANTHROPIC_API_KEY under Environment to turn on writing help.'],
+    [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. ${TEACHERS.some(t => isDirector(t.name)) ? 'The director has access.' : 'No director yet, so set DIRECTOR_NAMES.'}` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like FirstName=a long passcode.'],
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
@@ -1113,7 +1116,7 @@ async function displayFeed() {
       const n = byId.get(x.src.id); if (!n || held.has(n.id) || !photoOf(n)) continue;
       const view = x.view === 'it' ? 'it' : 'ptk'; const m = DRDP_DESC && DRDP_DESC[view] && DRDP_DESC[view][x.code];
       const k = m ? lvKey(m.levels, x.level) : '';
-      drdp.push({ id: n.id + '.' + x.code + '.' + c.id, at: x.reviewedAt || 0, code: x.code, measure: m ? trim(m.name, 90) : '', def: m ? trim(m.def, 260) : '',
+      drdp.push({ id: n.id + '.' + x.code + '.' + crypto.createHash('sha1').update(String(c.id)).digest('hex').slice(0, 10), at: x.reviewedAt || 0, code: x.code, measure: m ? trim(m.name, 90) : '', def: m ? trim(m.def, 260) : '',
         level: lvName(x.level), emerging: !!x.emerging, descriptor: k ? trim(m.levels[k], 260) : '', view: view === 'it' ? 'Infant and Toddler View' : 'Preschool Transitional Kindergarten View',
         child: String(c.first || '').trim(), rooms: roomsOf(n), photo: photoOf(n), noticed: trim(n.noticed, 200), seen: n.at || 0, by: String(x.reviewedBy || '').trim() });
     }
@@ -1320,7 +1323,10 @@ async function handle(req, res) {
       if (a && isFormerAccount(a)) { noteWrong(ip); nameWrong(name); log('Sign-in refused,', a.name, 'left Fulton', a.leaveOn); err(req, res, 403, NOPE); return; }
       if (a) {
         if (!a.code) {
-          // the first sign-in sets the educator's own four numbers, as the director wants
+          // the first sign-in sets the educator's own four numbers, as the director wants, and only with the six-number
+          // start code she handed them, checked both when it is typed and again when the new passcode is saved
+          const startGiven = String(body.newCode == null ? given : body.start || '').trim();
+          if (!a.start || !sameText(startGiven, a.start)) { noteWrong(ip); nameWrong(name); err(req, res, 403, 'That name and start code do not match. Type the six numbers the director gave you.'); return; }
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }

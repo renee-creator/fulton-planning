@@ -305,7 +305,7 @@ function slotsNamed(out, calId, confs) {
   for (const i of idx) { const c = take(c => !c.allDay && at(c) === at(out[i])); if (c) pick.set(i, c); }
   for (const i of idx) { if (pick.has(i)) continue; const s = out[i]; const c = take(c => !c.allDay && at(c) > at(s) && at(c) < String(s.end).slice(0, 16)); if (c) pick.set(i, c); }
   for (const i of idx) { const c = pick.get(i);
-    out[i] = Object.assign({}, out[i], { conf: true, title: c ? c.title : 'Open conference time', desc: '', location: '' }, c ? { confId: c.id } : { open: true }); }
+    out[i] = Object.assign({}, out[i], { conf: true, title: c ? c.title : 'Open conference time', desc: '', location: '' }, c ? {} : { open: true }); }
   return left;
 }
 
