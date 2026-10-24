@@ -150,6 +150,20 @@ The page is `display.html`. The director makes its link in Settings, Staff room 
 
 Observations kept for a team inquiry stay off the display, as they stay off walls. Each open team inquiry has a switch on its page, the director's alone, and one whose observations name a single child stays off until she turns it on. Family conferences and children's details beyond first names never appear.
 
+## Educators
+
+Educators is a section of TREE with each educator's records page, the director's view of every educator, October 1, 2027, the drill log, paper personnel files, the New Educator section, the PD library and the Teacher Policies and Procedures. Its pages are their own script, tree-staff.js, built from src/staff-app.js and loaded only when someone opens them, so the main page stays the same size and a problem there cannot reach the rest of TREE. The server side is staff.js.
+
+The records are kept in the records repository under staff/, apart from the records every page receives. An educator's record is sent only to that educator and the director, and the server decides that. Certificates and forms go to the school's Google Drive the way photos do, and open only from the records page, never through a photo link. Records hold dates and certificates only, never health details. Each part shows only to the director until she turns it on for educators in Settings, under Educators, where she also sets each educator's role, Class, Monday planning hour, start date and go-to team member, how many days ahead records reminders go out, and the blank form links.
+
+The director adds a new educator from Educators. They sign in with their first name before their first day and reach only the New Educator section, with their own records, the PD library and the Teacher Policies and Procedures. Until the director turns on full access, the server sends that sign-in nothing about children, families or other staff, and refuses every other request. A new educator hears no planning reminders.
+
+Records reminders go to the educator and the director through TREE's reminders, always on, for certificates and trainings before they expire, the flu shot before August 1 and in November, the Healthy Schools Act training each year, and proof of enrollment each semester below twelve units. The director hears on a Monday when three months pass without a drill.
+
+The PD library's pieces are Markdown files in the records under staff/pd/licensing and staff/pd/howto, one piece each, so a new piece is added as a file with no change to TREE, and Read the PD pieces again in Settings picks it up. The format is in staff/pd/licensing/README.md. The handbook's sections are under staff/handbook, the welcome and the school's settings in staff/school.json, and the list of sections still kept in the Google Doc in staff/handbook-doc.json. These stay in the private records, since TREE's own code can be read by anyone. The weekly backup holds all of staff/.
+
+Print the file makes a cover sheet for an educator's paper personnel file in the order of CCLD's records list, LIC 311A, with every uploaded form and certificate behind it. Paper files lists the files that need a new page, and prints only the new pages with an updated cover sheet.
+
 ## How it runs
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
