@@ -497,6 +497,7 @@ body{margin:0}
   .fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .fab svg{width:24px;height:24px}
   .prooftab{bottom:calc(76px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 16px}
+  .prooftab.up{bottom:calc(134px + env(safe-area-inset-bottom,0px))}
   /* room under the last content, so the round button never covers it */
   #main{padding-bottom:150px}
   .ttop .who .savestate#conn{display:none}
@@ -1935,7 +1936,9 @@ function foldIntros(){const m=$("#main");if(!m)return;
     if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
     long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
 function proofBtn(){const b=$("#tproof");if(!b)return;const m=$("#main");
-  b.hidden=!m||isKitchenUser()||view==="moments"||!(view==="conferences"||[...m.querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]")))}
+  b.hidden=!m||isKitchenUser()||view==="moments"||!(view==="conferences"||[...m.querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]")));
+  // on a phone a plan's The evidence button takes the same corner, so Proofread sits just above it
+  requestAnimationFrame(()=>{const ev=$("#evbtn");b.classList.toggle("up",!!ev&&!ev.hidden&&ev.getClientRects().length>0)})}
 function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
   const main=$("#main");if(!main)return;const k=lockKey();
   // the evidence beside a plan offers its add buttons only while the plan is open to edit
