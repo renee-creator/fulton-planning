@@ -8696,7 +8696,7 @@ function renderProjects(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across classes</span><h2 style="margin-top:4px">Projects</h2>
     <div class="sub">A thread shows what children keep returning to. A project is the team's reading of what lies underneath, and its commitment to follow that together. It belongs to a class, and other classes can join. A thread can also stay a thread all year.</div></div></div></div>`;
   if(projForm)h+=projectStartForm();
-  else h+=`<div class="actions">${all.length?`${printTwo("projects","")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A class project starts from a thread. Open Threads and overview and choose Start a project from it.</span></div>`;
+  else h+=`<div class="actions">${all.length?`${printTwo("projects","")}`:""}<button class="btn small ghost" id="pstart-school">Start a school-wide project</button><span class="muted" style="font-size:13.5px">A class project starts from a thread. Open Threads and choose Start a project from it.</span></div>`;
   if(live.length)h+=`<div class="threads">${live.map(projectCard).join("")}</div>`;
   else if(!projForm)h+=`<div class="empty">No projects yet. When a thread the team follows deserves more, start a project from it.</div>`;
   if(closed.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Closed projects, ${closed.length}</summary><div class="threads" style="margin-top:10px">${closed.map(projectCard).join("")}</div></details>`;
@@ -10409,7 +10409,7 @@ function renderThreads(){
   const stopped=inRoom.filter(t=>t.unfollowed&&!t.undone).sort((a,b)=>(b.unfollowed.at||0)-(a.unfollowed.at||0));
   const stoppedNow=stopped.filter(t=>(t.unfollowed.at||0)>=yStart),stoppedOld=stopped.filter(t=>(t.unfollowed.at||0)<yStart);
   const scan=scans.get(tRoom);
-  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads and overview</h2>
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Across saved plans</span><h2 style="margin-top:4px">Threads</h2>
     <div class="sub">See what children keep returning to across weeks, groups, and educators, and keep track of the threads worth following. A question about our own practice sits beside a thread, in a team inquiry.</div></div></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===tRoom}" data-troom="${r}">${r}</button>`).join("")}</div>
     <select id="trange" style="width:auto" aria-label="How far back">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${tRange===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
@@ -12545,7 +12545,7 @@ function renderSettings(){
       <td><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></td><td><button class="linkbtn" data-gdel="${i}">Remove</button></td></tr>`).join("")}
     </tbody></table></div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
-  <section class="card"><div class="lbl">Educators</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
+  <section class="card"><div class="lbl">Names on plans</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
   <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places where small groups meet, indoors and outdoors.</div>
     <div class="chips">${chipList(PLACES,"data-pdel")}</div>
     <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button></div></section>
