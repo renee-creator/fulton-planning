@@ -124,7 +124,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
   const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",week:"var(--moss)",food:"var(--moss)"};
+  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",slide:"var(--sky)",week:"var(--moss)",food:"var(--moss)"};
   let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
 
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -164,6 +164,13 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       <div class="kind">A story we read together <span>${esc([x.room?x.room+" Class":"",x.group?String(x.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", ")||"across the school")}</span></div>
       <h2 class="sttitle">${esc(x.title)}</h2>${x.cover?`<div class="when">${esc(x.cover)}</div>`:""}
       ${(x.pages||[]).map(pg=>`<div class="stpg">${pg.photo&&pg.photo.src?`<img src="${esc(SERVER+pg.photo.src)}" alt="">`:""}<div>${pg.heading?`<b>${esc(pg.heading)}</b>`:""}${pg.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}</div>`}
+  // a finished Documentation slide, its photo large and first, then its title and the team's words
+  function docSlideHtml(x){const p=x.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;
+    return `<div class="ph" style="width:${portrait?44:62}%">${img(p)}</div><div class="tx">
+      <div class="kind">Documentation <span>${esc(roomsText(x.rooms))}</span></div>
+      <h2 class="sttitle">${esc(x.title)}</h2>
+      ${x.text?`<div class="noticed" style="white-space:pre-line">${esc(x.text)}</div>`:""}
+      ${(x.quotes||[]).map(q=>`<div class="wonder">\u201c${esc(q.words)}\u201d${q.by?` <span class="kids">${esc(q.by)}</span>`:""}</div>`).join("")}</div>`}
   // an observation kept in words alone, quiet, in the same type as the moments beside the photos
   function wordsHtml(m){return `<div class="body"><div class="kind">What an educator noticed <span>${esc(roomsText(m.rooms))}</span></div>
       <div class="when">${esc([m.by,whenOf(m.at)].filter(Boolean).join(", "))}</div>
@@ -205,9 +212,10 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     // projects, threads and inquiries take turns so no one kind fills a stretch of the day
     const D=(feed.drdp||[]).slice(0,4).map(d=>({k:"drdp",id:"d"+d.id,cls:"m d",html:()=>drdpHtml(d),src:d.photo&&d.photo.src}));
     const S=(feed.stories||[]).map(x=>({k:"story",cls:"m",id:"s"+x.id,html:()=>storyHtml(x),src:x.photo&&x.photo.src}));
+    const SL=(feed.slides||[]).map(x=>({k:"slide",cls:"m",id:"sl"+x.id,html:()=>docSlideHtml(x),src:x.photo&&x.photo.src}));
     const R=(feed.reflections||[]).map(r=>({k:"reflection",cls:"t",id:"r"+r.id,html:()=>reflectionHtml(r)}));
     const L=(feed.lensMoments||[]).map(x=>({k:"lensmoment",cls:"t",id:"lm"+x.id,html:()=>lensMomentHtml(x)}));
-    const n=Math.max(P.length,T.length,I.length,D.length,S.length,R.length,L.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(R[i])O.push(R[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
+    const n=Math.max(P.length,T.length,I.length,D.length,S.length,SL.length,R.length,L.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(SL[i])O.push(SL[i]);if(R[i])O.push(R[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin

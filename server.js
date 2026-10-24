@@ -1001,12 +1001,37 @@ async function displayFeed() {
         .filter(p => p.photo && !(cover && p.photo.src === cover.src)).slice(0, 2);
       return { id: st.id, title: trim(st.title, 90), cover: trim(st.cover, 90), room: st.classroom || '', group: st.group || '', photo: cover, pages }; })
     .filter(st => st.photo);
+  // finished Documentation slides, a title, the team's words and a photo, with children's names as the director chose for display
+  const allKids = live('children').filter(c => c && c.first);
+  const nameMode = (pv.print && pv.print.names) || 'first';
+  const docSlides = live('slides').filter(x => String(x.title || '').trim() && String(x.text || '').trim())
+    .map(x => { const ph = (x.photos || []).map(id => byNote.get(id)).find(n => n && !held.has(n.id) && photoOf(n)); return ph ? { x, ph } : null; }).filter(Boolean)
+    .sort((a, b) => (b.x.updatedAt || b.x.at || 0) - (a.x.updatedAt || a.x.at || 0)).slice(0, 6)
+    .map(({ x, ph }) => { const mode = x.names || nameMode; const extra = (x.quotes || []).map(q => (q && q.name || '') + ' - ' + (q && q.words || '')).join('\n');
+      const nm = t => namesForDisplay(t, mode, extra, allKids);
+      return { id: x.id, title: trim(nm(x.title), 90), text: trim(nm(x.text), 420), photo: photoOf(ph), rooms: roomsOf(ph).length ? roomsOf(ph) : (x.classroom ? [x.classroom] : []), at: ph.at || x.at || 0,
+        quotes: (x.quotes || []).filter(q => q && String(q.words || '').trim()).slice(0, 2).map(q => ({ words: trim(nm(q.words), 160), by: nameCredit(q.name, mode, allKids) })) }; });
   // a recent moment of children with food, from the food words, for the food slide
   const FOODW = /\b(cook|cooking|bake|baking|bread|dough|soup|salad|tast(e|ed|ing)|harvest(ed|ing)?|garden|seeds?|chop|peel|wash(ed|ing)? the|fruit|vegetables?|apples?|pumpkins?|squash|kale|lettuce|carrots?|tomato(es)?|eggs?|feed bin|farm bin|snack)\b/i;
   const fm = shown.find(n => now - (n.at || 0) < 21 * 864e5 && FOODW.test(String(n.noticed || '') + ' ' + String(n.wonder || '')));
   const foodMoment = fm ? { id: fm.id, at: fm.at || 0, photo: photoOf(fm), noticed: trim(fm.noticed, 300), wonder: trim(fm.wonder, 200), rooms: roomsOf(fm), children: [] } : null;
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories };
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides };
 }
+// children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
+// initial, initials, or no names at all. The educators' words never change otherwise.
+function shownKidName(first, last, mode) { if (mode === 'none') return ''; if (mode === 'initials') return first[0] + '.'; if (mode === 'full' && last) return first + ' ' + last[0] + '.'; return first; }
+function namesForDisplay(text, mode, extra, kidsList) {
+  let t = String(text || ''); if (!mode || mode === 'first') return t;
+  const named = new Set(kidsList.map(c => String(c.first || '').trim()).filter(n => /^[A-Za-z][A-Za-z'-]*$/.test(n)));
+  for (const line of (t + '\n' + (extra || '')).split('\n')) { const m = line.match(/^([A-Z][a-z]+)(?: \[\?\])? - /); if (m) named.add(m[1]); }
+  const names = [...named].sort((a, b) => b.length - a.length);
+  const lastOf = n => { const c = kidsList.find(x => x.first === n && x.status !== 'withdrawn') || kidsList.find(x => x.first === n); return c ? c.last || '' : ''; };
+  t = t.split('\n').map(line => { const m = line.match(/^([A-Z][a-z]+)( \[\?\])? - (.+)$/); if (m && names.includes(m[1])) return mode === 'none' ? '\u201c' + m[3] + '\u201d' : shownKidName(m[1], lastOf(m[1]), mode) + ' - ' + m[3]; return line; }).join('\n');
+  for (const n of names) { const re = new RegExp('\\b' + n + '\\b(?!\\s+[Gg]roup)(?:\\s+[A-Z]\\.)?', 'g'); t = t.replace(re, mode === 'none' ? 'a child' : shownKidName(n, lastOf(n), mode)); }
+  if (mode === 'none') t = t.replace(/\ba child and a child\b/g, 'two children').replace(/(^|[.!?]\s+|\n)(a child|two children)/g, (m, p, w) => p + w[0].toUpperCase() + w.slice(1));
+  return t;
+}
+function nameCredit(name, mode, kidsList) { if (!name || mode === 'none') return ''; const n = String(name).replace(/ \[\?\]$/, ''); const c = kidsList.find(x => x.first === n); return shownKidName(n, c ? c.last || '' : '', mode || 'first'); }
 
 async function handle(req, res) {
   const url = new URL(req.url || '/', 'http://x'); const path = url.pathname;
