@@ -121,6 +121,8 @@ test('a family acknowledges the edition that is current', () => {
   assert.ok(fam.familyView(f).children[0].handbook.at, 'the tick from before is the 2026 edition');
   year = '2027';
   assert.strictEqual(fam.familyView(f).children[0].handbook.at, '');
+  // a returning family who read the edition before is asked once to read the new one
+  assert.strictEqual(fam.familyView(f).children[0].handbook.earlier, '2026');
   fam.check(f, 'k1', 'handbook', true);
   assert.ok(store.recs.children.get('k1').doc.handbookAck['2027'].at);
 });

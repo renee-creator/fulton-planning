@@ -228,6 +228,12 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:`<a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a>`}</p></section>`}
+  // when a new edition of the Family Handbook becomes current, a returning family reads it and says so once, for all
+  // their children at Fulton
+  const hbNew=()=>D.handbook?D.children.filter(k=>!k.isNew&&k.handbook&&!k.handbook.at&&k.handbook.earlier):[];
+  function hbNewHtml(){const ks=hbNew();if(!ks.length)return "";const y=ks[0].handbook.year;
+    return `<section class="card" id="hbnew"><h2>Read and acknowledge the ${esc(y)} Family Handbook</h2><p class="small muted" style="margin:0 0 8px">The school has a new edition of the Family Handbook. Please read it, then say so. It counts for ${esc(ks.map(k=>k.first).join(" and "))}.</p>
+      <div class="row"><button class="btn ghost" data-hbread="">Open the Family Handbook</button><button class="btn" data-hbackall="1">I have read the ${esc(y)} Family Handbook</button></div></section>`}
   // the Family Handbook, read here in full. The current edition opens, and an earlier edition stays readable.
   const hbRead=k=>!!(k.handbook?k.handbook.at:(k.checks&&k.checks.handbook));
   const hbLink=()=>D.handbook?`<button class="link small" data-hbread="">Open the Family Handbook</button>`:D.handbookUrl?`<a class="link small" href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">Open the Family Handbook</a>`:"";
@@ -237,7 +243,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(!h){api("/family/handbook",{edition:y}).then(j=>{HB[y]=j;if(!y)HB[j.edition]=j;if(form&&form.startsWith("hb|"))render()}).catch(er=>{const el=$("#hbmsg");if(el)el.textContent=er.message});
       return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook</h2><p class="muted" id="hbmsg">Opening the handbook.</p></section>`}
     const pic=(src,alt)=>`<img data-fimg="${esc(src)}" alt="${esc(alt||"A picture from the Family Handbook")}">`;
-    const ks=D.children.filter(k=>k.isNew&&k.handbook&&!k.handbook.at&&h.edition===h.current);
+    const ks=D.children.filter(k=>(k.isNew||(k.handbook&&k.handbook.earlier))&&k.handbook&&!k.handbook.at&&h.edition===h.current);
     return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook, ${esc(h.edition)}</h2>
       <p class="small muted" style="margin:0">${h.edition===h.current?"The current edition.":"An earlier edition, kept to read."} Open a part to read it.</p>
       ${(h.editions||[]).length>1?`<div class="tabs" style="margin:10px 0 0">${h.editions.map(e=>`<button data-hbread="${esc(e.year)}" ${e.year===h.edition?'aria-current="page"':""}>${esc(e.year)}${e.current?", current":""}</button>`).join("")}</div>`:""}
@@ -313,6 +319,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
     h+=`<nav class="tabs" aria-label="Family page">${T.map(([k,l])=>`<button data-tab="${k}" ${tab===k?'aria-current="page"':""}>${esc(l)}</button>`).join("")}</nav>`;
+    h+=hbNewHtml();
     h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():foodHtml();
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
@@ -361,6 +368,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       else if(d.agsave){const [cid,sub]=d.agsave.split("|");const ag=readAgree();if(sub){const miss=window.FultonAgreement.missing(ag);if(miss.length){$("#eg").textContent="Please complete "+miss.slice(0,5).join(", ")+(miss.length>5?", and "+(miss.length-5)+" more":"")+".";return}}
         try{D=await api("/family/agree",{childId:cid,agreement:ag,submit:!!sub});if(!sub){render();$("#eg").textContent="Saved. The agreement is not signed yet.";return}form=null;render();window.scrollTo(0,0)}catch(er){$("#eg").textContent=er.message}}
       else if(d.readok){D=await api("/family/check",{childId:d.readok,key:"notices",on:true});form=null;render();window.scrollTo(0,0)}
+      else if(d.hbackall){for(const k of hbNew())D=await api("/family/check",{childId:k.id,key:"handbook",on:true});render()}
       else if(d.chk){const [id,key]=d.chk.split("|");const k=D.children.find(x=>x.id===id);D=await api("/family/check",{childId:id,key,on:key==="handbook"&&k?!hbRead(k):!(k&&k.checks&&k.checks[key])});render()}
       else if(d.hbread!=null){form="hb|"+d.hbread;render();window.scrollTo(0,0)}
       else if(d.packopen){packOpen=packOpen===d.packopen?null:d.packopen;render()}

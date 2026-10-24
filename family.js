@@ -204,7 +204,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
         const fixed = AAM_PAGES.map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES.length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),
       checks: isNew(k) ? Object.assign({}, k.familyChecks || {}) : null, agreement: isNew(k) ? (k.familyAgreement || null) : null, schedule: k.schedule || '', classroom: k.classroom || '',
-      handbook: (() => { const y = hbYear(); const a = y && hbAck(k, y); return y ? { year: y, at: a ? a.at : '' } : null; })() };
+      // earlier is the edition before this one that the family read, so a returning family is asked once to read the new one
+      handbook: (() => { const y = hbYear(); const a = y && hbAck(k, y); if (!y) return null; const past = Object.keys(k.handbookAck || {}).filter(x => x < y).sort().pop() || (y > '2026' && hbAck(k, '2026') ? '2026' : ''); return { year: y, at: a ? a.at : '', earlier: past }; })() };
   }
   function book(f, slotId, childId, on) {
     const s0 = getRec(KIND, slotId), s = s0 && Object.assign(s0, { id: slotId }); const k = f.kids.find(x => x.id === childId);
