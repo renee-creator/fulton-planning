@@ -184,7 +184,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const named = (list, key) => list.filter(x => x[key] && words(x[key]).length > 2 && s.includes(' ' + words(x[key]) + ' ')).sort((a, b) => String(b[key]).length - String(a[key]).length)[0];
     const project = named(live('projects').filter(p => p.status !== 'closed'), 'name');
     const thread = named(live('threads').filter(t => t.status !== 'stopped'), 'name');
-    // Kaymbu is signed in per class, so the educator who shares writes their first name in the subject, as in North Corinne.
+    // Kaymbu is signed in per class, so the educator who shares writes their first name in the subject, as in North and a first name.
     // The name is matched to the educators who sign in to TREE, and a child's name is never taken for an educator.
     const kidFirsts = new Set(live('children').map(c => words(c.first || '')).filter(Boolean));
     const edus = [...new Set((educatorNames ? educatorNames() : []).map(String).filter(Boolean))];
@@ -266,7 +266,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const given = String(body.key || url.searchParams.get('key') || '');
     if (!(given.length === key.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(key)))) { log('Kaymbu email refused, the key is not right'); reply(403, { error: 'Not allowed' }); return; }
     const from = String(body.from || ''); const email = (from.match(/<([^>]+)>/) || [, from])[1].trim().toLowerCase();
-    // Kitchen's monthly Kitchen Digest brings the snack and lunch menus, from Kaymbu or forwarded by someone at the school
+    // the kitchen's monthly Kitchen Digest brings the snack and lunch menus, from Kaymbu or forwarded by someone at the school
     if (digest && (/@([a-z0-9-]+\.)*kaymbu\.com$/.test(email) || /@childfamilycommunity\.com$/.test(email))) {
       if (!store.ready) { reply(503, { error: 'Records are still loading. The email will be tried again.' }); return; }
       const r = digest(body); if (r) { reply(200, r); return; }

@@ -453,12 +453,12 @@ const PREP = [
   {k:"samples", label:"Gathered work samples and photos to share"},
   {k:"priorGoals", label:"Reviewed goals from the last conference", needsPrior:true},
   {k:"offeredVirtual", label:"Offered an in-person or virtual option"},
-  {k:"renee", label:"Invited Renee to join (optional)"},
+  {k:"renee", label:"Invited the director to join (optional)"},
 ];
 const DEFAULT_GROUPS = [
-  {name:"Cosmos",room:"West",educator:"Delia M"},{name:"Yarrow",room:"West",educator:"Delia M"},{name:"Zinnia",room:"West",educator:"Delia F"},{name:"Borage",room:"West",educator:"Delia F"},
-  {name:"Marigold",room:"North",educator:"Maren"},{name:"Morning Glory",room:"North",educator:"Odette"},{name:"Sunflower",room:"North",educator:"Ines"},
-  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:"Tobin"},{name:"Iris",room:"South",educator:"Talia"}];
+  {name:"Cosmos",room:"West",educator:""},{name:"Yarrow",room:"West",educator:""},{name:"Zinnia",room:"West",educator:""},{name:"Borage",room:"West",educator:""},
+  {name:"Marigold",room:"North",educator:""},{name:"Morning Glory",room:"North",educator:""},{name:"Sunflower",room:"North",educator:""},
+  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:""},{name:"Iris",room:"South",educator:""}];
 const ONBOARD = [
   {k:"questionnaire", label:"Read the Family Questionnaire"},
   {k:"welcomeCall", label:"Welcome phone call with the family"},
@@ -730,7 +730,7 @@ async function dbUpdate(path, data){ if(!canEdit()) throw new Error("read-only")
 async function dbDelete(path){ try{ await S.db.doc(path).delete(); }catch(e){ handleWriteError(e); throw e; } }
 function handleWriteError(e){
   console.warn(e);
-  if(e?.code==="invalid_argument" && S.canWrite==null){ S.canWrite=false; toast("Your access is view-only. Ask Renee for contributor access to make changes."); render(); }
+  if(e?.code==="invalid_argument" && S.canWrite==null){ S.canWrite=false; toast("Your access is view-only. Ask the director for contributor access to make changes."); render(); }
   else if(e?.code==="quota_exceeded") toast("Storage is full. Remove old attachments or records, then try again.");
   else if(e?.message && !e?.code) toast(e.message);
   else toast("That change did not save. Check your connection and try again.");
@@ -1120,7 +1120,7 @@ function viewConf(id){
             <li>Balance strengths with challenges. Positive, challenge, positive.</li>
             <li>Agree on goals together so they are realistic for school and home.</li>
             <li>Offer resources if concerns continue and schedule a follow-up.</li>
-            <li>Bring Renee into the conversation whenever her perspective could help.</li>
+            <li>Bring the director into the conversation whenever their perspective could help.</li>
           </ul>
         </details>
       </div>

@@ -1,6 +1,6 @@
 'use strict';
-/* Monthly menus from Kitchen's Kitchen Digest.
-   Kitchen sends each month's lunch and snack menus as PDFs inside her Kaymbu Kitchen Digest. A menus record that holds
+/* Monthly menus from the Kitchen Digest.
+   The kitchen sends each month's lunch and snack menus as PDFs inside the Kaymbu Kitchen Digest. A menus record that holds
    only the digest's two links, under "intake", is filled in here. The server opens each PDF, Claude reads it into
    days with the same instructions the Settings page uses, and the month is saved. Days the director already wrote
    are never replaced. The director checks the month in Settings, under Monthly menus, like any other. */
@@ -130,11 +130,11 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     } finally { running = false; }
   }
 
-  // Kitchen's Kitchen Digest, arriving in the TREE mailbox from Kaymbu or forwarded by staff. Its file blocks hold the
-  // lunch and snack PDFs. The month comes from the digest's own heading, or from when it was sent, since Kitchen sends
+  // the Kitchen Digest, arriving in the TREE mailbox from Kaymbu or forwarded by staff. Its file blocks hold the
+  // lunch and snack PDFs. The month comes from the digest's own heading, or from when it was sent, since the kitchen sends
   // late in the month before or early in the month itself.
   const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-  // Kitchen's own Kaymbu sender, so a digest with a new subject line still counts
+  // the kitchen's own Kaymbu sender, so a digest with a new subject line still counts
   const MENU_SENDERS = ['usr607e05143ce31e01151a4305@inbox.kaymbu.com'];
   const plain = t => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
   // each attached file is a link around Kaymbu's file icon, with its description after it. Kaymbu's own email marks
@@ -166,7 +166,7 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     const cur = store.recs.menus.get(month);
     let doc = cur && !cur.deleted ? cur.doc : null;
     if (doc && doc.intake && (doc.intake.files || []).some(f => files.some(g => g.url === f.url))) return { ok: true, kept: 0, again: 'the ' + month + ' menus are already in TREE' };
-    if (!doc) doc = { id: month, month, days: {}, notes: {}, files: {}, by: "Kitchen's Kitchen Digest", updatedByName: 'TREE' };
+    if (!doc) doc = { id: month, month, days: {}, notes: {}, files: {}, by: "The Kitchen Digest", updatedByName: 'TREE' };
     if (!doc.times) { const last = [...store.recs.menus.values()].map(r => r.doc).filter(d => d && d.times && d.month < month).sort((a, b) => b.month.localeCompare(a.month))[0]; if (last) doc.times = Object.assign({}, last.times); }
     // links already in the month stay, so a second email for the same month only adds what is new
     const before = (doc.intake && doc.intake.files) || [];
