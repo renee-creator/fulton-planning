@@ -50,6 +50,8 @@ if(!document.getElementById("staffcss")){const c=document.createElement("style")
 .stgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .stmod{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper);display:grid;gap:6px;align-content:start}
 @media (max-width:760px){.stview{padding:0}.stview>div{height:100vh;border-radius:0}}
+/* links and small buttons in lists are easy to tap on a phone */
+@media (max-width:760px){body[data-sec="staff"] #main :is(.prow,.stfiles,.strow,.actions) :is(.linkbtn,a:not(.btn)){display:inline-block;padding-top:8px;padding-bottom:8px}}
 `;document.head.appendChild(c)}
 const chip=(s,t)=>`<span class="stchip ${s}">${H(t)}</span>`;
 const card=(title,inner,side)=>`<section class="card"><div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">${H(title)}</h3>${side?`<span class="cnt">${side}</span>`:""}</div>${inner}</section>`;

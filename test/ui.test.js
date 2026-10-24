@@ -93,4 +93,14 @@ test('TREE in the browser', async t => {
     assert.deepStrictEqual(ops, ['1']);
     await s.close();
   });
+
+  await t.test('links in the Educators lists are tall enough to tap on a phone', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357', 360);
+    for (const v of ['strec', 'sthb']) {
+      await s.p.evaluate(v => goView(v), v); await s.p.waitForTimeout(1500);
+      const small = await s.p.evaluate(() => [...document.querySelectorAll('#main :is(.prow,.stfiles,.strow,.actions) :is(.linkbtn,a:not(.btn))')].filter(e => e.getBoundingClientRect().height && e.getBoundingClientRect().height < 32).map(e => e.textContent.trim().slice(0, 40)));
+      assert.deepStrictEqual(small, [], v);
+    }
+    await s.close();
+  });
 });
