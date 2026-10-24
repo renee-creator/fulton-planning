@@ -85,4 +85,12 @@ test('TREE in the browser', async t => {
     assert.deepStrictEqual(bare, []);
     await s.close();
   });
+
+  await t.test('on a phone muted lines are muted by colour, so a chip inside keeps its contrast', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357', 360);
+    await s.p.evaluate(() => goView('strec')); await s.p.waitForSelector('#main .cnt');
+    const ops = await s.p.evaluate(() => [...new Set([...document.querySelectorAll('#main .cnt')].map(e => getComputedStyle(e).opacity))]);
+    assert.deepStrictEqual(ops, ['1']);
+    await s.close();
+  });
 });

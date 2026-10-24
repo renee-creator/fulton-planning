@@ -583,7 +583,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .stat{padding:8px 10px}.stat b{font-size:22px}.stat span{font-size:12.5px;line-height:1.3}
   .tseg.ktabs{flex-wrap:wrap}.tseg.ktabs button{flex:none;white-space:nowrap}
-  .cnt{font-size:14px;color:var(--ink);opacity:.78}
+  /* the muted look comes from the colour, not opacity, so a chip or a link inside keeps its own contrast */
+  .cnt{font-size:14px;color:var(--ink);color:color-mix(in srgb,var(--ink) 78%,var(--paper,#fff))}
   .card .hint{font-size:14.5px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
