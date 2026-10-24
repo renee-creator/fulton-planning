@@ -196,6 +196,7 @@ textarea{resize:vertical;line-height:1.55;min-height:84px}
 .svgbox svg{display:block;width:100%;min-width:420px;height:auto}
 .conn{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .conn select{width:auto;flex:1;min-width:120px}
+.toastbtn{background:none;border:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;padding:4px 2px;margin-left:6px;cursor:pointer}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
 .confirm{display:flex;gap:8px;align-items:center;background:var(--clay-soft);border-radius:8px;padding:6px 10px;font-size:13.5px;flex-wrap:wrap}
 .welcome{display:grid;gap:14px}
@@ -1092,6 +1093,9 @@ function fmtDate(s){if(!s)return"";const k=String(s);let v=fmtDateMemo.get(k);if
 function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+// a message with one button, such as Undo after a change made on several observations at once
+function toastAct(msg,label,fn){const t=$("#toast");t.textContent=msg+" ";const b=document.createElement("button");b.type="button";b.className="toastbtn";b.textContent=label;
+  b.onclick=()=>{t.hidden=true;fn()};t.append(b);t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,9000)}
 // a message that stays while something is under way, such as photos being fetched for a printout
 function progress(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,30000)}
 // Staff is a shared passcode, not a person. A plan should carry the name of the educator who wrote it.
@@ -5935,7 +5939,7 @@ function noticeFormCard(){
   const open=[...projects.values()].filter(x=>x.status!=="closed");
   const ths=[...threads.values()].filter(t=>t&&!t.unfollowed);
   return `<section class="card" id="nf-card">
-    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3><span class="cnt">Kept by ${esc(n.by||"an educator")} on ${shortDate(n.at)}</span></div>${threadLineHtml(notices.get(n.id)||n)}${threadSuggestHtml(notices.get(n.id)||n)}`:""}
+    ${editing?`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">Change this observation</h3>${keptByHtml(n)}</div>${threadLineHtml(notices.get(n.id)||n)}${threadSuggestHtml(notices.get(n.id)||n)}`:""}
 
     ${many?`<div class="cnt" style="margin-bottom:6px">${formPhotos(n).length} photos in this observation. Tap the children in each photo below.</div>${photoStatusHtml(n)}`
       :ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
@@ -5961,6 +5965,23 @@ function noticeFormCard(){
     <div class="actions nfsave"><button class="btn" id="nf-save" ${!formStored(n)?"disabled":""}>${editing?"Save changes":"Keep this observation"}</button><button class="linkbtn" id="nf-cancel">${ph&&!many&&!notices.has(n.id)?"Skip this photo":"Cancel"}</button>${waiting?`<span class="cnt">${waiting} more photo${waiting>1?"s":""} waiting after this one</span>`:""}</div>
   </section>`;
 }
+// any signed-in educator can change who kept an observation. One from a Kaymbu email changes on every photo from that email.
+function keptByHtml(n){const when=" on "+shortDate(n.at);if(!me()||VIEW_AS)return `<span class="cnt">Kept by ${esc(n.by||"an educator")}${when}</span>`;
+  const names=rosterNames(),cur=String(n.by||"").trim();
+  return `<label class="cnt">Kept by <select id="nf-by" style="width:auto">${cur?"":`<option value="" selected>Not named yet</option>`}${[...names,...(cur&&!names.includes(cur)?[cur]:[])].map(x=>`<option ${x===cur?"selected":""}>${esc(x)}</option>`).join("")}</select>${when}</label>`}
+function changeKeptBy(v){const f=noticeForm;if(!f||!v)return;
+  const mine=formPhotos(f),ids=new Set(mine.map(x=>x.id));for(const x of mine)x.by=v;
+  const lead=notices.get(f.id)||f;
+  if(!lead.kaymbu){toast("Kept by "+v+" once you save the changes.");return}
+  const kb=kBatchOf(lead),was=new Map();
+  for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v)){was.set(x.id,x.by||"");const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
+  for(const x of mine){const b=noticeBase.get(x.id);if(b)b.by=v}
+  const others=[...was.keys()].filter(id=>!ids.has(id));
+  if(!others.length){toast("Kept by "+v+".");return}
+  const all=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb).length;
+  toastAct(`Kept by ${v} on all ${all} photos from that email.`,"Undo, just this one",()=>{
+    for(const id of others){const x=notices.get(id);if(!x)continue;const base=jclone(x);x.by=was.get(id);x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
+    if(view==="moments"&&!noticeForm)renderMain();toast("Kept by "+v+" on this observation only.")})}
 function noticeBrowseHtml(){
   const all=noticesFor(nRoom==="All"?"":nRoom,0);
   const rooms=["All",...CLASSROOMS];
@@ -6282,7 +6303,7 @@ function noticesClick(t){
     const day=n.day&&/^\d{4}-\d{2}-\d{2}$/.test(n.day)&&n.day<=iso(new Date())?n.day:"";
     const sameDay=editing&&was.at&&day===iso(new Date(was.at));
     const when=sameDay?was.at:day&&day!==iso(new Date())?parseIso(day).getTime()+12*36e5:Date.now();
-    if(editing){n.by=was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
+    if(editing){n.by=n.by||was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
     n.at=when;n.week=mondayOf(new Date(when));
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.thumb?{thumb:n.photo.thumb}:{}),...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
     delete n.day;delete n.fromClaude;
@@ -6293,7 +6314,7 @@ function noticesClick(t){
     sibs.forEach((s,i)=>{const had=notices.get(s.id);
       for(const k of ["noticed","wonder","classroom","projectId","threadId","group"])s[k]=n[k]||"";
       s.languages=[...(n.languages||[])];if(n.bin)s.bin=n.bin;else delete s.bin;
-      if(had){s.by=had.by||n.by;s.at=had.at&&iso(new Date(had.at))===iso(new Date(n.at))?had.at:n.at+i+1;s.editedBy=whoAmI();s.editedAt=Date.now()}else{s.by=n.by;s.at=n.at+i+1}
+      if(had){s.by=s.by||had.by||n.by;s.at=had.at&&iso(new Date(had.at))===iso(new Date(n.at))?had.at:n.at+i+1;s.editedBy=whoAmI();s.editedAt=Date.now()}else{s.by=n.by;s.at=n.at+i+1}
       s.week=n.week;
       if(s.photo)s.photo={id:s.photo.id||"",w:s.photo.w,h:s.photo.h,...(s.photo.thumb?{thumb:s.photo.thumb}:{}),...(s.photo.data?{data:s.photo.data}:{}),...(s.photo.pending?{pending:true}:{})};
       delete s.day;delete s.fromClaude;delete s.pick;delete s.siblings;
@@ -6342,6 +6363,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="moments")retu
   if(t.id==="mrange"){mRange=t.value;LS.set("fps.mrange",mRange);renderMain();return}});
 document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
   if(t.id==="nf-room"){noticeForm.classroom=t.value;for(const s of noticeForm.siblings||[])s.classroom=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
+  else if(t.id==="nf-by")changeKeptBy(t.value);
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
   else if(t.id==="nf-thread")noticeForm.threadId=t.value;
   else if(t.id==="nf-sgroup"){noticeForm.smallGroup=t.value;for(const sb of noticeForm.siblings||[])sb.smallGroup=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
