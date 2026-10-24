@@ -147,6 +147,7 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="st27")return await page27(my);
     if(v==="stdrill")return await pageDrills(my);
     if(v==="stfiles")return await pageFiles(my);
+    if(v==="stformer")return await pageFormer(my);
     // growth, the journal, check-ins, Proud Moments and PD days live in the second half of this file
     if(window.TreeGrowth&&TreeGrowth.views.includes(v))return await TreeGrowth.render(v,my);
   }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
@@ -195,6 +196,19 @@ function groupHtml(){const names=B.people||[];
     <div class="actions"><span class="cnt" id="stg-roster">No roster yet</span><button class="btn small ghost" data-stgroup="roster">Upload the roster</button><button class="btn small" data-stgroup="save">Record for everyone chosen</button><button class="linkbtn" data-stgroup="cancel">Cancel</button></div>`:
     `<div class="actions" style="margin:0"><button class="btn small ghost" data-stgroup="open">Record a group training</button></div>`)}
 
+/* educators who have left Fulton, for the director only. Their records page, Growth Plan, journal, check-ins, Proud
+   Moments and evaluations are kept here, and their observations, plans and documentation keep their name as written. */
+async function pageFormer(my){if(!D())return pageRecords(my);const r=await api("former");st.former=r.people||[];const ps=st.former;const p=ps.find(x=>x.name===st.formerWho);
+  const about=x=>[x.role,x.room?x.room+" Class":"",x.leftOn?"Last day "+fd(x.leftOn):""].filter(Boolean).join(", ");
+  if(!p){draw(my,head("Educators","Former educators","Educators who have left Fulton. Each one's records page, Growth Plan, journal, check-ins, Proud Moments and evaluations wait here, and only you open them.")+
+    card("Former educators",ps.length?ps.map(x=>`<div class="prow"><div><b>${H(x.name)}</b><div class="cnt">${H(about(x))}</div></div><button class="btn small ghost" data-stformer="${H(x.name)}">Open</button></div>`).join(""):`<div class="empty">No one has left Fulton yet. When an educator leaves, choose Leaving Fulton beside their name in Settings, under Sign-ins, and their records wait here.</div>`));return}
+  const g=window.TreeGrowth&&TreeGrowth.formerHtml?await TreeGrowth.formerHtml(p.name).catch(e=>card("Growth",`<div class="hint warnline">${H(e.message||"This part could not open.")}</div>`)):"";
+  if(my!==RT)return;
+  draw(my,head("Former educators",p.name,`${H(about(p))}. Only you see these records.`)+`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stformer="">‹ Former educators</button></div>`+
+    card("Records page",`<div class="cnt">Records and certificates, immunizations, units and continuing hours, kept as they were.</div><div class="actions"><button class="btn small ghost" data-stperson="${H(p.name)}">Open the records page</button></div>`)+g+
+    card("Bring back",`<div class="hint">Bringing ${H(p.name)} back keeps all their history. They choose a new code at their next sign-in.</div><div class="actions" id="stbackrow"><button class="btn small ghost" data-stback="${H(p.name)}">Bring ${H(p.name)} back</button></div>`))}
+const isFormerName=n=>(st.former||[]).some(x=>x.name===n);
+
 /* a records page, the educator's own or, for the director, anyone's */
 async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc||st.doc.name!==who||!T._keep)await loadPerson(who);const p=P(),dir=D(),mine=who===meName();
   const pr=p.profile||{};const lead=B.school.remindDays||30;
@@ -225,7 +239,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
   const focus=(p.focus||[]).filter(f=>!(f.educatorOk&&f.directorOk)).concat((p.focus||[]).filter(f=>f.educatorOk&&f.directorOk));
   const goTo=p.goTo||"",paired=p.paired||[];
   draw(my,`${head(mine?"My records":"Records",mine?"My records":p.name+"'s records",`Dates and certificates only, never health details. Only ${mine?"you":H(p.name)} and the director see this page. TREE reminds ${mine?"you":"them"} and the director ${H(lead)} days before anything expires.`)}
-    ${!mine&&dir?`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="stteam">‹ All educators</button></div>`:""}
+    ${!mine&&dir?`<div class="actions" style="margin:0 0 10px">${isFormerName(p.name)?`<button class="chip-btn back" data-tview="stformer">‹ ${H(p.name)}, a former educator</button>`:`<button class="chip-btn back" data-tview="stteam">‹ All educators</button>`}</div>`:""}
     ${card("About",`<div class="cnt">${H([whoRole(p),roomName(p),pr.startDate?"Started "+fd(pr.startDate):"",pr.planHour?"Monday planning hour at "+hourText(pr.planHour):""].filter(Boolean).join(", "))}</div>
       ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
@@ -443,7 +457,9 @@ function coverDoc(p,only){const pw=p.paperwork||{};const yes=b=>b?"In place":"No
     {t:"table",label:"Immunizations",head:["Immunization","Regulation","Date","Renews","In place"],rows:imm,widths:[.3,.22,.13,.19,.16]},
     {t:"text",label:"Uploaded forms and certificates",text:allFids(p).filter(f=>!fileMeta(p,f).link).map(f=>fileMeta(p,f).name).join(", ")||"None uploaded yet."}])}
 // the cover sheet, with every uploaded form and certificate behind it, ready to file
-async function printFile(name,mode){progress("Making the file");await loadPeople();const p=(st.people||[]).find(x=>x.name===name);if(!p){toast("That educator is not here.");return}
+async function printFile(name,mode){progress("Making the file");await loadPeople();let p=(st.people||[]).find(x=>x.name===name);
+  // a former educator's file prints from their own record
+  if(!p&&isFormerName(name))p=await api("person",{name}).catch(()=>null);if(!p){toast("That educator is not here.");return}
   if(mode==="word"){await out("word",[coverDoc(p)],"Personnel file cover, "+name);return}
   const fids=(mode==="new"?newPages(p):allFids(p).filter(f=>!fileMeta(p,f).link));
   let PL;try{PL=await loadScript("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js","PDFLib")}catch(e){toast("The PDF tool did not load. Check the connection.");return}
@@ -482,13 +498,16 @@ function tapOnce(t,f){const k=Object.entries(t.dataset).map(([a,b])=>a+"="+b).jo
   r.then(()=>{for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id)))DRAFTS.delete(x)},()=>{}).catch(()=>{});
   r.catch(fail).finally(()=>{INFLIGHT.delete(k);t.removeAttribute("aria-busy")})}
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.hbSec="";st.hbEdit=false},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw]");
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw],[data-stformer],[data-stback]");
   if(!t)return;tapOnce(t,()=>stTap(e,t))},true);
 async function stTap(e,t){const d=t.dataset;
   if(d.stprint||d.stword){e.preventDefault();progress("Making the file");await printKind(d.stprint||d.stword,!!d.stword);return}
   if(d.stmod!=null&&d.tview){LS.set("tree.stmod",d.stmod);return}
   if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.sthb==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.stperson){st.who=d.stperson;st.doc=null;goView("strec");return}
+  if(d.stformer!=null){st.formerWho=d.stformer;redraw();jumpTop();return}
+  if(d.stback){const n=d.stback,w=$("#stbackrow");if(!t.dataset.sure){if(w)w.innerHTML=`<span class="confirm">Bring ${H(n)} back with their history? <button class="btn small" data-stback="${H(n)}" data-sure="1">Bring back</button><button class="linkbtn" data-stformer="${H(n)}">Cancel</button></span>`;return}
+    try{await window.FP_API("/api/accounts/return",{name:n});if(typeof signins!=="undefined")signins.list=null;st.formerWho="";toast(`${n} is back, with their history. They choose a new code at their next sign-in.`);await boot(true);redraw()}catch(er){fail(er)}return}
   if(d.stnew==="open"){st.adding=true;redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
   if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value};
     try{await api("newhire",b);st.adding=false;toast(`${b.newName} can sign in now with their first name and choose a passcode. They see only the New Educator section.`);await boot(true);st.newWho=b.newName;redraw()}catch(er){fail(er)}return}

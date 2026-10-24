@@ -150,8 +150,14 @@ module.exports = function staffModule(o) {
   const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const addMonths = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
   const daysBetween = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / DAY);
-  // everyone with a TREE sign-in has a records page, the office and the kitchen included
-  const staffNames = () => accounts.list.filter(a => a && a.name).map(a => a.name);
+  /* an educator who has left Fulton keeps their account with their last day, leaveOn, and their profile keeps it as
+     leftOn. From the day after, they are former. Their records page, Growth Plan, journal, check-ins, Proud Moments and
+     evaluations wait in Former educators, which only the director opens. */
+  const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+  function isFormerEducator(name) { const a = accountFor(name), t = today(); if (a && ISO_DAY.test(a.leaveOn || '') && a.leaveOn < t) return true; const l = profileOf(name).leftOn; return ISO_DAY.test(l || '') && l < t; }
+  // everyone with a TREE sign-in has a records page, the office and the kitchen included, until they leave Fulton
+  const staffNames = () => accounts.list.filter(a => a && a.name && !isFormerEducator(a.name)).map(a => a.name);
+  const formerNames = () => accounts.list.filter(a => a && a.name && isFormerEducator(a.name)).map(a => a.name);
   function blankPerson(name) { return { name, profile: {}, items: {}, flu: {}, once: {}, units: {}, hours: [], paperwork: {}, checklist: {}, gotoCheckins: [], pd: { done: {}, read: {} }, review: {}, focus: [], printed: {}, files: {} }; }
   function person(name) { const d = get(pPath(name)); return Object.assign(blankPerson(name), d || {}, { name: (d && d.name) || name }); }
   const profileOf = name => (get(pPath(name)) || {}).profile || {};
@@ -180,11 +186,11 @@ module.exports = function staffModule(o) {
   }
   function whosWho() {
     const names = new Map(); for (const n of rosterNames()) names.set(nameKey(n), n); for (const a of accounts.list) if (a && a.name && !names.has(nameKey(a.name))) names.set(nameKey(a.name), a.name);
-    return [...names.values()].map(n => ({ name: n, role: whoRole(n), room: roomOf(n) })).sort((a, b) => (a.role === 'Director' ? -1 : b.role === 'Director' ? 1 : 0) || a.name.localeCompare(b.name));
+    return [...names.values()].filter(n => !isFormerEducator(n)).map(n => ({ name: n, role: whoRole(n), room: roomOf(n) })).sort((a, b) => (a.role === 'Director' ? -1 : b.role === 'Director' ? 1 : 0) || a.name.localeCompare(b.name));
   }
   // one go-to person for every new educator, a program setting the director can change. It is shown to both, and the
   // new educator's first weeks check-ins are kept on their record. The go-to person sees only these, never growth.
-  const goToName = () => String(school().goTo || '');
+  const goToName = () => { const g = String(school().goTo || ''); return g && !isFormerEducator(g) ? g : ''; };
   const goToOf = name => inNewEd(name) && goToName() && nameKey(goToName()) !== nameKey(name) ? goToName() : '';
   const pairedWith = name => goToName() && nameKey(goToName()) === nameKey(name) ? staffNames().filter(n => nameKey(n) !== nameKey(name) && inNewEd(n) && !isDirector(n)) : [];
 
@@ -250,6 +256,11 @@ module.exports = function staffModule(o) {
       const doc0 = person(who), sf = school().files || {}, txt = JSON.stringify(doc0);
       const shared = Object.fromEntries(Object.entries(sf).filter(([f]) => txt.includes(f)));
       json(req, res, 200, Object.assign(doc0, { shared, planStarted: G.planStarted(who), goTo: goToOf(who), paired: pairedWith(who).map(n => ({ name: n, startDate: profileOf(n).startDate || '', checkins: person(n).gotoCheckins || [] })) })); return;
+    }
+    // the director's list of educators who have left Fulton, with their last day. Each opens to their records and growth.
+    if (P === 'former') {
+      if (!dir) return deny('Only the director opens Former educators.');
+      json(req, res, 200, { people: formerNames().sort().map(n => { const a = accountFor(n) || {}; return { name: n, room: roomOf(n), role: whoRole(n), leftOn: a.leaveOn || profileOf(n).leftOn || '', growth: G.hasGrowth(n) }; }) }); return;
     }
     if (P === 'people') {
       if (!dir) return deny('Only the director sees every educator\'s records.');
@@ -502,6 +513,14 @@ module.exports = function staffModule(o) {
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
-    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd });
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator });
+  // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
+  function hasFiles(name) { if ([pPath(name), G.gPath(name), G.jPath(name)].some(p => S.files.has(p))) return true; return G.momentsOf(name).length > 0; }
+  // the last day kept on the educator's profile as leftOn, or taken off when they stay or come back
+  async function markLeft(name, day) {
+    await ready(); const has = S.files.has(pPath(name)); if (!day && !has) return;
+    const doc = person(name); doc.profile = Object.assign({}, doc.profile); if (day) doc.profile.leftOn = day; else delete doc.profile.leftOn;
+    if (has && (get(pPath(name)).profile || {}).leftOn === doc.profile.leftOn) return; put(pPath(name), doc);
+  }
+  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, tick, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

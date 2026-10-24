@@ -15,6 +15,7 @@ const crypto = require('crypto');
 module.exports = function growthModule(c) {
   const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd } = c;
+  const isFormer = n => !!n && !!c.isFormerEducator && c.isFormerEducator(n);
   const DAY = 864e5;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
@@ -191,6 +192,9 @@ module.exports = function growthModule(c) {
 
   /* ---------- Proud Moments and Kudos, each seen by the audience chosen for it ---------- */
   const momentsAll = () => ((get(MOMENTS) || {}).list || []);
+  // a moment by or for an educator who has left Fulton moves with their records to Former educators
+  const momentsOf = name => momentsAll().filter(m => nameKey(m.by) === nameKey(name) || (m.to && nameKey(m.to) === nameKey(name)));
+  const momentsNow = () => momentsAll().filter(m => !isFormer(m.by) && !(m.to && isFormer(m.to)));
   function seesMoment(me, m) {
     if (isDirector(me)) return true; if (nameKey(m.by) === nameKey(me) || (m.to && nameKey(m.to) === nameKey(me))) return true;
     if (!allowed(me)) return false;
@@ -313,6 +317,8 @@ module.exports = function growthModule(c) {
         settings: { checkin: Object.assign({ week: 1, secondTime: '13:00', minutes: 20 }, school().checkin || {}), meeting: Object.assign({ start: '13:15', end: '14:30' }, school().meeting || {}) }, today: today() });
       return;
     }
+    // a former educator's Growth Plan, check-ins, evaluations and Proud Moments, for the director only, from Former educators
+    if (P === 'former') { if (!dir) return deny(); if (!isFormer(who)) return err(req, res, 404, 'That educator is not with Former educators.'); json(req, res, 200, { growth: forViewer(who, me), moments: momentsOf(who) }); return; }
     if (P === 'mine') { if (!canSee(me, who)) return deny('Only you and the director see your growth.'); json(req, res, 200, forViewer(who, me)); return; }
     if (P === 'all') { if (!dir) return deny(); json(req, res, 200, { people: people().map(n => forViewer(n, me)) }); return; }
 
@@ -436,7 +442,7 @@ module.exports = function growthModule(c) {
     }
 
     /* Proud Moments and Kudos */
-    if (P === 'moments') { json(req, res, 200, { list: momentsAll().filter(m => seesMoment(me, m)).map(m => Object.assign({}, m, { mine: nameKey(m.by) === nameKey(me) })) }); return; }
+    if (P === 'moments') { json(req, res, 200, { list: momentsNow().filter(m => seesMoment(me, m)).map(m => Object.assign({}, m, { mine: nameKey(m.by) === nameKey(me) })) }); return; }
     if (P === 'moments/add') {
       const b = body.moment || {}; const kind = b.kind === 'kudos' ? 'kudos' : 'moment';
       const text = txt(b.text, 1200).trim(); if (!text) return err(req, res, 400, kind === 'kudos' ? 'Say what they did that made a difference.' : 'Write a sentence or two about it.');
@@ -533,9 +539,10 @@ module.exports = function growthModule(c) {
 
   /* ---------- the staff room display and the photo of a proud moment ---------- */
   // moments and Kudos shared with everyone rotate on the staff room display, with first names only
-  const displayMoments = () => (S.ready && opened().growth ? momentsAll().filter(m => m.audience === 'everyone').slice(0, 20).map(m => ({ id: m.id, kind: m.kind, text: m.text, by: String(m.by || '').split(/\s+/)[0], to: String(m.to || '').split(/\s+/)[0], at: m.at })) : []);
-  const momentFile = (me, fid) => momentsAll().find(m => m.photo === fid && seesMoment(me, m));
+  const displayMoments = () => (S.ready && opened().growth ? momentsNow().filter(m => m.audience === 'everyone').slice(0, 20).map(m => ({ id: m.id, kind: m.kind, text: m.text, by: String(m.by || '').split(/\s+/)[0], to: String(m.to || '').split(/\s+/)[0], at: m.at })) : []);
+  const momentFile = (me, fid) => (isDirector(me) ? momentsAll() : momentsNow()).find(m => m.photo === fid && seesMoment(me, m));
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
-  return { planStarted, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
+  const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
+  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
 };

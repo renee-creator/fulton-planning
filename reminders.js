@@ -11,6 +11,8 @@ const crypto = require('crypto');
 
 module.exports = function reminders(o) {
   const { store, accounts, accountFor, saveAccounts, isDirector, isKitchen, log, noteChange, scheduleSave } = o;
+  // an educator who has left Fulton hears nothing more
+  const leftFulton = n => !!(o.isFormer && o.isFormer(n));
   const TZ = 'America/Los_Angeles';
   const TYPES = { remarks: 'Final remarks', plan: 'This week\'s plan', classroom: 'Classroom plan', obs: 'Observations', conf: 'Conferences', confform: 'Conference forms', summary: 'Monday summary', review: 'Plans to review, for the director', reviewed: 'The director reviewed a plan' };
   // every box an educator writes before a plan is sent to the director, except Final remarks
@@ -67,6 +69,7 @@ module.exports = function reminders(o) {
   // a message reaches every phone the educator turned reminders on with. A phone that no longer takes them is dropped
   async function sendTo(name, msg) {
     const a = accountFor(name); if (!a || !keys()) return { sent: 0, why: !keys() ? 'Reminders are not set up on the server yet.' : 'No sign-in' };
+    if (leftFulton(a.name)) return { sent: 0, why: a.name + ' has left Fulton.' };
     const subs = a.push || []; if (!subs.length) return { sent: 0, why: 'Reminders are not turned on on this educator\'s phone yet.' };
     let sent = 0, gone = [], fail = '';
     for (const s of subs) {
@@ -130,7 +133,7 @@ module.exports = function reminders(o) {
   function educators() {
     const ed = docOf('settings', 'educators'); const names = (ed && Array.isArray(ed.names) ? ed.names : []).filter(r => r && r.name);
     // a new hire, before full access, hears nothing about planning
-    return names.filter(r => !isDirector(r.name) && !isKitchen(r.name) && !(accountFor(r.name) || {}).newHire).map(r => ({ name: r.name.trim(), room: r.room || '' }));
+    return names.filter(r => !isDirector(r.name) && !isKitchen(r.name) && !(accountFor(r.name) || {}).newHire && !leftFulton(r.name)).map(r => ({ name: r.name.trim(), room: r.room || '' }));
   }
   const nameIn = (field, name) => String(field || '').split(/,|&|\band\b|\//i).map(key).some(k => k && (k === key(name) || k.split(' ')[0] === key(name).split(' ')[0]));
   const filled = v => !!String(v || '').trim();

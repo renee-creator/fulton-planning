@@ -3949,13 +3949,13 @@ const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],[
 const isNewHire=()=>!VIEW_AS&&!!(window.FP_NEWHIRE&&window.FP_NEWHIRE());
 const staffInfo=()=>window.FP_STAFF||null;
 function staffNavOn(){const s=staffInfo();if(!s)return isDirector();if(VIEW_AS)return Object.values(s.open||{}).some(Boolean);return isDirector()||!!(s.can&&Object.values(s.can).some(Boolean))}
-const STAFF_VIEWS=["stteam","strec","stnew","stgrow","stplan","stjour","stci","stmom","stpd","stpdd","sthb","st27","stdrill","stfiles"];
+const STAFF_VIEWS=["stteam","strec","stnew","stgrow","stplan","stjour","stci","stmom","stpd","stpdd","sthb","st27","stdrill","stfiles","stformer"];
 const GROW_VIEWS=["stgrow","stplan","stjour","stci","stmom","stpdd"];
 function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{});if(isDirector()&&!VIEW_AS)return true;
   if(isKitchenUser())return k==="strec"&&!!c.records;
   // a new hire's own four pages, which the server also holds them to
   if(isNewHire())return ["strec","stnew","stpd","sthb"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
-  if(["stteam","st27","stdrill","stfiles"].includes(k))return false;
+  if(["stteam","st27","stdrill","stfiles","stformer"].includes(k))return false;
   // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
   if(GROW_VIEWS.includes(k))return !!c.growth;
   return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):false}
@@ -3963,12 +3963,12 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=92976e373c","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=c473553cb9","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
-const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stpd","PD library"],["stpdd","PD days"],["sthb","Teacher Policies and Procedures"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["sthb","Teacher Policies and Procedures"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
-const SECTION_OF={stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -3997,7 +3997,7 @@ function renderTreeNav(){
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
 }
 // the director's Educators pages, in four groups
-const ST_GROUPS=[["People",["stteam","stnew","stmom"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","sthb","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
+const ST_GROUPS=[["People",["stteam","stnew","stmom","stformer"]],["Growth",["stgrow","stplan","stjour","stci"]],["PD and Licensing",["stpd","stpdd","sthb","st27"]],["Records",["strec","stdrill","stfiles"]]],stGroupLast={};
 // the pages under a section, shown at the top of the page. A plan that is open shows the way back to its week.
 function subnavHtml(){
   const s=secOf(view);let back="";
@@ -12154,7 +12154,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="plans")return
 let signins={list:null,error:"",show:{},busy:false,adding:false};
 async function loadSignins(){if(!window.FP_API||!db)return;try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||[];signins.render=j.render||[];signins.error=""}catch(e){signins.error=e&&e.message||"The sign-ins could not be read."}if(view==="settings")renderSettings()}
 function viewAsHtml(){
-  const list=(signins.list||[]).filter(a=>!a.director).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
+  const list=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
   const people=list.length?list:rosterNames().map(n=>({name:n,room:""}));
   if(!people.length)return"";
   return `<section class="card"><div class="lbl">See TREE as an educator</div><div class="hint">Look at TREE the way an educator sees it, with their name and their class, on Today, Observations, Plans and every other page. Nothing is saved while you look.</div>
@@ -12164,17 +12164,23 @@ function signinsHtml(){
   if(!window.FP_HOSTED)return"";
   if(!signins.list&&!signins.error){loadSignins();return `<section class="card"><div class="lbl">Sign-ins</div><div class="empty"><span class="spin"></span> Reading the sign-ins</div></section>`}
   if(signins.error)return `<section class="card"><div class="lbl">Sign-ins</div><div class="hint warnline">${esc(signins.error)}</div></section>`;
-  const L=signins.list;const known=new Set(L.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
+  const known=new Set(signins.list.map(a=>a.name.toLowerCase()));const missing=rosterNames().filter(n=>!known.has(n.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n));
+  // an educator who has left Fulton waits below, with Bring back
+  const L=signins.list.filter(a=>!a.former),F=signins.list.filter(a=>a.former);
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
     <div class="hint">Each educator signs in with their first name. The first time, they choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
+    <div class="hint">Leaving Fulton is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div>
     ${L.length?`<div class="tablewrap"><table class="grid2" style="min-width:560px"><thead><tr><th>Educator</th><th>Class</th><th>Director</th><th>Kitchen</th><th>Passcode</th><th></th></tr></thead><tbody>
-      ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
+      ${L.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}${a.lastAt?`<div class="cnt">Last in ${esc(shortDate(a.lastAt))}</div>`:""}</td>
         <td><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""} aria-label="${esc(a.name)} is a director"></td>
         <td><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""} aria-label="${esc(a.name)} signs in for the kitchen"></td>
         <td>${a.code?`<span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button>`:`<span class="cnt">Chooses one at first sign-in</span>`}</td>
-        <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button></span></span></td></tr>`).join("")}
+        <td style="white-space:nowrap"><span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at Fulton</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving Fulton</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">No one has a sign-in yet.</div>`}
+    ${F.length?`<details class="fold" data-fold="set:former" ${foldOpen.has("set:former")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Former educators</span><span class="cnt">${F.length}</span></summary><div class="foldbody">
+      ${F.map(a=>`<div class="prow"><div><b>${esc(a.name)}</b><div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div></div><span class="actions" style="margin:0" id="sgback-${esc(a.name).replace(/[^A-Za-z]/g,"")}"><button class="linkbtn" data-sgback="${esc(a.name)}">Bring back</button></span></div>`).join("")}
+      <div class="hint">Bringing someone back keeps all their history. They choose a new code at their next sign-in.</div></div></details>`:""}
     <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
@@ -12184,7 +12190,13 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   const acct=n=>signins.list.find(a=>a.name===n);
   if(t.dataset.sgshow){signins.show[t.dataset.sgshow]=!signins.show[t.dataset.sgshow];renderSettings();return}
   if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} chooses a new code at their next sign-in.`);return}
-  if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
+  if(t.dataset.sgleave){const n=t.dataset.sgleave,w=document.getElementById("sgdel-"+n.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm" style="display:grid;gap:6px;white-space:normal;max-width:300px">${esc(n)}'s last day at Fulton. Sign-in ends at the end of that day.<span class="actions" style="margin:0"><button class="btn small" data-sgleaveon="${esc(n)}" data-day="${iso(new Date())}">Today</button><input type="date" id="sgleave-day" aria-label="${esc(n)}'s last day" style="width:auto"><button class="btn small ghost" data-sgleaveon="${esc(n)}">Set this day</button><button class="linkbtn" data-sgkeep="1">Cancel</button></span></span>`;return}
+  if(t.dataset.sgleaveon){const n=t.dataset.sgleaveon,day=t.dataset.day||($("#sgleave-day")?.value||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(day)){toast("Choose their last day.");return}
+    signinCall("/api/accounts/leave",{name:n,leaveOn:day},day===iso(new Date())?`Today is ${n}'s last day. Their sign-in ends tonight.`:`${n}'s last day is ${longDate(day)}. Their sign-in ends at the end of that day.`);return}
+  if(t.dataset.sgstay){signinCall("/api/accounts/return",{name:t.dataset.sgstay},`${t.dataset.sgstay} is staying at Fulton.`);return}
+  if(t.dataset.sgback){const n=t.dataset.sgback,w=document.getElementById("sgback-"+n.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Bring ${esc(n)} back with their history? <button class="btn small" data-sgbackyes="${esc(n)}">Bring back</button><button class="linkbtn" data-sgkeep="1">Cancel</button></span>`;return}
+  if(t.dataset.sgbackyes){signinCall("/api/accounts/return",{name:t.dataset.sgbackyes},`${t.dataset.sgbackyes} is back, with their history. They choose a new code at their next sign-in.`);return}
+  if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in, added by mistake? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
   if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
   if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} can sign in now and choose a code.`);return}
@@ -12314,7 +12326,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=92976e373c","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=c473553cb9","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   {const m=$("#main"),secs=[...m.querySelectorAll(":scope > section.card")];const links=secs.map((x,i)=>{const l=x.querySelector(".lbl,h3");const t=l&&l.textContent.trim();if(!t)return"";if(!x.id)x.id="set-"+i;return `<button class="linkbtn" type="button" data-setjump="${esc(x.id)}">${esc(t)}</button>`}).filter(Boolean);
     const hd=m.querySelector(".head");if(hd&&links.length>3){const nav=document.createElement("nav");nav.className="setjump";nav.setAttribute("aria-label","Settings sections");nav.innerHTML=links.join("");hd.after(nav)}}

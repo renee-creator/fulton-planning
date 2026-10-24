@@ -102,8 +102,8 @@ function checkSession(tok) {
   if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac))) return null;
   let s; try { s = JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) { return null; }
   if (!s || typeof s.n !== 'string' || !(s.e > Date.now())) return null;
-  // an educator removed on Render, or whose TREE sign-in was removed or had its code cleared, is signed out
-  if (s.v != null) { const a = accountFor(s.n); if (!a || (a.v || 0) !== s.v || !a.code) return null; return { name: a.name }; }
+  // an educator removed on Render, or whose TREE sign-in was removed, had its code cleared or has left Fulton, is signed out
+  if (s.v != null) { const a = accountFor(s.n); if (!a || (a.v || 0) !== s.v || !a.code || isFormerAccount(a)) return null; return { name: a.name }; }
   if (!TEACHERS.some(t => t.name === s.n)) return null;
   return { name: s.n };
 }
@@ -117,7 +117,7 @@ function sessionWhy(req) {
   const who = s.n.slice(0, 40);
   if (!mac || sign(body).length !== mac.length || !crypto.timingSafeEqual(Buffer.from(sign(body)), Buffer.from(mac))) return who + ', signature does not match (the server key changed)';
   if (!(s.e > Date.now())) return who + ', sign-in older than ' + SESSION_DAYS + ' days';
-  if (s.v != null) { const a = accountFor(s.n); if (!a) return who + ', sign-in removed'; if (!a.code) return who + ', passcode cleared'; if ((a.v || 0) !== s.v) return who + ', passcode changed or reset since (' + s.v + ' then, ' + (a.v || 0) + ' now)'; }
+  if (s.v != null) { const a = accountFor(s.n); if (!a) return who + ', sign-in removed'; if (isFormerAccount(a)) return who + ', left Fulton ' + a.leaveOn; if (!a.code) return who + ', passcode cleared'; if ((a.v || 0) !== s.v) return who + ', passcode changed or reset since (' + s.v + ' then, ' + (a.v || 0) + ' now)'; }
   else if (!TEACHERS.some(t => t.name === s.n)) return who + ', no longer set on Render';
   return who + ', reason unknown';
 }
@@ -176,7 +176,24 @@ const newStart = () => String(crypto.randomInt(100000, 1000000));
 const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); };
 const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
-function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.map(a => a.name)])]; }
+// the names offered on plans leave out an educator who has left Fulton
+function teacherNames() { return [...new Set([...TEACHERS.map(x => x.name), ...accounts.list.filter(a => !isFormerAccount(a)).map(a => a.name)])]; }
+/* An educator leaving Fulton keeps their account with their last day, leaveOn. Sign-in ends at the end of that day, in
+   California. From the day after they are a former educator. They cannot sign in, hear no reminders, leave the check-in
+   schedule, the small group leads and the names offered on plans, and their private records wait in Former educators for
+   the director. What they wrote in observations, plans and documentation keeps their name as written. */
+const laDay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+const isFormerAccount = a => !!(a && /^\d{4}-\d{2}-\d{2}$/.test(a.leaveOn || '') && a.leaveOn < laDay());
+function isFormerEducator(name) { return isFormerAccount(accountFor(name)); }
+// someone with records, any file under staff/ for them or any observation, plan or documentation they wrote, leaves
+// Fulton rather than being removed. Remove is kept for a sign-in added by mistake.
+function wroteAnything(name) {
+  const k = nameKey(name); if (!k) return false;
+  const named = v => String(v || '').split(/,|&|\band\b|\//i).some(x => nameKey(x) === k);
+  for (const [kind, f] of [['notices', 'by'], ['plans', 'educator'], ['slides', 'by'], ['stories', 'by']]) for (const r of store.recs[kind].values()) if (r && !r.deleted && r.doc && named(r.doc[f])) return true;
+  return false;
+}
+const hasRecords = name => wroteAnything(name) || (typeof staff !== 'undefined' && staff.hasFiles(name));
 // a kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money
 // the office, named in access/roles.json in the records, works with the director on families, enrollment and participation
 const OFFICE_NAMES = String(process.env.OFFICE_NAMES || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -185,7 +202,8 @@ const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.i
 const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
 const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
-function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0,
+  leaveOn: a.leaveOn || '', former: isFormerAccount(a), records: hasRecords(a.name) }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
@@ -321,7 +339,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
-const reminders = require('./reminders.js')({ store, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
+const reminders = require('./reminders.js')({ store, accounts, accountFor, isFormer: n => isFormerEducator(n), saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const signupSync = require('./signup-sync.js')({ store, log, readFeed: l => readSignupFeed(l, true), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 // a family's sign-in code goes out through the school's Google Workspace mailbox script, set as FAMILY_MAIL_URL and FAMILY_MAIL_KEY
 async function mailCode(to, code) {
@@ -364,9 +382,48 @@ function checkPasscode(name, given) {
   if (a && a.code) ok = sameText(given, a.code); else { const t = matchPasscode(given); ok = !!t && nameKey(t.name) === nameKey(name); }
   if (!ok) nameWrong(name); return ok;
 }
+/* once an educator's last day has passed, they come off the names offered on plans, the Class lists and the small group
+   leads. What was taken is kept on the account, so bringing them back puts it back where nothing else took its place. */
+function settleFormer() {
+  if (!store.ready || !accounts.loaded) return; let changed = false;
+  for (const a of accounts.list) {
+    if (!isFormerAccount(a) || a.settled === a.leaveOn) continue;
+    const k = nameKey(a.name), took = { roster: null, rooms: [], groups: [] };
+    const ed = store.recs.settings.get('educators');
+    if (ed && !ed.deleted && ed.doc && Array.isArray(ed.doc.names)) { const r = ed.doc.names.find(x => x && nameKey(x.name) === k); if (r) { took.roster = r; setSetting('educators', Object.assign({}, ed.doc, { names: ed.doc.names.filter(x => x !== r) })); } }
+    const mn = store.recs.settings.get('main');
+    if (mn && !mn.deleted && mn.doc && mn.doc.educators && typeof mn.doc.educators === 'object') {
+      const eds = {}; for (const [room, ns] of Object.entries(mn.doc.educators)) { const l = Array.isArray(ns) ? ns : []; if (l.some(n => nameKey(n) === k)) took.rooms.push(room); eds[room] = l.filter(n => nameKey(n) !== k); }
+      if (took.rooms.length) setSetting('main', Object.assign({}, mn.doc, { educators: eds })); }
+    const pg = store.recs.settings.get('program');
+    if (pg && !pg.deleted && pg.doc && Array.isArray(pg.doc.groups)) {
+      const gs = pg.doc.groups.map(g => { if (g && g.educator && nameKey(g.educator) === k) { took.groups.push(g.name); return Object.assign({}, g, { educator: '' }); } return g; });
+      if (took.groups.length) { setSetting('program', Object.assign({}, pg.doc, { groups: gs })); syncGroups('program'); } }
+    // a phone that took reminders hears nothing more
+    a.leftFrom = took; a.settled = a.leaveOn; delete a.push; changed = true;
+    if (typeof staff !== 'undefined') staff.markLeft(a.name, a.leaveOn).catch(() => {});
+    log('Left Fulton,', a.name, 'last day', a.leaveOn, '. Off the educators list and', took.groups.length, 'small groups');
+  }
+  if (changed) saveAccounts('TREE');
+}
+function restoreFormer(a) {
+  const took = a.leftFrom || {}, k = nameKey(a.name);
+  if (took.roster) { const ed = store.recs.settings.get('educators'); const doc = ed && !ed.deleted && ed.doc ? ed.doc : { names: [] }; const names = Array.isArray(doc.names) ? doc.names : [];
+    if (!names.some(x => x && nameKey(x.name) === k)) setSetting('educators', Object.assign({}, doc, { names: [...names, took.roster] })); }
+  const mn = store.recs.settings.get('main');
+  if ((took.rooms || []).length && mn && !mn.deleted && mn.doc) { const eds = Object.assign({}, mn.doc.educators || {}); let put = false;
+    for (const room of took.rooms) { const l = Array.isArray(eds[room]) ? eds[room] : []; if (!l.some(n => nameKey(n) === k)) { eds[room] = [...l, a.name]; put = true; } }
+    if (put) setSetting('main', Object.assign({}, mn.doc, { educators: eds })); }
+  const pg = store.recs.settings.get('program');
+  if ((took.groups || []).length && pg && !pg.deleted && pg.doc && Array.isArray(pg.doc.groups)) { let put = false;
+    const gs = pg.doc.groups.map(g => g && took.groups.includes(g.name) && !g.educator ? (put = true, Object.assign({}, g, { educator: a.name })) : g);
+    if (put) { setSetting('program', Object.assign({}, pg.doc, { groups: gs })); syncGroups('program'); } }
+  delete a.leftFrom;
+}
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
 const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), setSetting });
+setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
@@ -408,6 +465,7 @@ async function doLoadGraph() {
   if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 15 * 60000); }
   store.ready = true; store.error = ''; store.loadedAt = Date.now();
   try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); }
+  try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
 }
 async function doLoad() {
@@ -1210,6 +1268,8 @@ async function handle(req, res) {
         if (near.length > 1) { err(req, res, 400, 'More than one person is named ' + near[0].name.split(' ')[0] + '. Type ' + near.map(x => x.name).join(' or ') + '.'); return; }
         if (near.length === 1) a = near[0];
       }
+      // an educator who has left Fulton gets the same answer as a wrong passcode
+      if (a && isFormerAccount(a)) { noteWrong(ip); nameWrong(name); log('Sign-in refused,', a.name, 'left Fulton', a.leaveOn); err(req, res, 403, NOPE); return; }
       if (a) {
         if (!a.code) {
           // the first sign-in sets the educator's own four numbers, as the director wants
@@ -1475,7 +1535,30 @@ async function handle(req, res) {
       log('Sign-in saved for', a.name, 'by', me.name); list(); return;
     }
     if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
-    if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
+    // Remove is only for a sign-in added by mistake. Someone with records leaves Fulton instead, so nothing of theirs is lost.
+    if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; }
+      if (hasRecords(a.name)) { err(req, res, 400, a.name + ' has records at Fulton, so choose Leaving Fulton. Their records are kept.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
+    // the director chooses an educator's last day. Sign-in ends at the end of that day.
+    if (path === '/api/accounts/leave') {
+      const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; }
+      if (nameKey(a.name) === nameKey(me.name) || isDirector(a.name)) { err(req, res, 400, 'A director\'s sign-in stays.'); return; }
+      if (isFormerAccount(a)) { err(req, res, 400, a.name + ' has already left Fulton.'); return; }
+      const day = String(body.leaveOn || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { err(req, res, 400, 'Choose their last day.'); return; }
+      const was = a.leaveOn; a.leaveOn = day;
+      if (!(await saveAccounts(me.name))) { if (was) a.leaveOn = was; else delete a.leaveOn; err(req, res, 502, 'The last day could not be saved. Try again.'); return; }
+      staff.markLeft(a.name, day).catch(e => log('The last day could not be kept on the educator record', a.name, e.message));
+      log('Leaving Fulton,', a.name, 'last day', day, 'set by', me.name); settleFormer(); list(); return;
+    }
+    // bringing an educator back keeps all their history. A former educator gets a new start code, as for a cleared code.
+    if (path === '/api/accounts/return') {
+      const a = accountFor(body.name); if (!a || !a.leaveOn) { err(req, res, 404, 'That educator has not left Fulton.'); return; }
+      const former = isFormerAccount(a);
+      if (former) { a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); restoreFormer(a); }
+      delete a.leaveOn; delete a.settled;
+      if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
+      staff.markLeft(a.name, '').catch(e => log('The educator record could not be updated', a.name, e.message));
+      log(former ? 'Brought back to Fulton,' : 'Staying at Fulton,', a.name, 'by', me.name); list(); return;
+    }
     err(req, res, 404, 'Not found'); return;
   }
   if (path === '/api/signup-feed') {
@@ -1614,4 +1697,4 @@ server.listen(PORT, () => {
   log('GitHub key ' + (githubToken() ? 'saved' : 'MISSING') + ', Anthropic key ' + (anthropicKey() ? 'saved' : 'MISSING'));
   loadAll(); calendar.loadAll();
 });
-module.exports = { deepMerge, checkSession, makeSession };
+module.exports = { deepMerge, checkSession, makeSession, isFormerEducator };

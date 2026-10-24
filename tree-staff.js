@@ -147,6 +147,7 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="st27")return await page27(my);
     if(v==="stdrill")return await pageDrills(my);
     if(v==="stfiles")return await pageFiles(my);
+    if(v==="stformer")return await pageFormer(my);
     // growth, the journal, check-ins, Proud Moments and PD days live in the second half of this file
     if(window.TreeGrowth&&TreeGrowth.views.includes(v))return await TreeGrowth.render(v,my);
   }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
@@ -195,6 +196,19 @@ function groupHtml(){const names=B.people||[];
     <div class="actions"><span class="cnt" id="stg-roster">No roster yet</span><button class="btn small ghost" data-stgroup="roster">Upload the roster</button><button class="btn small" data-stgroup="save">Record for everyone chosen</button><button class="linkbtn" data-stgroup="cancel">Cancel</button></div>`:
     `<div class="actions" style="margin:0"><button class="btn small ghost" data-stgroup="open">Record a group training</button></div>`)}
 
+/* educators who have left Fulton, for the director only. Their records page, Growth Plan, journal, check-ins, Proud
+   Moments and evaluations are kept here, and their observations, plans and documentation keep their name as written. */
+async function pageFormer(my){if(!D())return pageRecords(my);const r=await api("former");st.former=r.people||[];const ps=st.former;const p=ps.find(x=>x.name===st.formerWho);
+  const about=x=>[x.role,x.room?x.room+" Class":"",x.leftOn?"Last day "+fd(x.leftOn):""].filter(Boolean).join(", ");
+  if(!p){draw(my,head("Educators","Former educators","Educators who have left Fulton. Each one's records page, Growth Plan, journal, check-ins, Proud Moments and evaluations wait here, and only you open them.")+
+    card("Former educators",ps.length?ps.map(x=>`<div class="prow"><div><b>${H(x.name)}</b><div class="cnt">${H(about(x))}</div></div><button class="btn small ghost" data-stformer="${H(x.name)}">Open</button></div>`).join(""):`<div class="empty">No one has left Fulton yet. When an educator leaves, choose Leaving Fulton beside their name in Settings, under Sign-ins, and their records wait here.</div>`));return}
+  const g=window.TreeGrowth&&TreeGrowth.formerHtml?await TreeGrowth.formerHtml(p.name).catch(e=>card("Growth",`<div class="hint warnline">${H(e.message||"This part could not open.")}</div>`)):"";
+  if(my!==RT)return;
+  draw(my,head("Former educators",p.name,`${H(about(p))}. Only you see these records.`)+`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stformer="">‹ Former educators</button></div>`+
+    card("Records page",`<div class="cnt">Records and certificates, immunizations, units and continuing hours, kept as they were.</div><div class="actions"><button class="btn small ghost" data-stperson="${H(p.name)}">Open the records page</button></div>`)+g+
+    card("Bring back",`<div class="hint">Bringing ${H(p.name)} back keeps all their history. They choose a new code at their next sign-in.</div><div class="actions" id="stbackrow"><button class="btn small ghost" data-stback="${H(p.name)}">Bring ${H(p.name)} back</button></div>`))}
+const isFormerName=n=>(st.former||[]).some(x=>x.name===n);
+
 /* a records page, the educator's own or, for the director, anyone's */
 async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc||st.doc.name!==who||!T._keep)await loadPerson(who);const p=P(),dir=D(),mine=who===meName();
   const pr=p.profile||{};const lead=B.school.remindDays||30;
@@ -225,7 +239,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
   const focus=(p.focus||[]).filter(f=>!(f.educatorOk&&f.directorOk)).concat((p.focus||[]).filter(f=>f.educatorOk&&f.directorOk));
   const goTo=p.goTo||"",paired=p.paired||[];
   draw(my,`${head(mine?"My records":"Records",mine?"My records":p.name+"'s records",`Dates and certificates only, never health details. Only ${mine?"you":H(p.name)} and the director see this page. TREE reminds ${mine?"you":"them"} and the director ${H(lead)} days before anything expires.`)}
-    ${!mine&&dir?`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="stteam">‹ All educators</button></div>`:""}
+    ${!mine&&dir?`<div class="actions" style="margin:0 0 10px">${isFormerName(p.name)?`<button class="chip-btn back" data-tview="stformer">‹ ${H(p.name)}, a former educator</button>`:`<button class="chip-btn back" data-tview="stteam">‹ All educators</button>`}</div>`:""}
     ${card("About",`<div class="cnt">${H([whoRole(p),roomName(p),pr.startDate?"Started "+fd(pr.startDate):"",pr.planHour?"Monday planning hour at "+hourText(pr.planHour):""].filter(Boolean).join(", "))}</div>
       ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
@@ -443,7 +457,9 @@ function coverDoc(p,only){const pw=p.paperwork||{};const yes=b=>b?"In place":"No
     {t:"table",label:"Immunizations",head:["Immunization","Regulation","Date","Renews","In place"],rows:imm,widths:[.3,.22,.13,.19,.16]},
     {t:"text",label:"Uploaded forms and certificates",text:allFids(p).filter(f=>!fileMeta(p,f).link).map(f=>fileMeta(p,f).name).join(", ")||"None uploaded yet."}])}
 // the cover sheet, with every uploaded form and certificate behind it, ready to file
-async function printFile(name,mode){progress("Making the file");await loadPeople();const p=(st.people||[]).find(x=>x.name===name);if(!p){toast("That educator is not here.");return}
+async function printFile(name,mode){progress("Making the file");await loadPeople();let p=(st.people||[]).find(x=>x.name===name);
+  // a former educator's file prints from their own record
+  if(!p&&isFormerName(name))p=await api("person",{name}).catch(()=>null);if(!p){toast("That educator is not here.");return}
   if(mode==="word"){await out("word",[coverDoc(p)],"Personnel file cover, "+name);return}
   const fids=(mode==="new"?newPages(p):allFids(p).filter(f=>!fileMeta(p,f).link));
   let PL;try{PL=await loadScript("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js","PDFLib")}catch(e){toast("The PDF tool did not load. Check the connection.");return}
@@ -482,13 +498,16 @@ function tapOnce(t,f){const k=Object.entries(t.dataset).map(([a,b])=>a+"="+b).jo
   r.then(()=>{for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id)))DRAFTS.delete(x)},()=>{}).catch(()=>{});
   r.catch(fail).finally(()=>{INFLIGHT.delete(k);t.removeAttribute("aria-busy")})}
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.hbSec="";st.hbEdit=false},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw]");
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw],[data-stformer],[data-stback]");
   if(!t)return;tapOnce(t,()=>stTap(e,t))},true);
 async function stTap(e,t){const d=t.dataset;
   if(d.stprint||d.stword){e.preventDefault();progress("Making the file");await printKind(d.stprint||d.stword,!!d.stword);return}
   if(d.stmod!=null&&d.tview){LS.set("tree.stmod",d.stmod);return}
   if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.sthb==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.stperson){st.who=d.stperson;st.doc=null;goView("strec");return}
+  if(d.stformer!=null){st.formerWho=d.stformer;redraw();jumpTop();return}
+  if(d.stback){const n=d.stback,w=$("#stbackrow");if(!t.dataset.sure){if(w)w.innerHTML=`<span class="confirm">Bring ${H(n)} back with their history? <button class="btn small" data-stback="${H(n)}" data-sure="1">Bring back</button><button class="linkbtn" data-stformer="${H(n)}">Cancel</button></span>`;return}
+    try{await window.FP_API("/api/accounts/return",{name:n});if(typeof signins!=="undefined")signins.list=null;st.formerWho="";toast(`${n} is back, with their history. They choose a new code at their next sign-in.`);await boot(true);redraw()}catch(er){fail(er)}return}
   if(d.stnew==="open"){st.adding=true;redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
   if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value};
     try{await api("newhire",b);st.adding=false;toast(`${b.newName} can sign in now with their first name and choose a passcode. They see only the New Educator section.`);await boot(true);st.newWho=b.newName;redraw()}catch(er){fail(er)}return}
@@ -992,14 +1011,37 @@ function agendaDoc(it){const a=it.agenda||{};const R=st.readings||[];
   return report(a.title||it.title||(it.kind==="meeting"?"PD staff meeting":"PD day"),[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})],["Time",a.start?tm(a.start)+(a.end?" to "+tm(a.end):""):""]],
     (a.blocks||[]).map(b=>({t:"text",label:(b.time?tm(b.time)+", ":"")+b.title,text:[b.why,b.how?HOW[b.how]+".":"",b.prepare?"To prepare. "+b.prepare:"",(b.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+", "+x.source+(x.url?" ("+x.url+")":"")).join(". ")].filter(Boolean).join(" ")})))}
 
+/* ---------- a former educator's growth, read only, for the director in Former educators ---------- */
+const fold=(k,title,side,inner)=>`<details class="card fold" data-fold="sf:${H(k)}" ${typeof foldOpen!=="undefined"&&foldOpen.has("sf:"+k)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${H(title)}</span>${side?`<span class="cnt">${H(side)}</span>`:""}</summary><div class="foldbody" style="display:grid;gap:8px">${inner}</div></details>`;
+const said=(l,v)=>String(v||"").trim()?`<div class="gq"><div class="cnt">${H(l)}</div><div style="white-space:pre-line">${H(v)}</div></div>`:"";
+const placed=pl=>AK().filter(k=>pl&&pl[k]).map(k=>`<div class="cnt">${H(areaName(k))}, ${pl[k]==="nys"?"Not yet seen":H(PN[+pl[k]]||"")}</div>`).join("");
+Gr.formerHtml=async function(name){await Gr.ready();if(!B())return "";const r=await ga("former",{name});const d=r.growth||{};const k=name.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+  const years=o=>Object.keys(o||{}).sort().reverse();
+  const plans=years(d.plans).map(y=>{const p=d.plans[y]||{};return `<div class="garea"><b>${H(yrLabel(y))}</b>${said("What went well",(p.wentWell||{}).text)}${REFL.map(([x,l])=>said(l,(p.reflection||{})[x])).join("")}
+    ${(p.goals||[]).filter(g=>String(g.text||"").trim()).map((g,i)=>said(`Goal ${i+1}${g.area?", "+areaName(g.area):""}`,g.text)).join("")}${said("Challenges I'm anticipating",p.challenges)}${said("What I need from the director",(p.need||{}).director)}${said("From my team",(p.need||{}).team)}${said("From training",(p.need||{}).training)}${said("A note",p.note)}</div>`}).join("");
+  const cis=(d.checkins||[]).map(c=>`<div class="garea"><b>${H(fd(c.date))}</b>${(c.temp||{}).self||(c.temp||{}).dir?`<div class="cnt">Professional temperature, ${H((c.temp||{}).self||"not given")} and the director's ${H((c.temp||{}).dir||"not given")}</div>`:""}${said("Temperature in their words",(c.temp||{}).words)}${said("Plus",c.plus)}${said("Delta",c.delta)}${said("Growth Plan check",c.goalsLine)}${said("One support",c.support)}
+    ${said("Focus Until Next Time",(c.focus||{}).settled)}${said("Follow-up notes",c.followup)}${said("Earlier answer, the work",c.work)}${said("Earlier answer, a challenge",c.challenge)}</div>`).join("");
+  const evs=years(d.evals).map(y=>{const ev=d.evals[y]||{},s=ev.self||{},v=ev.dir||{};return `<div class="garea"><b>${H(yrLabel(y))}</b>${placed(s.placements)?`<div class="cnt" style="margin-top:6px"><b>Their own placements</b></div>${placed(s.placements)}`:""}${Object.entries(s.writes||{}).map(([a,t])=>said(areaName(a),t)).join("")}${said("Closing",s.closing)}
+    ${placed(v.placements)?`<div class="cnt" style="margin-top:6px"><b>Your placements</b></div>${placed(v.placements)}`:""}${said("Strengths",v.strengths)}${said("Narrative",v.narrative)}${(ev.goals||[]).map((g,i)=>said(`Next year's goal ${i+1}${g.area?", "+areaName(g.area):""}`,g.text)).join("")}</div>`}).join("")+
+    (d.starting&&(d.starting.notes||placed(d.starting.placements))?`<div class="garea"><b>Starting-point conversation</b>${placed(d.starting.placements)}${said("Notes",d.starting.notes)}</div>`:"");
+  const ms=(r.moments||[]).map(m=>`<div class="gmom"><div class="cnt">${H(m.kind==="kudos"?`Kudos from ${m.by} to ${m.to}`:`A proud moment by ${m.by}`)}, ${H(fms(m.at))}</div><div style="white-space:pre-line">${H(m.text)}</div></div>`).join("");
+  const J=st.fj&&st.fj.who===name?st.fj:null;
+  const jr=J?(J.entries.length?J.entries.map(e=>`<div class="garea"><b>${H(fd(e.date))}</b>${PROMPTS.filter(([x])=>e[x]).map(([x,l])=>said(l,e[x])).join("")}</div>`).join(""):`<div class="cnt">No journal entries.</div>`)
+    :`<div class="hint">The journal asks for your TREE passcode each time it opens.</div><div class="kfields"><label>Your TREE passcode<input type="password" inputmode="numeric" autocomplete="current-password" id="gfj-pass" maxlength="40"></label></div><div class="actions"><button class="btn small" data-gfjopen="${H(name)}">Open the journal</button></div>`;
+  return fold(k+":plan","Growth Plan",years(d.plans).length?years(d.plans).map(yrLabel).join(", "):"",plans||`<div class="cnt">No Growth Plan was kept.</div>`)+
+    fold(k+":ci","Check-ins",(d.checkins||[]).length?String(d.checkins.length):"",cis||`<div class="cnt">No check-ins were kept.</div>`)+
+    fold(k+":eval","Evaluations",years(d.evals).map(yrLabel).join(", "),evs||`<div class="cnt">No evaluation was kept.</div>`)+
+    fold(k+":jour","Journal",J?String(J.entries.length):"",jr)+
+    fold(k+":mom","Proud Moments",(r.moments||[]).length?String(r.moments.length):"",ms||`<div class="cnt">No Proud Moments or Kudos.</div>`)};
+
 /* ---------- taps ---------- */
 const val=s=>{const e=$(s);return e?e.value:""};
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;
   // leaving a page closes the journal, so it asks for the passcode again
   // the typing in an agenda being built is kept for that day, and opens again with Build the agenda
   try{collectAgenda()}catch(er){}if(st.pdEdit&&st.pdEdit.blocks&&st.pdSel)st.pdStash={id:st.pdSel,edit:st.pdEdit};
-  st.jr=null;st.jDraft=null;st.self=false;st.selfDraft=null;st.starting=false;st.startDraft=null;st.tab="";st.ci=null;st.ciWho="";st.pdSel="";st.pdEdit=null;st.editCont=false;st.planDraft=null;st.examplesPick=null},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-gsel],[data-gtab],[data-gself],[data-gselfback],[data-gselfpt],[data-gwrite],[data-gselfsave],[data-gdir],[data-gdirsave],[data-gmeet],[data-gnextsave],[data-gstart],[data-gstartback],[data-gstartpt],[data-gstartsave],[data-gcont],[data-gcontsave],[data-gpww],[data-gpok],[data-gpadd],[data-gpsave],[data-gjopen],[data-gjclose],[data-gjsave],[data-gjbring],[data-gcpre],[data-gcfollow],[data-gci],[data-gciback],[data-gciopen],[data-gctemps],[data-gctempd],[data-gcalign],[data-gceffect],[data-gcsave],[data-gbook],[data-gmkind],[data-gmaud],[data-gmshare],[data-gmphoto],[data-gmview],[data-gmrm],[data-gexrm],[data-gexsave],[data-gmodsave],[data-gmodfinish],[data-gpd],[data-gpdedit],[data-gpdadd],[data-gpdmode],[data-gsugload],[data-gsugadd],[data-gbkadd],[data-gbkrm],[data-gbkmv],[data-gbkrd],[data-gbksearch],[data-gbkfound],[data-gpdsave],[data-gpdname],[data-gpdhours],[data-gpddsave],[data-gprint],[data-gword],[data-gsset]");
+  st.jr=null;st.fj=null;st.jDraft=null;st.self=false;st.selfDraft=null;st.starting=false;st.startDraft=null;st.tab="";st.ci=null;st.ciWho="";st.pdSel="";st.pdEdit=null;st.editCont=false;st.planDraft=null;st.examplesPick=null},true);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gsel],[data-gtab],[data-gself],[data-gselfback],[data-gselfpt],[data-gwrite],[data-gselfsave],[data-gdir],[data-gdirsave],[data-gmeet],[data-gnextsave],[data-gstart],[data-gstartback],[data-gstartpt],[data-gstartsave],[data-gcont],[data-gcontsave],[data-gpww],[data-gpok],[data-gpadd],[data-gpsave],[data-gjopen],[data-gjclose],[data-gjsave],[data-gjbring],[data-gcpre],[data-gcfollow],[data-gci],[data-gciback],[data-gciopen],[data-gctemps],[data-gctempd],[data-gcalign],[data-gceffect],[data-gcsave],[data-gbook],[data-gmkind],[data-gmaud],[data-gmshare],[data-gmphoto],[data-gmview],[data-gmrm],[data-gexrm],[data-gexsave],[data-gmodsave],[data-gmodfinish],[data-gpd],[data-gpdedit],[data-gpdadd],[data-gpdmode],[data-gsugload],[data-gsugadd],[data-gbkadd],[data-gbkrm],[data-gbkmv],[data-gbkrd],[data-gbksearch],[data-gbkfound],[data-gpdsave],[data-gpdname],[data-gpdhours],[data-gpddsave],[data-gprint],[data-gword],[data-gsset],[data-gfjopen]");
   if(!t)return;X.tapOnce(t,()=>gTap(e,t))},true);
 async function gTap(e,t){const d=t.dataset;
   const ro=VIEW_AS&&!d.gsel&&!d.gtab&&!d.gpd&&!d.gprint&&!d.gword&&!d.gciback&&!d.gselfback;if(ro){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -1027,6 +1069,7 @@ async function gTap(e,t){const d=t.dataset;
   if(d.gpsave){collectPlan();const p=st.planDraft;const body={wentWell:p.wentWell,goals:p.goals.filter(x=>String(x.text||"").trim()),challenges:p.challenges,need:p.need,reflection:p.reflection};
     if(!isDir())body.feedback=p.feedback||"";else{body.note=val("#gp-note");body.source=$("#gp-aug")&&$("#gp-aug").checked?"august":"tree"}
     const r=await ga("plan",{name:who(),plan:body});setDoc(who(),r);st.planDraft=null;toast("Saved.");redraw();return}
+  if(d.gfjopen){const pass=val("#gfj-pass");if(!pass){toast("Type your TREE passcode.");return}const r=await ga("journal/open",{name:d.gfjopen,passcode:pass});st.fj={who:d.gfjopen,entries:r.entries||[]};if(typeof foldOpen!=="undefined")foldOpen.add("sf:"+d.gfjopen.toLowerCase().replace(/[^a-z0-9]+/g,"-")+":jour");redraw();return}
   if(d.gjopen){const pass=val("#gj-pass");if(!pass){toast("Type your TREE passcode.");return}const r=await ga("journal/open",{name:who(),passcode:pass});st.jr=r;st.jrWho=who();st.jDraft=null;redraw();return}
   if(d.gjclose){st.jr=null;st.jDraft=null;redraw();return}
   if(d.gjsave!=null){const entry={id:d.gjsave||""};document.querySelectorAll("[data-gjf]").forEach(x=>entry[x.dataset.gjf]=x.value);if(!PROMPTS.some(([k])=>String(entry[k]||"").trim())){toast("Write a few honest sentences first.");return}
