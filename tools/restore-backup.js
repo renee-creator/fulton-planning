@@ -29,13 +29,15 @@ let n = 0;
 for (const [rel, doc] of Object.entries(bundle.files)) {
   // a path is always inside the records folder, and never the sign-ins file
   const clean = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
-  if (!/^[\w.-]+(\/[\w.~-]+)*\.json$/.test(clean.split(path.sep).join('/')) || clean.startsWith('access')) { console.error('Skipped', rel); continue; }
+  // records are JSON, and the PD library's pieces under staff/pd are Markdown, kept as written
+  const md = /^staff\/pd\/[\w.~/-]+\.md$/.test(clean.split(path.sep).join('/')) && typeof doc === 'string';
+  if ((!md && !/^[\w.-]+(\/[\w.~-]+)*\.json$/.test(clean.split(path.sep).join('/'))) || clean.startsWith('access')) { console.error('Skipped', rel); continue; }
   const file = path.join(root, clean);
   if (!file.startsWith(root + path.sep)) { console.error('Skipped', rel); continue; }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   // the DRDP descriptors are kept with one space of indent, every other record with two, as the server writes them
   const indent = clean.split(path.sep).join('/') === 'drdp/descriptors.json' ? 1 : 2;
-  fs.writeFileSync(file, JSON.stringify(doc, null, indent) + '\n');
+  fs.writeFileSync(file, md ? doc : JSON.stringify(doc, null, indent) + '\n');
   n++;
 }
 const m = bundle.manifest;

@@ -179,7 +179,7 @@ const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.i
 const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
 const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
-function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0 }; }
 
 /* ---------- GitHub storage ---------- */
 function gh(method, path, body) {
@@ -337,6 +337,19 @@ async function keepOriginal(id, buf, type, message) {
   store.originals.set(id, { path: `originals/${id}`, sha: r.json.content.sha, size: buf.length }); cacheFile(id, buf);
   return id;
 }
+// a file kept with keepOriginal, read back as bytes for a request that has already checked who may see it
+async function readOriginal(id) {
+  let o = store.originals.get(id);
+  if (!o && ID_RE.test(id)) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/originals/${encodeURIComponent(id)}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); if (r.status === 200 && r.json && r.json.sha) { o = { path: `originals/${id}`, sha: r.json.sha, size: r.json.size }; store.originals.set(id, o); } }
+  if (!o) throw new Error('It is not in the records.');
+  if (o.drive) return photosDrive.read(o);
+  const b = await readPhoto(o.sha); if (b.status !== 200) throw new Error('GitHub answered ' + b.status); return b.buf;
+}
+// educator records, the New Educator section, the PD library pieces and the Teacher Policies and Procedures, in staff.js
+function lensNow() { const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; const ls = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
+  const l = ls.find(x => x && x.year) || ls[0]; return l ? { name: String(l.name || ''), description: String(l.description || '') } : null; }
+function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
+const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames });
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
@@ -421,6 +434,7 @@ async function doLoad() {
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
+    staff.load().catch(e => log('Educator records could not be read', e.message));
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();
     if (photosDrive.on()) setTimeout(() => photosDrive.moveAll().catch(e => log('Photos could not move to Google Drive', e.message)), 60000).unref();
@@ -464,6 +478,8 @@ function backupBundle(saved) {
   for (const [kind, m] of Object.entries(store.recs)) { let n = 0; for (const [id, r] of m) { if (!r || r.deleted || !r.doc) continue; files[`${kind}/${id}.json`] = r.doc; n++; } counts[kind] = n; }
   let cal = 0; try { for (const [p, d] of Object.entries(calendar.dump())) { files[p] = d; cal++; } } catch (e) { log('The calendar could not be added to the backup', e.message); }
   counts.calendar = cal;
+  let st = 0; try { for (const [p, d] of Object.entries(staff.dump())) { files[p] = d; st++; } } catch (e) { log('Educator records could not be added to the backup', e.message); }
+  counts.staff = st;
   if (DRDP_DESC) { files[DRDP_PATH] = DRDP_DESC; counts.drdp = 1; }
   const photos = [...store.originals.entries()].map(([id, o]) => Object.assign({ id, size: Number(o.size) || 0 }, o.drive ? { drive: o.drive, ref: o.ref } : { path: o.path }));
   const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
@@ -1045,6 +1061,8 @@ async function handle(req, res) {
     const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
     if (!checkFileKey(url.searchParams.get('t') || '')) { log('Photo refused, the key has expired or is not valid'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
+    // an educator's certificates and forms open only through their records, for them and the director
+    if (/^staff-/.test(id)) { log('Educator record file refused through a photo link'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Open this from the records page in TREE.'); return; }
     let o = store.originals.get(id);
     // a photo saved while the list of records was being read can be missing from it, so the records are asked directly
     if (!o && ID_RE.test(id) && store.ready) {
@@ -1220,6 +1238,16 @@ async function handle(req, res) {
     const bad = !OPEN.includes(path) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
   }
+  // a new hire, before the director turns on full access, reaches only the New Educator section. Nothing about children,
+  // families or other staff is sent to that sign-in, and every other request is refused here.
+  const newHire = staff.isNewHire(me.name);
+  if (newHire) {
+    const OPEN = ['/api/data', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
+    if (!OPEN.includes(path) && !path.startsWith('/api/staff/')) { log('New educator sign-in refused', me.name, path); err(req, res, 403, 'This opens once the director turns on full access.'); return; }
+    if (path === '/api/data') { json(req, res, 200, { bootId: BOOT_ID, rev, me: me.name, director: false, newHire: true, staff: staff.bootInfo(me.name), data: {} }); return; }
+    if (path === '/api/changes') { json(req, res, 200, { bootId: BOOT_ID, rev, changes: {}, newHire: true }); return; }
+  }
+  if (path.startsWith('/api/staff/')) { await staff.handle(path, body, me.name, req, res, { json, err, send: (q, r, st, h, b) => send(q, r, st, h, b) }); return; }
   // reminders. A phone turns them on once, the director sees who receives them and can send a test
   if (path === '/api/push/key') { const a = accountFor(me.name); json(req, res, 200, { key: reminders.keys() ? reminders.keys().pub : '', phones: ((a && a.push) || []).length }); return; }
   if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
@@ -1228,7 +1256,7 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && c.id === 'display'))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
@@ -1340,7 +1368,7 @@ async function handle(req, res) {
     else if (body.action === 'off') { setDisplay({ key: '', madeAt: 0, madeBy: '' }, me.name); log('Display turned off by', me.name); }
     json(req, res, 200, displayView()); return;
   }
-  if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
+  if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
   if (path === '/api/original') {
     const name = String(body.name || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60);
     const ext = (name.match(/\.(pdf|jpe?g|png|webp)$/) || [])[1];
@@ -1543,7 +1571,7 @@ async function stop(sig) {
   const until = Date.now() + 25000;
   while (Date.now() < until) {
     for (const t of timers.values()) clearTimeout(t);
-    const ok = await Promise.race([Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false)]).then(([a, b]) => a && b), new Promise(r => setTimeout(() => r(false), Math.max(1000, until - Date.now())))]);
+    const ok = await Promise.race([Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)]).then(([a, b, c]) => a && b && c), new Promise(r => setTimeout(() => r(false), Math.max(1000, until - Date.now())))]);
     if (ok) { log('All changes saved'); break; }
     await new Promise(r => setTimeout(r, 3000));
   }
