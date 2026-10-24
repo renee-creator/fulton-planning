@@ -152,6 +152,10 @@ The page is `display.html`. The director makes its link in Settings, Staff room 
 
 Observations kept for a team inquiry stay off the display, as they stay off walls. Each open team inquiry has a switch on its page, the director's alone, and one whose observations name a single child stays off until she turns it on. Family conferences and children's details beyond first names never appear.
 
+A lens slide shows its whole description on the left and its questions on the right, or a photo from a moment it found lately when it has no questions. A photo moment with only a line of words gives the photo more of the screen and sets the words larger. Text-only observations keep their narrow column. An observation shows its proofread wording once a proofread is approved, since the approved wording takes the place of the first, and the educator's own words otherwise. Photos and observations take turns across West, North and South, so no Class fills the screen. A note the director sends to all staff from Today shows that day as its own quiet slide, and a note to one person never shows. A staff birthday shows only on its day, as its own slide with the name alone. A Proud Moment shows only when the educator shared it with everyone.
+
+A note for staff. On Today the director writes a note to all staff or to one person, and it shows on Today that day for the people it is for. The notes are kept in settings/staffnotes, which only the director's TREE receives whole, and each person is sent only their own.
+
 ## Educators
 
 Educators is a section of TREE with each educator's records page, the director's view of every educator, Coming October 1, 2027, the drill log, paper personnel files, the New Educator section, the PD library, the Teacher Policies and Procedures and the Family Handbook. Its pages are their own script, tree-staff.js, built from src/staff-app.js and loaded only when someone opens them, so the main page stays the same size and a problem there cannot reach the rest of TREE. The server side is staff.js.

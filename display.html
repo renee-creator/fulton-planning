@@ -64,6 +64,11 @@ h1{font-size:calc(var(--u)*5);line-height:1.12;margin:calc(var(--u)*1) 0 0;font-
 .words{font-size:calc(var(--u)*2.2);line-height:1.45;margin-top:calc(var(--u)*3);max-width:40ch;padding-left:calc(var(--u)*1.6);border-left:calc(var(--u)*.45) solid var(--accent)}
 .small{font-size:calc(var(--u)*1.6);color:var(--muted);margin-top:calc(var(--u)*2.4)}
 ul.qs{list-style:none;padding:0;margin:calc(var(--u)*3) 0 0}
+.lensgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:calc(var(--u)*4);align-items:start;margin-top:calc(var(--u)*1.4)}
+.lensdesc{font-size:calc(var(--u)*2.3);line-height:1.45;white-space:pre-line;color:var(--accent)}
+.lensgrid ul.qs{margin-top:0}.lensgrid ul.qs li{max-width:none}
+.m .tx.short .noticed{font-size:calc(var(--u)*3.4);max-width:22ch}.m .tx.short .wonder{font-size:calc(var(--u)*2.5)}
+.body.quiet{align-items:flex-start}.body.quiet h1{font-weight:500}
 ul.qs li{font-size:calc(var(--u)*2.3);line-height:1.4;margin:0 0 calc(var(--u)*1.2);padding-left:calc(var(--u)*2.2);position:relative;max-width:40ch}
 ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--u)*.9);height:calc(var(--u)*.9);border-radius:50%;background:var(--accent)}
 
@@ -124,7 +129,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
   const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",slide:"var(--sky)",week:"var(--moss)",food:"var(--moss)"};
+  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",slide:"var(--sky)",week:"var(--moss)",food:"var(--moss)",birthday:"var(--sun)",note:"var(--moss)"};
   let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
 
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -141,8 +146,10 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const img=p=>p&&p.src?`<img src="${esc(SERVER+p.src)}" alt="">`:"";
 
   /* each screen */
-  function momentHtml(m){const p=m.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;const w=portrait?40:p.w&&p.h&&p.w/p.h>1.6?66:60;
-    return `<div class="ph" style="width:${w}%">${img(p)}</div><div class="tx">
+  // a moment with only a line of words gives the photo more of the screen and sets the words larger
+  function momentHtml(m){const p=m.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;const short=(String(m.noticed||"")+String(m.wonder||"")).length<140;
+    const w=portrait?(short?48:40):p.w&&p.h&&p.w/p.h>1.6?(short?74:66):(short?70:60);
+    return `<div class="ph" style="width:${w}%">${img(p)}</div><div class="tx${short?" short":""}">
       <div class="where">${esc(roomsText(m.rooms))}</div><div class="when">${esc(whenOf(m.at))}</div>
       ${m.noticed?`<div class="noticed">${esc(m.noticed)}</div>`:""}
       ${m.wonder?`<div class="wonder">${esc(m.wonder)}</div>`:""}
@@ -193,9 +200,13 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   function lensMomentHtml(x){return `<div class="body"><div class="kind">Seen through the lens <span>${esc([x.lens,x.language].filter(Boolean).join(", "))}</span></div>
       <div class="q" style="max-width:36ch">${esc(x.quote)}</div>
       <div class="small">${esc(["Found in "+(/^[aeiou]/i.test(x.found)?"an ":"a ")+x.found+(x.by?" by "+x.by:""),x.room?x.room+" Class":"",x.at?whenOf(x.at):weekText(x.week)].filter(Boolean).join(", "))}</div></div>`}
-  function lensHtml(l){return `<div class="body"><div class="kind">This year's lens</div><h1>${esc(l.name)}</h1>
-      ${l.description?`<div class="q">${esc(l.description)}</div>`:""}
-      ${l.questions.length?`<ul class="qs">${l.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}</div>`}
+  // the whole description on the left and the lens's questions on the right, or a photo from a moment it found lately
+  function lensHtml(l){return `<div class="body lensbody"><div class="kind">This year's lens</div><h1>${esc(l.name)}</h1>
+      <div class="lensgrid"><div>${l.description?`<div class="lensdesc">${esc(l.description)}</div>`:""}</div>
+      ${l.questions.length?`<ul class="qs">${l.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}</div></div>${!l.questions.length&&l.photo?`<div class="side">${img(l.photo)}</div>`:""}`}
+  // a staff birthday on its day, with the name alone, and a note the director sent to all staff today
+  function birthdayHtml(n){return `<div class="body quiet"><div class="kind">Today</div><h1>Happy birthday, ${esc(n)}</h1></div>`}
+  function noteHtml(x){return `<div class="body quiet"><div class="kind">A note from ${esc(x.by||"the director")}</div><div class="words" style="white-space:pre-line;max-width:40ch">${esc(x.text)}</div></div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
     return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" Class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
       <div class="blocks">${b.map(([k,v])=>`<div class="blk"><h2>${esc(k)}</h2><p style="white-space:pre-line">${esc(v)}</p></div>`).join("")}</div>
@@ -226,6 +237,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const PR=(feed.proud||[]).map(x=>({k:"reflection",cls:"t",id:"pr"+x.id,html:()=>proudHtml(x)}));
     const n=Math.max(P.length,T.length,I.length,D.length,S.length,SL.length,R.length,L.length,PR.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(SL[i])O.push(SL[i]);if(R[i])O.push(R[i]);if(PR[i])O.push(PR[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
+    (feed.birthdays||[]).forEach((n,i)=>O.unshift({k:"birthday",id:"b"+i,cls:"t",html:()=>birthdayHtml(n)}));
+    (feed.notes||[]).forEach(x=>O.unshift({k:"note",id:"n"+x.id,cls:"t",html:()=>noteHtml(x)}));
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin
     if(feed.foodMoment)O.push({k:"food",id:"fm"+feed.foodMoment.id,cls:"m",html:()=>momentHtml(feed.foodMoment).replace('<div class="where">','<div class="where">Food education, '),src:feed.foodMoment.photo&&feed.foodMoment.photo.src});

@@ -411,6 +411,17 @@ async function readOriginal(id) {
 // educator records, the New Educator section, the PD library pieces and the Teacher Policies and Procedures, in staff.js
 function lensNow() { const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; const ls = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
   const l = ls.find(x => x && x.year) || ls[0]; return l ? { name: String(l.name || ''), description: String(l.description || '') } : null; }
+/* A note from the director to all staff, or to one person, shows on Today for the day it is sent. Notes are kept in
+   settings/staffnotes, which only the director's TREE receives whole. Each person is sent only the notes for them. */
+function staffNotes() { const r = store.recs.settings.get('staffnotes'); return ((r && !r.deleted && r.doc && r.doc.list) || []).filter(x => x && x.id && x.text); }
+function notesFor(name) { const t = laDayOf(Date.now()); return staffNotes().filter(x => x.day === t && (x.to === 'all' || nameKey(x.to) === nameKey(name))).map(x => ({ id: x.id, text: x.text, by: x.by, to: x.to === 'all' ? 'all' : 'you', at: x.at })); }
+function sendNote(text, to, by) {
+  const cur = store.recs.settings.get('staffnotes'); const doc = cur && !cur.deleted && cur.doc ? cur.doc : { list: [] };
+  const cut = laDayOf(Date.now() - 60 * 864e5);
+  const list = (doc.list || []).filter(x => x && x.day >= cut).slice(-200);
+  const n = { id: 'sn' + crypto.randomBytes(5).toString('hex'), text: String(text).slice(0, 2000), to: to === 'all' ? 'all' : String(to).slice(0, 60), day: laDayOf(Date.now()), at: Date.now(), by };
+  list.push(n); setSetting('staffnotes', Object.assign({}, doc, { list })); return n;
+}
 /* One-time steps. A change the server makes to records already there, such as a setting moved out of TREE's public
    code, is a step run once at start, through the save queue. settings/once records each step that has run, so none runs
    twice, and until a step has run TREE reads the old values. A step that is not ready yet, because what it needs has not
@@ -1101,7 +1112,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping' || id === 'saves' || id === 'readable')))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping' || id === 'saves' || id === 'readable' || id === 'staffnotes')))) out[k][id] = r.doc; }
   return out;
 }
 function statusPage(req, res) {
@@ -1162,7 +1173,10 @@ async function displayFeed() {
   const now = Date.now();
   let recent = shown.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (recent.length < 10) recent = shown.slice(0, 10);
-  const moments = recent.slice(0, 36).map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
+  // photos and observations take turns across the Classes, so no one Class fills the screen
+  const byRoom = list => { const groups = new Map(); for (const n of list) { const r = roomsOf(n)[0] || ''; if (!groups.has(r)) groups.set(r, []); groups.get(r).push(n); } const out = []; const gs = [...groups.values()]; for (let i = 0; out.length < list.length; i++) for (const g of gs) if (g[i]) out.push(g[i]); return out; };
+  recent = byRoom(recent.slice(0, 36));
+  const moments = recent.map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
   const latestPhoto = test => { const n = shown.find(test); return n ? photoOf(n) : null; };
   const firstName = s => String(s || '').trim().split(/\s+/)[0] || '';
@@ -1170,7 +1184,7 @@ async function displayFeed() {
   const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
   let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
-  const words = wordsRecent.slice(0, 12).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.by),
+  const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.by),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
   // the reflection educators write once a week has passed, Final remarks on an Individual plan and After the week on a Small Group plan
   const sinceWeek = addDay(mondayFor(laDayOf(now)), -21);
@@ -1214,17 +1228,22 @@ async function displayFeed() {
         photo: latestPhoto(n => n.projectId === x.id || (n.threadId && tids.has(n.threadId)) || evIds.has(n.id)) }; });
   const prog = store.recs.settings.get('program'); const pv = prog && !prog.deleted && prog.doc ? prog.doc : {};
   const lensList = Array.isArray(pv.lenses) && pv.lenses.length ? pv.lenses : pv.lens ? [Object.assign({ year: true }, pv.lens)] : [];
-  const lenses = lensList.filter(l => l && l.year && String(l.name || '').trim()).map(l => ({ name: trim(l.name, 80), description: trim(l.description, 320), questions: (Array.isArray(l.questions) ? l.questions : []).map(q => trim(q, 140)).filter(Boolean).slice(0, 3) }));
+  // a lens shows its whole description beside its questions, with a photo from a moment it found lately when there is one
+  const lensPhoto = name => { for (const sc of live('scans').filter(x => x.kind === 'lens' && Array.isArray(x.moments) && squash(x.lensName) === squash(name)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))) for (const m of sc.moments) { const n = m && byPhotoId.get(m.planId); if (n) return photoOf(n); } return null; };
+  const byPhotoId = new Map(shown.map(n => [n.id, n]));
+  const lenses = lensList.filter(l => l && l.year && String(l.name || '').trim()).map(l => ({ name: trim(l.name, 80), description: trim(l.description, 1200), questions: (Array.isArray(l.questions) ? l.questions : []).map(q => trim(q, 160)).filter(Boolean).slice(0, 8), photo: lensPhoto(l.name) }));
   const inq = inquiries.filter(x => x.status !== 'closed' && x.status !== 'resting' && String(x.name || '').trim() && inquiryShows(x, notices))
     .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 6)
     .map(x => ({ id: x.id, name: trim(x.name, 120), room: x.room || '', see: trim(x.see, 260), watch: trim(x.watch, 200), lookAgain: /^\d{4}-\d{2}-\d{2}$/.test(x.lookAgain || '') ? x.lookAgain : '',
       tries: (x.tries || []).filter(t => t && String(t.text || '').trim()).slice(-2).map(t => trim(t.text, 160)) }));
   // the week ahead from the school's calendars, with birthdays. Family conferences and meals stay on their own screens.
   const today = laDayOf(now), until = addDay(today, 6);
-  let week = [];
+  let week = [], birthdays = [];
   try { const c = await Promise.race([calendar.today({ director: false }, today, until), new Promise(r => setTimeout(() => r(null), 8000))]);
     if (c && Array.isArray(c.events)) { const names = new Map(((c.settings && c.settings.calendars) || []).map(x => [x.id, x.name]));
-      week = c.events.filter(e => e && !e.conf && e.cal !== 'tconf' && e.cal !== 'tmenu').map(e => ({ title: trim(e.title, 90), start: String(e.start || ''), end: String(e.end || ''), allDay: !!e.allDay, birthday: e.cal === 'tbday', cal: names.get(e.cal) || '' }))
+      // a staff birthday shows only on its day, as its own slide with the name alone
+      birthdays = c.events.filter(e => e && String(e.id || '').startsWith('tbday.staff.') && String(e.start || '').slice(0, 10) === today).map(e => trim(String(e.title || '').replace(/'s birthday$/, ''), 40)).filter(Boolean);
+      week = c.events.filter(e => e && !e.conf && e.cal !== 'tconf' && e.cal !== 'tmenu' && !String(e.id || '').startsWith('tbday.staff.')).map(e => ({ title: trim(e.title, 90), start: String(e.start || ''), end: String(e.end || ''), allDay: !!e.allDay, birthday: e.cal === 'tbday', cal: names.get(e.cal) || '' }))
         .sort((a, b) => a.start.localeCompare(b.start)).slice(0, 14); } } catch (e) { log('The display could not read the calendar', e.message); }
   // today's food, from the month's menu, and this week's FEED bin
   let menu = null;
@@ -1277,7 +1296,9 @@ async function displayFeed() {
   const foodMoment = fm ? { id: fm.id, at: fm.at || 0, photo: photoOf(fm), noticed: trim(fm.noticed, 300), wonder: trim(fm.wonder, 200), rooms: roomsOf(fm), children: [] } : null;
   // Proud Moments and Kudos shared with everyone at Fulton
   let proud = []; try { proud = staff.displayMoments(); } catch (e) {}
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud };
+  // a note the director sends to all staff shows that day, as its own quiet slide. A note to one person never shows.
+  const notes = staffNotes().filter(x => x.to === 'all' && x.day === today).map(x => ({ id: x.id, text: trim(x.text, 600), by: firstName(x.by) }));
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
 // initial, initials, or no names at all. The educators' words never change otherwise.
@@ -1502,7 +1523,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -1528,7 +1549,7 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping' || c.id === 'saves' || c.id === 'readable')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping' || c.id === 'saves' || c.id === 'readable' || c.id === 'staffnotes')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -1657,6 +1678,14 @@ async function handle(req, res) {
   // a device asks which of the saves it still holds are written to the records. A save this server does not know, such
   // as one sent before an update, is looked for in the records' own history by its save id. One found nowhere is
   // answered unknown, and the device sends it again.
+  if (path === '/api/notes') { json(req, res, 200, { notes: notesFor(me.name), sent: isDirector(me.name) ? staffNotes().filter(x => x.day >= laDayOf(Date.now() - 7 * 864e5)).reverse().slice(0, 20) : undefined }); return; }
+  if (path === '/api/notes/send') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a note to staff.'); return; }
+    const text = String(body.text || '').trim(); if (!text) { err(req, res, 400, 'Write the note first.'); return; }
+    const to = body.to === 'all' ? 'all' : String(body.to || ''); if (to !== 'all' && !accountFor(to)) { err(req, res, 400, 'Choose who the note is for.'); return; }
+    const n = sendNote(text, to, me.name); log('Note sent by', me.name, 'to', to === 'all' ? 'all staff' : 'one person');
+    json(req, res, 200, { ok: true, note: n }); return;
+  }
   if (path === '/api/saved') {
     const items = (Array.isArray(body.items) ? body.items : []).filter(x => x && typeof x.sid === 'string' && SID_RE.test(x.sid) && KINDS.includes(x.kind) && typeof x.id === 'string' && ID_RE.test(x.id)).slice(0, 60);
     const out = { written: [], waiting: [], unknown: [] }; const look = new Map();

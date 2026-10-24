@@ -4754,7 +4754,7 @@ function renderToday(){
   </div>
   ${askFam?askFamHtml(room):""}
   ${keepTodayHtml()}
-  ${setupTodayHtml()}${hardSavesHtml()}
+  ${staffNotesHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
@@ -12665,6 +12665,23 @@ function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   return `<section class="card" id="setuptoday" style="margin-top:14px"><details class="fold" data-fold="today:setup" ${foldOpen.has("today:setup")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Not set up yet</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
     <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
     <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div><div class="actions"><button class="linkbtn" data-tview="settings">Sign-ins</button></div></div></details></section>`}
+/* A note from the director, to all staff or to one person, shows on Today that day for the people it is for. A note to
+   all staff also shows on the staff room display that day. The director writes it here. */
+let staffNotesSt={loaded:false,notes:[],sent:[],busy:false};
+async function loadStaffNotes(){if(!window.FP_API||staffNotesSt.loading)return;staffNotesSt.loading=true;try{const j=await window.FP_API("/api/notes",{});staffNotesSt.notes=j.notes||[];staffNotesSt.sent=j.sent||[]}catch(e){}staffNotesSt.loading=false;staffNotesSt.loaded=true;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()}
+function staffNotesHtml(){if(!window.FP_HOSTED)return"";if(!staffNotesSt.loaded){loadStaffNotes();return""}
+  const mine=staffNotesSt.notes.filter(x=>!isDirector()||x.to==="you");
+  const got=mine.length?`<section class="card"><h3 style="font-size:17px">${mine.length>1?"Notes from the director":"A note from the director"}</h3>${mine.map(x=>`<div class="ref" style="margin-top:8px"><div style="white-space:pre-line">${esc(x.text)}</div><div class="cnt">${esc(x.by)}${x.to==="all"?", to all staff":""}</div></div>`).join("")}</section>`:"";
+  if(!isDirector()||VIEW_AS)return got;
+  const people=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>a.name);
+  const today=staffNotesSt.sent.filter(x=>x.day===iso(new Date()));
+  return got+`<section class="card" id="notecard"><details class="fold" data-fold="today:note" ${foldOpen.has("today:note")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">A note for staff</h3><span class="cnt">${today.length?today.length+" sent today":""}</span></summary><div class="foldbody">
+    <textarea id="sn-text" rows="3" placeholder="Ex. The garden is closed this afternoon for watering."></textarea>
+    <div class="actions"><select id="sn-to" aria-label="Who the note is for"><option value="all">All staff</option>${people.map(n=>`<option>${esc(n)}</option>`).join("")}</select><button class="btn small" id="sn-send" ${staffNotesSt.busy?"disabled":""}>Send the note</button></div>
+    <div class="hint">It shows on Today for the day. A note to all staff also shows on the staff room display that day. A note to one person never does.</div>
+    ${today.map(x=>`<div class="cnt">To ${esc(x.to==="all"?"all staff":x.to)}, ${esc(sentFit(x.text,80))}</div>`).join("")}</div></details></section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("#sn-send");if(!t||!isDirector())return;const text=($("#sn-text")?.value||"").trim();if(!text){toast("Write the note first.");return}
+  staffNotesSt.busy=true;try{await window.FP_API("/api/notes/send",{text,to:$("#sn-to").value});toast("The note is sent.");staffNotesSt.loaded=false}catch(er){toast(er&&er.message||"The note could not be sent. Try again.")}staffNotesSt.busy=false;renderMain()});
 // a save that needed more than three tries to reach the records shows once a day on the director's Today, by name,
 // so a problem is seen early. Seen keeps it away until the next day.
 let savesInfo=null;
