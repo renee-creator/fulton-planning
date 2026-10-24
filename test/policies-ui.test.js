@@ -55,6 +55,11 @@ test('the policies in the browser', async t => {
     await p.goto(`http://localhost:${fx.web}/handbook.html?server=${fx.api}`); await p.waitForFunction(() => /not open/.test(document.querySelector('#out').textContent), null, { timeout: 10000 });
     const tok = (await fx.login('Dee', 'director-pass-1')).token;
     assert.strictEqual((await fx.as(tok, '/api/staff/policies/public', { on: true, reviewed: true })).status, 200);
-    await p.reload(); await p.waitForSelector('nav.toc', { timeout: 10000 }); assert.match(await p.innerText('body'), /We guide children with care/);
+    await p.reload(); await p.waitForSelector('nav.toc', { timeout: 10000 }); assert.match(await p.textContent('body'), /We guide children with care/);
+    // each part opens folded closed, and Contents opens the part it names
+    assert.strictEqual(await p.evaluate(() => document.querySelectorAll('details.part[open]').length), 0);
+    assert.ok(await p.evaluate(() => document.querySelectorAll('details.part').length) > 0);
+    await p.click('nav.toc a'); await p.waitForTimeout(300);
+    assert.strictEqual(await p.evaluate(() => document.querySelectorAll('details.part[open]').length), 1);
   });
 });

@@ -24,6 +24,8 @@ a{color:var(--moss)}
 .pmd blockquote{margin:6px 0;padding-left:12px;border-left:3px solid var(--line)}.pmd img{max-width:100%;height:auto;display:block;margin:8px auto}
 .pmd table{border-collapse:collapse;width:100%;font-size:14px}.pmd td,.pmd th{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.pmd .tw{overflow-x:auto}
 .cover{display:block;max-width:220px;margin:12px auto 0}
+details.part>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}details.part>summary::-webkit-details-marker{display:none}
+details.part>summary h2{margin:0}details.part>summary::after{content:"Open";font-size:14px;color:var(--moss);text-decoration:underline}details.part[open]>summary::after{content:"Close"}details.part[open]>summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -50,10 +52,16 @@ a{color:var(--moss)}
   function render(h){document.getElementById("title").textContent=`${h.title||"Family Handbook"}, ${h.edition}`;document.title=`Fulton Family Handbook ${h.edition}`;
     const im=(src,alt)=>`<img data-img="${esc(src)}" alt="${esc(alt||"A picture from the Family Handbook")}">`;
     let out=`${h.image?`<img class="cover" data-img="${esc(h.image)}" alt="A child on a swing in a tree, the cover of the Family Handbook">`:""}<section class="card"><h2>Contents</h2><nav class="toc">${h.parts.map(p=>`<a href="#${slug(p.id)}">${esc(p.title)}</a>`).join("")}</nav></section>`;
-    for(const p of h.parts)out+=`<section class="card" id="${slug(p.id)}"><h2>${esc(p.title)}</h2>${p.sections.map(s=>`${s.title!==p.title||p.sections.length>1?`<h3 id="${slug(s.id)}">${esc(s.title)}</h3>`:""}${window.PolicyMd.html(s.body,im)}`).join("")}</section>`;
+    // each part folds closed under its title, so a phone shows the whole handbook in a few screens. Contents opens a part.
+    for(const p of h.parts)out+=`<details class="card part" id="${slug(p.id)}"><summary><h2>${esc(p.title)}</h2></summary>${p.sections.map(s=>`${s.title!==p.title||p.sections.length>1?`<h3 id="${slug(s.id)}">${esc(s.title)}</h3>`:""}${window.PolicyMd.html(s.body,im)}`).join("")}</details>`;
     out+=`<p class="small muted">${esc(h.footer||"")}</p>`;
     const el=document.getElementById("out");el.className="";el.innerHTML=out;
-    el.querySelectorAll("img[data-img]").forEach(async i=>{try{i.src=await pic(i.dataset.img)}catch(e){i.remove()}})}
+    // a picture is fetched when its part first opens
+    const show=root=>root.querySelectorAll("img[data-img]:not([src])").forEach(async i=>{try{i.src=await pic(i.dataset.img)}catch(e){i.remove()}});
+    const cover=el.querySelector("img.cover");if(cover)show({querySelectorAll:()=>[cover]});
+    el.querySelectorAll("details.part").forEach(d=>d.addEventListener("toggle",()=>{if(d.open)show(d)}));
+    const go=()=>{const t=location.hash&&document.getElementById(location.hash.slice(1));const d=t&&(t.closest("details.part"));if(d){d.open=true;t.scrollIntoView()}};
+    window.addEventListener("hashchange",go);go()}
   load().then(render).catch(e=>{document.getElementById("out").textContent=e.message});
 })();
 </script>
