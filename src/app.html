@@ -11459,7 +11459,7 @@ function kidEvidence(c){
   return Object.entries(by).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
 }
 // a child's page, in five parts so each one is quick to read: an overview, the documentation, the DRDP, conferences, and details
-let kidTab=LS.get("tree.kidtab","overview"),kidDocShow="all",kidOpenMoment="";
+let kidTab=LS.get("tree.kidtab","overview"),kidDocShow="all",kidOpenMoment="",kidDocMax=60,kidDocFor="";
 function kidAgeText(c){const m=kidMonths(c);if(m==null)return"";const y=Math.floor(m/12),mo=m%12;return y?`${y} year${y===1?"":"s"}${mo?` ${mo} month${mo===1?"":"s"}`:""}`:`${mo} month${mo===1?"":"s"}`}
 // the DRDP measures a moment or slide is evidence for, for this child
 function kidDrdpOf(c,kind,id){const its=kidDrdpItems(c).filter(x=>x.src&&x.src.kind===kind&&x.src.id===id&&x.status!=="aside");const codes=[...new Set(its.map(x=>x.code))];
@@ -11492,10 +11492,11 @@ function renderChild(){
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
         ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No observations tag or name ${esc(c.first)} yet. <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>`;
   }else if(kidTab==="docs"){
+    if(kidDocFor!==c.id){kidDocFor=c.id;kidDocMax=60}
     const tagged=ms.filter(n=>kidTagged(c,n)),naming=ms.filter(n=>!kidTagged(c,n));const list=kidDocShow==="tagged"?tagged:kidDocShow==="naming"?naming:ms;
     body=`<section class="card"><div class="tseg" role="group" aria-label="Which observations"><button data-kdoc="all" aria-pressed="${kidDocShow==="all"}">All ${ms.length}</button><button data-kdoc="tagged" aria-pressed="${kidDocShow==="tagged"}">Tagged ${tagged.length}</button><button data-kdoc="naming" aria-pressed="${kidDocShow==="naming"}">Naming ${esc(c.first)} ${naming.length}</button></div>
         <div class="cnt">Tap an observation to read it. The portfolio holds the observations, slides and stories that tag ${esc(c.first)}, in order, and ends with ${esc(c.first)}'s accepted DRDP levels. Take any one out with its button.</div>
-        ${list.length?`<div class="kmlist">${list.slice(0,60).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>60?`<div class="cnt">Showing the 60 most recent of ${list.length}.</div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
+        ${list.length?`<div class="kmlist">${list.slice(0,kidDocMax).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>kidDocMax?`<div class="actions"><button class="btn small ghost" data-kdocmore="1">Show ${Math.min(60,list.length-kidDocMax)} more</button><span class="cnt">Showing the ${kidDocMax} most recent of ${list.length}.</span></div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
       ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${esc(s.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}
       ${c.aboutMe&&c.aboutMe.done?`<section class="card"><div class="secthead"><h3 style="font-size:17px">All About Me, from ${esc(c.first)}'s family</h3><span class="actions">${printBtns("aboutme",c.id,"Print to laminate",true)}</span></div>
         <div class="aamstaff">${(c.aboutMe.pages||[]).map((p,i)=>`<div><b>${esc((i<AAM_TITLES.length?AAM_TITLES[i].replace("{first}",c.first):(p.title||"More about me")))}</b>${(p.photos||[]).length?`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.photos[0]):"")}" alt="" loading="lazy">`:""}<div class="cnt">${esc(firstLine(p.text,140))}</div></div>`).join("")}</div></section>`:""}
@@ -11521,7 +11522,9 @@ function renderChild(){
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;
   if(t.dataset.ktab){kidTab=t.dataset.ktab;LS.set("tree.kidtab",kidTab);kidOpenMoment=t.dataset.kmopen||"";renderMain();if(kidOpenMoment){const el=document.getElementById("nw-"+kidOpenMoment);if(el){formTop(el);return}}jumpTop();return}
-  if(t.dataset.kdoc){kidDocShow=t.dataset.kdoc;kidOpenMoment="";renderMain();return}
+  if(t.dataset.kdoc){kidDocShow=t.dataset.kdoc;kidOpenMoment="";kidDocMax=60;renderMain();return}
+  // the next sixty, keeping the place on the page
+  if(t.dataset.kdocmore){kidDocMax+=60;const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
   if(t.dataset.kmopen){kidOpenMoment=t.dataset.kmopen;renderMain();const el=document.getElementById("nw-"+kidOpenMoment);if(el)formTop(el);return}
   if(t.dataset.kmclose){kidOpenMoment="";renderMain();return}
   if(t.dataset.pftoggle){const c=children.get(kidOpen);if(!c)return;const [kind,id]=t.dataset.pftoggle.split("|");const k=pfKey(kind,id);const on=kidInPortfolio(c,kind,id);
