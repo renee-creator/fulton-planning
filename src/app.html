@@ -113,6 +113,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .nextbar .actions{display:flex;gap:6px}.sendmiss .linkbtn{font-size:14px}
 .sendask{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;width:min(380px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:6px}
 /* a quiet note while words saved on this phone wait for a connection, never an error */
+.helpme{margin-top:2px}.helpme>summary{cursor:pointer;font-size:13px;color:var(--moss,var(--accent));text-decoration:underline;width:max-content;list-style:none;padding:4px 0}.helpme>summary::-webkit-details-marker{display:none}.helpme[open]>summary{margin-bottom:6px}.helpme>.hint{margin-bottom:6px}
+.pfold>summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.pfold>summary::-webkit-details-marker{display:none}.pfold>summary b{font-family:var(--display);font-size:17px}.pfold[open]>summary{margin-bottom:8px}.pfbody{display:grid;gap:8px}
 .sethead{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 4px 6px;font-weight:700}.setcard>summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.setcard>summary::-webkit-details-marker{display:none}.setcard>summary b{font-size:16px}.setcard[open]>summary{margin-bottom:10px}.setbody>.lbl:first-child{display:none}section.card.inset{box-shadow:none;border:1px solid var(--line);margin:10px 0 0}
 .sglist{display:grid;gap:0;border-top:1px solid var(--line)}.sgrow{border-bottom:1px solid var(--line)}.sgrow>summary{display:grid;grid-template-columns:minmax(5.5em,1fr) auto auto;align-items:baseline;gap:2px 12px;padding:10px 4px;cursor:pointer;list-style:none;min-height:44px;box-sizing:border-box}.sgrow>summary::-webkit-details-marker{display:none}.sgrow>summary b{overflow-wrap:anywhere}.sgrow .sglast{text-align:right;min-width:6.5em}.sgbody{display:grid;gap:8px;padding:4px 4px 12px}.sgf{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.sgf>span:first-child{min-width:5.5em;color:var(--muted);font-size:13px}.sgf select{width:auto}
 .draftnote{max-width:1180px;margin:0 auto;padding:2px 16px 6px;font-size:13px;color:var(--muted);text-align:center}.draftline{color:var(--muted)}
@@ -483,7 +485,8 @@ body{margin:0}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:0;background:var(--moss);color:var(--paper);border-radius:999px;padding:13px 20px;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.16);cursor:pointer;display:flex;gap:8px;align-items:center}
 .fab svg{width:18px;height:18px}
 /* Proofread waits at the bottom of any page with writing, across from Keep an observation */
-.prooftab{position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:1.5px solid var(--moss);background:var(--paper);color:var(--moss);border-radius:999px;padding:11px 18px;font:inherit;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.12);cursor:pointer;display:flex;align-items:center;gap:6px}
+.prooftab.tucked{opacity:0;pointer-events:none;transform:translateY(12px)}#main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.prooftab{transition:opacity .15s,transform .15s;position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;border:1.5px solid var(--moss);background:var(--paper);color:var(--moss);border-radius:999px;padding:11px 18px;font:inherit;font-weight:700;box-shadow:0 1px 2px rgba(34,51,42,.08),0 6px 18px rgba(34,51,42,.12);cursor:pointer;display:flex;align-items:center;gap:6px}
 .prooftab svg{width:17px;height:17px}
 .card select,.card input{max-width:100%}
 #main{padding-bottom:84px}
@@ -939,7 +942,7 @@ function newPlan(type,extra={}){
   return Object.assign(p,extra);
 }
 
-document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]");if(j){const el=document.querySelector(`[data-card="${j.dataset.secjump}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
+document.addEventListener("click",e=>{const j=e.target.closest("[data-secjump]");if(j){const el=document.querySelector(`[data-card="${j.dataset.secjump}"]`);if(el){el.classList.add("showall");el.querySelectorAll("details.pfold").forEach(d=>{d.open=true});el.scrollIntoView({behavior:"smooth",block:"start"})}return}
   const l=e.target.closest("section.card.filled[data-card]>.lbl");if(l&&window.innerWidth<=760){l.parentElement.classList.toggle("showall")}});
 document.addEventListener("click",e=>{const t=e.target.closest("#va-go,#vaend");if(!t)return;
   if(t.id==="vaend"){endViewAs();return}
@@ -1314,10 +1317,32 @@ function renderMain(){
   h+=sendHtml(p)+feedbackHtml(p)+`
     <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
+  planFolds(p);
   sizeBoxes($("#main"));
   if(F.web)drawWebPreview(p);
   setTimeout(()=>{if(currentId===p.id&&view==="plans")markFeedbackSeen(p)},800);
 }
+/* The floating Proofread button never covers a field or a choice. The page has room at its end so the last fields
+   scroll clear of it, and whenever a box, a choice or a button sits under it, it steps aside until the page moves on. */
+function proofTabClear(){const t=document.querySelector(".prooftab");if(!t||t.hidden)return;t.classList.remove("tucked");const r=t.getBoundingClientRect();if(!r.width)return;
+  const under=[...document.querySelectorAll("#main input,#main select,#main textarea,#main button,#main .chip,#main a,#main label")].some(el=>{const q=el.getBoundingClientRect();return q.width&&q.height&&!(q.right<=r.left||q.left>=r.right||q.bottom<=r.top||q.top>=r.bottom)});
+  t.classList.toggle("tucked",under)}
+let ptT=null;const ptSoon=()=>{clearTimeout(ptT);ptT=setTimeout(proofTabClear,120)};
+window.addEventListener("scroll",ptSoon,{passive:true});window.addEventListener("resize",ptSoon);document.addEventListener("focusin",ptSoon);document.addEventListener("click",ptSoon);
+/* Family update for Kaymbu, Director feedback and Final remarks fold closed until they are used. Final remarks opens on
+   its own from the Friday of the plan's week, and any of them opened stays open while the plan is drawn again. */
+const pfoldOpen=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("pfold")){if(d.open)pfoldOpen.add(d.dataset.pf);else pfoldOpen.delete(d.dataset.pf)}},true);
+function planFolds(p){const m=$("#main");if(!m)return;
+  const fold=(sec,key,title,open,note)=>{if(!sec)return;const k=p.id+"|"+key;const d=document.createElement("details");d.className="pfold";d.dataset.pf=k;d.open=open||pfoldOpen.has(k);
+    const lbl=sec.querySelector(":scope > .lbl");const ta=sec.querySelector("textarea");if(lbl&&ta&&!ta.getAttribute("aria-label"))ta.setAttribute("aria-label",lbl.textContent.trim());
+    d.innerHTML=`<summary><b>${esc(title)}</b>${note?`<span class="cnt">${esc(note)}</span>`:""}</summary>`;const body=document.createElement("div");body.className="pfbody";
+    while(sec.firstChild)body.append(sec.firstChild);if(lbl)lbl.remove();d.append(body);sec.append(d)};
+  const ak=AFTER_KEY[p.type],after=ak&&m.querySelector(`section[data-card="${ak}"]`);
+  if(after){const f=FORMS[p.type].fields.find(x=>x.k===ak);const has=String(p.fields[ak]||"").trim();const fri=p.weekOf&&iso(new Date())>=addDays(p.weekOf,4);
+    fold(after,"after",f?f.label:"Final remarks",!!has||fri||needsRemarks(p),has?"":fri?"Due this week":"Opens on Friday")}
+  const fam=m.querySelector("#family");if(fam)fold(fam.closest("section"),"family","Family update for Kaymbu",!!String(p.familyUpdate||"").trim(),String(p.familyUpdate||"").trim()?"":"When you are ready");
+  const fb=m.querySelector("#fbsec");if(fb){const has=!!String(p.feedback||"").trim()||!!(p.feedbackReply&&p.feedbackReply.text);fold(fb,"fb","Director feedback",has,has?"":"No feedback yet")}}
 /* Individual and small group plans flow into the Classroom plan. Educators write their Individual plans on Monday, then the team writes the Classroom plan with them in view. */
 const eduKey=x=>String(x||"").trim().toLowerCase();
 function teamSources(p){
@@ -1384,13 +1409,18 @@ function refCard(prev){
   const bits=keys.map(k=>{const f=F.fields.find(x=>x.k===k);const v=prev.fields?.[k];return v?`<div><span class="muted">${f.label}.</span> ${esc(v)}</div>`:""}).join("");
   return `<section class="ref"><b>From the week of ${fmtDate(prev.weekOf)}</b>${bits||'<div class="muted">Last week\'s plan has no reflection yet.</div>'}<div><button class="linkbtn" data-open="${esc(prev.id)}">Open last week's plan</button></div></section>`;
 }
+const focusAll=new Set();
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-fshowall]");if(!t)return;focusAll.add(t.dataset.fshowall);renderMain()});
 function focusCard(p){
-  const sg=p.focus!=="area";const room=p.classroom;const gs=[...GROUPS.filter(g=>room&&g.room===room),...GROUPS.filter(g=>!room||g.room!==room)];const sel=p.groups||[];
+  // the plan's own Class's groups show, and Show other Classes is there for an educator who leads a group in another
+  const sg=p.focus!=="area";const room=p.classroom;const sel=p.groups||[];const other=GROUPS.filter(g=>room&&g.room!==room);
+  const wide=!room||focusAll.has(p.id)||other.some(g=>sel.includes(g.name));const gs=[...GROUPS.filter(g=>!room||g.room===room),...(wide?other:[])];
   return `<section class="card"><div class="lbl">Focus this week</div>
     <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button></div>
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
+      ${room&&other.length&&!wide?`<button class="linkbtn" data-fshowall="${esc(p.id)}">Show other Classes</button>`:""}
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
-      <label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>${gardenNote(p)}`
+      ${window.FP_HOSTED?"":`<label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>${gardenNote(p)}`}`
     :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="arealist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
       <div class="chips">${AREAS.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-area="${esc(x)}">${esc(x)}</button>`).join("")}</div>`}
   </section>`;
@@ -1414,11 +1444,14 @@ function smallGroupMeta(p){
     <div class="chips">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>
   </section>`;
 }
+const helpOpen=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("helpme")){if(d.open)helpOpen.add(d.dataset.help);else helpOpen.delete(d.dataset.help)}},true);
 function fieldCard(p,f){
   if(p.type==="individual"&&f.k==="area"&&p.focus!=="area")f={...f,hint:"The thread your group is following, a question or idea the children keep returning to. A full phrase, not a topic or theme.",strong:"Several children keep asking where the rabbit goes at night and have started drawing tunnels under the yard.",starters:["The children keep returning to ","They are wondering ","Across several sittings, "]};
   const v=p.fields[f.k]||"";
-  let chips=`<div class="chips">${f.starters.map(s=>`<button class="chip" data-insert="${esc(s)}" data-field="${f.k}">${esc(s.trim())}${/[ "]$/.test(s)?"…":""}</button>`).join("")}</div>`;
-  if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);chips+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
+  // the starter phrases go with the description under Help me start. The choices kept with the plan stay in view.
+  let starters=`<div class="chips">${f.starters.map(s=>`<button class="chip" data-insert="${esc(s)}" data-field="${f.k}">${esc(s.trim())}${/[ "]$/.test(s)?"…":""}</button>`).join("")}</div>`,chips="";
+  if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);starters+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
   if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
   if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}</span>${list.map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
   if(f.seasons){const se=seasonOf(p.weekOf);chips+=`<details><summary class="chiprow-label" style="cursor:pointer">${se} concepts from the Family Handbook</summary><div class="hint" style="margin-top:6px">Concepts we hold loosely. Use one only where it meets what children are already doing.</div><div class="chips" style="margin-top:6px">${SEASONS[se].map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`}
@@ -1427,17 +1460,16 @@ function fieldCard(p,f){
   const ex=showExample[f.k]?`<div class="ex"><div><b>Strong.</b> ${esc(f.strong)}</div><div class="weak"><b>Weak.</b> ${esc(f.weak)}</div></div>`:"";
   return `<section class="card${String(v).trim()?" filled":""}" data-card="${f.k}">
     <label class="lbl" for="f-${f.k}">${f.label}${f.after?' <span class="muted" style="font-size:13px;font-family:var(--body)">end of week</span>':""}</label>
-    <div class="hint">${f.hint}</div>
     ${f.k==="observation"&&p.obsFrom&&v===p.obsFrom?`<span class="nudge" style="justify-self:start">${p.obsFromThread&&threads.get(p.obsFromThread)?`Started from the last reflection on the thread ${esc(threads.get(p.obsFromThread).name)}.`:"Started from last week's Final remarks, the reflection that prompted continuing."} Edit it into this week's ${p.type==="classroom"?"observation":"rationale"}, or use Strengthen wording.</span>`:""}
-    ${chips}
     <textarea id="f-${f.k}" data-f="${f.k}" rows="${f.rows}">${esc(v)}</textarea>
+    ${chips}
     ${suggestHtml(p,f)}
-    ${ex}
-    <div class="cardfoot"><span id="n-${f.k}">${nudgeHtml(f,v)}</span>
+    <div class="cardfoot"><span id="n-${f.k}">${nudgeHtml(f,v)}</span>${undo[p.id+f.k]!=null?`<span class="actions"><button class="linkbtn" data-undo="${f.k}">Undo</button></span>`:""}</div>
+    <details class="helpme" data-help="${f.k}" ${helpOpen.has(f.k)||showExample[f.k]?"open":""}><summary>Help me start</summary>
+      <div class="hint">${f.hint}</div>${starters}${ex}
       <span class="actions"><button class="linkbtn" data-ex="${f.k}">${showExample[f.k]?"Hide example":"See an example"}</button>
       ${sample&&!suggest[p.id+f.k]&&p.type==="classroom"&&f.k==="interests"&&teamSources(p).length?`<button class="btn small ghost" data-inddraft="1">Draft from this week's Individual plans</button>`:""}
-      ${sample&&!suggest[p.id+f.k]?`<button class="btn small ghost" data-strengthen="${f.k}">Strengthen wording</button>`:""}
-      ${undo[p.id+f.k]!=null?`<button class="linkbtn" data-undo="${f.k}">Undo</button>`:""}</span></div>
+      ${sample&&!suggest[p.id+f.k]?`<button class="btn small ghost" data-strengthen="${f.k}">Strengthen wording</button>`:""}</span></details>
   </section>`;
 }
 function nudgeHtml(f,v){
@@ -4224,7 +4256,7 @@ function planFromBin(b,room,kind){const wk=mondayOf(parseIso(b.date));if(kind!==
   if(made){p=newPlan(kind,{classroom:room,weekOf:wk,bin:b.id,source:{kind:"bin",id:b.id,at:Date.now()}});if(kind!=="classroom")p.educator=m||p.educator||"";binPieces(b,room).forEach(x=>binAddPiece(p,x,b))}
   p.bin=b.id;
   week=wk;plans.set(p.id,p);persist(p);currentId=p.id;view="plans";LS.set("fps.view",view);
-  if(!made){evOpen=true;LS.set("fps.evopen","1")}
+  if(!made&&evComputer()){evOpen=true;LS.set("fps.evopen","1")}
   renderAll();jumpTop();
   const what=kind==="classroom"?`the ${room} Classroom Plan`:"your Individual plan";
   toast(made?`Started ${what} for the week of ${fmtDate(wk)}. The bin's observations, produce, ideas and questions are each in their section.`:`The bin is linked to ${what} for the week of ${fmtDate(wk)}. Its pieces wait in The evidence, one tap each, and nothing written is changed.`)}
@@ -6300,7 +6332,7 @@ function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNoti
   if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}
   else{const pick=(th?threadNotices(th):ns).slice(0,6).reverse();
     if(pick.length){np.fields.observation=pick.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");np.noticeAdded=pick.map(n=>n.id);np.noticeUsed=pick.map(n=>n.id)}}
-  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
   toast(th?`The plan continues ${th.name}. The project's evidence is beside it.`:"The plan begins from the project. Its evidence is beside it.")}
 // the director follows a pattern as a thread, and its observations are kept for that thread
 function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
@@ -8148,10 +8180,10 @@ function planFromInquiry(x,kind){
     let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     const made=!cp;if(made)cp=newPlan("classroom",{classroom:room});
     cp.inquiries=[...new Set([...(cp.inquiries||[]),x.id])];plans.set(cp.id,cp);persist(cp);
-    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}. The inquiry is beside it.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return}
   const np=newPlan("individual",{classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
-  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=window.innerWidth>=1100;LS.set("fps.evopen",evOpen?"1":"0");renderAll();jumpTop();
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
   toast("Write the plan for the whole group. The inquiry and its evidence are beside it.")}
 
 function inquiryDoc(x,long){
@@ -8335,7 +8367,10 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.datase
 /* ---------- The evidence a plan began from ----------
    A plan started from a pattern, a thread or a project keeps that evidence beside it while it is written. Plans that
    follow a thread, or that took in observations, show theirs the same way. Nothing here changes the plan. */
-let evOpen=LS.get("fps.evopen",window.innerWidth>=1100?"1":"0")!=="0";
+// the evidence panel opens closed on phones and tablets each time a plan opens. On a computer it remembers whether the
+// educator closed it.
+const evComputer=()=>window.innerWidth>=1100&&!!(window.matchMedia&&matchMedia("(pointer:fine)").matches);
+let evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0",evPlanFor="";
 function planEvidence(p){
   if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return null;
   const src=p.source||{},heads=[],seen=new Map();
@@ -8395,6 +8430,7 @@ function evSync(){
   const mine=p&&ev?[...ev.obs,...groupObs(p,more)].sort((a,b)=>(b.at||0)-(a.at||0)):[];
   if(mine.length){const ids=new Set(mine.map(n=>n.id));more=more.filter(n=>!ids.has(n.id))}
   let b=$("#evbtn"),pn=$("#evpanel");
+  if(p&&p.id!==evPlanFor){evPlanFor=p.id;if(!evComputer())evOpen=false}
   if(!ev){if(b)b.remove();if(pn)pn.remove();document.body.classList.remove("evopen");return}
   if(!b){b=document.createElement("button");b.id="evbtn";b.className="btn";document.body.appendChild(b)}
   {const c=ev.obs.length+ev.heads.reduce((k,h)=>k+(h.from||[]).length,0);b.textContent=c?`The evidence, ${c}`:"The evidence"}b.hidden=evOpen;
@@ -12245,10 +12281,13 @@ const minsOf=t=>{const [h,m]=String(t||"").split(":").map(Number);return h*60+(m
 function planSpace(p){return Object.assign({spaceId:"",days:[2,3,4,5],start:"09:00",end:"10:30",booked:[],skipped:[]},p.space||{})}
 function spaceCardHtml(p){
   if(!window.FP_HOSTED)return"";
-  if(!calSpaces){loadCalSpaces();return `<section class="card" id="spacecard"><div class="lbl">Space for the small group</div><div class="empty"><span class="spin"></span> Reading the spaces</div></section>`}
+  if(!calSpaces){loadCalSpaces();return `<section class="card" id="spacecard"><div class="lbl">Where it happens</div><div class="empty"><span class="spin"></span> Reading the spaces</div></section>`}
   const sp=planSpace(p);const busy=spaceBusy[p.id];const space=calSpaces.find(x=>x.id===sp.spaceId);
   const dayName=d=>parseIso(addDays(p.weekOf,d-1)).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-  return `<section class="card" id="spacecard"><div class="secthead"><div class="lbl">Space for the small group</div><button class="linkbtn" data-tview="calendar">Calendar</button></div>
+  // where the small group meets is asked once, here. The space signs up on the calendar, and the words say anything more,
+  // such as a plan written before the two were one, which keeps both
+  const words=p.focus!=="area"?`<label class="fld-label" style="margin-top:8px">In your words, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden, then the goat yard"></label>${gardenNote(p)}`:"";
+  return `<section class="card" id="spacecard"><div class="secthead"><div class="lbl">Where it happens</div><button class="linkbtn" data-tview="calendar">Calendar</button></div>
     <div class="hint">Small groups meet Tuesday to Friday, 9 to 10:30. Change the days or times when this group meets at another time.</div>
     <div class="kfields"><label>Space<select data-spsel="1"><option value="">Choose a space</option>${calSpaces.map(x=>`<option value="${esc(x.id)}" ${x.id===sp.spaceId?"selected":""}>${esc(x.name)}${x.byWeek?", by the week":""}</option>`).join("")}</select></label>
       <label>From<input type="time" data-spstart="1" value="${esc(sp.start)}" step="300"></label><label>Until<input type="time" data-spend="1" value="${esc(sp.end)}" step="300"></label></div>
@@ -12257,7 +12296,7 @@ function spaceCardHtml(p){
     <div class="actions"><button class="btn small" data-spbook="${esc(p.id)}" ${busy||!sp.spaceId||!sp.days.length?"disabled":""}>${busy?'<span class="spin"></span> Signing up':"Sign up for these days"}</button>
       ${sp.booked.length?`<button class="linkbtn" data-spundo="${esc(p.id)}" ${busy?"disabled":""}>Remove these sign-ups</button>`:""}</div>
     ${sp.booked.length?`<div class="cnt">Signed up for ${esc(sp.spaceName||"the space")}, ${sp.booked.map(b=>esc(dayName(b.day))).join(", ")}, ${esc(tlabel(sp.bookedStart||sp.start))} to ${esc(tlabel(sp.bookedEnd||sp.end))}.</div>`:""}
-    ${sp.skipped.length?`<div class="cnt warnline">${sp.skipped.map(x=>esc(x)).join(" ")}</div>`:""}</section>`;
+    ${sp.skipped.length?`<div class="cnt warnline">${sp.skipped.map(x=>esc(x)).join(" ")}</div>`:""}${words}</section>`;
 }
 async function spaceBook(p){
   const sp=planSpace(p);const space=calSpaces.find(x=>x.id===sp.spaceId);if(!space)return;
