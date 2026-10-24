@@ -223,6 +223,8 @@ module.exports = function staffModule(o) {
     const dir = isDirector(me), who = String(body.name || me);
     const deny = m => err(req, res, 403, m || 'This is not open yet.');
     const P = path_.slice('/api/staff/'.length);
+    // what TREE opens for this sign-in, asked again by a page that signed in while the records were still loading
+    if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }

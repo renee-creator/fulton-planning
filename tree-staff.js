@@ -247,7 +247,10 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(window.TreeGrowth&&TreeGrowth.views.includes(v))return await TreeGrowth.render(v,my);
     // Presenting lives at the end of this file, after the growth pages
     if(v==="stpres"&&window.TreePres)return await TreePres.render(my);
-  }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
+  }catch(e){
+    // a part the director has not opened yet says so plainly, never as an error
+    if(e&&e.code==="not_allowed"&&/not open yet/i.test(e.message||"")){m.innerHTML=head("Educators","Educators")+card("Not open yet",`<div class="hint">${typeof isNewHire==="function"&&isNewHire()?"The director opens this before your first day.":"The director opens this part when it is ready."}</div>`);return}
+    m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
 // only the page opened last draws, so a slow page never covers the one the educator moved to
 let RT=0;
 const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=window.scrollY;m.innerHTML=h;restoreDrafts(m);if(T._keep){window.scrollTo(0,y);T._keep=false}};
@@ -1378,6 +1381,7 @@ Gr.formerHtml=async function(name){await Gr.ready();if(!B())return "";const r=aw
 
 /* ---------- taps ---------- */
 const val=s=>{const e=$(s);return e?e.value:""};
+Gr.leave=()=>{st.jr=null;st.fj=null;st.jDraft=null};
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;
   // leaving a page closes the journal, so it asks for the passcode again
   // the typing in an agenda being built is kept for that day, and opens again with Build the agenda

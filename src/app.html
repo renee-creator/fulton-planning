@@ -1223,7 +1223,7 @@ function renderMain(){
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
   if(isNewHire()&&!STAFF_VIEWS.includes(view)&&view!=="settings"){view="stnew";LS.set("fps.view",view)}
-  if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
+  if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()||isNewHire()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
@@ -1759,8 +1759,11 @@ function foldIntros(){const m=$("#main");if(!m)return;
     const long=[...hd.querySelectorAll(":scope .sub, :scope .hint.muted")].filter(el=>!el.closest("details")&&el.textContent.trim().length>110);
     if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
     long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
+setInterval(()=>{if(view==="conferences")proofBtn()},1500);
 function proofBtn(){const b=$("#tproof");if(!b)return;const m=$("#main");
-  b.hidden=!m||isKitchenUser()||view==="moments"||!(view==="conferences"||[...m.querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]")));
+  // on Conferences the boxes are inside its page, so Proofread shows only on a conference form, never on the list
+  let cdoc=null;if(view==="conferences"){try{const f=$("#tembed-conferences");cdoc=f&&f.contentDocument}catch(er){}}
+  b.hidden=!m||isKitchenUser()||view==="moments"||![...(cdoc||m).querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]"));
   // on a phone a plan's The evidence button takes the same corner, so Proofread sits just above it
   requestAnimationFrame(()=>{const ev=$("#evbtn");b.classList.toggle("up",!!ev&&!ev.hidden&&ev.getClientRects().length>0)})}
 function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
@@ -3859,6 +3862,8 @@ const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 function goView(v,opts){
+  // leaving the journal by any way closes it, so it asks for the passcode again
+  if(v!=="stjour"&&window.TreeGrowth&&TreeGrowth.leave)TreeGrowth.leave();
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
   // the newsletter, the grant and the kitchen are the director's and the kitchen's, so an educator who reaches one goes to Today
   else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen"].includes(v))v="today";
@@ -3922,7 +3927,8 @@ const whenAt=(ms,o)=>{const d=new Date(ms);return d.toLocaleDateString("en-US",o
 let todayCal={at:0,day:"",items:null,error:""};
 async function loadTodayCal(force){
   const day=iso(new Date());if(!window.FP_API||!db)return;
-  if(!force&&todayCal.day===day&&Date.now()-todayCal.at<5*60000&&todayCal.items)return;
+  // a calendar that could not be reached is asked again after a minute, never on every redraw
+  if(!force&&todayCal.day===day&&Date.now()-todayCal.at<(todayCal.items?5*60000:60000))return;
   try{const j=await window.FP_API("/api/view",{from:day,to:day});
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
@@ -4313,7 +4319,7 @@ function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(ne
   if(weeklyRec.failed)return `<div class="card" style="margin-top:14px"><b>This week's reading did not run</b> <span class="cnt">TREE tries again the next time you open it, after an hour.</span></div>`;
   if(!weeklyRec.done)return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>This week's reading</b> <span class="cnt">TREE is reading the plans for threads and the lens. Keep TREE open for a few minutes.</span></span></div>`;
   if(LS.get("tree.weeklyseen")===weeklyRec.week)return "";
-  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done</b> <span class="cnt">${esc([weeklyRec.threads?`${weeklyRec.threads} new thread${weeklyRec.threads===1?"":"s"}`:"",weeklyRec.joined?`more evidence for ${weeklyRec.joined} thread${weeklyRec.joined===1?"":"s"} you follow`:"",weeklyRec.moments?`${weeklyRec.moments} lens moment${weeklyRec.moments===1?"":"s"}`:""].filter(Boolean).join(", ").replace(/^./,c=>c.toUpperCase())||"Nothing new this week.")}${weeklyRec.threads||weeklyRec.joined||weeklyRec.moments?" They wait for you.":""}</span></span><span class="actions"><button class="btn small" data-weeklygo="threads">Threads</button><button class="btn small ghost" data-weeklygo="lens">The lens</button><button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
+  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done.</b> <span class="cnt">${esc([weeklyRec.threads?`${weeklyRec.threads} new thread${weeklyRec.threads===1?"":"s"}`:"",weeklyRec.joined?`more evidence for ${weeklyRec.joined} thread${weeklyRec.joined===1?"":"s"} you follow`:"",weeklyRec.moments?`${weeklyRec.moments} lens moment${weeklyRec.moments===1?"":"s"}`:""].filter(Boolean).join(", ").replace(/^./,c=>c.toUpperCase()).replace(/.$/,c=>c+".")||"Nothing new this week.")}${weeklyRec.threads||weeklyRec.joined||weeklyRec.moments?" They wait for you.":""}</span></span><span class="actions"><button class="btn small" data-weeklygo="threads">Threads</button><button class="btn small ghost" data-weeklygo="lens">The lens</button><button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
@@ -4415,6 +4421,9 @@ function renderWeekBoard(){
 function startIndividual(groupName,room){
   if(needName())return;room=room||boardRoom();
   const g=GROUPS.find(x=>x.name===groupName);
+  // the plan for this week and group, once started, opens again instead of a second one starting
+  const had=[...plans.values()].find(p=>!p.deleted&&p.weekOf===week&&(p.type==="individual"||p.type==="smallgroup")&&isMine(p,me())&&(!g||p.group===g.name||(p.groups||[]).includes(g.name)));
+  if(had){currentId=had.id;view="plans";LS.set("fps.view",view);renderNav();renderList();renderMain();jumpTop();return}
   const np=newPlan("individual");np.classroom=room;
   if(g){np.groups=[g.name];np.focus="";if(g.educator&&!np.educator)np.educator=g.educator}else{np.groups=[];np.focus="area"}
   plans.set(np.id,np);currentId=np.id;persist(np);view="plans";LS.set("fps.view",view);renderNav();renderList();renderMain();jumpTop();
@@ -10493,17 +10502,17 @@ function originHtml(t,isTracked){
       if(p.type==="classroom")inPlan=`, in the classroom team's Classroom Curriculum Plan${room}`;
       else{const g=p.type==="smallgroup"?p.group:(p.focus==="smallgroup"?(p.groups||[]).join(" and "):"");
         inPlan=`, in ${p.educator?esc(p.educator)+"'s":"an"} ${esc(FORMS[p.type].name)}${g?" for the "+esc(g)+" group":p.where?" about the "+esc(p.where):""}${room}`}}
-    rows.push(`<div><b>Started</b>the week of ${fmtDate(first.week)}${inPlan}</div>`)}
+    rows.push(`<div><b>Started</b> the week of ${fmtDate(first.week)}${inPlan}</div>`)}
   const ps=[...new Map(ev.map(e=>[e.planId,rec(e.planId)]).filter(([,p])=>p)).values()];
   if(ps.length){const ct=k=>ps.filter(p=>p.type===k).length;
     const types=[["classroom","Classroom team"],["individual","Individual"],["smallgroup","Small Group"]].map(([k,l])=>ct(k)?`${ct(k)} ${l}`:"").filter(Boolean).join(", ");
     const rooms=[...new Set(ps.map(p=>p.classroom).filter(Boolean))];
     const people=[...new Set(ps.flatMap(p=>p.type==="classroom"?[]:[p.educator,...(p.focus==="smallgroup"?(p.groups||[]).map(g=>g+" group"):[]),p.group&&p.group+" group"]).filter(Boolean))];
     const wks=new Set(ps.map(p=>p.weekOf)).size;
-    rows.push(`<div><b>Seen in</b>${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classes":" class"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
+    rows.push(`<div><b>Seen in</b> ${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classes":" class"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
   if(isTracked){
     const how=t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" class":" across all classes"}`:"";
-    rows.push(`<div><b>Followed</b>${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
+    rows.push(`<div><b>Followed</b> ${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
   }
   return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
 }
@@ -12180,7 +12189,7 @@ function credit(name,mode){mode=mode||PRINT.names;if(!name)return"";const n=name
 /* ---------- A space for the small group. Small groups meet Tuesday to Friday, 9 to 10:30, unless the educator changes it. ---------- */
 let calSpaces=null,calSpacesAt=0,spaceBusy={};
 async function loadCalSpaces(){if(!window.FP_API||!db)return;if(calSpaces&&Date.now()-calSpacesAt<10*60000)return;
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpaces=((j.settings&&j.settings.spaces)||[]).filter(s=>!s.hidden);calSpacesAt=Date.now()}catch(e){calSpaces=calSpaces||[]}
+  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpaces=((j.settings&&j.settings.spaces)||[]).filter(s=>!s.hidden);calSpacesAt=Date.now()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
   if(view==="plans"&&currentId)rerenderSpace()}
 function rerenderSpace(){const p=plans.get(currentId);const el=$("#spacecard");if(p&&el)el.outerHTML=spaceCardHtml(p)}
 const SG_DAYS=[[1,"Mon"],[2,"Tue"],[3,"Wed"],[4,"Thu"],[5,"Fri"]];

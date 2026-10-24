@@ -469,6 +469,7 @@ Gr.formerHtml=async function(name){await Gr.ready();if(!B())return "";const r=aw
 
 /* ---------- taps ---------- */
 const val=s=>{const e=$(s);return e?e.value:""};
+Gr.leave=()=>{st.jr=null;st.fj=null;st.jDraft=null};
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;
   // leaving a page closes the journal, so it asks for the passcode again
   // the typing in an agenda being built is kept for that day, and opens again with Build the agenda
