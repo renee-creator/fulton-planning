@@ -148,10 +148,23 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
   }catch(e){m.innerHTML=head("Educators","Educators")+card("This page could not open",`<div class="hint warnline">${H(e.message||"Check the connection, then try again.")}</div>`)}};
 // only the page opened last draws, so a slow page never covers the one the educator moved to
 let RT=0;
-const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=window.scrollY;m.innerHTML=h;if(T._keep){window.scrollTo(0,y);T._keep=false}};
+const draw=(my,h)=>{if(my!==RT)return;const m=$("#main");if(!m)return;const y=window.scrollY;m.innerHTML=h;restoreDrafts(m);if(T._keep){window.scrollTo(0,y);T._keep=false}};
+/* typing is kept while someone moves to another page and back, until it is saved. Each box is known by the page, the
+   person it is about and its own name. A box drawn again with the words already in it, because they were saved, lets
+   the kept words go. Passcodes are never kept. */
+const DRAFTS=new Map();
+// the boxes that start something new are empty again once it is added. An agenda's blocks are kept by the agenda itself.
+const CREATE=["sth-title","sth-hours","std-note","stn-name","gm-text","gpd-title"];
+const draftKey=el=>{const own=el.id||Object.entries(el.dataset).map(([a,b])=>a+"="+b).join("&");if(!own||el.type==="password"||"gbk" in el.dataset)return "";
+  const G=window.TreeGrowth&&TreeGrowth.st||{};const recs=view==="strec"||view==="stnew";
+  return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",view==="sthb"?st.hbSec:"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",own].join("|")};
+const typed=el=>el&&el.closest&&el.closest("#main")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&/^(text|search|url|number|)$/.test(el.type)));
+document.addEventListener("input",e=>{if(typeof view==="undefined"||!STAFF_VIEWS.includes(view)||!typed(e.target)||VIEW_AS)return;const k=draftKey(e.target);if(k)DRAFTS.set(k,e.target.value)},true);
+function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,input").forEach(el=>{if(!typed(el))return;const k=draftKey(el);if(!k||!DRAFTS.has(k))return;const v=DRAFTS.get(k);
+  if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart};
+T._={tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
@@ -454,9 +467,18 @@ async function printKind(k,word){const kind=word?"word":"pdf";
     return out(kind,secs.map(s=>report(s.title,[["Teacher Policies and Procedures",""]].filter(x=>x[1]),mdBlocks(s.body))),k==="hball"?"Teacher Policies and Procedures":"Teacher Policies and Procedures, "+(secs[0]||{}).title)}}
 
 /* ---------- taps ---------- */
+// a button tapped twice while its first tap is still working does its work once. The tap's work starts at once, so
+// anything it does before waiting happens before the rest of the page hears the tap.
+const INFLIGHT=new Set();
+function tapOnce(t,f){const k=Object.entries(t.dataset).map(([a,b])=>a+"="+b).join("&");if(INFLIGHT.has(k))return;
+  let r;try{r=f()}catch(er){fail(er);return}
+  if(!r||typeof r.then!=="function")return;INFLIGHT.add(k);t.setAttribute("aria-busy","true");
+  r.then(()=>{for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id)))DRAFTS.delete(x)},()=>{}).catch(()=>{});
+  r.catch(fail).finally(()=>{INFLIGHT.delete(k);t.removeAttribute("aria-busy")})}
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.hbSec="";st.hbEdit=false},true);
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw]");
-  if(!t)return;const d=t.dataset;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-sthb],[data-sthbedit],[data-sthbsave],[data-sthbcancel],[data-sthbrm],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw]");
+  if(!t)return;tapOnce(t,()=>stTap(e,t))},true);
+async function stTap(e,t){const d=t.dataset;
   if(d.stprint||d.stword){e.preventDefault();progress("Making the file");await printKind(d.stprint||d.stword,!!d.stword);return}
   if(d.stmod!=null&&d.tview){LS.set("tree.stmod",d.stmod);return}
   if(VIEW_AS&&!d.stmod&&!d.stmodback&&!d.stpiece&&d.sthb==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -510,7 +532,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-stpe
   if(d.stremind){const rm=Object.assign({},B.school.remind);rm[d.stremind]=rm[d.stremind]===false;try{await api("school",{school:{remind:rm}});await boot(true);t.classList.toggle("on")}catch(er){fail(er)}return}
   if(d.stforms){const fl={};document.querySelectorAll("[data-stform]").forEach(x=>fl[x.dataset.stform]=x.value.trim());try{await api("school",{school:{formLinks:fl}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
   if(d.streload){try{const r=await api("reload");st.pd=null;st.hb=null;toast(`Read again, ${r.pieces} pieces.`)}catch(er){fail(er)}return}
-},true);
+}
 // dates and choices save as they change
 document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.closest("#main"))return;const d=t.dataset;
   if(t.id==="sts-goto"&&VIEW_AS)return;

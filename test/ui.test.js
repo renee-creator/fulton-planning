@@ -26,4 +26,26 @@ test('TREE in the browser', async t => {
     assert.doesNotMatch(text, /\d:\d\d/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
+
+  await t.test('Share tapped twice keeps one proud moment', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357');
+    await s.p.evaluate(() => goView('stmom')); await s.p.waitForSelector('#gm-text');
+    await s.p.fill('#gm-text', 'We planted the garlic together');
+    await s.p.evaluate(() => { const x = document.querySelector('[data-gmshare]'); x.click(); x.click(); });
+    await s.p.waitForFunction(() => /We planted the garlic together/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const n = await s.p.evaluate(() => (document.querySelector('#main').innerText.match(/We planted the garlic together/g) || []).length);
+    assert.strictEqual(n, 1);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
+
+  await t.test('words typed in the Growth Plan are still there after opening another page and coming back', async () => {
+    const s = await signedIn(fx, b, 'Ann', '1357');
+    await s.p.evaluate(() => goView('stplan')); await s.p.waitForSelector('#gp-ch');
+    await s.p.fill('#gp-ch', 'Rain days indoors');
+    await s.p.click('#tsubnav [data-tview="strec"]').catch(async () => { await s.p.evaluate(() => goView('strec')); });
+    await s.p.waitForFunction(() => /My records/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    await s.p.evaluate(() => goView('stplan')); await s.p.waitForSelector('#gp-ch');
+    assert.strictEqual(await s.p.inputValue('#gp-ch'), 'Rain days indoors');
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
 });
