@@ -129,7 +129,8 @@ module.exports = function reminders(o) {
   const key = s => String(s || '').trim().toLowerCase();
   function educators() {
     const ed = docOf('settings', 'educators'); const names = (ed && Array.isArray(ed.names) ? ed.names : []).filter(r => r && r.name);
-    return names.filter(r => !isDirector(r.name) && !isKitchen(r.name)).map(r => ({ name: r.name.trim(), room: r.room || '' }));
+    // a new hire, before full access, hears nothing about planning
+    return names.filter(r => !isDirector(r.name) && !isKitchen(r.name) && !(accountFor(r.name) || {}).newHire).map(r => ({ name: r.name.trim(), room: r.room || '' }));
   }
   const nameIn = (field, name) => String(field || '').split(/,|&|\band\b|\//i).map(key).some(k => k && (k === key(name) || k.split(' ')[0] === key(name).split(' ')[0]));
   const filled = v => !!String(v || '').trim();
