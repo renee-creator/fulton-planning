@@ -532,7 +532,7 @@ module.exports = function staffModule(o) {
     if (has && (get(pPath(name)).profile || {}).leftOn === doc.profile.leftOn) return; put(pPath(name), doc);
   }
   // a former educator's records, removed once the keeping period has passed and the director confirmed it twice. The
-  // files stay in the records' history on GitHub and in earlier weekly backups.
+  // files stay in the records' history on GitHub and in earlier nightly backups.
   async function removeFormer(name) {
     await ready(); if (!isFormerEducator(name)) throw new Error('Only a former educator\'s records are removed.'); let n = 0;
     for (const p of [pPath(name), G.gPath(name), G.jPath(name)]) {
