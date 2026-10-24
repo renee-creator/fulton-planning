@@ -14,7 +14,7 @@
 const crypto = require('crypto');
 
 module.exports = function staffModule(o) {
-  const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames } = o;
+  const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
   const S = { files: new Map(), timers: new Map(), saving: new Map(), ready: false, loading: null };
   const DAY = 864e5;
 
@@ -29,6 +29,8 @@ module.exports = function staffModule(o) {
     { k: 'mandated', label: 'Mandated reporter training', reg: 'Health and Safety Code 1596.8662', months: 24, note: 'Within 90 days of hire, renewed every two years' },
     { k: 'hsa', label: 'Healthy Schools Act training', reg: 'Healthy Schools Act', months: 12, note: 'Renewed each year' },
     { k: 'water', label: 'Water safety certificate', reg: 'Title 22, 101216.6', months: 24, note: 'Required of every educator because of creek walks' },
+    // Fulton's own training, for everyone who cares for children. It shows as due until it is completed.
+    { k: 'activesup', label: 'Active Supervision Training', reg: 'Fulton training', months: 0, fulton: true, note: 'With the CCLD video Supervising Children in Child Care Centers and the active supervision handouts' },
   ];
   const CDSS_FORM = n => `https://www.cdss.ca.gov/cdssweb/entres/forms/English/${n}.pdf`;
   const PAPERS = [
@@ -49,7 +51,7 @@ module.exports = function staffModule(o) {
   const DIRECTOR_PAPERS = ['quickbooks', 'idseen'];
   const CHECKLIST = [
     'Paperwork uploaded and clearances received', 'Immunization records or exemptions uploaded', 'Welcome and philosophy read', 'Who\'s who read', 'TREE How To guides read',
-    'Mandated reporter certificate uploaded', 'Licensing at Fulton pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with their go-to team member',
+    'Mandated reporter certificate uploaded', 'Licensing at Fulton pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with their go-to person',
     'Educator Reflection and Growth Plan started', 'Starting-point conversation, scheduled two months from the start date'];
   const DRILL_TYPES = ['Fire', 'Earthquake', 'Lockdown', 'Evacuation', 'Shelter in place', 'Other'];
   const REMIND_TYPES = { expiry: 'Certificates and trainings before they expire', flu: 'The yearly flu shot', hsa: 'Healthy Schools Act training each year', semester: 'Proof of enrollment each semester, below twelve units', drill: 'A drill when three months pass without one' };
@@ -98,7 +100,8 @@ module.exports = function staffModule(o) {
         if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); continue; }
         try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); }
       }
-      seed(); pieceCache = null; S.ready = true;
+      seed(); pieceCache = null; G.invalidate(); S.ready = true;
+      try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
       log(`Loaded educator records, ${[...S.files.keys()].filter(p => p.startsWith('staff/people/')).length} people, ${[...S.files.keys()].filter(p => p.startsWith('staff/handbook/')).length} handbook sections`);
     })().catch(e => { S.loading = null; throw e; });
     return S.loading;
@@ -110,7 +113,7 @@ module.exports = function staffModule(o) {
   }
   async function ready() { if (!S.ready) await load(); }
   const school = () => get(SCHOOL) || {};
-  const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false }, school().open || {});
+  const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false }, school().open || {});
 
   /* ---------- the PD library's pieces, one file each in pd/, so a new piece needs no code ---------- */
   let pieceCache = null;
@@ -147,18 +150,20 @@ module.exports = function staffModule(o) {
   const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const addMonths = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
   const daysBetween = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / DAY);
-  // everyone with a TREE sign-in has a records page, apart from the kitchen sign-in
-  const staffNames = () => accounts.list.filter(a => a && a.name && !isKitchen(a.name)).map(a => a.name);
+  // everyone with a TREE sign-in has a records page, the office and the kitchen included
+  const staffNames = () => accounts.list.filter(a => a && a.name).map(a => a.name);
   function blankPerson(name) { return { name, profile: {}, items: {}, flu: {}, once: {}, units: {}, hours: [], paperwork: {}, checklist: {}, gotoCheckins: [], pd: { done: {}, read: {} }, review: {}, focus: [], printed: {}, files: {} }; }
   function person(name) { const d = get(pPath(name)); return Object.assign(blankPerson(name), d || {}, { name: (d && d.name) || name }); }
   const profileOf = name => (get(pPath(name)) || {}).profile || {};
   const roomOf = name => { const a = accountFor(name); if (a && a.room) return a.room; const ed = store.recs.settings.get('educators'); const r = ed && !ed.deleted && ed.doc && (ed.doc.names || []).find(x => x && nameKey(x.name) === nameKey(name)); return (r && r.room) || ''; };
   const isNewHire = name => { const a = accountFor(name); return !!(a && a.newHire && !isDirector(name)); };
-  // the New Educator section stays with an educator through their first two months, and from before their first day
+  // the New Educator section stays with an educator through their first two months, from before their first day, and
+  // in their first year until the starting-point conversation is held. The office and the kitchen have records only.
   function inNewEd(name) {
-    if (isNewHire(name)) return true;
+    if (isNewHire(name)) return true; if (profileOf(name).role === 'staff' || isKitchen(name)) return false;
     const st = profileOf(name).startDate; if (!/^\d{4}-\d{2}-\d{2}$/.test(st || '')) return false;
-    return daysBetween(st, today()) < 63;
+    const d = daysBetween(st, today()); if (d < 0 || d < 63) return true;
+    return d < 365 && !((get(pPath(name)) || {}).checklist || {}).starting;
   }
   function allowed(me, sec) {
     if (isDirector(me)) return true; const o = opened();
@@ -169,14 +174,17 @@ module.exports = function staffModule(o) {
   const canSee = (me, name) => isDirector(me) || nameKey(me) === nameKey(name);
   function whoRole(name) {
     if (isDirector(name)) return 'Director'; if (isKitchen(name)) return 'Kitchen'; if (isOffice(name)) return 'Office';
-    const r = profileOf(name).role; return r === 'apprentice' ? 'Apprentice' : r === 'atelierista' ? 'Atelierista' : 'Educator';
+    const r = profileOf(name).role; return r === 'apprentice' ? 'Apprentice' : r === 'atelierista' ? 'Atelierista' : r === 'staff' ? 'Staff' : 'Educator';
   }
   function whosWho() {
     const names = new Map(); for (const n of rosterNames()) names.set(nameKey(n), n); for (const a of accounts.list) if (a && a.name && !names.has(nameKey(a.name))) names.set(nameKey(a.name), a.name);
     return [...names.values()].map(n => ({ name: n, role: whoRole(n), room: roomOf(n) })).sort((a, b) => (a.role === 'Director' ? -1 : b.role === 'Director' ? 1 : 0) || a.name.localeCompare(b.name));
   }
-  // the go-to team member is shown to both, and the new educator's check-ins are kept on their record
-  const pairedWith = name => staffNames().filter(n => nameKey(profileOf(n).goTo || '') === nameKey(name));
+  // one go-to person for every new educator, a program setting the director can change. It is shown to both, and the
+  // new educator's first weeks check-ins are kept on their record. The go-to person sees only these, never growth.
+  const goToName = () => String(school().goTo || '');
+  const goToOf = name => inNewEd(name) && goToName() && nameKey(goToName()) !== nameKey(name) ? goToName() : '';
+  const pairedWith = name => goToName() && nameKey(goToName()) === nameKey(name) ? staffNames().filter(n => nameKey(n) !== nameKey(name) && inNewEd(n) && !isDirector(n)) : [];
 
   // what an educator may change on their own record. The rest is the director's.
   const OWN_KEYS = ['items', 'flu', 'once', 'units', 'hours', 'paperwork', 'checklist', 'pd', 'focus'];
@@ -197,13 +205,21 @@ module.exports = function staffModule(o) {
     const dir = isDirector(me), who = String(body.name || me);
     const deny = m => err(req, res, 403, m || 'This is not open yet.');
     const P = path_.slice('/api/staff/'.length);
+    // a kitchen sign-in reaches its own records page and nothing else here
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
+    if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
+    if (P === 'moment/file') {
+      const fid = String(body.fid || ''); if (!/^staff-[a-f0-9]+\.[a-z]+$/.test(fid) || !G.momentFile(me, fid)) { err(req, res, 404, 'That photo is not here.'); return; }
+      try { const buf = await readOriginal(fid); send(req, res, 200, { 'Content-Type': /\.png$/.test(fid) ? 'image/png' : 'image/jpeg', 'Cache-Control': 'private, no-store' }, buf); } catch (e) { err(req, res, 502, 'The photo could not be read. ' + e.message); }
+      return;
+    }
 
     if (P === 'boot') {
       const mine = person(me); const o = opened();
-      json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {} },
-        open: o, can: { records: allowed(me, 'records'), pd: allowed(me, 'pd'), handbook: allowed(me, 'handbook'), newed: allowed(me, 'newed') },
+      json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {}, takesPart: G.takesPart(me), kitchen: isKitchen(me), goTo: goToOf(me) },
+        open: o, can: canFor(me), goTo: goToName(), activeSupervision: school().activeSupervision || null,
         defs: { items: ITEMS, papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
-        school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {} },
+        school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName() },
         whosWho: whosWho(), lens: lensNow(), paired: pairedWith(me), today: today(), people: dir ? staffNames().sort() : [] });
       return;
     }
@@ -229,7 +245,7 @@ module.exports = function staffModule(o) {
       // a shared file on this record, such as a class roster, comes with its name
       const doc0 = person(who), sf = school().files || {}, txt = JSON.stringify(doc0);
       const shared = Object.fromEntries(Object.entries(sf).filter(([f]) => txt.includes(f)));
-      json(req, res, 200, Object.assign(doc0, { shared, goTo: profileOf(who).goTo || '', paired: pairedWith(who).map(n => ({ name: n, startDate: profileOf(n).startDate || '', checkins: person(n).gotoCheckins || [] })) })); return;
+      json(req, res, 200, Object.assign(doc0, { shared, planStarted: G.planStarted(who), goTo: goToOf(who), paired: pairedWith(who).map(n => ({ name: n, startDate: profileOf(n).startDate || '', checkins: person(n).gotoCheckins || [] })) })); return;
     }
     if (P === 'people') {
       if (!dir) return deny('Only the director sees every educator\'s records.');
@@ -249,6 +265,15 @@ module.exports = function staffModule(o) {
       for (const k of ['shared', 'paired', 'goTo', 'room', 'role', 'newHire', 'newEd']) delete doc[k];
       doc.updatedAt = Date.now(); doc.updatedBy = me;
       put(pPath(who), doc); json(req, res, 200, doc); return;
+    }
+    if (P === 'upload' && body.moment) {
+      // a photo for a proud moment, seen only by the audience chosen for the moment
+      if (!G.takesPart(me) && !dir) return deny();
+      const ext = (String(body.filename || '').toLowerCase().match(/\.(jpe?g|png)$/) || [])[1]; if (!ext || typeof body.data !== 'string') { err(req, res, 400, 'Choose a photo.'); return; }
+      const buf = Buffer.from(body.data, 'base64'); if (buf.length > 8 * 1024 * 1024) { err(req, res, 413, 'That photo is larger than 8 MB.'); return; }
+      const fid = 'staff-' + crypto.randomBytes(8).toString('hex') + '.' + (ext === 'png' ? 'png' : 'jpg');
+      try { await keepOriginal(fid, buf, ext === 'png' ? 'image/png' : 'image/jpeg', 'Add a proud moment photo'); } catch (e) { err(req, res, 502, 'The photo could not be kept. ' + e.message); return; }
+      json(req, res, 200, { fid }); return;
     }
     if (P === 'upload') {
       if (!canSee(me, who)) return deny('Only you and the director add files to your records.');
@@ -300,7 +325,11 @@ module.exports = function staffModule(o) {
     if (P === 'school') {
       if (!dir) return deny('Only the director changes these settings.');
       const sc = Object.assign({}, school()); const b = body.school || {};
-      if (b.open) sc.open = Object.assign({}, opened(), Object.fromEntries(Object.entries(b.open).filter(([k]) => ['records', 'pd', 'handbook', 'newed'].includes(k)).map(([k, v]) => [k, !!v])));
+      if (b.open) sc.open = Object.assign({}, opened(), Object.fromEntries(Object.entries(b.open).filter(([k]) => ['records', 'pd', 'handbook', 'newed', 'growth'].includes(k)).map(([k, v]) => [k, !!v])));
+      // the go-to person for every new educator. Someone marked never to be assigned is refused.
+      if ('goTo' in b) { const g = String(b.goTo || '').slice(0, 40); if (g && (!staffNames().some(n => nameKey(n) === nameKey(g)) || profileOf(g).neverGoTo)) { err(req, res, 400, 'Choose someone else as the go-to person.'); return; } sc.goTo = g; }
+      if (b.checkin && typeof b.checkin === 'object') sc.checkin = { week: Math.min(4, Math.max(1, Math.round(+b.checkin.week || 1))), secondTime: /^\d{2}:\d{2}$/.test(b.checkin.secondTime || '') ? b.checkin.secondTime : '', minutes: 20 };
+      if (b.meeting && typeof b.meeting === 'object') sc.meeting = { start: /^\d{2}:\d{2}$/.test(b.meeting.start || '') ? b.meeting.start : '13:15', end: /^\d{2}:\d{2}$/.test(b.meeting.end || '') ? b.meeting.end : '14:30' };
       if (typeof b.welcome === 'string') sc.welcome = b.welcome.slice(0, 8000);
       if (typeof b.philosophy === 'string') sc.philosophy = b.philosophy.slice(0, 30000);
       if (b.formLinks && typeof b.formLinks === 'object') sc.formLinks = Object.fromEntries(Object.entries(b.formLinks).filter(([k, v]) => PAPERS.some(p => p.k === k) && (!v || /^https:\/\//.test(v))).map(([k, v]) => [k, String(v || '').slice(0, 500)]));
@@ -312,8 +341,12 @@ module.exports = function staffModule(o) {
       if (!dir) return deny('Only the director sets an educator\'s details.');
       const doc = person(who); const b = body.profile || {};
       doc.profile = Object.assign({}, doc.profile);
-      if ('role' in b) doc.profile.role = ['educator', 'apprentice', 'atelierista'].includes(b.role) ? b.role : 'educator';
+      if ('role' in b) doc.profile.role = ['educator', 'apprentice', 'atelierista', 'staff'].includes(b.role) ? b.role : 'educator';
       if ('planHour' in b) doc.profile.planHour = /^\d{2}:\d{2}$/.test(b.planHour || '') ? b.planHour : '';
+      if ('checkin' in b) doc.profile.checkin = ['slot', 'second', 'asneeded'].includes(b.checkin) ? b.checkin : '';
+      if ('journalEvery' in b) doc.profile.journalEvery = +b.journalEvery === 2 ? 2 : 1;
+      for (const k of ['partTime', 'noMondays', 'lighter']) if (k in b) doc.profile[k] = !!b[k] && b[k] !== '0';
+      if ('curriculumFrom' in b) doc.profile.curriculumFrom = b.curriculumFrom === 'smallgroup' ? 'smallgroup' : '';
       if ('startDate' in b) doc.profile.startDate = /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : '';
       if ('goTo' in b) doc.profile.goTo = String(b.goTo || '').slice(0, 40);
       put(pPath(who), doc);
@@ -327,7 +360,7 @@ module.exports = function staffModule(o) {
       if (accountFor(name)) { err(req, res, 409, name + ' already has a sign-in.'); return; }
       accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: crypto.randomBytes(3).toString('hex'), v: 0 });
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
-      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', goTo: String(body.goTo || '').slice(0, 40), planHour: '' };
+      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '' };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
       json(req, res, 200, { ok: true }); return;
     }
@@ -373,7 +406,7 @@ module.exports = function staffModule(o) {
     }
     if (P === 'goto') {
       // the go-to team member, or the new educator, notes this week's check-in
-      const nb = String(body.newName || me); const isGo = nameKey(profileOf(nb).goTo || '') === nameKey(me);
+      const nb = String(body.newName || me); const isGo = !!goToOf(nb) && nameKey(goToOf(nb)) === nameKey(me);
       if (!(dir || isGo || nameKey(nb) === nameKey(me))) return deny('Only the new educator and their go-to team member note check-ins.');
       if (!allowed(me, 'newed') && !allowed(me, 'records') && !dir) return deny();
       const doc = person(nb); const wk = mondayOf(today());
@@ -452,9 +485,14 @@ module.exports = function staffModule(o) {
   setInterval(tick, 5 * 60e3).unref(); setTimeout(tick, 60e3).unref();
 
   /* ---------- for the server ---------- */
+  function canFor(name) { if (isKitchen(name) || profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false }; }
+    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)) }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
-    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed') } }; }
+    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name) }; }
   // the weekly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, tick, pieces, dueFor };
+  // the growth part, kept in growth.js, shares these records and the server's rules
+  const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
+    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd });
+  return { load, handle, flushAll, bootInfo, dump, isNewHire, tick, pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

@@ -268,7 +268,7 @@ function loadFeed(calId) {
   return f.running;
 }
 const viewCache = new Map();
-async function eventsFor(from, to) {
+async function eventsFor(from, to, me) {
   const out = []; const status = {};
   await Promise.all(core.program.calendars.map(async c => {
     if (!feedAddresses[c.id]) { status[c.id] = { connected: false }; return; }
@@ -284,7 +284,7 @@ async function eventsFor(from, to) {
   }));
   // family conferences from TREE's own records, on the same week as everything else
   // when the conference sign-up sheet is also a school calendar, the two show as one calendar, and a conference on both is shown once
-  if (opts.extraEvents) { try { const x = opts.extraEvents(from, to); const into = confCalId();
+  if (opts.extraEvents) { try { const x = opts.extraEvents(from, to, me); const into = confCalId();
     Object.assign(status, x.status);
     const confs = x.events.filter(e => e.cal === 'tconf'), rest = x.events.filter(e => e.cal !== 'tconf'); out.push(...rest);
     if (into) { delete status.tconf; const have = new Set(out.filter(e => e.cal === into).map(e => String(e.start).slice(0, 16)));
@@ -294,7 +294,7 @@ async function eventsFor(from, to) {
 }
 
 
-const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }];
+const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }, { id: 'tgrow', name: 'Check-ins and PD', color: 'sky' }];
 // the school calendar that is the family conference sign-up sheet, if there is one
 function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
@@ -315,7 +315,7 @@ async function handle(path, me, body, reply) {
     if (path === '/api/view') {
       const { from, to } = body;
       if (!DATE_RE.test(from || '') || !DATE_RE.test(to || '') || !Core.validDate(from) || !Core.validDate(to) || to < from || Core.dayNum(to) - Core.dayNum(from) > 100) { reply(400, { error: 'That date range is not valid.' }); return true; }
-      const ev = await eventsFor(from, to);
+      const ev = await eventsFor(from, to, me);
       const who = me.shared ? text(body.who, 40) : '';
       const stamp = [BOOT_ID, rev, feedRev, opts.extraRev ? opts.extraRev() : 0, from, to, schoolToday(), crypto.createHash('sha1').update(who).digest('hex').slice(0, 8)].join('.');
       const base = { stamp, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, calendarStatus: ev.status };
@@ -354,9 +354,9 @@ async function handle(path, me, body, reply) {
   return false;
 }
 // what the TREE server needs to see. Today's entries for the Today screen come from here too.
-async function today(me, from, to) { if (!store.ready) await loadAll(); if (!store.ready) return null; const ev = await eventsFor(from, to); return { bookings: core.view(from, to), events: ev.events, settings: settingsFor({ director: false }) }; }
+async function today(me, from, to) { if (!store.ready) await loadAll(); if (!store.ready) return null; const ev = await eventsFor(from, to, me); return { bookings: core.view(from, to), events: ev.events, settings: settingsFor({ director: false }) }; }
 function statusLine() { if (!store.ready) return [false, store.error || 'The calendar is still loading.']; const connected = core.program.calendars.filter(c => feedAddresses[c.id]).length; return [true, `The calendar holds ${core.count()} sign-ups and ${core.program.spaces.length} spaces, with ${connected} school calendar${connected === 1 ? '' : 's'} connected.`]; }
 // every calendar file as the records keep it, for the weekly backup
 function dump() { const out = {}; if (!store.ready) return out; for (const p of new Set([PROGRAM_PATH, FEEDS_PATH, ...store.shas.keys(), ...dirtyPaths])) { if (p === PROGRAM_PATH || p === FEEDS_PATH || /^calendar\/bookings\/\d{4}-\d{2}\.json$/.test(p)) out[p] = docFor(p); } return out; }
-return { loadAll, handle, today, flushEverything, statusLine, dump, get ready() { return store.ready; }, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
+return { loadAll, handle, today, events: (f, t) => eventsFor(f, t, null), flushEverything, statusLine, dump, get ready() { return store.ready; }, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
 };
