@@ -55,7 +55,7 @@ const NOT_NAMES = new Set(['We', 'She', 'He', 'Her', 'His', 'They', 'Them', 'The
 // names that are also the school's own words are never changed, and names that are also everyday words are changed only
 // inside a sentence, so May I help? and Green beans stay as written
 const NEVER_NAMES = new Set(['Fulton', 'Farm', 'School', 'Community', 'Class', 'West', 'North', 'South', 'Garden', 'Piazza']);
-const EVERYDAY = new Set(['May', 'June', 'April', 'August', 'Will', 'Grace', 'Hope', 'Joy', 'Rose', 'Lily', 'Hope', 'Iris', 'Ivy', 'Sky', 'Sky', 'Rain', 'Sunny', 'Star', 'Green', 'Brown', 'White', 'Black', 'Gray', 'Grey', 'Bean', 'Berry', 'Hunter', 'Mason', 'Taylor', 'Cook', 'Baker', 'Miller', 'Wood', 'Stone', 'Hill', 'Rivers', 'Summer', 'Winter', 'Autumn', 'Faith', 'Bell', 'Love', 'Max', 'Sage', 'Olive', 'Pearl', 'Ruby', 'Jade', 'Dawn', 'Eve', 'Art', 'Bill', 'Frank', 'Mark', 'Rob', 'Sue', 'Pat', 'Dash']);
+const EVERYDAY = new Set(('may june april august will grace hope joy rose lily daisy iris ivy sky river rain sunny star green brown white black gray grey bean berry hunter mason taylor cook baker miller wood stone hill rivers summer winter autumn faith bell love max sage olive pearl ruby jade dawn eve art bill frank mark rob sue pat dash').split(' '));
 const shareFamily = (a, b) => { const em = c => new Set(((c && c.parents) || []).map(x => String((x && x.email) || '').trim().toLowerCase()).filter(Boolean)); const x = em(a); return [...em(b)].some(e => x.has(e)); };
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function nicknamesOf(c) { const a = c && c.familyQuestionnaire && Array.isArray(c.familyQuestionnaire.answers) ? String(c.familyQuestionnaire.answers[0] || '') : ''; return (a.match(/\b[A-Z][a-z]{1,20}\b/g) || []).filter(w => !NOT_NAMES.has(w)); }
@@ -82,7 +82,7 @@ function withoutOthers(text, child, all) {
   const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
   if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos, at, all) => {
     const first = m.split(/\\s+/)[0].replace(/(\'s|’s)$/, ''); const start = !all.slice(0, at).trim() || /[.!?]["”]?\\s*$|\\n\\s*$/.test(all.slice(0, at));
-    return EVERYDAY.has(first) && start ? m : 'a friend' + (pos ? '\'s' : ''); });
+    return EVERYDAY.has(first.toLowerCase()) && start ? m : 'a friend' + (pos ? '\'s' : ''); });
   if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), '$1a friend');
   // two friends named together read as friends, and a sentence that starts with one starts with a capital
   t = t.replace(/\ba friend(?:,\s*a friend)*,?\s+and\s+a friend\b/g, 'friends').replace(/\ba friend(?:,\s*a friend)+\b/g, 'friends').replace(/\ba friend\s+and\s+friends\b/g, 'friends');

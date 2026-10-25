@@ -5345,7 +5345,7 @@ function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHT
     <section class="card">${list.map(recipeCard).join("")||`<div class="empty">No ${recKind} recipes yet.</div>`}</section>
     <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>`}
 function recipeForm(){return `<div class="lbl">${recCanEdit()?"A new recipe":"A recipe for the director"}</div>${recCanEdit()?"":`<div class="hint">It waits as a draft until the director adds it to the library.</div>`}
-  <div class="kfields"><label>Name<input type="text" id="rc-title"></label><label>Kind<select id="rc-kind"><option value="food" ${recKind==="food"?"selected":""}>Food</option><option value="sensory" ${recKind==="sensory"?"selected":""}>Sensory</option></select></label><label>Where it comes from<input type="text" id="rc-source" placeholder="Ex. Ours, or Kitchen's"></label></div>
+  <div class="kfields"><label>Name<input type="text" id="rc-title"></label><label>Kind<select id="rc-kind"><option value="food" ${recKind==="food"?"selected":""}>Food</option><option value="sensory" ${recKind==="sensory"?"selected":""}>Sensory</option></select></label><label>Where it comes from<input type="text" id="rc-source" placeholder="Ex. Ours, or a family's"></label></div>
   <label class="fld-label">Ingredients, one on each line<textarea id="rc-ing" rows="5" placeholder="2 cups flour"></textarea></label>
   <label class="fld-label">Tools, one on each line<textarea id="rc-tools" rows="3"></textarea></label>
   <label class="fld-label">Steps, one on each line. Begin a step an adult does with An adult.<textarea id="rc-steps" rows="5"></textarea></label>
