@@ -284,6 +284,7 @@ module.exports = function staffModule(o) {
       // a sentence that breaks a writing rule gets a gentle note, and she can keep it as written
       const found = b.keep ? [] : W.check(r.text, next); if (found.length) return { error: 'Some new wording may not follow the writing rules.', findings: found, gentle: true };
     }
+    next = LIB.guard(p, next);
     if (next.trim() === String(r.text || '').trim() || (!restoring && next === pageText(pp))) return { ok: true, same: true, page: pageOut(p) };
     const h = Object.assign({ path: p, history: [] }, get(PAGE_HIST(p)) || {});
     h.history = [...(h.history || []), { title: pp.title, text: r.text, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
@@ -411,7 +412,10 @@ module.exports = function staffModule(o) {
     // what TREE opens for this sign-in, asked again by a page that signed in while the records were still loading
     if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help'].includes(P)) return deny('A kitchen sign-in reaches its own records page.');
+    // the kitchen also adds and edits recipes in the recipe library
+    const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && /^staff\/library\/recipes\//.test(String(body.path || ''));
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
+    if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
     if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
@@ -438,7 +442,7 @@ module.exports = function staffModule(o) {
     // the school's own wording, read again after the director edits a piece of it
     if (P === 'wording') { if (isKitchen(me)) return deny(); json(req, res, 200, { docs: wordingAll() }); return; }
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
-      if (!dir) return deny('The director edits this page.');
+      if (!dir && !(isKitchen(me) && /^staff\/library\/recipes\//.test(String(body.path || '')))) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
       if (recordSpec(p)) {
         const item = String(body.item || ''); if (!recordTarget(p, item)) { err(req, res, 404, 'That is not here.'); return; }
@@ -890,6 +894,7 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
+  const LIB = require('./library.js')({ S, get, putText, log, isDirector, isKitchen });
   const GD = require('./garden.js')({ get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
@@ -1036,5 +1041,5 @@ module.exports = function staffModule(o) {
   }
   // who holds the Garden educator role. Until someone does, the director holds it, which the pages read as an empty list.
   const gardenEducators = () => S.ready ? staffNames().filter(n => profileOf(n).garden && !isFormerEducator(n)).sort() : [];
-  return { gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

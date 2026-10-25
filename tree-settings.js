@@ -2,7 +2,7 @@
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
-  ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
+  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
@@ -17,6 +17,7 @@ function setStatus(t,x){try{
   if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
   if(t==="Names on plans")return plural(rosterNames().length,"name");
   if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
+  if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
   if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
   if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
@@ -106,6 +107,8 @@ function renderSettings(){
   <section class="card"><div class="lbl">Languages of expression</div><div class="hint">Offered on every plan and the curriculum web. Educators can add others on any plan, and those are offered to everyone afterward.</div>
     <div class="chips">${chipList(LANGUAGES,"data-ldel")}</div>
     <div class="actions"><input type="text" id="l-new" placeholder="Add a language of expression" style="width:240px"><button class="btn small" id="l-add">Add</button></div></section>
+  <section class="card"><div class="lbl">Provocations and curiosity prompts</div><div class="hint">Wonderings offered under a plan's questions, from the Watch and Wonder Curiosity Prompt cards, the kit prompts and a seasonal garden set. An educator can always ignore them.</div>
+    ${libData&&libData.provocations?`<div class="cnt">${(libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).map(p=>esc(p.key)+", "+libLines(p.text).length).join(". ")}.</div><div class="actions">${pageEditBtn(libData.provocations.path,"Edit the bank, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
     ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
       <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>

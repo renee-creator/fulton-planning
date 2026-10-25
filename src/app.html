@@ -1511,6 +1511,7 @@ function fieldCard(p,f){
   let starters=`<div class="chips">${f.starters.map(s=>`<button class="chip" data-insert="${esc(s)}" data-field="${f.k}">${esc(s.trim())}${/[ "]$/.test(s)?"…":""}</button>`).join("")}</div>`,chips="";
   if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);starters+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
   if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
+  if(f.k==="questions")chips+=provocationsChips(f.k);
   if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}${guideBy("group",c)?`<br>${guideLink(guideBy("group",c),"Guide")}`:""}</span>${[...list,...(c==="Atelier"?gdnMaterials():[])].map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
   if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}`;
   if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
@@ -4571,6 +4572,17 @@ async function loadWalks(force){if(walkBusy||!window.FP_API)return;if(!force&&wa
    Read from the records, staff/guides, through the signed-in server. Each is linked from its group in the Materials
    library and from its Classroom area on plans. A draft shows only to the director until she marks it ready. */
 let guideList=null,guideBusy=false,guideSel="",guidePrev="today";
+/* The libraries for plans, read from the server: recipes, the song book, read-alouds and the bank of provocations and
+   curiosity prompts, each a page in the private records the director edits in place with its history. */
+let libData=null,libBusy=false;
+async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","settings"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();return libData}
+const libLines=t=>String(t||"").split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].trim());
+// the bank, under a plan's questions, as wonderings an educator can tap in or ignore
+function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libData.provocations;if(!pv)return "";
+  const sets=(pv.parts||[]).filter(p=>!/^Where /i.test(p.key)).map(p=>[p.key,libLines(p.text)]).filter(([,l])=>l.length);if(!sets.length)return "";
+  return `<details><summary class="chiprow-label" style="cursor:pointer">Provocations and curiosity prompts</summary><div class="hint" style="margin-top:6px">Wonderings to carry into the day, ready to set aside whenever the children lead somewhere else.</div>
+    ${sets.map(([h,l])=>`<details style="margin-top:4px"><summary class="cnt" style="cursor:pointer">${esc(h)}</summary><div class="chips" style="margin-top:4px">${l.map(x=>`<button class="chip" data-insert="${esc(x)} " data-field="${k}">${esc(x)}</button>`).join("")}</div></details>`).join("")}
+    ${(pv.parts||[]).filter(p=>/^Where /i.test(p.key)).map(p=>`<div class="cnt" style="margin-top:6px">${guideMd(p.text)}</div>`).join("")}</details>`}
 async function loadGuides(force){if(!window.FP_API||guideBusy||(guideList&&!force))return;guideBusy=true;
   try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain()}
 const guideBy=(k,v)=>{if(guideList===null)loadGuides();return (guideList||[]).find(g=>v&&String(g[k]||"").toLowerCase()===String(v).toLowerCase())||null};
@@ -13127,7 +13139,7 @@ let setOpen="";
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
-  ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
+  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
@@ -13143,6 +13155,7 @@ function setStatus(t,x){try{
   if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
   if(t==="Names on plans")return plural(rosterNames().length,"name");
   if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
+  if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
   if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
   if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
@@ -13232,6 +13245,8 @@ function renderSettings(){
   <section class="card"><div class="lbl">Languages of expression</div><div class="hint">Offered on every plan and the curriculum web. Educators can add others on any plan, and those are offered to everyone afterward.</div>
     <div class="chips">${chipList(LANGUAGES,"data-ldel")}</div>
     <div class="actions"><input type="text" id="l-new" placeholder="Add a language of expression" style="width:240px"><button class="btn small" id="l-add">Add</button></div></section>
+  <section class="card"><div class="lbl">Provocations and curiosity prompts</div><div class="hint">Wonderings offered under a plan's questions, from the Watch and Wonder Curiosity Prompt cards, the kit prompts and a seasonal garden set. An educator can always ignore them.</div>
+    ${libData&&libData.provocations?`<div class="cnt">${(libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).map(p=>esc(p.key)+", "+libLines(p.text).length).join(". ")}.</div><div class="actions">${pageEditBtn(libData.provocations.path,"Edit the bank, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
     ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
       <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>

@@ -345,3 +345,20 @@ test('the family seed library: families offer seed through the wish list, and th
   assert.ok(JSON.parse(fs.readFileSync(path.join(fx.dir, 'participation/seeds1.json'), 'utf8')).signups[0].seedAccepted);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('one bank of provocations and curiosity prompts, under a plan\'s questions and in Settings', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => put('staff/library/prompts/provocations.md', '<!--\nlibrary: provocations\n-->\n# Provocations and curiosity prompts\n\nWonderings.\n\n## Curiosity cards\n\n- We wonder what the children notice about leaves.\n\n## Fall in the garden\n\n- How might the children sort windfall apples?\n\n## Where the garden set comes from\n\n- [KidsGardening](https://kidsgardening.org/resources/ece-garden-lessons/)\n') });
+  const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
+  const s = await signedIn(fx, b, 'Ann', '1357', 1280);
+  await s.p.evaluate(() => { const p = newPlan('individual'); p.classroom = 'West'; plans.set(p.id, p); currentId = p.id; view = 'plans'; renderMain(); });
+  await s.p.waitForFunction(() => /Provocations and curiosity prompts/.test(document.querySelector('#main').textContent), null, { timeout: 10000 });
+  const chip = await s.p.$('[data-insert="We wonder what the children notice about leaves. "]'); assert.ok(chip);
+  assert.ok(await s.p.$('a[href="https://kidsgardening.org/resources/ece-garden-lessons/"]'));
+  assert.deepStrictEqual(s.errors, []); await s.close();
+  const d = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+  await d.p.evaluate(() => { setOpen = 'Provocations and curiosity prompts'; goView('settings'); });
+  await d.p.waitForFunction(() => /Curiosity cards, 1\. Fall in the garden, 1\./.test(document.querySelector('#main').textContent), null, { timeout: 10000 });
+  assert.ok(await d.p.$('[data-pageedit="staff/library/prompts/provocations.md"]'));
+  await d.close();
+});
