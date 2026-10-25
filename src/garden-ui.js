@@ -8,7 +8,7 @@ async function loadGarden(force){if(gdnBusy||!window.FP_API)return;if(!force&&gd
   try{gdn=await window.FP_API("/api/staff/garden",{})}catch(e){gdn=false}finally{gdnAt=Date.now();gdnBusy=false}
   if(!gdnSpaces)try{const d=iso(new Date());const j=await calView(d,d);gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
   if(["garden","today","kitchen","grant"].includes(view))renderMain()}
-let gdnProgram=null;
+let gdnProgram=null,gdnASeason="";
 // the plants for dye and art materials ready to gather this month, offered in the Materials library under the Atelier, never food
 const gdnMaterials=()=>{if(gdn===null)loadGarden();return gdn&&gdn.ready?(gdn.materials||[]).map(x=>x+", from the garden"):[]};
 const gdnOk=()=>!!gdn&&(gdn.ready||isDirector());
@@ -29,7 +29,28 @@ function smapMount(d){if(d.dataset.mounted||!d.open||!smapData||!window.SiteMap)
   window.SiteMap.mount(d.querySelector("[data-smapin]"),smapData,{selected:sel?sel.value:"",onPick:pick?id=>{const s=document.querySelector(pick);if(!s)return;if(![...s.options].some(o=>o.value===id))return toast("That space cannot be signed up for here.");s.value=id;s.dispatchEvent(new Event("change",{bubbles:true}))}:null})}
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.matches&&d.matches("details[data-smapfold]"))smapMount(d)},true);
 new MutationObserver(()=>{for(const d of document.querySelectorAll("details[data-smapfold][open]:not([data-mounted])"))smapMount(d)}).observe(document.documentElement,{childList:true,subtree:true});
-const GDN_STAGE={plan:"Planning",plant:"Planting",tend:"Tending",harvest:"Harvesting",seeds:"Saving seeds",compost:"Compost",rest:"Resting beds"};
+const GDN_STAGE={plan:"Planning",plant:"Planting",tend:"Tending",harvest:"Harvesting",preserve:"Preserving",seeds:"Saving seeds",compost:"Compost",rest:"Resting beds"};
+/* The garden year in four seasons. Each season gathers what we plant, tend, harvest, preserve, save as seed and compost
+   from its three months and the plants, the animals' care and that season's gathering, with the season's own words
+   from its page in the records. Seasons organize the garden's work only. */
+const gdnLines=t=>String(t||"").split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean);
+const gdnPage=k=>(gdn&&gdn.library&&gdn.library[k])||null;
+const gdnPart=(k,name)=>{const pg=gdnPage(k);const x=pg&&(pg.parts||[]).find(p=>p.key===name);return x?x.text:""};
+const gdnFoodRule=()=>(wordsOf("food-rule").rule||"").trim();
+function gdnSeason(S){const g=gdn,mo=S.months,uniq=a=>[...new Set(a.filter(Boolean))];
+  const tasks=st=>uniq(mo.flatMap(m=>(((g.plan||{}).months||{})[m]||{tasks:[]}).tasks.filter(t=>t.stage===st).map(t=>t.text)));
+  const care=st=>uniq((g.plants||[]).flatMap(p=>(p.care||[]).filter(c=>mo.includes(c.month)&&(c.stage||"tend")===st).map(c=>p.common+", "+String(c.text||"").charAt(0).toLowerCase()+String(c.text||"").slice(1))));
+  const ripe=uniq((g.plants||[]).filter(p=>(p.ready||[]).some(m=>mo.includes(m))).map(p=>p.common+(p.eat==="food"?"":", to gather for "+((p.uses||[]).filter(u=>u!=="Food"&&u!=="Look, don't eat")[0]||"looking").toLowerCase())));
+  const seeds=uniq((g.seeds||[]).filter(x=>(x.months||[]).some(m=>mo.includes(m))).map(x=>x.name+(x.variety?", "+x.variety:"")));
+  const pk="season-"+S.key,yr=new Date().getFullYear();
+  const preserved=uniq((g.preserves||[]).filter(x=>mo.includes(String(x.date||"").slice(5,7))&&String(x.date||"").slice(0,4)>=String(yr-1)).map(x=>[x.what,(GDN_PRESERVE[x.method]||x.method||"").toLowerCase()].filter(Boolean).join(", ")));
+  const animals=uniq([...(g.animals||[]).flatMap(a=>(a.care||[]).map(c=>c.text+", "+(c.every==="week"?"each week":"each day"))),...gdnLines(gdnPart(pk,"The animals' care"))]);
+  return {key:S.key,name:S.name,months:mo.map(m=>GDN_MONTHS[+m-1]),lead:(gdnPage(pk)||{}).lead||"",sections:[
+    ["What we plant",[...tasks("plant"),...care("plant")]],["What we tend",[...tasks("tend"),...care("tend")]],["What we harvest",[...ripe,...tasks("harvest")]],
+    ["What we preserve",[...gdnLines(gdnPart(pk,"What we preserve")),...tasks("preserve"),...preserved.map(x=>"This year, "+x)]],
+    ["Seeds we save",[...tasks("seeds"),...seeds]],["Compost",[...tasks("compost"),...gdnLines(gdnPart(pk,"Compost"))]],
+    ["The animals' care",animals],["Our gathering",gdnLines(gdnPart(pk,"Our gathering"))]].map(([l,items])=>[l,uniq(items)]).filter(([,items])=>items.length)}}
+const GDN_PRESERVE={dry:"Dried",herbs:"Herbs dried",tea:"Made into tea",freeze:"Frozen",pickle:"Quick refrigerator pickles",salt:"Herb salt",seed:"Seed saved"};
 const GDN_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const gdnPhotoOf=id=>{const p=((gdn&&gdn.photos)||[]).find(x=>x.plant===id);return p&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.id):""};
 function gdnMark(p){return [p.eat==="food"?`<span class="gtag food">Food</span>`:`<span class="gtag look">Look, don't eat</span>`,p.gather?`<span class="gtag gather">Gather with an educator</span>`:""].join("")}
@@ -97,7 +118,14 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
     <ul style="margin:4px 0;padding-left:18px">${M.tasks.map(t=>`<li>${esc(t.text)}<span class="cnt"> · ${esc(GDN_STAGE[t.stage]||"")}${t.bed?", "+esc((gdnBed(t.bed)||{}).name||""):""}${t.repeat?", every "+esc(["","Monday","Tuesday","Wednesday","Thursday","Friday"][t.repeat.weekday]):""}</span>${dir?` <button class="linkbtn" data-gtaskdel="${esc(m)}|${esc(t.id)}">Remove</button>`:""}</li>`).join("")}</ul>
     <div class="cnt"><a href="${esc(M.link||"https://igrowsonoma.org/")}" target="_blank" rel="noopener">iGrow Sonoma's guidance for ${esc(GDN_MONTHS[+m-1])}</a></div>
     ${dir?`<div class="kfields"><label>A task<input type="text" data-gtnew="${esc(m)}" placeholder="Ex. Sow peas in the raised beds"></label><label>Kind<select data-gtstage="${esc(m)}">${Object.entries(GDN_STAGE).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("")}</select></label><label>Bed<select data-gtbed="${esc(m)}"><option value="">Any</option>${beds.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></label><label>Repeats<select data-gtday="${esc(m)}"><option value="0">Once this month</option>${["Monday","Tuesday","Wednesday","Thursday","Friday"].map((d,i)=>`<option value="${i+1}">Every ${d}</option>`).join("")}</select></label></div><div class="actions"><button class="btn small ghost" data-gtadd="${esc(m)}">Add the task</button></div>`:""}</details>`};
-  h+=gdnFold("plan","The year plan",`${GDN_MONTHS[+mm-1]} is open. Planning, planting, tending, harvesting, seeds, compost and rest`,`<div class="hint">Started from ${(g.sources||[]).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>, ${esc(s.by)}`).join(", and ")}. We use no herbicides or pesticides, and the plan never suggests one.</div>${Array.from({length:12},(_,i)=>String(i+1).padStart(2,"0")).map(monthHtml).join("")}
+  // the year plan, as four seasons, each with its three months
+  const SS=g.seasons||[],nowS=SS.find(x=>x.key===g.season)||SS[0]||{name:""};
+  const seasonHtml=S=>{const D=gdnSeason(S);return `<details class="gseason" data-gseason="${esc(S.key)}" ${S.key===g.season?"open":""}><summary><b>${esc(S.name)}</b> <span class="cnt">${esc(D.months.join(", "))}</span></summary>
+    ${D.lead?`<div style="margin:6px 0">${esc(D.lead)}</div>`:""}
+    ${D.sections.map(([l,items])=>`<div class="lbl" style="margin-top:8px">${esc(l)}</div><ul style="margin:4px 0;padding-left:18px">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${l==="What we preserve"&&gdnFoodRule()?`<div class="hint">${esc(gdnFoodRule())}</div>`:""}`).join("")}
+    <div class="actions">${printBtns("gseason",S.key,"Season sheet")}${dir?`<button class="linkbtn" data-pageedit="staff/library/garden/season-${esc(S.key)}.md">Edit the season's words</button>`:""}</div>
+    <details style="margin-top:6px"><summary class="linkbtn">${esc(D.months.join(", "))}, month by month</summary>${S.months.map(monthHtml).join("")}</details></details>`};
+  h+=gdnFold("plan","The year plan",`${nowS.name} now. Four seasons of planting, tending, harvesting, preserving, seeds and compost`,`<div class="hint">Started from ${(g.sources||[]).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>, ${esc(s.by)}`).join(", and ")}. We use no herbicides or pesticides, and the plan never suggests one.</div>${SS.map(seasonHtml).join("")}
     ${dir?`<div class="actions"><button class="btn small ghost" data-gcarry="1">Carry this year into next year</button></div>`:""}${(g.years||[]).length?`<div class="cnt">Carried forward, ${g.years.map(y=>esc(y.year)).join(", ")}.</div>`:""}`);
   // who tends what
   h+=gdnFold("tend","Who tends what",`${Object.keys(g.tending.home||{}).length} home beds, ${(g.tending.rotations||[]).length} shared rotations`,
@@ -118,7 +146,10 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
     ${wl.map(w=>`<details class="gwild"><summary><b>${esc(w.common)}</b> <i class="cnt">${esc(w.botanical||"")}</i> <span class="cnt">${w.sightings.length} sighting${w.sightings.length===1?"":"s"}</span></summary>${(w.plants||[]).length?`<div class="cnt">Fed by ${esc(w.plants.map(p=>(gdnPlant(p)||{}).common||"").filter(Boolean).join(", "))}.</div>`:""}<ul style="margin:4px 0;padding-left:18px">${w.sightings.slice().reverse().map(s=>`<li>${esc(longDate(s.date))}${s.where?", "+esc(s.where):""}${s.room?", "+esc(s.room)+" Class":""}${s.link?` <a href="${esc(s.link)}" target="_blank" rel="noopener">the record</a>`:""}</li>`).join("")}</ul></details>`).join("")}
     <div class="kfields"><label>Common name<input type="text" id="gw-common" list="gw-list"></label><datalist id="gw-list">${wl.map(w=>`<option value="${esc(w.common)}">`).join("")}</datalist><label>Botanical name<input type="text" id="gw-bot"></label><label>Where on the site<input type="text" id="gw-where"></label><label>Link to the iNaturalist or Merlin record<input type="url" id="gw-link"></label></div><div class="actions"><button class="btn small ghost" data-gwild="1">Add the sighting</button></div>`);
   // animal care
-  h+=gdnFold("animals","Animal care",(g.animals||[]).map(a=>a.name).join(", "),`${(g.animals||[]).map(a=>`<div class="strow"><b>${esc(a.name)}</b>${(a.names||[]).length?`<div class="cnt">${esc(a.names.join(", "))}</div>`:""}<ul style="margin:4px 0;padding-left:18px">${(a.care||[]).map(c=>`<li>${esc(c.text)}, ${c.every==="week"?"each "+esc(["","Monday","Tuesday","Wednesday","Thursday","Friday"][c.weekday]):"each school day"}</li>`).join("")}</ul><div class="cnt">Takes turns, ${esc(((a.rotation||{}).who||[]).join(", then "))}, a ${(a.rotation||{}).every==="month"?"month":"week"} each.</div>
+  const aS=(g.seasons||[]).find(x=>x.key===(gdnASeason||g.season))||(g.seasons||[])[0];
+  const aCare=aS?gdnLines(gdnPart("season-"+aS.key,"The animals' care")):[];
+  h+=gdnFold("animals","Animal care",(g.animals||[]).map(a=>a.name).join(", "),`${aS?`<div class="tseg" role="group" aria-label="Season">${(g.seasons||[]).map(x=>`<button data-gaseason="${esc(x.key)}" aria-pressed="${x.key===aS.key}">${esc(x.name)}</button>`).join("")}</div>
+    <div class="strow"><b>In ${esc(aS.name.toLowerCase())}</b>${aCare.length?`<ul style="margin:4px 0;padding-left:18px">${aCare.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<div class="cnt">The daily and weekly care below, all year.</div>`}</div>`:""}${(g.animals||[]).map(a=>`<div class="strow"><b>${esc(a.name)}</b>${(a.names||[]).length?`<div class="cnt">${esc(a.names.join(", "))}</div>`:""}<ul style="margin:4px 0;padding-left:18px">${(a.care||[]).map(c=>`<li>${esc(c.text)}, ${c.every==="week"?"each "+esc(["","Monday","Tuesday","Wednesday","Thursday","Friday"][c.weekday]):"each school day"}</li>`).join("")}</ul><div class="cnt">Takes turns, ${esc(((a.rotation||{}).who||[]).join(", then "))}, a ${(a.rotation||{}).every==="month"?"month":"week"} each.</div>
       ${dir?`<div class="kfields"><label>The animals' names<input type="text" data-ganames="${esc(a.id)}" value="${esc((a.names||[]).join(", "))}"></label></div>`:""}<div class="actions"><button class="linkbtn" data-gbedding="${esc(a.name)}">Used bedding to the compost</button></div></div>`).join("")}
     <div class="hint">${esc((g.handwash||{}).text||"Children and adults wash hands with soap and water after caring for the animals, after garden work and before eating.")} Care follows our guiding agreement, be kind to all beings.</div>`);
   // agreements
@@ -155,14 +186,19 @@ function gdnHarvestCard(foods,beds){const g=gdn,day=iso(new Date());
 function gdnGuideDoc(kind,id){const ps=(gdn.plants||[]).filter(p=>!id||p.id===id);
   if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
+// one clean sheet for a season, for the staff room or a wall
+function gdnSeasonDoc(S){const D=gdnSeason(S);const blocks=[];if(D.lead)blocks.push(dText("",D.lead));
+  for(const [l,items] of D.sections){blocks.push(dList(l,items));if(l==="What we preserve"&&gdnFoodRule())blocks.push(dText("Our food rule",gdnFoodRule()))}
+  return {display:true,type:"report",acc:"story",title:S.name+" in our garden",meta:[D.months.join(", ")],blocks}}
 function gdnAgreeDoc(k){const A=(gdn.agreements||{})[k]||{};const ph=(gdn.photos||[]).slice(0,2).map(x=>({t:"photo",key:"ga-"+x.id,src:window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"",maxH:180}));
   return {display:true,type:"report",acc:"story",title:A.title||"Our garden agreements",meta:[],blocks:[dList("Our two guiding agreements",(gdn.agreements||{}).guiding||[]),...(A.intro?[dText("",A.intro)]:[]),dList("",A.items||[]),...ph]}}
 async function gdnCall(p,b,msg){try{gdn=await window.FP_API("/api/staff/garden"+(p?"/"+p:""),b||{});gdnAt=Date.now();if(msg)toast(msg);renderMain();return true}catch(e){toast(e&&e.message||"That did not work. Check the connection and try again.");return false}}
 async function gdnPickPhoto(){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()})}
 async function gdnFaceFree(blob){const url=URL.createObjectURL(blob);try{const im=await new Promise((ok,no)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=no;x.src=url});return (await shFindFaces(im)).length===0}finally{URL.revokeObjectURL(url)}}
-document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
+document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gaseason],[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
   const d=t.dataset,v=id=>(document.getElementById(id)||{}).value||"";
   if(d.gguide){gdnGuide=d.gguide;renderMain();return}
+  if(d.gaseason){gdnASeason=d.gaseason;renderMain();return}
   if(d.gpedit!=null){gdnEdit=d.gpedit||null;renderMain();return}
   if(d.gmplace){gdnPlace=d.gmplace;renderMain();document.getElementById("gmap")?.scrollIntoView({block:"center"});return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}

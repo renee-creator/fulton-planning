@@ -890,7 +890,7 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
-  const GD = require('./garden.js')({ get, put, log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
+  const GD = require('./garden.js')({ get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them

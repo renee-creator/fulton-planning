@@ -795,8 +795,7 @@ let MATERIALS={
   "Culinary":["garden harvest","cutting boards","measuring cups","mortar and pestle","recipe cards"],
   "Outdoor challenge":["milk crates","giant spools","climbing challenges","native forageable plants"],
   "Recording":["camera","children's journals","documentation panel","sticky notes"]};
-let SEASONS={Fall:["The self","Family","Safety","Relationships","How do we treat others?","How do we treat materials?","Harvest","Colors","Light and shadows","Ocean life"],Winter:["Family","Music","Human body","Rain","Weather","Drama","Puppets","Community","Caring for others"],Spring:["Growth","Planting","Water","Animals","Insects","Outdoors","Transportation","Sun","Wind","Conservation","Plant sale","Famous artist"]};
-const PROGRAM_DEFAULTS=()=>JSON.parse(JSON.stringify({groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS}));
+const PROGRAM_DEFAULTS=()=>JSON.parse(JSON.stringify({groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS}));
 // the program's languages plus any an educator has added on a plan, so a language added once is offered to everyone afterward
 function langList(extra){
   const seen=new Map();const add=x=>{const v=String(x||"").trim();if(v&&!seen.has(v.toLowerCase()))seen.set(v.toLowerCase(),v)};
@@ -807,7 +806,6 @@ function langList(extra){
 function langPick(arr){const all=langList();const m=new Map(all.map(x=>[x.toLowerCase(),x]));return (Array.isArray(arr)?arr:[]).map(x=>m.get(String(x||"").trim().toLowerCase())).filter(Boolean)}
 function langAddRow(where){return `<div class="actions" style="gap:6px"><input type="text" id="lang-new-${where}" placeholder="Add another language" style="width:240px"><button class="btn small ghost" data-langadd="${where}">Add</button></div>`}
 let PDEF=null;
-function seasonOf(wk){const m=parseIso(wk).getMonth();return m>=8&&m<=10?"Fall":(m===11||m<=1)?"Winter":"Spring"}
 const PROGRAM="Fulton Community School & Farm (Child Family Community, Inc.) is a Reggio-inspired, nature-based early childhood program in Santa Rosa, California, with a garden, farm animals, and art, nature, library, and culinary ateliers. Its mission is to respect and honor the whole child and support children as citizens of the world who follow their imagination into deep discovery. Guiding principles are social constructivism, the image of the child as competent and capable, the educator as researcher and partner, relationships, environment as the third teacher, family involvement, collaboration, documentation, and projects that last days to months. The curriculum is emergent and co-constructed by children and educators, following the cycle of informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, which leads back to informal observation. At its center are visible purposeful learning, emergent curriculum, project work, and community. Classrooms are mixed-age. Risky play is valued, as safe as necessary rather than as safe as possible. The school does not celebrate holidays and instead discusses the values behind them. Families receive weekly classroom newsletters and Friday picture digests through Kaymbu.";
 const DOC_PLAN=["Photos","Children's words and quotes","Work samples","Revisit an earlier drawing or map","Post work at children's eye level","Notepad observations"];
 const WEAK=[["theme","Name what children are doing or wondering. Themes are outside our approach."],["activity","Connect it to what children are thinking.",{not:["materials"]}],["enjoyed","Say how children's thinking changed."],["had fun","Say how children's thinking changed."],["learn about","Phrase it as a question children are holding."],["talk about","Describe how children will share and compare ideas."],["set up","Name the specific materials and how the space changes.",{only:["indoor","outdoor","materials"]}],["all children","Our plans hold several threads at once. Name the different groups."],["worksheet","Worksheets are outside our approach."],["craft","Offer open materials as languages for thinking."],["halloween","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["christmas","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["thanksgiving","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["valentine","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["easter","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["holiday","We do not celebrate holidays. Follow the values or the children's own questions underneath."]];
@@ -1514,7 +1512,6 @@ function fieldCard(p,f){
   if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);starters+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
   if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
   if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}${guideBy("group",c)?`<br>${guideLink(guideBy("group",c),"Guide")}`:""}</span>${[...list,...(c==="Atelier"?gdnMaterials():[])].map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
-  if(f.seasons){const se=seasonOf(p.weekOf);chips+=`<details><summary class="chiprow-label" style="cursor:pointer">${se} concepts from the Family Handbook</summary><div class="hint" style="margin-top:6px">Concepts we hold loosely. Use one only where it meets what children are already doing.</div><div class="chips" style="margin-top:6px">${SEASONS[se].map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`}
   if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}`;
   if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
   const ex=showExample[f.k]?`<div class="ex"><div><b>Strong.</b> ${esc(f.strong)}</div><div class="weak"><b>Weak.</b> ${esc(f.weak)}</div></div>`:"";
@@ -10708,6 +10705,7 @@ async function printsClick(t){
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
+  if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
   if(kind==="helpquick"){if(!helpData)await loadHelp(true);const L=((helpData||{}).list||[]).filter(h=>h.quick);if(L.length)await out(L.map(helpDoc),"TREE quick cards");return true}
@@ -12862,7 +12860,6 @@ function applyProgram(v){
   if(Array.isArray(v.areas))AREAS=v.areas.filter(Boolean);
   if(Array.isArray(v.languages)&&v.languages.length)LANGUAGES=v.languages.filter(Boolean);
   if(v.materials&&typeof v.materials==="object")MATERIALS=v.materials;
-  if(v.seasons&&typeof v.seasons==="object")SEASONS=Object.assign({Fall:[],Winter:[],Spring:[]},v.seasons);
   if(Array.isArray(v.lenses)&&v.lenses.length)LENSES=v.lenses.map(normLens);
   else if(v.lens&&typeof v.lens==="object")LENSES=[normLens(Object.assign({year:true},v.lens),0)];
   if(!LENSES.some(l=>l.year))LENSES[0].year=true;
@@ -12958,7 +12955,7 @@ let progTimer=null;
 function saveProgram(){
   // what Program settings keeps that this page does not change, such as the Where it happens list it kept before the
   // spaces became one list, stays as it was
-  const v=Object.assign({},PROGRAM_DOC,{classrooms:CLASSROOMS,groups:GROUPS,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()});
+  const v=Object.assign({},PROGRAM_DOC,{classrooms:CLASSROOMS,groups:GROUPS,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()});
   for(const k of ["id","updatedByName","savedAt","updatedBy"])delete v[k];PROGRAM_DOC=v;
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
@@ -13271,8 +13268,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
   if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
   if(t.id==="mc-add"){const n=val("#mc-new");if(n&&!MATERIALS[n]){MATERIALS[n]=[];saveProgram()}renderSettings();return}
-  if(t.dataset.sdel){const [se,i]=t.dataset.sdel.split("|");SEASONS[se].splice(+i,1);saveProgram();renderSettings();return}
-  if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
   if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
@@ -13289,7 +13284,6 @@ document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")re
   const map={"g-new":"#g-add","p-new":"#p-add","mc-new":"#mc-add"};
   if(map[t.id]){e.preventDefault();$(map[t.id]).click()}
   if(t.dataset.maddIn!=null){e.preventDefault();document.querySelector(`[data-madd="${CSS.escape(t.dataset.maddIn)}"]`).click()}
-  if(t.dataset.saddIn!=null){e.preventDefault();document.querySelector(`[data-sadd="${t.dataset.saddIn}"]`).click()}
 });
 
 /*__LAZY_END settings__*/

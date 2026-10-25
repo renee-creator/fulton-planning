@@ -17,7 +17,17 @@ module.exports = function garden(o) {
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n || 300);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const USES = ['Food', 'Dye', 'Art materials', 'Pollinator', 'Look, don\'t eat'];
-  const STAGES = ['plan', 'plant', 'tend', 'harvest', 'seeds', 'compost', 'rest'];
+  const STAGES = ['plan', 'plant', 'tend', 'harvest', 'preserve', 'seeds', 'compost', 'rest'];
+  /* The garden year in four seasons, which organize the garden's work only and never belong on plans, threads or
+     projects. Fall is September to November, winter December to February, spring March to May and summer June to
+     August. Each season's own words, such as what we preserve and that season's gathering, are a page in the records,
+     staff/library/garden/season-<season>.md, beside the monthly iGrow Sonoma summaries, the permaculture premises and
+     preserving, which the director edits in place. */
+  const SEASONS = [['fall', 'Fall', ['09', '10', '11']], ['winter', 'Winter', ['12', '01', '02']], ['spring', 'Spring', ['03', '04', '05']], ['summer', 'Summer', ['06', '07', '08']]];
+  const seasonOf = mm => (SEASONS.find(x => x[2].includes(mm)) || SEASONS[0])[0];
+  const WD = require('./wording.js');
+  const LIB = 'staff/library/garden/';
+  function library() { const out = {}; for (const p of (o.libraryPaths ? o.libraryPaths(LIB) : [])) { const m = p.match(/^staff\/library\/garden\/([a-z0-9-]+)\.md$/); if (m) out[m[1]] = Object.assign(WD.parse(o.getText(p)), { path: p }); } return out; }
   const WEEKDAYS = [1, 2, 3, 4, 5];
   // the Classes, from Program settings, the one list
   const ROOMS = () => (o.classrooms ? o.classrooms() : []);
@@ -78,7 +88,7 @@ module.exports = function garden(o) {
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
-    out.materials = materials();
+    out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
     if (dir) Object.assign(out, { offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });
     if (isKitchen(me)) { for (const k of ['seeds', 'trays', 'compost', 'wildlife', 'animals', 'plan', 'tending']) delete out[k]; }
     return out;

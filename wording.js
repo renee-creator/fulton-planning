@@ -10,8 +10,11 @@
     const m = text.match(/^\s*<!--[\s\S]*?-->\n?/); const rest = text.slice(m ? m[0].length : 0);
     const t = rest.match(/^#\s+(.+)$/m); const title = t ? t[1].trim() : '';
     const body = t ? rest.slice(t.index + t[0].length) : rest;
-    const parts = body.split(/^##(?!#)\s+/m).slice(1).map(s => { const i = s.indexOf('\n'); return i < 0 ? { key: s.trim(), text: '' } : { key: s.slice(0, i).trim(), text: s.slice(i + 1).trim() }; });
-    return { title, parts };
+    const cut = body.split(/^##(?!#)\s+/m);
+    const parts = cut.slice(1).map(s => { const i = s.indexOf('\n'); return i < 0 ? { key: s.trim(), text: '' } : { key: s.slice(0, i).trim(), text: s.slice(i + 1).trim() }; });
+    // the lines under the title, before the first part
+    const lead = (cut[0] || '').trim();
+    return lead ? { title, lead, parts } : { title, parts };
   }
   // the parts as a map from each item's name to its words
   function map(doc) { const out = {}; for (const p of (doc && doc.parts) || []) out[p.key] = p.text; return out; }

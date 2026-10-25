@@ -142,8 +142,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
   if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
   if(t.id==="mc-add"){const n=val("#mc-new");if(n&&!MATERIALS[n]){MATERIALS[n]=[];saveProgram()}renderSettings();return}
-  if(t.dataset.sdel){const [se,i]=t.dataset.sdel.split("|");SEASONS[se].splice(+i,1);saveProgram();renderSettings();return}
-  if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
   if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
@@ -160,7 +158,6 @@ document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")re
   const map={"g-new":"#g-add","p-new":"#p-add","mc-new":"#mc-add"};
   if(map[t.id]){e.preventDefault();$(map[t.id]).click()}
   if(t.dataset.maddIn!=null){e.preventDefault();document.querySelector(`[data-madd="${CSS.escape(t.dataset.maddIn)}"]`).click()}
-  if(t.dataset.saddIn!=null){e.preventDefault();document.querySelector(`[data-sadd="${t.dataset.saddIn}"]`).click()}
 });
 
 

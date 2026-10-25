@@ -236,3 +236,41 @@ test('the Garden educator role and the Garden group', async t => {
   await a.p.evaluate(() => { const p = newPlan('individual'); plans.set(p.id, p); currentId = p.id; view = 'plans'; renderMain(); });
   assert.strictEqual(await a.p.$('[data-focus="garden"]'), null); await a.close();
 });
+
+const GARDEN = { id: 'garden', ready: true, beds: [{ id: 'b1', name: 'Bed one', space: 'garden' }],
+  plants: [{ id: 'p-fig', common: 'Fig', eat: 'food', bed: 'b1', ready: ['09', '10'], uses: ['Food'], care: [{ id: 'c1', month: '10', text: 'Gather fallen figs', stage: 'harvest' }] }],
+  animals: [{ id: 'a-goats', name: 'Goats', care: [{ id: 'g1', text: 'Feed the goats', every: 'day' }] }],
+  plan: { year: '2026-27', months: { '09': { name: 'September', tasks: [{ id: 't1', text: 'Plant cool season starts', stage: 'plant' }] }, '10': { name: 'October', tasks: [{ id: 't2', text: 'Dry apple rings', stage: 'preserve' }] } } },
+  tending: {}, agreements: { guiding: ['Pick with purpose.'] }, sources: [] };
+const SEASON_PAGE = '<!--\nlibrary: test\n-->\n# Fall\n\nThe rains return.\n\n## What we preserve\n\n- Figs, frozen.\n\n## The animals\' care\n\n- Dry bedding before the rains.\n\n## Our gathering\n\nThe September garden day.\n';
+
+test('the garden year in four seasons, with a preserve stage, animal care by season and a season sheet', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => { put('staff/garden/setup.json', GARDEN); put('staff/garden/log.json', { id: 'gardenlog' });
+    put('staff/library/garden/season-fall.md', SEASON_PAGE); put('staff/wording/food-rule.md', '<!--\nwording: test\n-->\n# Food rule\n\n## rule\n\nNever on the menu.\n'); } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  const g = (await fx.as(dee, '/api/staff/garden', {})).body;
+  assert.deepStrictEqual(g.seasons.map(x => [x.key, x.months]), [['fall', ['09', '10', '11']], ['winter', ['12', '01', '02']], ['spring', ['03', '04', '05']], ['summer', ['06', '07', '08']]]);
+  assert.ok(g.stages.includes('preserve')); assert.strictEqual(g.library['season-fall'].lead, 'The rains return.');
+  // the old seasons topic list is gone from plan forms
+  const app = fs.readFileSync(path.join(__dirname, '..', 'src/app.html'), 'utf8');
+  assert.ok(!/SEASONS|seasonOf|f\.seasons/.test(app));
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 390);
+  await s.p.evaluate(() => goView('garden')); await s.p.waitForSelector('[data-gseason="fall"]', { timeout: 15000, state: 'attached' });
+  const fall = await s.p.evaluate(() => gdnSeason(gdn.seasons[0]));
+  const sec = Object.fromEntries(fall.sections);
+  assert.deepStrictEqual(sec['What we plant'], ['Plant cool season starts']);
+  assert.deepStrictEqual(sec['What we harvest'], ['Fig']);
+  assert.deepStrictEqual(sec['What we preserve'], ['Figs, frozen.', 'Dry apple rings']);
+  assert.deepStrictEqual(sec["The animals' care"], ['Feed the goats, each day', 'Dry bedding before the rains.']);
+  assert.deepStrictEqual(sec['Our gathering'], ['The September garden day.']);
+  const doc = await s.p.evaluate(() => gdnSeasonDoc(gdn.seasons[0]));
+  assert.strictEqual(doc.title, 'Fall in our garden'); assert.ok(doc.blocks.some(x => x.label === 'Our food rule' && x.text === 'Never on the menu.'));
+  // animal care has a season view
+  await s.p.evaluate(() => document.querySelector('[data-gaseason="fall"]').click());
+  assert.match(await s.p.evaluate(() => document.querySelector('[data-gfold="animals"]').textContent), /Dry bedding before the rains/);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});
