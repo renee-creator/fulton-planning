@@ -472,6 +472,8 @@ Every save from a device carries a save id, and the commit that writes it names 
 
 When a save needed more than three tries, the director's Today shows it once a day under Saves that needed several tries, with the record's name, kept in settings/saves for 30 days. Seen keeps it away until the next day.
 
+
+A page open on another tab or device can hold an older copy of a record. Each save carries its tab's own id, and the server keeps each record's versions from the last ten minutes with the tab each came from. A value a save sends that is the value from before another tab's newer save keeps the newer value, and a piece another tab added stays, so an older copy never undoes Final remarks or drops a DRDP piece of evidence. The same tab changing its own words back, and anyone removing a piece on purpose, are kept as made. Each time newer words are kept, the server log says so.
 ## Waiting for you, done in place
 
 On Today, Final remarks, the words on a copied photo, the children in a Kaymbu photo and the DRDP view for a child turning three open right under their row and are done there. Each closes when saved and the next one of the same kind opens beneath it. Open the full page is always there. Other tasks open their page, and when there are two or more of the same kind a slim bar shows how far through them the educator is, with Next and Back to Today. Groups left open on Today stay open when Today is drawn again.

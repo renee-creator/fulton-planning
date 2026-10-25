@@ -958,6 +958,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     return [...OB.mem.values()].filter(e=>e.who===w).sort((x,y)=>(x.at-y.at)||((x.n||0)-(y.n||0))); }
   const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504);
   const newSid=()=>"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+  // this tab's own id rides with every save, so the server can tell a page's older copy from this tab's own changes
+  const TAB=(()=>{ const m=()=>Math.random().toString(36).slice(2,12)+Date.now().toString(36); try{ let t=sessionStorage.getItem("tree-tab"); if(!t||!/^[a-z0-9]{6,32}$/.test(t)){ t=m(); sessionStorage.setItem("tree-tab",t); } return t; }catch(e){ return m(); } })();
   // how many saves on this device are not written yet, counting those the server took only once a couple of minutes pass
   window.TREE_SAVES_WAITING=()=>{ const w=obWho(); if(!w) return 0; let n=0; for(const e of OB.mem.values()) if(e.who===w&&((!e.sent&&e.failed)||(e.sent&&Date.now()-e.sent>120000))) n++; return n; };
   window.TREE_SAVES_SEND=()=>obSend();
@@ -1004,6 +1006,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     const write=async(op,extra)=>{ if(window.TREE_VIEW_AS){ if(!window.__vaSaid){ window.__vaSaid=1; try{ (window.toast||alert)("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."); }catch(e){} } return extra&&extra.data||Store.data[kind]?.[id]||null; }
       // a save from a draft takes its id from the draft's client id, so the two are the same save
       const sid=extra&&extra.cid? ("d."+extra.cid).replace(/[^A-Za-z0-9._:-]/g,"").slice(0,64) : newSid();
+      extra=Object.assign({},extra||{},{dev:TAB});
       const e={sid,who:obWho(),op,kind,id,extra:JSON.parse(JSON.stringify(extra||{})),at:Date.now(),n:++OB.n,sent:0,failed:0};
       // a save made while earlier ones to the same record still wait here goes after them
       const before=(await obAll()).filter(x=>!x.sent&&x.kind===kind&&x.id===id);

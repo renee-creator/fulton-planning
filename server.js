@@ -983,6 +983,53 @@ async function probeKey() {
 }
 setInterval(probeKey, 120000).unref();
 
+/* A save sends a whole record, or part of one, from the copy a page holds. A page open on another device or tab can
+   hold an older copy, and its save would put back words a newer save had changed, such as Final remarks or a DRDP
+   piece of evidence. The server keeps each record's versions from the last ten minutes with the tab each came from.
+   A value a save sends that is the value from before another tab's newer save keeps the newer value, and a newer
+   piece another tab added stays. The same tab changing its own words back, or anyone removing a piece on purpose,
+   is never held. */
+const RECENT = new Map(), RECENT_MS = 10 * 60e3, SKIP_KEYS = new Set(['id', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt']);
+const plainObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const sameVal = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+function recentOf(fpath, cur) {
+  const now = Date.now(); let list = (RECENT.get(fpath) || []).filter(v => now - v.at < RECENT_MS);
+  if (!list.length && cur && !cur.deleted && cur.doc) list = [{ at: now, dev: '', doc: JSON.parse(JSON.stringify(cur.doc)) }];
+  RECENT.set(fpath, list); return list;
+}
+function keepRecent(fpath, doc, dev) {
+  const list = RECENT.get(fpath) || []; list.push({ at: Date.now(), dev, doc: JSON.parse(JSON.stringify(doc || {})) });
+  RECENT.set(fpath, list.slice(-24));
+  if (RECENT.size > 400) for (const [k, l] of RECENT) if (!l.length || Date.now() - l[l.length - 1].at > RECENT_MS) RECENT.delete(k);
+}
+const atPlace = (doc, ks) => { let t = doc; for (const k of ks) { if (!plainObj(t)) return undefined; t = t[k]; } return t; };
+// holds one value back when the save is sending what the record held before another tab's newer save
+function heldBack(list, ks, sent, now, dev) {
+  if (!dev || sameVal(sent, now)) return false;
+  let i = list.length - 1; while (i > 0 && sameVal(atPlace(list[i].doc, ks), now)) i--;
+  if (i === list.length - 1 || !sameVal(atPlace(list[i + 1].doc, ks), now)) return false;
+  return list[i + 1].dev !== dev && sameVal(atPlace(list[i].doc, ks), sent);
+}
+// a whole record sent from an older copy keeps what newer saves from other tabs wrote
+function guardSet(list, now, sent, dev, ks = [], held = []) {
+  for (const k of new Set([...Object.keys(now || {}), ...Object.keys(sent || {})])) {
+    if (!ks.length && SKIP_KEYS.has(k)) continue;
+    const a = now ? now[k] : undefined, b = sent ? sent[k] : undefined, path = [...ks, k];
+    if (plainObj(a) && plainObj(b)) { guardSet(list, a, b, dev, path, held); continue; }
+    if (heldBack(list, path, b, a, dev)) { if (a === undefined) delete sent[k]; else sent[k] = JSON.parse(JSON.stringify(a)); held.push(path.join('.')); }
+  }
+  return held;
+}
+// a part of a record sent from an older copy keeps what newer saves from other tabs wrote, piece by piece
+function guardPatch(list, now, patch, dev, ks = [], held = []) {
+  for (const [k, v] of Object.entries(patch || {})) {
+    if ((!ks.length && SKIP_KEYS.has(k)) || (v && typeof v === 'object' && v.__delete__ === true)) continue;
+    const a = now ? now[k] : undefined, path = [...ks, k];
+    if (plainObj(v) && plainObj(a)) { guardPatch(list, a, v, dev, path, held); continue; }
+    if (heldBack(list, path, v, a, dev)) { delete patch[k]; held.push(path.join('.')); }
+  }
+  return held;
+}
 function deepMerge(target, patch) {
   for (const [k, v] of Object.entries(patch || {})) {
     if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
@@ -1592,6 +1639,7 @@ async function handle(req, res) {
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
+    const dev = typeof body.dev === 'string' && /^[A-Za-z0-9]{6,32}$/.test(body.dev) ? body.dev : '';
     // conference notes reach a family only when the director or the office shares them, the same check the Family page
     // makes, so an educator's save never shares notes or takes them away
     if (kind === 'conferences' && !isOffice(me.name)) {
@@ -1669,6 +1717,7 @@ async function handle(req, res) {
         if (st !== asked) { log('Plan status kept as', st, 'for', me.name, id, 'asked', asked); if (op === 'update') { body.patch = body.patch || {}; body.patch.status = st; } else if (body.data) body.data.status = st; }
       }
     }
+    const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true, ...sidNow() }); return; }
@@ -1676,11 +1725,14 @@ async function handle(req, res) {
       map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
     else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
+      if (recent && cur && !cur.deleted) { body.data = JSON.parse(JSON.stringify(body.data)); const held = guardSet(recent, cur.doc, body.data, dev); if (held.length) log('Newer words kept on', fpath, held.join(', '), 'from an older copy sent by', me.name); }
       if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio', 'transitionSummary']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
-    else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; } deepMerge(cur.doc, body.patch || {}); if ('id' in cur.doc) cur.doc.id = id; cur.doc.updatedByName = me.name; }
+    else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; }
+      if (recent && body.patch && typeof body.patch === 'object') { body.patch = JSON.parse(JSON.stringify(body.patch)); const held = guardPatch(recent, cur.doc, body.patch, dev); if (held.length) log('Newer words kept on', fpath, held.join(', '), 'from an older copy sent by', me.name); }
+      deepMerge(cur.doc, body.patch || {}); if ('id' in cur.doc) cur.doc.id = id; cur.doc.updatedByName = me.name; }
     else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev, ...sidNow() }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
-    { const r0 = map.get(id); if (r0) r0.local = true; }
+    { const r0 = map.get(id); if (r0) r0.local = true; if (r0 && !r0.deleted && op !== 'delete') keepRecent(fpath, r0.doc, dev); }
     noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey);
     if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
