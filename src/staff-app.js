@@ -986,7 +986,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("#stpageedi
   if(d.peread!=null){const j=+d.peread;pe.read=pe.read===j?-1:j;peDraw();return}
   if(d.pesave){const note=($("#pe-note")?.value||"").trim(),title=($("#pe-title")?.value||"").trim();if(!title){toast("Give the page a title.");return}if(!note){toast("Write a short note about this change.");$("#pe-note")?.focus();return}
     const parts=[...document.querySelectorAll("#stpageedit [data-pepart]")].map(x=>({body:x.value}));
-    try{t.disabled=true;finish(await api("page/save",Object.assign({},pe.at,{title,lead:$("#pe-lead")?$("#pe-lead").value:undefined,parts,note})),"Saved, with the earlier wording kept.")}catch(er){fail(er)}finally{t.disabled=false}return}
+    try{t.disabled=true;finish(await api("page/save",Object.assign({},pe.at,{stamp:pe.page.stamp,title,lead:$("#pe-lead")?$("#pe-lead").value:undefined,parts,note})),"Saved, with the earlier wording kept.")}catch(er){fail(er)}finally{t.disabled=false}return}
   if(d.perestore!=null){if(!confirm("Restore this version? The wording there now is kept as an earlier version."))return;
-    try{finish(await api("page/restore",Object.assign({},pe.at,{index:+d.perestore})),"Restored.")}catch(er){fail(er)}}});
+    try{finish(await api("page/restore",Object.assign({},pe.at,{stamp:pe.page.stamp,index:+d.perestore})),"Restored.")}catch(er){fail(er)}}});
 })();

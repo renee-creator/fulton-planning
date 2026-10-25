@@ -32,6 +32,12 @@ test('editing a module, a How To guide and the letter keeps each earlier version
   const back = (await E(dee, 'restore', { module: 'documentation', index: 0 })).body;
   assert.strictEqual(back.page.title, 'Documentation at Fulton'); assert.strictEqual(back.page.history.length, 2);
   assert.match(back.page.note, /Restored the version from before TREE/);
+  // a save from a page opened before a later change is refused, and a save with nothing changed keeps no version
+  const late = await E(dee, 'save', { module: 'documentation', stamp: ok.page.stamp, title: 'Documentation', parts, note: 'Late' });
+  assert.match(late.body.error || '', /changed since you opened it/);
+  const now = (await E(dee, '', { module: 'documentation' })).body;
+  const same = (await E(dee, 'save', { module: 'documentation', stamp: now.stamp, title: now.title, parts: now.parts.map(x => ({ body: x.body })), note: 'Nothing' })).body;
+  assert.ok(same.same); assert.strictEqual(same.page.history.length, 2);
   // a How To guide keeps its opening note and its headings
   const hp = (await E(dee, '', { path: 'staff/pd/howto/02-writing-a-plan.md' })).body;
   assert.deepStrictEqual(hp.parts.map(x => x.heading), ['What it is for', 'Try it']);

@@ -255,10 +255,13 @@ module.exports = function staffModule(o) {
   const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : 'module';
   function pageOut(p) {
     const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return null; const h = get(PAGE_HIST(p)) || {};
-    return { path: p, kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };
+    return { path: p, stamp: stampOf(r.text), kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };
   }
+  // what the director opened, so a save or a restore never lands on a page that changed since
+  const stampOf = text => require('crypto').createHash('sha1').update(String(text || '')).digest('hex').slice(0, 16);
   function savePage(me, p, b, restoring) {
     const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return { error: 'That page could not be read.' };
+    if (b.stamp && b.stamp !== stampOf(r.text)) return { error: 'This page changed since you opened it. Close it and open it again.' };
     const note = String(b.note || '').trim().slice(0, 300); if (!note) return { error: 'Write a short note about this change.' };
     let next;
     if (restoring) next = restoring;
@@ -270,7 +273,7 @@ module.exports = function staffModule(o) {
       next = pageText(np);
       const found = W.check(r.text, next); if (found.length) return { error: 'Some new wording does not follow the writing rules yet.', findings: found };
     }
-    if (next.trim() === String(r.text || '').trim()) return { ok: true, same: true, page: pageOut(p) };
+    if (next.trim() === String(r.text || '').trim() || (!restoring && next === pageText(pp))) return { ok: true, same: true, page: pageOut(p) };
     const h = Object.assign({ path: p, history: [] }, get(PAGE_HIST(p)) || {});
     h.history = [...(h.history || []), { title: pp.title, text: r.text, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
     Object.assign(h, { note, updatedAt: Date.now(), updatedBy: me });
@@ -376,12 +379,12 @@ module.exports = function staffModule(o) {
       const cur = get(PIECE_READY) || { pieces: {} }; put(PIECE_READY, Object.assign({}, cur, { pieces: Object.assign({}, cur.pieces, { [id]: !!body.on }) })); json(req, res, 200, piecesFor(me)); return; }
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
       if (!dir) return deny('The director edits this page.');
-      const p = body.module ? ([...S.files.keys()].find(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md') || '') : String(body.path || '');
+      const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
       if (!editable(p) || !S.files.get(p)) { err(req, res, 404, 'That page is not here.'); return; }
       if (P === 'page') { json(req, res, 200, pageOut(p)); return; }
       let r;
       if (P === 'page/restore') { const h = ((get(PAGE_HIST(p)) || {}).history || [])[+body.index]; if (!h) { err(req, res, 404, 'That version is not here.'); return; }
-        r = savePage(me, p, { note: h.at ? `Restored the version of ${new Date(h.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' })}` : 'Restored the version from before TREE' }, h.text); }
+        r = savePage(me, p, { stamp: body.stamp, note: h.at ? `Restored the version of ${new Date(h.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' })}` : 'Restored the version from before TREE' }, h.text); }
       else r = savePage(me, p, body);
       if (r.error && !r.findings) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
     }

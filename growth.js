@@ -106,7 +106,8 @@ module.exports = function growthModule(c) {
     const more = Object.values(m).filter(x => !MODULE_LIST.some(l => l[0] === x.slug) && (dir || published(x.slug))).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
       .map(x => ({ slug: x.slug, title: x.title, desc: x.desc, areas: x.serves, ready: true, waiting: !!(dir && x.draft && !readyOn(x.slug)), minutes: x.minutes }));
     return [...base, ...more]; };
-  const moduleTitle = slug => (MODULE_LIST.find(m => m[0] === slug) || [])[1] || (modules()[slug] || {}).title || slug;
+  // a published module's own title, as the director last wrote it, then the list's
+  const moduleTitle = slug => (published(slug) && (modules()[slug] || {}).title) || (MODULE_LIST.find(m => m[0] === slug) || [])[1] || (modules()[slug] || {}).title || slug;
   const moduleFor = area => { const m = modules(); const ready = MODULE_LIST.filter(x => published(x[0]) && x[3].includes(area)); return ready.length ? ready[0][0] : ''; };
 
   /* ---------- check-in schedule ---------- */
