@@ -310,7 +310,7 @@ function slotsNamed(out, calId, confs) {
 }
 
 
-const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }, { id: 'tgrow', name: 'Check-ins and PD', color: 'sky' }, { id: 'tfam', name: 'Families invited', color: 'teal' }];
+const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }, { id: 'tgrow', name: 'Check-ins and PD', color: 'sky' }, { id: 'tfam', name: 'Families invited', color: 'teal' }, { id: 'tgarden', name: 'Garden', color: 'moss' }];
 // the school calendar that is the family conference sign-up sheet, if there is one
 function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {

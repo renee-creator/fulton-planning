@@ -129,7 +129,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const MOMENT_MS=18000, CARD_MS=26000, FETCH_MS=10*60000;
   const stage=document.getElementById("stage"), bar=document.getElementById("bar"), dot=document.getElementById("dot"), foot=document.getElementById("foot");
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const ACC={moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",slide:"var(--sky)",week:"var(--moss)",food:"var(--moss)",birthday:"var(--sun)",note:"var(--moss)"};
+  const ACC={plant:"var(--moss)",moment:"var(--moss)",words:"var(--moss)",reflection:"var(--sky)",lensmoment:"var(--marigold)",thread:"var(--sky)",project:"var(--clay)",lens:"var(--marigold)",inquiry:"var(--sun)",drdp:"var(--plum)",story:"var(--clay)",slide:"var(--sky)",week:"var(--moss)",food:"var(--moss)",birthday:"var(--sun)",note:"var(--moss)"};
   let feed=null, list=[], pos=0, timer=null, lastOk=0, stopped="";
 
   const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -206,6 +206,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${l.questions.length?`<ul class="qs">${l.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}</div></div>${!l.questions.length&&l.photo?`<div class="side">${img(l.photo)}</div>`:""}`}
   // a staff birthday on its day, with the name alone, and a note the director sent to all staff today
   function birthdayHtml(n){return `<div class="body quiet"><div class="kind">Today</div><h1>Happy birthday, ${esc(n)}</h1></div>`}
+  // one plant from the children's plant guide, a quiet slide of its own
+  function plantHtml(x){return `<div class="body quiet"><div class="kind">From our garden</div><h1>${esc(x.common)}</h1><div class="words" style="max-width:40ch">${esc(x.words)}</div><div class="small">${x.eat==="food"?"Food":"Look, don't eat"}${x.gather?". Gather with an educator":""}</div></div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
   function noteHtml(x){return `<div class="body quiet"><div class="kind">A note from ${esc(x.by||"the director")}</div><div class="words" style="white-space:pre-line;max-width:40ch">${esc(x.text)}</div></div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
     return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" Class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
@@ -239,6 +241,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     (feed.birthdays||[]).forEach((n,i)=>O.unshift({k:"birthday",id:"b"+i,cls:"t",html:()=>birthdayHtml(n)}));
     (feed.notes||[]).forEach(x=>O.unshift({k:"note",id:"n"+x.id,cls:"t",html:()=>noteHtml(x)}));
+    if(feed.plant)O.push({k:"plant",id:"pl"+feed.plant.id,cls:"t",html:()=>plantHtml(feed.plant),src:feed.plant.photo&&feed.plant.photo.src});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin
     if(feed.foodMoment)O.push({k:"food",id:"fm"+feed.foodMoment.id,cls:"m",html:()=>momentHtml(feed.foodMoment).replace('<div class="where">','<div class="where">Food education, '),src:feed.foodMoment.photo&&feed.foodMoment.photo.src});

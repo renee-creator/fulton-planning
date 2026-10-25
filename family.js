@@ -98,7 +98,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
   const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
@@ -207,7 +207,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const hy = hbYear();
     // the walk agreements reach a family with a walk invitation, once the director has marked walk safety ready
     let walkInfo = null; try { walkInfo = open.some(it => it.walk) && walks ? walks() : null; } catch (e) { walkInfo = null; }
-    return { walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
+    // the garden agreements for families and the children's plant guide, once the director marks the Garden ready
+    let gardenInfo = null; try { gardenInfo = garden ? garden() : null; if (gardenInfo) gardenInfo = Object.assign({}, gardenInfo, { guide: gardenInfo.guide.map(g => Object.assign({}, g, { photo: g.photo ? photoSrc(g.photo) : '' })) }); } catch (e) { gardenInfo = null; }
+    return { gardenInfo, walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 

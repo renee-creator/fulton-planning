@@ -243,7 +243,7 @@ module.exports = function staffModule(o) {
     // what TREE opens for this sign-in, asked again by a page that signed in while the records were still loading
     if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest'].includes(P)) return deny('A kitchen sign-in reaches its own records page.');
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
     if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
@@ -272,6 +272,7 @@ module.exports = function staffModule(o) {
     }
     // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
+    if (P === 'garden' || P.startsWith('garden/')) { await GD.handle(P, body, me, req, res, { json, err }); return; }
     /* ---------- walk safety, for staff once the director marks it ready ---------- */
     if (P === 'walks' || P.startsWith('walks/')) {
       const w = walksDoc(); if (!w) { err(req, res, 404, 'Walk safety is not in the records yet.'); return; }
@@ -638,6 +639,8 @@ module.exports = function staffModule(o) {
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
+  // the Garden and the yards, in garden.js, kept beside the educator records
+  const GD = require('./garden.js')({ get, put, log, isDirector, isKitchen, nameKey, roomOf, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
@@ -672,5 +675,5 @@ module.exports = function staffModule(o) {
   const POL = require('./policies.js')({ get, put, putText, S, log, person, pPath, staffNames, isDirector, isKitchen, nameKey, today, allowed, hasOwn, profileOf, accountFor, store, readImage, roleNames: o.roleNames || (() => []), piecesChanged: () => { pieceCache = null; } });
   // the Family page and the public page read the Family Handbook through these
   const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
-  return { walksForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { walksForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
