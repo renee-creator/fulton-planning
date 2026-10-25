@@ -428,3 +428,39 @@ test('demonstration sheets: handwashing first, a step a sheet, measures drawn, a
   assert.ok(await s.p.evaluate(() => DEMO_SCALE.teaspoon < DEMO_SCALE.tablespoon && DEMO_SCALE.tablespoon < DEMO_SCALE.cup && JSON.stringify(demoFills(demoQty('2 1/2 cups milk'))) === '[1,1,0.5]'));
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('the song book: a © song keeps only its title, songwriter and recording, and a traditional song its words', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => {
+    put('staff/library/songs/a-song.md', '<!--\nlibrary: song\ncopyright: yes\nsongwriter: A Writer\nlink: https://example.test/listen\n-->\n# A Song\n');
+    put('staff/library/songs/old-tune.md', '<!--\nlibrary: song\ncopyright: no\nsongwriter: Traditional\n-->\n# Old Tune\n\n## Words\n\nLa la la\nLa la\n');
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  let L = (await fx.as(ann, '/api/staff/library', {})).body;
+  assert.deepStrictEqual(L.songs.find(x => x.id === 'a-song').parts, []);
+  assert.strictEqual(L.songs.find(x => x.id === 'old-tune').parts[0].text, 'La la la\nLa la');
+  // words written onto a © song are never kept
+  const pg = (await fx.as(dee, '/api/staff/page', { path: 'staff/library/songs/a-song.md' })).body;
+  assert.strictEqual(pg.parts.length, 0);
+  // marking a traditional song © removes its words, and only the director may
+  assert.strictEqual((await fx.as(ann, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: true })).status, 403);
+  L = (await fx.as(dee, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: true })).body;
+  await wait(1500);
+  assert.doesNotMatch(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/old-tune.md'), 'utf8'), /La la/);
+  // taking the mark off leaves a place for words
+  await fx.as(dee, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: false }); await wait(1500);
+  assert.match(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/old-tune.md'), 'utf8'), /## Words/);
+  // a song added with the mark keeps no words even when some are sent
+  const r = await fx.as(dee, '/api/staff/library/add', { kind: 'song', title: 'New Hit', songwriter: 'Someone', copyright: true, words: 'Do not keep me' });
+  assert.strictEqual(r.status, 200); await wait(1500);
+  assert.doesNotMatch(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/new-hit.md'), 'utf8'), /Do not keep me/);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Ann', '1357', 390);
+  await s.p.evaluate(() => goView('songs')); await s.p.waitForFunction(() => libData, null, { timeout: 15000 });
+  const txt = await s.p.evaluate(() => document.querySelector('#main').textContent);
+  assert.match(txt, /© A Song A Writer/); assert.ok(await s.p.$('a[href="https://example.test/listen"]'));
+  assert.deepStrictEqual(await s.p.evaluate(() => songDoc(libData.songs.find(x => x.id === 'a-song')).blocks), []);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

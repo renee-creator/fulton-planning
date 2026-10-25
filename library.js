@@ -73,7 +73,10 @@ module.exports = function library(o) {
     // the director marks a draft recipe ready, or takes it out
     if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); json(req, res, 200, list(me)); return; }
     // marking a song copyright removes its words, and taking the mark off lets words be added
-    if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } setMeta(x.path, 'copyright', body.on ? 'yes' : 'no'); json(req, res, 200, list(me)); return; }
+    if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
+      // a song without the mark has a place for its words, ready for the director to add them
+      if (!body.on) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }
+      json(req, res, 200, list(me)); return; }
     // a photo from our own observations on a step of the demonstration set, chosen by the director or the kitchen once
     // the face check on the device found no faces
     if (P === 'library/photo') { if (!dir && !kit) { err(req, res, 403, 'The director chooses the photos.'); return; } const step = Math.round(+body.step); const id = String(body.photo || '');
