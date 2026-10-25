@@ -33,7 +33,8 @@ test('settings are the director\'s on the server', async t => {
     const r = await fx.as(gia, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { names: [{ name: 'Bea', room: 'South' }, { name: 'Gia', room: 'West' }, { name: 'Zed', room: 'West' }] } });
     assert.strictEqual(r.status, 200);
     const names = r.body.doc.names.map(x => x.name + ':' + x.room);
-    assert.deepStrictEqual(names, ['Ann:West', 'Bea:North', 'Gia:West']);
+    // the Class comes from Gia's sign-in, which has none, as an educator's Class is kept on the sign-in
+    assert.deepStrictEqual(names, ['Ann:West', 'Bea:North', 'Gia:']);
     // once on the list, nothing more may change
     const again = await fx.as(gia, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { names: [{ name: 'Gia', room: 'North' }] } });
     assert.strictEqual(again.status, 403);
@@ -104,6 +105,6 @@ test('a family\'s allergy line waits for the office, then reaches the card, the 
 });
 
 test('the card, the Kitchen page and the Class list show the confirmed line', () => {
-  const html = fs.readFileSync(path.join(ROOT, 'tree.html'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'tree.html'), 'utf8') + fs.readFileSync(path.join(ROOT, 'tree-kitchen.js'), 'utf8');
   for (const s of ['${kidDietHtml(c)}${kidFamilyHtml(c)}', 'printBtns("classlist",kRoom,"Class list")', '${kGardenHtml()}${kDietHtml()}', 'kitchenCardHtml(wk,false)}${kDietHtml()}', 'data-kdietgo=', 'class="kline kdiet"']) assert.ok(html.includes(s), s);
 });
