@@ -362,3 +362,53 @@ test('one bank of provocations and curiosity prompts, under a plan\'s questions 
   assert.ok(await d.p.$('[data-pageedit="staff/library/prompts/provocations.md"]'));
   await d.close();
 });
+
+const RECIPE = (title, kind, extra) => `<!--\nlibrary: recipe\nkind: ${kind}\nsource: Ours\n${extra || ''}-->\n# ${title}\n\nA lead.\n\n## Ingredients\n\n- 2 cups flour\n- 1/2 teaspoon salt\n\n## Tools\n\n- a bowl\n\n## Steps\n\n- Mix the flour and salt.\n- An adult bakes it for 20 minutes.\n\n## Dairy free\n\n- Use oat milk.\n`;
+
+test('the recipe library: food and sensory apart, drafts for the director, the kitchen allowed, and the recipe of the month from it', async t => {
+  const chromium = await browser();
+  const month = new Date().toISOString().slice(0, 7);
+  const fx = await start({ more: put => {
+    put('staff/library/recipes/flatbread.md', RECIPE('Flatbread', 'food')); put('staff/library/recipes/playdough.md', RECIPE('Playdough', 'sensory'));
+    put('staff/wording/food-rule.md', '<!--\nwording: test\n-->\n# Food rule\n\n## rule\n\nNever on the menu.\n');
+    put('menus/' + month + '.json', { id: month, recipeId: 'flatbread', recipe: 'Flatbread', days: {} });
+    put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'fern.family@example.test', children: ['fern'] }] });
+    put('children/fern.json', { first: 'Fern', last: 'Test', classroom: 'West', status: 'active', parents: [{ email: 'fern.family@example.test' }] });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token, kit = (await fx.login('Kit', '1357')).token;
+  const L = (await fx.as(ann, '/api/staff/library', {})).body;
+  assert.deepStrictEqual(L.recipes.map(x => [x.id, x.meta.kind]), [['flatbread', 'food'], ['playdough', 'sensory']]);
+  // an educator's recipe waits as a draft, which only the director, the kitchen and its writer see
+  let r = await fx.as(ann, '/api/staff/library/add', { kind: 'recipe', title: 'Pear crisp', ingredients: '- 4 pears', steps: '- Slice the pears.' });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.draft, true);
+  assert.ok(!(await fx.as((await fx.login('Bea', '1357')).token, '/api/staff/library', {})).body.recipes.some(x => x.id === 'pear-crisp'));
+  // the kitchen adds a recipe that is ready, and edits it with its history
+  r = await fx.as(kit, '/api/staff/library/add', { kind: 'recipe', title: 'Soup', ingredients: '- water', steps: '- Heat it.' });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.strictEqual(r.body.draft, false);
+  const pg = await fx.as(kit, '/api/staff/page', { path: 'staff/library/recipes/soup.md' }); assert.strictEqual(pg.status, 200);
+  assert.strictEqual((await fx.as(kit, '/api/staff/page', { path: 'staff/guides/x.md' })).status, 403);
+  // the director adds the draft to the library
+  r = await fx.as(dee, '/api/staff/library/ready', { path: 'staff/library/recipes/pear-crisp.md', on: true });
+  assert.ok(r.body.recipes.find(x => x.id === 'pear-crisp' && !x.draft));
+  // a family shares a recipe from the Family page, as a draft, and a recipe with nuts is refused
+  const c = await fx.as('', '/family/code', { email: 'fern.family@example.test' }); const fam = (await fx.as('', '/family/login', { email: 'fern.family@example.test', code: c.body.code })).body.token;
+  assert.strictEqual((await fx.as(fam, '/family/recipe', { title: 'Nut bars', ingredients: 'almonds', steps: 'mix' })).status, 400);
+  r = await fx.as(fam, '/family/recipe', { title: 'Grandma\'s rice', ingredients: 'rice\nwater', steps: 'Cook the rice.' }); assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+  const fr = (await fx.as(dee, '/api/staff/library', {})).body.recipes.find(x => x.id === 'grandma-s-rice');
+  assert.ok(fr.draft); assert.strictEqual(fr.meta.source, 'The Test family');
+  // the recipe of the month on the Family page comes from the library
+  const fd = (await fx.as(fam, '/family/data', {})).body;
+  const rec = JSON.stringify(fd).match(/"recipe":\{"name":"Flatbread","text":"Ingredients\\n2 cups flour/); assert.ok(rec, 'recipe of the month from the library');
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Kit', '1357', 390);
+  await s.p.evaluate(() => goView('recipes')); await s.p.waitForSelector('[data-reckind="sensory"]', { timeout: 15000 });
+  assert.strictEqual(await s.p.evaluate(() => view), 'recipes');
+  const food = await s.p.evaluate(() => document.querySelector('#main').textContent);
+  assert.match(food, /Flatbread/); assert.doesNotMatch(food, /Playdough/); assert.match(food, /Our food rule\. Never on the menu\. We are nut free\./);
+  await s.p.click('[data-reckind="sensory"]');
+  const sens = await s.p.evaluate(() => document.querySelector('#main').textContent);
+  assert.match(sens, /Playdough/); assert.match(sens, /color with garden plants and use no glitter/);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

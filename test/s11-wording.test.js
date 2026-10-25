@@ -43,11 +43,12 @@ test('the wording comes from the records, and only the director changes it, keep
   assert.strictEqual(fd.enrollForm[0].title, 'The child'); assert.strictEqual(fd.enrollForm[0].note, 'As on the birth record.');
   assert.strictEqual(fd.enrollForm[0].fields.find(f => f.k === 'c_first').label, 'First name');
   assert.ok(fd.agreementWords && fd.agreementWords.parts.length);
-  // the staff pages receive the wording with the records, and the kitchen does not
+  // the staff pages receive the wording with the records
   const d = (await fx.as(ann, '/api/data', {})).body;
   assert.strictEqual(d.wording.grant.parts.find(p => p.key === 'description').text, 'A test grant.');
   const kit = (await fx.login('Kit', '1357')).token;
-  assert.strictEqual((await fx.as(kit, '/api/data', {})).body.wording, undefined);
+  // the kitchen receives only our food rule, for the recipes
+  assert.deepStrictEqual(Object.keys((await fx.as(kit, '/api/data', {})).body.wording), ['food-rule']);
   // the director edits a piece in place, and the earlier wording is kept
   const pg = await fx.as(dee, '/api/staff/page', { path: 'staff/wording/family-questionnaire.md' });
   assert.strictEqual(pg.status, 200); assert.strictEqual(pg.body.kind, 'wording');

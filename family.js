@@ -90,7 +90,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe }) {
   /* the Family page's own wording, kept in the private records in staff/wording, which the director edits in place.
      The Family Questionnaire, the Family Reflections, the first steps, the packing list, the All About Me book, the
      enrollment form's words and the Admission Tuition Agreement. */
@@ -410,7 +410,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     for (const [id, r] of store.recs.newsletters || []) { const d = r && !r.deleted && r.doc; if (!d || !d.posted || !Array.isArray(d.posted.blocks)) continue;
       news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: photoSrc(x.id), cap: String(x.cap || '') })) })) }); }
     news.sort((a, b) => String(b.month).localeCompare(String(a.month)));
-    return { news: news.slice(0, 6), days, closures, binNote: binNote ? binNote.text : '', recipe: mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null };
+    // the recipe of the month comes from the recipe library. A month from before the library keeps its own words.
+    const lib = mr.recipeId && recipeOf ? recipeOf(mr.recipeId) : null;
+    const recipe = lib ? { name: lib.title, text: lib.text } : mr.recipeCard ? { name: mr.recipe || 'Recipe of the month', text: mr.recipeCard } : null;
+    return { news: news.slice(0, 6), days, closures, binNote: binNote ? binNote.text : '', recipe };
   }
 
   // events ask how many adults and children are coming, unless the school turned that off; a task asks who is coming
@@ -427,6 +430,18 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
       if (it.question) e.answer = String(b.answer || '').trim().slice(0, 300);
       ss.push(e); }
     save(itemId, Object.assign({}, it, { signups: ss, updatedAt: nowIso() })); return { ok: true };
+  }
+  // a family's recipe, from the Family page, waits as a draft for the director, in place of the 2022 Google Form. It can
+  // count as participation the usual way, by logging the time it took.
+  function shareRecipe(f, b) {
+    b = b || {}; if (!addRecipe) return { error: 'Recipes cannot be shared just now.' };
+    const lines = v => String(v || '').replace(/\r/g, '').split('\n').map(x => x.trim().replace(/^[-*]\s+/, '')).filter(Boolean).slice(0, 60).map(x => '- ' + x.slice(0, 300)).join('\n');
+    if (!String(b.title || '').trim()) return { error: 'Give the recipe a name.' };
+    if (!lines(b.ingredients) || !lines(b.steps)) return { error: 'Add the ingredients and the steps.' };
+    if (/\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachios?|nut butter)\b/i.test([b.ingredients, b.steps].join(' '))) return { error: 'We are nut free, so we cannot use a recipe with nuts.' };
+    const last = [...new Set(f.kids.map(k => k.last).filter(Boolean))].join(' and ');
+    const r = addRecipe(f.email, { kind: 'recipe', title: b.title, sensory: false, source: last ? `The ${last} family` : 'A family', ingredients: lines(b.ingredients), steps: lines(b.steps), notes: lines(b.story) });
+    if (r.error) return r; log('A family shared a recipe'); return { ok: true };
   }
   function addLog(f, b) {
     const kid = f.kids.find(k => k.id === b.childId); if (!kid) return { error: 'Choose which child this counts for.' };
@@ -459,5 +474,5 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { menu, prev, bins, farms, towns, months, grantEnd: '2027-06-30' };
   }
 
-  return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };

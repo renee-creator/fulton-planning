@@ -219,6 +219,10 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
+    // a family recipe, sent to the director, who adds it to our recipe library. We are nut free.
+    h+=`<section class="card"><details><summary><b>Share a family recipe</b></summary><form id="frc" class="stack" style="margin-top:8px"><p class="small muted" style="margin:0">The director reads each recipe before it joins our recipe library. We are nut free, so please share recipes without nuts. You can log the time it took above, as you would any way of taking part.</p>
+      <label>The recipe's name<input type="text" id="rcn" maxlength="120"></label><label>Ingredients, one on each line<textarea id="rci" rows="5"></textarea></label><label>Steps, one on each line<textarea id="rcs" rows="5"></textarea></label><label>Its story, if you like<textarea id="rct" rows="2" placeholder="Who makes it, and when"></textarea></label>
+      <div class="err" id="e4" aria-live="polite"></div><div><button class="btn">Send it</button></div></form></details></section>`;
     h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
     return h}
   // the school's newsletter, as the director posted it, the latest open and earlier months below
@@ -337,6 +341,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():foodHtml();
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
+    const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
     const pg=$("#pacegot");if(pg)pg.onclick=()=>{LS.set("fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3),"1");render()};
     const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};

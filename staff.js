@@ -1041,5 +1041,11 @@ module.exports = function staffModule(o) {
   }
   // who holds the Garden educator role. Until someone does, the director holds it, which the pages read as an empty list.
   const gardenEducators = () => S.ready ? staffNames().filter(n => profileOf(n).garden && !isFormerEducator(n)).sort() : [];
-  return { library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  // a recipe from the library as families read it, ingredients, then the steps, then the dairy free and gluten free versions
+  function recipeForFamily(id) { const x = LIB.item('staff/library/recipes/' + String(id).replace(/[^a-z0-9-]/g, '') + '.md'); if (!x || x.draft) return null;
+    const L = k => ((x.parts.find(p => p.key.toLowerCase() === k.toLowerCase()) || {}).text || '').split('\n').map(l => (l.match(/^\s*[-*]\s+(.*)$/) || [])[1]).filter(Boolean);
+    const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
+    for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
+    return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
+  return { recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

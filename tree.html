@@ -1605,6 +1605,7 @@ function renderMain(){
   if(view==="walks"){renderWalks();return}
   if(view==="guide"){renderGuide();return}
   if(view==="garden"){renderGarden();return}
+  if(view==="recipes"){renderRecipes();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
   if(view==="inquiries"){renderInquiries();return}
@@ -2031,7 +2032,7 @@ function renderWelcome(){
    back gesture, returns to the screen before, at the same place. */
 const NAVS=[];let navCur=null;
 function navState(){return {view,currentId:view==="plans"?currentId||null:null,slideOpen:view==="slide"?slideOpen:null,storyOpen:view==="story"?storyOpen:null,kidOpen:view==="child"?kidOpen:null,kidTab:view==="child"?kidTab:null,kidMoment:view==="child"?kidOpenMoment||null:null,projId:view==="projects"?projId||null:null}}
-const NAV_NAMES={today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",stories:"Stories",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
+const NAV_NAMES={recipes:"Recipes",today:"Today",grant:"Farm to School",plans:"This week",bin:"Weekly bin",all:"All plans",threads:"Threads",projects:"Projects",lens:"Lens",moments:"Observations",slides:"Slides",walls:"Walls",stories:"Stories",children:"Children",conferences:"Conferences",calendar:"Calendar",settings:"Settings",import:"Bring in plans"};
 function navLabel(s){
   if(s.view==="search")return "Search";
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details"})[s.kidTab]:""):"the child"}
@@ -4253,7 +4254,7 @@ window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const i
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 // a kitchen sign-in sees the Kitchen, Today and the calendar
 const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
-const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec","garden","search"];
+const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec","garden","search","recipes"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"],...(staffSubOk("strec")?[["staff","My records"]]:[])]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
 /* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Teacher Policies and
    Procedures live in tree-staff.js, loaded only when someone opens them, so this page stays the same size. The server
@@ -4294,10 +4295,10 @@ function renderStaff(){const m=$("#main");if(!m)return;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
-  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["kitchen","Kitchen"]],
+  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["recipes","Recipes"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",recipes:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -5204,6 +5205,58 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-guid
   if(t.dataset.guideback){goView(guidePrev||"today");return}
   if(t.dataset.guideready){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const [slug,on]=t.dataset.guideready.split("|");
     try{guideList=(await window.FP_API("/api/staff/guides/ready",{slug,on:on==="1"})).list||[];toast(on==="1"?"Marked ready. Educators see it now.":"Hidden again. Only you see it.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}},true);
+/* ---------- The recipe library ----------
+   Food recipes and sensory recipes, kept apart, each a page in the private records with its source, its dairy free and
+   gluten free versions and the nut free rule we keep. The director and the kitchen add and edit recipes. An educator's
+   recipe and a family's wait as drafts for the director. Food recipes carry our food rule. Sensory recipes use pantry
+   staples only, color with garden plants and use no glitter. The recipe of the month picks from here. */
+let recKind="food",recOpen="",recAdd=false;
+const recPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase())||{}).text||"";
+const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
+const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
+const SENSORY_NOTE="Sensory recipes use pantry staples only, such as flour, salt, cornstarch and oil, never fresh food or produce. We color with garden plants and use no glitter.";
+function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key));const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
+  return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).source||"")}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
+    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
+    ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
+    ${parts.map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
+    <div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>
+    <div class="actions" style="flex-wrap:wrap">${printBtns("recipe",esc(x.id),"Recipe")}${printBtns("recdemo",esc(x.id),"Demonstration sheets")}${printBtns("recdemoposter",esc(x.id),"Demonstration posters")}
+      ${recCanEdit()?pageEditBtn(x.path,"Edit"):""}${(isDirector()||isKitchenUser())&&!VIEW_AS&&x.draft?`<button class="btn small" data-recready="${esc(x.path)}">Add to the library</button>`:""}</div></details>`}
+function gdnFoodRuleText(){return (wordsOf("food-rule").rule||"").trim()}
+function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the recipes</div></section>`;return}
+  const all=(libData.recipes||[]),list=all.filter(x=>recKindOf(x)===recKind).sort((a,b)=>a.title.localeCompare(b.title)),drafts=all.filter(x=>x.draft);
+  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Recipes</h2><div class="sub">Food recipes and sensory recipes, kept apart. Each prints as a recipe and as demonstration sheets for the piazza.</div></div>
+    <div class="tseg" role="group" aria-label="Kind" style="margin-bottom:10px"><button data-reckind="food" aria-pressed="${recKind==="food"}">Food recipes</button><button data-reckind="sensory" aria-pressed="${recKind==="sensory"}">Sensory recipes</button></div>
+    ${drafts.length&&(isDirector()||isKitchenUser())?`<section class="card"><div class="lbl">Drafts waiting</div><div class="cnt">${drafts.length} recipe${drafts.length===1?"":"s"} from educators or families, waiting for you below.</div></section>`:""}
+    <section class="card">${list.map(recipeCard).join("")||`<div class="empty">No ${recKind} recipes yet.</div>`}</section>
+    <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>`}
+function recipeForm(){return `<div class="lbl">${recCanEdit()?"A new recipe":"A recipe for the director"}</div>${recCanEdit()?"":`<div class="hint">It waits as a draft until the director adds it to the library.</div>`}
+  <div class="kfields"><label>Name<input type="text" id="rc-title"></label><label>Kind<select id="rc-kind"><option value="food" ${recKind==="food"?"selected":""}>Food</option><option value="sensory" ${recKind==="sensory"?"selected":""}>Sensory</option></select></label><label>Where it comes from<input type="text" id="rc-source" placeholder="Ex. Ours, or Kitchen's"></label></div>
+  <label class="fld-label">Ingredients, one on each line<textarea id="rc-ing" rows="5" placeholder="2 cups flour"></textarea></label>
+  <label class="fld-label">Tools, one on each line<textarea id="rc-tools" rows="3"></textarea></label>
+  <label class="fld-label">Steps, one on each line. Begin a step an adult does with An adult.<textarea id="rc-steps" rows="5"></textarea></label>
+  <label class="fld-label">Dairy free version, if there is one<textarea id="rc-df" rows="2"></textarea></label><label class="fld-label">Gluten free version, if there is one<textarea id="rc-gf" rows="2"></textarea></label>
+  <div class="hint">We are nut free. ${esc(SENSORY_NOTE)}</div>
+  <div class="actions"><button class="btn" data-recsave="1">${recCanEdit()?"Add it":"Send it"}</button><button class="linkbtn" data-recadd="0">Cancel</button></div>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-reckind],[data-recadd],[data-recsave],[data-recready]");if(!t||view!=="recipes")return;const d=t.dataset;
+  if(d.reckind){recKind=d.reckind;renderMain();return}
+  if(d.recadd!=null){recAdd=d.recadd==="1";renderMain();return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const lines=id=>($("#"+id)?.value||"").split("\n").map(x=>x.trim()).filter(Boolean).map(x=>"- "+x.replace(/^[-*]\s+/,"")).join("\n");
+  if(d.recsave){const title=($("#rc-title")?.value||"").trim();if(!title){toast("Give the recipe a name.");return}
+    const b={kind:"recipe",title,sensory:$("#rc-kind")?.value==="sensory",source:($("#rc-source")?.value||"").trim(),ingredients:lines("rc-ing"),tools:lines("rc-tools"),steps:lines("rc-steps"),dairyFree:lines("rc-df"),glutenFree:lines("rc-gf")};
+    if(/\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachios?|nut butter)\b/i.test([b.ingredients,b.steps,b.dairyFree,b.glutenFree].join(" "))){toast("We are nut free, so a recipe never uses nuts.");return}
+    try{const r=await window.FP_API("/api/staff/library/add",b);libData=r;recAdd=false;recOpen=r.id;recKind=b.sensory?"sensory":"food";toast(r.draft?"Sent to the director as a draft.":"Added to the library.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  if(d.recready){try{libData=await window.FP_API("/api/staff/library/ready",{path:d.recready,on:true});toast("Added to the library.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}});
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.recrow!=null&&d.open)recOpen=d.dataset.recrow},true);
+// a recipe as a page, PDF and Word
+function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";const blocks=[];if(x.lead)blocks.push(dText("",x.lead));
+  for(const k of ["Ingredients","Tools"])if(recPart(x,k))blocks.push(dList(k,libLines(recPart(x,k))));
+  if(recPart(x,"Steps"))blocks.push(dList("Steps",libLines(recPart(x,"Steps")),true));
+  for(const p of (x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key)))blocks.push(libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text));
+  blocks.push(dText(recKindOf(x)==="food"?"Our food rule":"Sensory",recKindOf(x)==="food"?(fr?fr+" ":"")+"We are nut free.":SENSORY_NOTE));
+  return {display:true,type:"report",acc:"story",title:x.title,meta:[(x.meta||{}).source?"From "+x.meta.source:""].filter(Boolean),blocks}}
 const walkOpen=()=>!!walkInfo&&(walkInfo.ready||isDirector());
 // a walk is on the calendar today, or in a plan of this week for today
 function walkToday(){const dow=new Date().getDay();const re=/\b(walks?|walking)\b/i;
@@ -7373,7 +7426,10 @@ function thanksDocs(q){const {from,to}=periodRange(q);const lines=gLines(from,to
     blocks.push(dText("From the children","\n\n\n\n\n"));
     return {display:true,type:"report",acc:"smallgroup",title:"Thank you, "+e.farm,meta:[["From","the children and educators of Fulton Community School"]],blocks}})}
 // the month's recipe, as the kitchen wrote it, for families
-function recipeDoc(month){const mrec=menus.get(month)||{};const name=String(mrec.recipe||"").trim(),card=String(mrec.recipeCard||"").trim();if(!card)return null;
+// the recipe of the month, from the recipe library, sized for a family at home. A month from before the library keeps its own words.
+function recipeCardText(x){if(!x)return "";const L=k=>libLines(recPart(x,k));const out=[];if(L("Ingredients").length)out.push("Ingredients\n"+L("Ingredients").join("\n"));if(L("Steps").length)out.push("Steps\n"+L("Steps").map((l,i)=>(i+1)+". "+l).join("\n"));
+  for(const k of ["Dairy free","Gluten free"])if(L(k).length)out.push(k+"\n"+L(k).join("\n"));return out.join("\n\n")}
+function recipeDoc(month){const mrec=menus.get(month)||{};const lib=mrec.recipeId&&libData?(libData.recipes||[]).find(r=>r.id===mrec.recipeId):null;const name=String(lib?lib.title:mrec.recipe||"").trim(),card=String(lib?recipeCardText(lib):mrec.recipeCard||"").trim();if(!card)return null;
   const F=farmMonthData(month);const low=card.toLowerCase();const from=(F.top||[]).filter(t=>low.includes(String(t.food||"").toLowerCase().split(" ")[0])).slice(0,3).map(t=>`The ${String(t.food).toLowerCase()} came from ${t.farm}${t.town?" in "+t.town:""}.`);
   const blocks=[dText("",card)];if(from.length)blocks.push(dText("Where it came from",from.join(" ")));blocks.push(dText("","Made from scratch in our kitchen."));
   return {display:true,type:"report",acc:"smallgroup",title:name||"Recipe of the month",meta:[["From the Fulton Community School kitchen",parseIso(month+"-01").toLocaleDateString("en-US",{month:"long",year:"numeric"})]],blocks}}
@@ -7466,9 +7522,9 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
 const kCanEdit=()=>isDirector()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","4b09c7dfe8").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","4b09c7dfe8").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function kMonthMenu(...a){return lazyLoad("kitchen","4b09c7dfe8").then(()=>kMonthMenu(...a))}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","8ca7800160").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","8ca7800160").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","8ca7800160").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -10264,6 +10320,7 @@ async function printsClick(t){
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
+  if(kind==="recipe"){if(!libData)await loadLibrary();const x=(libData.recipes||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
   if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
@@ -10290,7 +10347,7 @@ async function printsClick(t){
   if(kind==="fimpact"){await out([impactDoc(t.dataset.id)],`Farm to School impact ${periodName(t.dataset.id)}`);return true}
   if(kind==="ftour"){await out([tourDoc()],"Food at Fulton Community School");return true}
   if(kind==="fthanks"){const ds=thanksDocs(t.dataset.id);if(!ds.length){toast("No farm is in the orders or bins for that quarter yet.");return true}await out(ds,`Farm thank-you cards ${periodName(t.dataset.id)}`);return true}
-  if(kind==="frecipe"){const d=recipeDoc(t.dataset.id);if(!d){toast("Write the recipe on the Kitchen page first.");return true}await out([d],`Recipe ${MENU_MONTH(t.dataset.id)}`);return true}
+  if(kind==="frecipe"){if(!libData)await loadLibrary();const d=recipeDoc(t.dataset.id);if(!d){toast("Write the recipe on the Kitchen page first.");return true}await out([d],`Recipe ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="aboutme"){const c=children.get(t.dataset.id);if(!c||!c.aboutMe){toast("The family has not made the book yet.");return true}
     const docs=(c.aboutMe.pages||[]).map((p,i)=>{const blocks=[];const ph=(p.photos||[]).map(id=>({id:"am-"+id,photo:{id}}));
       ph.forEach((n,j)=>blocks.push(dPhoto(n,ph.length===1?430:ph.length===2?250:180,true)));if(has(p.text))blocks.push(dLead("",p.text));

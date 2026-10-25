@@ -75,8 +75,10 @@ function renderKitchen(){
   h+=`<section class="card"><div class="lbl">The month's notes</div>
     <label class="fld-label">With every snack<textarea data-knote="snack" rows="2">${esc(notes.snack||"")}</textarea></label>
     <label class="fld-label">With every lunch<textarea data-knote="lunch" rows="2">${esc(notes.lunch||"")}</textarea></label>
-    <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. pumpkin focaccia"></label>
-    <label class="fld-label">The recipe, for families<textarea data-krecipecard="1" rows="6" placeholder="Ingredients, then the steps, sized for a family at home">${esc(mrec.recipeCard||"")}</textarea></label>
+    ${libData?"":(loadLibrary(),"")}<label class="fld-label">Recipe of the month, from the recipe library<select data-krecipeid="1"><option value="">${mrec.recipeId||!mrec.recipe?"None yet":"As written below, before the library"}</option>${((libData&&libData.recipes)||[]).filter(x=>!x.draft&&recKindOf(x)==="food").sort((a,b)=>a.title.localeCompare(b.title)).map(x=>`<option value="${esc(x.id)}" ${mrec.recipeId===x.id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
+    <div class="actions" style="margin:0"><button class="linkbtn" data-tview="recipes">Open the recipe library</button></div>
+    ${!mrec.recipeId&&(mrec.recipe||mrec.recipeCard)?`<label class="fld-label">Recipe of the month, as written before the library<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}"></label>
+    <label class="fld-label">The recipe, for families<textarea data-krecipecard="1" rows="6">${esc(mrec.recipeCard||"")}</textarea></label>`:""}
     <div class="cnt">Families see it on the Family page, and the director can print it as a recipe card.</div>
     <div class="hint">The notes and the recipe of the month print on the Monthly menu, and the recipe on What we ate.</div></section>`;
   h+=`<section class="card">${staplesHtml().replace('<div class="binadd" id="staples-card">','<div id="staples-card">')}</section>`;
@@ -102,6 +104,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="kitchen
   try{if(t.dataset.kclosed){await kWrite(month,{days:{[t.dataset.kclosed]:t.checked?{closed:true}:{closed:{__delete__:true}}}});renderKitchen();return}
     if(t.dataset.knote){await kWrite(month,{notes:{[t.dataset.knote]:t.value.trim()}});setConn("Menu saved");return}
     if(t.dataset.krecipe){await kWrite(month,{recipe:t.value.trim()});setConn("Menu saved");return}
+    if(t.dataset.krecipeid!=null){const x=((libData&&libData.recipes)||[]).find(r=>r.id===t.value);await kWrite(month,x?{recipeId:x.id,recipe:x.title}:{recipeId:"",recipe:""});setConn("Menu saved");renderMain();return}
     if(t.dataset.krecipecard){await kWrite(month,{recipeCard:t.value.trim()});setConn("Recipe saved");return}}catch(err){toast((err&&err.message)||"Could not save the menu.")}});
 function kPut(dish,day,k){const el=document.querySelector(`[data-kday="${day}"][data-kk="${k}"]`);if(!el)return;el.value=dish;el.classList.remove("kdraft");kSaveSoon(kMonthNow(),day,k,dish);el.focus()}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-kmon],[data-kfill],[data-kdraftsave],[data-kdraftclear],[data-kput]");if(!t||view!=="kitchen")return;e.stopImmediatePropagation();const month=kMonthNow();
