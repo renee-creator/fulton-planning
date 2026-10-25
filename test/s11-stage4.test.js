@@ -274,3 +274,16 @@ test('the garden year in four seasons, with a preserve stage, animal care by sea
   assert.match(await s.p.evaluate(() => document.querySelector('[data-gfold="animals"]').textContent), /Dry bedding before the rains/);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('each month shows iGrow Sonoma\'s guidance in our own words, credited and linked', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => { put('staff/garden/setup.json', GARDEN); put('staff/garden/log.json', { id: 'gardenlog' });
+    put('staff/library/garden/igrow.md', '<!--\nlibrary: test\n-->\n# iGrow\n\n## 09\n\nSow peas and fava beans.\n'); } });
+  const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+  await s.p.evaluate(() => goView('garden')); await s.p.waitForSelector('[data-gseason="fall"]', { timeout: 15000, state: 'attached' });
+  const txt = await s.p.evaluate(() => document.querySelector('[data-gseason="fall"]').textContent);
+  assert.match(txt, /Sow peas and fava beans\.\s*Summarized in our own words from iGrow Sonoma's guidance for September/);
+  assert.ok(await s.p.$('[data-pageedit="staff/library/garden/igrow.md"]'));
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});
