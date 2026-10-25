@@ -287,3 +287,17 @@ test('each month shows iGrow Sonoma\'s guidance in our own words, credited and l
   assert.ok(await s.p.$('[data-pageedit="staff/library/garden/igrow.md"]'));
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('the permaculture premises sit once at the top of the Garden, beside our guiding agreements, with their source', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => { put('staff/garden/setup.json', GARDEN); put('staff/garden/log.json', { id: 'gardenlog' });
+    put('staff/library/garden/permaculture.md', '<!--\nlibrary: test\n-->\n# Our permaculture premises\n\nThree ethics.\n\n## The three ethics\n\n- **Earth care.** Be kind.\n\n## Principles we already practice\n\n- **Produce no waste.** Compost.\n\n## Where these come from\n\nFrom [the book](https://example.test/ethics).\n'); } });
+  const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
+  const s = await signedIn(fx, b, 'Ann', '1357', 1280);
+  await s.p.evaluate(() => goView('garden')); await s.p.waitForFunction(() => /Our permaculture premises/.test(document.querySelector('#main').innerText), null, { timeout: 15000 });
+  const txt = await s.p.evaluate(() => document.querySelector('#main').innerText);
+  assert.ok(txt.indexOf('Our permaculture premises') < txt.indexOf('The site map'));
+  assert.match(txt, /Pick with purpose\.[\s\S]*Earth care\. Be kind\./);
+  assert.strictEqual(await s.p.evaluate(() => document.querySelector('#main a[href="https://example.test/ethics"]').textContent), 'the book');
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

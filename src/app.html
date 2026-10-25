@@ -4575,7 +4575,7 @@ async function loadGuides(force){if(!window.FP_API||guideBusy||(guideList&&!forc
   try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain()}
 const guideBy=(k,v)=>{if(guideList===null)loadGuides();return (guideList||[]).find(g=>v&&String(g[k]||"").toLowerCase()===String(v).toLowerCase())||null};
 const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-guide="${esc(g.slug)}">${esc(label||g.title)}</button>${g.waiting?` <span class="cnt">Draft</span>`:""}`:"";
-function guideMd(t){const L=String(t||"").split("\n");let h="",ul=false;const inl=x=>esc(x).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+function guideMd(t){const L=String(t||"").split("\n");let h="",ul=false;const inl=x=>esc(x).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\[([^\]]+)\]\((https:\/\/[^)\s"]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
   for(const l of L){const m=l.match(/^\s*[-*]\s+(.*)$/);if(m){if(!ul){h+="<ul>";ul=true}h+=`<li>${inl(m[1])}</li>`;continue}if(ul){h+="</ul>";ul=false}
     const hd=l.match(/^#{2,3}\s+(.*)$/);if(hd){h+=`<h3 style="font-size:16px;margin:12px 0 4px">${inl(hd[1])}</h3>`;continue}if(l.trim())h+=`<p>${inl(l)}</p>`}
   return h+(ul?"</ul>":"")}

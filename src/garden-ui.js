@@ -72,6 +72,12 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
+  // the permaculture premises, once, at the top, beside our two guiding agreements. For educators, never a unit for children.
+  {const pc=gdnPage("permaculture");if(pc){const part=k=>gdnPart("permaculture",k);
+    h+=`<section class="card"><div class="lbl">Our guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${((g.agreements||{}).guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      <div class="lbl" style="margin-top:8px">${esc(pc.title||"Our permaculture premises")}</div>${pc.lead?`<div class="cnt">${esc(pc.lead)}</div>`:""}<div class="guidebody">${guideMd(part("The three ethics"))}</div>
+      <details style="margin-top:4px"><summary class="linkbtn">Principles we already practice</summary><div class="guidebody">${guideMd(part("Principles we already practice"))}</div></details>
+      <div class="cnt" style="margin-top:6px">${guideMd(part("Where these come from"))}</div>${dir?`<div class="actions"><button class="linkbtn" data-pageedit="staff/library/garden/permaculture.md">Edit the premises</button></div>`:""}</section>`}}
   // the site map, with each space placed on it, and the children's own maps beside it
   const spots=g.mapSpots||{},maps=[...notices.values()].filter(n=>n.gardenMap&&n.photo).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8);
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">The site map</h3>${dir?`<button class="linkbtn" data-gmapup="1">${g.mapPhoto?"Change the map":"Add the site map"}</button>`:""}</div>
