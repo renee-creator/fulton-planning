@@ -13,5 +13,5 @@ test('TREE names the school as we and our, or Fulton Community School', () => {
   for (const w of ['"Licensing at Fulton"', 'Fulton PD hours', '"Welcome to Fulton"']) assert.ok(!staff.includes(w), w);
   assert.ok(!growth.includes('Everyone at Fulton') && growth.includes('Everyone at our school'));
   assert.ok(pres.includes('Start from our PD template'));
-  assert.match(read('server.js'), /Never call it Fulton on its own/);
+  assert.match(read('server.js'), /Never call it Fulton on its own, and never Community School on its own/);
 });

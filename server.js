@@ -1010,7 +1010,7 @@ function postAnthropic(payload) {
   });
 }
 // how TREE's writing help names the school in what it writes itself. Words it copies or quotes keep their own.
-const SCHOOL_NAME = 'When you write in your own words, call the school we and our in sentences, and Fulton Community School where a name is needed, such as in a title. Never call it Fulton on its own. Text you copy, transcribe or quote keeps its own words.';
+const SCHOOL_NAME = 'When you write in your own words, call the school we and our in sentences, and Fulton Community School where a name is needed, such as in a title. Never call it Fulton on its own, and never Community School on its own. Text you copy, transcribe or quote keeps its own words.';
 async function askClaude(content, careful, extra) {
   const lane = careful ? 'careful' : 'quick'; const list = careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {

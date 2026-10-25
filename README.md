@@ -420,6 +420,20 @@ A change the server makes to records already there, such as moving a setting out
 
 In sentences TREE writes we and our, such as How we do it and our own writing. Where a name is needed, in headers, titles and file names, it writes Fulton Community School, such as Fulton Community School plans week of 2026-10-19 North. The full name, Fulton Community School & Farm, stays on covers, the Family Handbook, licensing pieces, grant reports and anywhere the license number appears. TREE's writing help is told the same, and the words it copies or quotes keep their own. Fulton Road, the record files and folders, past saved prints, educators' and families' own words and quoted outside sources keep their names.
 
+## Writing rules
+
+Every screen, print, Word file, Help answer, reminder and adapted piece follows these.
+
+- Name the school in our own words. Never Fulton on its own, and never Community School on its own. In sentences write we and our, such as How we do it and our own writing. Where a name is needed, in headers, titles and file names, write Fulton Community School. The full name, Fulton Community School & Farm, stays only on covers, the Family Handbook, licensing pieces, grant reports and anywhere the license number appears. Fulton Road, record file and folder names, past saved prints and quoted outside sources keep their names.
+- No em dashes or en dashes. No colon joining ideas into one long sentence. Write separate short sentences. Clock times such as 1:15 pm are fine.
+- No apologies, no analogies and no not this but that framing.
+- Say educator, never teacher, except in Role of the Teacher, Environment as the Third Teacher, Teacher Policies and Procedures, LIC form names and the titles of cited outside sources. Say Class.
+- Never the word toddler in our own writing.
+- No DRDP rating language for families.
+- Licensing content only from CCLD or CDSS.
+- Every print also comes as a Word file.
+- Never name the AI model or its maker on screen, in prints or in Word files.
+
 ## The Garden
 
 Garden sits beside Farm to School and Kitchen under Documentation. It holds the garden's whole year, planning beds, planting, tending and watering, harvesting, saving seeds and composting, with the yards planned as one environment with flowers and food, so nothing is carried only in people's heads. It is kept in the records in staff/garden/setup.json, the plants, beds, year plan, animals, agreements and who tends what, and staff/garden/log.json, what happens, and it is served by garden.js. Nothing shows to educators, the kitchen or families until the director marks it ready on the Garden page.
