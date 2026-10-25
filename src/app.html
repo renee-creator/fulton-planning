@@ -4060,7 +4060,7 @@ async function loadTodayCal(force){
   const day=iso(new Date());if(!window.FP_API||!db)return;
   // a calendar that could not be reached is asked again after a minute, never on every redraw
   if(!force&&todayCal.day===day&&Date.now()-todayCal.at<(todayCal.items?5*60000:60000))return;
-  try{const j=await window.FP_API("/api/view",{from:day,to:day});
+  try{const j=await calView(day,day,force);
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
     for(const e of j.events||[])out.push({kind:(e.conf||e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:e.conf?"":(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
@@ -4667,6 +4667,7 @@ function renderWalls(){
     return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${esc(x.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
 }
 
+/*__LAZY_BEGIN newsletter renderNewsletter__*/
 /* ---------- The family newsletter, from the office ----------
    Once a month the director sends families a newsletter through the Kaymbu template. TREE reads the month's
    observations and suggests topics, with the educators' own words and the DRDP connection behind each one, which only
@@ -4885,7 +4886,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""
 async function nlLoadComing(k){
   const next=nlShift(k,1);if(nlEvents[next]&&nlEvents[next].at>Date.now()-10*60e3)return;
   const [y,m]=next.split("-").map(Number);const from=iso(new Date(y,m-1,1)),to=iso(new Date(y,m,0));
-  try{const j=await window.FP_API("/api/view",{from,to});
+  try{const j=await calView(from,to);
     const cals=new Map(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c.name||""]));
     const by=new Map();
     for(const e of (j.events||[])){const eid=String(e.id||"");if(e.cal==="tbday"||e.cal==="tmenu"||/^t(bday|menu)\./.test(eid))continue;const cn=cals.get(e.cal)||"";if(/internal|staff|birthday|menu|snack|lunch/i.test(cn))continue;
@@ -5206,6 +5207,7 @@ async function nlPdf(x){
   await saveFile(doc.output("blob"),`Fulton Community School family newsletter ${nlName(x.month)}.pdf`);
 }
 
+/*__LAZY_END newsletter__*/
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -6784,6 +6786,7 @@ const threadNotices=t=>{if(!t)return [];const ix=obsIndex();if(!ix.byT){ix.byT=n
 const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
   for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
+/*__LAZY_BEGIN grant renderGrant__*/
 /* ---------- Farm to School grant ----------
    The director's view of the CDFA Farm to School Incubator grant. It gathers what TREE already holds, by quarter,
    against the agreement's eight objectives. FEED orders give the farm-level purchases for the food procurement
@@ -7284,6 +7287,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
     const id=uid();if(await gWrite("families",{list:{[id]:{id,date,text,by:whoAmI()}}},{id:"families",list:{}}))toast("Kept");renderGrant();return}
   if(a==="draft"){if(isQuarter(gQ()))gDraft(gQ());return}},true);
 
+/*__LAZY_END grant__*/
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -7646,6 +7650,7 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
     <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>
     ${gFold(L.map(u=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(kName(u.x.item).name)}</b> <span class="cnt">${esc(u.x.producer||"")} · ${esc(fmtDate(u.o.fulfilled||u.o.placed||""))}</span><div class="cnt">${esc(u.why)}.</div></div>
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
+/*__LAZY_BEGIN kitchen renderKitchen,renderKitchenToday,kMonthMenu__*/
 /* ---------- Kitchen ----------
    Where the kitchen makes the month's menu and everything around it. Each day has a morning snack, lunch and an
    afternoon snack, Monday a morning snack only, and the sides served with each. Typing saves to the month's menu
@@ -7664,7 +7669,7 @@ function kLibrary(){const m=new Map(),today=iso(new Date());for(const mn of menu
   return [...m.values()].sort((a,b)=>b.n-a.n||a.dish.localeCompare(b.dish))}
 // days the school is closed, from the calendar's all-day events, so a draft leaves them empty
 async function kLoadClosed(month){if(kClosed[month]||!window.FP_API)return;kClosed[month]=new Set();const [y,mo]=month.split("-").map(Number);
-  try{const j=await window.FP_API("/api/view",{from:month+"-01",to:iso(new Date(y,mo,0))});
+  try{const j=await calView(month+"-01",iso(new Date(y,mo,0)));
     for(const e of j.events||[])if(/no school|closed|closure|holiday|break|in.?service|staff development|thanksgiving/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
   if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()}
 const kLastYear=d=>addDays(d,-364);
@@ -7864,6 +7869,7 @@ async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await TREE_K
   ch.push(new Paragraph({spacing:{before:0,after:0,line:20,lineRule:"exact"},children:[run(" ","fr",1)]}));
   const wf=wordFonts();const docx=TREE_KIT.wordFile(X,Object.assign({creator:"Fulton Community School",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await TREE_KIT.wordBlob(X,docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
+/*__LAZY_END kitchen__*/
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -12607,9 +12613,15 @@ function displayText(text,mode,extra){
 function credit(name,mode){mode=mode||PRINT.names;if(!name)return"";const n=name.replace(/ \[\?\]$/,"");const c=kidList().find(x=>x.first===n);return mode==="none"?"":shownName(n,c?c.last||"":"",mode)+(name!==n&&mode!=="initials"?" [?]":"")}
 
 /* ---------- A space for the small group. Small groups meet Tuesday to Friday, 9 to 10:30, unless the educator changes it. ---------- */
+// one calendar request for the pages that read the same days, kept for a minute, so Today, the Kitchen, the
+// newsletter, the Garden, Settings and a plan's space share it rather than each asking. A sign-up or a change to the
+// spaces asks again.
+const CAL_VIEW=new Map();
+function calView(from,to,fresh){const k=from+"|"+to;const c=CAL_VIEW.get(k);if(!fresh&&c&&Date.now()-c.at<60000)return c.p;
+  const p=window.FP_API("/api/view",{from,to}).catch(e=>{CAL_VIEW.delete(k);throw e});CAL_VIEW.set(k,{at:Date.now(),p});if(CAL_VIEW.size>30)CAL_VIEW.delete(CAL_VIEW.keys().next().value);return p}
 let calSpaces=null,calSpacesAll=null,calSpacesAt=0,spaceBusy={};
 async function loadCalSpaces(force){if(!window.FP_API||!db)return;if(!force&&calSpaces&&Date.now()-calSpacesAt<10*60000)return;
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpacesAll=((j.settings&&j.settings.spaces)||[]);calSpaces=calSpacesAll.filter(s=>!s.hidden);calSpacesAt=Date.now();
+  try{const d=iso(new Date());const j=await calView(d,d,force);calSpacesAll=((j.settings&&j.settings.spaces)||[]);calSpaces=calSpacesAll.filter(s=>!s.hidden);calSpacesAt=Date.now();
     // Where it happens offers every space by name, those on the sign-up list and those kept off it
     PLACES=calSpacesAll.map(s=>s.name);fillPlaceList()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
   if(view==="plans"&&currentId)rerenderSpace();if(view==="settings"&&$("#spacesset"))$("#spacesset").outerHTML=spacesSetHtml()}
@@ -12646,7 +12658,7 @@ async function spaceBook(p){
   const made=[...(sp.booked||[])],skipped=[];
   const days=space.byWeek?[sp.days[0]]:sp.days.slice().sort();
   for(const d of days){const date=addDays(p.weekOf,d-1);if(made.some(b=>b.day===d))continue;
-    try{const r=await window.FP_API("/api/book",{spaceId:space.id,date,start,end,what,group});
+    try{CAL_VIEW.clear();const r=await window.FP_API("/api/book",{spaceId:space.id,date,start,end,what,group});
       for(const b of r.made||[])made.push({id:b.id,day:d});
       for(const x of r.skipped||[])skipped.push(`${parseIso(x.date).toLocaleDateString("en-US",{weekday:"long"})} is taken by ${x.by}.`)}
     catch(e){const why=String(e&&e.message||"").trim();skipped.push(`${parseIso(date).toLocaleDateString("en-US",{weekday:"long"})} could not be signed up.${why?" "+why.replace(/([^.!?])$/,"$1."):""}`)}}
@@ -12808,9 +12820,9 @@ function spacesSetHtml(){if(!window.FP_HOSTED)return"";if(!calSpacesAll){loadCal
     <div class="chips">${calSpacesAll.map(x=>`<span class="rname">${esc(x.name)}${x.hidden?` <span class="cnt">off the sign-up list</span>`:""}</span>`).join("")}</div>
     <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button><button class="linkbtn" data-tview="calendar">Change or remove a space in Calendar settings</button></div></section>`}
 async function spaceAdd(n){n=String(n||"").trim();if(!n){toast("Type the space's name first.");return}if((calSpacesAll||[]).some(x=>x.name.toLowerCase()===n.toLowerCase())){toast("That space is already on the list.");return}
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});const prog=JSON.parse(JSON.stringify(j.settings||{}));prog.calendars=prog.calendars||[];
+  try{const d=iso(new Date());const j=await calView(d,d,true);const prog=JSON.parse(JSON.stringify(j.settings||{}));prog.calendars=prog.calendars||[];
     const id=n.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,16)||"space";(prog.spaces=prog.spaces||[]).push({id:(prog.spaces.some(s=>s.id===id)?id.slice(0,12)+Math.random().toString(36).slice(2,6):id),name:n,color:"moss",note:"",shared:false,hidden:false,byWeek:false});
-    await window.FP_API("/api/settings",{program:prog});toast("Added to the spaces.");await loadCalSpaces(true)}catch(e){toast(e&&e.message||"The space could not be added.")}}
+    await window.FP_API("/api/settings",{program:prog});CAL_VIEW.clear();toast("Added to the spaces.");await loadCalSpaces(true)}catch(e){toast(e&&e.message||"The space could not be added.")}}
 // what the lists held when they became one, for the director to read
 let ONELISTS=null;
 function oneListsNote(){const r=ONELISTS;const L=r&&Array.isArray(r.differences)?r.differences:[];if(!L.length)return"";
@@ -13025,6 +13037,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
   if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
+/*__LAZY_BEGIN settings renderSettings__*/
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
@@ -13186,6 +13199,7 @@ document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")re
   if(t.dataset.saddIn!=null){e.preventDefault();document.querySelector(`[data-sadd="${t.dataset.saddIn}"]`).click()}
 });
 
+/*__LAZY_END settings__*/
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

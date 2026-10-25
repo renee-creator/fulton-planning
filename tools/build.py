@@ -7,6 +7,15 @@ app = (root / "src/app.html").read_text()
 # the Garden page is kept in its own file and set into the page where src/app.html marks it
 app = app.replace("/*__GARDEN_UI__*/", (root / "src/garden-ui.js").read_text(), 1)
 shim = (root / "src/shim.html").read_text()
+# the Kitchen, the newsletter, the grant and Settings load only when opened. What only they use moves to its own file.
+import sys
+sys.path.insert(0, str(root / "tools"))
+import lazy
+staff_src = "".join((root / f).read_text() for f in ["policy-md.js", "src/staff-app.js", "src/growth-app.js", "src/presenting-app.js"])
+app, lazy_files = lazy.split(app, shim + staff_src)
+for name, text in lazy_files.items():
+    (root / name).write_text(text)
+    print(name, len(text), "bytes")
 marker = '<script>\n/* ---------- Program data'
 assert app.count(marker) == 1, "app script marker not found"
 # move the page title, fonts and the PDF library into the head

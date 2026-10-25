@@ -4386,7 +4386,7 @@ async function loadTodayCal(force){
   const day=iso(new Date());if(!window.FP_API||!db)return;
   // a calendar that could not be reached is asked again after a minute, never on every redraw
   if(!force&&todayCal.day===day&&Date.now()-todayCal.at<(todayCal.items?5*60000:60000))return;
-  try{const j=await window.FP_API("/api/view",{from:day,to:day});
+  try{const j=await calView(day,day,force);
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
     for(const e of j.events||[])out.push({kind:(e.conf||e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:e.conf?"":(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
@@ -4851,7 +4851,7 @@ function renderToday(){
 let gdn=null,gdnAt=0,gdnBusy=false,gdnOpen=LS.get("tree.gdnopen",{})||{},gdnEdit=null,gdnSpaces=null,gdnGuide="children",gdnPlace="";
 async function loadGarden(force){if(gdnBusy||!window.FP_API)return;if(!force&&gdn!==null&&Date.now()-gdnAt<3*60000)return;gdnBusy=true;
   try{gdn=await window.FP_API("/api/staff/garden",{})}catch(e){gdn=false}finally{gdnAt=Date.now();gdnBusy=false}
-  if(!gdnSpaces)try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
+  if(!gdnSpaces)try{const d=iso(new Date());const j=await calView(d,d);gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
   if(["garden","today","kitchen","grant"].includes(view))renderMain()}
 let gdnProgram=null;
 // the plants for dye and art materials ready to gather this month, offered in the Materials library under the Atelier, never food
@@ -5036,7 +5036,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gbedadd){await gdnCall("bed",{bed:{name:v("gb-name"),space:v("gb-space"),permanent:!!document.getElementById("gb-perm")?.checked}},"Added.");return}
   if(d.gspaceadd){if(!gdnProgram){toast("The spaces are still loading.");return}const prog=JSON.parse(JSON.stringify(gdnProgram));const name=d.gspaceadd;
     const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,24)||"space";if(!(prog.spaces||[]).some(s=>s.id===id))(prog.spaces=prog.spaces||[]).push({id,name,color:"moss",note:"",shared:false,hidden:true,byWeek:false});
-    try{const r=await window.FP_API("/api/settings",{program:prog});gdnProgram=r.settings||prog;gdnSpaces=(gdnProgram.spaces)||gdnSpaces;toast("Added to Spaces.");renderMain()}catch(er){toast(er&&er.message||"The space could not be added.")}return}
+    try{const r=await window.FP_API("/api/settings",{program:prog});CAL_VIEW.clear();gdnProgram=r.settings||prog;gdnSpaces=(gdnProgram.spaces)||gdnSpaces;toast("Added to Spaces.");renderMain()}catch(er){toast(er&&er.message||"The space could not be added.")}return}
   if(d.gkidmap){noticeForm=Object.assign(newNotice(),{classroom:myRoom()||"",noticed:"A child's map of the garden.\n",gardenMap:true});view="moments";LS.set("fps.view",view);renderNav();renderMain();return}
   if(d.gevent){const c=typeof ptCfg==="function"?ptCfg():{};if(!v("ge-date")){toast("Choose the day.");return}
     try{await db.doc("participation/"+ptNewId("it")).create({kind:"item",type:"event",garden:true,onCalendar:true,title:v("ge-title"),date:v("ge-date"),start:v("ge-start"),end:v("ge-end"),spots:Number(v("ge-spots"))||0,classroom:"",hours:0,note:"A garden day for families. The garden agreements for families are on the Family page.",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""});toast("Posted. Families see it on the Family page.")}catch(er){toast(er&&er.message||"That did not work.")}return}
@@ -5197,50 +5197,14 @@ function renderWalls(){
     return `<button class="card" style="text-align:left;cursor:pointer;color:var(--ink)" data-twall="${esc(x.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px">`:""}<span class="eyebrow">${x.home?esc(x.home)+" class":"School-wide"}${x.status==="closed"?" · closed":""}</span><b style="font-family:var(--display);font-size:18px">${esc(x.name)}</b><span class="cnt">${w?(n?`${n} sheet${n===1?"":"s"} ready to hang`:"No sheets chosen yet. Open it to choose the observations for the wall."):"No wall planned yet. Open it to choose sheets."}</span></button>`}).join("")}</div>`:`<div class="empty">No projects yet. A wall grows from a project's observations.</div>`}`;
 }
 
-/* ---------- The family newsletter, from the office ----------
-   Once a month the director sends families a newsletter through the Kaymbu template. TREE reads the month's
-   observations and suggests topics, with the educators' own words and the DRDP connection behind each one, which only
-   the director sees. Families see plain words about how children grow, a bonus for school, tips, reading, school and
-   farm news, and what is coming up. Every issue is kept, so topics do not repeat in a school year, and every article
-   added is kept in a library that comes back when its topic does. Only the director sees and changes this page. */
 let nlDeleted=new Set(),newsletters=new Map(),nlMonth=LS.get("tree.nlmonth",""),nlBusy={},nlEvents={},nlKaymbu=false;
 const nlKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-const nlName=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"})};
-const nlMonthOnly=k=>{const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long"})};
-const nlShift=(k,n)=>{const [y,m]=k.split("-").map(Number);return nlKey(new Date(y,m-1+n,1))};
-const nlSchoolYear=k=>{const [y,m]=k.split("-").map(Number);return m>=8?y:y-1};
 const nlDoc=k=>newsletters.get("nl-"+k)||null;
-const nlLib=()=>newsletters.get("library")||{id:"library",items:[]};
-const nlClean=s=>String(s??"").replace(/\*+/g,"").replace(/\s*[—–]\s*/g,", ").trim();
 function nlCur(){if(!nlMonth){const d=new Date();nlMonth=nlKey(d.getDate()>=15?d:new Date(d.getFullYear(),d.getMonth()-1,1));if(!nlDoc(nlMonth)&&nlDoc(nlKey(d)))nlMonth=nlKey(d)}return nlMonth}
 const nlTimers={};
 function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
   const go=()=>{delete nlTimers[x.id];if(db)db.doc("newsletters/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the newsletter. Check your connection."))};
   if(now){clearTimeout(nlTimers[x.id]);go()}else nlTimers[x.id]=setTimeout(go,700)}
-function nlNew(k){return {id:"nl-"+k,month:k,status:"draft",note:"",suggestions:[],topics:[],reading:[],school:[],schoolPhotos:[],coming:[],comingAdded:[],createdAt:Date.now(),by:me()}}
-
-// the month's observations, with the same words kept once and every photo that came with them
-function nlObs(k){
-  const [y,m]=k.split("-").map(Number);const from=new Date(y,m-1,1).getTime(),to=new Date(y,m,1).getTime();
-  const seen=new Map();
-  for(const n of [...notices.values()].sort((a,b)=>(a.at||0)-(b.at||0))){
-    if(!(n.at>=from&&n.at<to))continue;
-    const text=String(n.noticed||"").trim();if(!text&&!n.wonder)continue;
-    const key=(n.classroom||"")+"|"+text.slice(0,200);
-    let o=seen.get(key);
-    if(!o){o={ids:[],photos:[],room:n.classroom||"",date:iso(new Date(n.at)),noticed:text,wonder:String(n.wonder||"").trim(),kids:0};seen.set(key,o)}
-    o.ids.push(n.id);if(n.photo&&n.photo.id)o.photos.push(n.id);o.kids=Math.max(o.kids,(n.children||[]).length);
-  }
-  // a very full month is read from its most recent 220 observations, each kept to a few sentences
-  return [...seen.values()].slice(-220).map((o,i)=>Object.assign(o,{ref:"o"+(i+1),noticed:o.noticed.length>700?o.noticed.slice(0,700)+"…":o.noticed}));
-}
-// how old the children in each class mostly are, so topics can say which ages they show up with
-function nlRoomAges(){
-  const out={};const now=Date.now();
-  for(const c of children.values()){if(c.status&&c.status!=="active")continue;if(!c.dob||!c.classroom)continue;(out[c.classroom]=out[c.classroom]||[]).push((now-parseIso(c.dob).getTime())/(365.25*864e5))}
-  return Object.fromEntries(Object.entries(out).map(([r,a])=>{a.sort((x,y)=>x-y);const md=a[Math.floor(a.length/2)];return [r,md<2.5?"mostly two-year-olds":md<3.5?"mostly three-year-olds":"mostly four- and five-year-olds"]}));
-}
-// a child's first name in words families will read is shown to the director before anything goes out
 function nlNameWarn(text){
   const t=" "+String(text||"")+" ";if(!t.trim())return[];
   const skip=new Set([...GROUPS.map(g=>g.name.toLowerCase()),"north","south","west","east","may","june","april","summer","autumn","sky","rain"]);
@@ -5249,493 +5213,9 @@ function nlNameWarn(text){
     if(new RegExp("[^A-Za-z]"+f.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[^A-Za-z]").test(t))out.add(f)}
   return [...out];
 }
-const nlTopicText=t=>[t.title,t.happening,t.why,(t.grows||[]).map(g=>g.text).join(" "),t.bonus,(t.tips||[]).map(x=>x.lead+" "+x.text).join(" "),(t.photos||[]).map(p=>p.cap).join(" ")].join(" ");
-function nlCodesList(){
-  const one=v=>Object.entries(DRDP_M[v]||{}).map(([c,m])=>c+" "+m.n).join("; ");
-  return "Preschool view. "+one("ptk")+"\nInfant and toddler view. "+one("it");
-}
-function nlDrdpWords(codes){
-  if(!DRDP_TXT)return"";
-  return (codes||[]).map(c=>{const parts=[];for(const v of ["it","ptk"]){const m=DRDP_TXT[v]&&DRDP_TXT[v][c];if(!m)continue;
-    parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
-    return parts.join("\n")}).filter(Boolean).join("\n");
-}
-const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Say "research shows" only for findings that are well established in early childhood research. ${FULTON_TALK}`;
-
-async function nlFindTopics(x,btn){
-  const obs=nlObs(x.month);
-  if(!obs.length){toast(`No observations from ${nlMonthOnly(x.month)} yet. Topics come from what educators keep.`);return}
-  await loadDrdpTxt();
-  const year=nlSchoolYear(x.month);
-  const past=[...newsletters.values()].filter(d=>d.month&&d.id!==x.id&&nlSchoolYear(d.month)===year).flatMap(d=>(d.topics||[]).map(t=>t.title+" ("+nlName(d.month)+")"));
-  const ages=nlRoomAges();
-  const prompt=`You are helping the director of Fulton Community School & Farm choose topics for the monthly family newsletter. Read the educators' observations from ${nlName(x.month)} and find the 3 or 4 subjects that came up most, or that families would most want support with. Good topics are developmental things families also meet at home, such as a behavior that is hard for parents, language, friendships, food and growth, independence, feelings, or big physical skills. A subject seen across several classes, or several times, comes first. A smaller one can still matter when it is a common challenge for parents.
-${past.length?`Topics already used this school year, which you should not suggest again unless the observations are about something new. ${past.join("; ")}.`:""}
-
-Classes. ${Object.entries(ages).map(([r,a])=>r+", "+a).join(". ")}.
-
-Return a JSON object with one key "topics", an array of 3 or 4 objects with these keys.
-"title" a short, warm title families would read, 2 to 6 words.
-"happening" one or two sentences for the director saying what was observed, how often and in which classes.
-"quotes" an array of 1 to 3 short quotes copied word for word from the observations below.
-"obs" an array of the references (like "o4") of every observation behind this topic.
-"photos" an array of up to 4 references of observations with a photo that fit the topic well, chosen for showing the work, the food, the place or the hands. Leave it empty when the topic is a behavior that is hard for parents.
-"behavior" true when the topic is a behavior or challenge, false otherwise.
-"drdp" an array of 1 to 3 codes from this list that the topic connects to. ${nlCodesList()}
-"ages" one sentence for the director on which ages it shows up with.
-
-Observations.
-${obs.map(o=>`${o.ref}. ${o.room||"No class"}, ${o.date}${o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}${o.wonder?" Wondering. "+o.wonder.replace(/\n+/g," / "):""}`).join("\n")}`;
-  nlBusy.topics=true;if(btn){btn.disabled=true;btn.textContent="Reading the month's observations"}
-  try{
-    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter"});
-    const byRef=new Map(obs.map(o=>[o.ref,o]));
-    const ts=(Array.isArray(out?.topics)?out.topics:[]).slice(0,4).map((t,i)=>{
-      const refs=(Array.isArray(t.obs)?t.obs:[]).map(String).filter(r=>byRef.has(r));
-      const photoRefs=t.behavior?[]:(Array.isArray(t.photos)?t.photos:[]).map(String).filter(r=>byRef.has(r)&&byRef.get(r).photos.length);
-      return {id:"s"+Date.now().toString(36)+i,title:nlClean(t.title),happening:nlClean(t.happening),quotes:(Array.isArray(t.quotes)?t.quotes:[]).map(q=>nlClean(q)).filter(Boolean).slice(0,3),
-        notices:refs.flatMap(r=>byRef.get(r).ids),photos:[...new Set(photoRefs.flatMap(r=>byRef.get(r).photos))].slice(0,6),behavior:!!t.behavior,
-        drdp:(Array.isArray(t.drdp)?t.drdp:[]).map(String).filter(c=>(DRDP_M.ptk||{})[c]||(DRDP_M.it||{})[c]).slice(0,3),ages:nlClean(t.ages)}}).filter(t=>t.title&&t.notices.length);
-    x=nlDoc(x.month)||x;x.suggestions=ts;x.suggestedAt=Date.now();nlSave(x,true);
-    toast(ts.length?`${ts.length} topics from ${nlMonthOnly(x.month)}'s observations.`:"No topics came back. Try again in a moment.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
-  nlBusy.topics=false;if(view==="newsletter")renderNewsletter();
-}
-
-async function nlUseTopic(x,s,btn){
-  if((x.topics||[]).length>=2){toast("Two topics fit a newsletter best. Remove one to use this one.");return}
-  await loadDrdpTxt();
-  const obs=s.notices.map(id=>notices.get(id)).filter(Boolean);
-  const seen=new Set();const words=obs.filter(n=>{const k=String(n.noticed||"").slice(0,200);if(seen.has(k))return false;seen.add(k);return true}).map(n=>`${n.classroom||""}. ${String(n.noticed||"").replace(/\n+/g," / ")}${n.wonder?" Wondering. "+n.wonder:""}`).slice(0,25);
-  const prompt=`${nlRules(s.behavior)}
-
-The director chose this topic for the ${nlName(x.month)} newsletter. ${s.title}. ${s.happening}
-
-Write the family-facing part. Return a JSON object with these keys.
-"title" the topic title for families, 2 to 6 words.
-"happening" 2 or 3 sentences telling families what children did or what educators noticed this month, drawn only from the observations below.${s.behavior?" Speak of classes or age groups, never of one child.":" Name children by first name where the educators did."}
-"why" 2 or 3 sentences on why this matters for a young child's growth, in plain words.
-"grows" an array of exactly 3 objects with "age" and "text", going from younger to older, using these ages "Twos", "Around three", "Fours and fives". Never use the word toddler. Each "text" is one sentence describing what this looks like at that age, written in plain words but keeping the meaning and order of the developmental descriptions below, so a family can see the steps.
-"bonus" 1 or 2 sentences naming how this connects to skills children use later in school, such as hand and shoulder strength for holding a pencil and writing, vocabulary, early math, following directions, or self-regulation.
-
-Developmental descriptions for this topic, for your reference only. Never repeat their codes or names.
-${nlDrdpWords(s.drdp)||"None available."}
-
-What the educators observed.
-${words.join("\n")}`;
-  if(btn){btn.disabled=true;btn.textContent="Writing it for families"}
-  try{
-    const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter"});
-    const grows=(Array.isArray(out?.grows)?out.grows:[]).slice(0,3).map(g=>({age:nlClean(g?.age),text:nlClean(g?.text)})).filter(g=>g.text);
-    x=nlDoc(x.month)||x;
-    const photos=[];if(!s.behavior)for(const id of s.photos){const cap=nlCaption(notices.get(id));if(photos.some(p=>p.cap===cap))continue;photos.push({notice:id,cap});if(photos.length>=2)break}
-    x.topics=(x.topics||[]).concat([{id:"t"+Date.now().toString(36),from:s.id,title:nlClean(out?.title)||s.title,happening:nlClean(out?.happening),why:nlClean(out?.why),grows,bonus:nlClean(out?.bonus),tips:[],tipsDraft:false,photos,offer:s.photos,behavior:s.behavior,drdp:s.drdp,notices:s.notices}]);
-    nlSave(x,true);toast("Written in plain words for families. Read it and make it yours.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
-  if(view==="newsletter")renderNewsletter();
-}
-// a photo's caption starts from the educator's own words
-function nlCaption(n){
-  if(!n)return"";let t=String(n.noticed||"").split(/\n+/).filter(Boolean);let s=(t.length>1&&t[0].length<60?t[1]:t[0])||"";
-  s=s.split(/(?<=[.!?])\s+/)[0]||s;
-  return nlClean(s).slice(0,160);
-}
-
-async function nlDraftTips(x,t,btn){
-  const obs=(t.notices||[]).map(id=>notices.get(id)).filter(Boolean);
-  const wonders=[...new Set(obs.map(n=>String(n.wonder||"").trim()).filter(Boolean))].slice(0,5);
-  const prompt=`${nlRules(t.behavior)}
-
-Draft 4 or 5 practical tips families can try at home for this newsletter topic. The director will rewrite them in her own voice.
-Topic. ${t.title}. ${t.happening} ${t.why}
-${wonders.length?"What the educators are wondering about. "+wonders.join(" / "):""}
-Each tip is something a parent can do this week, with no special materials. Where it helps, give a short example of what a parent might say, in quotation marks. An example describes what the parent sees, names what the child did, shares the parent's own thought or memory, acknowledges a feeling, or invites the child to tell or show, like "Tell me about your building." or "You carried the bowl all the way to the table." An example is never a yes or no question, an offer to choose, a request, or a question about what the child should say or do. Tips are about noticing, describing, joining in, telling stories, and displaying and keeping children's work, never about giving children jobs, directions or tests.
-
-Return a JSON object with one key "tips", an array of objects with "lead", a short bold opening of 3 to 7 words ending with a period, and "text", one or two sentences.`;
-  if(btn){btn.disabled=true;btn.textContent="Drafting tips"}
-  try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
-    const tips=(Array.isArray(out?.tips)?out.tips:[]).slice(0,6).map(p=>({lead:nlClean(p?.lead),text:nlClean(p?.text)})).filter(p=>p.lead||p.text);
-    x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.tips=tips;tt.tipsDraft=true}nlSave(x,true);toast("Draft tips are in. Rewrite them in your own voice.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
-  if(view==="newsletter")renderNewsletter();
-}
-
-const NL_SITES=["developingchild.harvard.edu","earlychildhood.stanford.edu","reggiochildren.it","reggioalliance.org","healthychildren.org","aap.org","zerotothree.org","naeyc.org","cdc.gov","first5california.com","cde.ca.gov","extension.psu.edu","childmind.org","pbs.org","kidshealth.org","eatright.org","myplate.gov","janetlansbury.com","rie.org","understood.org"];
-const nlSiteOk=u=>{try{const h=new URL(u).hostname.replace(/^www\./,"");return NL_SITES.some(s=>h===s||h.endsWith("."+s))}catch(e){return false}};
-async function nlSuggestReading(x,t,btn){
-  const prompt=`Find 3 or 4 articles for families of young children about this topic, for a preschool's monthly newsletter. Search the web, and use only articles you actually found in your search results, with their exact web addresses. Weigh every site you can search equally, and choose the most credible and most up to date pages, preferring ones reviewed or updated in recent years. Prefer short, practical pages written for parents.
-Topic. ${t.title}. ${t.why||t.happening}
-
-Return only a JSON object with one key "items", an array of objects with "title" (the article's title, with any colon replaced by a comma), "url" (the exact address you found), "source" (the organization, such as "HealthyChildren.org, American Academy of Pediatrics"), and "why" (one short sentence on what families will find there).`;
-  if(btn){btn.disabled=true;btn.textContent="Searching trusted sites"}
-  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter-reading"});
-    const items=(Array.isArray(out?.items)?out.items:[]).map(i=>({title:nlClean(i?.title).replace(/:\s*/g,", "),url:String(i?.url||"").trim(),source:nlClean(i?.source),why:nlClean(i?.why)})).filter(i=>i.title&&/^https:\/\//.test(i.url)&&nlSiteOk(i.url)).slice(0,4);
-    x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.readingOffer=items}nlSave(x,true);
-    toast(items.length?`${items.length} articles found. Open each one before adding it.`:"No articles came back from trusted sites. Add your own instead.");
-  }catch(err){toast(err?.code==="truncated"||err?.code==="invalid_json"?"The search did not come back clearly. Try again, or add your own.":"Suggested reading is not available right now. Add your own article below.")}
-  if(view==="newsletter")renderNewsletter();
-}
-function nlAddReading(x,item,topicTitle){
-  if(!item.url||!/^https?:\/\//.test(item.url)){toast("Add the article's web address, starting with https.");return false}
-  x.reading=(x.reading||[]).filter(r=>r.url!==item.url).concat([{title:item.title||item.url,url:item.url,source:item.source||"",topic:topicTitle||""}]);
-  // every article added is kept in the library, tagged with its topic, to come back when the topic does
-  const lib=nlLib();const tag=String(topicTitle||"").toLowerCase();
-  const have=(lib.items||[]).find(i=>i.url===item.url);
-  if(have){if(tag&&!(have.tags||[]).includes(tag))have.tags=(have.tags||[]).concat([tag])}
-  else lib.items=(lib.items||[]).concat([{id:"r"+Date.now().toString(36),title:item.title||item.url,url:item.url,source:item.source||"",tags:tag?[tag]:[],addedAt:Date.now(),by:me()}]);
-  nlSave(lib,true);nlSave(x,true);return true;
-}
-// the library's articles that share a word with a topic's title
-function nlLibFor(t){const words=String(t.title||"").toLowerCase().split(/[^a-z]+/).filter(w=>w.length>3&&!["when","with","what","they","their","from","into","your","real"].includes(w));
-  return (nlLib().items||[]).filter(i=>(i.tags||[]).some(tag=>words.some(w=>tag.includes(w)))||words.some(w=>(i.title||"").toLowerCase().includes(w)))}
-
-async function nlSuggestSchool(x,btn){
-  const obs=nlObs(x.month);if(!obs.length){toast("No observations this month yet.");return}
-  const prompt=`${nlRules(false)}
-
-From the observations below, choose 2 or 3 short pieces of whole-school or farm news for the newsletter, such as the animals, the garden, the creek, visitors, older and younger children together, or something every class shared. Leave out anything that reads as one class's weekly news.
-
-Return a JSON object with one key "items", an array of objects with "text", one or two sentences for families, and "obs", the reference (like "o4") it comes from.
-
-Observations.
-${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}`).join("\n")}`;
-  if(btn){btn.disabled=true;btn.textContent="Reading the month's observations"}
-  try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
-    const byRef=new Map(obs.map(o=>[o.ref,o]));
-    const items=(Array.isArray(out?.items)?out.items:[]).slice(0,4).map(i=>({text:nlClean(i?.text),notice:(byRef.get(String(i?.obs))||{}).photos?.[0]||""})).filter(i=>i.text);
-    x=nlDoc(x.month)||x;x.school=(x.school||[]).filter(s=>s.text.trim()).concat(items.map(i=>({text:i.text})));
-    const ph=items.map(i=>i.notice).filter(Boolean);x.schoolOffer=[...new Set(ph)];if(!(x.schoolPhotos||[]).length)x.schoolPhotos=ph.slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
-    nlSave(x,true);
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
-  if(view==="newsletter")renderNewsletter();
-}
-
-// what is coming up next month, from the school calendar. Only events and school closures go in, so the snack and
-// lunch menus, birthdays and the staff calendar stay out.
-async function nlLoadComing(k){
-  const next=nlShift(k,1);if(nlEvents[next]&&nlEvents[next].at>Date.now()-10*60e3)return;
-  const [y,m]=next.split("-").map(Number);const from=iso(new Date(y,m-1,1)),to=iso(new Date(y,m,0));
-  try{const j=await window.FP_API("/api/view",{from,to});
-    const cals=new Map(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c.name||""]));
-    const by=new Map();
-    for(const e of (j.events||[])){const eid=String(e.id||"");if(e.cal==="tbday"||e.cal==="tmenu"||/^t(bday|menu)\./.test(eid))continue;const cn=cals.get(e.cal)||"";if(/internal|staff|birthday|menu|snack|lunch/i.test(cn))continue;
-      if(/birthday|^((morning |afternoon )?snack|lunch),/i.test(String(e.title||e.summary||"").trim()))continue;
-      const day=String(e.start||"").slice(0,10);if(!day)continue;
-      const title=e.cal==="tconf"||/conference/i.test(cn)?"Family conferences":String(e.title||e.summary||"").trim();if(!title)continue;
-      const key=day+"|"+title;if(!by.has(key))by.set(key,{date:day,text:title})}
-    nlEvents[next]={at:Date.now(),items:[...by.values()].sort((a,b)=>a.date.localeCompare(b.date))};
-  }catch(e){nlEvents[next]={at:Date.now(),items:[],failed:true}}
-  if(view==="newsletter")renderNewsletter();
-}
-const nlDay=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-
-// a story the team made this month can join a topic as a photo with a few of its words, only when the director picks it
-const nlMonthStories=x=>[...stories.values()].filter(st=>stReviewed(st)&&!st.offShare&&iso(new Date(st.at||0)).slice(0,7)===x.month&&notices.get(st.coverPhoto||storyPhotoIds(st)[0])&&(st.pages||[]).some(p=>has(p.lines))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,4);
-function nlStoryCap(st){const words=(st.pages||[]).map(p=>String(p.lines||"").replace(/\s*\n\s*/g," ").trim()).filter(Boolean).join(" ");let ex="";for(const sn of words.match(/[^.!?]+[.!?]+/g)||[words]){if((ex+" "+sn).trim().length>150&&ex)break;ex=(ex+" "+sn.trim()).trim()}return nlClean(`From our story ${stTitle(st)}. ${ex}`)}
-function nlStoryOffer(x,t){const ss=nlMonthStories(x);if(!ss.length)return"";
-  return `<div class="nll">A story from this month</div><div class="nlstories">${ss.map(st=>{const on=(t.photos||[]).some(p=>p.story===st.id);const cv=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
-    return `<button class="nlstory${on?" on":""}" data-nltst="${esc(t.id)}" data-id="${esc(st.id)}" aria-pressed="${on}"><img src="${esc(photoThumb(cv))}" alt="" loading="lazy"><span><b>${esc(stTitle(st))}</b><span class="nlsmall">${on?"In this topic. Tap to take it out.":"Not in the newsletter. Tap to add its cover and a few of its words."}</span></span></button>`}).join("")}</div>`}
-function nlThumb(id,on,attr){const n=notices.get(id);if(!n||!n.photo)return"";
-  return `<button class="nlph${on?" on":""}" ${attr} aria-pressed="${on}" title="${on?"In the newsletter":"Add to the newsletter"}"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"></button>`}
-
-function renderNewsletter(){
-  const main=$("#main");
-  if(!isDirector()){main.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Family newsletter</h2><div class="sub">The family newsletter is made in the director's view.</div></div>`;return}
-  const k=nlCur();const x=nlDoc(k);
-  if(!nlEvents[nlShift(k,1)])nlLoadComing(k);
-  const months=[...new Set([nlKey(new Date()),nlShift(nlKey(new Date()),-1),nlShift(nlKey(new Date()),1),...[...newsletters.values()].map(d=>d.month).filter(Boolean)])].sort().reverse();
-  let h=`<div class="head"><span class="eyebrow">Documentation</span><div class="head-row"><h2 style="margin-top:4px">Family newsletter</h2>
-    <select id="nlmonth" style="width:auto" aria-label="Month">${months.map(m=>`<option value="${m}" ${m===k?"selected":""}>${nlName(m)}${nlDoc(m)?.status==="sent"?", sent":nlDoc(m)?", draft":""}</option>`).join("")}</select></div>
-    <div class="sub">Once a month, from the office. TREE suggests topics from what educators observed, and you write the newsletter. Only you see this page.</div></div>`;
-  if(!x){
-    const n=nlObs(k).length;
-    h+=`<div class="card nlcard"><b style="font-family:var(--display);font-size:18px">${nlName(k)}</b><p class="muted" style="margin:6px 0 12px">${n?`${n} observation${n===1?"":"s"} kept so far this month. TREE reads them and suggests topics.`:"No observations kept this month yet."}</p>
-      <button class="btn" data-nlstart="${k}" ${n?"":"disabled"}>Start the ${nlMonthOnly(k)} newsletter</button></div>`;
-    h+=nlArchiveHtml(k);main.innerHTML=h;return;
-  }
-  const sent=x.status==="sent";
-  if(sent)h+=`<div class="card nlcard nlsent">Sent ${x.sentAt?fmtDate(iso(new Date(x.sentAt))):""}. It stays here to look back on, and its topics are not suggested again this school year. <button class="btn small ghost" data-nlunsend="1">Open it again</button></div>`;
-
-  // 1. the director's note
-  h+=`<section class="card nlcard"><div class="nlstep">1</div><h3>A note from you</h3><p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
-    <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea></section>`;
-
-  // 2. topics TREE noticed
-  const used=new Set((x.topics||[]).map(t=>t.from));
-  h+=`<section class="card nlcard"><div class="nlstep">2</div><div class="head-row"><h3>Topics TREE noticed</h3><button class="btn small ghost" data-nlfind="1" ${nlBusy.topics?"disabled":""}>${nlBusy.topics?"Reading the month's observations":(x.suggestions||[]).length?"Look again":"Find topics"}</button></div>
-    <p class="muted nlhint">Only you see this part. Each topic shows what educators observed and how it connects to the DRDP. Choose one or two.</p>
-    ${(x.suggestions||[]).length?`<div class="nlsugs">${x.suggestions.map(s=>`<div class="nlsug${used.has(s.id)?" used":""}">
-      <b class="nlsugt">${esc(s.title)}</b><p>${esc(s.happening)}</p>
-      ${s.quotes.length?s.quotes.map(q=>`<blockquote>${esc(q)}</blockquote>`).join(""):""}
-      ${s.drdp.length?`<p class="nlsmall"><b>DRDP.</b> ${s.drdp.map(c=>esc(c+" "+((DRDP_M.ptk[c]||DRDP_M.it[c]||{}).n||""))).join(", ")}</p>`:""}
-      ${s.ages?`<p class="nlsmall"><b>Ages.</b> ${esc(s.ages)}</p>`:""}
-      <p class="nlsmall">${s.notices.length} observation${s.notices.length===1?"":"s"}${s.behavior?". No child photo is offered for a topic about behavior.":s.photos.length?`, ${s.photos.length} photo${s.photos.length===1?"":"s"} to choose from`:""}</p>
-      ${used.has(s.id)?`<span class="chip">In this newsletter</span>`:`<button class="btn small" data-nluse="${esc(s.id)}">Use this topic</button>`}</div>`).join("")}</div>`:`<p class="muted">Press Find topics and TREE reads ${nlMonthOnly(k)}'s observations.</p>`}</section>`;
-
-  // 3. each topic, written for families
-  (x.topics||[]).forEach((t,i)=>{
-    const warn=t.behavior?nlNameWarn(nlTopicText(t)):[];
-    const lib=nlLibFor(t).filter(r=>!(x.reading||[]).some(y=>y.url===r.url));
-    h+=`<section class="card nlcard" id="nlt-${t.id}"><div class="nlstep">${3+i}</div><div class="head-row"><h3>Topic for families</h3><button class="btn small ghost" data-nlrmtopic="${esc(t.id)}">Remove topic</button></div>
-      ${warn.length?`<div class="nlwarn">This topic is about a behavior, and it mentions ${esc(warn.join(", "))}. Leave names out of it so no family can tell who it is about.</div>`:""}
-      <label class="nll">Title<input data-nlf="topics.${i}.title" value="${esc(t.title)}"></label>
-      <label class="nll">What happened this month<textarea class="nlta" aria-label="What is happening" rows="3" data-nlf="topics.${i}.happening">${esc(t.happening)}</textarea></label>
-      <div class="nlphotos">${(t.offer||[]).map(id=>nlThumb(id,(t.photos||[]).some(p=>p.notice===id),`data-nltph="${t.id}" data-id="${id}"`)).join("")}</div>
-      ${(t.photos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="topics.${i}.photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
-      ${t.behavior?`<p class="muted nlhint">No child photo for a topic about behavior, so no family wonders whether it is about their child.</p>`:nlStoryOffer(x,t)}
-      <label class="nll">Why it matters<textarea class="nlta" aria-label="Why it matters" rows="3" data-nlf="topics.${i}.why">${esc(t.why)}</textarea></label>
-      <div class="nll">How it grows</div>
-      ${(t.grows||[]).map((g,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.grows.${j}.age" value="${esc(g.age)}" aria-label="Age"><textarea class="nlta" rows="2" data-nlf="topics.${i}.grows.${j}.text" aria-label="What it looks like">${esc(g.text)}</textarea></div>`).join("")}
-      <label class="nll nlbonus">Bonus for school<textarea class="nlta" aria-label="More to know" rows="2" data-nlf="topics.${i}.bonus">${esc(t.bonus)}</textarea></label>
-      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Ideas to try at home</div><span><button class="btn small ghost" data-nltipdraft="${esc(t.id)}">${(t.tips||[]).length?"Draft new tips":"Draft tips for me"}</button> <button class="btn small ghost" data-nltipadd="${esc(t.id)}">Add a tip</button></span></div>
-      ${t.tipsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
-      ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(nlTxt(p.lead))}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" data-talk="1" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${esc(t.id)}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
-      <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Reading for families</div><button class="btn small ghost" data-nlread="${esc(t.id)}">${(t.readingOffer||[]).length?"Search again":"Suggest reading"}</button></div>
-      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}</div><button class="btn small" data-nladdoffer="${esc(t.id)}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
-      ${lib.length?`<div class="nlsmall" style="margin-top:8px"><b>From your library</b></div>${lib.map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small" data-nladdlib="${esc(r.id)}" data-topic="${esc(t.id)}">Add</button></div>`).join("")}`:""}
-    </section>`;
-  });
-
-  // reading chosen, and the director's own
-  const step=3+(x.topics||[]).length;
-  h+=`<section class="card nlcard"><div class="nlstep">${step}</div><h3>For families who want to read more</h3>
-    ${(x.reading||[]).length?(x.reading||[]).map((r,j)=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small ghost" data-nlrmread="${j}" aria-label="Remove">×</button></div>`).join(""):`<p class="muted nlhint">Add articles from the topics above, or your own below. Open each one before it goes to families.</p>`}
-    <details class="nlown"><summary>Add your own article or handout</summary>
-      <label class="nll">Title<input id="nlrt"></label><label class="nll">Web address<input id="nlru" placeholder="https://"></label><label class="nll">Where it is from<input id="nlrs" placeholder="Such as Early Plate Project"></label>
-      <label class="nll">Topic<select id="nlrtopic"><option value="">No topic</option>${(x.topics||[]).map(t=>`<option>${esc(t.title)}</option>`).join("")}</select></label>
-      <button class="btn small" data-nladdown="1">Add it</button><p class="muted nlhint">It is kept in your library too, and comes back when its topic does.</p></details></section>`;
-
-  // school and farm
-  h+=`<section class="card nlcard"><div class="nlstep">${step+1}</div><div class="head-row"><h3>Around the school and farm</h3><button class="btn small ghost" data-nlschool="1">${(x.school||[]).length?"Suggest more":"Suggest from observations"}</button></div>
-    <p class="muted nlhint">Only what spans the school, such as the animals, the garden, staff news, events and policy updates.</p>
-    ${(x.school||[]).map((s,j)=>`<div class="nlrow"><textarea class="nlta" rows="2" aria-label="School news" data-nlf="school.${j}.text">${esc(s.text)}</textarea><button class="btn small ghost" data-nlrmschool="${j}" aria-label="Remove">×</button></div>`).join("")}
-    <button class="btn small ghost" data-nladdschool="1">Add a line</button>
-    ${(x.schoolOffer||[]).length?`<div class="nlphotos">${x.schoolOffer.map(id=>nlThumb(id,(x.schoolPhotos||[]).some(p=>p.notice===id),`data-nlsph="${id}"`)).join("")}</div>`:""}
-    ${(x.schoolPhotos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="schoolPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`;
-
-  // coming up
-  const ev=nlEvents[nlShift(k,1)];const chosen=new Set((x.coming||[]).map(c=>c.date+"|"+c.text));
-  // where the month's food came from, the same content as the farm sheet for families
-  {const ft=farmNewsletterText(x.month);h+=`<section class="card nlcard"><h3>From our farms</h3>
-    ${ft?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where this month's lunches and snacks came from</label>${x.farms?`<div class="muted" style="white-space:pre-line;margin-top:6px">${esc(ft)}</div>`:""}`:`<p class="muted nlhint">No orders are kept for this month yet, so there is nothing to show.</p>`}</section>`}
-  // thank you to the families who gave time this month, every family named
-  {const tt=famThanksText(x.month);h+=`<section class="card nlcard"><h3>Thank you, families</h3>
-    ${tt?`<label class="nlcheck"><input type="checkbox" data-nlthanks="1" ${x.thanks!==false?"checked":""}> Thank the families who gave time this month</label>${x.thanks!==false?`<div class="muted" style="white-space:pre-line;margin-top:6px">${esc(tt)}</div>`:""}`:`<p class="muted nlhint">No family has logged time this month yet.</p>`}</section>`}
-  h+=`<section class="card nlcard"><div class="nlstep">${step+2}</div><h3>Coming up in ${nlMonthOnly(nlShift(k,1))}</h3>
-    ${!ev?`<p class="muted">Reading the school calendar</p>`:ev.failed?`<p class="muted">The school calendar could not be read just now. Add dates yourself below.</p>`:ev.items.length?ev.items.map(e=>`<label class="nlcheck"><input type="checkbox" data-nlcome="${esc(e.date+"|"+e.text)}" ${chosen.has(e.date+"|"+e.text)?"checked":""}> <b>${esc(nlDay(e.date))}.</b> ${esc(e.text)}</label>`).join(""):`<p class="muted">Nothing on the school calendar for ${nlMonthOnly(nlShift(k,1))} yet.</p>`}
-    ${(x.coming||[]).filter(c=>c.own).map(c=>`<div class="nlres"><div><b>${esc(c.date?nlDay(c.date):"")}.</b> ${esc(c.text)}</div><button class="btn small ghost" data-nlrmcome="${esc(c.date+"|"+c.text)}" aria-label="Remove">×</button></div>`).join("")}
-    <div class="nlrow"><input type="date" id="nlcd" aria-label="Date"><input id="nlct" placeholder="What is happening"><button class="btn small ghost" data-nladdcome="1">Add</button></div></section>`;
-
-  // finish
-  h+=`<section class="card nlcard"><div class="nlstep">${step+3}</div><h3>Send it</h3>
-    <p class="muted nlhint">Copy each block into your Kaymbu template and add the photos. Word and PDF copies are for your records and the front entrance.</p>
-    <div class="actions"><button class="btn" data-nlkaymbu="1">${nlKaymbu?"Hide the Kaymbu blocks":"Copy for Kaymbu"}</button><button class="btn ghost" data-nlword="1">Download Word</button><button class="btn ghost" data-nlpdf="1">Download PDF</button>${x.posted?"":`<button class="btn ghost" data-nlpost="1">Post to the Family page</button>`}${sent?"":`<button class="btn ghost" data-nlsent="1">Mark as sent</button>`}<button class="btn ghost danger" data-nldel="1">Delete this newsletter</button></div>
-    ${x.posted?`<div class="nlres" style="margin-top:10px"><div>On the Family page since ${esc(fmtDate(iso(new Date(x.posted.at))))}.${x.updatedAt>(x.posted.at||0)+5000?" You have changed it since, so update it for families to see the changes.":""}</div><span class="actions"><button class="btn small" data-nlpost="1">Update it</button><button class="btn small ghost" data-nlunpost="1">Take it down</button></span></div>`:""}
-    ${nlKaymbu?nlKaymbuHtml(x):""}</section>`;
-  h+=nlArchiveHtml(k);
-  main.innerHTML=h;
-  main.querySelectorAll("textarea.nlta").forEach(ta=>{try{autoGrow(ta)}catch(e){}});
-}
-function nlArchiveHtml(k){
-  const past=[...newsletters.values()].filter(d=>d.month&&d.month!==k).sort((a,b)=>b.month.localeCompare(a.month));
-  const lib=nlLib().items||[];
-  return `<section class="card nlcard nlarch"><h3>Past newsletters</h3>${past.length?past.map(d=>`<button class="item" data-nlopen="${d.month}"><span class="nm">${nlName(d.month)}</span><span class="cnt">${(d.topics||[]).map(t=>esc(t.title)).join(", ")||"No topics yet"}${d.status==="sent"?"":", draft"}</span></button>`).join(""):`<p class="muted">Each newsletter is kept here once it is started.</p>`}
-    <p class="muted nlhint" style="margin-top:10px">${lib.length} article${lib.length===1?"":"s"} in your library.</p></section>`;
-}
-
-// the newsletter as plain blocks, the way they go into the Kaymbu template
-function nlBlocks(x){
-  const B=[];
-  if((x.note||"").trim())B.push({h:"A note from the director",text:x.note.trim()});
-  for(const t of x.topics||[]){
-    const p=[t.title,"",t.happening,"","Why it matters",t.why,""];
-    if((t.grows||[]).length){p.push("How it grows");for(const g of t.grows)p.push(`${g.age}. ${g.text}`);p.push("")}
-    if(t.bonus)p.push("Bonus for school. "+t.bonus,"");
-    if((t.tips||[]).length){p.push("Ideas to try at home");for(const tp of t.tips)p.push(nlTxt(`${tp.lead} ${tp.text}`).trim())}
-    B.push({h:t.title,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
-  }
-  if((x.reading||[]).length)B.push({h:"For families who want to read more",text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
-  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
-  if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
-  {const ft=x.farms?farmNewsletterText(x.month):"";if(ft)B.push({h:"From our farms",text:ft})}
-  {const tt=x.thanks!==false?famThanksText(x.month):"";if(tt)B.push({h:"Thank you, families",text:tt})}
-  if((x.coming||[]).length)B.push({h:"Coming up",text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${c.text}`).join("\n")});
-  return B;
-}
-function nlKaymbuHtml(x){
-  const B=nlBlocks(x);
-  if(!B.length)return `<p class="muted">Nothing written yet.</p>`;
-  const warn=nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" "));
-  return `${warn.length?`<div class="nlwarn">A topic about a behavior mentions ${esc(warn.join(", "))}. Leave names out of it before copying.</div>`:""}${(x.topics||[]).some(t=>t.tipsDraft)?`<div class="nlwarn">Some tips are still TREE's draft.</div>`:""}
-    ${B.map((b,j)=>`<div class="nlblock"><div class="head-row"><b>${esc(b.h)}</b><button class="btn small" data-nlcopy="${j}">Copy</button></div><textarea class="nlta" rows="5" readonly id="nlb-${j}">${esc(b.text)}</textarea>
-    ${(b.photos||[]).length?`<div class="nlphotos">${b.photos.map(p=>{const n=notices.get(p.notice);return n?`<span class="nlphs"><img src="${esc(photoThumb(n))}" alt=""><button class="btn small ghost" data-nlsave="${p.notice}">Save photo</button></span>`:""}).join("")}</div>`:""}</div>`).join("")}`;
-}
-
-function nlSetPath(x,path,val){const ks=path.split(".");let o=x;for(let i=0;i<ks.length-1;i++){o=o[/^\d+$/.test(ks[i])?Number(ks[i]):ks[i]];if(o==null)return}o[ks[ks.length-1]]=val}
-document.addEventListener("input",e=>{
-  if(view!=="newsletter")return;const el=e.target;if(!el.dataset||!el.dataset.nlf)return;
-  const x=nlDoc(nlCur());if(!x)return;nlSetPath(x,el.dataset.nlf,el.value);
-  const m=el.dataset.nlf.match(/^topics\.(\d+)\.tips\./);if(m&&x.topics[+m[1]])x.topics[+m[1]].tipsDraft=false;
-  if(el.tagName==="TEXTAREA")try{autoGrow(el)}catch(err){}
-  nlSave(x);
-});
-document.addEventListener("change",e=>{
-  if(view!=="newsletter")return;const el=e.target;
-  if(el.id==="nlmonth"){nlMonth=el.value;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();return}
-  if(el.dataset&&el.dataset.nlcome){const x=nlDoc(nlCur());if(!x)return;const [date,...rest]=el.dataset.nlcome.split("|");const text=rest.join("|");
-    x.coming=(x.coming||[]).filter(c=>!(c.date===date&&c.text===text));if(el.checked)x.coming.push({date,text});nlSave(x)}
-});
-document.addEventListener("click",async e=>{
-  if(view!=="newsletter")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;
-  const k=nlCur();let x=nlDoc(k);
-  if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlDeleted.delete(x.id);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
-  if(d.nlopen){nlMonth=d.nlopen;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();jumpTop();return}
-  if(!x)return;
-  if(d.nlfind){nlFindTopics(x,t);return}
-  if(d.nluse){const s=(x.suggestions||[]).find(y=>y.id===d.nluse);if(s)nlUseTopic(x,s,t);return}
-  if(d.nlrmtopic){if(!confirm("Remove this topic from the newsletter?"))return;x.topics=x.topics.filter(y=>y.id!==d.nlrmtopic);nlSave(x,true);renderNewsletter();return}
-  if(d.nltst){const tp=x.topics.find(y=>y.id===d.nltst);const st=stories.get(d.id);if(!tp||!st||tp.behavior)return;const on=(tp.photos||[]).some(p=>p.story===st.id);
-    if(on)tp.photos=tp.photos.filter(p=>p.story!==st.id);else{if((tp.photos||[]).length>=2){toast("Two photos fit a topic best. Take one out first.");return}tp.photos=(tp.photos||[]).concat([{notice:st.coverPhoto||storyPhotoIds(st)[0],cap:nlStoryCap(st),story:st.id}])}
-    nlSave(x);renderNewsletter();return}
-  if(d.nltph){const tp=x.topics.find(y=>y.id===d.nltph);if(!tp)return;const has=(tp.photos||[]).some(p=>p.notice===d.id);
-    if(has)tp.photos=tp.photos.filter(p=>p.notice!==d.id);else{if((tp.photos||[]).length>=2){toast("Two photos fit a topic best. Take one out first.");return}tp.photos=(tp.photos||[]).concat([{notice:d.id,cap:nlCaption(notices.get(d.id))}])}
-    nlSave(x);renderNewsletter();return}
-  if(d.nlsph){const has=(x.schoolPhotos||[]).some(p=>p.notice===d.nlsph);
-    if(has)x.schoolPhotos=x.schoolPhotos.filter(p=>p.notice!==d.nlsph);else{if((x.schoolPhotos||[]).length>=2){toast("Two photos fit this part best. Take one out first.");return}x.schoolPhotos=(x.schoolPhotos||[]).concat([{notice:d.nlsph,cap:nlCaption(notices.get(d.nlsph))}])}
-    nlSave(x);renderNewsletter();return}
-  if(d.nltipdraft){const tp=x.topics.find(y=>y.id===d.nltipdraft);if(!tp)return;if((tp.tips||[]).length&&!confirm("Replace these tips with a new draft?"))return;nlDraftTips(x,tp,t);return}
-  if(d.nltipadd){const tp=x.topics.find(y=>y.id===d.nltipadd);if(!tp)return;tp.tips=(tp.tips||[]).concat([{lead:"",text:""}]);nlSave(x);renderNewsletter();return}
-  if(d.nltiprm){const tp=x.topics.find(y=>y.id===d.nltiprm);if(!tp)return;tp.tips.splice(+d.j,1);nlSave(x);renderNewsletter();return}
-  if(d.nlread){const tp=x.topics.find(y=>y.id===d.nlread);if(tp)nlSuggestReading(x,tp,t);return}
-  if(d.nladdoffer){const tp=x.topics.find(y=>y.id===d.nladdoffer);const r=tp&&(tp.readingOffer||[]).find(y=>y.url===d.url);if(r&&nlAddReading(x,r,tp.title)){toast("Added, and kept in your library.");renderNewsletter()}return}
-  if(d.nladdlib){const r=(nlLib().items||[]).find(y=>y.id===d.nladdlib);const tp=x.topics.find(y=>y.id===d.topic);if(r&&nlAddReading(x,r,tp&&tp.title))renderNewsletter();return}
-  if(d.nladdown){const item={title:$("#nlrt").value.trim(),url:$("#nlru").value.trim(),source:$("#nlrs").value.trim()};if(!item.title){toast("Add the article's title.");return}if(nlAddReading(x,item,$("#nlrtopic").value)){toast("Added, and kept in your library.");renderNewsletter()}return}
-  if(t.hasAttribute("data-nlrmread")){x.reading.splice(+d.nlrmread,1);nlSave(x);renderNewsletter();return}
-  if(d.nlschool){nlSuggestSchool(x,t);return}
-  if(d.nladdschool){x.school=(x.school||[]).concat([{text:""}]);nlSave(x);renderNewsletter();return}
-  if(t.hasAttribute("data-nlrmschool")){x.school.splice(+d.nlrmschool,1);nlSave(x);renderNewsletter();return}
-  if(d.nladdcome){const date=$("#nlcd").value,text=$("#nlct").value.trim();if(!text){toast("Write what is happening.");return}x.coming=(x.coming||[]).concat([{date,text,own:true}]);nlSave(x);renderNewsletter();return}
-  if(d.nlrmcome){const [date,...rest]=d.nlrmcome.split("|");const text=rest.join("|");x.coming=x.coming.filter(c=>!(c.own&&c.date===date&&c.text===text));nlSave(x);renderNewsletter();return}
-  if(d.nlkaymbu){nlKaymbu=!nlKaymbu;renderNewsletter();if(nlKaymbu)setTimeout(()=>{const b=$(".nlblock");if(b)b.scrollIntoView({block:"start",behavior:"smooth"})},60);return}
-  if(t.hasAttribute("data-nlcopy")){copyText($("#nlb-"+d.nlcopy));return}
-  if(d.nlsave){const n=notices.get(d.nlsave);if(!n||!n.photo)return;try{const r=await fetchPhoto(window.FP_ORIGINAL_URL(n.photo.id));const blob=await r.blob();
-      await downloads.save({filename:`Fulton Community School newsletter ${nlMonthOnly(k)} photo ${n.photo.id.slice(0,6)}.jpg`,data:blob})}catch(err){toast("The photo could not be saved. Try again.")}return}
-  if(d.nlword){nlWord(x);return}
-  if(d.nlpdf){nlPdf(x);return}
-  if(d.nlsent){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length&&!confirm("A topic about a behavior names a child. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
-  // the newsletter goes on the Family page only when the director posts it, as it reads at that moment
-  if(d.nlpost){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length){toast("A topic about a behavior names a child. Take the name out before posting.");return}
-    const B=nlBlocks(x);if(!B.length){toast("Nothing is written yet.");return}
-    const blocks=tidyWords(B.map(b=>({h:nlTxt(b.h),text:nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""),photos:(b.photos||[]).map(p=>{const n=notices.get(p.notice);return n&&n.photo&&n.photo.id?{id:n.photo.id,cap:p.cap||""}:null}).filter(Boolean)})));
-    if(!confirm(x.posted?"Update the newsletter on the Family page with what is here now?":`Post the ${nlName(x.month)} newsletter to the Family page? Every family will see it.`))return;
-    x.posted={title:`The ${nlName(x.month)} newsletter`,blocks,at:Date.now()};nlSave(x,true);toast("On the Family page.");renderNewsletter();return}
-  if(d.nlunpost){if(!confirm("Take the newsletter off the Family page?"))return;x.posted=null;nlSave(x,true);toast("Taken off the Family page.");renderNewsletter();return}
-  if(d.nlunsend){x.status="draft";nlSave(x,true);renderNewsletter();return}
-  if(d.nldel){if(!confirm(`Delete the ${nlName(x.month)} newsletter? Its topics, tips and photos choices are removed. Articles stay in your library.`))return;
-    clearTimeout(nlTimers[x.id]);delete nlTimers[x.id];nlDeleted.add(x.id);newsletters.delete(x.id);nlKaymbu=false;
-    if(db)db.doc("newsletters/"+x.id).delete().then(()=>toast("The newsletter is deleted.")).catch(()=>toast("Could not delete the newsletter. Check your connection."));
-    renderNewsletter();jumpTop();return}
-});
-
-// photos for the printed copies, at a size that prints well
-async function nlPhotos(x){
-  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
-  await loadPhotos([{photos:list.map(n=>({key:"nl:"+n.id,src:window.FP_ORIGINAL_URL(n.photo.id)}))}]);
-}
-const nlIm=p=>photoCache.get("nl:"+p.notice);
-async function nlWord(x){
-  let D;try{D=await TREE_KIT.word()}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
-  toast("Preparing the Word file");await nlPhotos(x);await loadPrintFonts();
-  const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,ExternalHyperlink,Footer,LevelFormat}=D;
-  const MOSS="2B5A40",INK="1B2920",MUTED="5B6B61",LINE="C6D0C3",W=9840,F=PF.buf?PF.word.fr:"Arial";
-  // em dashes become commas, the way the PDF prints them, and bold words use the school's semibold and headings its display face
-  // Andika runs a little wider than most faces, so the words are set at 10 points to keep the newsletter to four pages
-  const r=(t,o)=>{o=Object.assign({},o||{});if(PF.buf)o.font=PF.word.fr;if(PF.buf&&o.size)o.size=Math.round(o.size*.91);return new TextRun(Object.assign({text:nlTxt(t).replace(/\s*\u2014\s*/g,", "),font:F,size:PF.buf?20:22,color:INK},o))};
-  const P=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[r(kids)],spacing:{after:140,line:300}},o||{}));
-  const H=(t,sz,o)=>new Paragraph(Object.assign({children:[r(t,{size:sz,bold:true,color:MOSS})],spacing:{before:280,after:120},keepNext:true},o||{}));
-  const sub=t=>new Paragraph({children:[r(t,{size:24,bold:true})],spacing:{before:160,after:80},keepNext:true});
-  const rule=()=>new Paragraph({children:[],spacing:{before:200,after:0},border:{top:{style:BorderStyle.SINGLE,size:4,color:LINE,space:8}}});
-  const bul=kids=>new Paragraph({children:kids,numbering:{reference:"dots",level:0},spacing:{after:90,line:290}});
-  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},nb={top:none,bottom:none,left:none,right:none};
-  const photoRow=ps=>{ps=ps.filter(p=>nlIm(p));if(!ps.length)return[];const col=Math.floor(W/ps.length);
-    const cell=p=>{const im=nlIm(p);const maxW=ps.length>1?290:420,maxH=ps.length>1?370:400;let w=maxW,h=w*im.h/im.w;if(h>maxH){h=maxH;w=h*im.w/im.h}
-      return new TableCell({width:{size:col,type:WidthType.DXA},borders:nb,margins:{right:160},children:[new Paragraph({children:[new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(w),height:Math.round(h)}})],spacing:{after:60}}),new Paragraph({children:[r(p.cap,{size:18,color:MUTED})],spacing:{after:160,line:260}})]})};
-    return [new Table({width:{size:col*ps.length,type:WidthType.DXA},columnWidths:ps.map(()=>col),borders:Object.assign({insideHorizontal:none,insideVertical:none},nb),rows:[new TableRow({children:ps.map(cell)})]})]};
-  const ch=[];
-  ch.push(P([r("FULTON COMMUNITY SCHOOL & FARM",{size:18,bold:true,color:MUTED,characterSpacing:40})],{spacing:{after:60}}));
-  ch.push(new Paragraph({children:[r("Family newsletter, "+nlName(x.month),{size:40,bold:true,color:MOSS})],spacing:{after:200}}));
-  if((x.note||"").trim()){ch.push(H("A note from the director",28));for(const para of x.note.trim().split(/\n\s*\n/))ch.push(P(para.replace(/\n/g," ")))}
-  for(const t of x.topics||[]){
-    ch.push(rule());ch.push(H(t.title,30,{before:120}));ch.push(...photoRow(t.photos||[]));
-    if(t.happening)ch.push(P(t.happening));
-    if(t.why){ch.push(sub("Why it matters"));ch.push(P(t.why))}
-    if((t.grows||[]).length){ch.push(sub("How it grows"));for(const g of t.grows)ch.push(bul([r(g.age+". ",{bold:true,color:MOSS}),r(g.text)]))}
-    if(t.bonus)ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},shading:{type:ShadingType.CLEAR,color:"auto",fill:"FBF3E4"},borders:{top:none,bottom:none,right:none,left:{style:BorderStyle.SINGLE,size:24,color:"9A5B07"}},margins:{top:140,bottom:140,left:240,right:240},children:[new Paragraph({children:[r("Bonus for school. ",{bold:true,color:"9A5B07"}),r(t.bonus)],spacing:{after:0,line:290}})]})]})]}));
-    if((t.tips||[]).length){ch.push(sub("Ideas to try at home"));for(const p of t.tips)ch.push(bul([r((p.lead||"")+" ",{bold:true}),r(p.text)]))}
-  }
-  if((x.reading||[]).length){ch.push(rule());ch.push(H("For families who want to read more",28,{before:120}));for(const it of x.reading)ch.push(bul([new ExternalHyperlink({link:it.url,children:[r(it.title,{color:"245B78",underline:{}})]}),r(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:"",{color:MUTED})]))}
-  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
-  if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
-  {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){ch.push(rule());ch.push(H("From our farms",28,{before:120}));for(const pp of ft.split(/\n\n/))ch.push(P(pp))}}
-  if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(c.text)]))}
-  const wf=wordFonts();const doc=TREE_KIT.wordFile(D,{creator:"Fulton Community School",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
-    numbering:{config:[{reference:"dots",levels:[{level:0,format:LevelFormat.BULLET,text:"•",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:240}}}}]}]},
-    sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1080,bottom:1080,left:1200,right:1200}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School",{size:16,color:MUTED})]})]})},children:ch}]});
-  const blob=await TREE_KIT.wordBlob(D,doc);
-  await downloads.save({filename:`Fulton Community School family newsletter ${nlName(x.month)}.docx`,data:blob});
-}
-// tips drafted with markdown keep their words and lose the asterisks
-const nlTxt=t=>String(t??"").replace(/\*+/g,"").replace(/ +([.,])/g,"$1");
-async function nlPdf(x){
-  if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
-  toast("Preparing the PDF");await nlPhotos(x);await loadPrintFonts();
-  // set at full size, then a little smaller when that saves a page with only a few lines on it
-  const build=sc=>{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});
-  const L=54,R=PW-54,TW=R-L,BOT=PH-60;let y=60;const bs=10.5*sc,blh=bs*1.42;
-  const ink=()=>doc.setTextColor(...C.ink),moss=()=>doc.setTextColor(...C.moss),mut=()=>doc.setTextColor(...C.muted);
-  const need=hh=>{if(y+hh>BOT){doc.addPage();y=60}};
-  const para=(t,o={})=>{const sz=(o.size||10.5)*sc;pfont(doc,o.bold?"fs":"fr",sz);(o.color||ink)();const lines=doc.splitTextToSize(clean(nlTxt(t)),o.w||TW);const lh=sz*1.42;
-    lines.forEach((ln,i)=>{need(i===0&&lines.length>1?lh*2:lh);doc.text(ln,o.x||L,y+lh*.75);y+=lh});y+=(o.after??7)*sc};
-  // a heading always has at least two lines of its words under it on the same page
-  const head=(t,sz)=>{sz*=sc;pfont(doc,"bs",sz);const ls=doc.splitTextToSize(clean(t),TW);need(6+ls.length*sz*1.25+5+blh*2.2);y+=6;moss();for(const ln of ls){doc.text(ln,L,y+sz*.8);y+=sz*1.25}y+=5};
-  const sub=t=>{need(18*sc+blh*2.2);pfont(doc,"fs",11.5*sc);ink();doc.text(clean(t),L,y+10*sc);y+=18*sc};
-  const bullet=(lead,t)=>{const lh=blh;lead=clean(nlTxt(lead));const words=clean(nlTxt(t)).split(/\s+/).filter(Boolean);
-    pfont(doc,"fs",bs);const leadW=lead?doc.getTextWidth(lead+" "):0;pfont(doc,"fr",bs);
-    let first="";while(words.length&&doc.getTextWidth((first?first+" ":"")+words[0])<=TW-14-leadW)first=(first?first+" ":"")+words.shift();
-    const rest=words.length?doc.splitTextToSize(words.join(" "),TW-14):[];
-    need(rest.length?lh*2:lh);doc.setFillColor(...C.moss);doc.circle(L+3,y+lh*.45,1.6,"F");
-    if(lead){pfont(doc,"fs",bs);moss();doc.text(lead,L+14,y+lh*.75)}pfont(doc,"fr",bs);ink();doc.text(first,L+14+leadW,y+lh*.75);y+=lh;
-    for(const ln of rest){need(lh);doc.text(ln,L+14,y+lh*.75);y+=lh}y+=4*sc};
-  const rule=()=>{need(24);y+=8;doc.setDrawColor(...C.line);doc.setLineWidth(.6);doc.line(L,y,R,y);y+=10};
-  const photos=ps=>{ps=ps.filter(p=>nlIm(p));if(!ps.length)return;const gap=14,cw=ps.length>1?(TW-gap)/2:TW*.62,mh=(ps.length>1?250:300)*sc;
-    const dims=ps.map(p=>{const im=nlIm(p);let w=cw,h=w*im.h/im.w;if(h>mh){h=mh;w=h*im.w/im.h}return {im,w,h,p}});const rowH=Math.max(...dims.map(d=>d.h));
-    need(rowH+34);let xx=L;let capH=0;
-    for(const dm of dims){doc.addImage(dm.im.url,"JPEG",xx,y,dm.w,dm.h);pfont(doc,"fr",8.6);mut();const cl=doc.splitTextToSize(clean(dm.p.cap),cw);cl.slice(0,3).forEach((ln,i)=>doc.text(ln,xx,y+rowH+11+i*11));capH=Math.max(capH,Math.min(cl.length,3)*11);xx+=cw+gap}
-    y+=rowH+capH+16};
-  pfont(doc,"fs",8.5);mut();doc.setCharSpace(1);doc.text("FULTON COMMUNITY SCHOOL & FARM",L,y);doc.setCharSpace(0);y+=10;
-  head("Family newsletter, "+nlName(x.month),22);
-  if((x.note||"").trim()){head("A note from the director",14);for(const pp of x.note.trim().split(/\n\s*\n/))para(pp.replace(/\n/g," "))}
-  for(const t of x.topics||[]){rule();head(t.title,17);photos(t.photos||[]);if(t.happening)para(t.happening);
-    if(t.why){sub("Why it matters");para(t.why)}
-    if((t.grows||[]).length){sub("How it grows");for(const g of t.grows)bullet(g.age+".",g.text)}
-    if(t.bonus){pfont(doc,"fr",bs);const lines=doc.splitTextToSize(clean("Bonus for school. "+nlTxt(t.bonus)),TW-30);const hh=lines.length*blh+18;need(hh+6);y+=4;
-      doc.setFillColor(251,243,228);doc.rect(L,y,TW,hh,"F");doc.setFillColor(...C.marigold);doc.rect(L,y,3,hh,"F");
-      lines.forEach((ln,i)=>{if(i===0){pfont(doc,"fs",bs);doc.setTextColor(154,91,7);doc.text("Bonus for school.",L+16,y+9+bs);const bw=doc.getTextWidth("Bonus for school. ");pfont(doc,"fr",bs);ink();doc.text(ln.replace(/^Bonus for school\.\s*/,""),L+16+bw,y+9+bs)}else{pfont(doc,"fr",bs);ink();doc.text(ln,L+16,y+9+bs+i*blh)}});y+=hh+10}
-    if((t.tips||[]).length){sub("Ideas to try at home");for(const p of t.tips)bullet(p.lead,p.text)}}
-  if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));pfont(doc,"fr",8.6);mut();doc.textWithLink(clean(it.url).slice(0,95),L+14,y+2,{url:it.url});y+=12}}
-  const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
-  if(sch.length){rule();head("Around the school and farm",14);photos(x.schoolPhotos||[]);for(const s of sch)bullet("",s)}
-  {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){rule();head("From our farms",14);for(const pp of ft.split(/\n\n/))para(pp)}}
-  if((x.coming||[]).length){rule();head("Coming up",14);for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))bullet(c.date?nlDay(c.date)+".":"",c.text)}
-  return {doc,last:y}};
-  let B=build(1);
-  // a last page under a third full, or more than four pages, is worth setting a little smaller
-  for(const sc of [.96,.93,.9,.87]){const n=B.doc.getNumberOfPages();if(n<2||(B.last>PH*.33&&n<=4))break;const T=build(sc);if(T.doc.getNumberOfPages()<n){B=T;break}}
-  const doc=B.doc;
-  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);pfont(doc,"fr",7.6);doc.setTextColor(...C.muted);doc.text("Fulton Community School"+(n>1?`   ${i} of ${n}`:""),PW/2,PH-28,{align:"center"})}
-  await saveFile(doc.output("blob"),`Fulton Community School family newsletter ${nlName(x.month)}.pdf`);
-}
-
+// pages loaded only when opened. tools/build.py moves what only these pages use to their own files
+const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","8a2d12a8b2").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -7314,12 +6794,6 @@ const threadNotices=t=>{if(!t)return [];const ix=obsIndex();if(!ix.byT){ix.byT=n
 const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
   for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
-/* ---------- Farm to School grant ----------
-   The director's view of the CDFA Farm to School Incubator grant. It gathers what TREE already holds, by quarter,
-   against the agreement's eight objectives. FEED orders give the farm-level purchases for the food procurement
-   worksheet, the weekly bins give the farms behind each bin, the menus name the standing producers, and observations
-   and plans show the hands-on food education in the educators' own words. Counting is arithmetic on the school's own
-   records. Claude only drafts the quarterly check-in from them, and the director rewrites it. */
 let noticesSeen=false, grantLoaded=false, grantRecs=new Map(), gQuarter=LS.get("fps.gq",""), gBusy=false, gAdd=null;
 const G_DEFAULT={agreement:"24-0887-000-SG",end:"2027-06-30",start:"",award:200000,b1a:80000,b1b:10000};
 const gSet=()=>Object.assign({},G_DEFAULT,grantRecs.get("settings")||{});
@@ -7335,16 +6809,12 @@ function gProducer(name){const k=gKey(name);const L=(grantRecs.get("producers")|
 function quarterOf(day){const [y,m]=day.split("-").map(Number);return y+"-Q"+(Math.floor((m-1)/3)+1)}
 function quarterRange(q){const [y,n]=q.split("-Q").map(Number);const m0=(n-1)*3;const from=iso(new Date(y,m0,1)),to=iso(new Date(y,m0+3,0));return {from,to}}
 const quarterName=q=>{const [y,n]=q.split("-Q").map(Number);const {from,to}=quarterRange(q);return parseIso(from).toLocaleDateString("en-US",{month:"long"})+" to "+parseIso(to).toLocaleDateString("en-US",{month:"long"})+" "+y};
-const gQ=()=>/^\d{4}-Q[1-4]$|^\d{4}$|^all$/.test(gQuarter)?gQuarter:quarterOf(iso(new Date()));
-// the page can show a quarter, a year from July to June, the way the grant term and the school year run, or the whole grant
 const isQuarter=p=>/^\d{4}-Q[1-4]$/.test(p);
-const gYearOf=day=>{const [y,m]=day.split("-").map(Number);return String(m>=7?y:y-1)};
 function gStartDay(){const S=gSet();if(S.start)return S.start;const d=gLinesAll("0000","9999").map(x=>x.day).filter(Boolean).sort()[0];return d||iso(new Date())}
 function periodRange(p){if(isQuarter(p))return quarterRange(p);if(/^\d{4}$/.test(p)){const y=Number(p);return {from:y+"-07-01",to:(y+1)+"-06-30"}}
   const S=gSet();return {from:gStartDay(),to:S.end||iso(new Date())}}
 function periodName(p){if(isQuarter(p))return quarterName(p);if(/^\d{4}$/.test(p))return "July "+p+" to June "+(Number(p)+1);
   const {from,to}=periodRange("all");return "Whole grant, "+parseIso(from).toLocaleDateString("en-US",{month:"long",year:"numeric"})+" to "+parseIso(to).toLocaleDateString("en-US",{month:"long",year:"numeric"})}
-const periodWord=p=>isQuarter(p)?"this quarter":/^\d{4}$/.test(p)?"this year":"across the grant";
 const gOrders=()=>[...grantRecs.values()].filter(x=>x&&x.kind==="order").sort((a,b)=>(b.fulfilled||b.placed||"").localeCompare(a.fulfilled||a.placed||""));
 // every purchase line in a range, from FEED orders and purchases added by hand
 function gLinesAll(from,to){const out=[];
@@ -7365,11 +6835,6 @@ function gTownMiles(town){const t=gTownInfo(town);return t?gMilesTo(t.lat,t.lng)
 const G_RETAIL=/trader joe|costco|safeway|whole foods|target|walmart|grocery outlet|raley|lucky|sprouts|smart (and|&) final|amazon|oliver'?s/i;
 const gKindOf=x=>x.kind||(G_RETAIL.test((x.producer||"")+" "+(x.distributor||""))?"retail":x.caGrown===false?"specialty":"local");
 // FEED's bins are invoiced as FEED, so a bin's miles are the average of the farms FEED listed for it that week
-function gLineMiles(x){if(/FEED Bin/i.test(x.item||"")||/^feed cooperative/i.test(x.producer||"")){const near=binAll().filter(b=>Math.abs(parseIso(b.date)-parseIso(x.day))<=6*864e5).sort((a,b)=>Math.abs(parseIso(a.date)-parseIso(x.day))-Math.abs(parseIso(b.date)-parseIso(x.day)))[0];
-    if(!near)return null;const ms=[...new Set((near.items||[]).flatMap(it=>it.farms||[]))].map(f=>gTownMiles(farmTown(f))).filter(m=>m!=null);return ms.length?Math.round(ms.reduce((a,b)=>a+b,0)/ms.length):null}
-  const p=gProducer(x.producer);return p.miles!=null?p.miles:gTownMiles(p.town)}
-// the counties a line's dollars went to, each with its share. A FEED bin is shared evenly among the farms FEED listed
-// for it that week, the way its miles are averaged, and a bin with no list kept is not known yet.
 const gTownCounty=town=>{const t=gTownInfo(town);return t?(t.state==="CA"?t.county:t.state):""};
 function gBinNear(day){return binAll().filter(b=>Math.abs(parseIso(b.date)-parseIso(day))<=6*864e5).sort((a,b)=>Math.abs(parseIso(a.date)-parseIso(day))-Math.abs(parseIso(b.date)-parseIso(day)))[0]}
 function gLineCounties(x){if(/FEED Bin/i.test(x.item||"")||/^feed cooperative/i.test(x.producer||"")){const near=gBinNear(x.day);
@@ -7392,22 +6857,6 @@ const G_GOALS=[
   {n:7,goal:"Increase hands-on food education led by educators with a Child Development Teacher Permit.",plan:"Daily small groups in the classroom and garden, planting, harvesting, watering and measuring, with observation, documentation and reflection, led by educators at the Teacher Permit level or higher, who complete the curriculum plans and evaluation.",by:"The director, with the educators",where:"Hands-on food education"},
   {n:8,goal:"Increase hands-on food education that is culturally relevant.",plan:"A quarterly family meeting to understand the cultural dynamics of families, families invited to grow or bring foods that are culturally relevant to them, and a weekly parent participation opportunity.",by:"The director, with the educators",where:"Families"}];
 // how the school is measuring up to each goal, for the chosen period, from the figures the page gathers
-function gGoalStatus(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
-  const P=x=>gProducer(x.producer),pct=v=>all?Math.round(v/all*100)+"%":"0%";const prods=f=>new Set(L.filter(f).map(x=>gKey(x.producer))).size;
-  const meals=sum(L.filter(x=>x.use!=="education")),edu=sum(L.filter(x=>x.use==="education"));const allTime=gLines(S.start||"0000","9999");
-  const sm=sum(L.filter(x=>P(x).smallmid)),sd=sum(L.filter(x=>P(x).sdlr)),og=sum(L.filter(gOrganic)),loc=sum(L.filter(x=>!gOrganic(x)&&P(x).climate));
-  const ed=gEducation(from,to),fam=gList("families").filter(x=>x.date>=from&&x.date<=to);const e=n=>{const o=ed.find(z=>z.n===n);return o?`${o.obs.length} observation${o.obs.length===1?"":"s"} and ${o.plans.length} plan${o.plans.length===1?"":"s"} confirmed${o.pending?`, ${o.pending} more found to check`:""}`:""};
-  // the pace needed to use the rest of the food budget by the end of the term, against the last three months
-  const today=iso(new Date()),endD=S.end||"",monthsLeft=endD>today?Math.max(0.5,(parseIso(endD)-parseIso(today))/(30.44*864e5)):0;
-  const ago=iso(new Date(Date.now()-91*864e5)),recent=gLines(ago,today),recM=sum(recent.filter(x=>x.use!=="education"))/3,recE=sum(recent.filter(x=>x.use==="education"))/3;
-  const leftM=Math.max(0,(Number(S.b1a)||0)-sum(allTime.filter(x=>x.use!=="education"))),leftE=Math.max(0,(Number(S.b1b)||0)-sum(allTime.filter(x=>x.use==="education")));
-  const pace=monthsLeft?` To use the rest by ${fmtDate(endD)}, about ${r(leftM/monthsLeft)} a month for meals and ${r(leftE/monthsLeft)} for student education, against ${r(recM)} and ${r(recE)} a month over the last three months.`:"";
-  return {1:`${r(all)} of California food from ${prods(()=>true)} producers. Since the start, ${r(sum(allTime.filter(x=>x.use!=="education")))} of ${r(S.b1a)} for meals and ${r(sum(allTime.filter(x=>x.use==="education")))} of ${r(S.b1b)} for student education.${pace}`,
-    2:`${r(sm)}, ${pct(sm)} of California food, from ${prods(x=>P(x).smallmid)} producers marked small to midsize, plus the farms behind each FEED bin.`,
-    3:`${r(sd)}, ${pct(sd)} of California food, from ${prods(x=>P(x).sdlr)} producers marked BIPOC, female, veteran or limited resource.`,
-    4:`${r(og)}, ${pct(og)}, certified organic, and ${r(loc)}, ${pct(loc)}, from local farms using sustainable practices without certification.`,
-    5:e(5),6:e(6),7:e(7),8:`${fam.length} family entr${fam.length===1?"y":"ies"} in the family log.`}}
-// the eight objectives by a short name, for tables on the page and in the summaries
 const G_SHORT={1:"California food",2:"Small and midsize farms",3:"Socially disadvantaged farmers",4:"Organic and climate smart",5:"Children gather fruit",6:"Cooking with an educator",7:"Small groups",8:"Culturally relevant, with families"};
 // where each objective stands, as a short figure and its pace or count, for the table
 function gGoalRows(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
@@ -7428,13 +6877,6 @@ function gFigures(from,to){const S=gSet(),L=gLines(from,to),sum=a=>a.reduce((t,x
   const sd=gSchoolDays(from,to);
   return [[r(loc$),"California food bought"],[r(meals),"of "+r(S.b1a)+" for meals and snacks since the start"],[r(edu),"of "+r(S.b1b)+" for student education since the start"],
     [String(new Set(L.map(x=>gKey(x.producer))).size),"producers"],[gPct(son,loc$),"from Sonoma County"],[String(sd.days),"school days with lunch and snacks"]]}
-function gGoalsHtml(open,from,to,q){const rows=from?gGoalRows(from,to):[];
-  return `<details class="card gsec" data-gsec="goals" ${gIsOpen("goals",open)?"open":""}><summary class="secthead"><h3>The grant's eight objectives</h3><span class="gfig">Where each stands ${q?esc(periodWord(q)):""}</span></summary>
-  <div class="gbody"><div class="gobj">${G_GOALS.map(g=>{const r=rows.find(x=>x[0]===g.n)||[];return `<div class="gobjrow"><span class="gnum">${g.n}</span><div style="min-width:0"><b>${esc(G_SHORT[g.n])}</b><div class="cnt">${esc(r[2]||"")}</div></div><b class="gval">${esc(r[1]||"")}</b></div>`}).join("")}</div>
-  <details class="gmore"><summary class="linkbtn">The official wording, activities and who carries them out</summary>
-  <div class="tlist" style="margin-top:6px">${G_GOALS.map(g=>`<div class="cnt" style="padding:6px 0;border-top:1px solid var(--line)"><b>${g.n}. ${esc(g.goal)}</b> ${esc(g.plan)} ${esc(g.by)}. Evidence under ${esc(g.where)}.</div>`).join("")}</div>
-  <div class="hint">Children's Sustainability Project, Track 3, Farm to Early Care and Education. Goals and activities from the draft scope of work of March 2025, which named a purchasing lead and a food education lead. Today the chef plans the menus, buys the food and cooks, the office does the paperwork and communication with CDFA, and the director leads food education with the educators. Goal 4 counts certified organic and local farms using sustainable practices, as the scope of work allows. If CDFA's executed agreement worded any goal differently, the agreement governs.</div></details></div></details>`}
-// hands-on food education is found by words that are about food, and counts only once the director confirms it
 const G_OBJ=[
   {n:5,label:"Children gather, wash and deliver fruit for snack",re:/\b(fruits?|snacks?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|lemons?|quinces?|pomegranates?)\b/i},
   {n:6,label:"Children prepare snacks and food with an educator",re:/\b(cook|cooks|cooked|cooking|bake|baked|bakes|baking|bread|dough|recipes?|kitchen|soup|salad|smoothies?|juiced?|juicing|chopp?(ed|ing)?|peel(ed|ing)?|tast(e|ed|es|ing)|muffins?|pancakes?|tortillas?|pizza|sandwich(es)?|oven|stove|knives|knife)\b/i},
@@ -7467,20 +6909,6 @@ function gEducation(from,to){const items=gEduItems(from,to);
 // the observations and plans still to check, each counted once however many objectives or photos it has
 const gEduPending=(from,to)=>gEduItems(from,to).filter(it=>it.pending);
 // the ticks on a row. A confirmed item shows its marks, and one still to check starts from what the words suggest.
-let gEduLast=new Map();const gEduTicks=new Map();const G_EDU_CHIP={5:"Fruit",6:"Cooking",7:"Small groups"};
-const gEduTicksOf=it=>!it.pending?new Set(G_OBJ.filter(o=>it.marks[o.n]===true).map(o=>o.n)):gEduTicks.get(it.key)||new Set(gEduWhy(it).objs);
-// a choice is saved on every record of the observation, for each objective
-async function gEduSet(list){const patch={},at=Date.now(),by=whoAmI();for(const [it,m] of list)for(const n of Object.keys(m))for(const id of it.ids)patch[gEduKey(n,it.kind,id)]={v:m[n],by,at};
-  return gWrite("education",{list:patch},{id:"education",list:{}})}
-const gEduChoice=(it,yes)=>{const tk=gEduTicksOf(it);const m={};for(const o of G_OBJ)if(it.found.includes(o.n)||tk.has(o.n))m[o.n]=yes&&tk.has(o.n);return m};
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gedtick],[data-gedok],[data-gedno],[data-gedall]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;const y=window.scrollY;
-  if(d.gedall){const list=[...gEduLast.values()].filter(it=>it.pending&&gEduWhy(it).likely).map(it=>[it,gEduChoice(it,true)]);if(await gEduSet(list))toast(`${list.length} confirmed.`)}
-  else if(d.gedtick){const k=d.gedtick.lastIndexOf("|"),it=gEduLast.get(d.gedtick.slice(0,k)),n=+d.gedtick.slice(k+1);if(!it)return;
-    if(it.pending){const tk=new Set(gEduTicksOf(it));tk.has(n)?tk.delete(n):tk.add(n);gEduTicks.set(it.key,tk)}else await gEduSet([[it,{[n]:it.marks[n]!==true}]])}
-  else{const it=gEduLast.get(d.gedok||d.gedno);if(!it)return;if(d.gedok&&!gEduTicksOf(it).size){toast("Tick the objectives it meets first.");return}await gEduSet([[it,gEduChoice(it,!!d.gedok)]])}
-  renderGrant();window.scrollTo(0,y)});
-/* The writing help sorts new items into Likely counts and Check these, each with a few of the educator's own words on
-   why. Nothing counts until the director confirms. A line the help gives that is not in the educator's words is not used. */
 const gEduSortOf=key=>(((grantRecs.get("education")||{}).sort)||{})[key]||null;
 const gEduNorm=t=>String(t||"").toLowerCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/\s+/g," ").trim();
 function gEduQuote(it,objs){const t=String(it.text||"").replace(/\s+/g," ").trim();
@@ -7525,210 +6953,16 @@ document.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.datase
 const gCardO=(id,title,fig,dflt)=>`<details class="card gsec" data-gsec="${id}" ${gIsOpen(id,dflt)?"open":""}><summary class="secthead"><h3>${esc(title)}</h3><span class="gfig">${esc(fig||"")}</span></summary><div class="gbody">`;
 // the first few of a long list, and the rest behind Show all
 const gFold=(items,n)=>{n=n||8;return items.length<=n+2?items.join(""):items.slice(0,n).join("")+`<details class="gmore"><summary class="linkbtn">Show all ${items.length}</summary>${items.slice(n).join("")}</details>`};
-const gMarks=(key,name,p)=>`<div class="gmarks">${["smallmid","sdlr","climate","organic"].map(f=>`<button class="chip-btn" data-gpf="${f}" data-gpk="${esc(key)}" data-gpn="${esc(name)}" aria-pressed="${!!p[f]}">${{smallmid:"Small or mid",sdlr:"BIPOC, female, veteran, limited",climate:"Climate smart",organic:"Organic"}[f]}</button>`).join("")}</div>`;
-
-// the grant page is drawn again after every choice, so each folded or open part, Show all lists included, and the place
-// on the page are kept as they were
-function gDetailsKeys(m){const seen={};return [...m.querySelectorAll("details")].map(d=>{const sec=d.closest(".gsec");const base=d.dataset.gsec||((sec?sec.dataset.gsec:"page")+">"+((d.querySelector(":scope>summary")||{}).textContent||"").trim().replace(/\s+/g," ").replace(/\d+/g,"#").slice(0,60));seen[base]=(seen[base]||0)+1;return [d,base+"#"+seen[base]]})}
-function renderGrant(){const m=$("#main");const was=m&&m.querySelector(".gsec")?new Map(gDetailsKeys(m).map(([d,k])=>[k,d.open])):null;const y=window.scrollY;
-  renderGrant0();
-  if(was&&view==="grant"){for(const [d,k] of gDetailsKeys($("#main")))if(was.has(k))d.open=was.get(k);window.scrollTo(0,y)}}
-function renderGrant0(){
-  if(!isDirector()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept in the director's view.</div></div>`;return}
-  const S=gSet(),q=gQ(),{from,to}=periodRange(q),lines=gLines(from,to),all=gLines("0000","9999");const pw=periodWord(q);
-  const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
-  const meals=lines.filter(x=>x.use!=="education"),edu=lines.filter(x=>x.use==="education");
-  const qs=[...new Set([isQuarter(q)?q:quarterOf(iso(new Date())),quarterOf(iso(new Date())),...all.map(x=>quarterOf(x.day))])].sort().reverse();
-  const ys=[...new Set([gYearOf(iso(new Date())),...qs.map(x=>gYearOf(quarterRange(x).from))])].sort().reverse();
-  const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0,items:new Set()};e.total+=Number(x.total)||0;e.items.add(x.item);prods.set(k,e)}
-  const pr=[...prods.values()].sort((a,b)=>b.total-a.total);
-  const cat=f=>sum(lines.filter(x=>f(x)));
-  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">CDFA Farm to School Incubator Grant · ${esc(S.agreement)}</span><h2 style="margin-top:4px">Farm to School grant</h2>
-    <div class="sub" style="max-width:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
-    <div class="actions">${printBtns("grantq",q,isQuarter(q)?"Quarter summary":/^\d{4}$/.test(q)?"Year summary":"Grant summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
-    <div class="filters" role="group" aria-label="Whole grant or a year"><button class="pill" aria-pressed="${q==="all"}" data-gq="all">Whole grant</button>${ys.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(periodName(x))}</button>`).join("")}</div>
-    <div class="filters" role="group" aria-label="Quarter" style="margin-top:6px">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div>
-    ${isQuarter(q)?"":`<div class="cnt" style="margin-top:8px">${esc(periodName(q))}</div>`}
-    ${S.start?"":`<div class="hint warnline">Enter the day the term began in Grant details, at the end of the page.</div>`}</div>`;
-  // the key figures first
-  h+=`<div class="gstats gkey">${gFigures(from,to).map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
-  h+=gGoalsHtml(true,from,to,q);
-
-  // orders read by Claude, orders with no date, and new readings of orders already checked, wait here for the director
-  const rv=gOrders().filter(o=>o.review||o.revision);
-  h+=madeForSchoolHtml();
-  if(rv.length)h+=`${gCardO("check","Orders to check",rv.length+" waiting",true).replace('class="card gsec"','class="card gsec" style="border-color:var(--clay)"')}
-    <div class="cnt" style="margin-bottom:8px">Check each against its email, then mark it right. Orders count in the totals already, marked to check on the worksheet. An order with no date takes the day it was kept until you change it.</div>
-    ${rv.map(o=>{const its=x=>(x||[]).map(x=>`${esc(x.item)}${x.qty?", "+esc(String(x.qty))+(x.unit?" "+esc(x.unit):""):""}${x.total!=null?", "+gMoney(x.total):""}${x.producer&&x.producer!==o.distributor?", from "+esc(x.producer):""}`).join("<br>");const r=o.revision;
-      return `<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(o.distributor||"Vendor")}</b> <span class="cnt">${o.order?"#"+esc(o.order)+" · ":""}${esc(o.fulfilled?fmtDate(o.fulfilled):"No date found")}${o.noDate?" · no date found, check the day":""}${o.total!=null?" · "+gMoney(o.total):""}</span>
-      ${r?`<div class="lbl" style="margin-top:6px">What is kept now</div>`:""}<div class="cnt">${its(o.items)}</div>
-      ${r?`<div class="lbl" style="margin-top:8px">A new reading from ${esc(r.readBy==="FEED"?"FEED":"the email")}${r.at?", "+esc(shortDate(r.at)):""}</div><div class="cnt">${esc(r.fulfilled?fmtDate(r.fulfilled):"No date found")}${r.total!=null?" · "+gMoney(r.total):""}</div><div class="cnt">${its(r.items)}</div>`:""}
-      ${o.from?`<div class="cnt">From the email ${esc(o.from)}</div>`:""}</div>
-      <div class="actions" style="flex:none">${r?`<button class="btn small" data-grevuse="${esc(o.id)}">Use this reading</button><button class="linkbtn" data-grevkeep="${esc(o.id)}">Keep what is there</button>`:`<button class="btn small" data-gok="${esc(o.id)}">It is right</button><button class="linkbtn" data-gdel="${esc(o.id)}">Take out</button>`}</div></div>`}).join("")}</div></details>`;
-
-  h+=gUnsureHtml();
-  // objectives 1 to 4, what was bought and from whom
-  h+=`${gCardO("food","California food bought, objectives 1 to 4",gMoney(sum(lines))+" from "+pr.length+" producer"+(pr.length===1?"":"s"))}
-    <div class="gstats">${[["For meals and snacks, 1a",sum(meals)],["For student education, 1b",sum(edu)],["Certified organic",cat(gOrganic)],["Small to midsize producers",cat(x=>gProducer(x.producer).smallmid)],["BIPOC, female, veteran or limited resource",cat(x=>gProducer(x.producer).sdlr)],["Climate smart practices",cat(x=>gProducer(x.producer).climate||gOrganic(x))]].map(([l,v])=>`<div class="gstat"><b>${gMoney(v)}</b><span>${l}</span></div>`).join("")}</div>
-    <div class="cnt" style="margin:6px 0 10px">Since ${S.start?esc(fmtDate(S.start)):"the start"}, ${gMoney(sum(gLines(S.start||"0000","9999").filter(x=>x.use!=="education")))} of ${gMoney(S.b1a)} for meals and ${gMoney(sum(gLines(S.start||"0000","9999").filter(x=>x.use==="education")))} of ${gMoney(S.b1b)} for student education, from the records kept here. FEED bins count as food for student education, and any line can be changed below.</div>
-    ${pr.length?`<div class="lbl">Producers ${pw}, ${pr.length}</div><div class="tlist">${gFold(pr.map(e=>{const p=e.p;const tags=[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
-      return `<div class="gprow"><div class="gptop"><div style="min-width:0"><b>${esc(p.name)}</b>${p.town?` <span class="cnt">${esc(p.town)}${gTownMiles(p.town)!=null?", "+gTownMiles(p.town)+" miles":""}</span>`:""}<div class="cnt">${esc([...e.items].slice(0,4).join(", "))}${e.items.size>4?", and more":""}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidenceFold(p)}</div><b class="gval">${gMoney(e.total)}</b></div>
-        ${/^feed cooperative/.test(p.key)?`<div class="cnt">The farms behind each bin are listed under Farms behind the FEED bins.</div>`:`${p.town?"":`<input type="text" data-gptown="${esc(p.key)}" data-gpn="${esc(p.name)}" placeholder="Town" style="width:160px;margin-top:4px">`}${gMarks(p.key,p.name,p)}`}</div>`}),8)}</div>
-      <div class="hint">Mark each producer once and it carries to every order. Lines marked OG by FEED count as organic on their own.</div>`:`<div class="empty">No purchases kept for ${pw} yet. Add a FEED order confirmation below.</div>`}
-    ${lines.length?`<details class="gmore" style="margin-top:10px"><summary class="linkbtn">Every line, ${lines.length}</summary><div style="overflow-x:auto"><table class="menutab"><thead><tr><th>Day</th><th>Item</th><th>Producer</th><th>Qty</th><th>Total</th><th>For</th></tr></thead><tbody>
-      ${lines.map(x=>`<tr><td class="cnt" style="white-space:nowrap">${esc(fmtDate(x.day).replace(/, \d{4}$/,""))}</td><td>${esc(x.item)}<div class="cnt">${esc(x.unit||"")}${x.review?` · <span class="warnline">to check</span>`:""}</div></td><td>${esc(x.producer)}</td><td>${esc(String(x.qty||""))}</td><td>${gMoney(x.total)}</td>
-        <td><select aria-label="How it was used" data-guse="${esc(x.src||"")}" data-gi="${x.i==null?"":x.i}" data-gman="${esc(x.manual||"")}" style="width:auto"><option value="meals" ${x.use!=="education"?"selected":""}>Meals and snacks</option><option value="education" ${x.use==="education"?"selected":""}>Student education</option></select></td></tr>`).join("")}</tbody></table></div></details>`:""}
-    <div class="actions" style="margin-top:12px"><label class="btn small ghost" style="cursor:pointer">Add an order or invoice<input type="file" id="g-order" accept=".eml,.html,.htm,.txt,.pdf,message/rfc822,application/pdf" multiple hidden></label><button class="btn small ghost" data-gact="addbuy">Add a purchase by hand</button></div>
-    <div class="hint">Forward order emails and invoices to the TREE mailbox and they arrive by themselves, or add a saved email or PDF here. FEED's are read exactly. Any other vendor's waits under Orders to check. A purchase with no email can be added by hand.</div>
-    ${gAdd?gAddHtml():""}</div></details>`;
-
-  // the farms behind the bins, farm-level data that a bin invoice does not show
-  const bf=gBinFarms(from,to);
-  if(bf.length)h+=`${gCardO("binfarms","Farms behind the FEED bins",bf.length+" farms")}
-    <div class="cnt" style="margin-bottom:8px">A bin is invoiced as FEED Cooperative. These are the farms FEED listed for each bin ${pw}, for the farm-level data the agreement asks for.</div>
-    <div class="tlist">${gFold(bf.map(f=>{const p=gProducer(f.name);const tags=gTags(p);return `<div class="gprow"><div class="gptop"><div style="min-width:0"><b>${esc(f.name)}</b>${f.town?` <span class="cnt">${esc(f.town)}${gTownMiles(f.town)!=null?", "+gTownMiles(f.town)+" miles":""}</span>`:""}<div class="cnt">${esc([...f.items].slice(0,3).join(", "))}</div>${tags.length?`<div class="cnt">${esc(tags.join(" · "))}</div>`:""}${gEvidenceFold(p)}</div><span class="cnt gval">${f.weeks.size} week${f.weeks.size===1?"":"s"}</span></div>
-      ${gMarks(p.key,f.name,p)}</div>`}),8)}</div></div></details>`;
-
-  h+=gLocalHtml(from,to,pw,q);
-  h+=gSavingsHtml(from,to,q);
-
-  // standing producers, named on the menus
-  const mm=[...menus.values()].filter(m=>m&&m.month>=from.slice(0,7)&&m.month<=to.slice(0,7));
-  const menuDays=re=>mm.reduce((n,m)=>n+Object.values(m.days||{}).filter(d=>d&&!d.closed&&re.test(d.lunch||"")).length,0);
-  const cheese=menuDays(/cheese|pizza|quesadilla/i),beans=menuDays(/bean|rice|lentil/i);
-  if(mm.length)h+=`${gCardO("menus","From the lunch menus",cheese+" lunches with cheese, "+beans+" with beans or rice")}<div class="gstats"><div class="gstat"><b>${cheese}</b><span>lunches with cheese from Petaluma Creamery</span></div><div class="gstat"><b>${beans}</b><span>lunches with beans or rice from Next Generation Foods</span></div></div></div></details>`;
-
-  // objectives 5 to 7, hands-on food education. Each observation or plan shows once, with a tick for each objective it
-  // meets, and counts once for each objective ticked, after the director confirms it.
-  const ed=gEducation(from,to);const items=gEduItems(from,to);gEduLast=new Map(items.map(it=>[it.key,it]));
-  const conf=ed.reduce((n,o)=>n+o.obs.length+o.plans.length,0),pendI=items.filter(it=>it.pending);
-  if(pendI.length)gEduSort(pendI);
-  const likely=pendI.filter(it=>gEduWhy(it).likely),check=pendI.filter(it=>!gEduWhy(it).likely);
-  const counted=items.filter(it=>!it.pending&&G_OBJ.some(o=>it.marks[o.n]===true)),aside=items.filter(it=>!it.pending&&!G_OBJ.some(o=>it.marks[o.n]===true));
-  const body=it=>it.kind==="g"?`<div class="item"><span class="nm">${esc(it.x.text)}<br><span class="cnt">From the Garden, ${esc(longDate(it.x.date))}</span></span></div>`:it.kind==="o"?momentMini(it.x):`<button class="item" data-open="${esc(it.x.id)}"><span class="nm">${esc(planTitle(it.x))}<br><span class="cnt">week of ${fmtDate(it.x.weekOf)}${it.x.classroom?", "+esc(it.x.classroom):""}</span></span></button>`;
-  const andList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
-  const row=it=>{const w=gEduWhy(it);const tk=gEduTicksOf(it);
-    return `<div class="gedu" style="display:block"><div style="min-width:0">${body(it)}</div>
-      ${it.pending?`<div class="cnt" style="margin:4px 0">For ${andList(w.objs.map(String))}, “${esc(w.words)}”</div>`:""}
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0">${G_OBJ.map(o=>`<button class="chip-btn" data-gedtick="${esc(it.key)}|${o.n}" aria-pressed="${tk.has(o.n)}" title="${esc(G_SHORT[o.n])}">${tk.has(o.n)?"✓ ":""}${o.n}. ${G_EDU_CHIP[o.n]}</button>`).join("")}</div>
-      ${it.pending?`<div class="actions" style="margin-top:4px"><button class="btn small" data-gedok="${esc(it.key)}">Counts</button><button class="btn small ghost" data-gedno="${esc(it.key)}">Does not count</button></div>`:""}</div>`};
-  const per=ed.map(o=>`<div class="gstat"><b>${o.obs.length+o.plans.length}</b><span>${o.n}. ${esc(G_SHORT[o.n])}, ${o.obs.length} observation${o.obs.length===1?"":"s"} and ${o.plans.length} plan${o.plans.length===1?"":"s"}</span></div>`).join("");
-  h+=`${gCardO("edu","Hands-on food education, objectives 5 to 7",conf+" confirmed"+(pendI.length?", "+pendI.length+" to check":""),pendI.length>0)}
-    <div class="cnt" style="margin-bottom:8px">Found by food words in the educators' own observations and plans ${pw}. Each shows once, with a tick for each objective it meets. Only what you confirm is counted, once for each objective ticked, here and in the summaries.</div>
-    <div class="gstats">${per}</div>
-    ${likely.length?`<h4 style="margin:14px 0 4px">Likely counts, ${likely.length}</h4><div class="cnt">The writing help read these as plainly hands-on food education, from the educator's own words.</div>
-      <div class="actions" style="margin:6px 0"><button class="btn small" data-gedall="1">Confirm all ${likely.length}</button></div>${gFold(likely.map(row),8)}`:""}
-    ${check.length?`<h4 style="margin:14px 0 4px">Check these, ${check.length}</h4><div class="cnt">These mention food, cooking or the garden. Tick each objective it meets, then choose Counts or Does not count.</div>${gFold(check.map(row),8)}`:""}
-    ${!pendI.length?`<div class="cnt" style="margin-top:10px">Nothing waiting to check ${pw}.</div>`:""}
-    ${counted.length?`<details class="gmore" style="margin-top:10px"><summary class="linkbtn">Confirmed, ${counted.length}</summary><div class="cnt" style="margin:4px 0">Tap a tick to change what it counts for.</div>${gFold(counted.map(row),10)}</details>`:""}
-    ${aside.length?`<details class="gmore" style="margin-top:6px"><summary class="linkbtn">Marked Does not count, ${aside.length}</summary><div class="cnt" style="margin:4px 0">Tap a tick to count it after all.</div>${gFold(aside.map(row),10)}</details>`:""}
-  </div></details>`;
-
-  // objective 8, families
-  const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>b.date.localeCompare(a.date));
-  h+=`${gCardO("families","Families and culturally relevant food, objective 8",fam.length?fam.length+" entr"+(fam.length===1?"y":"ies")+" in the family log":"Nothing kept yet")}
-    <div class="cnt" style="margin-bottom:8px">The quarterly family meeting, weekly parent participation, and foods families brought or grew.</div>
-    ${gFold(fam.map(x=>`<div class="binidea gdated"><span class="cnt">${esc(fmtDate(x.date))}</span><div style="flex:1;min-width:0">${esc(x.text)}</div><button class="linkbtn" data-gfdel="${esc(x.id)}">Take out</button></div>`),6)}
-    <div class="kfields" style="margin-top:8px"><label class="cnt">Day<input type="date" id="g-fdate" value="${esc(iso(new Date()))}"></label><label class="cnt" style="flex:1">What happened<input type="text" id="g-ftext" placeholder="Ex. Family meeting on foods from home. Three families brought recipes."></label></div>
-    <div class="actions"><button class="btn small ghost" data-gact="fam">Keep it</button></div>
-    ${gdn&&(gdn.offered||[]).length?`<div class="lbl" style="margin-top:10px">From the Garden, waiting for you</div>${gdn.offered.map(x=>`<div class="binidea gdated"><span class="cnt">${esc(fmtDate(x.date))}</span><div style="flex:1;min-width:0">${esc(x.text)}</div><button class="linkbtn" data-gfoffer="${esc(x.id)}">Add to the family log</button><button class="linkbtn" data-gfofferno="${esc(x.id)}">Set aside</button></div>`).join("")}`:""}</div></details>`;
-
-  // the quarterly check-in. A year or the whole grant shows each quarter's check-in to read, for an annual or final report.
-  if(isQuarter(q)){const ck=(grantRecs.get("q-"+q)||{}).checkin||{};const n=["progress","successes","challenges"].filter(k=>has(ck[k])).length;
-  h+=`${gCardO("checkin","Quarterly check-in",n?n+" of 3 parts written":"Not written yet").replace('class="card gsec"','class="card gsec" id="g-check"')}<div class="actions" style="margin-bottom:6px"><button class="btn small ghost" data-gact="draft" ${gBusy?"disabled":""}>${gBusy?"Drafting":"Draft it from this quarter"}</button></div>
-    <div class="cnt" style="margin-bottom:8px">The draft uses only the figures and the educators' words on this page. Rewrite it in your own voice before it goes to CDFA.</div>
-    ${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].map(([k,l])=>`<label class="fld-label">${l}<textarea data-gck="${k}" rows="4">${esc(ck[k]||"")}</textarea></label>`).join("")}</div></details>`;}
-  else{const ins=qs.filter(x=>{const r=quarterRange(x);return r.from>=from&&r.to<=to}).sort().map(x=>[x,(grantRecs.get("q-"+x)||{}).checkin||{}]).filter(([,c])=>c.progress||c.successes||c.challenges);
-    h+=`${gCardO("checkin","Quarterly check-ins",ins.length+" quarter"+(ins.length===1?"":"s")+" written").replace('class="card gsec"','class="card gsec" id="g-check"')}
-    ${ins.length?ins.map(([x,c])=>`<div class="binadd" style="margin-top:8px"><b>${esc(quarterName(x))}</b>${[["progress","Project progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>c[k]).map(([k,l])=>`<div class="lbl" style="margin-top:6px">${l}</div><div style="white-space:pre-wrap">${esc(c[k])}</div>`).join("")}</div>`).join(""):`<div class="empty">No check-ins written for these quarters yet. Choose a quarter to write one.</div>`}</div></details>`}
-  h+=`${gCardO("details","Grant details",S.start?"Term "+fmtDate(S.start)+" to "+fmtDate(S.end||""):"Add the day the term began",!S.start)}<div class="kfields">
-    ${[["agreement","Agreement number","text"],["start","Term began","date"],["end","Term ends","date"],["b1a","Food for meals and snacks, 1a","number"],["b1b","Food for student education, 1b","number"],["enrolled","Children enrolled, for the family savings","number"]].map(([k,l,t])=>`<label class="cnt">${l}<input type="${t}" data-gset="${k}" value="${esc(String(S[k]??""))}"></label>`).join("")}</div>
-    <div class="hint">The term end is the date asked for in the July extension request. Change it if CDFA approves another.</div></div></details>`;
-  $("#main").innerHTML=h;sizeBoxes($("#main"));
-}
-// what the producer's marks rest on, with its sources and anything still to confirm with the farm
-// how far the food travels, where the dollars go, and the food chosen for quality that is not California grown
 const gPct=(a,b)=>b?Math.round(a/b*100)+"%":"0%";
-function gLocalHtml(from,to,pw,q){const L=gLinesAll(from,to);if(!L.length)return "";const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
-  const loc=L.filter(x=>x.kind==="local"),spec=L.filter(x=>x.kind==="specialty"),ret=L.filter(x=>x.kind==="retail");const all$=sum(L),loc$=sum(loc);
-  const wm=loc.map(x=>({x,m:gLineMiles(x)})).filter(o=>o.m!=null);const wm$=sum(wm.map(o=>o.x));
-  const avg=wm$?Math.round(wm.reduce((t,o)=>t+o.m*(Number(o.x.total)||0),0)/wm$):null;const within=n=>sum(wm.filter(o=>o.m<=n).map(o=>o.x));
-  const son=loc.reduce((t,x)=>t+gLineCounties(x).filter(([c])=>c==="Sonoma").reduce((a,[,k])=>a+k*(Number(x.total)||0),0),0);
-  const byC=new Map();for(const x of loc)for(const [c0,k] of gLineCounties(x)){const c=c0||"Not known yet";const e=byC.get(c)||{c,total:0,prods:new Set()};e.total+=k*(Number(x.total)||0);e.prods.add(gKey(x.producer));byC.set(c,e)}
-  const counties=[...byC.values()].sort((a,b)=>b.total-a.total);
-  const nProd=new Set(loc.map(x=>gKey(x.producer))).size;
-  let h=`${gCardO("miles","How far our food travels",avg!=null?avg+" miles on average, "+gPct(son,loc$)+" from Sonoma County":"Not known yet")}
-    <div class="gstats">${[[avg!=null?avg+" miles":"Not known yet","average distance, by what was spent"],[gPct(son,loc$),"from Sonoma County"],[gPct(within(50),wm$),"grown within 50 miles"],ret.length?[gPct(loc$,all$),"of food spending to California farms and food hubs"]:[String(nProd),"California farms, producers and food hubs"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
-    <div class="lbl" style="margin-top:10px">By county</div><div class="tlist">${counties.map(e=>`<div class="prow"><div><b>${esc(e.c==="Not known yet"?e.c:e.c+(e.c.length>2?" County":""))}</b><div class="cnt">${e.prods.size} producer${e.prods.size===1?"":"s"}</div></div><div class="cnt" style="flex:none">${gMoney(e.total)} · ${gPct(e.total,loc$)}</div></div>`).join("")}</div>
-    <div class="hint">Straight line miles from each farm's town to the school. A FEED bin counts the farms FEED listed for it that week. A farm with no town yet is left out of the miles until one is added under Producers, and so are bins from before TREE kept FEED's weekly farm lists.</div></div></details>`;
-  // where the money went
-  h+=`${gCardO("dollars","Where the food dollars went",gMoney(loc$)+" to California farms and food hubs")}
-    <div class="gstats">${[[gMoney(loc$),"to "+nProd+" California farms, producers and food hubs"],[gMoney(son),"to Sonoma County farms and businesses"],[gMoney(sum(spec)),"to specialty suppliers chosen for quality"],[gMoney(sum(ret)),"to large retailers"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
-    ${ret.length?gRetailTrend(from,to):`<div class="cnt" style="margin-top:8px">No purchases from large retailers are kept ${pw}. Add Trader Joe's, Costco or others by hand below, or forward their receipts to the TREE mailbox, to see their share fall over time.</div>`}
-    <div class="cnt" style="margin-top:10px">Across California, preschools in the Farm to School program bought 60 percent of their food directly from producers and 27 percent through food hubs, with under 1 percent from grocery supercenters. The same independent evaluation found each dollar of state grants to farmers generated about $2.10 in economic activity across the state. That figure is for grants to farms statewide, so it is context for this school's spending, never a measure of it.</div>
-    <div class="cnt">Sources, <a href="https://californiafarmtoschooleval.org/wp-content/uploads/2026-f2s-prgrpt_ece-case-study.pdf" target="_blank" rel="noopener">California Farm to School Evaluation, early care and education case study, 2026</a> and <a href="https://californiafarmtoschooleval.org/wp-content/uploads/2026-f2s-prgrpt_est-econ-impacts.pdf" target="_blank" rel="noopener">economic impacts brief, 2026</a>.</div></div></details>`;
-  // specialty suppliers, outside the grant
-  if(spec.length){const byP=new Map();for(const x of spec){const k=gKey(x.producer);const e=byP.get(k)||{p:gProducer(x.producer),total:0,items:new Set(),n:0};e.total+=Number(x.total)||0;e.items.add(x.item);e.n++;byP.set(k,e)}
-    h+=`${gCardO("specialty","Chosen for quality, not California grown",gMoney(sum(spec)))}
-      <div class="cnt" style="margin-bottom:8px">Kept here so the full picture of the food is in one place. These are left out of the grant's California food totals.</div>
-      <div class="tlist">${[...byP.values()].map(e=>`<div class="prow"><div style="min-width:0"><b>${esc(e.p.name)}</b>${e.p.town?` <span class="cnt">${esc(e.p.town)}</span>`:""}<div class="cnt">${gMoney(e.total)} · ${e.n} line${e.n===1?"":"s"} · ${esc([...e.items].join(", "))}</div>${gEvidence(e.p)}</div></div>`).join("")}</div></div></details>`}
-  return h}
-// what families do not have to provide, an estimate from the school days and meals on the menus and the children
-// enrolled, using public benchmarks. Groceries use USDA's food plans for ages 2 to 5, lunch and two snacks taken as
-// 40 to 50 percent of a day's food (a third to 40 percent on a morning snack only day), with 25 percent added at the
-// high end for organic and local. Time is 10 to 25 minutes a school day of shopping, packing and cleanup.
 const G_SAVE={low:2.38,lowShort:1.96,high:5.36,highShort:4.29,fed:7.36,fedShort:6.06,minLow:10,minHigh:25,wage:18.21};
 // a typical school week, Monday with a morning snack and four full days
 const gWeek=()=>{const lo=4*G_SAVE.low+G_SAVE.lowShort,hi=4*G_SAVE.high+G_SAVE.highShort,mLo=5*G_SAVE.minLow,mHi=5*G_SAVE.minHigh;return {lo,hi,mLo,mHi,vLo:mLo/60*G_SAVE.wage,vHi:mHi/60*G_SAVE.wage}};
 const gMins=m=>m<60?Math.round(m)+" minutes":(Math.round(m/60*10)/10).toString().replace(/\.0$/,"")+" hours";
 function gSchoolDays(from,to){let full=0,short=0;for(const m of menus.values()){if(!m||!m.days)continue;for(const [day,d] of Object.entries(m.days)){if(day<from||day>to||!d||d.closed||!(d.lunch||d.am))continue;
   const mon=parseIso(day).getDay()===1;if(!mon&&String(d.pm||"").trim())full++;else short++}}return {full,short,days:full+short}}
-function gSavingsHtml(from,to,q){const S=gSet();const kids=Number(S.enrolled)||kidsAt().length||0;const {full,short,days}=gSchoolDays(from,to);
-  if(!days)return `${gCardO("savings","What families don't have to provide","No school days yet")}<div class="empty">No monthly menus are kept for ${esc(periodName(q))}, so there are no school days to count yet.</div></div></details>`;
-  const lo=full*G_SAVE.low+short*G_SAVE.lowShort,hi=full*G_SAVE.high+short*G_SAVE.highShort,fed=full*G_SAVE.fed+short*G_SAVE.fedShort;
-  const hLo=days*G_SAVE.minLow/60,hHi=days*G_SAVE.minHigh/60;const meals=kids*(full*3+short*2);const r=n=>"$"+Math.round(n).toLocaleString("en-US");const hr=n=>Math.round(n).toLocaleString("en-US");
-  const w=gWeek();
-  return `${gCardO("savings","What families don't have to provide",hr(days)+" school days with lunch and snacks")}
-    <div class="lbl">In a typical school week, for each family</div>
-    <div class="gstats">${[["$"+Math.round(w.lo)+" to $"+Math.round(w.hi),"in groceries they don't buy"],[gMins(w.mLo)+" to "+gMins(w.mHi),"of shopping, packing and cleanup they get back"],["$"+Math.round(w.vLo)+" to $"+Math.round(w.vHi),"that time is worth at the Santa Rosa minimum wage"],["14","meals and snacks they don't plan, buy, cook or pack"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
-    <div class="lbl" style="margin-top:12px">${esc(periodName(q))}</div>
-    <div class="gstats">${[[hr(days),"school days with lunch and snacks"],[kids?hr(meals):"Add enrollment",kids?"meals and snacks offered to "+kids+" children":"in Grant details below"],[r(lo)+" to "+r(hi),"in groceries for each child"],[hr(hLo)+" to "+hr(hHi)+" hours","of shopping, packing and cleanup for each family"]].map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
-    ${kids?`<div class="cnt" style="margin-top:8px">Across ${kids} children, that is about ${r(lo*kids)} to ${r(hi*kids)} in groceries families did not have to buy, and ${hr(hLo*kids)} to ${hr(hHi*kids)} hours they did not spend, worth ${r(hLo*kids*G_SAVE.wage)} to ${r(hHi*kids*G_SAVE.wage)} at the Santa Rosa minimum wage.</div>`:""}
-    <div class="cnt" style="margin-top:6px">For comparison, the federal child care food program pays centers ${r(fed)} per child for the same lunches and snacks over these days, a basic prepared meal with no allowance for organic food or baking from scratch. It describes the same meals another way, so it is never added to the grocery estimate.</div>
-    <div class="cnt" style="margin-top:6px">Every bread, dough and crust is made by hand, with organic and local food, a quality many families would find hard to match at home. Nationally, 19.5 percent of children lived in food insecure households in 2024, and 63 percent of lower income adults in Sonoma County were food insecure.</div>
-    <div class="hint">An estimate with its method shown. Groceries use USDA's food plans for ages 2 to 5, thrifty to liberal, with lunch and two snacks taken as 40 to 50 percent of a day's food, and 25 percent added at the high end for organic and local food. Time is 10 to 25 minutes a school day. School days come from the monthly menus, and enrollment from Grant details or the children in TREE. Children who attend part time or are absent save less.</div>
-    <div class="cnt">Sources, <a href="https://www.fns.usda.gov/research/cnpp/usda-food-plans/cost-food-monthly-reports" target="_blank" rel="noopener">USDA food plans</a>, <a href="https://www.fns.usda.gov/cacfp/fr-072726" target="_blank" rel="noopener">CACFP rates 2026 to 2027</a>, <a href="https://www.ers.usda.gov/amber-waves/2016/may/investigating-retail-price-premiums-for-organic-foods" target="_blank" rel="noopener">USDA organic price premiums</a>, <a href="https://www.bls.gov/tus/tables/a1-2025.pdf" target="_blank" rel="noopener">American Time Use Survey</a>, <a href="https://www.feedingamerica.org/sites/default/files/2026-08/Map%20the%20Meal%20Gap%202026%20Report.pdf" target="_blank" rel="noopener">Feeding America 2026</a>, <a href="https://www.nbcbayarea.com/news/local/food-insecurity-bay-area/4047203/" target="_blank" rel="noopener">California Health Interview Survey, reported 2026</a>.</div></div></details>`}
-// the share of food spending at large retailers, quarter by quarter
-function gRetailTrend(from,to){const rows=[];const qs=[...new Set(gLinesAll(from,to).map(x=>quarterOf(x.day)))].sort();
-  for(const x of qs){const r=quarterRange(x),L=gLinesAll(r.from,r.to),t=L.reduce((a,y)=>a+(Number(y.total)||0),0),rt=L.filter(y=>y.kind==="retail").reduce((a,y)=>a+(Number(y.total)||0),0);rows.push([quarterName(x),rt,t])}
-  return `<div class="lbl" style="margin-top:10px">Share at large retailers, by quarter</div><div class="tlist">${rows.map(([n,rt,t])=>`<div class="prow"><div>${esc(n)}</div><div class="cnt" style="flex:none">${gMoney(rt)} of ${gMoney(t)} · ${gPct(rt,t)}</div></div>`).join("")}</div>`}
-// what a producer's marks rest on, folded on the page so a list of farms stays short
-function gEvidenceFold(p){const t=gEvidence(p);return t?`<details class="gmore"><summary class="linkbtn cnt">About this farm${p.check?", to check":""}</summary>${t}</details>`:""}
-function gEvidence(p){return `${p.note?`<div class="cnt">${esc(p.note)}</div>`:""}${p.check?`<div class="cnt warnline">To check. ${esc(p.check)}</div>`:""}${(p.sources||[]).length?`<div class="cnt">${p.sources.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener">Source ${i+1}</a>`).join(" · ")}</div>`:""}`}
-const gTags=p=>[p.organic&&"Organic",p.smallmid&&"Small to midsize",p.sdlr&&"BIPOC, female, veteran or limited resource",p.climate&&"Climate smart"].filter(Boolean);
-function gAddHtml(){const f=gAdd;return `<div class="binadd"><div class="kfields">
-  <label class="cnt">Day<input type="date" id="g-bdate" value="${esc(f.date||iso(new Date()))}"></label>
-  <label class="cnt">Producer<input type="text" id="g-bprod" list="g-prods" value="${esc(f.producer||"")}" placeholder="Ex. Petaluma Creamery"></label>
-  <label class="cnt">What<input type="text" id="g-bitem" value="${esc(f.item||"")}" placeholder="Ex. Cheddar cheese, 10 lb"></label>
-  <label class="cnt">Total<input type="number" step="0.01" id="g-btotal" value="${esc(f.total||"")}"></label>
-  <label class="cnt">For<select id="g-buse"><option value="meals">Meals and snacks</option><option value="education">Student education</option></select></label>
-  <label class="cnt">Kind<select id="g-bkind"><option value="">California farm or food hub</option><option value="specialty">Specialty supplier, not California grown</option><option value="retail">Large retailer, such as Trader Joe's or Costco</option></select></label></div>
-  <datalist id="g-prods"><option>Petaluma Creamery</option><option>Next Generation Foods</option><option>Central Milling</option><option>Trader Joe's</option><option>Costco</option></datalist>
-  <div class="actions" style="margin-top:8px"><button class="btn small" data-gact="buysave">Keep it</button><button class="linkbtn" data-gact="buycancel">Cancel</button></div></div>`}
-
 async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try again in a moment.");return false}
   try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
 
-function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
-  const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];const uns=new Set(gUnsure().map(u=>u.o.id+"|"+u.i));const chk=(x,p)=>[x.review?"Order read from an email, not yet checked":"",uns.has(x.src+"|"+x.i)?"Meals or education to check":"",p.check||""].filter(Boolean).join(". ");
-  const yn=v=>v?"Yes":"";
-  const rows=lines.map(x=>{const p=gProducer(x.producer);return [x.day,x.order||"",x.distributor,x.producer,p.town||"",x.item,x.unit||"",x.qty,x.price,x.total,x.use==="education"?"1b Student education":"1a Meals and snacks","Yes",yn(gOrganic(x)),yn(p.smallmid),yn(p.sdlr),yn(p.climate),chk(x,p),(p.sources||[]).join(" ")]});
-  // the farms behind each bin, beneath its line
-  const out=[head];for(const r of rows)out.push(r);
-  const bf=gBinFarms(S.start||"0000",S.end||"9999");if(bf.length){out.push([]);out.push(["Farms behind the FEED bins"]);out.push(["Farm","Town","Weeks","Items","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"]);bf.forEach(f=>{const p=gProducer(f.name);out.push([f.name,f.town||"",f.weeks.size,[...f.items].join("; "),yn(p.organic),yn(p.smallmid),yn(p.sdlr),yn(p.climate),p.check||"",(p.sources||[]).join(" ")])})}
-  return out.map(r=>r.map(v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(",")).join("\r\n")}
-
-// a summary of the quarter, year or whole grant, laid out to be read, key figures first, then each section as a table
 const dFigures=(items,label)=>({t:"figures",items,label});
 const dTable=(label,rows,o)=>Object.assign({t:"table",label,rows},o||{});
 function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
@@ -7749,71 +6983,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-async function gDraft(q){if(!sample){toast("Drafting is not available here. Open TREE and sign in.");return}
-  gBusy=true;renderGrant();const {from,to}=quarterRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
-  const prods=[...new Set(lines.map(x=>x.producer))];const ed=gEducation(from,to);const fam=gList("families").filter(x=>x.date>=from&&x.date<=to);
-  const words=ed.flatMap(o=>o.obs.slice(0,6).map(n=>`${o.label}. ${firstLine(n.noticed,220)}`)).slice(0,18);
-  const prompt=`Draft a quarterly check-in for a California Department of Food and Agriculture Farm to School Incubator grant, for an early childhood program, for ${quarterName(q)}. It has three parts, project progress, successes, and challenges.
-Use only what is below. Never add a number, a name or an event that is not here. Where something is missing, leave it out rather than guessing.
-
-The grant's objectives. 1 to 4, buy more California grown, whole or minimally processed food, from small to midsize producers, from BIPOC, female, veteran or limited resource producers, and from producers using climate smart or organic practices. 5 to 7, hands-on food education where children gather, wash and deliver fruit, prepare food with an educator, and work in small groups in the classroom and garden. 8, culturally relevant food education with families.
-
-Food bought this quarter. ${gMoney(sum(lines.filter(x=>x.use!=="education")))} for meals and snacks, ${gMoney(sum(lines.filter(x=>x.use==="education")))} for student education, ${gMoney(sum(lines.filter(gOrganic)))} certified organic, from ${prods.length} producers${prods.length?", "+prods.join(", "):""}.
-Farms behind the weekly FEED bins. ${gBinFarms(from,to).map(f=>f.name+(f.town?" in "+f.town:"")).join(", ")||"None recorded"}.
-Hands-on food education. ${ed.map(o=>`${o.label}, ${o.obs.length} observations and ${o.plans.length} plans`).join(". ")}.
-${words.length?"What educators wrote, in their own words.\n"+words.join("\n"):""}
-${fam.length?"Families.\n"+fam.map(x=>x.date+". "+x.text).join("\n"):""}
-
-Write in plain, warm, professional language, in the first person plural, a short paragraph for each part. Do not use colons, em dashes, or analogies.
-Return a JSON object with keys "progress", "successes" and "challenges".`;
-  try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"grant"});const c=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();
-    await gWrite("q-"+q,{checkin:{progress:c(out?.progress),successes:c(out?.successes),challenges:c(out?.challenges),draftedAt:Date.now()}},{id:"q-"+q,checkin:{}});toast("Drafted. Rewrite it in your own voice.")}
-  catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
-  gBusy=false;if(view==="grant")renderGrant()}
-
-document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")return;
-  if(t.id==="g-order"){const fs=[...t.files];t.value="";let n=0;
-    if(fs.length)toast("Reading");
-    for(const f of fs){try{const pdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
-      const body=pdf?{name:f.name,type:"application/pdf",data:await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(String(rd.result).split(",")[1]);rd.readAsDataURL(f)})}:{name:f.name,raw:await f.text()};
-      const j=await window.FP_API("/api/grant/order",body);if(j&&j.doc){grantRecs.set(j.doc.id,j.doc);n++}}catch(err){toast(`${f.name}. ${(err&&err.message)||"It could not be read."}`)}}
-    if(n)toast(`${n} order${n===1?"":"s"} kept`);renderGrant();return}
-  if(t.dataset.guse!=null){const use=t.value;
-    if(t.dataset.gman){await gWrite("purchases",{list:{[t.dataset.gman]:{use}}})}
-    else{const o=grantRecs.get(t.dataset.guse);if(!o)return;const items=(o.items||[]).map((x,i)=>i===+t.dataset.gi?Object.assign({},x,{use,useSet:true}):x);if(db)try{await db.doc("grant/"+o.id).update({items})}catch(err){toast("Could not save that.")}}
-    renderGrant();return}
-  if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
-  if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
-  if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace],[data-gfoffer],[data-gfofferno]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
-  if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,noDate:{__delete__:true},checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
-  // the director counts an observation or plan for a food education goal, or sets it aside. Pressing the same choice again clears it.
-  // a new reading of an order already checked, used in place of the lines kept, or set aside
-  if(d.grevuse){const o=grantRecs.get(d.grevuse),r=o&&o.revision;if(!r||!db)return;
-    const patch={items:r.items||[],fulfilled:r.fulfilled||o.fulfilled||"",subtotal:r.subtotal??null,delivery:r.delivery??null,total:r.total??null,distributor:r.distributor||o.distributor||"",noDate:r.noDate?true:{__delete__:true},revision:{__delete__:true},review:!!r.noDate,checkedBy:whoAmI(),checkedAt:Date.now()};
-    try{await db.doc("grant/"+o.id).update(patch);toast("The new reading is used.")}catch(err){toast("Could not save that.")}renderGrant();return}
-  // the director places a line, meals or education, and it is not asked again
-  if(d.gplace){const [id,i]=d.gplace.split("|");const o=grantRecs.get(id);if(!o||!db)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{use:d.gv,useSet:true}):x);
-    try{await db.doc("grant/"+id).update({items});toast(d.gv==="education"?"Counted for student education.":"Counted for meals.")}catch(err){toast("Could not save that.")}renderGrant();return}
-  if(d.grevkeep){if(db)try{await db.doc("grant/"+d.grevkeep).update({revision:{__delete__:true}});toast("Kept as it was.")}catch(err){toast("Could not save that.")}renderGrant();return}
-  if(d.gdel){if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Take it out?";return}if(db)try{await db.doc("grant/"+d.gdel).delete();grantRecs.delete(d.gdel)}catch(err){toast("Could not take it out.")}renderGrant();return}
-  if(d.gq){gQuarter=d.gq;LS.set("fps.gq",gQuarter);renderGrant();return}
-  if(d.gpf){const cur=gProducer(d.gpn);await gWrite("producers",{list:{[d.gpk]:{name:d.gpn,[d.gpf]:!cur[d.gpf]}}},{id:"producers",list:{}});renderGrant();return}
-  if(d.gfdel){await gWrite("families",{list:{[d.gfdel]:{__delete__:true}}});renderGrant();return}
-  const a=d.gact;
-  if(a==="csv"){const blob=new Blob(["﻿"+gWorksheetCsv()],{type:"text/csv"});const u=URL.createObjectURL(blob);const l=document.createElement("a");l.href=u;l.download=`Farm to School procurement ${iso(new Date())}.csv`;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return}
-  if(a==="addbuy"){gAdd={};renderGrant();return}
-  if(a==="buycancel"){gAdd=null;renderGrant();return}
-  if(a==="buysave"){const v=id=>($("#"+id)?.value||"").trim();const p={id:uid(),date:v("g-bdate"),producer:v("g-bprod"),item:v("g-bitem"),total:Number(v("g-btotal"))||0,use:v("g-buse")||"meals",distributor:"Direct",kind:v("g-bkind")||(G_RETAIL.test(v("g-bprod"))?"retail":""),by:whoAmI(),at:Date.now()};
-    if(!p.date||!p.producer||!p.item||!p.total){toast("Add the day, the producer, what it was and the total.");return}
-    if(await gWrite("purchases",{list:{[p.id]:p}},{id:"purchases",list:{}})){gAdd=null;toast("Kept")}renderGrant();return}
-  if(t.dataset.gfoffer||t.dataset.gfofferno){const x=((gdn&&gdn.offered)||[]).find(y=>y.id===(t.dataset.gfoffer||t.dataset.gfofferno));if(!x)return;
-    if(t.dataset.gfoffer){const id=uid();if(!(await gWrite("families",{list:{[id]:{id,date:x.date,text:x.text,by:whoAmI(),from:"garden"}}},{id:"families",list:{}})))return}
-    await gdnCall("offer/done",{id:x.id},t.dataset.gfoffer?"Added to the family log.":"Set aside.");renderGrant();return}
-  if(a==="fam"){const date=$("#g-fdate")?.value||"",text=($("#g-ftext")?.value||"").trim();if(!date||!text){toast("Add the day and what happened.");return}
-    const id=uid();if(await gWrite("families",{list:{[id]:{id,date,text,by:whoAmI()}}},{id:"families",list:{}}))toast("Kept");renderGrant();return}
-  if(a==="draft"){if(isQuarter(gQ()))gDraft(gQ());return}},true);
-
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","0bfa67c4cc").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -8176,224 +7346,11 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
     <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>
     ${gFold(L.map(u=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(kName(u.x.item).name)}</b> <span class="cnt">${esc(u.x.producer||"")} · ${esc(fmtDate(u.o.fulfilled||u.o.placed||""))}</span><div class="cnt">${esc(u.why)}.</div></div>
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
-/* ---------- Kitchen ----------
-   Where the kitchen makes the month's menu and everything around it. Each day has a morning snack, lunch and an
-   afternoon snack, Monday a morning snack only, and the sides served with each. Typing saves to the month's menu
-   record in the same form as before, so the calendar, Today, the farm sheets and the grant read it as they always have.
-   Past dishes are one tap away, the same week last year sits beside the month, and Fill this month drafts the month
-   from past menus for the kitchen to change and save. Fruit and vegetables are left to the kitchen to choose by season. */
-let kMonth=LS.get("tree.kmonth","")||"",kSel=null,kDraft=null,kLibQ="",kClosed={};
-const kMonthNow=()=>/^\d{4}-\d{2}$/.test(kMonth)?kMonth:iso(new Date()).slice(0,7);
-const kMonthShift=(m,n)=>{const [y,mo]=m.split("-").map(Number);return iso(new Date(y,mo-1+n,1)).slice(0,7)};
-const kMealsOf=d=>parseIso(d).getDay()===1?["am","lunch"]:["am","lunch","pm"];
-const K_MEAL={am:"Morning snack",lunch:"Lunch",pm:"Afternoon snack"};
 const kCanEdit=()=>isDirector()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function kLibrary(){const m=new Map(),today=iso(new Date());for(const mn of menus.values())for(const [d,x] of Object.entries((mn&&mn.days)||{})){if(!x||x.closed||d>today)continue;
-  for(const k of ["am","lunch","pm"]){const t=String(x[k]||"").trim();if(!t)continue;const key=t.toLowerCase();const e=m.get(key)||{dish:t,n:0,last:"",kinds:new Set()};e.n++;if(d>e.last){e.last=d;e.dish=t}e.kinds.add(k==="lunch"?"lunch":"snack");m.set(key,e)}}
-  return [...m.values()].sort((a,b)=>b.n-a.n||a.dish.localeCompare(b.dish))}
-// days the school is closed, from the calendar's all-day events, so a draft leaves them empty
-async function kLoadClosed(month){if(kClosed[month]||!window.FP_API)return;kClosed[month]=new Set();const [y,mo]=month.split("-").map(Number);
-  try{const j=await window.FP_API("/api/view",{from:month+"-01",to:iso(new Date(y,mo,0))});
-    for(const e of j.events||[])if(/no school|closed|closure|holiday|break|in.?service|staff development|thanksgiving/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
-  if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()}
-const kLastYear=d=>addDays(d,-364);
-// a draft of the month from past menus, never saved until the kitchen saves it
-function kFill(month){const days=menuSchoolDays(month),lib=kLibrary(),have=(menus.get(month)||{}).days||{},closed=kClosed[month]||new Set();
-  const pool={lunch:lib.filter(e=>e.kinds.has("lunch")).map(e=>e.dish),snack:lib.filter(e=>e.kinds.has("snack")).map(e=>e.dish)};
-  const recent={lunch:[],snack:[]},keep={lunch:10,snack:18},draft={};let turn={lunch:0,snack:0};
-  for(const d of days){const x=have[d]||{};if(x.closed||closed.has(d))continue;const dd={};
-    for(const k of kMealsOf(d)){const kind=k==="lunch"?"lunch":"snack";if(has(x[k])){recent[kind].push(x[k].toLowerCase());continue}
-      const lyx=(((menus.get(kLastYear(d).slice(0,7))||{}).days)||{})[kLastYear(d)]||{};
-      const ok=t=>has(t)&&!recent[kind].slice(-keep[kind]).includes(String(t).toLowerCase());
-      let pick=ok(lyx[k])?lyx[k]:"";
-      // otherwise the most served dishes, taken in turn so the month has variety
-      for(let n=0;!pick&&n<pool[kind].length;n++){const t=pool[kind][(turn[kind]+n)%pool[kind].length];if(ok(t)){pick=t;turn[kind]=(turn[kind]+n+1)%pool[kind].length}}
-      if(pick){dd[k]=pick;recent[kind].push(pick.toLowerCase())}}
-    if(Object.keys(dd).length)draft[d]=dd}
-  kDraft={month,days:draft}}
-async function kWrite(month,patch){if(!db)throw new Error("TREE is not connected. Try again in a moment.");const have=menus.get(month);
-  if(!have){const doc=Object.assign({id:month,month,days:{},notes:Object.assign({},(menus.get(kMonthShift(month,-1))||{}).notes||{}),times:menuTimesLast(),by:whoAmI(),updatedAt:Date.now()});localMerge(doc,JSON.parse(JSON.stringify(patch)));await db.doc("menus/"+month).set(doc);menus.set(month,doc);return}
-  localMerge(have,JSON.parse(JSON.stringify(patch)));await db.doc("menus/"+month).update(Object.assign({},patch,{by:whoAmI(),updatedAt:Date.now()}))}
-const kTimers={};
-function kSaveSoon(month,day,k,val){const key=day+"|"+k;clearTimeout(kTimers[key]);kTimers[key]=setTimeout(()=>kWrite(month,{days:{[day]:{[k]:val}}}).then(()=>setConn("Menu saved")).catch(e=>toast((e&&e.message)||"Could not save the menu.")),600)}
-function kWeeks(month){const days=menuSchoolDays(month);const weeks=[];for(const d of days){const m=mondayOf(parseIso(d));let w=weeks.find(x=>x.m===m);if(!w){w={m,days:[]};weeks.push(w)}w.days.push(d)}return weeks}
-function kCellHtml(month,d){const x=(((menus.get(month)||{}).days)||{})[d]||{},dr=kDraft&&kDraft.month===month?(kDraft.days[d]||{}):{};const closed=!!x.closed;
-  const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});const shut=(kClosed[month]||new Set()).has(d);
-  return `<div class="kday${closed?" closed":""}"><div class="kdayh"><b>${esc(lab)}</b><label class="cnt"><input type="checkbox" data-kclosed="${d}" ${closed?"checked":""}> No school</label></div>
-    ${shut&&!closed?`<div class="cnt warnline">The calendar shows the school closed</div>`:""}
-    ${closed?"":kMealsOf(d).map(k=>{const v=x[k]||"",dv=!has(v)&&dr[k]?dr[k]:"";return `<label class="kmeal">${K_MEAL[k]}<textarea rows="1" data-kday="${d}" data-kk="${k}" class="kin${dv?" kdraft":""}" ${kSel&&kSel.day===d&&kSel.k===k?'data-ksel="1"':""}>${esc(v||dv)}</textarea>
-      <textarea rows="1" class="kin kside" data-kday="${d}" data-kk="${k}Side" placeholder="${k==="lunch"?"Salad and vegetable":"Fruit"}" aria-label="${K_MEAL[k]} sides">${esc(x[k+"Side"]||"")}</textarea></label>`}).join("")}</div>`}
-function kLastYearHtml(month){const ref=kSel?kSel.day:(menuSchoolDays(month)[0]||month+"-01");const m=mondayOf(parseIso(ref));const days=[0,1,2,3,4].map(i=>addDays(m,i));
-  const rows=days.map(d=>{const ly=kLastYear(d),x=(((menus.get(ly.slice(0,7))||{}).days)||{})[ly]||{};return x.closed?`<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b><span class="cnt">No school</span></div>`:
-    `<div class="kly"><b>${esc(parseIso(ly).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b>${["am","lunch","pm"].filter(k=>has(x[k])).map(k=>`<button class="kdish" type="button" data-kput="${esc(x[k])}" draggable="true">${esc(x[k])}</button>`).join("")||`<span class="cnt">No menu kept</span>`}</div>`}).join("");
-  return `<div class="card kside-card"><div class="lbl">The same week last year</div><div class="cnt">Week of ${esc(fmtDate(addDays(m,-364)))}. Tap a dish to put it in the chosen meal.</div>${rows}</div>`}
-function kLibraryHtml(){const want=kSel?(kSel.k==="lunch"?"lunch":"snack"):"";const q=kLibQ.toLowerCase();
-  const L=kLibrary().filter(e=>(!want||e.kinds.has(want))&&(!q||e.dish.toLowerCase().includes(q))).slice(0,60);
-  return `<div class="card kside-card"><div class="lbl">Past dishes${want?", "+(want==="lunch"?"lunches":"snacks"):""}</div>
-    <input type="search" id="klibq" placeholder="Find a dish" value="${esc(kLibQ)}" style="margin:6px 0">
-    <div class="klib">${L.map(e=>`<button class="kdish" type="button" data-kput="${esc(e.dish)}" draggable="true" title="Served ${e.n} time${e.n===1?"":"s"}, last on ${esc(fmtDate(e.last))}">${esc(e.dish)} <span class="cnt">${e.n} · ${esc(fmtDate(e.last).replace(/, (\d{4})$/," $1"))}</span></button>`).join("")||`<div class="cnt">No dish matches.</div>`}</div>
-    <div class="hint">${kSel?`Tap a dish to put it in ${esc(K_MEAL[kSel.k.replace("Side","")]||"the meal")} on ${esc(fmtDate(kSel.day))}, or drag it onto any meal.`:"Choose a meal in the month first, or drag a dish onto any meal."}</div></div>`}
-// the garden's harvests this month and last, food only, for the menus
-function kGardenHtml(){if(gdn===null)loadGarden();if(!gdnOk()||!(gdn.harvests||[]).length)return "";const from=iso(new Date(Date.now()-35*864e5));const hs=(gdn.harvests||[]).filter(h=>h.date>=from).slice().reverse();if(!hs.length)return "";
-  return `<section class="card"><div class="secthead"><div class="lbl">From the garden</div><button class="linkbtn" data-tview="garden">Garden</button></div><ul style="margin:4px 0;padding-left:18px">${hs.slice(0,10).map(h=>`<li>${esc(longDate(h.date))}, ${esc(h.plantName)}${h.amount?", "+esc(h.amount):""}${h.children?", gathered by children":""}</li>`).join("")}</ul></section>`}
-function renderKitchen(){
-  if(!kCanEdit()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">Kitchen</h2><div class="sub">The Kitchen page is for the kitchen and the director.</div></div>`;return}
-  const month=kMonthNow();kLoadClosed(month);const mrec=menus.get(month)||{};const notes=mrec.notes||(menus.get(kMonthShift(month,-1))||{}).notes||{};
-  const draftOn=kDraft&&kDraft.month===month&&Object.keys(kDraft.days).length;
-  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>
-      <div class="sub">Type in any meal and it is saved to the month's menu, which the calendar, Today and the family sheets read.</div></div>
-      <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button></div></div></div>
-    ${kGardenHtml()}${kDietHtml()}
-    <section class="card kprint"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("farmsheet",month,"What we ate")}${printBtns("farmwall",month,"Where our food came from")}</div>
-      <div class="hint">One page each, as PDF or Word, ready to attach to the Kitchen Digest.</div></section>
-    ${draftOn?`<div class="kdraftbar">This is a draft from past menus, in lighter type. Change anything, then save it. Fruit and vegetable sides are left for you to choose by season. <span class="actions"><button class="btn small" data-kdraftsave="1">Save the draft</button><button class="linkbtn" data-kdraftclear="1">Clear the draft</button></span></div>`:""}
-    <div class="kwrap"><div class="kmain">${kWeeks(month).map(w=>`<div class="kweek">${w.days.map(d=>kCellHtml(month,d)).join("")}</div>`).join("")||`<div class="empty">No school days in this month.</div>`}</div>
-      <div class="kaside">${kLibraryHtml()}${kLastYearHtml(month)}</div></div>`;
-  h+=kitchenCardHtml(planWeekNow(),false)||"";
-  h+=`<section class="card"><div class="lbl">The month's notes</div>
-    <label class="fld-label">With every snack<textarea data-knote="snack" rows="2">${esc(notes.snack||"")}</textarea></label>
-    <label class="fld-label">With every lunch<textarea data-knote="lunch" rows="2">${esc(notes.lunch||"")}</textarea></label>
-    <label class="fld-label">Recipe of the month<input type="text" data-krecipe="1" value="${esc(mrec.recipe||"")}" placeholder="Ex. pumpkin focaccia"></label>
-    <label class="fld-label">The recipe, for families<textarea data-krecipecard="1" rows="6" placeholder="Ingredients, then the steps, sized for a family at home">${esc(mrec.recipeCard||"")}</textarea></label>
-    <div class="cnt">Families see it on the Family page, and the director can print it as a recipe card.</div>
-    <div class="hint">The notes and the recipe of the month print on the Monthly menu, and the recipe on What we ate.</div></section>`;
-  h+=`<section class="card">${staplesHtml().replace('<div class="binadd" id="staples-card">','<div id="staples-card">')}</section>`;
-  $("#main").innerHTML=h;sizeBoxes($("#main"));
-  if(kSel){const el=document.querySelector(`[data-kday="${kSel.day}"][data-kk="${kSel.k}"]`);if(el)el.classList.add("ksel")}}
-document.addEventListener("keydown",e=>{const t=e.target;if(view!=="kitchen"||!t.classList||!t.classList.contains("kin")||e.key!=="Enter")return;e.preventDefault();t.blur()});
-document.addEventListener("input",e=>{const t=e.target;if(t.classList&&t.classList.contains("kin"))autoGrow(t)});
-// Today for a kitchen sign-in, the produce coming and the week's menu
-function renderKitchenToday(){const wk=planWeekNow();const days=[0,1,2,3,4].map(i=>addDays(wk,i));const now=new Date();
-  const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-    return `<tr><td><b>${esc(lab)}</b></td>${x.closed?`<td colspan="3" class="cnt">No school</td>`:`<td>${esc(x.am||"")}</td><td>${esc(x.lunch||"")}</td><td>${parseIso(d).getDay()===1?"":esc(x.pm||"")}</td>`}</tr>`}).join("");
-  $("#main").innerHTML=`<div class="head"><span class="eyebrow">${esc(now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</span><h2 style="margin-top:4px">Good ${now.getHours()<12?"morning":now.getHours()<17?"afternoon":"evening"}, ${esc(me()||"")}</h2></div>
-    ${kitchenCardHtml(wk,false)}${kDietHtml()}
-    <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">The week's menu</h3><button class="linkbtn" data-tview="kitchen">Open the Kitchen</button></div>
-      <div class="tablewrap"><table class="grid2" style="min-width:520px"><thead><tr><th>Day</th><th>Morning snack</th><th>Lunch</th><th>Afternoon snack</th></tr></thead><tbody>${rows}</tbody></table></div></section>`}
-document.addEventListener("focusin",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;document.querySelectorAll(".ksel").forEach(x=>x.classList.remove("ksel"));t.classList.add("ksel");
-  const was=kSel&&kSel.k.replace("Side","");kSel={day:t.dataset.kday,k:t.dataset.kk};const lib=document.querySelector(".kaside");
-  if(lib&&(!was||was!==kSel.k.replace("Side","")||true)){const q=document.getElementById("klibq");const keepFocus=document.activeElement===q;lib.innerHTML=kLibraryHtml()+kLastYearHtml(kMonthNow())}});
-document.addEventListener("input",e=>{const t=e.target;if(view!=="kitchen")return;
-  if(t.id==="klibq"){kLibQ=t.value;const box=t.closest(".kside-card");if(box){const n=document.createElement("div");n.innerHTML=kLibraryHtml();box.querySelector(".klib").replaceWith(n.querySelector(".klib"))}return}
-  if(t.dataset.kday){t.classList.remove("kdraft");kSaveSoon(kMonthNow(),t.dataset.kday,t.dataset.kk,t.value.trim())}});
-document.addEventListener("change",async e=>{const t=e.target;if(view!=="kitchen")return;const month=kMonthNow();
-  try{if(t.dataset.kclosed){await kWrite(month,{days:{[t.dataset.kclosed]:t.checked?{closed:true}:{closed:{__delete__:true}}}});renderKitchen();return}
-    if(t.dataset.knote){await kWrite(month,{notes:{[t.dataset.knote]:t.value.trim()}});setConn("Menu saved");return}
-    if(t.dataset.krecipe){await kWrite(month,{recipe:t.value.trim()});setConn("Menu saved");return}
-    if(t.dataset.krecipecard){await kWrite(month,{recipeCard:t.value.trim()});setConn("Recipe saved");return}}catch(err){toast((err&&err.message)||"Could not save the menu.")}});
-function kPut(dish,day,k){const el=document.querySelector(`[data-kday="${day}"][data-kk="${k}"]`);if(!el)return;el.value=dish;el.classList.remove("kdraft");kSaveSoon(kMonthNow(),day,k,dish);el.focus()}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-kmon],[data-kfill],[data-kdraftsave],[data-kdraftclear],[data-kput]");if(!t||view!=="kitchen")return;e.stopImmediatePropagation();const month=kMonthNow();
-  if(t.dataset.kmon){kMonth=kMonthShift(month,+t.dataset.kmon);LS.set("tree.kmonth",kMonth);kSel=null;renderKitchen();return}
-  if(t.dataset.kfill){kFill(month);const n=Object.keys(kDraft.days).length;toast(n?`A draft for ${n} day${n===1?"":"s"}, from past menus. Save it when it looks right.`:"Every school day already has a menu.");renderKitchen();return}
-  if(t.dataset.kdraftclear){kDraft=null;renderKitchen();return}
-  if(t.dataset.kdraftsave&&kDraft){const days={};for(const [d,x] of Object.entries(kDraft.days)){const have=(((menus.get(month)||{}).days)||{})[d]||{};const add={};for(const [k,v] of Object.entries(x))if(!has(have[k]))add[k]=v;if(Object.keys(add).length)days[d]=add}
-    kWrite(month,{days}).then(()=>{kDraft=null;toast("The draft is saved to the menu.");renderKitchen()}).catch(err=>toast((err&&err.message)||"Could not save the menu."));return}
-  if(t.dataset.kput){if(!kSel){toast("Choose a meal in the month first.");return}const k=kSel.k.replace("Side","");kPut(t.dataset.kput,kSel.day,k);return}},true);
-document.addEventListener("dragstart",e=>{const t=e.target.closest&&e.target.closest("[data-kput]");if(t&&e.dataTransfer)e.dataTransfer.setData("text/plain",t.dataset.kput)});
-document.addEventListener("dragover",e=>{if(view==="kitchen"&&e.target.dataset&&e.target.dataset.kday)e.preventDefault()});
-document.addEventListener("drop",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;e.preventDefault();const v=e.dataTransfer&&e.dataTransfer.getData("text/plain");if(v)kPut(v,t.dataset.kday,t.dataset.kk.replace("Side",""))});
-/* the month's menu as families read it, one landscape page in TREE's colours. Each school day shows its meals in order,
-   each with a thin coloured rule, lunch a little stronger, the notes and the recipe of the month in a band at the foot,
-   and the number of farms when the month has orders. Type is set as large as the page allows, and only a month that
-   cannot fit at a readable size moves its last weeks to a second page. */
-const KM_COL={am:[168,104,8],lunch:[47,90,67],pm:[36,91,120]};
-const KM_TINT={am:[251,240,220],lunch:[220,233,222],pm:[217,233,242]};
-const KM_LABEL={am:"Morning snack",lunch:"Lunch",pm:"Afternoon snack"};
-// a side reads after "with", so it starts small unless it is a name like "Mary's bread"
-const kSideText=t=>{t=String(t||"").trim();return /^[A-Z][a-z]/.test(t)&&!/^[A-Z][a-z]+'s\b/.test(t)?t[0].toLowerCase()+t.slice(1):t};
-function kMenuData(month,which){const mrec=menus.get(month)||{},x=d=>((mrec.days||{})[d])||{};const meals=which==="lunch"?["lunch"]:which==="snack"?["am","pm"]:["am","lunch","pm"];
-  const weeks=kWeeks(month).map(w=>[0,1,2,3,4].map(i=>{const d=addDays(w.m,i);if(d.slice(0,7)!==month)return null;const v=x(d);if(v.closed)return {d,closed:true,items:[]};
-    return {d,items:meals.filter(k=>!(k==="pm"&&i===0)).map(k=>({k,dish:String(v[k]||"").trim(),side:kSideText(v[k+"Side"])})).filter(o=>o.dish)}}));
-  return {weeks,meals,notes:mrec.notes||{},recipe:String(mrec.recipe||"").trim()}}
-async function kMonthMenu(month,which,word){which=which||"all";const D=kMenuData(month,which);
-  // menus go home before the month starts, so until half its school days are past the line speaks of last month
-  const open=D.weeks.flat().filter(c=>c&&!c.closed).map(c=>c.d),today=iso(new Date());
-  const late=open.length&&open.filter(d=>d<today).length*2>=open.length;const [yy,mm]=month.split("-").map(Number);const prev=iso(new Date(yy,mm-2,1)).slice(0,7);
-  const fm=late?month:prev;if(!isDirector())await kMonthFetch(fm);
-  let farms=0;try{farms=farmMonthData(fm).farms.length}catch(e){}const title=which==="lunch"?"Lunch menu":which==="snack"?"Snack menu":"Monthly menu";
-  const foot=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean);
-  const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?(late?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:`Last month our food came from ${farms} local farm${farms===1?"":"s"}.`):""].filter(Boolean);
-  if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
-async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
-  const doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"});
-  const W=792,H=612,m=30,gw=W-2*m,gap=4,cw=(gw-4*gap)/5,INK=[28,42,34],MUT=[96,110,101],MOSS=[47,90,67],CREAM=[250,246,234],SOFT=[234,242,236];
-  const name=MENU_MONTH(month),tx=13,tw=cw-tx-6,numW=15;
-  // wrap a dish, the first line of a cell leaves room for the day number
-  const wrap=(t,w1)=>{t=clean(t);const f=doc.splitTextToSize(t,w1);if(f.length<2||w1===tw)return f;const rest=t.slice(f[0].length).trim();return [f[0],...doc.splitTextToSize(rest,tw)]};
-  const header=(small)=>{const y=m,hh=small?30:40;doc.setFillColor(...CREAM);doc.roundedRect(m,y,gw,hh,9,9,"F");
-    if(small){pfont(doc,"bs",13);doc.setTextColor(...MOSS);doc.text(`${name} ${title.toLowerCase()}, continued`,m+16,y+19.5);return y+hh+6}
-    pfont(doc,"bs",24);doc.setTextColor(...INK);doc.text(name,m+16,y+28);const nw=doc.getTextWidth(name);
-    pfont(doc,"fs",12.5);doc.setTextColor(...MOSS);doc.text(title,m+16+nw+12,y+28);
-    if(PRINT.schoolDocs){pfont(doc,"fs",8.5);doc.setTextColor(...MOSS);doc.text("FULTON COMMUNITY SCHOOL & FARM",m+gw-16,y+15,{align:"right",charSpace:.6})}
-    const ly=PRINT.schoolDocs?y+33:y+25;let lx=m+gw-16;pfont(doc,"fr",9);(D.meals.length>1?[...D.meals].reverse():[]).forEach(k=>{const t=KM_LABEL[k];lx-=doc.getTextWidth(t);doc.setTextColor(...INK);doc.text(t,lx,ly);lx-=8;doc.setFillColor(...KM_COL[k]);doc.roundedRect(lx,ly-8,3,10,1,1,"F");lx-=16});
-    return y+hh+6};
-  const fFs=8.6,lh=fFs*1.25;const fl=[];foot.forEach(t=>{pfont(doc,"fr",fFs);doc.splitTextToSize(clean(t),gw-28).forEach(l=>fl.push(["fr",l]))});extra.forEach(t=>{pfont(doc,"fs",fFs);doc.splitTextToSize(clean(t),gw-28).forEach(l=>fl.push(["fs",l]))});
-  const fh=fl.length?fl.length*lh+12:0;
-  const dayHead=y=>{pfont(doc,"fs",8.5);doc.setTextColor(...MOSS);["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach((d,i)=>doc.text(d.toUpperCase(),m+i*(cw+gap)+tx-6,y+8,{charSpace:.8}));return y+13};
-  // each meal set in its cell, measured and drawn by the same steps
-  const layout=(c,fs,ig)=>{ig=ig||3.5;const out=[];let h=7+fs*.8,first=true;for(const o of c.items){const lunch=o.k==="lunch";pfont(doc,lunch?"fs":"fr",lunch?fs+.5:fs);const ls=wrap(o.dish,first?tw-numW:tw);first=false;
-      let sl=[];if(o.side){pfont(doc,"fr",fs-1.3);sl=doc.splitTextToSize(clean("with "+o.side),tw)}out.push({o,ls,sl,y:h});h+=ls.length*fs*1.12+sl.length*(fs-1.3)*1.18+ig}return {out,h:h-ig+fs*.3+6}};
-  const cellH=(c,fs)=>!c||c.closed?0:layout(c,fs).h;
-  const plan=(weeks,top,bottom,min)=>{const avail=bottom-top-gap*(weeks.length-1);for(let fs=D.meals.length>1?11:13;fs>=min;fs-=.1){const need=Math.max(...weeks.map(r=>Math.max(...r.map(c=>cellH(c,fs)))));const rh=avail/weeks.length;
-    // spare room in the fullest day opens the space between meals a little
-    if(need<=rh)return {fs,rh,ig:Math.min(9,3.5+(rh-need)/3)}}return null};
-  const drawWeeks=(weeks,top,P)=>{weeks.forEach((r,ri)=>{const yy=top+ri*(P.rh+gap);r.forEach((c,i)=>{const x=m+i*(cw+gap);
-    if(!c)return;
-    doc.setFillColor(...(c.closed?SOFT:[255,255,255]));doc.setDrawColor(214,222,212);doc.setLineWidth(.7);doc.roundedRect(x,yy,cw,P.rh,7,7,c.closed?"F":"FD");
-    pfont(doc,"bs",10.5);doc.setTextColor(...(c.closed?MUT:MOSS));doc.text(String(Number(c.d.slice(8))),x+cw-8,yy+7+P.fs*.8,{align:"right"});
-    if(c.closed){pfont(doc,"bs",12);doc.setTextColor(...MUT);doc.text("No School",x+cw/2,yy+P.rh/2+4,{align:"center"});return}
-    const L=layout(c,P.fs,P.ig),fs=P.fs;for(const it of L.out){const lunch=it.o.k==="lunch";let ty=yy+it.y;const bh=it.ls.length*fs*1.12+it.sl.length*(fs-1.3)*1.18-fs*.2;
-      doc.setFillColor(...KM_COL[it.o.k]);doc.roundedRect(x+7,ty-fs*.82,lunch?3:2.4,bh,1,1,"F");
-      pfont(doc,lunch?"fs":"fr",lunch?fs+.5:fs);doc.setTextColor(...INK);it.ls.forEach((l,j)=>doc.text(l,x+tx,ty+j*fs*1.12));ty+=it.ls.length*fs*1.12;
-      if(it.sl.length){pfont(doc,"fr",fs-1.3);doc.setTextColor(...MUT);it.sl.forEach((l,j)=>doc.text(l,x+tx,ty+j*(fs-1.3)*1.18-fs*.2))}}})})};
-  const drawFoot=()=>{if(!fl.length)return;const y=H-m-fh;doc.setFillColor(...SOFT);doc.roundedRect(m,y,gw,fh,9,9,"F");let ty=y+6+fFs;
-    fl.forEach(([k,l])=>{pfont(doc,k,fFs);doc.setTextColor(...(k==="fs"?MOSS:INK));doc.text(l,m+14,ty);ty+=lh})};
-  const top=dayHead(header(false)),bottom=H-m-(fh?fh+6:0);const P=plan(D.weeks,top,bottom,9);
-  if(P){drawWeeks(D.weeks,top,P);drawFoot()}
-  else{// two pages, the first three weeks then the rest, both at one size
-    const a=D.weeks.slice(0,3),b=D.weeks.slice(3);doc.addPage("letter","landscape");const top2=dayHead(header(true));doc.setPage(1);
-    const Pa=plan(a,top,H-m,8.5),Pb=plan(b,top2,bottom,8.5);const fs=Math.min(Pa?Pa.fs:8.5,Pb?Pb.fs:8.5);
-    drawWeeks(a,top,{fs,rh:(H-m-top-gap*(a.length-1))/a.length});doc.setPage(2);drawWeeks(b,top2,{fs,rh:(bottom-top2-gap*(b.length-1))/Math.max(1,b.length)});drawFoot()}
-  await saveFile(doc.output("blob"),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.pdf`)}
-async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
-  await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,PageOrientation,HeightRule}=X;
-  const F=k=>PF.buf?PF.word[k]:"Arial";const run=(t,k,pt,c,o)=>new TextRun(Object.assign({text:clean(t),font:F(k),size:Math.round(pt*2),color:c||"1C2A22",bold:PF_BOLD(k)},o||{}));
-  const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();const name=MENU_MONTH(month),W=14400,gapW=120,cw=Math.floor((W-4*gapW)/5);
-  const none={style:BorderStyle.NONE,size:0,color:"FFFFFF"},noB={top:none,bottom:none,left:none,right:none};const line={style:BorderStyle.SINGLE,size:4,color:"D6DED4"};
-  const ch=[];
-  const hdr=[];if(PRINT.schoolDocs)hdr.push(new Paragraph({children:[run("FULTON COMMUNITY SCHOOL & FARM","fs",9,"2F5A43",{characterSpacing:12})]}));
-  hdr.push(new Paragraph({children:[run(name,"bs",22),run("   "+title,"fs",13,"2F5A43")]}));
-  // a coloured bar is a narrow shaded cell, which Word and LibreOffice both draw clearly
-  const bar=(k,w)=>new TableCell({width:{size:w,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:hx(KM_COL[k]),color:"auto"},children:[new Paragraph({children:[run(" ","fr",4)]})]});
-  const plain=(w,kids)=>new TableCell({width:{size:w,type:WidthType.DXA},borders:noB,margins:{left:110,right:40},children:kids});
-  const legW=[],legC=[];if(D.meals.length>1)D.meals.forEach((k,i)=>{if(i){legW.push(260);legC.push(plain(260,[new Paragraph({})]))}const lw=KM_LABEL[k].length*105+200;legW.push(50,lw);legC.push(bar(k,50),plain(lw,[new Paragraph({children:[run(KM_LABEL[k],"fr",9.5)]})]))});
-  if(legC.length){hdr.push(new Paragraph({spacing:{after:0,line:120},children:[run(" ","fr",4)]}));
-  hdr.push(new Table({width:{size:legW.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:legW,borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows:[new TableRow({height:{value:250,rule:HeightRule.EXACT},children:legC})]}))}hdr.push(new Paragraph({spacing:{after:0,line:120},children:[run(" ","fr",4)]}));
-  ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:"FAF6EA",color:"auto"},margins:{top:60,bottom:40,left:240,right:240},children:hdr})]})]}));
-  ch.push(new Paragraph({spacing:{after:0,line:120,lineRule:"exact"},children:[]}));
-  const colW=[];for(let i=0;i<5;i++){if(i)colW.push(gapW);colW.push(cw)}
-  const gapCell=()=>new TableCell({width:{size:gapW,type:WidthType.DXA},borders:noB,children:[new Paragraph({})]});
-  const head=new TableRow({tableHeader:true,children:["Monday","Tuesday","Wednesday","Thursday","Friday"].flatMap((d,i)=>[...(i?[gapCell()]:[]),new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[new Paragraph({children:[run(d.toUpperCase(),"fs",8.5,"2F5A43",{characterSpacing:16})]})]})])});
-  const cell=c=>{if(!c)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[new Paragraph({})]});
-    const kids=[new Paragraph({alignment:AlignmentType.RIGHT,spacing:{after:0,line:180,lineRule:"exact"},children:[run(String(Number(c.d.slice(8))),"bs",9,c.closed?"606E65":"2F5A43")]})];
-    if(c.closed)kids.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:200},children:[run("No School","bs",11.5,"606E65")]}));
-    else if(c.items.length){const iw=cw-200,bw=55,rows=[];c.items.forEach((o,j)=>{const lunch=o.k==="lunch";
-        if(j)rows.push(new TableRow({height:{value:30,rule:HeightRule.EXACT},children:[plain(bw,[new Paragraph({})]),plain(iw-bw,[new Paragraph({})])]}));
-        const t=[new Paragraph({children:[run(o.dish,lunch?"fs":"fr",9)]})];if(o.side)t.push(new Paragraph({children:[run("with "+o.side,"fr",7.5,"606E65")]}));
-        rows.push(new TableRow({children:[bar(o.k,bw),plain(iw-bw,t)]}))});
-      kids.push(new Table({width:{size:iw,type:WidthType.DXA},columnWidths:[bw,iw-bw],borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},rows}));kids.push(new Paragraph({spacing:{after:0,line:20,lineRule:"exact"},children:[run(" ","fr",1)]}))}
-    return new TableCell({width:{size:cw,type:WidthType.DXA},borders:{top:line,bottom:line,left:line,right:line},shading:c.closed?{type:ShadingType.CLEAR,fill:"EAF2EC",color:"auto"}:undefined,margins:{top:50,bottom:30,left:90,right:90},children:kids})};
-  const rows=D.weeks.map(r=>new TableRow({cantSplit:true,height:{value:660,rule:HeightRule.ATLEAST},children:r.flatMap((c,i)=>[...(i?[gapCell()]:[]),cell(c)])}));
-  ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:colW,borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:{style:BorderStyle.SINGLE,size:24,color:"FFFFFF"},insideVertical:none},rows:[head,...rows]}));
-  if(foot.length||extra.length){ch.push(new Paragraph({spacing:{after:0,line:100,lineRule:"exact"},children:[]}));
-    ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({cantSplit:true,children:[new TableCell({width:{size:W,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:"EAF2EC",color:"auto"},margins:{top:50,bottom:50,left:200,right:200},
-      children:[...foot.map(t=>new Paragraph({spacing:{after:20},children:[run(t,"fr",8.5)]})),...extra.map(t=>new Paragraph({spacing:{after:20},children:[run(t,"fs",8.5,"2F5A43")]}))]})]})]}))}
-  ch.push(new Paragraph({spacing:{before:0,after:0,line:40,lineRule:"exact"},children:[run(" ","fr",2)]}));
-  // Word ends a page with a paragraph after the last table, so it is kept one point tall and never opens a second page
-  ch.push(new Paragraph({spacing:{before:0,after:0,line:20,lineRule:"exact"},children:[run(" ","fr",1)]}));
-  const wf=wordFonts();const docx=TREE_KIT.wordFile(X,Object.assign({creator:"Fulton Community School",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
-  await saveFile(await TREE_KIT.wordBlob(X,docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","4b09c7dfe8").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","4b09c7dfe8").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","4b09c7dfe8").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -13137,9 +12094,15 @@ function displayText(text,mode,extra){
 function credit(name,mode){mode=mode||PRINT.names;if(!name)return"";const n=name.replace(/ \[\?\]$/,"");const c=kidList().find(x=>x.first===n);return mode==="none"?"":shownName(n,c?c.last||"":"",mode)+(name!==n&&mode!=="initials"?" [?]":"")}
 
 /* ---------- A space for the small group. Small groups meet Tuesday to Friday, 9 to 10:30, unless the educator changes it. ---------- */
+// one calendar request for the pages that read the same days, kept for a minute, so Today, the Kitchen, the
+// newsletter, the Garden, Settings and a plan's space share it rather than each asking. A sign-up or a change to the
+// spaces asks again.
+const CAL_VIEW=new Map();
+function calView(from,to,fresh){const k=from+"|"+to;const c=CAL_VIEW.get(k);if(!fresh&&c&&Date.now()-c.at<60000)return c.p;
+  const p=window.FP_API("/api/view",{from,to}).catch(e=>{CAL_VIEW.delete(k);throw e});CAL_VIEW.set(k,{at:Date.now(),p});if(CAL_VIEW.size>30)CAL_VIEW.delete(CAL_VIEW.keys().next().value);return p}
 let calSpaces=null,calSpacesAll=null,calSpacesAt=0,spaceBusy={};
 async function loadCalSpaces(force){if(!window.FP_API||!db)return;if(!force&&calSpaces&&Date.now()-calSpacesAt<10*60000)return;
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpacesAll=((j.settings&&j.settings.spaces)||[]);calSpaces=calSpacesAll.filter(s=>!s.hidden);calSpacesAt=Date.now();
+  try{const d=iso(new Date());const j=await calView(d,d,force);calSpacesAll=((j.settings&&j.settings.spaces)||[]);calSpaces=calSpacesAll.filter(s=>!s.hidden);calSpacesAt=Date.now();
     // Where it happens offers every space by name, those on the sign-up list and those kept off it
     PLACES=calSpacesAll.map(s=>s.name);fillPlaceList()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
   if(view==="plans"&&currentId)rerenderSpace();if(view==="settings"&&$("#spacesset"))$("#spacesset").outerHTML=spacesSetHtml()}
@@ -13176,7 +12139,7 @@ async function spaceBook(p){
   const made=[...(sp.booked||[])],skipped=[];
   const days=space.byWeek?[sp.days[0]]:sp.days.slice().sort();
   for(const d of days){const date=addDays(p.weekOf,d-1);if(made.some(b=>b.day===d))continue;
-    try{const r=await window.FP_API("/api/book",{spaceId:space.id,date,start,end,what,group});
+    try{CAL_VIEW.clear();const r=await window.FP_API("/api/book",{spaceId:space.id,date,start,end,what,group});
       for(const b of r.made||[])made.push({id:b.id,day:d});
       for(const x of r.skipped||[])skipped.push(`${parseIso(x.date).toLocaleDateString("en-US",{weekday:"long"})} is taken by ${x.by}.`)}
     catch(e){const why=String(e&&e.message||"").trim();skipped.push(`${parseIso(date).toLocaleDateString("en-US",{weekday:"long"})} could not be signed up.${why?" "+why.replace(/([^.!?])$/,"$1."):""}`)}}
@@ -13338,9 +12301,9 @@ function spacesSetHtml(){if(!window.FP_HOSTED)return"";if(!calSpacesAll){loadCal
     <div class="chips">${calSpacesAll.map(x=>`<span class="rname">${esc(x.name)}${x.hidden?` <span class="cnt">off the sign-up list</span>`:""}</span>`).join("")}</div>
     <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button><button class="linkbtn" data-tview="calendar">Change or remove a space in Calendar settings</button></div></section>`}
 async function spaceAdd(n){n=String(n||"").trim();if(!n){toast("Type the space's name first.");return}if((calSpacesAll||[]).some(x=>x.name.toLowerCase()===n.toLowerCase())){toast("That space is already on the list.");return}
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});const prog=JSON.parse(JSON.stringify(j.settings||{}));prog.calendars=prog.calendars||[];
+  try{const d=iso(new Date());const j=await calView(d,d,true);const prog=JSON.parse(JSON.stringify(j.settings||{}));prog.calendars=prog.calendars||[];
     const id=n.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,16)||"space";(prog.spaces=prog.spaces||[]).push({id:(prog.spaces.some(s=>s.id===id)?id.slice(0,12)+Math.random().toString(36).slice(2,6):id),name:n,color:"moss",note:"",shared:false,hidden:false,byWeek:false});
-    await window.FP_API("/api/settings",{program:prog});toast("Added to the spaces.");await loadCalSpaces(true)}catch(e){toast(e&&e.message||"The space could not be added.")}}
+    await window.FP_API("/api/settings",{program:prog});CAL_VIEW.clear();toast("Added to the spaces.");await loadCalSpaces(true)}catch(e){toast(e&&e.message||"The space could not be added.")}}
 // what the lists held when they became one, for the director to read
 let ONELISTS=null;
 function oneListsNote(){const r=ONELISTS;const L=r&&Array.isArray(r.differences)?r.differences:[];if(!L.length)return"";
@@ -13555,167 +12518,8 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
   if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
-/* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
-   and opening one closes the others. A card not named here goes under the closest heading. */
-const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
-  ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
-  ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
-let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function setStatus(t,x){try{
-  const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
-  if(t==="See TREE as an educator")return "Any page, as an educator sees it";
-  if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
-  if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
-  if(t==="Educators")return plural(rosterNames().length,"educator");
-  if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
-  if(t==="Small groups")return plural(GROUPS.length,"group");
-  if(t==="Classes")return CLASSROOMS.join(", ");
-  if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
-  if(t==="Names on plans")return plural(rosterNames().length,"name");
-  if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
-  if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
-  if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
-  if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
-  if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
-  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
-  if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
-  if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
-  if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
-  if(t==="Story frames")return plural(x.querySelectorAll("details").length,"frame");
-  const n=x.querySelectorAll(".chip,.sgrow,.rchip").length;if(n)return plural(n,"item");
-  const h=x.querySelector(".hint");return h?sentFit(h.textContent,70):"";
-}catch(e){return ""}}
-function settingsFold(){const m=$("#main");if(!m||!isDirector())return;const secs=[...m.querySelectorAll(":scope > section.card")];if(!secs.length)return;
-  let lens=null;const cards=[];
-  for(const x of secs){const lbl=x.querySelector(":scope > .lbl");const t=lbl?lbl.textContent.trim():"";
-    // each lens's own card sits inside Lenses
-    if(!t&&lens&&x.querySelector(":scope > .secthead h3")){lens.body.append(x);x.classList.add("inset");continue}
-    const name=t||((x.querySelector("h3")||{}).textContent||"").trim();if(!name)continue;
-    const d=document.createElement("details");d.className="setcard";d.dataset.set=name;if(setOpen===name)d.open=true;
-    const body=document.createElement("div");body.className="setbody";while(x.firstChild)body.append(x.firstChild);if(lbl)lbl.remove();
-    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt">${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
-    cards.push([name,x]);if(name==="Lenses")lens={x,body}}
-  const hd=m.querySelector(".head");let at=hd;
-  for(const [g,ts] of SET_GROUPS){const mine=cards.filter(([n])=>ts.includes(n)||(g==="People"&&!SET_GROUPS.some(([,l])=>l.includes(n)))).sort((a,b)=>(ts.indexOf(a[0])+1||99)-(ts.indexOf(b[0])+1||99));if(!mine.length)continue;
-    const h=document.createElement("h3");h.className="sethead";h.textContent=g;at.after(h);at=h;for(const [,x] of mine){at.after(x);at=x}}}
-document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.classList||!d.classList.contains("setcard"))return;
-  if(d.open){setOpen=d.dataset.set;document.querySelectorAll(".setcard[open]").forEach(x=>{if(x!==d)x.open=false})}else if(setOpen===d.dataset.set)setOpen=""},true);
-function renderSettings(){
-  if(!isDirector()){const nm=VIEW_AS?VIEW_AS.name:(window.FP_NAME?window.FP_NAME():me());const rm=myRoom();
-    $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Your settings</span><h2 style="margin-top:4px">${esc(nm||"Settings")}</h2><div class="sub">${rm?esc(rm)+" class. ":""}Your lists open on your class. The director sets the program's lists, groups and classes.</div></div></div>
-    <section class="card" id="mypass"><div class="lbl">Change my passcode</div><div class="hint">Type the four numbers you use now, then four new ones twice.</div>
-      <div class="kfields"><label>Passcode now<input type="password" inputmode="numeric" maxlength="4" id="mp-old" autocomplete="current-password"></label><label>New passcode<input type="password" inputmode="numeric" maxlength="4" id="mp-new" autocomplete="new-password"></label><label>New passcode again<input type="password" inputmode="numeric" maxlength="4" id="mp-again" autocomplete="new-password"></label></div>
-      <div class="actions"><button class="btn small" id="mp-save">Save my new passcode</button><span class="cnt" id="mp-msg"></span></div></section>
-    <section class="card"><div class="lbl">My class</div><div class="hint">Lists open on ${rm?esc(rm):"all classes"}. Choosing another class on a list is remembered on this device.</div>
-      <div class="actions"><button class="btn small ghost" id="mp-roomreset">Open every list on ${rm?esc(rm):"my class"} again</button></div></section>`;return}
-  const names=rosterNames();
-  let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
-    <div class="sub">The lists the app offers as choices and suggestions. Change them whenever the program changes. Plans already written keep their wording, and educators can always type their own.</div></div></div>
-  ${viewAsHtml()}
-  ${remindersHtml()}
-  ${signinsHtml()}
-  ${window.FP_HOSTED?`<section class="card" id="staffset"><div class="lbl">Educators</div><div class="empty"><span class="spin"></span> Opening</div></section><section class="card" id="teamset"><div class="lbl">Team meetings</div><div class="empty"><span class="spin"></span> Opening</div></section>`:""}
-  ${lensSettingsHtml()}
-  ${menusHtml()}
-  ${staffBdaysHtml()}
-  ${keepingHtml()}${serverStatusHtml()}
-  ${storyFramesHtml()}
-  ${displayHtml()}
-  ${backupHtml()}
-  ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
-    <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
-      <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div></section>`;
-    return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos and records are kept in the school's private records on GitHub, which asks for under 1 GB and strongly recommends under 5 GB. A deleted photo still counts, since the history is kept.</div>
-    <div class="prow"><div><b>${esc(si.usedText)} used of 1 GB</b><div class="cnt">${si.photos} photo${si.photos===1?"":"s"}, ${esc(si.photoText)}. ${si.over?"Past 1 GB.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size.`}</div></div>
-      <div class="storebar" role="img" aria-label="${si.pct} percent of 1 GB used"><span style="width:${Math.max(2,si.pct)}%"></span></div></div>
-    <div class="cnt">Today shows a note for the director at 500 MB and again at 1 GB.</div></section>`})()}
-  <section class="card"><div class="lbl">Printing</div><div class="hint">How printouts and Word files look for everyone.</div>
-    <div class="prow"><div><b>The school's name on display documentation</b><div class="cnt">Observation sheets, wall sheets, threads, projects, the lens, and story pages</div></div>
-      <div class="seg" role="group" aria-label="School name on documentation"><button data-psd="1" aria-pressed="${PRINT.schoolDocs}">On</button><button data-psd="0" aria-pressed="${!PRINT.schoolDocs}">Off</button></div></div>
-    <div class="prow"><div><b>The school's name on plans and records</b><div class="cnt">Weekly plans, blank forms, and week packets</div></div>
-      <div class="seg" role="group" aria-label="School name on plans"><button data-psr="1" aria-pressed="${PRINT.schoolRecords}">On</button><button data-psr="0" aria-pressed="${!PRINT.schoolRecords}">Off</button></div></div>
-    <div class="prow"><div><b>Children's names on display documentation</b><div class="cnt">On observation sheets and walls. A wall can choose its own. Plans always keep names as written, and nothing in an observation changes.</div></div>
-      <div class="seg" role="group" aria-label="Children's names">${NAME_MODES.map(([k,l])=>`<button data-pnm="${k}" aria-pressed="${PRINT.names===k}">${l}</button>`).join("")}</div></div>
-    <div class="prow"><div><b>Educators' names on display documentation</b><div class="cnt">Under the title of observation sheets, slides, walls, portfolios, and thread and project pages. Plans keep the educator as written.</div></div>
-      <div class="seg" role="group" aria-label="Educators' names"><button data-pby="1" aria-pressed="${PRINT.by!==false}">On</button><button data-pby="0" aria-pressed="${PRINT.by===false}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
-    <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
-      <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of Classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
-    <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
-    <div class="actions"><input type="text" id="c-new" placeholder="A new Class" style="width:200px"><button class="btn small" id="c-add">Add a Class</button></div>${oneListsNote()}</section>
-  <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
-    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
-      <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
-      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
-      <label class="sgf"><span>Lead</span><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
-      <span class="actions" style="margin:0"><button class="linkbtn" data-gdel="${i}">Remove</button></span></div></details>`).join("")}</div>
-    <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
-  <section class="card"><div class="lbl">Names on plans</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
-  ${spacesSetHtml()}
-  <section class="card"><div class="lbl">Classroom areas</div><div class="hint">Offered on the Individual plan when the focus is a classroom area.</div>
-    <div class="chips">${chipList(AREAS,"data-adel")}</div>
-    <div class="actions"><input type="text" id="a-new" placeholder="Add a classroom area" style="width:220px"><button class="btn small" id="a-add">Add</button></div></section>
-  <section class="card"><div class="lbl">Languages of expression</div><div class="hint">Offered on every plan and the curriculum web. Educators can add others on any plan, and those are offered to everyone afterward.</div>
-    <div class="chips">${chipList(LANGUAGES,"data-ldel")}</div>
-    <div class="actions"><input type="text" id="l-new" placeholder="Add a language of expression" style="width:240px"><button class="btn small" id="l-add">Add</button></div></section>
-  <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
-    ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
-      <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>
-      <div class="actions"><input type="text" data-madd-in="${esc(cat)}" placeholder="Add to ${esc(cat)}" style="width:200px"><button class="btn small ghost" data-madd="${esc(cat)}">Add</button></div></div>`).join("")}
-    <div class="actions" style="border-top:1px solid var(--line);padding-top:8px"><input type="text" id="mc-new" placeholder="New material group" style="width:200px"><button class="btn small" id="mc-add">Add group</button></div></section>
-
-  <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
-  $("#main").innerHTML=h;renderRoster();
-  // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=bfb26ad7fb","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
-  // links to each section at the top, since the page is long
-  settingsFold();
-}
-document.addEventListener("click",e=>{const j=e.target.closest("[data-setjump]");if(!j)return;const el=document.getElementById(j.dataset.setjump);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})});
-document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings")return;
-  const val=sel=>{const el=document.querySelector(sel);const v=(el?.value||"").trim();return v};
-  if(t.id==="g-add"){const n=val("#g-new");if(!n){toast("Type a group name first.");return}if(GROUPS.some(g=>g.name.toLowerCase()===n.toLowerCase())){toast("That group already exists.");return}GROUPS.push({name:n,room:"",educator:""});saveProgram();renderSettings();return}
-  if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
-  if(t.id==="p-add"){spaceAdd(val("#p-new"));return}
-  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the Class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That Class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
-  if(t.dataset.cdel!=null){const r=CLASSROOMS[+t.dataset.cdel];const kids=[...children.values()].filter(c=>c.classroom===r&&kidAt(c)).length,gs=GROUPS.filter(g=>g.room===r).length;
-    if(kids||gs){toast(`${r} still has ${kids?kids+(kids===1?" child":" children"):""}${kids&&gs?" and ":""}${gs?gs+(gs===1?" small group":" small groups"):""}. Move them first.`);return}
-    CLASSROOMS=CLASSROOMS.filter(x=>x!==r);saveProgram();renderSettings();return}
-  if(t.id==="a-add"){const n=val("#a-new");if(n&&!AREAS.some(x=>x.toLowerCase()===n.toLowerCase())){AREAS.push(n);saveProgram()}renderSettings();return}
-  if(t.dataset.adel!=null){AREAS.splice(+t.dataset.adel,1);saveProgram();renderSettings();return}
-  if(t.id==="l-add"){const n=val("#l-new");if(n&&!LANGUAGES.some(x=>x.toLowerCase()===n.toLowerCase())){LANGUAGES.push(n);saveProgram()}renderSettings();return}
-  if(t.dataset.ldel!=null){LANGUAGES.splice(+t.dataset.ldel,1);saveProgram();renderSettings();return}
-  if(t.dataset.psd!=null){PRINT.schoolDocs=t.dataset.psd==="1";saveProgram();renderSettings();return}
-  if(t.dataset.psr!=null){PRINT.schoolRecords=t.dataset.psr==="1";saveProgram();renderSettings();return}
-  if(t.dataset.pnm){PRINT.names=t.dataset.pnm;saveProgram();renderSettings();return}
-  if(t.dataset.pby){PRINT.by=t.dataset.pby==="1";saveProgram();renderSettings();return}
-  if(t.dataset.proofsave){if(!isDirector())return;PROOF_SAVE=t.dataset.proofsave==="1";proofBtn();saveProgram();renderSettings();return}
-  if(t.dataset.mdel){const [c,i]=t.dataset.mdel.split("|");MATERIALS[c].splice(+i,1);saveProgram();renderSettings();return}
-  if(t.dataset.madd){const c=t.dataset.madd;const n=(document.querySelector(`[data-madd-in="${CSS.escape(c)}"]`)?.value||"").trim();if(n&&!MATERIALS[c].includes(n)){MATERIALS[c].push(n);saveProgram()}renderSettings();return}
-  if(t.dataset.mcatdel){delete MATERIALS[t.dataset.mcatdel];saveProgram();renderSettings();return}
-  if(t.id==="mc-add"){const n=val("#mc-new");if(n&&!MATERIALS[n]){MATERIALS[n]=[];saveProgram()}renderSettings();return}
-  if(t.dataset.sdel){const [se,i]=t.dataset.sdel.split("|");SEASONS[se].splice(+i,1);saveProgram();renderSettings();return}
-  if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
-  if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
-  if(t.id==="prog-reset-no"){renderSettings();return}
-  if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
-    // the Classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
-    d0.classrooms=CLASSROOMS.slice();d0.groups=JSON.parse(JSON.stringify(GROUPS));delete d0.places;applyProgram(Object.assign({},PROGRAM_DOC,d0));saveProgram();renderSettings();toast("Original lists restored.");return}
-});
-document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;
-  if(t.dataset.gname!=null){const n=t.value.trim();if(n){GROUPS[+t.dataset.gname].name=n;saveProgram()}return}
-  if(t.dataset.groom!=null){GROUPS[+t.dataset.groom].room=t.value;saveProgram();return}
-  if(t.dataset.ged!=null){GROUPS[+t.dataset.ged].educator=t.value;saveProgram();return}
-});
-document.addEventListener("keydown",e=>{if(view!=="settings"||e.key!=="Enter")return;const t=e.target;
-  const map={"g-new":"#g-add","p-new":"#p-add","mc-new":"#mc-add"};
-  if(map[t.id]){e.preventDefault();$(map[t.id]).click()}
-  if(t.dataset.maddIn!=null){e.preventDefault();document.querySelector(`[data-madd="${CSS.escape(t.dataset.maddIn)}"]`).click()}
-  if(t.dataset.saddIn!=null){e.preventDefault();document.querySelector(`[data-sadd="${t.dataset.saddIn}"]`).click()}
-});
-
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","91aa00b8ba").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

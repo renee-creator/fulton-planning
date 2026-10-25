@@ -328,6 +328,10 @@ To add the copy step to a mailbox script set up before it, open the readable-cop
 
 Photos are not inside the backup. Those moved to Google Drive stay in the TREE photos folder, and the markers that point TREE to them, photos/*.ref, are listed in the manifest with their Drive ids. Photos still in the records come back with the records repository itself.
 
+## Pages loaded when opened
+
+The Kitchen, the family newsletter, the Farm to School grant and Settings load only when someone opens them, as the Educators pages already do. `python3 tools/build.py` splits each part of src/app.html marked for it, keeping in the page whatever the rest of TREE uses, and writes the rest to tree-kitchen.js, tree-newsletter.js, tree-grant.js and tree-settings.js. The build refuses a part that would hold anything run when the page loads. Today, the Kitchen, the newsletter, the Garden, Settings and a plan's space share one calendar request for the same days, kept for a minute, and a sign-up or a change to the spaces asks again.
+
 ## Server settings on Render
 
 | Setting | What it holds |

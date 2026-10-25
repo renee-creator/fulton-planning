@@ -6,7 +6,7 @@
 let gdn=null,gdnAt=0,gdnBusy=false,gdnOpen=LS.get("tree.gdnopen",{})||{},gdnEdit=null,gdnSpaces=null,gdnGuide="children",gdnPlace="";
 async function loadGarden(force){if(gdnBusy||!window.FP_API)return;if(!force&&gdn!==null&&Date.now()-gdnAt<3*60000)return;gdnBusy=true;
   try{gdn=await window.FP_API("/api/staff/garden",{})}catch(e){gdn=false}finally{gdnAt=Date.now();gdnBusy=false}
-  if(!gdnSpaces)try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
+  if(!gdnSpaces)try{const d=iso(new Date());const j=await calView(d,d);gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
   if(["garden","today","kitchen","grant"].includes(view))renderMain()}
 let gdnProgram=null;
 // the plants for dye and art materials ready to gather this month, offered in the Materials library under the Atelier, never food
@@ -191,7 +191,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gbedadd){await gdnCall("bed",{bed:{name:v("gb-name"),space:v("gb-space"),permanent:!!document.getElementById("gb-perm")?.checked}},"Added.");return}
   if(d.gspaceadd){if(!gdnProgram){toast("The spaces are still loading.");return}const prog=JSON.parse(JSON.stringify(gdnProgram));const name=d.gspaceadd;
     const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,24)||"space";if(!(prog.spaces||[]).some(s=>s.id===id))(prog.spaces=prog.spaces||[]).push({id,name,color:"moss",note:"",shared:false,hidden:true,byWeek:false});
-    try{const r=await window.FP_API("/api/settings",{program:prog});gdnProgram=r.settings||prog;gdnSpaces=(gdnProgram.spaces)||gdnSpaces;toast("Added to Spaces.");renderMain()}catch(er){toast(er&&er.message||"The space could not be added.")}return}
+    try{const r=await window.FP_API("/api/settings",{program:prog});CAL_VIEW.clear();gdnProgram=r.settings||prog;gdnSpaces=(gdnProgram.spaces)||gdnSpaces;toast("Added to Spaces.");renderMain()}catch(er){toast(er&&er.message||"The space could not be added.")}return}
   if(d.gkidmap){noticeForm=Object.assign(newNotice(),{classroom:myRoom()||"",noticed:"A child's map of the garden.\n",gardenMap:true});view="moments";LS.set("fps.view",view);renderNav();renderMain();return}
   if(d.gevent){const c=typeof ptCfg==="function"?ptCfg():{};if(!v("ge-date")){toast("Choose the day.");return}
     try{await db.doc("participation/"+ptNewId("it")).create({kind:"item",type:"event",garden:true,onCalendar:true,title:v("ge-title"),date:v("ge-date"),start:v("ge-start"),end:v("ge-end"),spots:Number(v("ge-spots"))||0,classroom:"",hours:0,note:"A garden day for families. The garden agreements for families are on the Family page.",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""});toast("Posted. Families see it on the Family page.")}catch(er){toast(er&&er.message||"That did not work.")}return}
