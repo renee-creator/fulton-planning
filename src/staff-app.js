@@ -414,7 +414,7 @@ async function neCard(who,dir){const ne=await loadNewed(who);const L=(ne.list||[
   if(!L.length&&!dir)return "";return card("Your first weeks",`<div class="hint">${dir?"The first-weeks sequence, in order. Parts marked Draft show only to you.":"Read these in order through your first weeks. Each one is short."}</div>${L.map(x=>nePart(x,ne,dir)).join("")||`<div class="cnt">No parts yet.</div>`}${exp}`)}
 async function neWelcome(){const ne=await loadNewed(meName());const w=(ne.list||[]).find(x=>x.place==="pdlibrary");if(!w)return "";const dir=D();
   return card(w.title,`${w.waiting?`<div class="actions" style="margin:0 0 6px">${chip("soonish","Draft, only you see it")}</div>`:""}<div class="stmd">${md(neFill(w.body,ne.goTo))}</div>
-    ${dir&&w.draft?`<div class="actions"><button class="btn small${w.waiting?"":" ghost"}" data-neready="${H(w.slug)}|${w.waiting?1:0}">${w.waiting?"Mark it ready":"Hide it again"}</button></div>`:""}${dir&&w.source?`<div class="cnt">Source, seen only by you. ${H(w.source)}</div>`:""}`)}
+    ${dir?`<div class="actions">${w.draft?`<button class="btn small${w.waiting?"":" ghost"}" data-neready="${H(w.slug)}|${w.waiting?1:0}">${w.waiting?"Mark it ready":"Hide it again"}</button>`:""}${w.slug==="welcome"?`<button class="btn small ghost" data-stletteredit="1">Edit</button>`:""}</div>`:""}${dir&&w.source?`<div class="cnt">Source, seen only by you. ${H(w.source)}</div>`:""}`)}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-neready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
   const [slug,on]=t.dataset.neready.split("|");try{NE=Object.assign(await api("newed/ready",{name:NE&&NE.who,slug,on:on==="1"}),{who:NE&&NE.who});toast(on==="1"?"Marked ready.":"Hidden again. Only you see it.");redraw()}catch(er){fail(er)}});
 document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.neexp==null)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
@@ -477,6 +477,7 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
   draw(my,`<div class="head"><div><span class="eyebrow">${x.dir==="licensing"?"Licensing at Fulton Community School":"TREE How To"}</span><h2 style="margin-top:4px">${H(x.title)}</h2><div class="sub">${H(x.source)}</div></div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stpiece="">‹ ${x.dir==="licensing"?"Licensing at Fulton Community School":"TREE How To"}</button></div>
     ${D()&&x.draft?`<div class="actions" style="margin:0 0 10px">${x.waiting?chip("soon","A draft, only you see it"):chip("ok","Ready, everyone sees it")}<button class="btn small ghost" data-stpieceready="${H(x.id)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Back to draft"}</button></div>`:""}
+    ${D()&&x.dir==="howto"?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-stpieceedit="${H(x.id)}">Edit</button></div>`:""}
     <section class="card"><div class="actions" style="margin:0 0 6px">${x.links.filter(l=>!l.minor).map(l=>`<a class="btn small ghost" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}<span class="cnt">About ${x.minutes} minutes</span>${d?chip("ok","Read "+fms(d.at)):""}</div>${x.links.some(l=>l.minor)||(x.checked&&D())?`<div class="actions" style="margin:0 0 6px">${x.links.filter(l=>l.minor).map(l=>`<a class="linkbtn" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${x.checked&&D()?`<span class="cnt">Links confirmed ${H(fd(x.checked))}</span>`:""}</div>`:""}
       ${x.sections.filter(s=>s!==q).map(s=>`<h3 style="font-size:16px;margin:14px 0 6px">${H(s.heading)}</h3>${md(s.body)}`).join("")}
       ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Teacher Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
@@ -951,4 +952,41 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(t.id==="sts-days"){try{await api("school",{school:{remindDays:+t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
   if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
 });
+
+/* ---------- the director's Edit button on a PD module, a TREE How To guide and the PD library letter ----------
+   One editor for all three, the same way a Teacher Policies and Procedures section is edited. Each part of the page,
+   such as the reading, the practice and the reflection, has its own box, and the headings stay as they are. Every save
+   keeps the earlier wording with Restore this version, and new wording is checked against TREE's writing rules. */
+const pe={at:null,page:null,read:-1,done:null,found:[]};
+function peClose(){const o=$("#stpageedit");if(o)o.remove();document.body.style.overflow="";pe.page=null}
+function peDraw(){const o=$("#stpageedit");if(!o||!pe.page)return;const g=pe.page;const name=g.kind==="letter"?"the letter":g.kind==="howto"?"this How To guide":"this module";
+  const hist=(g.history||[]).map((h,j)=>({h,j})).reverse();
+  o.querySelector(".pebox").innerHTML=`<div class="sttop" style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><h3 style="margin:0">Edit ${H(name)}</h3><button class="linkbtn" data-pecancel="1">Close</button></div>
+    <div class="hint">Write in plain text. A line starting with ### is a heading. A dash starts a list item, a number and a full stop a numbered item. **Words** are bold, and [words](link) is a link. The part headings stay as they are. New wording follows TREE's writing rules, and TREE names anything that does not before it saves.</div>
+    ${pe.found.length?`<div class="hint warnline" role="alert"><b>Before it saves</b>${pe.found.map(f=>`<div>${H(f.why)} <span class="cnt">${H(f.line)}</span></div>`).join("")}</div>`:""}
+    <label class="fld-label">Title<input type="text" id="pe-title" value="${H(g.title)}"></label>
+    ${g.lead!=null?`<label class="fld-label">Opening lines<textarea id="pe-lead" rows="3">${H(g.lead)}</textarea></label>`:""}
+    ${g.parts.map((x,i)=>`<label class="fld-label">${H(x.heading)}<textarea data-pepart="${i}" rows="${Math.min(18,Math.max(4,String(x.body).split("\n").length+1))}">${H(x.body)}</textarea></label>`).join("")}
+    <label class="fld-label">A short note about this change<input type="text" id="pe-note" maxlength="300" placeholder="Such as Added a question to Reflect"></label>
+    <div class="actions"><button class="btn" data-pesave="1">Save</button><button class="linkbtn" data-pecancel="1">Cancel</button>${g.updatedAt?`<span class="cnt">Last changed ${H(fms(g.updatedAt))}${g.note?", "+H(g.note):""}</span>`:""}</div>
+    ${hist.length?`<h4 style="margin:14px 0 4px">Earlier versions</h4>${hist.map(({h,j})=>`<div class="strow"><div class="sttop"><b>${H(h.at?fms(h.at):"Before TREE")}</b><span class="cnt">${H(h.by||"")}</span></div>${h.note?`<div class="cnt">${H(h.note)}</div>`:""}
+      <div class="actions" style="margin:0"><button class="btn small ghost" data-peread="${j}">${pe.read===j?"Close":"Read it"}</button><button class="linkbtn" data-perestore="${j}">Restore this version</button></div>${pe.read===j?`<div class="stq" style="margin-top:6px;white-space:pre-wrap">${H(h.text.replace(/^\s*<!--[\s\S]*?-->\n?/,""))}</div>`:""}</div>`).join("")}`:""}`}
+async function pageEdit(at,done){if(!D())return;pe.at=at;pe.done=done||null;pe.read=-1;pe.found=[];
+  let o=$("#stpageedit");if(!o){o=document.createElement("div");o.id="stpageedit";o.setAttribute("role","dialog");o.setAttribute("aria-label","Edit");
+    o.style.cssText="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.35);overflow:auto;padding:16px";
+    o.innerHTML=`<div class="pebox card" style="max-width:760px;margin:0 auto;background:var(--paper);padding:16px 18px;border-radius:12px"><div class="empty"><span class="spin"></span> Opening</div></div>`;document.body.appendChild(o);document.body.style.overflow="hidden"}
+  try{pe.page=await api("page",at);peDraw()}catch(e){peClose();fail(e)}}
+window.TREE_PAGEEDIT=pageEdit;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-stpieceedit],[data-stletteredit]");if(!t||!D())return;e.preventDefault();
+  if(t.dataset.stpieceedit)pageEdit({path:"staff/pd/"+t.dataset.stpieceedit+".md"},async()=>{st.pd=await api("pd");redraw()});
+  else pageEdit({path:"staff/newed/welcome.md"},async()=>{await loadNewed(meName(),true);redraw()})});
+document.addEventListener("click",async e=>{const t=e.target.closest("#stpageedit [data-pecancel],#stpageedit [data-pesave],#stpageedit [data-peread],#stpageedit [data-perestore]");if(!t)return;const d=t.dataset;e.preventDefault();
+  const finish=async(r,msg)=>{if(r.findings){pe.found=r.findings;peDraw();$("#stpageedit").scrollTop=0;return}pe.page=r.page;pe.found=[];pe.read=-1;toast(r.same?"Nothing changed.":msg);peClose();if(pe.done)await pe.done()};
+  if(d.pecancel){peClose();return}
+  if(d.peread!=null){const j=+d.peread;pe.read=pe.read===j?-1:j;peDraw();return}
+  if(d.pesave){const note=($("#pe-note")?.value||"").trim(),title=($("#pe-title")?.value||"").trim();if(!title){toast("Give the page a title.");return}if(!note){toast("Write a short note about this change.");$("#pe-note")?.focus();return}
+    const parts=[...document.querySelectorAll("#stpageedit [data-pepart]")].map(x=>({body:x.value}));
+    try{t.disabled=true;finish(await api("page/save",Object.assign({},pe.at,{title,lead:$("#pe-lead")?$("#pe-lead").value:undefined,parts,note})),"Saved, with the earlier wording kept.")}catch(er){fail(er)}finally{t.disabled=false}return}
+  if(d.perestore!=null){if(!confirm("Restore this version? The wording there now is kept as an earlier version."))return;
+    try{finish(await api("page/restore",Object.assign({},pe.at,{index:+d.perestore})),"Restored.")}catch(er){fail(er)}}});
 })();

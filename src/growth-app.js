@@ -387,7 +387,7 @@ Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();con
   // the reflection prompts, one per line or list item, each one can be carried into the weekly journal
   const prompts=rf?String(rf.body).split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean):[];const carry=(d.carry||{}).prompt||"";
   const draftCard=dir&&m.draft?card(m.waiting?"Draft":"Ready",`<div class="hint">${m.waiting?"Only you see this module. Educators see it once you mark it ready.":"Educators see this module."}</div><div class="actions"><button class="btn small${m.waiting?"":" ghost"}" data-gmready="${H(slug)}|${m.waiting?1:0}">${m.waiting?"Mark it ready":"Hide it again"}</button></div>`):"";
-  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Lead it at a staff meeting</button>`:"";
+  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Lead it at a staff meeting</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
   if(dir){const pick=st.examplesPick&&st.examplesPick.slug===slug?st.examplesPick:{slug,list:(ex.examples||[]).slice(),shown:!!ex.shown};st.examplesPick=pick;
     const pool=[...[...notices.values()].filter(n=>n&&String(n.noticed||"").length>60).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,30).map(n=>({kind:"obs",id:n.id,label:clip(n.noticed,120)+" ("+(n.by||"")+")",text:clip(n.noticed,600)})),...[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,12).map(x=>({kind:"slide",id:x.id,label:"Slide, "+clip(x.title,80)+" ("+(x.by||"")+")",text:clip([x.title,x.text].filter(Boolean).join(". "),600)}))];
@@ -669,4 +669,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.d
   if(typeof VIEW_AS!=="undefined"&&VIEW_AS){t.checked=!t.checked;return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".")}
   try{st.rlib=await ga("readings/onsite",{id:t.dataset.grlonsite,on:t.checked});toast(t.checked?"Marked In our library.":"No longer marked In our library.");redraw()}catch(er){t.checked=!t.checked;toast(er&&er.message||"That did not save.")}});
 
+// the director's Edit button on a module, the same editor as a How To guide and the PD library letter
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();
+  window.TREE_PAGEEDIT({module:t.dataset.gmedit},async()=>{st.mods=null;redraw()})});
 })();

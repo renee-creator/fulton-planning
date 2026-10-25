@@ -224,6 +224,17 @@ Settings, then Keeping records, for the director. It sets how long TREE keeps th
 
 When a former child or former educator reaches the period, the director's Today shows them once, under Records past their keeping period, with Keep longer and Remove. Nothing is removed until she chooses. Keep longer asks how many more years and asks again then. Remove asks once more before it happens. The server checks the period has passed, then removes the child's record and their conference records, or the former educator's records page, growth, journal, Proud Moments and sign-in, and writes the removal to the server log. Observations, plans and documentation stay as written. The removal, with the name, the day and who chose it, is kept in Settings, Keeping records, under Removed. The removed files stay in the records' history on GitHub and in the nightly backups made before. The choices are kept in settings/keeping in the records, which only the director's TREE receives.
 
+### Editing a module, a How To guide or the letter
+
+The director sees an Edit button on every PD library module, every TREE How To guide and A Letter to Our Educators. It
+works the same way as editing a Teacher Policies and Procedures section. Each part of the page, such as the reading,
+the practice and the reflection, has its own box, and the part headings and the file's opening note stay as they are.
+A save needs a short note. The wording before it is kept in `staff/pd/history/`, one file for each page, and each
+earlier version has Read it and Restore this version. Restoring keeps the wording there now as an earlier version too.
+New or rewritten lines are checked against the writing rules above (`writing.js`) before anything saves, and TREE
+names each line that needs a change. Lines that were already there, such as the title of a cited outside source,
+never stop a save. Only the director can open the editor.
+
 ### Drafts in the PD library
 
 A TREE How To guide or Licensing page whose opening note says status: draft shows only to the director, with A draft, only you see it and Mark it ready, until the director marks it ready. staff/pd/pieceready.json keeps which are ready. Preparing a family conference, from the October 19 TREE practice, waits this way, as the family pieces What Your Child Is Learning and From Activity to Academic Skill wait on the Family Handbook page.

@@ -236,6 +236,48 @@ module.exports = function staffModule(o) {
       handbook: String(meta.handbook || '').split(',').map(s => s.trim()).filter(Boolean), draft: meta.status === 'draft', sections };
   }
 
+  /* ---------- the director's Edit button on a module, a How To guide and the PD library letter ---------- */
+  // the page's own file is rewritten section by section, its opening note and its headings kept as they are, and each
+  // save keeps the wording before it in staff/pd/history, so any earlier version can be restored
+  const W = require('./writing.js');
+  const editable = p => /^staff\/pd\/(modules|howto)\/[a-z0-9-]+\.md$/.test(p) || p === 'staff/newed/welcome.md';
+  const PAGE_HIST = p => 'staff/pd/history/' + p.slice(6).replace(/\.md$/, '').replace(/\//g, '--') + '.json';
+  function pageParts(text) {
+    text = String(text || '').replace(/\r/g, ''); const m = text.match(/^\s*<!--[\s\S]*?-->\n?/); const meta = m ? m[0] : ''; let rest = text.slice(meta.length);
+    const t = rest.match(/^(#{1,3})\s+(.+)$/m); if (!t) return null;
+    const L = t[1].length, pre = rest.slice(0, t.index); rest = rest.slice(t.index + t[0].length);
+    const split = rest.split(new RegExp('^#{' + (L + 1) + '}(?!#)\\s+', 'm'));
+    const lead = split.shift().trim();
+    return { meta, pre, level: L, title: t[2].trim(), lead, parts: split.map(s => { const i = s.indexOf('\n'); return i < 0 ? { heading: s.trim(), body: '' } : { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; }) };
+  }
+  const pageText = pp => pp.meta + pp.pre + '#'.repeat(pp.level) + ' ' + pp.title + '\n\n' + (pp.lead ? pp.lead + '\n\n' : '') +
+    pp.parts.map(x => '#'.repeat(pp.level + 1) + ' ' + x.heading + '\n\n' + (x.body ? x.body + '\n' : '')).join('\n');
+  const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : 'module';
+  function pageOut(p) {
+    const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return null; const h = get(PAGE_HIST(p)) || {};
+    return { path: p, kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };
+  }
+  function savePage(me, p, b, restoring) {
+    const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return { error: 'That page could not be read.' };
+    const note = String(b.note || '').trim().slice(0, 300); if (!note) return { error: 'Write a short note about this change.' };
+    let next;
+    if (restoring) next = restoring;
+    else {
+      const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 160); if (!title) return { error: 'Give the page a title.' };
+      const given = Array.isArray(b.parts) ? b.parts : [];
+      const np = Object.assign({}, pp, { title, lead: String(b.lead == null ? pp.lead : b.lead).replace(/\r/g, '').trim().slice(0, 20000),
+        parts: pp.parts.map((x, i) => ({ heading: x.heading, body: given[i] && given[i].body != null ? String(given[i].body).replace(/\r/g, '').trim().slice(0, 60000) : x.body })) });
+      next = pageText(np);
+      const found = W.check(r.text, next); if (found.length) return { error: 'Some new wording does not follow the writing rules yet.', findings: found };
+    }
+    if (next.trim() === String(r.text || '').trim()) return { ok: true, same: true, page: pageOut(p) };
+    const h = Object.assign({ path: p, history: [] }, get(PAGE_HIST(p)) || {});
+    h.history = [...(h.history || []), { title: pp.title, text: r.text, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
+    Object.assign(h, { note, updatedAt: Date.now(), updatedBy: me });
+    put(PAGE_HIST(p), h); putText(p, next); pieceCache = null; G.invalidate(); log('PD library page changed', p, 'by', me);
+    return { ok: true, page: pageOut(p) };
+  }
+
   /* ---------- people ---------- */
   const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const addMonths = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
@@ -332,6 +374,17 @@ module.exports = function staffModule(o) {
     if (P === 'pd') { if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny(); json(req, res, 200, piecesFor(me)); return; }
     if (P === 'pd/ready') { if (!dir) return deny(); const id = String(body.id || ''); if (!Object.values(pieces()).some(l => l.some(x => x.id === id))) { err(req, res, 404, 'That piece is not here.'); return; }
       const cur = get(PIECE_READY) || { pieces: {} }; put(PIECE_READY, Object.assign({}, cur, { pieces: Object.assign({}, cur.pieces, { [id]: !!body.on }) })); json(req, res, 200, piecesFor(me)); return; }
+    if (P === 'page' || P === 'page/save' || P === 'page/restore') {
+      if (!dir) return deny('The director edits this page.');
+      const p = body.module ? ([...S.files.keys()].find(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md') || '') : String(body.path || '');
+      if (!editable(p) || !S.files.get(p)) { err(req, res, 404, 'That page is not here.'); return; }
+      if (P === 'page') { json(req, res, 200, pageOut(p)); return; }
+      let r;
+      if (P === 'page/restore') { const h = ((get(PAGE_HIST(p)) || {}).history || [])[+body.index]; if (!h) { err(req, res, 404, 'That version is not here.'); return; }
+        r = savePage(me, p, { note: h.at ? `Restored the version of ${new Date(h.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' })}` : 'Restored the version from before TREE' }, h.text); }
+      else r = savePage(me, p, body);
+      if (r.error && !r.findings) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
+    }
     if (P === 'handbook') {
       if (!allowed(me, 'handbook') && !allowed(me, 'newed')) return deny();
       const secs = [...S.files].filter(([p]) => p.startsWith('staff/handbook/')).map(([, r]) => r.doc).filter(Boolean).sort((a, b) => (a.order || 0) - (b.order || 0));
