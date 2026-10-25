@@ -1362,7 +1362,7 @@ async function boot(){
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);projBase.set(d.id,JSON.stringify(v))}});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;grantLoaded=true;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.doc("settings/weekly").onSnapshot(snap=>{weeklyRec=snap.exists?snap.data():null;setTimeout(()=>weeklyReads().catch(()=>{}),20000);if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{weeklyRec=null});
@@ -4288,8 +4288,8 @@ function goView(v,opts){
   // leaving the journal by any way closes it, so it asks for the passcode again
   if(v!=="stjour"&&window.TreeGrowth&&TreeGrowth.leave)TreeGrowth.leave();
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
-  // the newsletter, the grant and the kitchen are the director's and the kitchen's, so an educator who reaches one goes to Today
-  else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen"].includes(v))v="today";
+  // the newsletter, the grant, the kitchen and the walls are the director's and the kitchen's, so an educator who reaches one goes to Today
+  else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen","walls"].includes(v))v="today";
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
@@ -4320,7 +4320,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"?isOffice():k==="drdpreport"?isDirector():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   // the Educators pages sit under four tabs, for the director and every educator, and the pages of the open one show
   // beneath, so a phone shows the page itself on the first screen
@@ -4832,7 +4832,7 @@ function renderToday(){
   $("#main").innerHTML=`<section class="hello"><span class="eyebrow">${esc(fmtLong(new Date()))}</span><h2>${greet}${name&&!isShared(name)?", "+esc(name):""}</h2>
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
-    <button data-tview="slides"><b>Make documentation</b><span>A slide or a wall from observations</span></button>
+    <button data-tview="slides"><b>Make documentation</b><span>${isDirector()?"A slide or a wall from observations":"A slide from observations"}</span></button>
     ${isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
@@ -6736,8 +6736,14 @@ function photoPickHtml(id,label){return `<label class="btn small ghost" style="c
 let projects=new Map(), projId=LS.get("fps.proj",""), projForm=null, projBusy={};
 const PSTATUS={active:"Active",resting:"Resting",closed:"Closed"};
 const PJOIN={children:"Children's initiative",educator:"An educator's proposal",event:"An event"};
+// what each project last read from the server, so an educator's save sends only the fields they changed. The wall is
+// the director's, and an educator's save never carries it.
+const projBase=new Map();
 function saveProject(x){obsIdx=null;x.updatedAt=Date.now();projects.set(x.id,x);
-  if(db)db.doc("projects/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the project. Check your connection."));
+  const base=!isDirector()&&projBase.has(x.id)?JSON.parse(projBase.get(x.id)):null;
+  if(db&&base){const now=JSON.parse(JSON.stringify(x));delete now.wall;const patch={};for(const k of new Set([...Object.keys(base),...Object.keys(now)]))if(k!=="wall"&&JSON.stringify(base[k])!==JSON.stringify(now[k]))patch[k]=now[k]===undefined?null:now[k];
+    projBase.set(x.id,JSON.stringify(Object.assign(base,now)));db.doc("projects/"+x.id).update(patch).catch(()=>toast("Could not save the project. Check your connection."))}
+  else if(db){const d=JSON.parse(JSON.stringify(x));if(!isDirector())delete d.wall;db.doc("projects/"+x.id).set(d).catch(()=>toast("Could not save the project. Check your connection."))}
   else LS.set("fps.projects",[...projects.values()])}
 const pTimers={};
 function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
@@ -8260,7 +8266,7 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
     if(!inTime(at)&&gs.when!=="any")continue;if(!okKid([],text)||grp||(terms.length&&!evMatch(text,terms)))continue;out.push({kind:"thread",at,text:t.question||t.name,title:"Thread, "+t.name,open:`data-tsee="${esc(t.id)}"`})}
   for(const x of projects.values()){const base={...x};delete base.wall;const text=gsText(base),wt=x.wall?gsText(x.wall):"";const at=x.updatedAt||x.createdAt||0;
     if(!grp&&okKid([],text)&&(gs.when==="any"||inTime(at))&&(!terms.length||evMatch(text,terms)))out.push({kind:"project",at,text,title:"Project, "+(x.name||"Untitled"),open:`data-popen="${esc(x.id)}"`});
-    if(wt&&!grp&&okKid([],wt)&&(gs.when==="any"||inTime(at))&&(!terms.length||evMatch(wt,terms)))out.push({kind:"wall",at,text:wt,title:"Wall, "+(x.name||"Untitled"),open:`data-twall="${esc(x.id)}"`})}
+    if(wt&&isDirector()&&!grp&&okKid([],wt)&&(gs.when==="any"||inTime(at))&&(!terms.length||evMatch(wt,terms)))out.push({kind:"wall",at,text:wt,title:"Wall, "+(x.name||"Untitled"),open:`data-twall="${esc(x.id)}"`})}
   for(const s of slides.values()){const text=gsText(s);const at=s.updatedAt||s.createdAt||0;const ids=s.children||[];
     if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"slide",at,text,title:"Slide, "+slideTitle(s),open:`data-slide="${esc(s.id)}"`})}
   for(const st of stories.values()){const text=gsText(st);const at=st.updatedAt||st.at||0;const ids=st.children||[];
@@ -8291,7 +8297,7 @@ function renderSearchAll(){
       <div class="gsrow"><label>Child<select id="gkid"><option value="">Any child</option>${kids.map(c=>`<option value="${esc(c.id)}" ${gs.kid===c.id?"selected":""}>${esc([c.first,c.last].filter(Boolean).join(" "))}</option>`).join("")}</select></label>
       <label>Small group<select id="ggroup"><option value="">Any group</option>${GROUPS.map(g=>`<option ${gs.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>
       <label>When<select id="gwhen">${[["any","Any time"],["month","The last month"],["year","This school year"],["last","Last school year"]].map(([v,l])=>`<option value="${v}" ${gs.when===v?"selected":""}>${l}</option>`).join("")}</select></label></div>
-      <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
+      <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.filter(([k])=>k!=="wall"||isDirector()).map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
     <div id="gres"></div>`;
   gsResults();if(window.innerWidth>760)$("#gq")?.focus({preventScroll:true})}
 function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);if(helpOnly()){box.innerHTML=hh;return}const all=gsRun();
@@ -8583,7 +8589,7 @@ function renderProject(x){
   const foldAt=h.length;
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   {const sts=projStories(x);h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length?sts.length+" to read aloud with children":"Read aloud with children"}</span></div>${sts.length?`<div class="actions" style="flex-wrap:wrap">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}${stReviewed(y)?"":", draft"}</button>`).join("")}</div>`:""}<div class="actions"><button class="btn small ghost" data-storyproj="${esc(x.id)}">Make a story</button></div></section>`}
-  h+=projGrowHtml(x)+projWordsHtml(x)+projWallHtml(x);
+  h+=projGrowHtml(x)+projWordsHtml(x)+(isDirector()?projWallHtml(x):"");
   h+=`<section class="card"><div class="lbl">Classes</div>
     <div class="hint">${x.home?"The project belongs to its home class. Other classes can join, each by its own path.":"This is a school-wide project with no home class. Each class that takes part joins it."}</div>
     <label class="cnt">Home class <select data-phome="1" style="width:auto">${CLASSROOMS.map(r=>`<option ${x.home===r?"selected":""}>${esc(r)}</option>`).join("")}<option value="" ${!x.home?"selected":""}>School-wide, no home class</option></select></label>

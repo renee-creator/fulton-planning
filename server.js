@@ -34,6 +34,8 @@ const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.an
 const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
+// a project's wall is the director's. Educators receive the project without it, and their saves keep it as it is.
+const forViewer = (kind, doc, director) => (kind === 'projects' && !director && doc && doc.wall !== undefined) ? Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'wall')) : doc;
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
 const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
@@ -1261,7 +1263,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director); }
   return out;
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
@@ -1707,7 +1709,7 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? undefined : staff.wordingAll(), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -1808,6 +1810,9 @@ async function handle(req, res) {
       if (body.patch) body.patch = fix(body.patch);
     }
     if (kind === 'projects' && op !== 'create' && cur && !cur.deleted && !isDirector(me.name)) {
+      // the wall is never in an educator's save. It stays as the director left it.
+      if (op === 'set' && body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); delete body.data.wall; if (cur.doc.wall !== undefined) body.data.wall = cur.doc.wall; }
+      if (op === 'update' && body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); delete body.patch.wall; }
       const OPEN = ['threads', 'classrooms', 'updatedAt', 'updatedByName', 'savedAt'];
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
       const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
@@ -1828,7 +1833,7 @@ async function handle(req, res) {
     const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
-      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: cur.doc, existed: true, ...sidNow() }); return; }
+      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: forViewer(kind, cur.doc, isDirector(me.name)), existed: true, ...sidNow() }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
@@ -1849,7 +1854,7 @@ async function handle(req, res) {
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
     const r = map.get(id);
-    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? r.doc : null, ...(sid ? { sid, written: false } : {}) }); return;
+    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? forViewer(kind, r.doc, isDirector(me.name)) : null, ...(sid ? { sid, written: false } : {}) }); return;
   }
   // a device asks which of the saves it still holds are written to the records. A save this server does not know, such
   // as one sent before an update, is looked for in the records' own history by its save id. One found nowhere is
