@@ -222,6 +222,8 @@ When a former child or former educator reaches the period, the director's Today 
 
 ### Training links
 
+Each Licensing at Fulton Community School page links the official CDSS regulation document that holds the sections it cites, a Word file from CDSS, labeled with its sections, such as Title 22 sections 101229 and 101230, CDSS Article 6, Word file. A page citing sections in two documents has a link for each. All CDSS child care regulations, the general page, is a second, smaller link. Pages with a CDSS Community Care Licensing training video have Watch the training, with the video's title as CDSS wrote it. The director sees the date the links were last checked, from linkschecked in the page's opening note. Health and Safety Code links go to the Legislature's site.
+
 Every training on the records list, on each records page and on the Official trainings piece in Licensing at Fulton Community School, has two links, The regulation, to the section it meets, and Take the training, to the page where it is taken from its official provider. They are kept with the records list in staff.js. A link that could not be opened when it was set on October 25, 2026 shows Link to check to the director only, until she confirms it and the mark is taken off in staff.js. The American Red Cross course Water Safety for Parents and Caregivers is on the list for the people the director chooses, under Trainings you choose on each records page, and only they see it and hear its reminders.
 
 ### Required notices

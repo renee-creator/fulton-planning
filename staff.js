@@ -220,12 +220,13 @@ module.exports = function staffModule(o) {
     const links = []; let minutes = Number(meta.minutes) || 0; let source = '';
     for (const l of lines) {
       const ls = [...l.matchAll(/\[([^\]]+)\]\(([^)\s]+)\)/g)];
-      if (ls.length) { for (const x of ls) links.push({ text: x[1], url: x[2] }); }
+      // the general CDSS regulations page is a second, smaller link beside the document a piece cites
+      if (ls.length) { for (const x of ls) links.push(Object.assign({ text: x[1], url: x[2] }, /^All CDSS child care regulations$/.test(x[1]) ? { minor: true } : {})); }
       const mm = l.match(/About (\d+) minutes/i); if (mm) minutes = +mm[1];
       if (!ls.length && !mm && !source) source = l;
     }
     const sections = (cut >= 0 ? rest.slice(cut) : '').split(/^###\s+/m).filter(s => s.trim()).map(s => { const i = s.indexOf('\n'); return { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
-    return { id: dir + '/' + file.replace(/\.md$/, ''), dir, title: t[1].trim(), source, links, minutes: minutes || 5, list: meta.list || '', week: Number(meta.week) || 0,
+    return { id: dir + '/' + file.replace(/\.md$/, ''), dir, title: t[1].trim(), source, links, checked: /^\d{4}-\d{2}-\d{2}$/.test(meta.linkschecked || '') ? meta.linkschecked : '', minutes: minutes || 5, list: meta.list || '', week: Number(meta.week) || 0,
       handbook: String(meta.handbook || '').split(',').map(s => s.trim()).filter(Boolean), sections };
   }
 
