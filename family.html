@@ -235,7 +235,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       ${m.recipe?`<section class="card"><details><summary><b>${esc(m.recipe.name)}</b>, a recipe from our kitchen</summary><p style="white-space:pre-line;margin:8px 0 0">${esc(m.recipe.text)}</p></details></section>`:""}
       <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
-      <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:`<a href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">The Family Handbook</a>`}</p></section>`}
+      <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:""}</p></section>`}
   // when a new edition of the Family Handbook becomes current, a returning family reads it and says so once, for all
   // their children at Fulton
   const hbNew=()=>D.handbook?D.children.filter(k=>!k.isNew&&k.handbook&&!k.handbook.at&&k.handbook.earlier):[];
@@ -244,7 +244,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <div class="row"><button class="btn ghost" data-hbread="">Open the Family Handbook</button><button class="btn" data-hbackall="1">I have read the ${esc(y)} Family Handbook</button></div></section>`}
   // the Family Handbook, read here in full. The current edition opens, and an earlier edition stays readable.
   const hbRead=k=>!!(k.handbook?k.handbook.at:(k.checks&&k.checks.handbook));
-  const hbLink=()=>D.handbook?`<button class="link small" data-hbread="">Open the Family Handbook</button>`:D.handbookUrl?`<a class="link small" href="${esc(D.handbookUrl)}" target="_blank" rel="noopener">Open the Family Handbook</a>`:"";
+  const hbLink=()=>D.handbook?`<button class="link small" data-hbread="">Open the Family Handbook</button>`:"";
   const HB={};const HBPIC=new Map();
   async function hbPic(p){if(HBPIC.has(p))return HBPIC.get(p);const r=await fetch(SERVER+"/family/handbook/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({path:p})});if(!r.ok)throw new Error("");const u=URL.createObjectURL(await r.blob());HBPIC.set(p,u);return u}
   function handbookHtml(){const y=form.split("|")[1]||"";const h=HB[y];
