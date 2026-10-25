@@ -1602,7 +1602,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -1671,6 +1671,9 @@ async function handle(req, res) {
       if (op === 'delete') { err(req, res, 403, 'Only the director can remove a child.'); return; }
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
+      // the allergy and dietary line is confirmed by the office, so an educator's save keeps it as it is
+      if (!isOffice(me.name)) { if (body.data && typeof body.data === 'object') { if (cur && !cur.deleted && cur.doc.diet !== undefined) body.data.diet = cur.doc.diet; else delete body.data.diet; }
+        if (body.patch && typeof body.patch === 'object') delete body.patch.diet; }
       // a transition summary reaches a family only when the director shares it, so an educator's save never shares one or takes one away
       if (body.patch && body.patch.transitionSummary !== undefined) { const ts = body.patch.transitionSummary;
         if (!ts || typeof ts !== 'object' || Array.isArray(ts) || ts.__delete__) delete body.patch.transitionSummary;
@@ -1985,6 +1988,14 @@ async function handle(req, res) {
   }
   // what the kitchen ordered for lunch and snack this week and next, for every educator. Only the food, its farm and the
   // day it comes. No prices, totals, order numbers or vendor details, and no FEED bin lines, since the bin has its own page.
+  // the allergy and dietary lines the office has confirmed, for the Kitchen page. The kitchen receives no children's
+  // records, so this sends only each child's first name and last initial, Class and line.
+  if (path === '/api/kitchen-diets') {
+    const list = []; for (const [, r] of store.recs.children) { const c = r && !r.deleted && r.doc; if (!c || (c.status && c.status !== 'active')) continue;
+      const d = c.diet; if (!d || d.none || !String(d.line || '').trim()) continue;
+      list.push({ name: [c.first, c.last ? String(c.last)[0] + '.' : ''].filter(Boolean).join(' '), room: String(c.classroom || ''), line: String(d.line).slice(0, 200) }); }
+    list.sort((a, b) => a.room.localeCompare(b.room) || a.name.localeCompare(b.name));
+    json(req, res, 200, { list }); return; }
   if (path === '/api/kitchen-week') { json(req, res, 200, { weeks: kitchenWeeks() }); return; }
   // the director or the kitchen says how a food is served, a side dish, cooked in, or both. Only that one field changes.
   if (path === '/api/kitchen-serve') {

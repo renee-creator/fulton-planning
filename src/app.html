@@ -588,6 +588,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 @media (max-width:420px){.pfm>span{font-size:10px}.pfn{min-width:22px;height:22px;font-size:13px}.pfm input{width:18px;height:18px}}
 .kidc b{font-family:var(--display);font-size:16px}
 .kidc span{font-size:12.5px;color:var(--muted);min-height:1.35em}
+.kline.kdiet{color:var(--clay);font-weight:600;white-space:normal}.kdietwait{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper,#fffbe8)}
 .kidc{grid-template-columns:auto 1fr;column-gap:12px}.kidc>*:not(.kav){grid-column:2}.kidc>.kline{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kidc>.kline:first-of-type{margin-top:6px}.kidc .kav{grid-row:1/span 2;width:38px;height:38px;border-radius:50%;background:var(--moss-soft);color:var(--moss);display:grid;place-items:center;font-weight:700;font-size:14px;align-self:start}.kidc .ksoon{color:var(--marigold);font-weight:600}
 /* the Conferences and Calendar pages, inside TREE */
 .embed{width:100%;border:0;display:block;background:var(--bg);height:calc(100vh - 150px);min-height:520px;border-radius:var(--r)}
@@ -1631,7 +1632,7 @@ function renderRoster(){
 function addToRoster(name,room){name=name.trim();if(!name||isShared(name))return;if(window.FP_HOSTED&&!isDirector()&&name.toLowerCase()!==String(window.FP_NAME&&window.FP_NAME()||"").toLowerCase())return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
 function saveRoster(){LS.set("fps.roster",roster);renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
-  if(t.dataset.rdel!=null){roster.splice(+t.dataset.rdel,1);saveRoster();return}
+  if(t.dataset.rdel!=null){if(!isDirector()){toast("Only the director changes the educators list.");return}roster.splice(+t.dataset.rdel,1);saveRoster();return}
   if(t.id==="r-add"){const n=$("#r-name").value;if(!n.trim()){toast("Type a name first.");return}addToRoster(n,$("#r-room").value);toast("Added to the educator list.");return}
   const p=currentId&&plans.get(currentId);if(!p||view!=="plans")return;
   if(t.dataset.team){const team=teamList(p);const n=t.dataset.team;const i=team.indexOf(n);i>=0?team.splice(i,1):team.push(n);p.educator=team.join(", ");persist(p);renderList();t.classList.toggle("on",i<0);return}
@@ -7706,7 +7707,7 @@ function renderKitchen(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>
       <div class="sub">Type in any meal and it is saved to the month's menu, which the calendar, Today and the family sheets read.</div></div>
       <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button></div></div></div>
-    ${kGardenHtml()}
+    ${kGardenHtml()}${kDietHtml()}
     <section class="card kprint"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("farmsheet",month,"What we ate")}${printBtns("farmwall",month,"Where our food came from")}</div>
       <div class="hint">One page each, as PDF or Word, ready to attach to the Kitchen Digest.</div></section>
     ${draftOn?`<div class="kdraftbar">This is a draft from past menus, in lighter type. Change anything, then save it. Fruit and vegetable sides are left for you to choose by season. <span class="actions"><button class="btn small" data-kdraftsave="1">Save the draft</button><button class="linkbtn" data-kdraftclear="1">Clear the draft</button></span></div>`:""}
@@ -7730,7 +7731,7 @@ function renderKitchenToday(){const wk=planWeekNow();const days=[0,1,2,3,4].map(
   const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     return `<tr><td><b>${esc(lab)}</b></td>${x.closed?`<td colspan="3" class="cnt">No school</td>`:`<td>${esc(x.am||"")}</td><td>${esc(x.lunch||"")}</td><td>${parseIso(d).getDay()===1?"":esc(x.pm||"")}</td>`}</tr>`}).join("");
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">${esc(now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</span><h2 style="margin-top:4px">Good ${now.getHours()<12?"morning":now.getHours()<17?"afternoon":"evening"}, ${esc(me()||"")}</h2></div>
-    ${kitchenCardHtml(wk,false)}
+    ${kitchenCardHtml(wk,false)}${kDietHtml()}
     <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">The week's menu</h3><button class="linkbtn" data-tview="kitchen">Open the Kitchen</button></div>
       <div class="tablewrap"><table class="grid2" style="min-width:520px"><thead><tr><th>Day</th><th>Morning snack</th><th>Lunch</th><th>Afternoon snack</th></tr></thead><tbody>${rows}</tbody></table></div></section>`}
 document.addEventListener("focusin",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;document.querySelectorAll(".ksel").forEach(x=>x.classList.remove("ksel"));t.classList.add("ksel");
@@ -10675,6 +10676,8 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton Community School projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="kdiet"){await kDietLoad();await out([kDietDoc()],"Allergies and dietary needs "+iso(new Date()));return true}
+  if(kind==="classlist"){await out([classListDoc(t.dataset.id||"All")],(t.dataset.id&&t.dataset.id!=="All"?t.dataset.id+" Class list ":"Class lists ")+iso(new Date()));return true}
   if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");await kMonthMenu(m,k,word);return true}
   if((kind==="farmsheet"||kind==="farmwall")&&!isDirector())await kMonthFetch(t.dataset.id);
   if(kind==="farmsheet"){await out([farmSheetDoc(t.dataset.id)],`What we ate ${MENU_MONTH(t.dataset.id)}`);return true}
@@ -12071,7 +12074,7 @@ function renderChildren(){
     const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;
     // every card has the same lines in the same order, so children compare at a glance
     const line=(on,t)=>`<span class="kline ${on?"ksoon":""}">${esc(t)}</span>`;
-    const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"long",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":"")]
+    const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"long",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":""),...(dietLine(c)?[`<span class="kline kdiet">${esc(dietLine(c))}</span>`]:[])]
       :[line(false,`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+longDate(kidLeftDay(c)):""}`)];
     return `<button class="kidc" data-kid="${esc(c.id)}"><span class="kav" aria-hidden="true">${esc((c.first||"?")[0]+((c.last||"")[0]||""))}</span><b>${esc(kidName(c))}</b><span>${esc([c.classroom,c.group].filter(Boolean).join(" · "))}</span>${rows.join("")}</button>`};
   const rooms=kRoom==="All"?CLASSROOMS:[kRoom];
@@ -12092,7 +12095,7 @@ function renderChildren(){
     <div class="sub">Each child's documentation, conferences and years at our school in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At our school ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
     <div class="tseg" role="group" aria-label="Class">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
-    <input type="search" id="kq" placeholder="Find a child or group" value="${esc(kQ)}" style="max-width:220px"></div>
+    <input type="search" id="kq" placeholder="Find a child or group" value="${esc(kQ)}" style="max-width:220px"><span class="actions">${printBtns("classlist",kRoom,"Class list")}</span></div>
     ${addHtml}<div style="display:grid;gap:18px">${body}</div>`;
 }
 // the moments that tag a child, and the moments in their classroom that name them
@@ -12167,7 +12170,7 @@ function renderChild(){
         <div><span class="lbl">Birthday</span><div>${c.dob?esc(longDate(c.dob))+(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):"Not on the roster"}</div></div><div><span class="lbl">First day</span><div>${c.enrollDate?esc(longDate(c.enrollDate)):"Not on the roster"}</div></div>
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
 </section>
-      ${kidFamilyHtml(c)}${kidFamilySideHtml(c)}
+      ${kidDietHtml(c)}${kidFamilyHtml(c)}${kidFamilySideHtml(c)}
       ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at our school"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
@@ -12244,7 +12247,7 @@ const OFFICE_STEPS=[["o_1core","Accepted in 1Core, with schedule and first day s
 const TEAM_STEPS=[["questionnaire","Read the Family Questionnaire"],["welcomeCall","Welcome phone call with the family"],["visitDone","Visit completed and notes written"],["thankYou","Thank you sent after the visit"],["teamShared","Shared what we learned with the team"],["labels","Labels made for cup, cubby and cot"],["firstDay","First day at school"]];
 function officeChecklistHtml(c){const oc=c.officeChecks||{},ob=c.onboarding||{};
   const row=(on,auto,t,attr)=>`<label class="radio octick" style="margin:0"><input type="checkbox" ${attr} ${on?"checked":""} ${auto?"disabled":""}><span>${esc(t)}${auto?` <span class="cnt">by TREE</span>`:""}</span></label>`;
-  const off=OFFICE_STEPS.map(([k,t,f])=>{const auto=f&&f(c);return row(auto||!!oc[k],auto,t,`data-ocheck="${esc(c.id)}|${k}"`)});
+  const off=OFFICE_STEPS.map(([k,t,f])=>{const auto=f&&f(c);return row(auto||!!oc[k],auto,t,`data-ocheck="${esc(c.id)}|${k}"`)+(k==="o_allergy"?`<div class="cnt" style="margin:0 0 6px 26px">${dietLine(c)?esc(dietLine(c)):dietPending(c)?"The family's line waits for you to confirm.":(c.diet&&c.diet.none)?"No food allergies or dietary needs.":"No line yet."} <button class="linkbtn" data-kdietgo="${esc(c.id)}">${dietPending(c)?"Confirm the line":"Open the line"}</button></div>`:"")});
   const team=TEAM_STEPS.map(([k,t])=>row(!!ob[k],false,t,`data-tcheck="${esc(c.id)}|${k}"`));
   const n=OFFICE_STEPS.filter(([k,,f])=>(f&&f(c))||oc[k]).length;
   return `<details class="occk" ${LS.get("tree.occk")?"open":""}><summary class="chiprow-label">New family checklist, ${n} of ${OFFICE_STEPS.length} for the office</summary><div class="ocgrid"><div><b class="cnt">Office</b>${off.join("")}</div><div><b class="cnt">Class team</b>${team.join("")}</div></div></details>`}
@@ -12254,6 +12257,48 @@ document.addEventListener("change",e=>{const t=e.target.closest("[data-ocheck],[
   else{const ob=Object.assign({},c.onboarding||{});if(t.checked)ob[k]=true;else delete ob[k];c.onboarding=ob;db.doc("children/"+id).update({onboarding:ob}).catch(er=>toast(er&&er.message||"Could not save."))}
   const s0=t.closest(".occk");if(s0){const n=OFFICE_STEPS.filter(([k2,,f])=>(f&&f(c))||(c.officeChecks||{})[k2]).length;s0.querySelector("summary").textContent=`New family checklist, ${n} of ${OFFICE_STEPS.length} for the office`}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("occk"))LS.set("tree.occk",d.open?"1":null)},true);
+/* the allergy and dietary line. When a family submits the enrollment form, a short line from what they typed waits on
+   the child as pending. Once the office confirms it, the line shows on the child's card, the Children page, the Kitchen
+   page and the Class list, and a change from the family waits for the office the same way. */
+function dietLine(c){const d=c&&c.diet;return d&&!d.none&&has(d.line)?String(d.line):""}
+function dietPending(c){const p=c&&c.diet&&c.diet.pending;return p&&(has(p.line)||p.none)?p:null}
+let kidDietEdit="";
+function kidDietHtml(c){const d=c.diet||{},p=dietPending(c),off=isOffice();
+  const now=dietLine(c)?esc(dietLine(c)):d.none?"No food allergies or dietary needs.":"No line on file yet.";
+  if(off&&kidDietEdit===c.id)return `<section class="card" id="kdiet" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Allergies and dietary needs</h3></div>
+    <label class="fld-label">A short line the kitchen and a substitute can read at a glance<input type="text" id="kd-line" maxlength="160" value="${esc(p?(p.line||""):(d.line||""))}" placeholder="Ex. Eggs and dairy, medical"></label>
+    <label class="radio" style="margin:6px 0 0"><input type="checkbox" id="kd-none" ${(p?p.none:d.none)?"checked":""}><span>No food allergies or dietary needs</span></label>
+    <div class="actions"><button class="btn small" data-kdietsave="${esc(c.id)}">Confirm this line</button><button class="linkbtn" data-kdietcancel="1">Cancel</button></div></section>`;
+  return `<section class="card" id="kdiet" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Allergies and dietary needs</h3>${off?`<button class="btn small ghost" data-kdietedit="${esc(c.id)}">Change</button>`:""}</div>
+    <div>${now}</div>${d.at&&(dietLine(c)||d.none)?`<div class="cnt">Confirmed by ${esc(d.by||"the office")}, ${esc(longDate(String(d.at).slice(0,10)))}</div>`:""}
+    ${p?(off?`<div class="kdietwait"><div class="cnt">The family typed this on the enrollment form, ${esc(longDate(String(p.at||"").slice(0,10)))}. It shows once you confirm it.</div><div><b>${p.none?"No food allergies or dietary needs.":esc(p.line)}</b></div>${has(p.food)&&p.food.trim()!==String(p.line||"").trim()?`<div class="cnt" style="white-space:pre-line">${esc(p.food)}</div>`:""}${has(p.reaction)?`<div class="cnt">What happens, ${esc(p.reaction)}</div>`:""}
+      <div class="actions"><button class="btn small" data-kdietok="${esc(c.id)}">Confirm it</button><button class="btn small ghost" data-kdietedit="${esc(c.id)}">Change it, then confirm</button><button class="linkbtn" data-kdietkeep="${esc(c.id)}">Keep the line on file</button></div></div>`
+      :`<div class="cnt">A change from the family waits for the office.</div>`):""}</section>`}
+function kidDietSave(c,diet){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  c.diet=diet;db.doc("children/"+c.id).update({diet:Object.assign({},diet,diet.pending?{}:{pending:{__delete__:true}})}).then(()=>{kidDietEdit="";renderMain();toast("The line is saved.")}).catch(er=>toast(er&&er.message||"Could not save."))}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-kdietgo],[data-kdietedit],[data-kdietcancel],[data-kdietsave],[data-kdietok],[data-kdietkeep]");if(!t)return;const d=t.dataset;
+  if(d.kdietgo){kidTab="details";LS.set("tree.kidtab","details");renderMain();setTimeout(()=>$("#kdiet")?.scrollIntoView({block:"center"}),50);return}
+  if(d.kdietcancel){kidDietEdit="";renderMain();return}
+  const c=children.get(d.kdietedit||d.kdietsave||d.kdietok||d.kdietkeep);if(!c||!isOffice())return;
+  if(d.kdietedit){kidDietEdit=c.id;renderMain();$("#kd-line")?.focus();return}
+  const stamp={at:new Date().toISOString(),by:whoAmI()};
+  if(d.kdietsave){const none=!!$("#kd-none")?.checked,line=($("#kd-line")?.value||"").trim();if(!none&&!line){toast("Type the line, or tick No food allergies or dietary needs.");return}
+    kidDietSave(c,Object.assign({line:none?"":line,none},stamp));return}
+  if(d.kdietok){const p=dietPending(c);if(!p)return;kidDietSave(c,Object.assign({line:p.none?"":p.line,none:!!p.none},stamp));return}
+  if(d.kdietkeep){const keep=Object.assign({},c.diet||{});delete keep.pending;kidDietSave(c,keep);return}});
+// the kitchen's list, from the server, which sends the kitchen only each child's first name, last initial, Class and line
+let kDiets=null;
+async function kDietLoad(){try{const j=await window.FP_API("/api/kitchen-diets",{});kDiets=j.list||[]}catch(e){kDiets=kDiets||[]}return kDiets}
+function kDietHtml(){if(!kDiets){kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()});return `<section class="card" id="kdietcard"><div class="lbl">Allergies and dietary needs</div><div class="cnt">Loading…</div></section>`}
+  const by=[...new Set(kDiets.map(x=>x.room||""))];
+  return `<section class="card" id="kdietcard"><div class="secthead"><div class="lbl">Allergies and dietary needs</div><div class="actions">${kDiets.length?printBtns("kdiet","","Print the list"):""}</div></div>
+    ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" Class":"No Class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. We are a nut free school.</div>`}</section>`}
+function kDietDoc(){const L=kDiets||[];return {type:"report",acc:"smallgroup",title:"Allergies and dietary needs",meta:[longDate(iso(new Date())),"We are a nut free school."],
+  blocks:[...new Set(L.map(x=>x.room||""))].map(r=>dTable(r?r+" Class":"No Class",L.filter(x=>(x.room||"")===r).map(x=>[x.name,x.line]),{head:["Child","Allergy or dietary need"],widths:[.3,.7]}))}}
+// a Class list for a substitute, each child with their small group and their allergy or dietary line
+function classListDoc(room){const rs=kidList().filter(c=>kidAt(c)&&(room==="All"||c.classroom===room));const rooms=room==="All"?[...new Set(rs.map(c=>c.classroom||""))]:[room];
+  return {type:"report",acc:"smallgroup",title:room==="All"?"Class lists":room+" Class list",meta:[longDate(iso(new Date())),"We are a nut free school."],
+    blocks:rooms.map(r=>dTable(rooms.length>1?(r?r+" Class":"No Class"):"",rs.filter(c=>(c.classroom||"")===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first)).map(c=>[kidName(c),c.group||"",dietLine(c)]),{head:["Child","Small group","Allergy or dietary need"],widths:[.32,.2,.48]}))}}
 function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&v!=null&&v!==false);
   return `<div class="kgrid" style="margin-top:8px">${rows.map(([k,v])=>`<div><span class="lbl">${esc(ENROLL_LABELS[k]||k.replace(/_/g," "))}</span><div style="white-space:pre-line">${esc(v===true?"Yes":v)}</div></div>`).join("")}</div>`}
 // the state licensing forms, filled with what the family typed, for the family to sign at the visit. The filling is shared with the Family page.

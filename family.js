@@ -307,6 +307,15 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     saveRec('children', childId, Object.assign({}, kd, { familyQuestionnaire: { answers: a, questions: QUESTIONS, at: nowIso(), by: f.email }, onboarding: Object.assign({}, kd.onboarding || {}, { started: true }), updatedAt: nowIso() }));
     return { ok: true };
   }
+  // the line from what the family typed, the foods and whether it is medical, kept short for a card or a list
+  function dietFrom(d) {
+    const v = k => String(d[k] == null ? '' : d[k]).trim(); if (!v('fa_has')) return null;
+    if (!/^yes/i.test(v('fa_has'))) return { line: '', none: true };
+    const food = v('fa_food').replace(/\s+/g, ' ').replace(/[.\s]+$/, ''); const med = /^yes/i.test(v('fa_medical'));
+    let line = food.length > 120 ? food.slice(0, 117).replace(/\s+\S*$/, '') + '…' : food;
+    if (med) line += (line ? ', ' : '') + 'medical';
+    return { line, none: false, food: v('fa_food').slice(0, 600), reaction: v('fa_reaction').slice(0, 600) };
+  }
   function enroll(f, childId, data, done) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
     const keys = new Set(ENROLL.flatMap(s => s.fields.map(x => x.k)));
@@ -314,7 +323,12 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // complete means every box the form needs is filled in
     if (done) { const miss = enrollMissing(clean, ENROLL); if (miss.length) return { error: 'Some boxes are still empty, ' + miss.slice(0, 6).map(x => x.label.toLowerCase()).join(', ') + (miss.length > 6 ? ', and ' + (miss.length - 6) + ' more' : '') + '.' }; }
     remember(f, 'children', childId); const kd = getRec('children', childId);
-    saveRec('children', childId, Object.assign({}, kd, { enrollForm: { data: clean, at: nowIso(), by: f.email, done: !!done }, onboarding: Object.assign({}, kd.onboarding || {}, { started: true }), updatedAt: nowIso() }));
+    const next = Object.assign({}, kd, { enrollForm: { data: clean, at: nowIso(), by: f.email, done: !!done }, onboarding: Object.assign({}, kd.onboarding || {}, { started: true }), updatedAt: nowIso() });
+    // a submitted form leaves a short allergy and dietary line on the child, waiting for the office to confirm it
+    if (done) { const p = dietFrom(clean); const d = Object.assign({}, kd.diet || {});
+      if (p && d.at && p.none === !!d.none && p.line === String(d.line || '')) { delete d.pending; next.diet = d; }
+      else if (p) next.diet = Object.assign(d, { pending: Object.assign(p, { at: nowIso(), by: f.email }) }); }
+    saveRec('children', childId, next);
     return { ok: true };
   }
   // a photo for the All About Me book, kept with the school's photos

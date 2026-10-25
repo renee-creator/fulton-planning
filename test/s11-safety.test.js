@@ -64,3 +64,46 @@ test('the Conferences page uses the director flag the server sends', () => {
   assert.strictEqual((srv.match(/id === 'staffnotes'/g) || []).length, 0);
   assert.match(srv, /const DIRECTOR_SETTINGS = \[/);
 });
+
+test('a family\'s allergy line waits for the office, then reaches the card, the kitchen and the class list', async t => {
+  const today = new Date().toISOString().slice(0, 10);
+  const fx = await start({ more: put => {
+    put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'wren.family@example.test', children: ['wren'] }] });
+    put('children/wren.json', { first: 'Wren', last: 'Test', classroom: 'West', status: 'active', enrollDate: today, parents: [{ email: 'wren.family@example.test' }] });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token, kit = (await fx.login('Kit', '1357')).token;
+  const c = await fx.as('', '/family/code', { email: 'wren.family@example.test' }); const fam = (await fx.as('', '/family/login', { email: 'wren.family@example.test', code: c.body.code })).body.token;
+  const fd = (await fx.as(fam, '/family/data', {})).body;
+  const fields = fd.enrollForm.flatMap(s => s.fields);
+  const data = {}; for (const f of fields) data[f.k] = f.type === 'yn' ? 'No' : f.type === 'check' ? true : f.type === 'illness' ? '' : 'x';
+  Object.assign(data, { fa_has: 'Yes', fa_food: 'Eggs and dairy', fa_reaction: 'Hives', fa_reason: 'An allergy', fa_medical: 'Yes' });
+  const sub = await fx.as(fam, '/family/enroll', { childId: 'wren', data, done: true });
+  assert.strictEqual(sub.status, 200, JSON.stringify(sub.body));
+  const kid = async tok => (await fx.as(tok, '/api/data', {})).body.data.children.wren;
+  let w = await kid(dee);
+  assert.strictEqual(w.diet.pending.line, 'Eggs and dairy, medical');
+  assert.ok(!w.diet.line, 'nothing shows until the office confirms it');
+  assert.deepStrictEqual((await fx.as(kit, '/api/kitchen-diets', {})).body.list, []);
+  // an educator's save never confirms or changes the line
+  await fx.as(ann, '/api/write', { op: 'update', kind: 'children', id: 'wren', patch: { diet: { line: 'Nothing', none: false, at: 'x' } } });
+  assert.ok(!(await kid(dee)).diet.line);
+  // the office confirms it
+  const ok = await fx.as(dee, '/api/write', { op: 'update', kind: 'children', id: 'wren', patch: { diet: { line: 'Eggs and dairy, medical', none: false, at: new Date().toISOString(), by: 'Dee', pending: { __delete__: true } } } });
+  assert.strictEqual(ok.status, 200);
+  w = await kid(ann); assert.strictEqual(w.diet.line, 'Eggs and dairy, medical'); assert.ok(!w.diet.pending);
+  // the kitchen receives the first name, last initial, Class and line, and nothing else of the child
+  const k = (await fx.as(kit, '/api/kitchen-diets', {})).body.list;
+  assert.deepStrictEqual(k, [{ name: 'Wren T.', room: 'West', line: 'Eggs and dairy, medical' }]);
+  assert.ok(!(await fx.as(kit, '/api/data', {})).body.data.children.wren, 'the kitchen still receives no children\'s records');
+  // the same answer again leaves nothing waiting, and a change waits for the office
+  await fx.as(fam, '/family/enroll', { childId: 'wren', data, done: true });
+  assert.ok(!(await kid(dee)).diet.pending);
+  await fx.as(fam, '/family/enroll', { childId: 'wren', data: Object.assign({}, data, { fa_food: 'Eggs', fa_medical: 'No' }), done: true });
+  w = await kid(dee); assert.strictEqual(w.diet.line, 'Eggs and dairy, medical'); assert.strictEqual(w.diet.pending.line, 'Eggs');
+});
+
+test('the card, the Kitchen page and the Class list show the confirmed line', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'tree.html'), 'utf8');
+  for (const s of ['${kidDietHtml(c)}${kidFamilyHtml(c)}', 'printBtns("classlist",kRoom,"Class list")', '${kGardenHtml()}${kDietHtml()}', 'kitchenCardHtml(wk,false)}${kDietHtml()}', 'data-kdietgo=', 'class="kline kdiet"']) assert.ok(html.includes(s), s);
+});
