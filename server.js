@@ -325,6 +325,12 @@ function conferenceEvents(from, to, me) {
     // a conference reads only Conference, the child's name and Class, such as Conference, Wren, North
     events.push(Object.assign({ id: 'tconf.' + hid(id), cal: 'tconf', conf: true, title: 'Conference, ' + first + (room ? ', ' + room : ''), desc: '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
   }
+  // a walk or a garden day families are invited to, from the participation sign-ups, shows on the calendar for staff
+  for (const [id, r] of store.recs.participation) {
+    const it = r.doc; if (r.deleted || !it || it.kind !== 'item' || !it.onCalendar || it.open === false || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || '') || it.date < from || it.date > to) continue;
+    const t = /^\d{2}:\d{2}$/.test(it.start || '') ? it.start : '';
+    events.push(Object.assign({ id: 'tfam.' + hid(id), cal: 'tfam', title: 'Families invited, ' + String(it.title || 'a walk').slice(0, 80) + (it.classroom ? ', ' + it.classroom : ''), desc: '' }, t ? { allDay: false, start: it.date + 'T' + t, end: it.date + 'T' + (/^\d{2}:\d{2}$/.test(it.end || '') ? it.end : plus(t, 60)) } : { allDay: true, start: it.date, end: it.date }));
+  }
   // every child at Fulton has a birthday on the calendar each year, from the birthday on the roster
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
   for (const [id, r] of store.recs.children) {
@@ -368,7 +374,7 @@ function conferenceEvents(from, to, me) {
   }
   // check-in Mondays with each educator's own time, and PD days set in TREE, from staff.js. Each educator sees their own.
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
-  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true } } };
+  return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true } } };
 }
 const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
@@ -383,7 +389,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook });
+const familyPage = require('./family.js')({ store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude

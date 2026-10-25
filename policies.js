@@ -288,5 +288,5 @@ module.exports = function policies(o) {
     const shown = isPublic ? [forPublic()] : years().filter(x => isLive(x) && x <= current()).map(x => fhOut(x));
     return shown.some(d => d && JSON.stringify(d).includes(p)) ? p : null;
   }
-  return { handle, current, years, ackOf, readers, familyAck, forFamily, forPublic, familyImage, findings, publicOpen, teacherOut, fhOut, entries, tpSection, pieceParts };
+  return { handle, current, years, ackOf, readers, familyAck, forFamily, forPublic, familyImage, findings, publicOpen, teacherOut, fhOut, entries, tpSection, pieceParts, saveTeacher, saveFamily, edition, fhSection };
 };

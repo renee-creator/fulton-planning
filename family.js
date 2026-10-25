@@ -98,7 +98,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
   const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
@@ -195,7 +195,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
-      .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
+      .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', walk: !!it.walk, date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
     // what this family signed up for that has happened and is not logged yet, so logging it is one tap
     const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && (it.type === 'wish' ? it.status !== 'requested' : (it.date && it.date <= today && it.date >= ys)) && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
@@ -205,7 +205,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const pace = (() => { const t = new Date(), y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; const a = new Date(y, 7, 15).getTime(), b = new Date(y + 1, 4, 31).getTime(); return Math.floor(c.goal * Math.min(1, Math.max(0, (t.getTime() - a) / (b - a)))); })();
     const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
     const hy = hbYear();
-    return { test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
+    // the walk agreements reach a family with a walk invitation, once the director has marked walk safety ready
+    let walkInfo = null; try { walkInfo = open.some(it => it.walk) && walks ? walks() : null; } catch (e) { walkInfo = null; }
+    return { walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 

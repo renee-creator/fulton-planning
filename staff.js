@@ -272,6 +272,37 @@ module.exports = function staffModule(o) {
     }
     // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
+    /* ---------- walk safety, for staff once the director marks it ready ---------- */
+    if (P === 'walks' || P.startsWith('walks/')) {
+      const w = walksDoc(); if (!w) { err(req, res, 404, 'Walk safety is not in the records yet.'); return; }
+      if (!dir && !w.ready) return deny('Walk safety opens once the director marks it ready.');
+      if (P === 'walks') { json(req, res, 200, walksOut(dir)); return; }
+      if (!dir) return deny('Only the director changes walk safety.');
+      if (P === 'walks/ready') { put(WALKS, Object.assign({}, w, { ready: !!body.on, readyAt: Date.now(), readyBy: me })); json(req, res, 200, walksOut(dir)); return; }
+      if (P === 'walks/photos') {
+        // a photo joins the children's card only after the face check on the device found no face and the director said so too
+        const list = (Array.isArray(body.photos) ? body.photos : []).filter(x => x && /^[a-z0-9-]+\.(jpe?g|png)$/i.test(x.id || '') && x.noFace === true && x.checked === true).slice(0, 4).map(x => ({ id: x.id, obs: String(x.obs || '').slice(0, 40), at: Date.now(), by: me }));
+        put(WALKS, Object.assign({}, w, { photos: list })); json(req, res, 200, walksOut(dir)); return;
+      }
+      err(req, res, 404, 'Not found'); return;
+    }
+    /* ---------- proposed sections for the Teacher Policies and Procedures and the Family Handbook draft ----------
+       Each waits for the director, and nothing changes in either document until she accepts it. */
+    if (P === 'proposals' || P.startsWith('proposals/')) {
+      if (!dir) return deny('Only the director reads the proposals.');
+      if (P === 'proposals') { json(req, res, 200, { list: proposals() }); return; }
+      const pr = proposals().find(x => x.id === body.id); if (!pr) { err(req, res, 404, 'That proposal is not here.'); return; }
+      const path = `staff/proposals/${pr.id}.json`;
+      if (P === 'proposals/aside') { put(path, Object.assign({}, get(path), { status: body.back ? 'proposed' : 'aside', decidedAt: Date.now(), decidedBy: me })); json(req, res, 200, { list: proposals() }); return; }
+      if (P === 'proposals/accept') {
+        if (pr.status === 'accepted') { json(req, res, 200, { list: proposals() }); return; }
+        const r = pr.doc === 'family' ? POL.saveFamily(me, { edition: pr.edition, part: pr.part, title: pr.title, body: pr.body, note: 'Accepted from a proposal' }) : POL.saveTeacher(me, { part: pr.part, title: pr.title, body: pr.body, note: 'Accepted from a proposal' });
+        if (r.error) { err(req, res, 400, r.error); return; }
+        put(path, Object.assign({}, get(path), { status: 'accepted', section: r.id, decidedAt: Date.now(), decidedBy: me }));
+        log('Proposal accepted', pr.id, 'by', me); json(req, res, 200, { list: proposals(), id: r.id }); return;
+      }
+      err(req, res, 404, 'Not found'); return;
+    }
     /* ---------- required notices, for staff once the director marks them ready ---------- */
     if (P.startsWith('notices')) {
       const sc = school(), ready = !!(sc.ready || {}).notices;
@@ -559,6 +590,19 @@ module.exports = function staffModule(o) {
     return out;
   }
   let busy = false;
+  /* ---------- walk safety and proposals, kept in the records as staff/walks.json and staff/proposals/<id>.json ---------- */
+  const WALKS = 'staff/walks.json';
+  const walksDoc = () => { const w = get(WALKS); return w && typeof w === 'object' ? w : null; };
+  const lines = t => String(t || '').split('\n').map(x => x.replace(/^\s*[-*]\s+/, '').trim()).filter(x => x && !/^#/.test(x));
+  function walksOut(dir) {
+    const w = walksDoc(); const bp = (get(`staff/policies/teacher/${w.backpack || 'outdoor-wagon-backpack-pack-list'}.json`) || {});
+    const out = { ready: !!w.ready, checklist: w.checklist || [], agreements: w.agreements || [], rule: w.rule || [], families: w.families || [], handbook: w.handbook || '', backpack: { id: w.backpack || '', title: bp.title || 'Outdoor Wagon/Backpack Pack List', items: lines(bp.body) }, photos: (w.photos || []).map(x => ({ id: x.id })) };
+    if (dir) Object.assign(out, { licensing: w.licensing || [], note: w.note || '', proposals: proposals().filter(x => /walk/.test(x.id)).map(x => ({ id: x.id, title: x.title, doc: x.doc, status: x.status })) });
+    return out;
+  }
+  // what a family reads about walks, once the director has marked walk safety ready
+  const walksForFamily = () => { const w = walksDoc(); return w && w.ready ? { agreements: w.agreements || [], rule: w.rule || [], families: w.families || [], handbook: w.handbook || '' } : null; };
+  const proposals = () => [...S.files.keys()].filter(p => /^staff\/proposals\/[a-z0-9-]+\.json$/.test(p)).map(p => get(p)).filter(x => x && x.id && x.title).sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')) || a.id.localeCompare(b.id));
   async function tick() {
     if (busy || !S.ready || !accounts.loaded || !reminders.keys()) return; busy = true;
     try {
@@ -628,5 +672,5 @@ module.exports = function staffModule(o) {
   const POL = require('./policies.js')({ get, put, putText, S, log, person, pPath, staffNames, isDirector, isKitchen, nameKey, today, allowed, hasOwn, profileOf, accountFor, store, readImage, roleNames: o.roleNames || (() => []), piecesChanged: () => { pieceCache = null; } });
   // the Family page and the public page read the Family Handbook through these
   const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
-  return { load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { walksForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? G.calendarExtra(f, t, me) : []; } catch (e) { return []; } }, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

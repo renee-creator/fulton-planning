@@ -581,6 +581,21 @@ const pic=(src,alt)=>`<img data-pimg="${H(src)}" alt="${H(alt||"A picture from t
 const polHtml=b=>String(b||"").trim()?PM().html(b,pic):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
 const yearSpan=y=>y?y+" to "+(+y+1):"";
 
+/* proposed sections wait here for the director, and nothing changes in the document until she accepts one. Accepting
+   adds it as a new section, which keeps its own earlier versions from then on like every other section. */
+async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
+  const mine=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));if(!mine.length)return "";
+  const st2=x=>x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Set aside"):chip("soonish","Waiting for you");
+  return card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
+    <div class="cnt">${H(x.note||"")}</div>${md(x.body||"")}
+    ${(x.links||[]).length?`<div class="actions">${x.links.map(l=>`<button class="btn small ghost" data-${l.doc==="family"?"fhopen":"hbopen"}="${H(l.id)}">${H(l.label)}</button>`).join("")}</div>`:""}
+    ${(x.differences||[]).length?`<div class="lbl" style="margin-top:8px">Differences for you to decide</div><ul style="margin:4px 0;padding-left:20px">${x.differences.map(t=>`<li>${H(t)}</li>`).join("")}</ul>`:""}
+    <div class="actions">${x.status==="accepted"?`<button class="linkbtn" data-stpol="${H(x.section||"")}">Open the section</button>`:`<button class="btn small" data-propaccept="${H(x.id)}">Accept it as a new section</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Set it aside</button>`}`}</div></details>`).join(""))}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-propaccept],[data-propaside],[data-propback]");if(!t)return;
+  if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  try{if(t.dataset.propaccept){if(!confirm("Add this as a new section?"))return;await api("proposals/accept",{id:t.dataset.propaccept});toast("Added as a new section.")}
+    else await api("proposals/aside",{id:t.dataset.propaside||t.dataset.propback,back:!!t.dataset.propback});
+    st.pol={};redraw()}catch(er){fail(er)}});
 async function pagePol(my,k){const dir=D();const want=LS.get(k==="family"?"tree.fh":"tree.hb","");if(want){st.polSec=want==="__contents"?"":want;st.polEdit=false;st.polHist=-1;LS.set(k==="family"?"tree.fh":"tree.hb",null)}
   const d=await loadPol(k);if(my!==RT)return;const secs=polSecs(d);const name=polName(k);const ed=k==="family"?d.edition:d.edition;
   if(st.polSec==="__new"&&dir)return draw(my,head(name,"A new section")+`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stpol="">‹ Contents</button></div>`+card("New section",polEditor(k,d,{id:"",title:"",body:""},true)));
@@ -600,6 +615,7 @@ async function pagePol(my,k){const dir=D();const want=LS.get(k==="family"?"tree.
     (k==="teacher"&&(B.me.newHire||B.me.newEd)&&!dir?mustReadCard(d):"")+
     card("Contents",`${list}${dir?`<div class="actions"><button class="btn small ghost" data-stpol="__new">Add a section</button></div>`:""}`,printBar("pol:"+k))+
     (dir&&k==="family"?fhDirCards(d):"")+
+    (dir?await proposalsCard(k,ed):"")+
     (dir?`<div id="stpolacks">${card(k==="family"?"Families who have read it":"Who has acknowledged it",`<div class="empty"><span class="spin"></span> Opening</div>`)}</div>`:""));
   if(dir)polAcksCard(k,d,my)}
 // what a section shows beside its title in the contents
