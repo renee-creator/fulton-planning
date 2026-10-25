@@ -90,7 +90,8 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released }) {
+  const o = { released };
   /* the Family page's own wording, kept in the private records in staff/wording, which the director edits in place.
      The Family Questionnaire, the Family Reflections, the first steps, the packing list, the All About Me book, the
      enrollment form's words and the Admission Tuition Agreement. */
@@ -192,7 +193,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   // ---------- what a family sees ----------
   // every record carries its id, whichever side made it
   const listOf = test => [...recs().entries()].filter(([, r]) => !r.deleted && r.doc && test(r.doc)).map(([id, r]) => (r.doc.id === id ? r.doc : Object.assign(r.doc, { id })));
-  const items = () => listOf(d => d.kind === 'item');
+  // a gathering and its jobs reach families only once the director has released them in Settings, and marked them ready
+  const items = () => listOf(d => d.kind === 'item' && (!o.released || !(d.gathering || d.gatheringId) || o.released(d)));
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {

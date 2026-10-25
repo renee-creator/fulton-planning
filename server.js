@@ -343,6 +343,8 @@ function conferenceEvents(from, to, me) {
   for (const [id, r] of store.recs.participation) {
     // a gathering shows for staff from the day it is planned, before families are invited
     const it = r.doc; if (r.deleted || !it || it.kind !== 'item' || !it.onCalendar || (it.open === false && !it.gathering) || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || '') || it.date < from || it.date > to) continue;
+    // a gathering not yet released shows only to the director and the office
+    if ((it.gathering || it.gatheringId) && !gthReleased(it) && !gthSees(me && me.name)) continue;
     const t = /^\d{2}:\d{2}$/.test(it.start || '') ? it.start : '';
     events.push(Object.assign({ id: 'tfam.' + hid(id), cal: 'tfam', title: (it.gathering && it.open === false ? 'Gathering, not yet open to families, ' : 'Families invited, ') + String(it.title || 'a walk').slice(0, 80) + (it.classroom ? ', ' + it.classroom : ''), desc: '' }, t ? { allDay: false, start: it.date + 'T' + t, end: it.date + 'T' + (/^\d{2}:\d{2}$/.test(it.end || '') ? it.end : plus(t, 60)) } : { allDay: true, start: it.date, end: it.date }));
   }
@@ -404,7 +406,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -1351,14 +1353,22 @@ function inquiryShows(x, notices) { if (x.display === true) return true; if (x.d
    director and the office keep them on the Gatherings page. Every educator reads their plans, toolkits and documentation
    there too, with how many signed up for each volunteer job and never which families. */
 const GATHERING_KINDS = ['second-saturday', 'play-garden'];
-function gatheringsFor() {
+/* Gatherings stay hidden from educators until the director releases them, the whole page or one gathering at a time,
+   with the switches in Settings, Releases. Families see nothing of a gathering until it is released either. The
+   director and the office, who plan them, always see them. */
+const gthConfDoc = () => { const r = store.recs.participation.get('gatherings'); return r && !r.deleted && r.doc ? r.doc : {}; };
+const gthReleased = (it, conf) => { conf = conf || gthConfDoc(); if (!it) return false; if ((conf.release || {}).page) return true;
+  if (it.gathering) return !!it.released;
+  if (it.gatheringId) { const g = store.recs.participation.get(it.gatheringId); return !!(g && !g.deleted && g.doc && g.doc.released); } return true; };
+const gthSees = name => !!name && (isDirector(name) || isOffice(name));
+function gatheringsFor(who) {
   const all = []; for (const [id, r] of store.recs.participation) if (r && !r.deleted && r.doc) all.push(Object.assign({ id }, r.doc));
-  const conf = all.find(x => x.id === 'gatherings') || {};
+  const conf = all.find(x => x.id === 'gatherings') || {}; const planner = gthSees(who);
   const jobs = all.filter(x => x.kind === 'item' && x.gatheringId);
-  const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering)).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+  const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering) && (planner || gthReleased(x, conf))).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
     .map(x => ({ id: x.id, gathering: x.gathering, title: x.title || '', date: x.date || '', start: x.start || '', end: x.end || '', gardenDay: !!x.gardenDay, ready: x.open !== false, plan: x.plan || '', toolkit: x.toolkit || '', documentation: x.documentation || '', docLink: x.docLink || '',
-      coming: (x.signups || []).length, jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length })) }));
-  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '' }, conf.toolkits || {}), list };
+      coming: (x.signups || []).length, released: gthReleased(x, conf), jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length })) }));
+  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
 }
 async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };
@@ -1502,7 +1512,7 @@ async function displayFeed() {
   // one plant from the children's plant guide each day, as its own quiet slide, once the Garden is ready
   let plant = null; try { const g = staff.garden.forFamily(); const list = g ? g.guide.filter(x => x.words) : []; if (list.length) { const x = list[Math.floor(now / 864e5) % list.length]; plant = { id: x.id, common: x.common, words: x.words, eat: x.eat, gather: x.gather, photo: x.photo && ID_RE.test(x.photo) ? { src: photoSrc(x.photo) } : null }; } } catch (e) {}
   // the gatherings coming in the next eight weeks, Second Saturday and Play Garden, with the jobs still looking for help
-  let gatherings = []; try { const end = addDay(today, 56); gatherings = gatheringsFor().list.filter(g => g.date && g.date >= today && g.date <= end).slice(0, 4).map(g => ({ id: g.id, title: trim(g.title, 90), date: g.date, start: g.start, gathering: g.gathering, gardenDay: g.gardenDay, ready: g.ready, jobs: g.jobs.map(j => ({ title: trim(j.title, 60), open: j.spots ? Math.max(0, j.spots - j.taken) : null })) })); } catch (e) { gatherings = []; }
+  let gatherings = []; try { const end = addDay(today, 56); gatherings = gatheringsFor('').list.filter(g => g.date && g.date >= today && g.date <= end).slice(0, 4).map(g => ({ id: g.id, title: trim(g.title, 90), date: g.date, start: g.start, gathering: g.gathering, gardenDay: g.gardenDay, ready: g.ready, jobs: g.jobs.map(j => ({ title: trim(j.title, 60), open: j.spots ? Math.max(0, j.spots - j.taken) : null })) })); } catch (e) { gatherings = []; }
   return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
@@ -1759,7 +1769,7 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
@@ -1796,6 +1806,9 @@ async function handle(req, res) {
       const openAs = d => d.open === false ? false : was ? was.open !== false : false;
       if (body.data && typeof body.data === 'object' && (isG(was) || isG(body.data))) body.data = Object.assign({}, body.data, { open: openAs(body.data) });
       if (body.patch && typeof body.patch === 'object' && (isG(was) || isG(body.patch)) && 'open' in body.patch) body.patch = Object.assign({}, body.patch, { open: openAs(body.patch) });
+      // releasing a gathering, or the whole page, is the director's
+      if (body.data && typeof body.data === 'object') { if (id === 'gatherings') body.data = Object.assign({}, body.data, { release: (was && was.release) || {} }); else if (isG(was) || isG(body.data)) body.data = Object.assign({}, body.data, { released: !!(was && was.released) }); }
+      if (body.patch && typeof body.patch === 'object') { delete body.patch.release; delete body.patch.released; }
     }
     const dev = typeof body.dev === 'string' && /^[A-Za-z0-9]{6,32}$/.test(body.dev) ? body.dev : '';
     // conference notes reach a family only when the director or the office shares them, the same check the Family page
@@ -1965,7 +1978,7 @@ async function handle(req, res) {
     json(req, res, 200, Object.assign({ bootId: BOOT_ID }, out)); return;
   }
   // the gatherings, read again when an educator opens the Gatherings page
-  if (path === '/api/gatherings') { if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; } json(req, res, 200, gatheringsFor()); return; }
+  if (path === '/api/gatherings') { if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; } json(req, res, 200, gatheringsFor(me.name)); return; }
   // the director makes, renews or turns off the staff room display's link
   if (path === '/api/display') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sets up the staff room display.'); return; }

@@ -51,6 +51,12 @@ test('gatherings stay with the staff until the director marks them ready, and fa
     assert.strictEqual(r.status, 200);
     r = await fx.as(dee, '/api/write', { op: 'create', kind: 'participation', id: 'it-job1', data: { kind: 'item', type: 'task', gatheringId: 'it-ss1', title: 'Second Saturday helper', date: day, hours: 3, spots: 4, signups: [], open: false, test: true } });
     assert.strictEqual(r.status, 200); await wait(1200);
+    // educators see nothing of it until the director releases it, nor does the calendar show it to them
+    let hidden = (await fx.as(ann, '/api/data', {})).body;
+    assert.ok(!hidden.gatherings.list.length && !hidden.gatherings.open);
+    assert.ok(!((await fx.as(ann, '/api/view', { from: day, to: day })).body.events || []).some(e => e.cal === 'tfam'));
+    assert.ok((await fx.as(dee, '/api/data', {})).body.gatherings.list.some(x => x.id === 'it-ss1'));
+    await fx.as(dee, '/api/write', { op: 'update', kind: 'participation', id: 'it-ss1', patch: { released: true } }); await wait(800);
     const data = (await fx.as(ann, '/api/data', {})).body;
     const g = data.gatherings.list.find(x => x.id === 'it-ss1');
     assert.ok(g && g.plan === 'Plant garlic.' && g.ready === false && g.jobs[0].title === 'Second Saturday helper');
@@ -124,7 +130,7 @@ test('gatherings stay with the staff until the director marks them ready, and fa
       await s.p.evaluate(() => goView('gatherings')); await wait(800);
       const txt = await s.p.evaluate(() => document.getElementById('main').innerText);
       assert.match(txt, /Second Saturday/); assert.match(who === 'Dee' ? await s.p.evaluate(() => document.querySelector('[data-gthf="plan"]').value) : txt, /Plant garlic/); assert.match(txt, /A place for the Second Saturday toolkit/);
-      if (who === 'Dee') assert.match(txt, /The Play Garden application/);
+      if (who === 'Dee') { assert.match(txt, /turned on and off in Settings, Releases/); await s.p.evaluate(() => goView('settings')); await wait(1200); assert.match(await s.p.evaluate(() => document.getElementById('main').innerText), /Releases/); await s.p.evaluate(() => goView('gatherings')); await wait(600); }
       if (who === 'Dee') {
         // the director plans a Second Saturday in March, adds a job and marks it ready
         await s.p.click('[data-gthnew]'); await s.p.fill('#gth-date', '2027-03-13'); await s.p.click('[data-gthsave]'); await wait(1500);

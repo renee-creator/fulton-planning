@@ -3,7 +3,7 @@
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
-  ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
+  ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
   if(t==="See TREE as an educator")return "Any page, as an educator sees it";
@@ -20,6 +20,7 @@ function setStatus(t,x){try{
   if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
   if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
   if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
+  if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
   if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
@@ -65,7 +66,7 @@ function renderSettings(){
   ${staffBdaysHtml()}
   ${keepingHtml()}${serverStatusHtml()}
   ${storyFramesHtml()}
-  ${displayHtml()}
+  ${releasesHtml()}${displayHtml()}
   ${backupHtml()}
   ${(()=>{const si=storageInfo();if(!si)return"";if(si.drive)return `<section class="card"><div class="lbl">Storage</div><div class="hint">Photos are kept in the school's Google Drive, in the TREE photos folder of the TREE mailbox, where there is room for years of photos. The written records are kept on GitHub.</div>
     <div class="prow"><div><b>${si.inDrive.toLocaleString()} photo${si.inDrive===1?"":"s"} in Google Drive</b><div class="cnt">${si.photos?`${si.photos} still moving from the records. `:""}The written records use ${esc(si.usedText)} of GitHub's 1 GB, with the history of photos kept there before.</div></div>
