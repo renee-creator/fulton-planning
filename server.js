@@ -34,6 +34,9 @@ const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.an
 const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
+// the settings records kept from everyone but the director, in what each page receives and in the changes sent after
+const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes'];
+const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
 const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
@@ -1186,7 +1189,7 @@ let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping' || id === 'saves' || id === 'readable' || id === 'staffnotes')))) out[k][id] = r.doc; }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = r.doc; }
   return out;
 }
 // the status page anyone can open names no model and no repository
@@ -1625,13 +1628,13 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !(c.kind === 'settings' && (c.id === 'display' || c.id === 'keeping' || c.id === 'saves' || c.id === 'readable' || c.id === 'staffnotes')))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
     if (store.saveError) { err(req, res, 503, store.saveError + ' Your last change was not saved, so keep a copy of it.'); return; }
     if (stopping) { err(req, res, 503, 'The server is restarting. Your change is kept on this device and sends in a minute.'); return; }
-    const { op, kind, id } = body;
+    let { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
@@ -1673,7 +1676,17 @@ async function handle(req, res) {
         if (!ts || typeof ts !== 'object' || Array.isArray(ts) || ts.__delete__) delete body.patch.transitionSummary;
         else { const out = {}; for (const [y, v] of Object.entries(ts)) { if (!v || typeof v !== 'object' || Array.isArray(v) || v.__delete__) continue; out[y] = Object.assign({}, v); delete out[y].shared; } body.patch.transitionSummary = out; } }
     }
-    if (((kind === 'settings' && id !== 'educators' && id !== 'main' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
+    // the educators list is the director's, and an educator may only add their own name to it. Whatever else a save from an
+    // educator sends, the list stays as it is, so an older copy on a phone never takes a name away.
+    if (kind === 'settings' && id === 'educators' && !isDirector(me.name)) {
+      const was = cur && !cur.deleted && cur.doc && Array.isArray(cur.doc.names) ? cur.doc.names : [];
+      const sent = op !== 'delete' && body.data && Array.isArray(body.data.names) ? body.data.names : [];
+      const mine = sent.find(x => x && nameKey(x.name) === nameKey(me.name));
+      if (!mine || was.some(x => x && nameKey(x.name) === nameKey(me.name))) { err(req, res, 403, 'Only the director changes the educators list. You can add your own name.'); return; }
+      op = 'set'; delete body.patch;
+      body.data = Object.assign({}, cur && !cur.deleted && cur.doc ? cur.doc : {}, { names: [...was, { name: String(mine.name).trim().slice(0, 60), room: String(mine.room || '').slice(0, 40) }], updatedAt: Date.now() });
+    }
+    if (((kind === 'settings' && id !== 'educators' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change
     if (kind === 'menus' && !isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen add the monthly menus.'); return; }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);

@@ -1624,10 +1624,11 @@ function fillEducatorList(){const dl=$("#educators");if(dl)dl.innerHTML=rosterNa
 function renderRoster(){
   const el=$("#roster");if(!el)return;
   const groups=[...CLASSROOMS,""].map(r=>({r,names:roster.map((x,i)=>({...x,i})).filter(x=>(x.room||"")===r)})).filter(g=>g.names.length);
-  el.innerHTML=groups.map(g=>`<div class="cnt">${g.r||"Specialty and floating"}</div><div class="chips">${g.names.map(x=>`<span class="rname">${esc(x.name)}<button data-rdel="${x.i}" aria-label="Remove ${esc(x.name)}">&times;</button></span>`).join("")}</div>`).join("")+
+  el.innerHTML=groups.map(g=>`<div class="cnt">${g.r||"Specialty and floating"}</div><div class="chips">${g.names.map(x=>`<span class="rname">${esc(x.name)}${isDirector()?`<button data-rdel="${x.i}" aria-label="Remove ${esc(x.name)}">&times;</button>`:""}</span>`).join("")}</div>`).join("")+
    `<div style="display:grid;gap:6px;margin-top:6px"><input type="text" id="r-name" placeholder="Add an educator's name"><div style="display:flex;gap:6px"><select id="r-room" style="flex:1" aria-label="Class"><option value="">Specialty or floating</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="r-add">Add</button></div></div>`;
 }
-function addToRoster(name,room){name=name.trim();if(!name||isShared(name))return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
+// the educators list is the director's. An educator adds only their own name, as the server keeps it.
+function addToRoster(name,room){name=name.trim();if(!name||isShared(name))return;if(window.FP_HOSTED&&!isDirector()&&name.toLowerCase()!==String(window.FP_NAME&&window.FP_NAME()||"").toLowerCase())return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
 function saveRoster(){LS.set("fps.roster",roster);renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.rdel!=null){roster.splice(+t.dataset.rdel,1);saveRoster();return}

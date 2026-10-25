@@ -72,7 +72,7 @@
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Records can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -145,7 +145,7 @@
       set:(data)=>write("set",{data}), create:(data)=>write("create",{data}), update:(patch)=>write("update",{patch}), delete:()=>write("delete",{}) };
   }
   const db={ collection:query, doc:docRef };
-  const user={ id:async()=>Auth.name, can:async()=>true, canEdit:()=>true, isOwner:()=>false, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
+  const user={ id:async()=>Auth.name, can:async()=>true, director:async()=>!!Store.director, canEdit:()=>true, isOwner:()=>false, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
 
   function blobToJpegB64(blob, max=1800){
     return new Promise(async(resolve,reject)=>{

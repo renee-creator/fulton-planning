@@ -10,7 +10,7 @@
 <body>
 <script>window.TREE_TELL=m=>{try{if(window.parent!==window)window.parent.postMessage(Object.assign({},m),location.origin)}catch(e){}};</script>
 <script>window.TREE_VA=(()=>{try{return window.parent!==window&&window.parent.TREE_VIEW_AS||null}catch(e){return null}})();if(window.TREE_VA){const st=document.createElement("style");st.textContent='[data-go="settings"]{display:none!important}';document.head.appendChild(st)}</script>
-<script>try{if(localStorage.getItem("fp-director")!=="1"){const st=document.createElement("style");st.textContent='[data-go="settings"]{display:none!important}';document.head.appendChild(st)}}catch(e){}</script>
+<style>body:not(.tree-dir) [data-go="settings"]{display:none!important}</style>
 <style>[data-go="portfolios"]{display:none!important}</style>
 <title>Fulton Community School Family Conferences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -311,7 +311,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Records can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -384,7 +384,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
       set:(data)=>write("set",{data}), create:(data)=>write("create",{data}), update:(patch)=>write("update",{patch}), delete:()=>write("delete",{}) };
   }
   const db={ collection:query, doc:docRef };
-  const user={ id:async()=>Auth.name, can:async()=>true, canEdit:()=>true, isOwner:()=>false, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
+  const user={ id:async()=>Auth.name, can:async()=>true, director:async()=>!!Store.director, canEdit:()=>true, isOwner:()=>false, profiles:async(ids)=>Object.fromEntries((ids||[]).map(i=>[i,{name:i}])) };
 
   function blobToJpegB64(blob, max=1800){
     return new Promise(async(resolve,reject)=>{
@@ -694,6 +694,8 @@ function loadScript(src){ return new Promise((res,rej)=>{ if($(`script[src="${sr
 function setPath(obj, path, val){ const parts=path.split("."); let o=obj; parts.slice(0,-1).forEach(p=>{ o[p]=o[p]||{}; o=o[p]; }); o[parts.at(-1)]=val; return obj; }
 function getPath(obj, path){ return path.split(".").reduce((o,p)=>o?.[p], obj); }
 function canEdit(){ return S.db && S.canWrite!==false; }
+// adding a child, the 1Core roster and a child's Class are the director's, as the server keeps them
+function isDirector(){ return canEdit() && !!S.director; }
 
 /* ---------- capabilities ---------- */
 async function boot(){
@@ -705,6 +707,9 @@ async function boot(){
   if(user){
     try{ S.uid = await user.id(); }catch(e){}
     try{ const w = user.can ? await user.can("data.write") : null; S.canWrite = w; }catch(e){}
+    // the director flag comes from the server, never from what the browser kept, so nobody sees a button the server refuses
+    try{ S.director = user.director ? !!(await user.director()) : false; }catch(e){ S.director=false; }
+    document.body.classList.toggle("tree-dir",!!S.director);
   }
   if(!db){ S.dbState="absent"; render(); return; }
   S.dbState="ok";
@@ -892,7 +897,7 @@ function viewChildren(){
   return `
   <div class="spread" style="margin-bottom:18px">
     <div><div class="eyebrow">Roster</div><h1>Children</h1></div>
-    ${canEdit()? `<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button><button class="btn primary" data-act="child-new">Add a child</button></div>`:""}
+    ${isDirector()? `<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button><button class="btn primary" data-act="child-new">Add a child</button></div>`:""}
   </div>
   <div class="filters" style="margin-bottom:12px">
     <input type="search" id="f-q" placeholder="Find a child or parent" value="${esc(f.q)}" aria-label="Find">
@@ -902,7 +907,7 @@ function viewChildren(){
     <span id="live-meta"><span class="small muted mono">${list.length} shown</span></span>
   </div>
   <div id="live-list">${list.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Birthdate</th><th>Age</th><th>Class</th><th>Small group and educator</th><th>Family</th><th>Conferences</th></tr></thead><tbody>${rows}</tbody></table></div>`
-  : `<div class="panel empty">No children here yet. ${canEdit()?`<button class="btn" data-act="child-new">Add a child</button>`:""}</div>`}</div>`;
+  : `<div class="panel empty">No children here yet. ${isDirector()?`<button class="btn" data-act="child-new">Add a child</button>`:""}</div>`}</div>`;
 }
 
 function viewChild(id){
@@ -1233,15 +1238,15 @@ function viewSettings(){
   return `<div style="max-width:760px" class="stack">
   <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
-    <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${canEdit()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
-    <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${canEdit()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
-    <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${canEdit()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
-    <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${canEdit()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
+    <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${isDirector()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
+    <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${isDirector()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
+    <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${isDirector()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
+    <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${isDirector()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
     <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Educator names are kept in one list, in TREE under Settings, Educators. They show here as that list has them.</div>
       ${s.classrooms.map(r=>`<div class="cnt"><b>${esc(r)}</b> ${esc((s.educators?.[r]||[]).join(", ")||"No one yet")}</div>`).join("")}
     </div>
-    <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, Class, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${canEdit()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
-    ${canEdit()?`<div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>`:""}
+    <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, Class, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${isDirector()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
+    ${isDirector()?`<div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>`:""}
   </form>
   <div class="panel stack">
     <h3>Backups and exports</h3>
@@ -1251,7 +1256,7 @@ function viewSettings(){
   <div class="panel stack">
     <h3>Roster</h3>
     <p class="small muted" style="margin:0">Upload the Family Information Sheets PDF exported from 1Core. New children are added, changed details are updated, and children missing from the export can be marked withdrawn. Conference history is never removed.</p>
-    ${canEdit()?`<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button></div>`:""}
+    ${isDirector()?`<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button></div>`:""}
   </div></div>`;
 }
 
@@ -1420,7 +1425,7 @@ function childForm(c){
       <div class="field"><label for="c-last">Last name</label><input id="c-last" value="${esc(c.last||"")}"></div>
       <div class="field"><label for="c-dob">Birthdate</label><input id="c-dob" type="date" value="${esc(c.dob||"")}"></div>
       <div class="field"><label for="c-gender">Gender</label><input id="c-gender" value="${esc(c.gender||"")}"></div>
-      <div class="field"><label for="c-room">Class</label><select id="c-room" ${(()=>{try{return localStorage.getItem("fp-director")==="1"}catch(e){return false}})()?"":"disabled title=\"The director changes a child's Class, in Move children on the Children page.\""}>${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label for="c-room">Class</label><select id="c-room" ${S.director?"":"disabled title=\"The director changes a child's Class, in Move children on the Children page.\""}>${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-group">Small group</label><select id="c-group"><option value="">Choose</option>${c.group&&!groupsList().some(g=>g.name===c.group)?`<option selected value="${esc(c.group)}">${esc(c.group)}</option>`:""}${groupsList().map(g=>`<option ${c.group===g.name?"selected":""} value="${esc(g.name)}">${esc(g.name)} · ${esc(g.room)} · ${esc(g.educator)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-edu">Primary educator</label><input id="c-edu" value="${esc(c.primaryEducator||"")}" autocomplete="off" placeholder="From the small group"></div>
       <div class="field"><label for="c-program">Program</label><input id="c-program" value="${esc(c.program||"")}"></div>
