@@ -126,6 +126,28 @@ test('Transition summary', async t => {
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 
+  await t.test('the Copy for the next school leaves out other children, and the staff copy stays as written', async () => {
+    const ann = (await fx.login('Ann', '1357')).token;
+    await fx.as(ann, '/api/write', { op: 'update', kind: 'children', id: 'pip-test', patch: { transitionSummary: { [YEAR]: { sections: { friends: 'Pip and Rue dig together. R.T. joins them.' } } } } }); await save();
+    const r = await fx.as(ann, '/api/transition/nextschool', { id: 'pip-test', year: YEAR });
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.body.sections.friends, 'Pip and a friend dig together. A friend joins them.');
+    const kit = (await fx.login('Kit', '1357')).token;
+    assert.strictEqual((await fx.as(kit, '/api/transition/nextschool', { id: 'pip-test', year: YEAR })).status, 403);
+    assert.strictEqual(kid('pip-test').transitionSummary[YEAR].sections.friends, 'Pip and Rue dig together. R.T. joins them.');
+    const s = await signedIn(fx, b, 'Ann', '1357', 390); await s.p.route('**/api/read', serve);
+    await s.p.evaluate(() => { kidOpen = 'pip-test'; kidTab = 'transition'; goView('child'); }); await s.p.waitForSelector('[data-print="transitionnext"]');
+    await s.p.evaluate(() => { window.__made = []; window.makePdf = async (list, name) => { __made.push({ name, list }); }; window.makeDocx = async (list, name) => { __made.push({ name, list }); }; });
+    await s.p.click('[data-print="transitionnext"]:not([data-word])'); await s.p.waitForFunction(() => __made.length === 1, null, { timeout: 15000 });
+    await s.p.click('[data-print="transitionnext"][data-word]'); await s.p.waitForFunction(() => __made.length === 2, null, { timeout: 15000 });
+    await s.p.click('[data-print="transition"]:not([data-word])'); await s.p.waitForFunction(() => __made.length === 3, null, { timeout: 15000 });
+    const made = await s.p.evaluate(() => __made);
+    assert.deepStrictEqual(made.map(m => m.name), ['Transition summary for the next school Pip Test.pdf', 'Transition summary for the next school Pip Test.docx', 'Transition summary Pip Test.pdf']);
+    assert.doesNotMatch(JSON.stringify(made[0].list), /\bRue\b|R\.T\.|"photo"/); assert.match(JSON.stringify(made[0].list), /a friend dig together/);
+    assert.match(JSON.stringify(made[2].list), /Pip and Rue dig together/);
+    assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
+
   await t.test('the Family page shows a shared summary to that family', async () => {
     const dee = (await fx.login('Dee', 'director-pass-1')).token;
     await fx.as(dee, '/api/write', { op: 'update', kind: 'children', id: 'pip-test', patch: { transitionSummary: { [YEAR]: { shared: { at: new Date().toISOString(), by: 'Dee', plan: 'k', sections: { who: 'Pip is a curious digger.' } } } } } }); await save();

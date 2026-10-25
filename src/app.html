@@ -10518,6 +10518,8 @@ async function printsClick(t){
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
+  if(kind==="transitionnext"){const c=children.get(t.dataset.id);if(!c)return true;tsFlush(c.id);let j;try{j=await window.FP_API("/api/transition/nextschool",{id:c.id,year:tsYear()})}catch(e){toast(e&&e.message||"The copy for the next school could not be made. Check your connection.");return true}
+    await out([transitionDoc(c,j.sections||{})],`Transition summary for the next school ${kidName(c)}`);return true}
   if(kind==="portfolio"){const c=children.get(t.dataset.id);if(!c)return true;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet. Tag ${c.first} in an observation or a slide first.`);return true}await out(portfolioDocs(c),`Portfolio ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
@@ -12331,14 +12333,16 @@ function tsHtml(c){const x=tsOf(c),s=(x&&x.sections)||{},dr=tsDrafts[c.id]||{},b
     ${any||nd?"":`<div class="empty">Nothing is written yet. Draft it, or write each part below.</div>`}</section>
   <section class="card">${TS_SECTIONS.map(([k,l])=>`<label class="tslab"><span class="lbl">${l}</span><textarea data-ts="${k}" rows="${Math.min(14,Math.max(4,Math.ceil(String(s[k]||"").length/65)+1))}" placeholder="${esc(TS_HINT[k].replace(/\{first\}/g,c.first))}">${esc(s[k]||"")}</textarea></label>${dr[k]?`<div class="tsdraft"><span class="cnt">The draft for ${l.toLowerCase()}</span><div style="white-space:pre-line">${esc(dr[k])}</div><div class="actions"><button class="btn small ghost" data-tsuse="${k}">Use this draft</button><button class="linkbtn" data-tsnot="${k}">Not this</button></div></div>`:""}`).join("")}
     <div id="ts-warn">${tsWarn(s)}</div>
-    <div class="actions">${x&&x.status==="ready"?`<button class="btn small ghost" data-tsready="0">Back to draft</button>`:`<button class="btn small" data-tsready="1" ${any?"":"disabled"}>Mark ready</button>`}${any?printBtns("transition",c.id,"PDF"):""}</div>
+    <div class="actions">${x&&x.status==="ready"?`<button class="btn small ghost" data-tsready="0">Back to draft</button>`:`<button class="btn small" data-tsready="1" ${any?"":"disabled"}>Mark ready</button>`}${any?printBtns("transition",c.id,"PDF")+printBtns("transitionnext",c.id,"Copy for the next school, PDF"):""}</div>
     <div class="cnt">${tsShareText(c,x)}</div></section>`}
 // the director shares it on the Details tab, under Shared with the family, and the office sees where it stands
 function tsShareRow(c){const x=tsOf(c);if(!tsAny(x))return "";const dir=isDirector()&&!VIEW_AS;
   if(x.shared)return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ${esc(shortDate(new Date(x.shared.at).getTime()))}${tsChanged(x)?" · changed since":""}</span></span>${dir?`<span class="actions" style="margin:0">${tsChanged(x)&&x.status==="ready"?`<button class="linkbtn" data-tsshare="${esc(c.id)}">Share again</button>`:""}<button class="linkbtn" data-tsunshare="${esc(c.id)}">Stop sharing</button></span>`:""}</div>`;
   if(x.status==="ready")return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ready, not shared yet</span></span>${dir?`<button class="btn small ghost" data-tsshare="${esc(c.id)}">Share it</button>`:""}</div>`;
   return `<div class="cnt">The transition summary is still a draft. It can be shared once it is marked ready.</div>`}
-function transitionDoc(c){const x=tsOf(c)||{},s=x.sections||{},age=kidAgeText(c);
+// the staff copy prints as written. The copy for the next school takes the sections the server gives, with other
+// children left out the way the family copy leaves them out.
+function transitionDoc(c,given){const x=tsOf(c)||{},s=given||x.sections||{},age=kidAgeText(c);
   // each paragraph keeps its own lines, and the part's heading stays with its first one
   const blocks=TS_SECTIONS.filter(([k])=>has(s[k])).flatMap(([k,l])=>String(s[k]).trim().split(/\n\s*\n/).filter(has).map((p,i)=>dText(i?"":l,p.trim())));
   if(!blocks.length)blocks.push(dText("","Nothing is written in this summary yet."));

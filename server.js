@@ -1681,6 +1681,16 @@ async function handle(req, res) {
   // a device asks which of the saves it still holds are written to the records. A save this server does not know, such
   // as one sent before an update, is looked for in the records' own history by its save id. One found nowhere is
   // answered unknown, and the device sends it again.
+  // the transition summary's Copy for the next school leaves out other children's names, nicknames and initials the way
+  // the family copy does, and holds no photos. The staff copy stays as written.
+  if (path === '/api/transition/nextschool') {
+    const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;
+    const ts = k && k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary[String(body.year || '')] : null;
+    if (!ts || !ts.sections || typeof ts.sections !== 'object') { err(req, res, 404, 'There is no transition summary to copy yet.'); return; }
+    const all = [...store.recs.children.entries()].filter(([, x]) => x && !x.deleted && x.doc).map(([cid, x]) => Object.assign({ id: cid }, x.doc));
+    const sections = {}; for (const [key, v] of Object.entries(ts.sections)) sections[key] = familyPage.withoutOthers(String(v || '').trim(), Object.assign({ id }, k), all);
+    json(req, res, 200, { sections }); return;
+  }
   if (path === '/api/notes') { json(req, res, 200, { notes: notesFor(me.name), sent: isDirector(me.name) ? staffNotes().filter(x => x.day >= laDayOf(Date.now() - 7 * 864e5)).reverse().slice(0, 20) : undefined }); return; }
   if (path === '/api/notes/send') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a note to staff.'); return; }
