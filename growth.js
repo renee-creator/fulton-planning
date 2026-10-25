@@ -35,7 +35,7 @@ module.exports = function growthModule(c) {
     ['beyond', 'Beyond Discipline', 'Relationship-based positive discipline, looking for the reason behind a behavior, and staying regulated so children can regulate.', ['lang', 'img']],
     ['families', 'The Home and School Partnership', 'Daily communication, conferences, and difficult conversations.', ['fam']],
     ['development', 'Developmental Deep Dive', 'Development in the Twos and Threes and in the Fours and Fives, in a mixed-age community.', ['img', 'cur']],
-    ['spaces', 'Spaces That Teach', 'The atelier, the outdoor classroom and the farm as spaces that teach.', ['env']],
+    ['spaces', 'Spaces That Teach', 'The outdoor classroom, the garden, the farm and the neighborhood as spaces that teach.', ['env']],
     ['meeting', 'The Art of the Meeting', 'Meeting time as a place for listening and making space for others\' words and bodies.', ['lang', 'team']],
     ['howto', 'TREE How To', 'Short guides for keeping observations, writing plans and making documentation.', ['obs']],
     ['licensing', 'Licensing at Fulton', 'Each Title 22 requirement and Fulton procedure in short pieces for nap time, with the official trainings linked.', []]];
@@ -79,12 +79,28 @@ module.exports = function growthModule(c) {
       const parts = text.slice(t.index + t[0].length).split(/^##\s+/m);
       const lead = parts.shift().split('\n').map(s => s.trim()).filter(Boolean);
       const sections = parts.map(s => { const i = s.indexOf('\n'); return { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
-      out[slug] = { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 90, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections };
+      // an adapted module written as a draft says status draft, and waits for the director to mark it ready. Its source
+      // note, its library description and its place in the list come from the same comment, so no new title is in this file
+      out[slug] = { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 90, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
+        draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean) };
     }
     modCache = out; return out;
   }
+  const READY = 'staff/pd/ready.json';
+  const readyOn = slug => !!(((get(READY) || {}).modules || {})[slug]);
+  const published = slug => { const m = modules()[slug]; return !!m && (!m.draft || readyOn(slug)); };
+  // what a reader receives. The director sees every module, drafts marked, with the source note. Others see published ones only.
+  const modulesFor = me => { const dir = isDirector(me); const out = {};
+    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: m.draft && !readyOn(k) }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; out[k] = c; } }
+    return out; };
+  // the library's list, the design's modules in order, then modules written since, in their own order
+  const libraryList = me => { const dir = isDirector(me); const m = modules();
+    const base = MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: m[k] && (dir || published(k)) ? m[k].title : t, desc: m[k] && m[k].desc && (dir || published(k)) ? m[k].desc : d, areas: a, ready: k === 'licensing' || k === 'howto' || (dir ? !!m[k] : published(k)), waiting: !!(dir && m[k] && m[k].draft && !readyOn(k)), minutes: (m[k] || {}).minutes || 0 }));
+    const more = Object.values(m).filter(x => !MODULE_LIST.some(l => l[0] === x.slug) && (dir || published(x.slug))).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
+      .map(x => ({ slug: x.slug, title: x.title, desc: x.desc, areas: x.serves, ready: true, waiting: !!(dir && x.draft && !readyOn(x.slug)), minutes: x.minutes }));
+    return [...base, ...more]; };
   const moduleTitle = slug => (MODULE_LIST.find(m => m[0] === slug) || [])[1] || (modules()[slug] || {}).title || slug;
-  const moduleFor = area => { const m = modules(); const ready = MODULE_LIST.filter(x => m[x[0]] && x[3].includes(area)); return ready.length ? ready[0][0] : ''; };
+  const moduleFor = area => { const m = modules(); const ready = MODULE_LIST.filter(x => published(x[0]) && x[3].includes(area)); return ready.length ? ready[0][0] : ''; };
 
   /* ---------- check-in schedule ---------- */
   // school closures from the calendar's all-day events, the same words the kitchen reads to leave a day empty
@@ -394,7 +410,7 @@ module.exports = function growthModule(c) {
     if (P === 'boot') {
       const ym = today().slice(0, 7); const s = await schedule(ym); const nx = await schedule(addMonths(ym + '-01', 1).slice(0, 7));
       const mineOnly = l => dir ? l : l.filter(x => nameKey(x.name) === nameKey(me));
-      json(req, res, 200, { year: y, areas: AREAS, points: POINTS, continuum: continuum(y), modules: MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: t, desc: d, areas: a, ready: !!modules()[k] || k === 'licensing' || k === 'howto', minutes: (modules()[k] || {}).minutes || 0 })),
+      json(req, res, 200, { year: y, areas: AREAS, points: POINTS, continuum: continuum(y), modules: libraryList(me),
         feedback: FEEDBACK, audience: AUDIENCE, me: { name: me, director: dir, takesPart: takesPart(me), room: roomOf(me), lighter: lighter(me), journalEvery: +profileOf(me).journalEvery || 1, curriculumFrom: profileOf(me).curriculumFrom || '', role: roleOf(me) },
         people: dir ? people().map(n => ({ name: n, room: roomOf(n), role: roleOf(n), lighter: lighter(n), checkin: profileOf(n).checkin || '', planHour: profileOf(n).planHour || '', startDate: profileOf(n).startDate || '', curriculumFrom: profileOf(n).curriculumFrom || '' })) : [],
         team: isNewHire(me) ? [] : people().map(n => ({ name: n, room: roomOf(n) })), schedule: { now: s && Object.assign({}, s, { list: mineOnly(s.list) }), next: nx && Object.assign({}, nx, { list: mineOnly(nx.list) }) },
@@ -430,14 +446,16 @@ module.exports = function growthModule(c) {
       if (nameBlocked(me)) return err(req, res, 429, 'Wait a little before trying your passcode again.');
       if (!checkPasscode(me, body.passcode)) return err(req, res, 403, 'That passcode is not right. Use the four numbers you sign in to TREE with.');
       const j = journal(who); const p = periodOf(who, today());
-      json(req, res, 200, { key: openKey(me, who), entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0)), period: p, wrote: wroteIn(who, p) }); return;
+      json(req, res, 200, { key: openKey(me, who), entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0)), period: p, wrote: wroteIn(who, p), carry: growth(who).carry || null }); return;
     }
     if (P === 'journal/save') {
       if (!canSee(me, who) || !keyOk(body.key, me, who)) return err(req, res, 401, 'Open the journal again with your passcode.');
       if (nameKey(me) !== nameKey(who)) return deny('Only the educator writes in their journal.');
       const j = journal(who); const e = body.entry || {}; const id = String(e.id || '') || rid('j');
       const was = j.entries.find(x => x.id === id);
+      const carry = growth(who).carry || null;
       const entry = Object.assign({}, was || { id, date: today(), at: Date.now() }, { joy: txt(e.joy), challenge: txt(e.challenge), connection: txt(e.connection), language: txt(e.language), updatedAt: Date.now() });
+      if ('module' in e) { entry.module = txt(e.module); if (entry.module && carry && !(was && was.modulePrompt)) entry.modulePrompt = txt(carry.prompt, 600); }
       j.entries = [entry, ...j.entries.filter(x => x.id !== id)]; put(jPath(who), j);
       json(req, res, 200, { entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date)), period: periodOf(who, today()), wrote: wroteIn(who, periodOf(who, today())) }); return;
     }
@@ -538,9 +556,9 @@ module.exports = function growthModule(c) {
     if (P === 'moments/remove') { const m = momentsAll().find(x => x.id === body.id); if (!m) return err(req, res, 404, 'That moment is not here.'); if (!dir && nameKey(m.by) !== nameKey(me)) return deny(); put(MOMENTS, { list: momentsAll().filter(x => x.id !== m.id) }); json(req, res, 200, { ok: true }); return; }
 
     /* the PD library's modules */
-    if (P === 'modules') { json(req, res, 200, { modules: modules(), examples: Object.fromEntries(Object.entries(get(MODS) || {}).map(([k, v]) => [k, dir ? v : (v && v.shown ? { examples: v.examples || [], shown: true } : { examples: [], shown: false })])) }); return; }
+    if (P === 'modules') { json(req, res, 200, { modules: modulesFor(me), examples: Object.fromEntries(Object.entries(get(MODS) || {}).map(([k, v]) => [k, dir ? v : (v && v.shown ? { examples: v.examples || [], shown: true } : { examples: [], shown: false })])) }); return; }
     if (P === 'module/progress') {
-      const slug = String(body.slug || ''); const md = modules()[slug]; if (!md) return err(req, res, 404, 'That module is not here.');
+      const slug = String(body.slug || ''); const md = modules()[slug]; if (!md || (!dir && !published(slug))) return err(req, res, 404, 'That module is not here.');
       const g = growth(me); const cur = Object.assign({}, (g.modules || {})[slug]); const b = body.progress || {};
       if (!cur.opened) cur.opened = Date.now();
       if ('tried' in b) cur.tried = b.tried ? cur.tried || Date.now() : 0;
@@ -552,6 +570,17 @@ module.exports = function growthModule(c) {
       // a finished module logs its hours on the records page, as Fulton PD hours
       if (logged) { const doc = person(me); doc.hours = [...(doc.hours || []), { id: rid('h'), date: today(), title: 'PD module, ' + md.title, hours: Math.round(md.minutes / 6) / 10, kind: 'module', approved: false, by: 'TREE' }]; put(pPath(me), doc); }
       json(req, res, 200, forViewer(me, me)); return;
+    }
+    if (P === 'module/ready') {
+      if (!dir) return deny('The director marks a module ready.'); const slug = String(body.slug || ''); if (!modules()[slug]) return err(req, res, 404, 'That module is not here.');
+      const all = Object.assign({ modules: {} }, get(READY) || {}); all.modules = Object.assign({}, all.modules); if (body.on) all.modules[slug] = { on: today(), by: me }; else delete all.modules[slug];
+      put(READY, all); json(req, res, 200, { modules: modulesFor(me), list: libraryList(me) }); return;
+    }
+    // a reflection prompt the educator chooses to carry into the weekly journal, one at a time
+    if (P === 'module/carry') {
+      const slug = String(body.slug || ''); const md = modules()[slug]; if (!md || (!dir && !published(slug))) return err(req, res, 404, 'That module is not here.');
+      const g = growth(me); const prompt = txt(body.prompt, 600).trim(); g.carry = prompt ? { slug, title: md.title, prompt, at: Date.now() } : null; put(gPath(me), g);
+      json(req, res, 200, { carry: g.carry }); return;
     }
     if (P === 'module/examples') {
       if (!dir) return deny('The director chooses the examples.'); const slug = String(body.slug || ''); if (!modules()[slug]) return err(req, res, 404, 'That module is not here.');
@@ -669,5 +698,5 @@ module.exports = function growthModule(c) {
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
   const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
-  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
+  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
 };

@@ -10,7 +10,7 @@
 const crypto = require('crypto');
 
 module.exports = function presentingModule(c) {
-  const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart, isNewHire } = c;
+  const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart, isNewHire, moduleOf } = c;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -197,7 +197,18 @@ module.exports = function presentingModule(c) {
       // facilitator script and what goes on the one-page handout, from the template kept in the records
       const e0 = blank(t, me); const tpl = body.template ? get('staff/pd/template.json') : null;
       if (body.template && !tpl) return err(req, res, 404, 'The Fulton template is not in the records yet.');
+      // a PD library module opened to lead at a staff meeting fills the template's parts from the module's own words
+      const mod = body.module && moduleOf ? moduleOf(String(body.module)) : null;
+      if (body.module && !mod) return err(req, res, 404, 'That module is not here.');
       if (tpl) { e0.plan = (tpl.sections || []).slice(0, LISTS.plan).map(x => ({ id: rid('s'), title: txt(x.title, 200), minutes: Math.round(+x.minutes || 0), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: [], readings: [] })); e0.minutes = e0.plan.reduce((a, x) => a + x.minutes, 0); e0.template = true; }
+      if (tpl && mod) {
+        const sec = h => (mod.sections.find(x => x.heading.toLowerCase().startsWith(h)) || {}).body || '';
+        const plain = t => String(t).replace(/^#+\s*/gm, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*/g, '').trim();
+        const subs = (sec('reading').match(/^###\s+(.+)$/gm) || []).map(x => x.replace(/^###\s+/, '').trim());
+        const fill = { 'Framing': plain(sec('why it matters')).slice(0, 1200), 'Key ideas': subs.join('. ') + (subs.length ? '.' : ''), 'Reflection': plain(sec('reflect')).slice(0, 1200), 'Commitment': plain(sec('try this week')).slice(0, 1200) };
+        for (const p of e0.plan) if (fill[p.title]) p.do = txt(fill[p.title], 6000);
+        e0.question = ''; e0.module = mod.slug;
+      }
       const e = save(e0, me); json(req, res, 200, forViewer(e, me)); return;
     }
     const e = one(body.id);
