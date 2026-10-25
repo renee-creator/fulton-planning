@@ -12405,7 +12405,8 @@ let calSpaces=null,calSpacesAt=0,spaceBusy={};
 async function loadCalSpaces(){if(!window.FP_API||!db)return;if(calSpaces&&Date.now()-calSpacesAt<10*60000)return;
   try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpaces=((j.settings&&j.settings.spaces)||[]).filter(s=>!s.hidden);calSpacesAt=Date.now()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
   if(view==="plans"&&currentId)rerenderSpace()}
-function rerenderSpace(){const p=plans.get(currentId);const el=$("#spacecard");if(p&&el)el.outerHTML=spaceCardHtml(p)}
+// the card is drawn again around the words box only when no one is typing in it
+function rerenderSpace(){const p=plans.get(currentId);const el=$("#spacecard");if(!p||!el)return;if(document.activeElement&&document.activeElement.id==="f-where"&&el.contains(document.activeElement)){el.addEventListener("focusout",()=>setTimeout(rerenderSpace,0),{once:true});return}el.outerHTML=spaceCardHtml(p)}
 const SG_DAYS=[[1,"Mon"],[2,"Tue"],[3,"Wed"],[4,"Thu"],[5,"Fri"]];
 const minsOf=t=>{const [h,m]=String(t||"").split(":").map(Number);return h*60+(m||0)};
 function planSpace(p){return Object.assign({spaceId:"",days:[2,3,4,5],start:"09:00",end:"10:30",booked:[],skipped:[]},p.space||{})}
