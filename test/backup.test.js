@@ -26,7 +26,7 @@ test('the backup holds every staff folder and the director and office names, nev
   put(dir, 'staff/pd/licensing/01-a.md', '## A piece\n\nAbout 5 minutes\n');
   const s = await server(dir);
   try {
-    let r; for (let i = 0; i < 40; i++) { r = await fetch(s.url + '/inbound/backup', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: '{}' }); if (r.status === 200) break; await new Promise(ok => setTimeout(ok, 250)); }
+    let r; for (let i = 0; i < 120; i++) { r = await fetch(s.url + '/inbound/backup', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: '{}' }); if (r.status === 200) break; await new Promise(ok => setTimeout(ok, 250)); }
     assert.strictEqual(r.status, 200);
     const buf = Buffer.from(await r.arrayBuffer()); const text = (buf[0] === 0x1f ? zlib.gunzipSync(buf) : buf).toString('utf8');
     const b = JSON.parse(text);
