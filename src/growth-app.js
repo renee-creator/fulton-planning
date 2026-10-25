@@ -367,7 +367,7 @@ Gr.readingsHtml=async function(){const r=await loadReadings();const L=r.list||[]
 Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();const m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
   const d=await doc(meName(),true);const pr=(d.modules||{})[slug]||{};const dir=isDir();const ex=(ms.examples||{})[slug]||{examples:[]};
   const sec=h=>m.sections.find(s=>s.heading.toLowerCase().startsWith(h));
-  const why=sec("why it matters"),reading=sec("reading"),own=sec("from fulton"),tr=sec("try this week"),rf=sec("reflect"),sh=sec("share at"),rd=sec("readings");
+  const why=sec("why it matters"),reading=sec("reading"),own=sec("from fulton")||sec("from our own"),tr=sec("try this week"),rf=sec("reflect"),sh=sec("share at"),rd=sec("readings");
   const serves=(m.serves||[]).map(areaName).filter(Boolean);
   // the reflection prompts, one per line or list item, each one can be carried into the weekly journal
   const prompts=rf?String(rf.body).split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean):[];const carry=(d.carry||{}).prompt||"";
