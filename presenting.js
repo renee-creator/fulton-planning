@@ -42,8 +42,8 @@ module.exports = function presentingModule(c) {
       with: ['mark', 'marks', 'drawing', 'drawings', 'drew', 'map', 'maps', 'structure', 'tower', 'building', 'built', 'sculpture', 'clay', 'line', 'lines', 'painting', 'painted', 'chalk', 'sand', 'blocks', 'construction', 'writing', 'wrote'] }];
   function seed() {
     const sc = school(); if ((sc.seeded || {}).presenting) return false;
-    const a = Object.assign(blank('Leaving a Trace', 'TREE'), { subtitle: 'Ephemeral Encounters, Enduring Possibilities', question: 'What is the child trying to make happen?', audience: 'CIRC Round Table at Fulton', date: '2027-05-22', minutes: 180,
-      format: 'A facilitated session', look: LOOK_TRACE, lens: 'Graphic Languages', meetingsNote: 'For this entry, the bi-monthly CIRC meetings.', seed: 'trace' });
+    const a = Object.assign(blank('Leaving a Trace', 'TREE'), { subtitle: 'Ephemeral Encounters, Enduring Possibilities', question: 'What is the child trying to make happen?', audience: '', date: '2027-05-22', minutes: 180,
+      format: 'A facilitated session', look: LOOK_TRACE, lens: 'Graphic Languages', meetingsNote: '', seed: 'trace' });
     const b = Object.assign(blank('Serving Two-Year-Olds', 'TREE'), { audience: 'The director\'s group', format: 'A facilitated session with a self-paced follow-up', youngest: true, followup: { on: true, reads: [], prompts: [], checks: [] }, seed: 'twos' });
     for (const e of [a, b]) if (!all().some(x => x.seed === e.seed)) save(e, 'TREE');
     put('staff/school.json', Object.assign({}, school(), { seeded: Object.assign({}, school().seeded, { presenting: today() }) }));
@@ -59,7 +59,7 @@ module.exports = function presentingModule(c) {
   function forViewer(e, me) {
     const out = JSON.parse(JSON.stringify(e)); out.agendas = agendasUsing(e.id); out.edit = canEdit(me, e);
     if (presents(e, me) && e.status === 'presented') out.mine = { hours: !!(e.credit || {})[pidOf(me)], moment: sharedFor(e, me) };
-    if (out.edit) { out.library = (get('staff/readings.json') || {}).list || []; if (isDirector(me)) out.choices = choices(); else delete out.credit; return out; }
+    if (out.edit) { out.library = (get('staff/readings.json') || {}).list || []; if (isDirector(me)) { out.choices = choices(); if (e.template) out.templateSource = (get('staff/pd/template.json') || {}).source || ''; } else delete out.credit; return out; }
     const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
     const safe = Object.fromEntries(keep.map(k => [k, out[k]]));
     safe.readings = (e.readings || []).filter(r => r.kind !== 'drive').map(r => ({ id: r.id, kind: r.kind, title: r.title, url: r.url, source: r.source || '', note: r.note || '' }));
@@ -168,7 +168,7 @@ module.exports = function presentingModule(c) {
     if (list === 'meetings') return { id, date: ISO.test(x.date || '') ? x.date : today(), fulton: txt(x.fulton, 6000), others: txt(x.others, 6000), questions: txt(x.questions, 4000), by: x.by || me };
     // a chosen moment keeps the record's own words. Only its language can be named.
     if (list === 'chosen') return Object.assign({}, was, { language: txt(x.language, 160) });
-    if (list === 'plan') return { id, title: txt(x.title, 200), minutes: Math.max(0, Math.min(600, Math.round(+x.minutes || 0))), do: txt(x.do, 6000), moments: (Array.isArray(x.moments) ? x.moments : []).map(String).slice(0, 12), readings: (Array.isArray(x.readings) ? x.readings : []).map(String).slice(0, 12) };
+    if (list === 'plan') return { id, title: txt(x.title, 200), minutes: Math.max(0, Math.min(600, Math.round(+x.minutes || 0))), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: (Array.isArray(x.moments) ? x.moments : []).map(String).slice(0, 12), readings: (Array.isArray(x.readings) ? x.readings : []).map(String).slice(0, 12) };
     if (list === 'prompts' || list === 'checks') return { id, text: txt(x.text, 1200) };
     if (list === 'readings') {
       const kind = ['library', 'link', 'drive', 'licensing'].includes(x.kind) ? x.kind : 'link';
@@ -193,7 +193,12 @@ module.exports = function presentingModule(c) {
     }
     if (P === 'new') {
       if (!dir) return deny('Only the director starts an entry.'); const t = txt(body.title, 160).trim(); if (!t) return err(req, res, 400, 'Give the entry a title.');
-      const e = save(blank(t, me), me); json(req, res, 200, forViewer(e, me)); return;
+      // Start from the Fulton template gives the entry its seven parts, each with its time, what participants do, a
+      // facilitator script and what goes on the one-page handout, from the template kept in the records
+      const e0 = blank(t, me); const tpl = body.template ? get('staff/pd/template.json') : null;
+      if (body.template && !tpl) return err(req, res, 404, 'The Fulton template is not in the records yet.');
+      if (tpl) { e0.plan = (tpl.sections || []).slice(0, LISTS.plan).map(x => ({ id: rid('s'), title: txt(x.title, 200), minutes: Math.round(+x.minutes || 0), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: [], readings: [] })); e0.minutes = e0.plan.reduce((a, x) => a + x.minutes, 0); e0.template = true; }
+      const e = save(e0, me); json(req, res, 200, forViewer(e, me)); return;
     }
     const e = one(body.id);
     if (!e || !canRead(me, e)) return nope();

@@ -49,7 +49,7 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
   X.draw(my,head("PD and Licensing","Presenting",dir?"Every talk, PD session or module presented at Fulton or for other schools, each its own entry. Add educators as presenters and they work on the entry with you. Other educators see an entry once it is presented.":"The talks and PD sessions you present, and the ones Fulton has presented. You see an entry when you are one of its presenters, and every entry once it is presented.")+
     card("Being planned",now.length?now.map(row).join(""):empty(dir?"Start an entry below for a talk, a PD session or a module.":"An entry shows here when the director adds you as a presenter."))+
     card("Presented",done.length?done.map(row).join(""):empty("Entries move here once they are presented."))+
-    (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button></div>`):""))}
+    (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button><button class="btn small ghost" data-prnew="template">Start from the Fulton template</button></div>`):""))}
 
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
@@ -157,12 +157,15 @@ function planFold(e){const ed=edit();const L=e.plan||[];const C=e.chosen||[],R=e
   const uses=s=>[...(s.moments||[]).map(id=>C.findIndex(x=>x.id===id)).filter(i=>i>=0).map(i=>"Moment "+(i+1)),...(s.readings||[]).map(id=>(R.find(x=>x.id===id)||{}).title).filter(Boolean)];
   const sec=(s,i)=>ed?`<div class="prsec"><div class="kfields"><label style="grid-column:span 2">Section<input type="text" data-prpl="${H(s.id)}|title" value="${H(s.title||"")}"></label><label>Minutes<input type="number" min="0" step="5" data-prpl="${H(s.id)}|minutes" value="${H(s.minutes||"")}"></label></div>
       <label class="fld-label">What participants do<textarea rows="3" data-prpl="${H(s.id)}|do">${H(s.do||"")}</textarea></label>
+      <label class="fld-label">Facilitator script<textarea rows="3" data-prpl="${H(s.id)}|script">${H(s.script||"")}</textarea></label>
+      <label class="fld-label">On the one-page handout<textarea rows="2" data-prpl="${H(s.id)}|handout">${H(s.handout||"")}</textarea></label>
       ${C.length?`<div class="cnt">Moments it uses</div><div class="chips">${C.map((x,j)=>`<button class="chip ${(s.moments||[]).includes(x.id)?"on":""}" type="button" data-pruse="${H(s.id)}|moments|${H(x.id)}" aria-pressed="${(s.moments||[]).includes(x.id)}">Moment ${j+1}</button>`).join("")}</div>`:""}
       ${R.length?`<div class="cnt">Readings and files it uses</div><div class="chips">${R.map(x=>`<button class="chip ${(s.readings||[]).includes(x.id)?"on":""}" type="button" data-pruse="${H(s.id)}|readings|${H(x.id)}" aria-pressed="${(s.readings||[]).includes(x.id)}">${H(clip(x.title,40))}</button>`).join("")}</div>`:""}
       <div class="actions" style="margin:0"><button class="linkbtn" data-prmv="plan|${H(s.id)}|-1" ${i===0?"disabled":""}>Move up</button><button class="linkbtn" data-prmv="plan|${H(s.id)}|1" ${i===L.length-1?"disabled":""}>Move down</button><button class="linkbtn" data-prrmi="plan|${H(s.id)}">Take it out</button></div></div>`
-    :`<div class="prsec"><b>${H(s.title||"Section "+(i+1))}</b>${s.minutes?`<div class="cnt">${H(dur(+s.minutes))}</div>`:""}${s.do?`<div style="white-space:pre-line">${H(s.do)}</div>`:""}${uses(s).length?`<div class="cnt">Uses ${H(kList(uses(s)))}</div>`:""}</div>`;
+    :`<div class="prsec"><b>${H(s.title||"Section "+(i+1))}</b>${s.minutes?`<div class="cnt">${H(dur(+s.minutes))}</div>`:""}${s.do?`<div style="white-space:pre-line">${H(s.do)}</div>`:""}${s.script?`<div class="cnt" style="white-space:pre-line">Facilitator script. ${H(s.script)}</div>`:""}${uses(s).length?`<div class="cnt">Uses ${H(kList(uses(s)))}</div>`:""}</div>`;
   const help=st.help&&st.help.id===e.id?`<div class="prsec"><b>A draft from writing help</b><div class="cnt">Drawn only from the notes, chosen moments and attached files. Nothing changes until you add it.</div>${st.help.sections.map(s=>`<div class="gq"><b>${H(s.title)}</b>${s.minutes?`, ${H(dur(s.minutes))}`:""}<div style="white-space:pre-line">${H(s.do)}</div></div>`).join("")}<div class="actions"><button class="btn small" data-prhelpuse="1">Add these sections</button><button class="linkbtn" data-prhelpno="1">Not these</button></div></div>`:"";
   return fold("plan","The plan",L.length?`${L.length} section${L.length===1?"":"s"}${tot?", "+dur(tot):""}`:"",(L.length?`${e.minutes?`<div class="cnt">${H(dur(tot))} planned of ${H(dur(e.minutes))}.</div>`:""}`+L.map(sec).join(""):empty("The session plan, built in sections, each with its time, what participants do, and the moments, readings and files it uses."))+
+    (e.templateSource?`<div class="cnt" style="margin-top:8px">Source, seen only by you. ${H(e.templateSource)}</div>`:"")+
     (ed?`<div class="actions"><button class="btn small ghost" data-pradd="plan">Add a section</button><button class="btn small ghost" data-prhelp="1">${st.helping?"Drafting":"Draft the plan with writing help"}</button></div>${help}`:""))}
 
 /* the self-paced follow-up */
@@ -190,7 +193,7 @@ const photoOf=x=>{const s=picOf(x,true);return s&&x.photo&&x.photo.w?[{key:"pr:"
 const metaOf=e=>[["Audience",e.audience],["Date",e.date?fd(e.date):""],["Length",dur(e.minutes)],["Presenters",kList(e.presenters||[])]];
 function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:"");
   return report(e.title+", facilitator guide",metaOf(e),[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,e.format?{t:"text",label:"How it is offered",text:e.format}:null,
-    ...(e.plan||[]).map((s,i)=>({t:"text",label:(s.title||"Section "+(i+1))+(s.minutes?", "+dur(+s.minutes):""),text:[s.do,...(s.moments||[]).map(id=>C.find(x=>x.id===id)).filter(Boolean).map(x=>"Moment "+(C.indexOf(x)+1)+". "+clip(words(x,e),400)+(where(x)?" ("+where(x)+")":"")),...(s.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(rd)].filter(Boolean).join("\n\n")})),
+    ...(e.plan||[]).map((s,i)=>({t:"text",label:(s.title||"Section "+(i+1))+(s.minutes?", "+dur(+s.minutes):""),text:[s.do,s.script?"Facilitator script. "+s.script:"",...(s.moments||[]).map(id=>C.find(x=>x.id===id)).filter(Boolean).map(x=>"Moment "+(C.indexOf(x)+1)+". "+clip(words(x,e),400)+(where(x)?" ("+where(x)+")":"")),...(s.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(rd)].filter(Boolean).join("\n\n")})),
     !(e.plan||[]).length?{t:"text",text:"The plan has no sections yet."}:null,
     C.length?{t:"list",label:"Chosen moments",numbered:true,items:C.map(x=>clip(words(x,e),500)+(where(x)?" ("+where(x)+")":""))}:null,
     R.length?{t:"list",label:"Readings and files",items:R.map(rd)}:null,followBlocks(e)].flat().filter(Boolean))}
@@ -198,6 +201,7 @@ function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],che
   return [{t:"sub",text:"Self-paced follow-up"},f.reads.length?{t:"list",label:"Short readings",items:f.reads.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+(x.url?" ("+x.url+")":""))}:null,
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
 function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
+  (e.plan||[]).some(s=>s.handout)?{t:"list",label:"For today",items:(e.plan||[]).filter(s=>s.handout).map(s=>(s.title?s.title+". ":"")+s.handout)}:null,
   R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,...followBlocks(e)].filter(Boolean))}
 // panels, one idea to a page. The opening, the guiding question, each moment, and the question again to close.
 function sheet(o){return Object.assign({centered:true,display:true,type:"report",acc:"story",title:"",details:[],photos:[],blocks:[]},o)}
@@ -246,7 +250,7 @@ async function prTap(e,t){const d=t.dataset;const en=E();
   if(d.prsel!=null){Pr.open(d.prsel);T.render("stpres");window.scrollTo(0,0);return}
   if(d.pragenda){if(window.TreeGrowth)TreeGrowth.openAgenda(d.pragenda);goView("stpdd");return}
   if(d.prprint||d.prword){return print(d.prprint||d.prword,!!d.prword,!!d.prshow)}
-  if(d.prnew){const title=val("#prn-title").trim();if(!title){toast("Give the entry a title.");return}const r=await pa("new",{title});Pr.open(r.id);toast("Started.");T.render("stpres");return}
+  if(d.prnew){const title=val("#prn-title").trim();if(!title){toast("Give the entry a title.");return}const r=await pa("new",{title,template:d.prnew==="template"});Pr.open(r.id);toast("Started.");T.render("stpres");return}
   if(d.prpres){const cur=new Set(en.presenters||[]);cur.has(d.prpres)?cur.delete(d.prpres):cur.add(d.prpres);set(await pa("save",{id:en.id,fields:{presenters:[...cur]}}));toast(cur.has(d.prpres)?`${d.prpres} can see and work on this entry now.`:`${d.prpres} is no longer a presenter.`);X.redraw();return}
   if(d.prnames){set(await pa("save",{id:en.id,fields:{names:d.prnames}}));X.redraw();return}
   if(d.prdone){const alone=!(en.presenters||[]).length;if(!confirm(alone?"Mark it presented with no presenters? No hours are logged.":`Mark it presented? ${kList(en.presenters)} ${en.presenters.length===1?"gets":"get"} the time as Fulton PD hours.`))return;
