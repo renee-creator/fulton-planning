@@ -247,6 +247,7 @@ T.render=async function(v){const m=$("#main");if(!m)return;const my=++RT;
     if(v==="strec")return await pageRecords(my);
     if(v==="stnew")return await pageNew(my);
     if(v==="stpd")return await pagePd(my);
+    if(v==="stnotices")return await pageNotices(my);
     if(v==="sthb"||v==="stfh")return await pagePol(my,POLV[v]);
     if(v==="st27")return await page27(my);
     if(v==="stdrill")return await pageDrills(my);
@@ -353,6 +354,8 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
       ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
     ${card("Records and certificates",itemsHtml+(dir?chosenHtml(p):""))}
+    ${await noticesRecCard(who,dir,mine)}
+    ${await noticesNewCard(who,dir)}
     ${card("Immunizations",`<div class="hint">California requires everyone who works at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995. Records and exemptions are seen only by ${mine?"you":"the educator"} and the director.</div>${imm}`)}
     ${card("Early childhood units",units)}
     ${card("Continuing hours, this school year",hours)}
@@ -403,6 +406,57 @@ async function pageFiles(my){if(!D())return pageRecords(my);await loadPeople();c
     card("Every educator",st.people.map(p=>`<div class="prow"><span><b>${H(p.name)}</b> <span class="cnt">${printedAt(p)?"Printed "+H(fms(p.printed.at)):"Not printed yet"}</span></span><span class="actions" style="margin:0"><button class="btn small ghost" data-stfile="all" data-who="${H(p.name)}">Print the file</button><button class="linkbtn" data-stfile="word" data-who="${H(p.name)}">Cover sheet in Word</button></span></div>`).join("")))}
 
 /* the New Educator section */
+/* ---------- Required notices ----------
+   Kept with the Teacher Policies and Procedures, for staff once the director marks them ready. Each notice links to its
+   official agency page and its text is never copied. The new hire acknowledges the notices they receive, the yearly
+   Workplace Know Your Rights notice is given in each person's language with the record kept here, and each person may
+   name an emergency contact. The acknowledgments, the language and the emergency contact are seen only by that person
+   and the director, and stay out of prints, readable copies, the staff room display, reminders and the Family page. */
+const ntc={data:null,at:0,who:""};
+async function loadNotices(who,force){if(force||!ntc.data||ntc.who!==who||Date.now()-ntc.at>60000){ntc.data=await api("notices",{name:who});ntc.who=who;ntc.at=Date.now()}return ntc.data}
+const ntcStatus=x=>x.status==="unconfirmed"?`<span class="warnline">Unconfirmed. Open the official page to confirm. Checked ${H(fd(x.checked))}.</span>`:`<span class="cnt">Checked ${H(fd(x.checked))}.</span>`;
+const ntcRow=x=>`<div class="strow"><div class="sttop"><b>${H(x.title)}</b></div><div class="cnt">${H(x.agency)}. ${H(x.when)}.</div><div class="cnt"><a href="${H(x.url)}" target="_blank" rel="noopener">The official page</a> ${ntcStatus(x)}</div></div>`;
+const ntcLang=(who,cur,langs)=>`<label>Language for the Workplace Know Your Rights notice<select data-ntclang="${H(who)}">${langs.map(l=>`<option ${l===cur?"selected":""}>${H(l)}</option>`).join("")}</select></label>`;
+function ntcEmergency(who,e,rules){e=e||{};return `<div class="strow"><div class="sttop"><b>Emergency contact</b>${e.at?chip("ok","Named "+fms(e.at)):chip("soon","Not named")}</div><div class="cnt">${H(rules.emergency)}.</div>
+  <div class="kfields"><label>Name<input type="text" data-ntcem="name" value="${H(e.name||"")}"></label><label>Phone<input type="tel" data-ntcem="phone" value="${H(e.phone||"")}"></label><label>How they know you<input type="text" data-ntcem="relation" value="${H(e.relation||"")}"></label>
+  <label>Tell them if you are arrested or detained at work<select data-ntcem="notify"><option value="" ${!e.notify?"selected":""}>Not chosen</option><option value="yes" ${e.notify==="yes"?"selected":""}>Yes</option><option value="no" ${e.notify==="no"?"selected":""}>No</option></select></label></div>
+  <div class="actions"><button class="btn small" data-ntcemsave="${H(who)}">Save the emergency contact</button></div><div class="cnt">Seen only by you and the director.</div></div>`}
+// the New Educator section lists what a new hire receives
+async function noticesNewCard(who,dir){let d;try{d=await loadNotices(who)}catch(e){return ""}const mine=who===meName();
+  const rows=d.defs.newhire.map(x=>{const a=(d.mine.acks||{})[x.id];
+    return `<div class="strow"><div class="sttop"><b>${H(x.title)}</b>${x.how==="packet"?chip("ok","In the hiring packet"):a?chip("ok","Received "+fd(a.day)):chip("missing","Not yet")}</div><div class="cnt">${H(x.agency)}. ${H(x.when)}.</div>
+      <div class="stfiles"><a class="linkbtn" href="${H(x.id==="kyr"?d.link:x.url)}" target="_blank" rel="noopener">The official page</a>${x.how==="packet"?`<span class="cnt">This is a filled-in form. It stays in the paper and QuickBooks Workforce hiring packet.</span>`:mine&&!a?`<button class="btn small" data-ntcack="${H(x.id)}">I have received this notice</button>`:""}${dir?" "+ntcStatus(x):""}</div></div>`}).join("");
+  return card("Notices for a new educator",`${!d.ready?`<div class="hint warnline">A draft. Only you see it until you mark Required notices ready.</div>`:""}<div class="hint">Each notice comes from the agency that publishes it. Read it on the official page, or on the copy the director gives you, then say you have received it.</div>${rows}
+    <div class="kfields" style="margin-top:8px">${ntcLang(who,d.mine.lang,d.defs.langs)}</div>${ntcEmergency(who,d.mine.emergency,d.defs.rules)}`)}
+// the records page shows the dates, the language and the emergency contact
+async function noticesRecCard(who,dir,mine){let d;try{d=await loadNotices(who)}catch(e){return ""}
+  const acks=d.defs.newhire.filter(x=>x.how==="ack").map(x=>{const a=(d.mine.acks||{})[x.id];return `<div class="sttop"><span>${H(x.title)}</span>${a?chip("ok","Received "+fd(a.day)):chip("missing","Not yet")}</div>`}).join("");
+  const yrs=Object.keys(d.mine.kyr||{}).sort().reverse().map(y=>{const k=d.mine.kyr[y];return `<div class="sttop"><span>Workplace Know Your Rights notice, ${H(y)}</span>${chip("ok",k.outside?"On file outside TREE":"Given "+fd(k.date))}</div>`}).join("")||`<div class="cnt">No yearly notice recorded yet.</div>`;
+  return card("Required notices",`${!d.ready?`<div class="hint warnline">A draft. Only you see it until you mark Required notices ready.</div>`:""}<div class="strow">${acks}</div><div class="strow">${yrs}</div>
+    <div class="kfields">${ntcLang(who,d.mine.lang,d.defs.langs)}</div>${ntcEmergency(who,d.mine.emergency,d.defs.rules)}`)}
+async function pageNotices(my){const dir=D();const d=await loadNotices(meName(),true);if(my!==RT)return;const r=d.defs.rules;
+  const y=String(new Date().getFullYear()+(new Date().getMonth()>=1?1:0)),cur=String(new Date().getFullYear());
+  const people=d.people||[];
+  const give=dir?card("The yearly Workplace Know Your Rights notice",`<div class="hint">${H(r.due)}. ${H(r.languages)}. ${H(r.ways)}. TREE keeps the record of who received it, when and how. A reminder or a page in TREE is never the notice itself. ${ntcStatus(r)}</div>
+    <div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Name</th><th>Language</th><th>Notice</th>${[y,cur].filter((v,i,a)=>a.indexOf(v)===i).map(v=>`<th>${H(v)}</th>`).join("")}</tr></thead><tbody>${people.map(p=>`<tr><td><label class="radio"><input type="checkbox" data-ntcgive="${H(p.name)}"><span>${H(p.name)}</span></label></td><td>${H(p.lang)}</td><td><a href="${H(p.link)}" target="_blank" rel="noopener">Open in ${H(p.lang)}</a></td>${[y,cur].filter((v,i,a)=>a.indexOf(v)===i).map(v=>{const k=(p.kyr||{})[v];return `<td>${k?(k.outside?"On file outside TREE":H(fd(k.date))):"Not yet"}</td>`}).join("")}</tr>`).join("")}</tbody></table></div>
+    <div class="kfields"><label>Year<select id="ntc-year">${[y,cur].filter((v,i,a)=>a.indexOf(v)===i).map(v=>`<option>${H(v)}</option>`).join("")}</select></label><label>How it was given<select id="ntc-way">${d.defs.ways.map(([k,l])=>`<option value="${k}">${H(l)}</option>`).join("")}</select></label><label>Date<input type="date" id="ntc-date" value="${today()}"></label></div>
+    <div class="actions"><button class="btn small" data-ntcgivesave="1">Record it for the people ticked</button></div>
+    <div class="cnt">Each January a reminder asks you to check the posters and give this notice by February 1. <a href="${H(r.url)}" target="_blank" rel="noopener">The Labor Commissioner's letter</a> and <a href="${H(r.postings)}" target="_blank" rel="noopener">Workplace Postings</a>.</div>`):"";
+  draw(my,head("Teacher Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of Fulton's size, each linked to its official page. Notice text is never copied here.")+
+    (dir?card("For staff",`<div class="actions" style="margin:0">${d.ready?chip("ok","Ready, staff see it"):chip("soon","A draft, only you see it")}<button class="btn small ghost" data-ntcready="${d.ready?"0":"1"}">${d.ready?"Back to draft":"Mark it ready"}</button></div>`):"")+
+    card("Workplace posters",`<div class="hint">The posters still hang in the staff area. This list is for finding and replacing them.</div>${d.defs.posters.map(ntcRow).join("")}`)+
+    card("New hire notices",`<div class="hint">Shown in the New Educator section. A filled-in form stays in the paper and QuickBooks Workforce hiring packet.</div>${d.defs.newhire.map(ntcRow).join("")}`)+give)}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ntcack],[data-ntcemsave],[data-ntcgivesave],[data-ntcready]");if(!t)return;
+  if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  try{
+    if(t.dataset.ntcack){await api("notices/ack",{id:t.dataset.ntcack});toast("Saved.")}
+    else if(t.dataset.ntcemsave){const box=t.closest(".strow");const v=k=>(box.querySelector(`[data-ntcem="${k}"]`)||{}).value||"";await api("notices/emergency",{name:t.dataset.ntcemsave,contact:{name:v("name"),phone:v("phone"),relation:v("relation"),notify:v("notify")}});toast("Saved.")}
+    else if(t.dataset.ntcgivesave){const names=[...document.querySelectorAll("[data-ntcgive]:checked")].map(x=>x.dataset.ntcgive);if(!names.length)return toast("Tick the people who received it.");
+      const r=await api("notices/give",{names,year:$("#ntc-year").value,way:$("#ntc-way").value,date:$("#ntc-date").value});toast(`Recorded for ${r.given}.`)}
+    else if(t.dataset.ntcready){await api("notices/ready",{on:t.dataset.ntcready==="1"});toast("Saved.")}
+    ntc.data=null;redraw()}catch(er){fail(er)}});
+document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||!t.dataset.ntclang)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  try{await api("notices/lang",{name:t.dataset.ntclang,lang:t.value});ntc.data=null;toast("Saved.")}catch(er){fail(er)}});
 async function pageNew(my){const dir=D();let who=meName();
   if(dir){await loadPeople();const news=st.people.filter(p=>p.newHire||p.newEd);if(!st.newWho||!news.some(p=>p.name===st.newWho))st.newWho=(news[0]||{}).name||"";who=st.newWho;
     if(!who){draw(my,head("Educators","New Educator","A new educator gets into TREE before their first day, with access only to the New Educator section. Add one from Educators.")+addNewHtml()+welcomeEditHtml());return}}

@@ -13,6 +13,7 @@
    PD library and the handbook, until the director turns on full access.
    The Teacher Policies and Procedures and the Family Handbook, section by section, are in policies.js. */
 const crypto = require('crypto');
+const NOTICES = require('./notices.js');
 
 module.exports = function staffModule(o) {
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
@@ -242,7 +243,7 @@ module.exports = function staffModule(o) {
     // what TREE opens for this sign-in, asked again by a page that signed in while the records were still loading
     if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me))) return deny('A kitchen sign-in reaches its own records page.');
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
     if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
@@ -271,6 +272,50 @@ module.exports = function staffModule(o) {
     }
     // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
+    /* ---------- required notices, for staff once the director marks them ready ---------- */
+    if (P.startsWith('notices')) {
+      const sc = school(), ready = !!(sc.ready || {}).notices;
+      if (!dir && !ready) return deny('Required notices open once the director marks them ready.');
+      const noticesOf = n => { const d = person(n).notices || {}; return { acks: d.acks || {}, kyr: d.kyr || {}, lang: NOTICES.KYR_LANGS.includes(d.lang) ? d.lang : 'English', emergency: d.emergency || null }; };
+      const saveNotices = (n, fn) => { const doc = person(n); const cur = noticesOf(n); const next = fn(Object.assign({}, doc.notices || {}, { acks: cur.acks, kyr: cur.kyr, lang: cur.lang })); doc.notices = next; doc.updatedAt = Date.now(); doc.updatedBy = me; put(pPath(n), doc); return noticesOf(n); };
+      const employees = () => staffNames().filter(n => !isDirector(n) && !isFormerEducator(n)).sort();
+      const target = String(body.name || me);
+      if (P === 'notices') {
+        const whom = canSee(me, target) ? target : me;
+        const out = { defs: { posters: NOTICES.POSTERS, newhire: NOTICES.NEWHIRE, langs: NOTICES.KYR_LANGS, ways: NOTICES.KYR_WAYS, rules: NOTICES.KYR_RULES }, ready, name: whom, mine: noticesOf(whom), link: NOTICES.kyrLink(noticesOf(whom).lang) };
+        if (dir) out.people = employees().map(n => { const x = noticesOf(n); return { name: n, lang: x.lang, link: NOTICES.kyrLink(x.lang), kyr: x.kyr, acks: x.acks, emergency: !!x.emergency }; });
+        json(req, res, 200, out); return;
+      }
+      if (!canSee(me, target)) return deny('Only you and the director change your notices.');
+      if (P === 'notices/ack') {
+        if (nameKey(target) !== nameKey(me)) return deny('Each person acknowledges their own notices.');
+        const it = NOTICES.NEWHIRE.find(x => x.id === body.id && x.how === 'ack'); if (!it) { err(req, res, 400, 'That notice is not on the list.'); return; }
+        json(req, res, 200, saveNotices(me, d => Object.assign(d, { acks: Object.assign({}, d.acks, d.acks[it.id] ? {} : { [it.id]: { at: Date.now(), day: today() } }) }))); return;
+      }
+      if (P === 'notices/lang') {
+        if (!NOTICES.KYR_LANGS.includes(body.lang)) { err(req, res, 400, 'Choose a language from the list.'); return; }
+        json(req, res, 200, saveNotices(target, d => Object.assign(d, { lang: body.lang }))); return;
+      }
+      if (P === 'notices/emergency') {
+        const c = body.contact && typeof body.contact === 'object' ? body.contact : null; const t = v => String(v || '').trim().slice(0, 120);
+        const e = c && (t(c.name) || t(c.phone)) ? { name: t(c.name), phone: t(c.phone), relation: t(c.relation), notify: ['yes', 'no'].includes(c.notify) ? c.notify : '', at: Date.now(), day: today(), by: me } : null;
+        json(req, res, 200, saveNotices(target, d => { if (e) d.emergency = e; else delete d.emergency; return d; })); return;
+      }
+      if (P === 'notices/give') {
+        if (!dir) return deny('Only the director records the yearly notice.');
+        const y = String(body.year || ''), way = String(body.way || ''), date = String(body.date || '');
+        if (!/^\d{4}$/.test(y) || !NOTICES.KYR_WAYS.some(([k]) => k === way) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { err(req, res, 400, 'Choose the year, the way it was given and the date.'); return; }
+        const names = (Array.isArray(body.names) ? body.names : []).filter(n => employees().some(x => nameKey(x) === nameKey(n)));
+        for (const n of names) saveNotices(n, d => Object.assign(d, { kyr: Object.assign({}, d.kyr, { [y]: { way, date, lang: noticesOf(n).lang, by: me, at: Date.now() } }) }));
+        log('Workplace Know Your Rights notice recorded for', names.length, 'people,', y, 'by', me);
+        json(req, res, 200, { ok: true, given: names.length }); return;
+      }
+      if (P === 'notices/ready') {
+        if (!dir) return deny();
+        put(SCHOOL, Object.assign({}, sc, { ready: Object.assign({}, sc.ready || {}, { notices: !!body.on }), updatedAt: Date.now(), updatedBy: me })); json(req, res, 200, { ok: true, ready: !!body.on }); return;
+      }
+      err(req, res, 404, 'Not found'); return;
+    }
     if (P === 'person') {
       if (!canSee(me, who)) return deny('Only you and the director see your records.');
       if (!dir && !allowed(me, 'records') && !allowed(me, 'newed')) return deny();
@@ -300,6 +345,8 @@ module.exports = function staffModule(o) {
       else doc = mergeOwn(cur, next);
       // what the page was sent alongside the record is never kept in it
       for (const k of ['shared', 'paired', 'goTo', 'room', 'role', 'newHire', 'newEd', 'policy', 'planStarted']) delete doc[k];
+      // the required notices, acknowledgments, language and emergency contact change only through their own requests
+      if (cur.notices) doc.notices = cur.notices; else delete doc.notices;
       doc.updatedAt = Date.now(); doc.updatedBy = me;
       put(pPath(who), doc); json(req, res, 200, doc); return;
     }
@@ -524,6 +571,9 @@ module.exports = function staffModule(o) {
         if (!isDirector(n) && (opened().records || inNewEd(n))) await reminders.sendTo(n, { title: 'TREE, your records', body: items.join('\n'), url: 'tree.html?go=records', tag: 'tree-records' });
         summary.push(`${n}, ${items.join('; ').toLowerCase()}`);
       }
+      // each January, from 2027, the director hears once to check the posters for updates and to give the yearly Workplace
+      // Know Your Rights notice by February 1. Nothing goes out in any other month.
+      { const y = +day.slice(0, 4); if (day.slice(5, 7) === '01' && y >= 2027 && once('notices|jan|' + y)) summary.push(`January. Check the workplace posters for updates, such as the yearly minimum wage poster, and give the California Workplace Know Your Rights notice by February 1, with the chance to name or change an emergency contact. Required notices in TREE lists each person's language and keeps the record.`); }
       const sc = school(); const drills = (get(DRILLS) || {}).list || [];
       if (sc.remind?.drill !== false) { const last = drills.map(d => d.date).sort().pop(); if ((!last || daysBetween(last, day) >= 90) && dow === 1 && once('drill|' + (last || 'none'))) summary.push(last ? `No emergency drill since ${longDay(last)}. Drills happen at least every three months.` : 'No emergency drill is in the log yet. Drills happen at least every three months.'); }
       if (summary.length) for (const d of dirs) await reminders.sendTo(d, { title: 'TREE, educator records', body: summary.join('\n'), url: 'tree.html?go=records', tag: 'tree-records-dir' });
@@ -537,7 +587,7 @@ module.exports = function staffModule(o) {
   function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false, family: allowed(name, 'family') };
     if (isKitchen(name)) return { records: allowed(name, 'records'), pd: false, handbook: false, newed: false, growth: false, family: false };
     if (profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false, family: allowed(name, 'family') }; }
-    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), team: !!S.ready && (isDirector(name) || (G.takesPart(name) && !isNewHire(name))), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
+    return { notices: isDirector(name) || !!(school().ready || {}).notices, records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), team: !!S.ready && (isDirector(name) || (G.takesPart(name) && !isNewHire(name))), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current() }; }
   // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
