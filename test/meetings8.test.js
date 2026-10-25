@@ -64,6 +64,7 @@ test('first Mondays, team meetings for each Class, a closure asked once, and nex
   assert.strictEqual((await g(ann, 'pd/step', { id: d1 + '-team-West', step: 's1', done: true })).status, 200);
   next = (await g(ann, 'pd/team', { room: 'West', date: d2 })).body;
   assert.deepStrictEqual(next.carried, []);
+  assert.strictEqual((await g(bea, 'pd/plusdelta', { id: d1 + '-team-West', plus: 'x', delta: 'y' })).status, 403, 'another Class cannot write in it');
   // a team meeting is not PD time
   assert.notStrictEqual((await g(dee, 'pd/hours', { id: d1 + '-team-West', names: ['Ann'] })).status, 200);
 });

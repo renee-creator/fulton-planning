@@ -225,9 +225,9 @@ module.exports = function growthModule(c) {
     for (const ym of ms) { const mo = await loadMonth(ym); for (const p of mo.pd) if (p.date >= fromIso && p.date <= toIso) { const id = p.date + '-' + p.kind; if (!out.has(id)) out.set(id, Object.assign({ id, from: 'calendar' }, p)); } }
     for (const m of pdd().manual) if (m.date >= fromIso && m.date <= toIso) { const id = m.date + '-' + m.kind; out.set(id, Object.assign({ from: 'tree' }, m, { id, manualId: m.id })); }
     // one all-staff meeting a month. A weekly staff meeting on the school's calendar is not a PD staff meeting, and an
-    // agenda kept for one still shows to the director.
+    // agenda kept for one still shows to the director. A meeting the director adds in TREE always shows.
     for (const ym of ms) { const all = allStaffDay(ym);
-      for (const [id, x] of [...out]) if (x.kind === 'meeting' && x.date.slice(0, 7) === ym && x.date !== all.date) out.delete(id);
+      for (const [id, x] of [...out]) if (x.kind === 'meeting' && !x.manualId && x.date.slice(0, 7) === ym && x.date !== all.date) out.delete(id);
       if (all.kind === 'meeting' && all.date && all.date >= fromIso && all.date <= toIso && !out.has(all.date + '-meeting')) { const [st, en] = meetTimes(); out.set(all.date + '-meeting', { id: all.date + '-meeting', date: all.date, kind: 'meeting', from: 'tree', auto: true, title: 'PD staff meeting', start: st, end: en }); } }
     return [...out.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
@@ -257,7 +257,8 @@ module.exports = function growthModule(c) {
     return out;
   }
   const teamId = (date, room) => date + '-team-' + room;
-  const roomsFor = me => isDirector(me) ? ROOMS.slice() : ROOMS.filter(r => r === roomOf(me));
+  // the director sees every Class's team meetings, and an educator who takes part, past their first weeks, their own
+  const roomsFor = me => isDirector(me) ? ROOMS.slice() : takesPart(me) && !isNewHire(me) ? ROOMS.filter(r => r === roomOf(me)) : [];
   // the next steps from a Class's team meetings not yet marked done, carried to its next team meeting
   function openSteps(room, beforeDate) {
     const out = []; for (const a of Object.values(pdd().agendas)) if (a.kind === 'team' && a.room === room && a.date < beforeDate) for (const st of a.steps || []) if (!st.done) out.push(Object.assign({ from: a.id, fromDate: a.date }, st));
@@ -637,6 +638,7 @@ module.exports = function growthModule(c) {
     if (P === 'pd/suggest') { if (!dir) return deny(); json(req, res, 200, { topics: suggestions() }); return; }
     if (P === 'pd/plusdelta') {
       const d = pdd(); const a = d.agendas[String(body.id || '')]; if (!a || (!dir && !visibleToStaff(a))) return err(req, res, 404, 'That agenda is not here.');
+      if (a.kind === 'team' && !roomsFor(me).includes(a.room)) return deny('Each Class team sees its own team meetings.');
       a.plusDelta = Object.assign({}, a.plusDelta, { [pidOf(me)]: { plus: txt(body.plus, 2000), delta: txt(body.delta, 2000), at: Date.now() } }); put(PDD, d); json(req, res, 200, { ok: true }); return;
     }
     if (P === 'pd/hours') {
