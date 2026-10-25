@@ -176,7 +176,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const s = ' ' + words(subject) + ' ';
     // a subject can name more than one class, since Fulton's classes mix
     let inSubject = rooms.filter(r => s.includes(' ' + words(r) + ' '));
-    // a small group in the subject, as in Joy-marigold, places the moments in that group's class and keeps the group
+    // a small group in the subject, as in Notes-marigold, places the moments in that group's class and keeps the group
     const groups = (Array.isArray(set.groups) ? set.groups : []).filter(g => g && g.name && words(g.name).length > 2);
     const grp = groups.filter(g => s.includes(' ' + words(g.name) + ' ')).sort((a, b) => String(b.name).length - String(a.name).length)[0];
     if (grp && grp.room && !inSubject.includes(grp.room)) inSubject = [grp.room, ...inSubject];
@@ -205,7 +205,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   }
 
   // first names that are also everyday words, which a note can use at the start of a sentence or for the thing itself,
-  // such as Sky, Hope or Joy. A child with one of these names is offered for an educator to check, never tagged outright.
+  // such as Wren, Sky or Hope. A child with one of these names is offered for an educator to check, never tagged outright.
   const WORD_NAMES = new Set(('sage river june hunter rose daisy juniper aspen opal peace jack max lily ivy hazel willow rain sky sunny summer autumn ' +
     'winter dawn hope faith joy grace ruby pearl jade iris poppy violet olive clover fern forest brook rowan robin wren jay hawk fox bear birch oak ash ' +
     'cedar coral honey melody star storm ocean sea lake bay chase mark will bill frank art pat dean grant reed rush cliff gale glen april may august ' +

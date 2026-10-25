@@ -450,8 +450,8 @@ function syncEducators() {
   mn.doc.educators = by; mn.local = true; noteChange('settings', 'main'); scheduleSave('settings', 'main'); log('Educators by Class copied from the educator list');
 }
 ONCE.push(['educatorList', () => { syncEducators(); }]);
-// the time, place, Eventbrite page and meeting note of Leaving a Trace, and the audience and date of Serving Two-Year-Olds
-ONCE.push(['presenting2027', () => staff.presentingDetails()]);
+// presenting2027 wrote the October details of the two starting Presenting entries into the records on October 25, 2026.
+// Its words now live only in the records, so the step is kept by name in settings/once and has nothing left to run.
 // how often four educators plan was kept in TREE's public code. It moves into the reminder settings once, from a file
 // added to the private records for this step, which then leaves the records.
 ONCE.push(['planDefaults', () => {

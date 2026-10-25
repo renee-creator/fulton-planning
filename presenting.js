@@ -286,29 +286,7 @@ module.exports = function presentingModule(c) {
   }
   // what a PD day agenda block may carry, and what a reader of that agenda learns about the entry it opens
   const visibleTitle = (me, id) => { const e = one(id); return e && canRead(me, e) ? e.title : ''; };
-  /* The presenting details the director gave in October 2026, written once into the two starting entries by a
-     one-time step at the server's start. Each is added only where the entry does not already have it. */
-  const CIRC = 'https://www.eventbrite.com/e/circ-roundtable-fulton-community-school-and-farm-tickets-2003430437369';
-  const STORYBOOK = 'Storybook Village Preschool hosts the series\' Round Table on Saturday, April 17, 2027, a month before Fulton\'s.';
-  function details2027() {
-    if (!S.ready) return false;
-    const trace = all().find(x => x.seed === 'trace'), twos = all().find(x => x.seed === 'twos');
-    if (trace) {
-      if (!trace.start && !trace.end) Object.assign(trace, { start: '09:00', end: '12:00' });
-      if (!trace.place) trace.place = 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa';
-      if (!(trace.readings || []).some(r => r.url === CIRC)) trace.readings = [...(trace.readings || []), { id: rid('r'), kind: 'link', title: 'CIRC Round Table at Fulton Community School and Farm, on Eventbrite', url: CIRC, source: 'Eventbrite', note: '' }];
-      if (!String(trace.meetingsNote || '').includes('Storybook Village')) trace.meetingsNote = [String(trace.meetingsNote || '').trim(), STORYBOOK].filter(Boolean).join(' ');
-      save(trace, 'TREE');
-    }
-    if (twos) {
-      // the starting entry's placeholder audience gives way to the seminar, and an audience the director wrote stays
-      if (!twos.audience || twos.audience === 'The director\'s group') twos.audience = 'Sonoma County Director Seminar, hosted at Fulton, on starting a twos program';
-      if (!twos.date) Object.assign(twos, { date: '2027-05-18', start: '17:30', end: '19:00', dateNote: 'To be confirmed with Squirl Booth' });
-      if (!twos.minutes) twos.minutes = 90;
-      if (!twos.place) twos.place = 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa';
-      save(twos, 'TREE');
-    }
-    log('Presenting details added'); return true;
-  }
-  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID, details2027 };
+  /* The presenting details the director gave in October 2026, the times, places, dates and notes of the two starting
+     entries, were written into the records once on October 25, 2026 and live only there now, so no copy stays here. */
+  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID };
 };
