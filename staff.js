@@ -737,7 +737,11 @@ module.exports = function staffModule(o) {
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
-  function hasFiles(name) { if ([pPath(name), G.gPath(name), G.jPath(name)].some(p => S.files.has(p))) return true; return G.momentsOf(name).length > 0; }
+  // a records page holding nothing but the 2026 Know Your Rights mark TREE made at start is not records of their own, so a
+  // sign-in added by mistake can still be removed
+  const empty = v => v == null || v === '' || v === false || (typeof v === 'object' && Object.values(v).every(empty));
+  const onlyMarks = d => !!d && Object.entries(d).every(([k, v]) => k === 'name' || (k === 'notices' ? Object.entries(v || {}).every(([n, x]) => n === 'kyr' ? Object.values(x || {}).every(m => m && m.outside && Object.keys(m).length === 1) : empty(x)) : empty(v)));
+  function hasFiles(name) { if ([G.gPath(name), G.jPath(name)].some(p => S.files.has(p)) || (S.files.has(pPath(name)) && !onlyMarks(get(pPath(name))))) return true; return G.momentsOf(name).length > 0; }
   // the last day kept on the educator's profile as leftOn, or taken off when they stay or come back
   async function markLeft(name, day) {
     await ready(); const has = S.files.has(pPath(name)); if (!day && !has) return;
