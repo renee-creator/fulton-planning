@@ -833,10 +833,12 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_OFFICE=()=>!!Auth.office;
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
-  function signOut(){ Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); LS.set("fp-newhire",null); location.reload(); }
+  function signOut(){ const was=!!Auth.token||!!LS.get("fp-token"); Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); LS.set("fp-newhire",null); if(was) location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
   async function api(path, body, signal, retried){
+    // signed out, nothing that needs a sign-in is asked for, so the sign-in screen never asks the server in a loop
+    if(!Auth.token && path!=="/login" && path.startsWith("/api/")) throw {code:"session_expired", message:"Sign in to keep going."};
     let r;
     const payload=JSON.stringify(body||{});
     // while the page is closing, let the last save finish in the background
