@@ -63,3 +63,30 @@ test('no page keeps its own list of Classes or small groups', () => {
   assert.doesNotMatch(cal, /id="set-classes"|id="set-groups"/);
   for (const f of ['growth.js', 'staff.js', 'garden.js', 'src/staff-app.js']) assert.doesNotMatch(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\[\s*['"]West['"],\s*['"]North['"],\s*['"]South['"]\s*\]/, f);
 });
+
+test('an educator\'s Class is kept on the sign-in, and the educators list and Educators by Class follow it', async t => {
+  const fx = await start({ more: put => {
+    put('settings/main.json', { id: 'main', classrooms: ['West', 'North'], years: ['2026-27'], educators: { West: ['Ann'], North: ['Bea'] } });
+    put('settings/program.json', { id: 'program', classrooms: ['West', 'North'], groups: [] });
+    put('settings/once.json', { id: 'once', done: { educatorList: '2026-10-01T00:00:00Z', oneLists: '2026-10-01T00:00:00Z' } });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, gia = (await fx.login('Gia', '1357')).token;
+  const read = rel => JSON.parse(fs.readFileSync(path.join(fx.dir, rel), 'utf8'));
+  const settled = async (fn) => { for (let i = 0; i < 40; i++) { try { if (fn()) return true; } catch (e) {} await wait(250); } return false; };
+  // the director moves Ann to North from Sign-ins
+  const r = await fx.as(dee, '/api/accounts/save', { was: 'Ann', name: 'Ann', room: 'North', director: false, kitchen: false });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+  assert.ok(await settled(() => read('settings/educators.json').names.find(x => x.name === 'Ann').room === 'North'), 'the educators list follows');
+  assert.ok(await settled(() => JSON.stringify(read('settings/main.json').educators) === JSON.stringify({ West: [], North: ['Ann', 'Bea'] })), 'Educators by Class follows');
+  // and from the Educators page
+  const p = await fx.as(dee, '/api/staff/profile', { name: 'Bea', profile: { room: 'West' } });
+  assert.strictEqual(p.status, 200, JSON.stringify(p.body));
+  assert.ok(await settled(() => read('settings/educators.json').names.find(x => x.name === 'Bea').room === 'West'));
+  assert.ok(await settled(() => (read('settings/main.json').educators.West || []).includes('Bea')));
+  // an educator adding their own name takes their sign-in's Class, whatever the page sent
+  await fx.as(dee, '/api/accounts/save', { was: 'Gia', name: 'Gia', room: 'West', director: false, kitchen: false });
+  const g = await fx.as(gia, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { names: [{ name: 'Gia', room: 'North' }] } });
+  assert.strictEqual(g.status, 200);
+  assert.strictEqual(g.body.doc.names.find(x => x.name === 'Gia').room, 'West');
+});

@@ -166,6 +166,8 @@ async function loadAccounts() {
   accounts.loaded = true;
 }
 function saveAccounts(by) {
+  // an educator's Class is kept on their sign-in. The educators list and Conference settings' Educators by Class follow it.
+  try { if (store.ready && onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
   accounts.saving = accounts.saving.then(async () => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const content = Buffer.from(JSON.stringify({ note: 'TREE sign-ins. Keep this file private.', accounts: accounts.list }, null, 2) + '\n', 'utf8').toString('base64');
@@ -451,6 +453,11 @@ function runOnce() {
 }
 // the educator names are one list, settings/educators. Conference settings keep the names by Class, made from that list.
 function syncEducators() {
+  // the Class on each sign-in is the one kept. A name on the list with a sign-in takes that sign-in's Class.
+  { const ed0 = store.recs.settings.get('educators');
+    if (ed0 && !ed0.deleted && ed0.doc && Array.isArray(ed0.doc.names) && accounts.loaded) { let changed = false;
+      const names = ed0.doc.names.map(x => { const a = x && x.name ? accountFor(x.name) : null; if (!a || isFormerAccount(a)) return x; const room = String(a.room || ''); if (String(x.room || '') === room) return x; changed = true; return Object.assign({}, x, { room }); });
+      if (changed) { setSetting('educators', Object.assign({}, ed0.doc, { names })); log('The educators list follows each sign-in\'s Class'); } } }
   const ed = store.recs.settings.get('educators'), mn = store.recs.settings.get('main');
   if (!ed || ed.deleted || !ed.doc || !Array.isArray(ed.doc.names) || !mn || mn.deleted || !mn.doc) return;
   const by = {}; for (const r of oneLists().classrooms) by[r] = [];
@@ -611,6 +618,7 @@ async function doLoadGraph() {
   try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
   runOnce();
+  try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
 }
 async function doLoad() {
@@ -659,6 +667,7 @@ async function doLoad() {
     // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
     runOnce();
+    try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
     staff.load().then(() => runOnce(), e => log('Educator records could not be read', e.message));
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();
@@ -1715,7 +1724,7 @@ async function handle(req, res) {
       const mine = sent.find(x => x && nameKey(x.name) === nameKey(me.name));
       if (!mine || was.some(x => x && nameKey(x.name) === nameKey(me.name))) { err(req, res, 403, 'Only the director changes the educators list. You can add your own name.'); return; }
       op = 'set'; delete body.patch;
-      body.data = Object.assign({}, cur && !cur.deleted && cur.doc ? cur.doc : {}, { names: [...was, { name: String(mine.name).trim().slice(0, 60), room: String(mine.room || '').slice(0, 40) }], updatedAt: Date.now() });
+      body.data = Object.assign({}, cur && !cur.deleted && cur.doc ? cur.doc : {}, { names: [...was, { name: String(mine.name).trim().slice(0, 60), room: String((accountFor(me.name) || {}).room || mine.room || '').slice(0, 40) }], updatedAt: Date.now() });
     }
     if (((kind === 'settings' && id !== 'educators' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change

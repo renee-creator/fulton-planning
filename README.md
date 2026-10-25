@@ -433,6 +433,7 @@ Each save from a draft carries a client id made once, and each photo one made fr
 
 - A new educator says they have read the Teacher Policies and Procedures in one place, the card Teacher Policies and Procedures, before the first day, in the New Educator section. It counts for the Paperwork row too, and the policies page sends a new educator there.
 - Educator names are kept in one list, Settings, Educators. Conference settings show the names by Class from that list and no longer keep their own.
+- An educator's Class is kept in one place, their sign-in. It changes in Settings, Sign-ins, or on the Educators page, and the educators list and Conference settings' Educators by Class follow it at once.
 - Conferences has one row of tabs, TREE's own. It opens on the season's conferences, with Conference settings for the director. Each child's conferences and next year are on TREE's Children page, and only the director changes a child's Class, in Move children.
 - Plans that may be duplicates are listed once, at the top of All plans, for the director. Keep both clears the mark, and Remove this one asks once more before the plan is removed.
 - Sign-ins in Settings shows one short row for each person, with the name, Class and last sign-in. Tapping a row opens that person's choices.
