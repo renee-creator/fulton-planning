@@ -4624,6 +4624,8 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-guid
    recipe and a family's wait as drafts for the director. Food recipes carry our food rule. Sensory recipes use pantry
    staples only, color with garden plants and use no glitter. The recipe of the month picks from here. */
 let recKind="food",recOpen="",recAdd=false;
+// a recipe by its id, or by the id of a recipe merged into it, so a plan that attached the old one still finds it
+const libRecipe=id=>{const rs=(libData&&libData.recipes)||[];return rs.find(r=>r.id===id)||rs.find(r=>String((r.meta||{}).merged||"").split(/[,;]\s*/).includes(id))||null};
 const recPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase())||{}).text||"";
 const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
 const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
@@ -4788,9 +4790,11 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
 let songTab="songs",songOpen="",songAdd=false;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>songCopy(x)?"":recPart(x,"Words");
+const songParts=x=>(x.parts||[]).filter(p=>!/^words$/i.test(p.key)&&String(p.text||"").trim());
 function songRow(x){const c=songCopy(x),w=songWords(x),dir=isDirector()&&!VIEW_AS;
   return `<details class="strow" data-songrow="${esc(x.id)}" ${songOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${c?"© ":""}${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).songwriter||"")}</span></summary>
-    ${w?`<div style="white-space:pre-line;margin:6px 0">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.</div>`:`<div class="cnt">Our song books do not hold its words yet.</div>`}
+    ${w?`<div style="white-space:pre-line;margin:6px 0">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.${/source to confirm/i.test((x.meta||{}).check||"")?" Its source is still to confirm, so only its title is kept until it is confirmed traditional.":""}</div>`:`<div class="cnt">Our song books do not hold its words yet.</div>`}
+    ${songParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     <div class="actions" style="flex-wrap:wrap">${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}${printBtns("song",esc(x.id),c?"Title card":"Words")}
       ${dir?`${c||!w?"":pageEditBtn(x.path,"Edit the words")}${!c&&!w?`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`:""}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©, which removes its words"}</button>`:""}</div></details>`}
 function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the song book</div></section>`;return}
@@ -4800,7 +4804,16 @@ function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML
     ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows its title, songwriter and a recording. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
       ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
         <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, keep only its title, songwriter and recording</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
-    :`<section class="card"><div class="hint">Read-alouds for meeting time. The text of our own books is kept in the director's Drive.</div>${books.map(x=>`<div class="strow"><b>${esc(x.title)}</b>${x.lead?`<div class="cnt">${esc(x.lead)}</div>`:""}${(x.parts||[]).map(p=>`<div class="cnt">${guideMd(p.text)}</div>`).join("")}${dir?`<div class="actions">${pageEditBtn(x.path,"Edit")}</div>`:""}</div>`).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
+    :`<section class="card"><div class="hint">Read-alouds for meeting time, each with a reading guide. The words of our own books are for educators only, since the books are headed for publication. They never go to families, posts, newsletters or readable copies.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
+const readText=x=>((x.parts||[]).find(p=>/^text$/i.test(p.key))||{}).text||"";
+const readGuideParts=x=>(x.parts||[]).filter(p=>!/^text$/i.test(p.key)&&!/^about$/i.test(p.key)&&String(p.text||"").trim());
+function readRow(x){const dir=isDirector()&&!VIEW_AS,t=readText(x);
+  return `<details class="strow" data-readrow="${esc(x.id)}" ${songOpen==="r:"+x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).series||"")}</span></summary>${x.lead?`<p>${esc(x.lead)}</p>`:""}
+    ${readGuideParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
+    ${t?`<details style="margin-top:8px"><summary class="linkbtn">The words of the book, for educators only</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}
+    <div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide")}${t?printBtns("readtext",esc(x.id),"The book, for educators"):""}${dir?pageEditBtn(x.path,"Edit"):""}</div></details>`}
+function readGuideDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud, reading guide"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...readGuideParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text))]}}
+function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["For educators only"],blocks:[dText("",readText(x))]}}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
   if(d.songadd!=null){songAdd=d.songadd==="1";renderMain();return}
@@ -4809,9 +4822,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-song
       libData=await window.FP_API("/api/staff/library/add",{kind:"song",title,songwriter:($("#sg-w")?.value||"").trim(),link:($("#sg-l")?.value||"").trim(),copyright:!!$("#sg-c")?.checked});songAdd=false;toast("Added to the song book.");renderMain();return}
     if(d.songcopy){const [path,on]=d.songcopy.split("|");libData=await window.FP_API("/api/staff/library/copyright",{path,on:on==="1"});toast(on==="1"?"Marked ©. Its words are removed.":"The © mark is off. Its words can be added.");renderMain();return}
     if(d.songwords){libData=await window.FP_API("/api/staff/library/copyright",{path:d.songwords,on:false});window.TREE_EDIT_PAGE({path:d.songwords},()=>loadLibrary(true))}}catch(er){toast(er&&er.message||"That did not save.")}});
-document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.songrow!=null&&d.open)songOpen=d.dataset.songrow},true);
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.songrow!=null&&d.open)songOpen=d.dataset.songrow;if(d&&d.dataset&&d.dataset.readrow!=null&&d.open)songOpen="r:"+d.dataset.readrow},true);
 // a song as a sheet: a traditional song with its words, a © song with only its title and songwriter
-function songDoc(x){const w=songWords(x);return {display:true,type:"report",acc:"story",title:(songCopy(x)?"© ":"")+x.title,meta:[(x.meta||{}).songwriter||""].filter(Boolean),blocks:w?[dText("",w)]:[]}}
+function songDoc(x,wordsOnly){const w=songWords(x);const more=wordsOnly?[]:songParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text));
+  return {display:true,type:"report",acc:"story",title:(songCopy(x)?"© ":"")+x.title,meta:[(x.meta||{}).songwriter||""].filter(Boolean),blocks:[...(w?[dText("",w)]:[]),...more]}}
 /* ---------- Attach to a plan ----------
    One optional Attach on a plan reaches every library: recipes, songs, read-alouds, provocations and the materials
    guides. The three or four best matches show first, drawn from the plan's own words, its space or focus, this week's
@@ -4850,9 +4864,9 @@ document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.
 // what is attached, as pages printed after the plan. A © song prints only its title and songwriter.
 async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null)await loadGuides();const docs=[],recipes=[];
   for(const a of p.attached||[]){
-    if(a.kind==="recipe"){const x=(libData.recipes||[]).find(y=>y.id===a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
+    if(a.kind==="recipe"){const x=libRecipe(a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
     else if(a.kind==="song"){const x=(libData.songs||[]).find(y=>y.id===a.id);if(x)docs.push(songDoc(x))}
-    else if(a.kind==="readaloud"){const x=(libData.readalouds||[]).find(y=>y.id===a.id);if(x)docs.push({display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",x.lead||"")]})}
+    else if(a.kind==="readaloud"){const x=(libData.readalouds||[]).find(y=>y.id===a.id);if(x)docs.push(readGuideDoc(x))}
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
     else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
   return {docs,recipes}}
@@ -7864,7 +7878,7 @@ function thanksDocs(q){const {from,to}=periodRange(q);const lines=gLines(from,to
 // the recipe of the month, from the recipe library, sized for a family at home. A month from before the library keeps its own words.
 function recipeCardText(x){if(!x)return "";const L=k=>libLines(recPart(x,k));const out=[];if(L("Ingredients").length)out.push("Ingredients\n"+L("Ingredients").join("\n"));if(L("Steps").length)out.push("Steps\n"+L("Steps").map((l,i)=>(i+1)+". "+l).join("\n"));
   for(const k of ["Dairy free","Gluten free"])if(L(k).length)out.push(k+"\n"+L(k).join("\n"));return out.join("\n\n")}
-function recipeDoc(month){const mrec=menus.get(month)||{};const lib=mrec.recipeId&&libData?(libData.recipes||[]).find(r=>r.id===mrec.recipeId):null;const name=String(lib?lib.title:mrec.recipe||"").trim(),card=String(lib?recipeCardText(lib):mrec.recipeCard||"").trim();if(!card)return null;
+function recipeDoc(month){const mrec=menus.get(month)||{};const lib=mrec.recipeId&&libData?libRecipe(mrec.recipeId):null;const name=String(lib?lib.title:mrec.recipe||"").trim(),card=String(lib?recipeCardText(lib):mrec.recipeCard||"").trim();if(!card)return null;
   const F=farmMonthData(month);const low=card.toLowerCase();const from=(F.top||[]).filter(t=>low.includes(String(t.food||"").toLowerCase().split(" ")[0])).slice(0,3).map(t=>`The ${String(t.food).toLowerCase()} came from ${t.farm}${t.town?" in "+t.town:""}.`);
   const blocks=[dText("",card)];if(from.length)blocks.push(dText("Where it came from",from.join(" ")));blocks.push(dText("","Made from scratch in our kitchen."));
   return {display:true,type:"report",acc:"smallgroup",title:name||"Recipe of the month",meta:[["From the Fulton Community School kitchen",parseIso(month+"-01").toLocaleDateString("en-US",{month:"long",year:"numeric"})]],blocks}}
@@ -10973,10 +10987,11 @@ async function printsClick(t){
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
-  if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=(libData.recipes||[]).find(r=>r.id===t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
+  if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
+  if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
   if(kind==="song"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x)],x.title);return true}
-  if(kind==="recipe"){if(!libData)await loadLibrary();const x=(libData.recipes||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
+  if(kind==="recipe"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
   if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}

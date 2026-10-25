@@ -983,7 +983,16 @@ module.exports = function staffModule(o) {
     lovejoyBooks: ['staff/once/lovejoy-books.json', 'Sharon Lovejoy\'s books on gardening with children'],
     gardenAgreements: ['staff/once/garden-agreements.json', 'One set of garden family agreements for everyone'],
     presentingFixes: ['staff/once/presenting-fixes.json', 'Presenting and PD library fixes, lengths, audience types, links and the November 2 guest session'],
-    helpSession11: ['staff/once/help-session11.json', 'Help answers for what Session 11 added and changed'] };
+    helpSession11: ['staff/once/help-session11.json', 'Help answers for what Session 11 added and changed'],
+    // Session 12, each from its own list in the private records
+    s12Library: ['staff/once/s12-library.json', 'The recipe library, the provocations, the read-alouds and the garden pages, interpreted for our school'],
+    s12Songs: ['staff/once/s12-songs.json', 'The song book, interpreted for our school'],
+    s12Pd: ['staff/once/s12-pd.json', 'PD modules, How To guides, new educator pages, materials guides and presenting outlines brought in line with the director\'s decisions'],
+    s12Family: ['staff/once/s12-family.json', 'Family page pieces, story frames and wording brought in line with the director\'s decisions'],
+    s12Proposals: ['staff/once/s12-proposals.json', 'Proposed sections and rewrites for the Teacher Policies and Procedures and the 2027 Family Handbook draft'],
+    s12Readings: ['staff/once/s12-readings.json', 'One readings list, with a line on why each matters to our practice'],
+    s12Garden: ['staff/once/s12-garden.json', 'The Garden\'s plants, animals with Sheldon, wildlife, tracks and scat, mushrooms and plants to keep away from'],
+    s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
@@ -1000,12 +1009,26 @@ module.exports = function staffModule(o) {
     }
     return false;
   }
-  function onceEdits(name, recs) {
+  async function onceEdits(name, recs) {
     const [listPath, note] = ONCE_LISTS[name] || [];
     if (!S.ready) return false; const m = get(listPath); if (!m || !Array.isArray(m.changes)) return false;
     const by = new Map();
-    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
     const hit = new Set(); let failed = 0;
+    /* Session 12's lists also make a new page or record, only while nothing is kept at its path (create, the text of a
+       Markdown page, or doc, a record), and take away a page merged into another (remove), only while its words are still
+       the words the change expects, so a page the director has changed since is left as it is. */
+    for (const c of m.changes) {
+      if (!c || typeof c.path !== 'string' || !/^staff\/[a-z0-9/_.-]+\.(md|json)$/i.test(c.path)) continue;
+      try {
+        if (typeof c.create === 'string' && /\.md$/.test(c.path)) { if (!S.files.has(c.path)) putText(c.path, c.create); hit.add(c); continue; }
+        if (c.doc && typeof c.doc === 'object' && /\.json$/.test(c.path)) { if (!S.files.has(c.path)) put(c.path, JSON.parse(JSON.stringify(c.doc))); hit.add(c); continue; }
+        if (c.remove === true) { const r = S.files.get(c.path); if (!r) { hit.add(c); continue; }
+          if (typeof c.expect === 'string' && r.text !== c.expect) continue;
+          if (r.sha) { const res = await gh('DELETE', `/repos/${repo}/contents/${c.path}`, { message: 'Remove ' + c.path.replace(/^staff\//, 'educator records ') + ', ' + note, sha: r.sha, branch: store.branch }); if (res.status !== 200 && res.status !== 404) throw new Error('GitHub answered ' + res.status); }
+          S.files.delete(c.path); hit.add(c); continue; }
+      } catch (er) { failed++; log('One-time step', name, 'could not change', c.path, er.message); }
+    }
+    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
     // a passage is swapped only where it is not already the new wording, so a step that runs again changes nothing
     const swapAll = (t, from, to) => { const k = to.indexOf(from); if (k < 0) return t.split(from).join(to);
       const pre = to.slice(0, k), post = to.slice(k + from.length); let out = '', i = 0, j;

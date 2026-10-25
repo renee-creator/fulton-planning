@@ -449,17 +449,22 @@ function sendNote(text, to, by) {
    loaded, says so and is tried again at the next start of that part. */
 const ONCE = [];
 function onceDone(id) { const r = store.recs.settings.get('once'); return !!(r && !r.deleted && r.doc && r.doc.done && r.doc.done[id]); }
+// a step may finish later, such as one that takes away a page on GitHub. Steps still run one at a time and in order.
+let onceBusy = null;
 function runOnce() {
   if (!store.ready) return;
-  for (const [id, fn] of ONCE) {
-    if (onceDone(id)) continue;
-    try {
-      if (fn() === false) continue;
-      const r = store.recs.settings.get('once'); const doc = r && !r.deleted && r.doc ? r.doc : { done: {} };
-      setSetting('once', Object.assign({}, doc, { done: Object.assign({}, doc.done || {}, { [id]: new Date().toISOString() }) }));
-      log('One-time step done,', id);
-    } catch (e) { log('One-time step could not run,', id, e.message); }
-  }
+  if (onceBusy) { onceBusy.again = true; return; }
+  const run = { again: false }; onceBusy = run;
+  const mark = id => { const r = store.recs.settings.get('once'); const doc = r && !r.deleted && r.doc ? r.doc : { done: {} };
+    setSetting('once', Object.assign({}, doc, { done: Object.assign({}, doc.done || {}, { [id]: new Date().toISOString() }) }));
+    log('One-time step done,', id); };
+  (async () => {
+    for (const [id, fn] of ONCE) {
+      if (onceDone(id)) continue;
+      try { let out = fn(); if (out && typeof out.then === 'function') out = await out; if (out === false) continue; mark(id); }
+      catch (e) { log('One-time step could not run,', id, e.message); }
+    }
+  })().finally(() => { onceBusy = null; if (run.again) runOnce(); });
 }
 // the educator names are one list, settings/educators. Conference settings keep the names by Class, made from that list.
 function syncEducators() {
@@ -517,6 +522,9 @@ ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
+// Session 12's changes to records already there, each from its own list in the private records
+for (const name of ['s12Library', 's12Songs', 's12Pd', 's12Family', 's12Proposals', 's12Readings', 's12Garden', 's12Help'])
+  ONCE.push([name, () => staff.once.edits(name, recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
