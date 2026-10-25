@@ -204,7 +204,7 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
 function addNewHtml(){const names=B.people||[];
   return card("Add a new educator",st.adding?`<div class="hint">They sign in with their first name before their first day and reach only the New Educator section. You turn on full access once their clearances are in.</div>
     <div class="kfields"><label>First name<input type="text" id="stn-name" placeholder="First name"></label><label>Class<select id="stn-room"><option value="">No Class</option>${CLASSROOMS.map(r=>`<option>${H(r)}</option>`).join("")}</select></label>
-      <label>Role<select id="stn-role"><option value="educator">Educator</option><option value="apprentice">Apprentice</option></select></label><label>Start date<input type="date" id="stn-start"></label>
+      <label>Role<select id="stn-role"><option value="educator">Educator</option><option value="apprentice">Apprentice</option></select></label><label>Start date<input type="date" id="stn-start"></label><label class="radio" style="grid-column:span 2"><input type="checkbox" id="stn-exp"><span>An experienced educator, who also reads the part for experienced educators</span></label>
 </div><div class="hint">${B.goTo?H(B.goTo)+" is the go-to person for every new educator.":"Name the go-to person for new educators in Settings."}</div>
     <div class="actions"><button class="btn small" data-stnew="add">Add</button><button class="linkbtn" data-stnew="cancel">Cancel</button></div>`:`<div class="actions" style="margin:0"><button class="btn small ghost" data-stnew="open">Add a new educator</button></div>`)}
 function groupHtml(){const names=B.people||[];
@@ -385,6 +385,7 @@ async function pageNew(my){const dir=D();let who=meName();
     ${card("Your first two months",`<div class="cnt">${H([start?"Start date "+fd(start):"The director adds your start date",starting?"Starting-point conversation with the director around "+fd(starting):""].filter(Boolean).join(". "))}${start?".":""}</div>
       ${goTo?`<div style="margin-top:6px"><b>${H(goTo)}</b> is the go-to person for every new educator. ${dir?H(goTo)+" answers their questions, walks them through paperwork and routines, and checks in briefly at the end of each of their first weeks. The educators on their Class team help on the floor every day.":`${H(goTo)} answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks. The educators on your Class team help you on the floor every day. You can bring ${H(goTo)} into your starting-point conversation if you like.`}</div>`:`<div class="cnt" style="margin-top:6px">The director names the go-to person in Settings.</div>`}
       ${dir?`<div class="actions">${(st.people.find(x=>x.name===who)||{}).newHire?`<button class="btn small" data-staccess="full" data-who="${H(who)}">Turn on full access to the school, the children and their work</button>`:`<span class="cnt">Full access is on.</span><button class="linkbtn" data-staccess="limit" data-who="${H(who)}">Limit to the New Educator section</button>`}</div>`:""}`)}
+    ${await neCard(who,dir)}
     ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.done?chip("ok",c.note||"Done"):chip(c.note==="Due"?"soon":"missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto&&!dir?"":c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}${c.links?asLinks():""}${c.view&&B.can&&B.can.growth?`<button class="linkbtn" data-tview="${c.view}">Open</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
     ${welcomeHtml(p,dir)}
     ${await newPolCard(p,dir)}
@@ -399,6 +400,24 @@ async function pageNew(my){const dir=D();let who=meName();
     ${card("Trainings",`<ul style="margin:0;padding-left:20px"><li>Mandated reporter training within 90 days of hire, renewed every two years</li><li>Pediatric First Aid and CPR, which Fulton runs in house</li><li>Health and safety training, 16 hours, needed by every caregiving educator by October 1, 2027</li><li>Emergency and disaster plan training, before the first day of work</li><li>Healthy Schools Act training each year, for anyone who uses sanitizers or disinfectants</li><li>Water safety certificate, required of every educator because of creek walks</li><li>Licensing at Fulton, in the PD library, done in short pieces during nap</li></ul>
       <div class="actions"><button class="btn small ghost" data-tview="strec">Upload certificates</button><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Licensing at Fulton</button></div>`)}
     ${card("The New Educator sequence",seqHtml(wk,pcs,p),start?`Week ${Math.min(wk,8)} of 8`:"")}`)}
+/* the first-weeks sequence and the welcome letter, from staff/newed in the records. A draft shows only to the director. */
+let NE=null;
+async function loadNewed(who,force){if(force||!NE||NE.who!==who){try{NE=Object.assign(await api("newed",{name:who}),{who})}catch(e){NE={list:[],who,goTo:""}}}return NE}
+const neFill=(t,g)=>String(t||"").replace(/\{goTo\}/g,g||"your go-to person");
+function nePart(x,ne,dir){return `<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b>${x.waiting?" "+chip("soonish","Draft, only you see it"):""}${dir&&x.audience==="experienced"?` <span class="cnt">For experienced educators</span>`:""}</summary>
+  <div class="stmd" style="margin-top:6px">${md(neFill(x.body,ne.goTo))}</div>
+  ${dir&&x.draft?`<div class="actions"><button class="btn small${x.waiting?"":" ghost"}" data-neready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Hide it again"}</button></div>`:""}
+  ${dir&&x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`}
+async function neCard(who,dir){const ne=await loadNewed(who);const L=(ne.list||[]).filter(x=>x.place==="newed"&&(x.audience==="all"||ne.experienced||dir));
+  const exp=dir?`<label class="radio" style="margin-top:6px"><input type="checkbox" data-neexp="${H(who)}" ${ne.experienced?"checked":""}><span>${H(who)} is an experienced educator, who also reads the part for experienced educators</span></label>`:"";
+  if(!L.length&&!dir)return "";return card("Your first weeks",`<div class="hint">${dir?"The first-weeks sequence, in order. Parts marked Draft show only to you.":"Read these in order through your first weeks. Each one is short."}</div>${L.map(x=>nePart(x,ne,dir)).join("")||`<div class="cnt">No parts yet.</div>`}${exp}`)}
+async function neWelcome(){const ne=await loadNewed(meName());const w=(ne.list||[]).find(x=>x.place==="pdlibrary");if(!w)return "";const dir=D();
+  return card(w.title,`${w.waiting?`<div class="actions" style="margin:0 0 6px">${chip("soonish","Draft, only you see it")}</div>`:""}<div class="stmd">${md(neFill(w.body,ne.goTo))}</div>
+    ${dir&&w.draft?`<div class="actions"><button class="btn small${w.waiting?"":" ghost"}" data-neready="${H(w.slug)}|${w.waiting?1:0}">${w.waiting?"Mark it ready":"Hide it again"}</button></div>`:""}${dir&&w.source?`<div class="cnt">Source, seen only by you. ${H(w.source)}</div>`:""}`)}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-neready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  const [slug,on]=t.dataset.neready.split("|");try{NE=Object.assign(await api("newed/ready",{name:NE&&NE.who,slug,on:on==="1"}),{who:NE&&NE.who});toast(on==="1"?"Marked ready.":"Hidden again. Only you see it.");redraw()}catch(er){fail(er)}});
+document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.dataset.neexp==null)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  try{NE=Object.assign(await api("newed/experienced",{name:t.dataset.neexp,on:t.checked}),{who:t.dataset.neexp});toast("Saved.");redraw()}catch(er){fail(er)}});
 function welcomeHtml(p,dir){const sc=B.school;const lens=B.lens;
   return card("Welcome and philosophy",`${sc.welcome?`<div class="stmd" style="white-space:pre-line">${H(sc.welcome)}</div>`:dir?`<div class="hint">Write a short welcome below. Until then the page opens with the philosophy.</div>`:""}
     ${md(sc.philosophy||"")}
@@ -449,7 +468,7 @@ async function pagePd(my){if(window.TreeGrowth)await TreeGrowth.ready().catch(()
       `<div class="actions">${printBar("pieces:"+st.mod)}</div>`);return}
   const sec=B.me.newEd||D();
   draw(my,head("PD library","PD library","Each module holds a short reading, examples from Fulton's own documentation, a practice to try in your own Class that week, and one reflection on what happened when you tried it. You choose the order. Finishing a module logs its hours on your records page.")+
-    (sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
+    (await neWelcome())+(sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
     (window.TreeGrowth?await TreeGrowth.libraryHtml(pcs,dn):card("Modules",`<div class="stgrid">${MODULES.filter(m=>m[2]).map(([t,d,k])=>`<div class="stmod"><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${k}">Open</button></div></div>`).join("")}</div>`)))}
 function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i=list.indexOf(x),nx=list[i+1];
   const sec=h=>x.sections.find(s=>s.heading.toLowerCase().startsWith(h));const q=sec("one question");
@@ -863,7 +882,7 @@ async function stTap(e,t){const d=t.dataset;
   if(d.stback){const n=d.stback,w=$("#stbackrow");if(!t.dataset.sure){if(w)w.innerHTML=`<span class="confirm">Bring ${H(n)} back with their history? <button class="btn small" data-stback="${H(n)}" data-sure="1">Bring back</button><button class="linkbtn" data-stformer="${H(n)}">Cancel</button></span>`;return}
     try{await window.FP_API("/api/accounts/return",{name:n});if(typeof signins!=="undefined")signins.list=null;st.formerWho="";toast(`${n} is back, with their history. They choose a new code at their next sign-in.`);await boot(true);redraw()}catch(er){fail(er)}return}
   if(d.stnew==="open"){st.adding=true;redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
-  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value};
+  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value,experienced:!!$("#stn-exp")?.checked};
     try{await api("newhire",b);st.adding=false;toast(`${b.newName} can sign in now with their first name and choose a passcode. They see only the New Educator section.`);await boot(true);st.newWho=b.newName;redraw()}catch(er){fail(er)}return}
   if(d.stgroup==="open"){st.group=true;st.roster="";redraw();return}if(d.stgroup==="cancel"){st.group=false;redraw();return}
   if(d.stgname){t.classList.toggle("on");return}

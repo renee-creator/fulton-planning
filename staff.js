@@ -140,6 +140,21 @@ module.exports = function staffModule(o) {
   const school = () => get(SCHOOL) || {};
   const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false, family: false }, school().open || {});
 
+  /* ---------- the New Educator sequence and the welcome letter ---------- */
+  const NEWED_READY = 'staff/newed/ready.json';
+  function newedParts() {
+    return [...S.files.keys()].filter(p => /^staff\/newed\/[a-z0-9-]+\.md$/.test(p)).sort().map(p => {
+      let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
+      if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
+      const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
+      return { slug: p.slice(12, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'experienced' ? 'experienced' : 'all',
+        place: meta.place === 'pdlibrary' ? 'pdlibrary' : 'newed', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
+    }).filter(Boolean).sort((a, b) => a.order - b.order);
+  }
+  const newedReady = slug => !!(((get(NEWED_READY) || {}).parts || {})[slug]);
+  const newedFor = (me, experienced) => { const dir = isDirector(me);
+    return newedParts().filter(g => dir || ((!g.draft || newedReady(g.slug)) && (g.audience === 'all' || experienced))).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !newedReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
+
   /* ---------- the materials guides ---------- */
   const GUIDE_READY = 'staff/guides/ready.json';
   function guides() {
@@ -288,10 +303,27 @@ module.exports = function staffModule(o) {
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'garden' || P.startsWith('garden/')) { await GD.handle(P, body, me, req, res, { json, err }); return; }
     /* ---------- walk safety, for staff once the director marks it ready ---------- */
+    // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
+    // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches
+    // only a new educator the director marked experienced.
+    if (P === 'newed' || P === 'newed/ready' || P === 'newed/experienced') {
+      if (P === 'newed/experienced') {
+        if (!dir) return deny('The director marks a new educator experienced.'); if (!accountFor(who)) return err(req, res, 404, 'That educator is not here.');
+        const doc = person(who); doc.profile = Object.assign({}, doc.profile, { experienced: !!body.on }); put(pPath(who), doc);
+      }
+      if (P === 'newed/ready') {
+        if (!dir) return deny('The director marks a part ready.'); const g = newedParts().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That part is not here.');
+        const all = Object.assign({ parts: {} }, get(NEWED_READY) || {}); all.parts = Object.assign({}, all.parts); if (body.on) all.parts[g.slug] = { on: today(), by: me }; else delete all.parts[g.slug];
+        put(NEWED_READY, all);
+      }
+      const exp = !!profileOf(dir ? who : me).experienced;
+      json(req, res, 200, { experienced: exp, goTo: goToName() || '', list: newedFor(me, exp) }); return;
+    }
     // the one-page materials guides, one Markdown file each in staff/guides. A guide written as a draft shows only to the
     // director, with its source note, until she marks it ready. Each one names the Materials library group and the
     // Classroom area it is linked from.
     if (P === 'guides' || P === 'guides/ready') {
+
       if (P === 'guides/ready') {
         if (!dir) return deny('The director marks a guide ready.'); const g = guides().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That guide is not here.');
         const all = Object.assign({ guides: {} }, get(GUIDE_READY) || {}); all.guides = Object.assign({}, all.guides); if (body.on) all.guides[g.slug] = { on: today(), by: me }; else delete all.guides[g.slug];
@@ -507,7 +539,7 @@ module.exports = function staffModule(o) {
       if (accountFor(name)) { err(req, res, 409, name + ' already has a sign-in.'); return; }
       accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: crypto.randomBytes(3).toString('hex'), v: 0 });
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
-      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '' };
+      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
       json(req, res, 200, { ok: true }); return;
     }
