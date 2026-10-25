@@ -98,7 +98,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, pieces }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
   const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
@@ -209,7 +209,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     let walkInfo = null; try { walkInfo = open.some(it => it.walk) && walks ? walks() : null; } catch (e) { walkInfo = null; }
     // the garden agreements for families and the children's plant guide, once the director marks the Garden ready
     let gardenInfo = null; try { gardenInfo = garden ? garden() : null; if (gardenInfo) gardenInfo = Object.assign({}, gardenInfo, { guide: gardenInfo.guide.map(g => Object.assign({}, g, { photo: g.photo ? photoSrc(g.photo) : '' })) }); } catch (e) { gardenInfo = null; }
-    return { gardenInfo, walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
+    let piecesAll = []; try { piecesAll = pieces ? pieces() || [] : []; } catch (e) { piecesAll = []; }
+    return { pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbookUrl: hy ? '' : HANDBOOK_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 
@@ -231,6 +232,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const tsSh = tsY ? tsAll[tsY].shared : null;
     const others = tsSh ? [...store.recs.children.entries()].filter(([, r]) => r && !r.deleted && r.doc).map(([id, r]) => Object.assign({ id }, r.doc)) : [];
     const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, withoutOthers(String(tsSh.sections[key] || '').trim(), Object.assign({ id: k.id }, k), others)]).filter(([, v]) => v) } : null;
+    // the TK and kindergarten guide, for a family whose child is going to TK or kindergarten next year
+    const nyA = (() => { const d = new Date(); return (d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1) + 1; })(); const nyKey = nyA + '-' + String(nyA + 1).slice(2);
+    const nextPlan = ((k.transition || {})[nyKey] || {}).plan || '';
+    let tkGuide = null; if (nextPlan === 'k' || nextPlan === 'tk') { try { tkGuide = (pieces ? pieces() || [] : []).find(p => p.audience === 'tk') || null; } catch (e) { tkGuide = null; } }
     const visit = k.visit && k.visit.date ? k.visit : null;
     const purpose = isNew(k) ? 'visit' : (c.confOpen ? 'conference' : '');
     const open = purpose ? slots().filter(s => s.purpose === purpose && !!s.test === f.test && s.date >= today && (!s.classroom || s.classroom === k.classroom) && (!s.booked || s.booked.childId === k.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => ({ id: s.id, date: s.date, time: s.time, minutes: s.minutes, with: s.with || '', mine: !!(s.booked && s.booked.childId === k.id) })) : [];
@@ -240,7 +245,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0] || '', last: w.length > 1 ? w[w.length - 1] : '' }; };
     const pa = (k.parents || []).filter(Boolean); const p1 = split(pa[0] && pa[0].name), p2 = split(pa[1] && pa[1].name);
     const prefill = { c_first: k.first || '', c_last: k.last || '', c_dob: String(k.dob || '').slice(0, 10), p1_first: p1.first, p1_last: p1.last, p1_home: (pa[0] && pa[0].cell) || '', p2_first: p2.first, p2_last: p2.last, p2_home: (pa[1] && pa[1].cell) || '' };
-    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
+    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, tkGuide, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
       aboutMe: (() => { const am = k.aboutMe || {}; const ph = p => (p.photos || []).map(id => ({ id, src: photoSrc(id) }));
         const fixed = AAM_PAGES.map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES.length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),

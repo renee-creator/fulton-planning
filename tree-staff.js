@@ -602,6 +602,14 @@ const yearSpan=y=>y?y+" to "+(+y+1):"";
 
 /* proposed sections wait here for the director, and nothing changes in the document until she accepts one. Accepting
    adds it as a new section, which keeps its own earlier versions from then on like every other section. */
+/* pieces for the Family page, each a draft only the director sees until she marks it ready */
+async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){return ""}const L=r.list||[];if(!L.length)return "";
+  return card("Family page pieces",`<div class="hint">Pieces for families, read on the Family page under For families. The TK and kindergarten guide shows only to families of children going to TK or kindergarten next year, beside the transition summary. A draft reaches no family until you mark it ready.</div>
+    ${L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")}${x.audience==="tk"?` <span class="cnt">For TK and kindergarten families</span>`:""}</summary>
+      <div class="stmd" style="margin-top:6px">${md(x.body)}</div>${x.draft?`<div class="actions"><button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button></div>`:""}
+      ${x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`).join("")}`,`${L.filter(x=>x.waiting).length} waiting`)}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
+  const [slug,on]=t.dataset.fpready.split("|");try{await api("familypieces/ready",{slug,on:on==="1"});toast(on==="1"?"Marked ready. Families see it now.":"Taken off the Family page.");redraw()}catch(er){fail(er)}});
 async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
   const mine=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));if(!mine.length)return "";
   const st2=x=>x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Set aside"):chip("soonish","Waiting for you");
@@ -634,7 +642,7 @@ async function pagePol(my,k){const dir=D();const want=LS.get(k==="family"?"tree.
     (k==="teacher"&&(B.me.newHire||B.me.newEd)&&!dir?mustReadCard(d):"")+
     card("Contents",`${list}${dir?`<div class="actions"><button class="btn small ghost" data-stpol="__new">Add a section</button></div>`:""}`,printBar("pol:"+k))+
     (dir&&k==="family"?fhDirCards(d):"")+
-    (dir?await proposalsCard(k,ed):"")+
+    (dir?await proposalsCard(k,ed):"")+(dir&&k==="family"?await fpiecesCard():"")+
     (dir?`<div id="stpolacks">${card(k==="family"?"Families who have read it":"Who has acknowledged it",`<div class="empty"><span class="spin"></span> Opening</div>`)}</div>`:""));
   if(dir)polAcksCard(k,d,my)}
 // what a section shows beside its title in the contents

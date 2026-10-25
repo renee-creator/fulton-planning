@@ -155,6 +155,22 @@ module.exports = function staffModule(o) {
   const newedFor = (me, experienced) => { const dir = isDirector(me);
     return newedParts().filter(g => dir || ((!g.draft || newedReady(g.slug)) && (g.audience === 'all' || experienced))).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !newedReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
 
+  /* ---------- pieces for the Family page ---------- */
+  // one Markdown file each in staff/familypieces, read through the signed-in server. A draft shows only to the director, with
+  // its source note, until she marks it ready, and then reaches families on the Family page. The TK and kindergarten guide
+  // (audience tk) reaches only families of children going to TK or kindergarten next year, beside the transition summary.
+  const FP_READY = 'staff/familypieces/ready.json';
+  function familyPieces() {
+    return [...S.files.keys()].filter(p => /^staff\/familypieces\/[a-z0-9-]+\.md$/.test(p)).sort().map(p => {
+      let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
+      if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
+      const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
+      return { slug: p.slice(19, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'tk' ? 'tk' : 'all', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
+    }).filter(Boolean).sort((a, b) => a.order - b.order);
+  }
+  const fpReady = slug => !!(((get(FP_READY) || {}).pieces || {})[slug]);
+  const familyPiecesForFamily = () => familyPieces().filter(g => !g.draft || fpReady(g.slug)).map(g => ({ slug: g.slug, title: g.title, body: g.body, audience: g.audience }));
+
   /* ---------- the materials guides ---------- */
   const GUIDE_READY = 'staff/guides/ready.json';
   function guides() {
@@ -306,6 +322,12 @@ module.exports = function staffModule(o) {
     // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
     // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches
     // only a new educator the director marked experienced.
+    if (P === 'familypieces' || P === 'familypieces/ready') {
+      if (!dir) return deny('Only the director reviews the Family page pieces.');
+      if (P === 'familypieces/ready') { const g = familyPieces().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That piece is not here.');
+        const all = Object.assign({ pieces: {} }, get(FP_READY) || {}); all.pieces = Object.assign({}, all.pieces); if (body.on) all.pieces[g.slug] = { on: today(), by: me }; else delete all.pieces[g.slug]; put(FP_READY, all); }
+      json(req, res, 200, { list: familyPieces().map(g => Object.assign({}, g, { waiting: g.draft && !fpReady(g.slug) })) }); return;
+    }
     if (P === 'newed' || P === 'newed/ready' || P === 'newed/experienced') {
       if (P === 'newed/experienced') {
         if (!dir) return deny('The director marks a new educator experienced.'); if (!accountFor(who)) return err(req, res, 404, 'That educator is not here.');
@@ -732,5 +754,5 @@ module.exports = function staffModule(o) {
   const POL = require('./policies.js')({ get, put, putText, S, log, person, pPath, staffNames, isDirector, isKitchen, nameKey, today, allowed, hasOwn, profileOf, accountFor, store, readImage, roleNames: o.roleNames || (() => []), piecesChanged: () => { pieceCache = null; } });
   // the Family page and the public page read the Family Handbook through these
   const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
-  return { walksForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { walksForFamily, familyPiecesForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
