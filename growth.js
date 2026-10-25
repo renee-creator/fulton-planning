@@ -156,7 +156,7 @@ module.exports = function growthModule(c) {
     for (const [ym] of cal.months) {
       const all = allStaffDay(ym); const [ms, me2] = meetTimes();
       if (all.kind === 'meeting' && all.auto && all.date && all.date >= from && all.date <= to && !((get(PDD) || {}).manual || []).some(m => m.date === all.date && m.kind === 'meeting'))
-        out.push({ id: 'tgrow.pdm.' + all.date, cal: 'tgrow', title: 'PD staff meeting', desc: 'The whole staff and PD meeting, the first Monday of the month. The agenda is in TREE, under Educators, PD days.', agenda: all.date, allDay: false, start: all.date + 'T' + ms, end: all.date + 'T' + me2 });
+        out.push({ id: 'tgrow.pdm.' + all.date, cal: 'tgrow', title: 'PD staff meeting', desc: (all.moved ? 'The whole staff and PD meeting, moved to this day.' : 'The whole staff and PD meeting, the first Monday of the month.') + ' The agenda is in TREE, under Educators, PD days.', agenda: all.date, allDay: false, start: all.date + 'T' + ms, end: all.date + 'T' + me2 });
       const last = addDays(addMonths(ym + '-01', 1).slice(0, 7) + '-01', -1);
       for (const d of teamDays(ym + '-01' > from ? ym + '-01' : from, last < to ? last : to)) for (const room of roomsFor(name)) {
         const [ts, te] = teamTimes(room);
@@ -231,18 +231,24 @@ module.exports = function growthModule(c) {
       if (all.kind === 'meeting' && all.date && all.date >= fromIso && all.date <= toIso && !out.has(all.date + '-meeting')) { const [st, en] = meetTimes(); out.set(all.date + '-meeting', { id: all.date + '-meeting', date: all.date, kind: 'meeting', from: 'tree', auto: true, title: 'PD staff meeting', start: st, end: en }); } }
     return [...out.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
-  /* Mondays. The whole staff and PD meeting is the first Monday of each month. When that Monday is a school closure, the
-     director's Today asks once for another day. December and February have no all-staff meeting, and nor does any month
-     the director marks, and a PD day in such a month is that month's all-staff meeting. Each Class team meets on every
-     other open Monday, and on every open Monday of a month without an all-staff meeting. Check-ins are unchanged. */
+  /* Mondays. The whole staff and PD meeting is the first Monday of each month. In any month with a full-day PD day on the
+     calendar, the PD day is that month's all-staff meeting, no first Monday meeting is held, and that Monday is a team
+     meeting day. December and February have no all-staff meeting unless they have a PD day, and nor does any month the
+     director marks. When the first Monday is a school closure, the director's Today asks once for another day. The
+     director can move any month's meeting to another day, and the agenda, the reminders and Today follow it. Each Class
+     team meets on every other open Monday, never on the all-staff meeting's day. Check-ins are unchanged. */
   const ROOMS = ['West', 'North', 'South'];
   const quietMonth = ym => ['12', '02'].includes(ym.slice(5, 7)) || ((school().quietMonths || []).includes(ym));
   const firstMonday = ym => { let d = ym + '-01'; while (dow(d) !== 1) d = addDays(d, 1); return d; };
   function allStaffDay(ym) {
     const mo = cal.months.get(ym); if (!mo) return { date: '', kind: '' };
-    if (quietMonth(ym)) { const pd = mo.pd.find(x => x.kind === 'pdday') || pdd().manual.find(x => x.kind === 'pdday' && x.date.slice(0, 7) === ym); return pd ? { date: pd.date, kind: 'pdday' } : { date: '', kind: '' }; }
+    // the director's own choice for the month comes first, a day she moved the meeting to or no meeting at all
+    const moved = (pdd().moved || {})[ym]; if (moved === 'none') return { date: '', kind: '' }; if (moved) return { date: moved, kind: 'meeting', auto: true, moved: true };
+    // a full-day PD day, one with no start time, on the calendar or added in TREE
+    const pd = mo.pd.find(x => x.kind === 'pdday' && !x.start) || pdd().manual.find(x => x.kind === 'pdday' && x.date.slice(0, 7) === ym);
+    if (pd) return { date: pd.date, kind: 'pdday' };
+    if (quietMonth(ym)) return { date: '', kind: '' };
     const set = pdd().manual.find(x => x.kind === 'meeting' && x.date.slice(0, 7) === ym); if (set) return { date: set.date, kind: 'meeting' };
-    const moved = (pdd().moved || {})[ym]; if (moved === 'none') return { date: '', kind: '' }; if (moved) return { date: moved, kind: 'meeting', auto: true };
     const fm = firstMonday(ym); const onCal = mo.pd.find(x => x.kind === 'meeting' && x.date === fm) || mo.pd.find(x => x.kind === 'meeting');
     if (mo.closed.has(fm)) return onCal && !mo.closed.has(onCal.date) ? { date: onCal.date, kind: 'meeting' } : { date: '', kind: 'meeting', needsDate: true, firstMonday: fm };
     return { date: fm, kind: 'meeting', auto: !onCal || onCal.date !== fm };
@@ -611,7 +617,10 @@ module.exports = function growthModule(c) {
     if (P === 'pd/move') {
       if (!dir) return deny(); const ym = String(body.ym || ''); if (!/^\d{4}-\d{2}$/.test(ym)) return err(req, res, 400, 'Choose the month.');
       const v = body.date === 'none' ? 'none' : ISO.test(body.date || '') && body.date.slice(0, 7) === ym ? body.date : ''; if (!v) return err(req, res, 400, 'Choose a day in that month.');
-      const d = pdd(); d.moved = Object.assign({}, d.moved, { [ym]: v }); put(PDD, d); bump(); json(req, res, 200, { ok: true }); return;
+      // the agenda already written for the meeting moves with it
+      await loadMonth(ym); const was = allStaffDay(ym); const d = pdd();
+      if (was.kind === 'meeting' && was.date && v !== 'none' && was.date !== v) { const from = was.date + '-meeting', to = v + '-meeting'; if (d.agendas[from] && !d.agendas[to]) { d.agendas = Object.assign({}, d.agendas, { [to]: Object.assign({}, d.agendas[from], { id: to, date: v, movedFrom: was.date }) }); delete d.agendas[from]; } }
+      d.moved = Object.assign({}, d.moved, { [ym]: v }); put(PDD, d); bump(); json(req, res, 200, { ok: true }); return;
     }
     if (P === 'pd/add') {
       if (!dir) return deny(); if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.');
