@@ -782,9 +782,20 @@ function tidyList() {
   try { const parts = []; for (const m of Object.values(store.recs)) for (const r of m.values()) if (r && !r.deleted && r.doc) parts.push(JSON.stringify(r.doc));
     for (const d of Object.values(calendar.dump())) parts.push(JSON.stringify(d)); for (const d of Object.values(staff.dump())) parts.push(typeof d === 'string' ? d : JSON.stringify(d)); blob = parts.join('\n'); } catch (e) { blob = null; }
   const keep = settingDoc('tidy').keep || {};
-  if (blob != null) for (const [id, o] of store.originals) if (o && o.drive && /\.(jpe?g|png|heic|webp|gif)$/i.test(id) && !keep[id] && !blob.includes(id))
-    photos.push({ id, size: Number(o.size) || 0 });
-  photos.sort((a, b) => a.id.localeCompare(b.id));
+  /* A photo is listed only when it may be missing from an observation TREE can name. A photo kept from the observation
+     form carries a name made from the observation it was picked for and who kept it, so TREE finds that observation, and
+     lists the photo only while the observation is still here and has no photo. Expected leftovers stay off the list and
+     stay in the tree@ Drive, never deleted, such as a photo picked on a form that was never kept, earlier pictures of a
+     remade Instagram post, a small copy, and a photo replaced on an observation or from one that was removed. */
+  const byHash = new Map();
+  for (const n of live('notices')) for (const who of new Set([n.by, n.createdByName, n.updatedByName, n.editedBy].filter(Boolean)))
+    byHash.set(crypto.createHash('sha256').update(nameKey(who) + '|' + n.id + '.photo').digest('hex').slice(0, 12), n);
+  if (blob != null) for (const [id, o] of store.originals) {
+    if (!o || !o.drive || !/-moment-photo\.jpe?g$/i.test(id) || keep[id] || blob.includes(id)) continue;
+    const n = byHash.get(id.slice(0, 12)); if (!n || (n.photo && n.photo.id)) continue;
+    photos.push({ id, size: Number(o.size) || 0, notice: n.id, day: n.day || (n.at ? new Date(n.at).toISOString().slice(0, 10) : ''), by: n.by || '', classroom: n.classroom || '', noticed: String(n.noticed || '').slice(0, 160) });
+  }
+  photos.sort((a, b) => String(b.day).localeCompare(String(a.day)) || a.id.localeCompare(b.id));
   const out = { drdp, threads, photos, kept: Object.keys(keep).length };
   tidyCache = { at: Date.now(), out }; return out;
 }
