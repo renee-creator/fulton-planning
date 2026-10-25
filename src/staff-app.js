@@ -733,7 +733,7 @@ async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);co
   const scratch=planDoc({unit:"pt",format:"letter"});const {starts}=polBody(scratch,pics,d,parts,{});
   const per=38,tocPages=Math.ceil(starts.length/per);const doc=planDoc({unit:"pt",format:"letter"});polCover(doc,pics,d,name);doc.addPage("letter","portrait");polToc(doc,starts,1+tocPages,per);
   const {P}=polBody(doc,pics,d,parts,{newFirst:true});if(k==="family")polAckPage(doc,d,P);polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf")}
-async function polWord(k,d,which){let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
+async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,ExternalHyperlink,Table,TableRow,TableCell,WidthType,ImageRun,Footer,PageNumber,HeadingLevel,AlignmentType,TableOfContents,PageBreak,BorderStyle}=X;
   const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;const parts=sec?[{title:sec.title,sections:[sec]}]:polBook(d);const pics=await polPictures(d,parts.flatMap(p=>p.sections));
   const F=PF.buf?PF.word.fr:"Arial";let listNo=0;
@@ -763,10 +763,10 @@ async function polWord(k,d,which){let X;try{X=await loadScript("https://cdn.jsde
     ch.push(new Paragraph({spacing:{before:360},children:[new TextRun({text:"Please return this page to the office. It is kept in your child's file.",size:20,color:"5D6E63",font:F})]}))}
   const foot=new Footer({children:[new Paragraph({border:{top:{style:BorderStyle.SINGLE,size:4,color:"C8D2CA",space:6}},children:[new TextRun({text:(d.footer||"Fulton Community School & Farm")+"     ",size:15,color:"5D6E63",font:F}),new TextRun({children:["Page ",PageNumber.CURRENT," of ",PageNumber.TOTAL_PAGES],size:15,color:"5D6E63",font:F})]})]});
   const wf=wordFonts();
-  const docx=new Document(Object.assign({creator:"TREE, Fulton Community School",title:sec?`${name}, ${sec.title}`:name,features:{updateFields:true},
+  const docx=TREE_KIT.wordFile(X,Object.assign({creator:"TREE, Fulton Community School",title:sec?`${name}, ${sec.title}`:name,features:{updateFields:true},
     numbering:{config:[{reference:"pnum",levels:[0,1,2,3].map(l=>({level:l,format:"decimal",text:`%${l+1}.`,alignment:AlignmentType.START,style:{paragraph:{indent:{left:440*(l+1),hanging:300}}}}))}]},
     styles:{default:{document:{run:{font:F}}}},sections:[{properties:{page:{margin:{top:1000,bottom:1000,left:1100,right:1100}}},footers:{default:foot},children:ch}]},wf.length?{fonts:wf}:{}));
-  const blob=await Packer.toBlob(docx);await saveFile(blob,safeFile(sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`)+".docx")}
+  const blob=await TREE_KIT.wordBlob(X,docx);await saveFile(blob,safeFile(sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`)+".docx")}
 
 /* ---------- Settings, the director's ---------- */
 T.settings=async function(el){try{await boot(true);await loadPeople();if(window.TreeGrowth)await TreeGrowth.ready().catch(()=>{})}catch(e){el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
@@ -838,7 +838,7 @@ async function printFile(name,mode){progress("Making the file");await loadPeople
   if(!p&&isFormerName(name))p=await api("person",{name}).catch(()=>null);if(!p){toast("That educator is not here.");return}
   if(mode==="word"){await out("word",[coverDoc(p)],"Personnel file cover, "+name);return}
   const fids=(mode==="new"?newPages(p):allFids(p).filter(f=>!fileMeta(p,f).link));
-  let PL;try{PL=await loadScript("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js","PDFLib")}catch(e){toast("The PDF tool did not load. Check the connection.");return}
+  let PL;try{PL=await TREE_KIT.pdfLib()}catch(e){toast("The PDF tool did not load. Check the connection.");return}
   try{const cover=await makePdf([coverDoc(p,mode==="new"?"The cover sheet and the new pages":"")],"cover.pdf",true);
     const doc=await PL.PDFDocument.create();const add=async bytes=>{const src=await PL.PDFDocument.load(bytes,{ignoreEncryption:true});(await doc.copyPages(src,src.getPageIndices())).forEach(pg=>doc.addPage(pg))};
     await add(await cover.arrayBuffer());let skipped=0;

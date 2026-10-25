@@ -1214,17 +1214,13 @@ function exportAllCSV(){
 /* ---------- Word export ---------- */
 /* Andika, the typeface of every TREE print, Regular for the words and Bold for labels and titles.
    Without them the forms still print in the built-in faces. */
-let CF_FONTS=null;
-async function confFonts(){ if(CF_FONTS!==null) return CF_FONTS;
-  try{ const get=async f=>{ const r=await fetch("fonts/"+f); if(!r.ok) throw new Error("font"); return new Uint8Array(await r.arrayBuffer()); };
-    const [r,b]=await Promise.all(["Andika-Regular.ttf","Andika-Bold.ttf"].map(get)); CF_FONTS={r,s:b,b}; }
-  catch(e){ CF_FONTS=false; }
-  return CF_FONTS; }
+// they load through the print kit, print-kit.js, shared by every print
+async function confFonts(){ const ok=await TREE_KIT.fonts(); const B=TREE_KIT.PF.buf; return ok&&B? {r:B.fr,s:B.fs,b:B.bs} : false; }
 // a list holds conference forms, or for a set of children, items of a form and its child
 async function downloadDocx(list, child0, setName){
   if(!list.length){ toast("No conferences to include"); return; }
   toast("Preparing the Word file…");
-  try{ await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"); }catch(e){ toast("The Word builder could not load. Check your connection."); return; }
+  try{ await TREE_KIT.word(); }catch(e){ toast("The Word builder could not load. Check your connection."); return; }
   const FF=await confFonts();
   // every run is Andika, embedded in the file so it looks the same on any computer, with bold kept for labels and titles
   const D=Object.assign({},window.docx,{TextRun:class extends window.docx.TextRun{constructor(o){ if(FF&&o&&typeof o==="object"){ o=Object.assign({},o); o.font="Andika"; } super(o); }}});
@@ -1285,21 +1281,20 @@ async function downloadDocx(list, child0, setName){
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:refRows}),
     ]});
   }
-  const doc=new D.Document(Object.assign({creator:"Fulton Community School",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
+  const doc=TREE_KIT.wordFile(D,Object.assign({creator:"Fulton Community School",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
     FF?{fonts:[{name:"Andika",data:FF.r}]}:{}));
-  const blob=await D.Packer.toBlob(doc);
+  const blob=await TREE_KIT.wordBlob(D,doc);
   const base=slug(childName(child0));
   await saveFile(setName? setName+".docx" : list.length===1? `${base}-conference-${list[0].term.toLowerCase()}-${list[0].schoolYear}.docx` : `${base}-conference-record.docx`, blob);
 }
 
 /* ---------- printable PDF, always two letter pages per conference ---------- */
 async function buildFormsPdf(items){
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
-  const {PDFDocument, StandardFonts, rgb}=window.PDFLib;
+  const {PDFDocument, StandardFonts, rgb}=await TREE_KIT.pdfLib();
   const doc=await PDFDocument.create();
   doc.setTitle("Family Conference"); doc.setAuthor("Fulton Community School");
   let F=null;const FF=await confFonts();
-  if(FF){ try{ await loadScript("https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"); doc.registerFontkit(window.fontkit);
+  if(FF){ try{ await TREE_KIT.pdfLib(true); doc.registerFontkit(window.fontkit);
       // ligatures off, so fi and fl print as two letters rather than a gap
       const NOLIG={features:{liga:false,clig:false,dlig:false}};
       const r=await doc.embedFont(FF.r,NOLIG), b=await doc.embedFont(FF.s,NOLIG), t=await doc.embedFont(FF.b,NOLIG); F={r,b,i:r,t}; }catch(e){ F=null; } }
@@ -1456,33 +1451,16 @@ window.TREE_CONF_FILES=async id=>{ const cf=S.confs[id], c=cf&&S.children[cf.chi
 function formFor(c, p=S.period){ return periodConf(c.id, p) || {term:p.term, schoolYear:p.year, fields:{}, reflections:{}, teacher:educatorOf(c)}; }
 
 /* ---------- reading uploaded files ---------- */
-const PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-const PDFJS_WORKER="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-async function loadPdfjs(){ await loadScript(PDFJS); await loadScript(PDFJS_WORKER); return window.pdfjsLib; }
-async function readPdf(file, {maxImagePages=4}={}){
-  const lib=await loadPdfjs();
-  const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
-  let text=""; const pages=[], pageTexts=[], pageImgs=[];
-  const IMG=new Set([lib.OPS.paintImageXObject, lib.OPS.paintJpegXObject, lib.OPS.paintInlineImageXObject].filter(x=>x!=null));
-  for(let p=1;p<=doc.numPages;p++){ const pg=await doc.getPage(p); const vp=pg.getViewport({scale:1}); const tc=await pg.getTextContent();
-    try{ const ops=await pg.getOperatorList(); pageImgs.push(ops.fnArray.some(f=>IMG.has(f))); }catch(e){ pageImgs.push(false); }
-    pages.push({width:vp.width,items:tc.items.map(i=>({str:i.str,x:i.transform[4],y:vp.height-i.transform[5]}))});
-    const t = tc.items.map(i=>i.str+(i.hasEOL?"\n":" ")).join(""); pageTexts.push(t); text += t+"\n\n"; try{ pg.cleanup(); }catch(e){} }
-  return {doc, text, pages, pageTexts, pageImgs};
-}
+// the one PDF reader and Word reader, in the print kit
+function loadPdfjs(){ return TREE_KIT.pdfjs(); }
+async function readPdf(file){ const R=await TREE_KIT.readPdf(file); return {doc:R.doc, text:R.text, pages:R.pages, pageTexts:R.pageTexts, pageImgs:R.pageImgs}; }
 async function pdfToImages(doc, max=4){
   const out=[];
   for(let p=1;p<=Math.min(doc.numPages,max);p++) out.push(await pageImage(doc, p, 1700, 0, .88));
   return out;
 }
 // one page at a time, turned upright when turn is 90, 180 or 270, and the canvas let go of at once so a phone keeps its memory
-async function pageImage(doc, p, width=1700, turn=0, q=.86){
-  const pg=await doc.getPage(p); const rotation=((pg.rotate||0)+(+turn||0))%360;
-  const vp0=pg.getViewport({scale:1, rotation}); const vp=pg.getViewport({scale:Math.min(2.2, width/vp0.width), rotation});
-  const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height); const c=cv.getContext("2d"); c.fillStyle="#fff"; c.fillRect(0,0,cv.width,cv.height);
-  try{ await pg.render({canvasContext:c,viewport:vp}).promise; return await new Promise(r=>cv.toBlob(r,"image/jpeg",q)); }
-  finally{ cv.width=cv.height=0; try{ pg.cleanup(); }catch(e){} }
-}
+function pageImage(doc, p, width=1700, turn=0, q=.86){ return TREE_KIT.pageImage(doc, p, {width, maxScale:2.2, turn:+turn||0, quality:q, white:true, free:true}); }
 // a photo turned by 90, 180 or 270 degrees
 async function turnImage(blob, turn){
   turn=((+turn||0)%360+360)%360; if(!turn) return blob;
@@ -1504,13 +1482,7 @@ async function shrinkImage(blob, width=900){
   const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*s); cv.height=Math.round(bmp.height*s); cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
   try{ return await new Promise(r=>cv.toBlob(r,"image/jpeg",.8)); } finally{ cv.width=cv.height=0; try{ bmp.close(); }catch(e){} }
 }
-async function readDocx(file){
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
-  const r=await window.mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()});
-  const div=document.createElement("div"); div.innerHTML=r.value;
-  $$("td,th",div).forEach(td=>td.append(" | ")); $$("tr,p,li,h1,h2,h3",div).forEach(el=>el.append("\n"));
-  return div.textContent.replace(/\n{3,}/g,"\n\n");
-}
+function readDocx(file){ return TREE_KIT.readDocx(file,{tables:true}); }
 async function normalizeImage(file, limits){
   const okTypes=limits?.images?.mediaTypes||["image/jpeg","image/png","image/webp","image/gif"];
   const maxB=limits?.images?.maxInputBytes||20e6;
@@ -2067,21 +2039,21 @@ actions["batch-retry"]=async a=>{
 };
 // the same PDF with each page turned by the given degrees, so a page scanned upside down is kept upright
 async function turnPdfPages(file, turns){
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  await TREE_KIT.pdfLib();
   const L=window.PDFLib; const doc=await L.PDFDocument.load(await file.arrayBuffer(), {ignoreEncryption:true});
   doc.getPages().forEach((pg,i)=>{ const t=+turns[i]||0; if(t) pg.setRotation(L.degrees(((pg.getRotation().angle||0)+t)%360)); });
   return new Blob([await doc.save()],{type:"application/pdf"});
 }
 // scanned pages kept as a small PDF of upright page images, made one page at a time, so a very large scan never has to be held whole
 async function pagesAsPdf(pages){
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  await TREE_KIT.pdfLib();
   const L=window.PDFLib, B=S.importCtx.batch; const out=await L.PDFDocument.create();
   for(const n of pages){ const p=B.pages[n-1]; const blob=p.blob? p.blob : await pageImage(B.pdf, n, 1700, p.turn||0, .82);
     const img=await out.embedJpg(new Uint8Array(await blob.arrayBuffer())); const w=612, h=img.height*w/img.width; const pg=out.addPage([w,h]); pg.drawImage(img,{x:0,y:0,width:w,height:h}); }
   return new Blob([await out.save()],{type:"application/pdf"});
 }
 async function splitPdfPages(pages){
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  await TREE_KIT.pdfLib();
   const ctx=S.importCtx, B=ctx.batch;
   if(!B.srcPdf) B.srcPdf=await window.PDFLib.PDFDocument.load(await B.file.arrayBuffer(), {ignoreEncryption:true});
   const out=await window.PDFLib.PDFDocument.create();

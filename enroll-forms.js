@@ -10,7 +10,8 @@ const splitStreet=s=>{const m=String(s||"").trim().match(/^(\d+[A-Za-z]?)\s+(.*)
 const splitPhone=s=>{const d=String(s||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");return d.length===10?[d.slice(0,3),d.slice(3,6)+"-"+d.slice(6)]:["",String(s||"")]};
 async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const base=o.base||"";
   if(!window.FultonAgreement)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=base+"agreement.js";sc.onload=ok;sc.onerror=()=>no(new Error("The agreement could not be loaded."));document.head.appendChild(sc)});
-  if(!window.PDFLib)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js";sc.onload=ok;sc.onerror=()=>no(new Error("The forms could not be opened."));document.head.appendChild(sc)});
+  // pdf-lib comes from the print kit, print-kit.js, as every print does
+  if(!window.PDFLib)await window.TREE_KIT.pdfLib().catch(()=>{throw new Error("The forms could not be opened.")});
   const d=ef.data||{},v=k=>String(d[k]==null?"":d[k]).trim();const yes=k=>/^yes$/i.test(v(k)),no=k=>/^no$/i.test(v(k));
   const nm=p=>[v(p+"first"),v(p+"middle"),v(p+"last")].filter(Boolean).join(" ");
   const addrOf=p=>d[p+"same"]===true||d[p+"same"]==="true"||(!v(p+"street")&&p!=="c_")?["c_street","c_city","c_state","c_zip"].map(v):[v(p+"street"),v(p+"city"),v(p+"state"),v(p+"zip")];

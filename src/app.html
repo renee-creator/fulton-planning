@@ -3,6 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="print-kit.js"></script>
 <script src="sitemap.js"></script>
 <style>
 /* Layout. A garden-shed clipboard. Sidebar of the week's plans, a working form on the right, paper-like field cards. */
@@ -2801,14 +2802,14 @@ async function shareMake(){
 const shareFileName=i=>`Post ${iso(new Date())} ${String(i+1).padStart(2,"0")}.jpg`;
 function shareCanFiles(){try{return !!(navigator.canShare&&navigator.canShare({files:[new File([new Blob(["x"],{type:"image/jpeg"})],"a.jpg",{type:"image/jpeg"})]}))}catch(e){return false}}
 async function shareDocx(){
-  if(!shareMade)return;let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  if(!shareMade)return;let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   const {Document,Packer,Paragraph,TextRun,ImageRun,AlignmentType}=X;const kids=[];
   for(let i=0;i<shareMade.blobs.length;i++)kids.push(new Paragraph({alignment:AlignmentType.CENTER,pageBreakBefore:i>0,children:[new ImageRun({type:"jpg",data:await shareMade.blobs[i].arrayBuffer(),transformation:{width:480,height:600}})]}));
   if(has(shareSt.caption)||has(shareSt.tags)){kids.push(new Paragraph({pageBreakBefore:kids.length>0,spacing:{after:200},children:[new TextRun({text:"Caption",bold:true,size:30,font:"Arial"})]}));
     for(const p of String(shareSt.caption||"").split(/\n+/).filter(has))kids.push(new Paragraph({spacing:{after:160},children:[new TextRun({text:p,size:24,font:"Arial"})]}));
     if(has(shareSt.tags))kids.push(new Paragraph({children:[new TextRun({text:shareSt.tags,size:24,font:"Arial"})]}))}
-  const d=new Document({creator:"Fulton Community School",title:"Instagram post",sections:[{properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:kids}]});
-  saveFile(await Packer.toBlob(d),safeFile(`Instagram post ${iso(new Date())}`)+".docx");
+  const d=TREE_KIT.wordFile(X,{creator:"Fulton Community School",title:"Instagram post",sections:[{properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:kids}]});
+  saveFile(await TREE_KIT.wordBlob(X,d),safeFile(`Instagram post ${iso(new Date())}`)+".docx");
 }
 function renderShare(){
   const main=$("#main");
@@ -3400,7 +3401,7 @@ async function storyPdf(st){
   if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
+  const doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"});
   const W=792,H=612,M=40,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
   const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
   const col=c=>doc.setTextColor(c[0],c[1],c[2]);
@@ -3441,7 +3442,7 @@ async function storyPdf(st){
   await saveFile(doc.output("blob"),safeFile(`Story ${stTitle(st)}`)+".pdf");
 }
 async function storyDocx(st){
-  let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,BorderStyle,AlignmentType,PageOrientation,VerticalAlign,Footer,PageNumber,TabStopType,PageBreak}=X;
@@ -3474,15 +3475,15 @@ async function storyDocx(st){
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
   const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:6}},children:[run(ST_CYCLE,false,8,ST_MUT)]}),
     new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,7.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:15,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
-  await saveFile(await Packer.toBlob(d),safeFile(`Story ${stTitle(st)}`)+".docx");
+  const wf=wordFonts();const d=TREE_KIT.wordFile(X,Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await TREE_KIT.wordBlob(X,d),safeFile(`Story ${stTitle(st)}`)+".docx");
 }
 /* the small book, a half-letter page for each page of the story, for a family to keep at home or a child to hold */
 async function storySmallPdf(st){
   if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:[396,612],orientation:"portrait"});pdfFonts(doc);
+  const doc=TREE_KIT.pdf({unit:"pt",format:[396,612],orientation:"portrait"});
   // the inner edge of every page meets the fold, so the side margins are a little wider than the top and bottom
   const W=396,H=612,M=32,foot=storyFoot(st),A=stAcc(st),HC=deep(A.c),BG=stPageBg(st);
   const font=b=>{if(PF.b64)doc.setFont(b?"pfB":"pfR","normal");else doc.setFont("helvetica",b?"bold":"normal")};
@@ -3532,7 +3533,7 @@ async function storySmallPdf(st){
 // Print on both sides and flip on the short edge. Sheet k has pages n-1-2k and 2k on the front, and 2k+1 and n-2-2k on the back.
 function bookletOrder(n){const out=[];for(let k=0;k<n/4;k++){out.push([n-1-2*k,2*k],[2*k+1,n-2-2*k])}return out}
 async function storyBooklet(bytes,n){
-  let L;try{L=await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js","PDFLib")}catch(e){toast("The booklet tool did not load.");return null}
+  let L;try{L=await TREE_KIT.pdfLib()}catch(e){toast("The booklet tool did not load.");return null}
   const src=await L.PDFDocument.load(bytes);const out=await L.PDFDocument.create();
   const pages=await out.embedPages(src.getPages());
   for(const [a,b] of bookletOrder(n)){const sh=out.addPage([792,612]);sh.drawPage(pages[a],{x:0,y:0,width:396,height:612});sh.drawPage(pages[b],{x:396,y:0,width:396,height:612})}
@@ -3540,7 +3541,7 @@ async function storyBooklet(bytes,n){
   return new Blob([await out.save()],{type:"application/pdf"});
 }
 async function storySmallDocx(st){
-  let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+  let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const {Document,Packer,Paragraph,TextRun,ImageRun,AlignmentType,PageOrientation,Footer,PageNumber,TabStopType,PageBreak,Table,TableRow,TableCell,WidthType,BorderStyle}=X;
@@ -3570,8 +3571,8 @@ async function storySmallDocx(st){
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
   const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:5}},children:[run(ST_CYCLE,false,6.5,ST_MUT)]}),
     new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,6.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:13,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
-  await saveFile(await Packer.toBlob(d),safeFile(`Small book ${stTitle(st)}`)+".docx");
+  const wf=wordFonts();const d=TREE_KIT.wordFile(X,Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await TREE_KIT.wordBlob(X,d),safeFile(`Small book ${stTitle(st)}`)+".docx");
 }
 // the deck as its sheets, in order, numbered, each with its evidence page when asked, and the closing quote
 function deckDocs(){
@@ -5112,7 +5113,7 @@ async function nlPhotos(x){
 }
 const nlIm=p=>photoCache.get("nl:"+p.notice);
 async function nlWord(x){
-  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
+  let D;try{D=await TREE_KIT.word()}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   toast("Preparing the Word file");await nlPhotos(x);await loadPrintFonts();
   const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,ExternalHyperlink,Footer,LevelFormat}=D;
   const MOSS="2B5A40",INK="1B2920",MUTED="5B6B61",LINE="C6D0C3",W=9840,F=PF.buf?PF.word.fr:"Arial";
@@ -5146,10 +5147,10 @@ async function nlWord(x){
   if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
   {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){ch.push(rule());ch.push(H("From our farms",28,{before:120}));for(const pp of ft.split(/\n\n/))ch.push(P(pp))}}
   if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(c.text)]))}
-  const wf=wordFonts();const doc=new Document({creator:"Fulton Community School",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
+  const wf=wordFonts();const doc=TREE_KIT.wordFile(D,{creator:"Fulton Community School",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
     numbering:{config:[{reference:"dots",levels:[{level:0,format:LevelFormat.BULLET,text:"•",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:240}}}}]}]},
     sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1080,bottom:1080,left:1200,right:1200}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School",{size:16,color:MUTED})]})]})},children:ch}]});
-  const blob=await Packer.toBlob(doc);
+  const blob=await TREE_KIT.wordBlob(D,doc);
   await downloads.save({filename:`Fulton Community School family newsletter ${nlName(x.month)}.docx`,data:blob});
 }
 // tips drafted with markdown keep their words and lose the asterisks
@@ -5158,7 +5159,7 @@ async function nlPdf(x){
   if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   toast("Preparing the PDF");await nlPhotos(x);await loadPrintFonts();
   // set at full size, then a little smaller when that saves a page with only a few lines on it
-  const build=sc=>{const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);
+  const build=sc=>{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});
   const L=54,R=PW-54,TW=R-L,BOT=PH-60;let y=60;const bs=10.5*sc,blh=bs*1.42;
   const ink=()=>doc.setTextColor(...C.ink),moss=()=>doc.setTextColor(...C.moss),mut=()=>doc.setTextColor(...C.muted);
   const need=hh=>{if(y+hh>BOT){doc.addPage();y=60}};
@@ -5795,7 +5796,7 @@ function webSvgString(web,blank,A){
 function svgToPng(svg){if(PF.b64)svg=svg.replace(/<svg\b[^>]*>/,m=>m+`<defs><style>@font-face{font-family:TA;src:url(data:font/ttf;base64,${PF.b64.fr})}@font-face{font-family:TA;font-weight:700;src:url(data:font/ttf;base64,${PF.b64.bs})}</style></defs>`);return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
 function planPageCount(p){try{const t=planDoc({unit:"pt",format:"letter"});drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
 async function makeDocx(list,filename,ret){
-  let D;try{D=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){if(ret!=="quiet")toast("The Word tool did not load. Check your connection and reload.");return}
+  let D;try{D=await TREE_KIT.word()}catch(e){if(ret!=="quiet")toast("The Word tool did not load. Check your connection and reload.");return}
   if(ret!=="quiet")toast("Preparing the Word file");centerOver=[];
   const disp=list.some(p=>p.display);await loadPrintFonts();
   // plan text written for Helvetica takes Andika, with bold kept
@@ -5849,8 +5850,8 @@ async function makeDocx(list,filename,ret){
     sections.push({properties:{page:{size:p.centered&&p.sq?{width:12240,height:12240}:landP?{width:12240,height:15840,orientation:D.PageOrientation.LANDSCAPE}:{width:12240,height:15840},margin:p.display?{top:900,bottom:840,left:p.centered?1080:DISPLAY_DOCX_MARGIN,right:p.centered?1080:DISPLAY_DOCX_MARGIN}:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:p.display?dFoot:footKids})},children:ch});
   }
   const wf=wordFonts();
-  const docx=new Document(Object.assign({creator:"TREE, Fulton Community School",title:filename.replace(/\.docx$/,""),sections},{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}},wf.length?{fonts:wf}:{}));
-  const blob=await Packer.toBlob(docx);
+  const docx=TREE_KIT.wordFile(D,Object.assign({creator:"TREE, Fulton Community School",title:filename.replace(/\.docx$/,""),sections},{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}},wf.length?{fonts:wf}:{}));
+  const blob=await TREE_KIT.wordBlob(D,docx);
   if(ret){if(ret==="quiet")centerOver=[];else overWarn();return blob}
   saveFile(blob,filename);overWarn();
 }
@@ -7784,7 +7785,7 @@ async function kMonthMenu(month,which,word){which=which||"all";const D=kMenuData
   const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?(late?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:`Last month our food came from ${farms} local farm${farms===1?"":"s"}.`):""].filter(Boolean);
   if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
 async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:"landscape"});pdfFonts(doc);
+  const doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"});
   const W=792,H=612,m=30,gw=W-2*m,gap=4,cw=(gw-4*gap)/5,INK=[28,42,34],MUT=[96,110,101],MOSS=[47,90,67],CREAM=[250,246,234],SOFT=[234,242,236];
   const name=MENU_MONTH(month),tx=13,tw=cw-tx-6,numW=15;
   // wrap a dish, the first line of a cell leaves room for the day number
@@ -7824,7 +7825,7 @@ async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("
     const Pa=plan(a,top,H-m,8.5),Pb=plan(b,top2,bottom,8.5);const fs=Math.min(Pa?Pa.fs:8.5,Pb?Pb.fs:8.5);
     drawWeeks(a,top,{fs,rh:(H-m-top-gap*(a.length-1))/a.length});doc.setPage(2);drawWeeks(b,top2,{fs,rh:(bottom-top2-gap*(b.length-1))/Math.max(1,b.length)});drawFoot()}
   await saveFile(doc.output("blob"),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.pdf`)}
-async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js","docx")}catch(e){toast("The Word tool did not load.");return}
+async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,ShadingType,BorderStyle,AlignmentType,PageOrientation,HeightRule}=X;
   const F=k=>PF.buf?PF.word[k]:"Arial";const run=(t,k,pt,c,o)=>new TextRun(Object.assign({text:clean(t),font:F(k),size:Math.round(pt*2),color:c||"1C2A22",bold:PF_BOLD(k)},o||{}));
   const hx=a=>a.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase();const name=MENU_MONTH(month),W=14400,gapW=120,cw=Math.floor((W-4*gapW)/5);
@@ -7860,8 +7861,8 @@ async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await loadSc
   ch.push(new Paragraph({spacing:{before:0,after:0,line:40,lineRule:"exact"},children:[run(" ","fr",2)]}));
   // Word ends a page with a paragraph after the last table, so it is kept one point tall and never opens a second page
   ch.push(new Paragraph({spacing:{before:0,after:0,line:20,lineRule:"exact"},children:[run(" ","fr",1)]}));
-  const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
-  await saveFile(await Packer.toBlob(docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
+  const wf=wordFonts();const docx=TREE_KIT.wordFile(X,Object.assign({creator:"Fulton Community School",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
+  await saveFile(await TREE_KIT.wordBlob(X,docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -7951,10 +7952,8 @@ Do not use colons or dashes in what you write.
 Return a JSON object with "kind", either "snack" or "lunch", "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false.`;
 async function menuRead(f){
   const name=f.name||"menu";const ext=(name.split(".").pop()||"").toLowerCase();const images=[];let text="";
-  if(ext==="pdf"||f.type==="application/pdf"){const lib=await pdfLib();const pdf=await lib.getDocument({data:await f.arrayBuffer()}).promise;
-    for(let i=1;i<=Math.min(pdf.numPages,4);i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();text+=tc.items.map(x=>x.str).join(" ")+"\n";
-      const vp0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.5,2000/Math.max(vp0.width,vp0.height))});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
-      await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;images.push(await new Promise(r=>c.toBlob(r,"image/jpeg",0.9)))}}
+  if(ext==="pdf"||f.type==="application/pdf"){const R=await TREE_KIT.readPdf(f,{maxPages:4,joined:true,layout:false,keep:true});
+    for(let i=1;i<=Math.min(R.numPages,4);i++){text+=R.pageTexts[i-1]+"\n";images.push(await TREE_KIT.pageImage(R.doc,i,{maxSide:2000}))}}
   else images.push(await shrinkImage(f));
   const out=await askRead(MENU_PROMPT+(text.trim()?"\n\nThe text on the menu, in reading order, to help with spelling.\n"+text.slice(0,6000):""),{images,careful:true,purpose:"menu",maxSide:2000});
   return {name,out}}
@@ -10060,30 +10059,20 @@ function lensDocs(long,cap){
 /* --- the typeface used on paper and on screen, Andika, made for children learning to read, with a single-story a and g
    and a capital I and lowercase l that cannot be mistaken for each other. Headings are Andika Bold and the words Andika
    Regular. The keys are the parts of a page, bs a heading, fs a bold word, bm a quote and fr the words. --- */
-const PF={files:{bs:"Andika-Bold.ttf",bm:"Andika-Regular.ttf",fr:"Andika-Regular.ttf",fs:"Andika-Bold.ttf"},
-  pdf:{"Andika-Bold.ttf":"pfB","Andika-Regular.ttf":"pfR"},
-  word:{bs:"Andika",bm:"Andika",fr:"Andika",fs:"Andika"},buf:null,b64:null,wait:null};
+// the typeface and its loading live in the print kit, print-kit.js, shared by every print
+const PF=TREE_KIT.PF;
 // a bold key prints in Andika Bold, in a PDF from its own file and in Word as bold Andika
 const PF_BOLD=k=>k==="bs"||k==="fs";
-function loadPrintFonts(){
-  if(PF.buf)return Promise.resolve(true);
-  if(!PF.wait)PF.wait=(async()=>{try{const buf={},b64={},got={};
-    await Promise.all([...new Set(Object.values(PF.files))].map(async f=>{const r=await fetch("fonts/"+f);if(!r.ok)throw new Error("font");const u=new Uint8Array(await r.arrayBuffer());let s="";for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));got[f]={u,b:btoa(s)}}));
-    for(const [k,f] of Object.entries(PF.files)){buf[k]=got[f].u;b64[k]=got[f].b}
-    PF.buf=buf;PF.b64=b64;
-    try{if(typeof FontFace!=="undefined"&&document.fonts){await Promise.all(Object.keys(buf).map(async k=>{const f=new FontFace("PF"+k,buf[k].buffer.slice(0));await f.load();document.fonts.add(f)}));PF.face=true}}catch(e){}
-    return true}catch(e){PF.wait=null;return false}})();
-  return PF.wait;
-}
+function loadPrintFonts(){return TREE_KIT.fonts()}
 // the plan and newsletter engines were written with the built-in faces. On a sheet that has Andika those calls set it,
 // Andika Bold for bold.
 function schoolFonts(doc){if(!doc.__pf||doc.__sf)return doc;doc.__sf=true;const sf=doc.setFont.bind(doc),sz=doc.setFontSize.bind(doc);let hv=false,bold=false;doc.__raw=(f,st)=>{hv=false;return sf(f,st)};
   const pick=()=>sf(bold?"pfB":"pfR","normal");
   doc.setFont=(f,st)=>{if(f==="helvetica"||f==="times"){hv=true;bold=/bold/.test(st||"");pick();return doc}hv=false;return sf(f,st)};
   doc.setFontSize=n=>{sz(n);if(hv)pick();return doc};return doc}
-function planDoc(o){const d=new window.jspdf.jsPDF(o);pdfFonts(d);return schoolFonts(d)}
+function planDoc(o){const d=TREE_KIT.pdf(o);return schoolFonts(d)}
 // each file is added once, so a PDF carries Andika Regular and Andika Bold one time each
-function pdfFonts(doc){if(!PF.b64||doc.__pf)return;const done=new Set();for(const [k,f] of Object.entries(PF.files)){if(done.has(f))continue;done.add(f);doc.addFileToVFS(f,PF.b64[k]);doc.addFont(f,PF.pdf[f],"normal")}doc.__pf=true}
+function pdfFonts(doc){TREE_KIT.pdfFonts(doc)}
 // if the typeface could not be fetched, the page still prints in the built-in face
 const PF_FALL={bs:["helvetica","bold"],bm:["helvetica","normal"],fr:["helvetica","normal"],fs:["helvetica","bold"]};
 let CFONT={};
@@ -10451,7 +10440,7 @@ function drawCentered(doc,p,pageAcc){
 // how a sheet prints, drawn on the page before anything is printed
 function cPreview(md){
   if(!window.jspdf)return `<div class="empty">The preview is loading.</div>`;
-  try{const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=accOf(md.acc)||ACC.story;const F=cFlow(doc,md,A);
+  try{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});const A=accOf(md.acc)||ACC.story;const F=cFlow(doc,md,A);
     const rgb=c=>`rgb(${c.join(",")})`,fam=k=>k[0]==="T"?"'Times New Roman', Times, serif":k[0]==="H"?"Helvetica, Arial, sans-serif":PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>(k[0]==="T"||k[0]==="H")?(k[1]==="s"?"bold":"normal"):PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
     const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover);
       let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre${cover.length?";position:relative":""}" role="img" aria-label="How the sheet prints">${cover.length?"":`<rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`}`;
@@ -10473,7 +10462,7 @@ function cPreview(md){
 // a sheet as a JPG picture, drawn from the same layout as the PDF, at print quality
 async function sheetJpg(md,longSide){
   await loadPrintFonts();await loadPhotos([md]);
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);const A=accOf(md.acc)||ACC.story;const L=cFlow(doc,cReady(md),A).pages[0];
+  const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});const A=accOf(md.acc)||ACC.story;const L=cFlow(doc,cReady(md),A).pages[0];
   const k=(longSide||3300)/Math.max(L.PW,L.PH),cv=document.createElement("canvas");cv.width=Math.round(L.PW*k);cv.height=Math.round(L.PH*k);const g=cv.getContext("2d");
   g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);
   const rgb=c=>`rgb(${c.join(",")})`;
@@ -10494,7 +10483,7 @@ async function sheetJpg(md,longSide){
 // the same sheet as a Word page: the words centred, the photos in a borderless table so two or three keep their arrangement
 async function centeredDocx(ch,p,D,A){
   const {Paragraph,TextRun,ImageRun,AlignmentType,BorderStyle,ShadingType,Table,TableRow,TableCell,WidthType,VerticalAlign,TableLayoutType,PageBreak}=D;
-  const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(doc);
+  const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});
   const F=cFlow(doc,cReady(p),A);if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
   const FM=fontMapOf(p);
   const word=k=>{k=FM[k]||k;return k[0]==="T"?"Times New Roman":k[0]==="H"?"Arial":PF.buf?PF.word[k]:"Arial"},heavy=k=>{k=FM[k]||k;return (k[0]==="T"||k[0]==="H")?k[1]==="s":PF_BOLD(k)};
@@ -10544,7 +10533,7 @@ function drawAny(doc,p,pageAcc){(p.centered?drawCentered:p.display?drawDisplay:d
    the file, so Word shows them without anything being installed. Everything is plain text in a table with no borders,
    so sizes, wording and order can be changed by hand. */
 // Word embeds one face per name, so the file carries Andika Regular and bold text is set bold
-function wordFonts(){return PF.buf?[{name:"Andika",data:PF.buf.fr}]:[]}
+function wordFonts(){return TREE_KIT.wordFonts()}
 // the web as a picture, drawn the same way the PDF draws it
 async function webPng(web,A){
   const br=(web.branches||[]).filter(b=>b.name||b.materials);const W=504,H=webHeight(br.length)[0],K=3;
@@ -10576,7 +10565,7 @@ async function displayDocx(ch,p,D,A){
   const ac=hex(A.c),tn=hex(A.t),dp=hex(deep(A.c)),INKH="1C2A22",MUT="606E65",HAIRH="D0D9D3";
   const F=k=>PF.buf?PF.word[k]:"Arial";const heavy=k=>PF_BOLD(k);
   // a short page is set a little larger, the way the PDF does it, with room kept for Word's own spacing
-  let s=1;try{const t=new window.jspdf.jsPDF({unit:"pt",format:"letter"});pdfFonts(t);const f=displayFit(t,p,A).s;s=f>1?1+(f-1)*.55:p.onePage?f*.8:1}catch(e){}
+  let s=1;try{const t=TREE_KIT.pdf({unit:"pt",format:"letter"});const f=displayFit(t,p,A).s;s=f>1?1+(f-1)*.55:p.onePage?f*.8:1}catch(e){}
   const raw=(text,k,pt,color)=>new TextRun({text,font:F(k),bold:heavy(k),color:color||INKH,size:Math.round(pt*2)});
   const run=(text,k,pt,color)=>raw(clean(text),k,pt,color);
   const para=(kids,o)=>new Paragraph(Object.assign({children:Array.isArray(kids)?kids:[kids]},o||{}));
@@ -11191,7 +11180,7 @@ async function copyText(ta){if(!ta||!ta.value.trim()){toast("Nothing to copy yet
 /* ---------- Upload a plan or photo, single or batch ---------- */
 let imgLimit=0, uploads=[], importType="auto", importTarget="", importInto="new", importMode="one", importPaste="", nextGrp=1, jobs=[], queueRunning=false, importSort=LS.get("fps.isort",true);
 function loadScript(src,globalName){return new Promise((res,rej)=>{if(window[globalName])return res(window[globalName]);const sc=document.createElement("script");sc.src=src;sc.onload=()=>window[globalName]?res(window[globalName]):rej(new Error("load"));sc.onerror=()=>rej(new Error("load"));document.head.appendChild(sc)})}
-async function pdfLib(){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js","pdfjsWorker");return loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","pdfjsLib")}
+function pdfLib(){return TREE_KIT.pdfjs()}
 function canvasBlob(c){return new Promise(r=>c.toBlob(b=>r(b),"image/jpeg",.9))}
 async function shrinkImage(file){
   try{const bmp=await createImageBitmap(file,{imageOrientation:"from-image"});const sc=Math.min(1,2200/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);return await canvasBlob(c)}
@@ -11205,12 +11194,12 @@ async function addFiles(files){
     try{
       if(f.type.startsWith("image/")||["jpg","jpeg","png","webp","gif","heic"].includes(ext)){const b=await shrinkImage(f);uploads.push({kind:"image",name,file:name,grp,blob:b,url:URL.createObjectURL(b)})}
       else if(ext==="pdf"||f.type==="application/pdf"){
-        const lib=await pdfLib();const pdf=await lib.getDocument({data:await f.arrayBuffer()}).promise;
-        const pages=Math.min(pdf.numPages,200);if(pdf.numPages>200)toast(`${name} has ${pdf.numPages} pages. The first 200 are added.`);
-        for(let i=1;i<=pages;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();const pageText=tc.items.map(x=>x.str).join(" ").trim();
-          const vp0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.5,1800/Math.max(vp0.width,vp0.height))});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;const b=await canvasBlob(c);uploads.push({kind:"image",name:`${name}, page ${i}`,file:name,grp,blob:b,url:URL.createObjectURL(b),pageText});if(view==="import"&&i%5===0)renderImport()}
+        // the one PDF reader, in the print kit
+        const R=await TREE_KIT.readPdf(f,{maxPages:200,joined:true,layout:false,keep:true});
+        const pages=Math.min(R.numPages,200);if(R.numPages>200)toast(`${name} has ${R.numPages} pages. The first 200 are added.`);
+        for(let i=1;i<=pages;i++){const pageText=R.pageTexts[i-1].trim();const b=await TREE_KIT.pageImage(R.doc,i,{maxSide:1800});uploads.push({kind:"image",name:`${name}, page ${i}`,file:name,grp,blob:b,url:URL.createObjectURL(b),pageText});if(view==="import"&&i%5===0)renderImport()}
       }
-      else if(ext==="docx"){const mm=await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js","mammoth");const r=await mm.extractRawText({arrayBuffer:await f.arrayBuffer()});uploads.push({kind:"text",name,file:name,grp,text:r.value.trim()})}
+      else if(ext==="docx"){const text=await TREE_KIT.readDocx(f);uploads.push({kind:"text",name,file:name,grp,text:text.trim()})}
       else if(["txt","md"].includes(ext)||f.type.startsWith("text/")){uploads.push({kind:"text",name,file:name,grp,text:(await f.text()).trim()})}
       else toast(`${name} is not a photo, PDF, Word, or text file.`);
     }catch(e){toast(`Could not read ${name}. Try a photo of it instead.`)}
