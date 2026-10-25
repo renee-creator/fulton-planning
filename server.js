@@ -512,6 +512,7 @@ for (const name of ['schoolName', 'helpCurrent', 'regLinks', 'trainingVideos', '
   ONCE.push([name, () => staff.once.edits(name, recsEdit)]);
 // Session 11's change to the late pick-up email link in Educator Duties & Procedures, from its list in the private records
 ONCE.push(['dutiesEmail', () => staff.once.edits('dutiesEmail', recsEdit)]);
+ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
