@@ -72,6 +72,12 @@ const EVERYDAY = new Set(['May', 'June', 'April', 'August', 'Will', 'Grace', 'Ho
 const shareFamily = (a, b) => { const em = c => new Set(((c && c.parents) || []).map(x => String((x && x.email) || '').trim().toLowerCase()).filter(Boolean)); const x = em(a); return [...em(b)].some(e => x.has(e)); };
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function nicknamesOf(c) { const a = c && c.familyQuestionnaire && Array.isArray(c.familyQuestionnaire.answers) ? String(c.familyQuestionnaire.answers[0] || '') : ''; return (a.match(/\b[A-Z][a-z]{1,20}\b/g) || []).filter(w => !NOT_NAMES.has(w)); }
+// a family never reads DRDP rating language. A sentence on shared conference notes that names a DRDP level, a measure
+// code or the DRDP is left out of the family's copy, and the educators' own words around it stay.
+const RATING = /\bDRDP\b|\b(Responding|Exploring|Building|Integrating) (Earlier|Middle|Later)\b|\b(ATL|SED|LLD|ELD|COG|PD|HLTH|HSS|VPA|SCI|MATH|CS|PH|IN|LOM|SC) ?\d/;
+function withoutRatings(text) {
+  return String(text || '').split('\n').map(line => line.split(/(?<=[.!?])\s+/).filter(x => !RATING.test(x)).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 function withoutOthers(text, child, all) {
   let t = String(text || ''); if (!t) return t;
   const own = new Set([child.first, child.last, ...nicknamesOf(child)].filter(Boolean).map(x => String(x).toLowerCase()));
@@ -222,7 +228,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const conference = cf && cf.confDate ? { date: cf.confDate, time: cf.confTime || '', with: cf.teacher || '', format: cf.format || '', season: p.term + ' ' + p.year, complete: cf.status === 'complete' } : null;
     const reflections = cf && cf.status !== 'complete' ? Object.fromEntries(REFLECTIONS.map(([key]) => [key, (cf.familyReflections || {})[key] || ''])) : null;
     const shared = []; for (const [id, r] of store.recs.conferences) { const d = r.doc; if (r.deleted || !d || d.childId !== k.id || !d.sharedWithFamily) continue;
-      shared.push({ id, label: d.term === 'Historical' ? 'An earlier conference' : `${d.term} ${d.schoolYear}`, date: d.confDate || '', sections: CONF_FIELDS.map(([key, l]) => [l, String((d.fields || {})[key] || '').trim()]).filter(([, v]) => v) }); }
+      shared.push({ id, label: d.term === 'Historical' ? 'An earlier conference' : `${d.term} ${d.schoolYear}`, date: d.confDate || '', sections: CONF_FIELDS.map(([key, l]) => [l, withoutRatings((d.fields || {})[key])]).filter(([, v]) => v) }); }
     shared.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const files = (k.sharedFiles || []).filter(x => x && x.id).map(x => ({ id: x.id, title: x.title || 'A document', at: x.at || '' }));
     // a transition summary for kindergarten or TK, only once the director has shared it, as it read when she shared it
@@ -424,5 +430,5 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { menu, prev, bins, farms, towns, months, grantEnd: '2027-06-30' };
   }
 
-  return { withoutOthers, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL, DEFAULT_WELCOME };
+  return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL, DEFAULT_WELCOME };
 };
