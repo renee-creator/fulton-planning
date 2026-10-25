@@ -465,6 +465,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .csheets{display:flex;flex-wrap:wrap;gap:12px}
 .csheet{position:relative;flex:1 1 260px;max-width:360px;border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);background:#fff}
 .csheet svg{display:block;width:100%;height:auto}
+.libsheet{position:fixed;inset:0;z-index:120;background:rgba(18,24,20,.45);display:flex;justify-content:flex-end}.libsheet .lsp{background:var(--paper);width:min(560px,100vw);height:100%;overflow:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:-4px 0 18px rgba(27,41,32,.18);overflow-wrap:anywhere}.libsheet .lsp h2{font-size:21px;margin:6px 0}.libchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.libchip{border:1px solid var(--line);border-radius:999px;background:var(--paper);padding:5px 12px;font-size:14px;cursor:pointer;max-width:100%;text-align:left}.libchip .cnt{margin-right:4px}
 .prow{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
 .prow .seg{flex-wrap:wrap}
 .kbar{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center}
@@ -4878,7 +4879,7 @@ function renderToday(){
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}${dirPlanAsk?dirPlanHtml():""}
-  ${keepTodayHtml()}${tidyTodayHtml()}
+  ${keepTodayHtml()}${todayAttachedHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
@@ -5553,10 +5554,11 @@ function attachSuggest(p){const words=new Set(attWords([...Object.values(p.field
     if(x.season&&season&&x.season===season&&garden)sc+=2;return Object.assign({},x,{sc})}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,4)}
 function attachHtml(p){if(!p||p.id==="example"||!PLAN_TYPES.includes(p.type))return "";const att=p.attached||[];const open=attachOpen===p.id;
   if(!att.length&&!open)return `<div class="actions" style="margin:10px 0 0"><button class="btn small ghost" data-attopen="${esc(p.id)}">Attach from our libraries</button></div>`;
+  if(att.length&&!open)return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div><button class="linkbtn" data-attopen="${esc(p.id)}">Attach or take off</button></div><div class="libchips">${libChips(att)}</div></section>`;
   const pool=open?attachPool():[];const q=attachQ.trim().toLowerCase();const found=open&&q?pool.filter(x=>x.text.toLowerCase().includes(q)&&!att.some(a=>a.kind===x.kind&&a.id===x.id)).slice(0,12):[];
   const sug=open?attachSuggest(p):[];
   return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div>${open?`<button class="linkbtn" data-attopen="">Done</button>`:`<button class="linkbtn" data-attopen="${esc(p.id)}">Attach</button>`}</div>
-    ${att.map((a,i)=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> <b>${esc(a.title)}</b></div><button class="linkbtn" data-attrm="${i}" aria-label="Take off ${esc(a.title)}">Take off</button></div>`).join("")||`<div class="cnt">Nothing attached.</div>`}
+    ${att.map((a,i)=>`<div class="prow"><button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> <b>${esc(a.title)}</b></button><button class="linkbtn" data-attrm="${i}" aria-label="Take off ${esc(a.title)}">Take off</button></div>`).join("")||`<div class="cnt">Nothing attached.</div>`}
     ${open?`${sug.length?`<div class="lbl" style="margin-top:8px">Might fit this plan</div>${sug.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}
       <input type="search" id="att-q" placeholder="Search recipes, songs, read-alouds, provocations and guides" value="${esc(attachQ)}" style="margin-top:8px" data-noproof="1">
       ${found.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}</section>`}
@@ -5575,6 +5577,64 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
     else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
   return {docs,recipes}}
+/* ---------- One tap to what is attached ----------
+   Whatever is attached to a plan or an observation opens in one tap, in a sheet over the page, and its demonstration
+   sheets, words or reading guide print alone in one more. Today shows the items attached to today's plans, so the
+   educator reaches the song or the recipe sheet before a small group without opening the plan. */
+const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</button>`).join("");
+let libSheetOn=null;
+function libItemOf(kind,id){if(!libData)return null;
+  if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;
+  if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
+  if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}
+  if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;return null}
+function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div class="empty">${!libData||guideList===null?`<span class="spin"></span> Opening it`:"It is no longer in our libraries."}</div>`;
+  const parts=(list,skip)=>(list||[]).filter(p=>!skip.test(p.key)&&String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("");
+  if(kind==="recipe"){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("recdemo",esc(x.id),"Demonstration sheets",true)}${printBtns("recipe",esc(x.id),"Recipe")}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}
+      ${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
+      ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
+      ${parts(x.parts,/^(ingredients|tools|steps)$/i)}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>`}
+  if(kind==="song"){const w=songWords(x),c=songCopy(x);
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("songwords",esc(x.id),c?"Title card":"Words",true)}${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}</div><h2>${c?"© ":""}${esc(x.title)}</h2><div class="cnt">${esc((x.meta||{}).songwriter||"")}</div>
+      ${w?`<div style="white-space:pre-line;margin:8px 0;font-size:17px">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.</div>`:""}${parts(songParts(x),/^$/)}`}
+  if(kind==="readaloud"){const t=readText(x);
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The book, for educators"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
+      ${t?`<details style="margin-top:8px"><summary class="linkbtn">The words of the book, for educators only</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}`}
+  if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
+  if(kind==="prompt")return `<div class="lbl">${esc(x.set)}</div><p style="font-size:18px">${esc(x.title)}</p><div class="hint">A wondering to carry into the day, ready to set aside whenever the children lead somewhere else.</div>`;
+  if(kind==="garden")return typeof gdnEntrySheet==="function"?gdnEntrySheet(x):"";
+  return ""}
+function libSheetPaint(){let el=document.getElementById("libsheet");if(!libSheetOn){if(el)el.remove();return}
+  if(!el){el=document.createElement("div");el.id="libsheet";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
+  const [kind,id]=libSheetOn;el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">${esc(ATT_KIND[kind]||(kind==="garden"?"Garden":""))}</span><button class="btn small ghost" data-libclose="1">Close</button></div>${libSheetBody(kind,id)}</div>`}
+window.TREE_LIBOPEN=async(kind,id)=>{libSheetOn=[kind,id];libSheetPaint();if(!libData&&kind!=="garden"){await loadLibrary();libSheetPaint()}if(kind==="guide"&&guideList===null){await loadGuides();libSheetPaint()}};
+document.addEventListener("click",e=>{const t=e.target.closest("[data-libopen],[data-libclose]");
+  if(!t){const sh=e.target.closest&&e.target.closest("#libsheet");if(sh&&e.target===sh){libSheetOn=null;libSheetPaint()}return}
+  e.preventDefault();e.stopPropagation();if(t.dataset.libclose){libSheetOn=null;libSheetPaint();return}
+  const v=t.dataset.libopen,i=v.indexOf("|");window.TREE_LIBOPEN(v.slice(0,i),v.slice(i+1))},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&libSheetOn){libSheetOn=null;libSheetPaint()}});
+// an observation attaches from our libraries the same way a plan does
+let nAttachOpen="",nAttachQ="";
+function noticeAttachHtml(n){const att=n.attached||[];const open=nAttachOpen===n.id;if(!att.length&&!open)return "";
+  const pool=open?attachPool():[];const q=nAttachQ.trim().toLowerCase();const had=new Set(att.map(a=>a.kind+"|"+a.id));
+  const found=open?(q?pool.filter(x=>x.text.toLowerCase().includes(q)&&!had.has(x.kind+"|"+x.id)).slice(0,10):attachSuggest({fields:{a:[n.noticed,n.wonder].join(" ")},where:"",groups:[],attached:att})):[];
+  return `<div class="nattach"><div class="cnt">Attached</div><div class="libchips">${libChips(att)}</div>
+    ${open?`<div class="hint" style="margin-top:6px">${q?"Found":"Might fit"}</div>${found.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-nattadd="${esc(n.id+"|"+x.kind+"|"+x.id)}">Attach</button></div>`).join("")}
+      ${att.map((a,i)=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</div><button class="linkbtn" data-nattrm="${esc(n.id+"|"+i)}">Take off</button></div>`).join("")}
+      <input type="search" id="natt-q" data-nid="${esc(n.id)}" placeholder="Search recipes, songs, read-alouds, provocations and guides" value="${esc(nAttachQ)}" style="margin-top:8px" data-noproof="1"><div class="actions"><button class="linkbtn" data-nattopen="">Done</button></div>`:""}</div>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-nattopen],[data-nattadd],[data-nattrm]");if(!t)return;e.preventDefault();e.stopPropagation();const d=t.dataset;
+  if(d.nattopen!=null){nAttachOpen=d.nattopen;nAttachQ="";if(nAttachOpen&&!libData)loadLibrary();renderMain();return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.nattadd){const [nid,kind,...rest]=d.nattadd.split("|");const id=rest.join("|");const n=notices.get(nid);const x=attachPool().find(y=>y.kind===kind&&y.id===id);if(!n||!x)return;
+    patchNotice(nid,{attached:[...(n.attached||[]),{kind,id,title:x.title}]});renderMain();return}
+  if(d.nattrm){const [nid,i]=d.nattrm.split("|");const n=notices.get(nid);if(!n)return;patchNotice(nid,{attached:(n.attached||[]).filter((_,k)=>k!==+i)});renderMain()}},true);
+document.addEventListener("input",e=>{if(e.target.id!=="natt-q")return;nAttachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#natt-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
+// today's plans and what is attached to them, for the educator's own Class and small groups, or every Class for the director
+function todayAttachedHtml(){if(isKitchenUser())return "";const wk=planWeekNow(),dow=new Date().getDay(),room=myRoom(),mg=myGroups().map(g=>g.name);
+  const ps=[...plans.values()].filter(p=>p&&p.weekOf===wk&&p.id!=="example"&&(p.attached||[]).length&&(!room||p.classroom===room||(p.groups||[]).some(g=>mg.includes(g)))&&(!(p.space&&(p.space.days||[]).length)||p.space.days.includes(dow)));
+  if(!ps.length)return "";if(!libData)loadLibrary();
+  return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">For today's plans</h3></div>${ps.slice(0,6).map(p=>`<div class="strow"><button class="linkbtn" data-open="${esc(p.id)}">${esc(planTitle(p))}</button><div class="libchips">${libChips(p.attached)}</div></div>`).join("")}</section>`}
 const walkOpen=()=>!!walkInfo&&(walkInfo.ready||isDirector());
 // a walk is on the calendar today, or in a plan of this week for today
 function walkToday(){const dow=new Date().getDay();const re=/\b(walks?|walking)\b/i;
@@ -6883,10 +6943,10 @@ function noticeCard(n){
         ...ws.map(x=>`the wall for <button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`)];
       return bits.length?`<div class="cnt">Used in ${bits.join(", ")}${ps.length>4?`, and ${ps.length-4} more plans`:""}</div>`:""})()}
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
-    ${momentDrdpHtml(n)}
+    ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
-      ${moreMenu(`${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
+      ${moreMenu(`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -10643,6 +10703,7 @@ async function printsClick(t){
   if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
+  if(kind==="songwords"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x,true)],x.title);return true}
   if(kind==="song"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x)],x.title);return true}
   if(kind==="recipe"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
   if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
