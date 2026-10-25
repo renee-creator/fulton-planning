@@ -768,5 +768,25 @@ module.exports = function staffModule(o) {
   const POL = require('./policies.js')({ get, put, putText, S, log, person, pPath, staffNames, isDirector, isKitchen, nameKey, today, allowed, hasOwn, profileOf, accountFor, store, readImage, roleNames: o.roleNames || (() => []), piecesChanged: () => { pieceCache = null; } });
   // the Family page and the public page read the Family Handbook through these
   const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
-  return { walksForFamily, familyPiecesForFamily, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  /* ---------- one-time steps, run by server.js once each through the save queue ---------- */
+  // the mandated reporter link in the Licensing at Fulton piece on official trainings points to the California page
+  function onceTrainingLinks() {
+    if (!S.ready) return false; const p = 'staff/pd/licensing/22-official-trainings.md'; const r = S.files.get(p); if (!r || typeof r.text !== 'string') return false;
+    const next = r.text.replace(/\(https:\/\/mandatedreportertraining\.com\/?\)/g, '(https://mandatedreportertraining.com/california/)');
+    if (next !== r.text) { putText(p, next); pieceCache = null; log('Mandated reporter link now points to the California page'); }
+  }
+  // each current employee with a sign-in, the kitchen included and the director left out, has the 2026 Workplace Know
+  // Your Rights notice on file outside TREE. No date is written, since none is known.
+  function onceKyr2026() {
+    if (!S.ready) return false; let n = 0;
+    for (const a of accounts.list) {
+      if (!a || !a.name || a.director || isDirector(a.name) || isFormerEducator(a.name) || a.renderOnly) continue;
+      // a shared sign-in is no employee, and a new hire who has not started yet receives the notice at hire
+      if (!staffNames().some(n => nameKey(n) === nameKey(a.name))) continue; const sd = profileOf(a.name).startDate || ''; if (sd && sd > today()) continue;
+      const doc = person(a.name); const nt = Object.assign({}, doc.notices); const kyr = Object.assign({}, nt.kyr);
+      if (kyr['2026']) continue; kyr['2026'] = { outside: true }; nt.kyr = kyr; doc.notices = nt; put(pPath(a.name), doc); n++;
+    }
+    log('Know Your Rights 2026 marked on file outside TREE for', n, 'people');
+  }
+  return { walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026 }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

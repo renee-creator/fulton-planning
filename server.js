@@ -475,6 +475,10 @@ ONCE.push(['planDefaults', () => {
   setSetting('notify', Object.assign({}, doc, { people }));
   pd.deleted = true; noteChange('settings', 'plandefaults'); scheduleSave('settings', 'plandefaults');
 }]);
+// Session 9's two changes to records already there. The mandated reporter link points to the California page, and each
+// current employee has the 2026 Know Your Rights notice on file outside TREE. Each waits until the educator records load.
+ONCE.push(['trainingLinks', () => staff.once.trainingLinks()]);
+ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
