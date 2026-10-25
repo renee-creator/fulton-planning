@@ -131,8 +131,9 @@ test('TREE in the browser', async t => {
     await s.close();
   });
 
-  await t.test('Write my plan shows on Today for a Class educator, and not for the director or the office', async () => {
-    for (const [n, pass, want] of [['Ann', '1357', true], ['Dee', 'director-pass-1', false], ['Gia', '1357', false]]) {
+  // Session 11 item 17 gives the director her own Write my plan on Today
+  await t.test('Write my plan shows on Today for a Class educator and the director, and not for the office', async () => {
+    for (const [n, pass, want] of [['Ann', '1357', true], ['Dee', 'director-pass-1', true], ['Gia', '1357', false]]) {
       const s = await signedIn(fx, b, n, pass);
       await s.p.evaluate(() => goView('today')); await s.p.waitForFunction(() => /Make documentation/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
       assert.strictEqual(/Write my plan/.test(await s.p.evaluate(() => document.querySelector('#main').innerText)), want, n);
