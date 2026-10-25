@@ -902,10 +902,16 @@ module.exports = function staffModule(o) {
     if (!S.ready) return false; const m = get(listPath); if (!m || !Array.isArray(m.changes)) return false;
     const by = new Map();
     for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
-    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add) continue; if (c.all) { if (t === c.from) { t = c.to; c.hit = true; } } else if (t.includes(c.from)) { t = t.split(c.from).join(c.to); c.hit = true; } } return t; };
+    const hit = new Set(); let failed = 0;
+    // a passage is swapped only where it is not already the new wording, so a step that runs again changes nothing
+    const swapAll = (t, from, to) => { const k = to.indexOf(from); if (k < 0) return t.split(from).join(to);
+      const pre = to.slice(0, k), post = to.slice(k + from.length); let out = '', i = 0, j;
+      while ((j = t.indexOf(from, i)) >= 0) { const done = t.slice(Math.max(0, j - pre.length), j) === pre && t.slice(j + from.length, j + from.length + post.length) === post; out += t.slice(i, j) + (done ? from : to); i = j + from.length; }
+      return out + t.slice(i); };
+    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add) continue; if (c.all) { if (t === c.from) { t = c.to; hit.add(c); } } else if (t.includes(c.from)) { const n = swapAll(t, c.from, c.to); if (n !== t) { t = n; hit.add(c); } } } return t; };
     const deep = (v, cs) => typeof v === 'string' ? swap(v, cs) : Array.isArray(v) ? v.map(x => deep(x, cs)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'history' ? x : deep(x, cs)])) : v;
-    const sets = (doc, cs) => { const d = JSON.parse(JSON.stringify(doc)); for (const c of cs) { if (c.set && setAt(d, c.set, c.value === undefined ? null : c.value, c.expect)) c.hit = true;
-      if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); c.hit = true; } } } return d; };
+    const sets = (doc, cs) => { const d = JSON.parse(JSON.stringify(doc)); for (const c of cs) { if (c.set && setAt(d, c.set, c.value === undefined ? null : c.value, c.expect)) hit.add(c);
+      if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); hit.add(c); } } } return d; };
     const both = (doc, cs) => sets(deep(doc, cs), cs);
     const tpFor = p => POL.entries().find(e => { const s = POL.tpSection(e); return s.ref === p || `staff/policies/teacher/${e.id}.json` === p; });
     let n = 0;
@@ -929,11 +935,13 @@ module.exports = function staffModule(o) {
           continue;
         }
         if (recs(p, doc => both(doc, cs))) n++;
-      } catch (er) { log('One-time step', name, 'could not change', p, er.message); }
+      } catch (er) { failed++; log('One-time step', name, 'could not change', p, er.message); }
     }
     pieceCache = null; G.invalidate();
-    const missed = m.changes.filter(c => c && !c.hit).length;
+    const missed = m.changes.filter(c => c && !hit.has(c)).length;
     log('One-time step', name, 'changed', n, 'records,', m.changes.length - missed, 'of', m.changes.length, 'changes applied');
+    // a change that could not be made is tried again at the next start, and the changes already made stay as they are
+    if (failed) return false;
   }
   return { walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

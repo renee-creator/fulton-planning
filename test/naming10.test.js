@@ -88,3 +88,17 @@ test('a one-time step on a page with the Edit button keeps the wording before it
   const hist = d['staff/pd/history/newed--welcome.json'];
   assert.strictEqual(hist.history.length, 1); assert.match(hist.history[0].text, /A Letter to Oakvale Educators/); assert.match(hist.note, /A Letter to Our Educators/);
 });
+
+test('a one-time step that runs again changes nothing, and one that could not finish runs again', async () => {
+  const h = make([{ name: 'Dir', director: true }]);
+  h.files.set('staff/help.json', { doc: { list: [{ id: 'h1', a: ['Open the Community School page.', 'Oakvale Community School is here.'] }] }, sha: 'x' });
+  h.files.set('staff/once/help-new.json', { doc: { changes: [{ path: 'staff/help.json', from: 'Community School', to: 'Oakvale Community School' }, { path: 'plans/p1.json', set: 'fields.remarks', value: 'x' }] }, sha: 'x' });
+  await h.staff.load();
+  let boom = true; const recs = () => { if (boom) throw new Error('not saved'); return false; };
+  assert.strictEqual(h.staff.once.edits('helpNew', recs), false, 'it waits to run again');
+  const a = () => h.staff.dump()['staff/help.json'].list[0].a;
+  assert.deepStrictEqual(a(), ['Open the Oakvale Community School page.', 'Oakvale Community School is here.']);
+  boom = false; assert.notStrictEqual(h.staff.once.edits('helpNew', recs), false);
+  assert.deepStrictEqual(a(), ['Open the Oakvale Community School page.', 'Oakvale Community School is here.'], 'nothing doubled');
+  assert.ok(!('hit' in h.staff.dump()['staff/once/help-new.json'].changes[0]), 'the list itself is never marked');
+});
