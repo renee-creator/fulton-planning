@@ -301,7 +301,8 @@ module.exports = function presentingModule(c) {
       save(trace, 'TREE');
     }
     if (twos) {
-      twos.audience = 'Sonoma County Director Seminar, hosted at Fulton, on starting a twos program';
+      // the starting entry's placeholder audience gives way to the seminar, and an audience the director wrote stays
+      if (!twos.audience || twos.audience === 'The director\'s group') twos.audience = 'Sonoma County Director Seminar, hosted at Fulton, on starting a twos program';
       if (!twos.date) Object.assign(twos, { date: '2027-05-18', start: '17:30', end: '19:00', dateNote: 'To be confirmed with Squirl Booth' });
       if (!twos.minutes) twos.minutes = 90;
       if (!twos.place) twos.place = 'Fulton Community School and Farm, 1225 Fulton Road, Santa Rosa';
