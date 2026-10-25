@@ -90,7 +90,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 #combpanel .cbtwo{display:grid;grid-template-columns:1fr 1fr;gap:10px}#combpanel ul{margin:6px 0 10px;padding-left:20px}#combpanel li{margin:3px 0}
 .combshade{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:71}
 @media (max-width:760px){#combpanel{left:0;top:auto;bottom:0;transform:none;width:100vw;max-height:88vh;border-radius:12px 12px 0 0}#combpanel .cbtwo{grid-template-columns:1fr}}
-#proofpanel{position:fixed;z-index:70;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
+#proofpanel{position:fixed;z-index:90;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
 .newbtns{display:grid;gap:8px}
 /* on a phone, Today shows the first three lines of each recent observation, and All observations has the rest */
@@ -3310,35 +3310,15 @@ const stClose=(st,k)=>Object.assign({},ST_CLOSE[k],st[k]||{});
 /* Fulton's frames, starting places for a story in Fulton's own words. A frame suggests a title and a focus. The pages still come
    only from the observations the team chooses, in the educators' words. Change a title or a line here to change the list. */
 let stFrameSaid="";
-const ST_FRAMES=[
-  {k:"help",title:"Friends can help",line:"A child asks, a friend shows, an educator is near."},
-  {k:"meal",title:"Sharing a meal together",line:"Food made by hand, treated with care, scraps for the chickens and goats."},
-  {k:"hard",title:"When something is hard",line:"Saying what happened, trying again, making things right."},
-  {k:"heard",title:"Being heard",line:"Everyone's ideas matter."},
-  {k:"morning",title:"Coming to our school in the morning",line:"Arriving, greeting, the animals and the yards."},
-  {k:"listen",title:"Listening to each other",line:"Educators and friends listening to one another."},
-  {k:"yards",title:"Our yards and garden",line:"The Tire swing yard, the Log yard, the climbing trees."},
-  {k:"room",title:"Making room for friends",line:"Inviting, joining, belonging."},
-  {k:"walk",title:"Walking together",line:"To the creek, the garden or the farm."},
-  {k:"meeting",title:"Coming to meeting",line:"Meeting time, listening, and making space for each other's words and bodies."},
-  {k:"school",title:"Moving through our school",line:"Caring for the spaces we share."}];
-const stFrame=st=>ST_FRAMES.find(f=>f.k===st.frame)||null;
-/* Words we can practice for each frame, things we can do, in our community's voice. The director can change them in
-   Settings, Story frames, and every story can change its own. */
-const ST_FRAME_WORDS={
-  help:[["I can ask a friend.","When something is new, I can ask for help."],["I can show a friend how.","I can share what I know."],["I can stay close by.","A friend can try with me beside them."]],
-  meal:[["I can wash my hands.","Clean hands help us share food."],["I can try a taste.","A small bite is one way to try."],["I can pass the bowl.","We share so everyone has some."],["I can help clean up.","Our scraps go to the chickens and goats."]],
-  hard:[["I can say what happened.","My words help others understand."],["I can take a breath and try again.","Hard things can take more than one try."],["I can help make it right.","I can check on a friend and help fix what broke."]],
-  heard:[["I can share my idea.","My ideas matter."],["I can listen to a friend's idea.","Their ideas matter too."],["I can wait for my turn to talk.","Everyone gets a turn."]],
-  morning:[["I can say good morning.","A greeting tells my friends I am here."],["I can put my things away.","My cubby keeps my things safe."],["I can find something to do.","The yards and the animals are waiting."]],
-  listen:[["I can look at the friend who is talking.","My body shows I am listening."],["I can wait until they finish.","Then it is my turn."],["I can ask a question.","Questions help me understand."]],
-  yards:[["I can care for the plants.","Gentle hands help the garden grow."],["I can take turns on the tire swing.","Everyone gets a turn."],["I can climb with care.","I keep my body and my friends safe."]],
-  room:[["I can invite a friend.","\"Do you want to play?\""],["I can make room in our game.","There is space for one more."],["I can ask to join.","\"Can I play too?\""]],
-  walk:[["I can stay with my group.","We walk together."],["I can hold a friend's hand.","A partner helps us stay together."],["I can stop and look.","We notice what is around us."]],
-  meeting:[["I can make space for a friend.","There is room for every body at meeting."],["I can listen with my body.","My eyes and ears are with the friend who is talking."],["I can wait for my turn to talk.","Everyone's words matter."]],
-  school:[["I can walk inside.","Walking feet keep everyone safe."],["I can put things back.","Then a friend can find them."],["I can care for our spaces.","Our school belongs to all of us."]]};
+// the story frames Start from a frame offers, kept in the private records as staff/wording/story-frames.md, which the
+// director edits in place. Each has its name, its short line and the words we can practice, things we can do.
+function stFrames(){if(!window.TREE_WORDS)return[];return TREE_WORDS.list(wordsDoc("story-frames")).map(([k,text])=>{const P=TREE_WORDS.paras(text);
+  return {k,title:P[0]||k,line:P[1]||"",words:P.slice(2).join("\n").split("\n").map(l=>l.match(/^-\s*\*\*(.+?)\*\*\s*(.*)$/)).filter(Boolean).map(m=>({bold:m[1].trim(),plain:m[2].trim()}))}})}
+const stFrame=st=>stFrames().find(f=>f.k===st.frame)||null;
+/* Words we can practice for each frame, things we can do, in our community's voice, from the frame's own page in the
+   records. The director can change them for each frame in Settings, Story frames, and every story can change its own. */
 let storySet=null;
-function frameWords(k){const own=storySet&&storySet.words&&storySet.words[k];const list=Array.isArray(own)&&own.length?own:(ST_FRAME_WORDS[k]||[]).map(([bold,plain])=>({bold,plain}));return JSON.parse(JSON.stringify(list))}
+function frameWords(k){const own=storySet&&storySet.words&&storySet.words[k];const list=Array.isArray(own)&&own.length?own:((stFrames().find(f=>f.k===k)||{}).words||[]);return JSON.parse(JSON.stringify(list))}
 // the children's own words in the story's observations, as the educators wrote them, each with the child who said them when the note names one
 function storyQuotes(st){const out=[],seen=new Set();
   for(const n of storySources(st)){const kids=(n.children||[]).map(c=>children.get(c)).filter(Boolean);
@@ -3407,7 +3387,7 @@ function newStory(o){
   // the group the children in the photos belong to, so the footer names their group
   const gc={};for(const x of grp)for(const id of x.children||[]){const c=children.get(id);if(c&&c.group)gc[c.group]=(gc[c.group]||0)+1}
   const gName=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0];const g=gName?{name:gName[0]}:n&&GROUPS.find(x=>x.room===room&&(x.educator||"").toLowerCase()===String(n.by||"").toLowerCase());
-  const st={id:stId(),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:frame?(ST_FRAMES.find(f=>f.k===frame)||{}).title||"":"",cover:"",classroom:room,group:g?g.name:"",projectId:pr?pr.id:"",threadId,
+  const st={id:stId(),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:frame?(stFrames().find(f=>f.k===frame)||{}).title||"":"",cover:"",classroom:room,group:g?g.name:"",projectId:pr?pr.id:"",threadId,
     sources:grp.map(x=>x.id),coverPhoto:grp[0]?grp[0].id:"",pages:grp.map(x=>({id:stPageId(),heading:"",photo:x.id,lines:""})),
     care:Object.assign({},ST_CARE,{on:false}),words:Object.assign({},ST_WORDS,{on:false,items:frame?frameWords(frame):[]}),think:Object.assign({},ST_THINK,{on:false}),practice:Object.assign({},ST_PRACTICE,{on:false}),
     ourwords:Object.assign({},ST_OURWORDS,{on:false}),draw:Object.assign({},ST_DRAW,{on:false}),community:Object.assign({},ST_COMMUNITY,{on:false}),families:Object.assign({},ST_FAMILIES,{on:false}),
@@ -3479,7 +3459,7 @@ function renderStory(){
   const kindBox=`<section class="card"><div class="lbl">What kind of story</div>
     <div class="seg" role="group" aria-label="Kind of story"><button data-stkind="happened" aria-pressed="${!stReady(st)}">What happened</button><button data-stkind="ready" aria-pressed="${stReady(st)}">Getting ready</button></div>
     <div class="cnt">${stReady(st)?"For something new, like a walk to the creek or coming to meeting. It tells what will happen, how friends may feel and what we can do.":"A moment the children lived, told again in our community's voice."} Both are told as we, with the children's first names.</div>
-    <label class="fld-label" style="margin-top:8px">Story frame<select data-stf="frame"><option value="">No frame</option>${ST_FRAMES.map(f=>`<option value="${esc(f.k)}" ${f.k===st.frame?"selected":""}>${esc(f.title)}</option>`).join("")}</select></label>${st.frame==="walk"&&walkOpen()?`<div class="actions" style="margin:4px 0 0"><button class="linkbtn" data-tview="walks">The children's walk agreements card</button></div>`:""}
+    <label class="fld-label" style="margin-top:8px">Story frame<select data-stf="frame"><option value="">No frame</option>${stFrames().map(f=>`<option value="${esc(f.k)}" ${f.k===st.frame?"selected":""}>${esc(f.title)}</option>`).join("")}</select></label>${st.frame==="walk"&&walkOpen()?`<div class="actions" style="margin:4px 0 0"><button class="linkbtn" data-tview="walks">The children's walk agreements card</button></div>`:""}
     ${fr?`<div class="cnt">${esc(fr.line)}</div><div class="nudge" style="margin-top:6px">${stFrameSaid===fr.k?"The frame set the title and turned on Words we can practice and Let's think together, below. ":""}Draft the pages to write the story with this frame in mind. The pages still come only from the observations.</div>`:""}
     ${LENSES.length?`<label class="fld-label" style="margin-top:8px">Read it through a lens<select data-stf="lensId"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${l.id===st.lensId?"selected":""}>${esc(l.name||"A lens")}</option>`).join("")}</select></label>`:""}
 </section>`;
@@ -4278,13 +4258,19 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 // the director's Edit for a piece of the school's own wording, in staff/wording, opening the same editor as a PD module,
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
-window.TREE_EDIT_WORDING=async(id,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=81f543ce8f","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
-  window.TREE_PAGEEDIT({path:"staff/wording/"+id+".md"},async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}if(done)done();else renderMain()})};
+// The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
+// Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=27f9c08f8b","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+  window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
+    if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
+window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
+const pageEditBtn=(path,label,item)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-pageedit="${esc(path)}"${item?` data-pageitem="${esc(item)}"`:""}>${esc(label||"Edit")}</button>`:"";
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pageedit]");if(!t)return;e.preventDefault();e.stopPropagation();window.TREE_EDIT_PAGE(Object.assign({path:t.dataset.pageedit},t.dataset.pageitem?{item:t.dataset.pageitem}:{}))},true);
 const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-wordsedit="${esc(id)}">${esc(label||"Edit the wording")}</button>`:"";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=81f543ce8f","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=27f9c08f8b","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["kitchen","Kitchen"]],
@@ -5003,7 +4989,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   const A=g.agreements||{};
   h+=gdnFold("agree","Garden agreements",`For children and for families${!g.ready?", drafts":""}`,`<div class="lbl">Our two guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${(A.guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
     ${["children","families"].map(k=>{const s=A[k]||{};return `<div class="strow"><div class="secthead"><b>${esc(s.title||k)}</b><span class="actions" style="margin:0">${printBtns("gagree",k,"PDF")}</span></div>${s.intro?`<div>${esc(s.intro)}</div>`:""}<ul style="margin:4px 0;padding-left:18px">${(s.items||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`}).join("")}
-    <div class="cnt">The family agreements and the plant cards show on the Family page once the Garden is ready. Families also find them linked from Garden Visits in the Teacher Policies and Procedures once a proposal is accepted.</div>${dir?`<div class="actions"><button class="linkbtn" data-tview="stfh">Proposed for the 2027 Family Handbook</button><button class="linkbtn" data-tview="sthb">Proposed for the Teacher Policies and Procedures</button></div>`:""}`);
+    ${dir?`<div class="actions"><button class="btn small ghost" data-pageedit="staff/garden/setup.json">Edit the agreements and the Garden's words</button></div>`:""}<div class="cnt">The family agreements and the plant cards show on the Family page once the Garden is ready. Families also find them linked from Garden Visits in the Teacher Policies and Procedures once a proposal is accepted.</div>${dir?`<div class="actions"><button class="linkbtn" data-tview="stfh">Proposed for the 2027 Family Handbook</button><button class="linkbtn" data-tview="sthb">Proposed for the Teacher Policies and Procedures</button></div>`:""}`);
   // community garden events and Farm to School
   h+=gdnFold("events","Garden days with families",`Planned as participation events families sign up for`,`<div class="hint">A family work day, a planting day or a seasonal harvest, for Second Saturday or Play Garden. It shows on the Family page and the calendar, and can be offered to the family log for objective 8.</div>
     ${isOffice()&&!VIEW_AS?`<div class="kfields"><label>The event<input type="text" id="ge-title" value="Family garden work day"></label><label>Date<input type="date" id="ge-date"></label><label>From<input type="time" id="ge-start" value="09:00"></label><label>Until<input type="time" id="ge-end" value="12:00"></label><label>Spots<input type="number" id="ge-spots" min="0" value="20"></label></div><div class="actions"><button class="btn small ghost" data-gevent="1">Post the event</button></div>`:""}
@@ -5113,7 +5099,7 @@ function renderGuide(){const m=$("#main");if(guideList===null){loadGuides();m.in
     ${isDirector()&&g.waiting!==undefined?`<section class="card"><div class="lbl">${g.waiting?"Draft":"Ready"}</div><div class="hint">${g.waiting?"Only you see this guide and its links. Educators see them once you mark it ready.":"Educators see this guide from the Materials library and from plans."}</div><div class="actions"><button class="btn small${g.waiting?"":" ghost"}" data-guideready="${esc(g.slug)}|${g.waiting?1:0}">${g.waiting?"Mark it ready":"Hide it again"}</button></div></section>`:""}
     <section class="card"><div class="secthead"><h2 style="font-size:20px">${esc(g.title)}</h2><span class="actions" style="margin:0">${printBtns("guide",esc(g.slug),"PDF")}</span></div>
       <div class="cnt">${[g.group?"Materials library, "+g.group:"",g.area?"Classroom area, "+g.area:""].filter(Boolean).map(esc).join(". ")}</div>
-      <div class="guidebody">${guideMd(g.body)}</div>
+      <div class="guidebody">${guideMd(g.body)}</div>${pageEditBtn("staff/guides/"+g.slug+".md","Edit this guide")}
       ${isDirector()&&g.source?`<div class="cnt" style="margin-top:10px">Source, seen only by you. ${esc(g.source)}</div>`:""}</section>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-guide],[data-guideback],[data-guideready]");if(!t)return;
   if(t.dataset.guide){e.preventDefault();e.stopPropagation();if(view!=="guide")guidePrev=view;guideSel=t.dataset.guide;goView("guide");return}
@@ -7388,9 +7374,9 @@ function kMonthMenu(...a){return lazyLoad("kitchen","4b09c7dfe8").then(()=>kMont
    bar, then what they mean. A story still changes its own. */
 function sfLines(k){return frameWords(k).map(w=>[w.bold,w.plain].filter(has).join(" | ")).join("\n")}
 function storyFramesHtml(){
-  return `<section class="card" id="sf-card"><div class="lbl">Story frames</div>
+  return `<section class="card" id="sf-card"><div class="lbl">Story frames</div>${wordsEdit("story-frames","Edit the frames, their names and starting words")}
     <div class="hint">The Words we can practice each frame starts with. One on each line, the words in bold, then a bar, then what they mean, like I can make space for a friend | There is room for every body at meeting. A story can always change its own.</div>
-    ${ST_FRAMES.map(f=>{const own=!!(storySet&&storySet.words&&Array.isArray(storySet.words[f.k])&&storySet.words[f.k].length);return `<details class="sfrow"><summary><b>${esc(f.title)}</b> <span class="cnt">${esc(f.line)}</span></summary>
+    ${stFrames().map(f=>{const own=!!(storySet&&storySet.words&&Array.isArray(storySet.words[f.k])&&storySet.words[f.k].length);return `<details class="sfrow"><summary><b>${esc(f.title)}</b> <span class="cnt">${esc(f.line)}</span></summary>
       <textarea rows="4" data-sfwords="${esc(f.k)}" aria-label="Words for ${esc(f.title)}">${esc(sfLines(f.k))}</textarea>
       ${own?`<div class="actions"><button class="linkbtn" data-sfreset="${esc(f.k)}">Use the starting words again</button></div>`:""}</details>`}).join("")}
   </section>`}
@@ -8304,7 +8290,7 @@ async function loadHelp(force){if(!window.FP_API||helpBusy||(helpData&&!force))r
 const helpOnly=()=>isKitchenUser()||isNewHire();
 function helpMatch(q){const L=(helpData&&helpData.list)||[];const terms=String(q||"").toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["how","the","and","for","what","can","does"].includes(w));
   if(!terms.length)return L.filter(x=>x.quick);return L.map(x=>{const hay=(x.q+" "+x.words+" "+x.label+" "+(x.a||[]).join(" ")).toLowerCase();const n=terms.filter(w=>hay.includes(w)||hay.includes(w.replace(/s$/,""))).length;return [n,x]}).filter(([n])=>n>=Math.min(terms.length,2)||n===terms.length).sort((a,b)=>b[0]-a[0]).map(([,x])=>x).slice(0,6)}
-const helpCard=x=>`<div class="strow helpans"><b>${esc(x.q)}</b><ol style="margin:4px 0;padding-left:20px">${(x.a||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol><div class="actions" style="margin:2px 0 0">${x.go?`<button class="btn small ghost" data-tview="${esc(x.go)}">Open ${esc(x.label||"the page")}</button>`:""}${printBtns("helpcard",esc(x.id),"PDF")}</div></div>`;
+const helpCard=x=>`<div class="strow helpans"><b>${esc(x.q)}</b><ol style="margin:4px 0;padding-left:20px">${(x.a||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol><div class="actions" style="margin:2px 0 0">${x.go?`<button class="btn small ghost" data-tview="${esc(x.go)}">Open ${esc(x.label||"the page")}</button>`:""}${printBtns("helpcard",esc(x.id),"PDF")}${pageEditBtn("staff/help.json","Edit",x.id)}</div></div>`;
 function helpHtml(q){if(helpData===null){loadHelp();return ""}const hits=helpMatch(q);const H=helpData||{};
   const top=isDirector()&&H.waiting?`<div class="hint">${`<span class="pill" style="pointer-events:none">Draft</span>`} Help shows only to you until you mark it ready.</div><div class="actions"><button class="btn small" data-helpready="1">Mark Help ready</button></div>`:isDirector()&&H.ready?`<div class="actions"><button class="linkbtn" data-helpready="0">Hide Help again</button></div>`:"";
   if(!hits.length&&!top)return helpOnly()?`<section class="card"><div class="empty">${q?"No help found for "+esc(q)+".":"Help will appear here."}</div></section>`:"";
@@ -12547,7 +12533,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=81f543ce8f","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=27f9c08f8b","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

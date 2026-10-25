@@ -54,7 +54,7 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
   const back=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-prsel="">‹ Presenting</button>${e.status==="presented"?chip("ok","Presented "+fd(e.presentedOn)):chip("soonish","Being planned")}</div>`;
-  const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+aboutCard(e)+creditCard(e)+
+  const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+(dir?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-pageedit="staff/presenting/${H(e.id)}.json">Edit the wording, with its history</button></div>`:"")+aboutCard(e)+creditCard(e)+
     (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 

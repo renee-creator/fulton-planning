@@ -152,6 +152,8 @@ details.stpart{border-top:1px solid var(--line);padding:8px 0}details.stpart>sum
 @media (max-width:760px){body[data-sec="staff"] #main :is(.prow,.stfiles,.strow,.actions) :is(.linkbtn,a:not(.btn)){display:inline-block;padding-top:8px;padding-bottom:8px}}
 `;document.head.appendChild(c)}
 const chip=(s,t)=>`<span class="stchip ${s}">${H(t)}</span>`;
+// the director's Edit on a page of school writing, opening the one editor with its history
+const peBtn=(path,label,item)=>D()&&!(typeof VIEW_AS!=="undefined"&&VIEW_AS)?`<button class="btn small ghost" data-pageedit="${H(path)}"${item?` data-pageitem="${H(item)}"`:""}>${H(label||"Edit")}</button>`:"";
 const card=(title,inner,side)=>`<section class="card"><div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">${H(title)}</h3>${side?`<span class="cnt">${side}</span>`:""}</div>${inner}</section>`;
 const printBar=k=>`<div class="actions" style="margin:0"><button class="btn small ghost" data-stprint="${k}">Print</button><button class="linkbtn" data-stword="${k}">Word</button></div>`;
 const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub" style="max-width:76ch">${sub}</div>`:""}</div></div>`;
@@ -500,7 +502,7 @@ async function loadNewed(who,force){if(force||!NE||NE.who!==who){try{NE=Object.a
 const neFill=(t,g)=>String(t||"").replace(/\{goTo\}/g,g||"your go-to person");
 function nePart(x,ne,dir){return `<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b>${x.waiting?" "+chip("soonish","Draft, only you see it"):""}${dir&&x.audience==="experienced"?` <span class="cnt">For experienced educators</span>`:""}</summary>
   <div class="stmd" style="margin-top:6px">${md(neFill(x.body,ne.goTo))}</div>
-  ${dir&&x.draft?`<div class="actions"><button class="btn small${x.waiting?"":" ghost"}" data-neready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Hide it again"}</button></div>`:""}
+  ${dir?`<div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-neready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Hide it again"}</button>`:""}${peBtn("staff/newed/"+x.slug+".md")}</div>`:""}
   ${dir&&x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`}
 async function neCard(who,dir){const ne=await loadNewed(who);const L=(ne.list||[]).filter(x=>x.place==="newed"&&(x.audience==="all"||ne.experienced||dir));
   const exp=dir?`<label class="radio" style="margin-top:6px"><input type="checkbox" data-neexp="${H(who)}" ${ne.experienced?"checked":""}><span>${H(who)} is an experienced educator, who also reads the part for experienced educators</span></label>`:"";
@@ -570,7 +572,7 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
   draw(my,`<div class="head"><div><span class="eyebrow">${x.dir==="licensing"?"Licensing at Fulton Community School":"TREE How To"}</span><h2 style="margin-top:4px">${H(x.title)}</h2><div class="sub">${H(x.source)}</div></div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stpiece="">‹ ${x.dir==="licensing"?"Licensing at Fulton Community School":"TREE How To"}</button></div>
     ${D()&&x.draft?`<div class="actions" style="margin:0 0 10px">${x.waiting?chip("soon","A draft, only you see it"):chip("ok","Ready, everyone sees it")}<button class="btn small ghost" data-stpieceready="${H(x.id)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Back to draft"}</button></div>`:""}
-    ${D()&&x.dir==="howto"?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-stpieceedit="${H(x.id)}">Edit</button></div>`:""}
+    ${D()&&(x.dir==="howto"||x.dir==="licensing")?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-stpieceedit="${H(x.id)}">Edit</button></div>`:""}
     <section class="card"><div class="actions" style="margin:0 0 6px">${x.links.filter(l=>!l.minor).map(l=>`<a class="btn small ghost" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}<span class="cnt">About ${x.minutes} minutes</span>${d?chip("ok","Read "+fms(d.at)):""}</div>${x.links.some(l=>l.minor)||(x.checked&&D())?`<div class="actions" style="margin:0 0 6px">${x.links.filter(l=>l.minor).map(l=>`<a class="linkbtn" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${x.checked&&D()?`<span class="cnt">Links confirmed ${H(fd(x.checked))}</span>`:""}</div>`:""}
       ${x.sections.filter(s=>s!==q).map(s=>`<h3 style="font-size:16px;margin:14px 0 6px">${H(s.heading)}</h3>${md(s.body)}`).join("")}
       ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Teacher Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
@@ -610,7 +612,7 @@ const yearSpan=y=>y?y+" to "+(+y+1):"";
 async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){return ""}const L=r.list||[];if(!L.length)return "";
   return card("Family page pieces",`<div class="hint">Pieces for families, read on the Family page under For families. The TK and kindergarten guide shows only to families of children going to TK or kindergarten next year, beside the transition summary. A draft reaches no family until you mark it ready.</div>
     ${L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")}${x.audience==="tk"?` <span class="cnt">For TK and kindergarten families</span>`:""}</summary>
-      <div class="stmd" style="margin-top:6px">${md(x.body)}</div>${x.draft?`<div class="actions"><button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button></div>`:""}
+      <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${peBtn("staff/familypieces/"+x.slug+".md")}</div>
       ${x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`).join("")}`,`${L.filter(x=>x.waiting).length} waiting`)}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
   const [slug,on]=t.dataset.fpready.split("|");try{await api("familypieces/ready",{slug,on:on==="1"});toast(on==="1"?"Marked ready. Families see it now.":"Taken off the Family page.");redraw()}catch(er){fail(er)}});
@@ -1055,18 +1057,22 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
 });
 
-/* ---------- the director's Edit button on a PD module, a TREE How To guide and the PD library letter ----------
-   One editor for all three, the same way a Teacher Policies and Procedures section is edited. Each part of the page,
-   such as the reading, the practice and the reflection, has its own box, and the headings stay as they are. Every save
-   keeps the earlier wording with Restore this version, and new wording is checked against TREE's writing rules. */
+/* ---------- the director's Edit button on every piece of school writing in the records ----------
+   One editor for all of it, the same way a Teacher Policies and Procedures section is edited: PD modules, How To
+   guides, letters, New Educator and licensing pieces, materials guides, Family page pieces, the wording moved out of the
+   code, the libraries for plans, Help answers, Presenting entries and the Garden's own words. Each part has its own box,
+   and the headings stay as they are. Save proofreads first, with each fix accepted or kept. A sentence that may break a
+   writing rule gets a gentle note she can keep. Every save keeps the earlier wording, with who changed it and when, and
+   Restore this version brings any of them back in one tap. */
 const pe={at:null,page:null,read:-1,done:null,found:[]};
 function peClose(){const o=$("#stpageedit");if(o)o.remove();document.body.style.overflow="";pe.page=null}
-function peDraw(){const o=$("#stpageedit");if(!o||!pe.page)return;const g=pe.page;const name=g.kind==="letter"?"the letter":g.kind==="howto"?"this How To guide":"this module";
+const PE_NAMES={letter:"the letter",howto:"this How To guide",wording:"this wording",licensing:"this licensing piece",newed:"this New Educator piece",guide:"this materials guide",familypiece:"this Family page piece",library:"this page",module:"this module"};
+function peDraw(){const o=$("#stpageedit");if(!o||!pe.page)return;const g=pe.page;const name=g.name||PE_NAMES[g.kind]||"this page";
   const hist=(g.history||[]).map((h,j)=>({h,j})).reverse();
   o.querySelector(".pebox").innerHTML=`<div class="sttop" style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><h3 style="margin:0">Edit ${H(name)}</h3><button class="linkbtn" data-pecancel="1">Close</button></div>
     <div class="hint">Write in plain text. A line starting with ### is a heading. A dash starts a list item, a number and a full stop a numbered item. **Words** are bold, and [words](link) is a link. The part headings stay as they are. New wording follows TREE's writing rules, and TREE names anything that does not before it saves.</div>
-    ${pe.found.length?`<div class="hint warnline" role="alert"><b>Before it saves</b>${pe.found.map(f=>`<div>${H(f.why)} <span class="cnt">${H(f.line)}</span></div>`).join("")}</div>`:""}
-    <label class="fld-label">Title<input type="text" id="pe-title" value="${H(g.title)}"></label>
+    ${pe.found.length?`<div class="hint" role="status"><b>A gentle note</b> These lines may not follow TREE's writing rules. Change them, or keep them as written.${pe.found.map(f=>`<div>${H(f.why)} <span class="cnt">${H(f.line)}</span></div>`).join("")}<div class="actions" style="margin:6px 0 0"><button class="btn small ghost" data-pekeep="1">Keep it as written</button></div></div>`:""}
+    ${g.fixedTitle?`<div class="lbl">${H(g.title)}</div>`:`<label class="fld-label">Title<input type="text" id="pe-title" value="${H(g.title)}"></label>`}
     ${g.lead!=null?`<label class="fld-label">Opening lines<textarea id="pe-lead" rows="3">${H(g.lead)}</textarea></label>`:""}
     ${g.parts.map((x,i)=>`<label class="fld-label">${H(x.heading)}<textarea data-pepart="${i}" rows="${Math.min(18,Math.max(4,String(x.body).split("\n").length+1))}">${H(x.body)}</textarea></label>`).join("")}
     <label class="fld-label">A short note about this change<input type="text" id="pe-note" maxlength="300" placeholder="Such as Added a question to Reflect"></label>
@@ -1082,15 +1088,18 @@ window.TREE_PAGEEDIT=pageEdit;
 document.addEventListener("click",e=>{const t=e.target.closest("[data-stpieceedit],[data-stletteredit]");if(!t||!D())return;e.preventDefault();
   if(t.dataset.stpieceedit)pageEdit({path:"staff/pd/"+t.dataset.stpieceedit+".md"},async()=>{st.pd=await api("pd");redraw()});
   else pageEdit({path:"staff/newed/welcome.md"},async()=>{await loadNewed(meName(),true);redraw()})});
-document.addEventListener("click",async e=>{const t=e.target.closest("#stpageedit [data-pecancel],#stpageedit [data-pesave],#stpageedit [data-peread],#stpageedit [data-perestore]");if(!t)return;const d=t.dataset;e.preventDefault();
+document.addEventListener("click",async e=>{const t=e.target.closest("#stpageedit [data-pecancel],#stpageedit [data-pesave],#stpageedit [data-pekeep],#stpageedit [data-peread],#stpageedit [data-perestore]");if(!t)return;const d=t.dataset;e.preventDefault();
   const finish=async(r,msg)=>{if(r.findings){pe.found=r.findings;peDraw();$("#stpageedit").scrollTop=0;return}pe.page=r.page;pe.found=[];pe.read=-1;toast(r.same?"Nothing changed.":msg);peClose();if(pe.done)await pe.done()};
   if(d.pecancel){peClose();return}
   if(d.peread!=null){const j=+d.peread;pe.read=pe.read===j?-1:j;peDraw();return}
-  if(d.pesave){const note=($("#pe-note")?.value||"").trim(),title=($("#pe-title")?.value||"").trim();if(!title){toast("Give the page a title.");return}if(!note){toast("Write a short note about this change.");$("#pe-note")?.focus();return}
-    const parts=[...document.querySelectorAll("#stpageedit [data-pepart]")].map(x=>({body:x.value}));
-    try{t.disabled=true;finish(await api("page/save",Object.assign({},pe.at,{stamp:pe.page.stamp,title,lead:$("#pe-lead")?$("#pe-lead").value:undefined,parts,note})),"Saved, with the earlier wording kept.")}catch(er){fail(er)}finally{t.disabled=false}return}
-  if(d.perestore!=null){if(!confirm("Restore this version? The wording there now is kept as an earlier version."))return;
-    try{finish(await api("page/restore",Object.assign({},pe.at,{stamp:pe.page.stamp,index:+d.perestore})),"Restored.")}catch(er){fail(er)}}});
+  if(d.pesave||d.pekeep){const note=($("#pe-note")?.value||"").trim(),title=pe.page.fixedTitle?pe.page.title:($("#pe-title")?.value||"").trim();if(!title){toast("Give the page a title.");return}if(!note){toast("Write a short note about this change.");$("#pe-note")?.focus();return}
+    const go=async()=>{const parts=[...document.querySelectorAll("#stpageedit [data-pepart]")].map(x=>({body:x.value}));
+      try{t.disabled=true;finish(await api("page/save",Object.assign({},pe.at,{stamp:pe.page.stamp,title,lead:$("#pe-lead")?$("#pe-lead").value:undefined,parts,note,keep:!!d.pekeep})),"Saved, with the earlier wording kept.")}catch(er){fail(er)}finally{t.disabled=false}};
+    // Save proofreads the writing first, with each fix accepted or kept
+    if(d.pesave&&window.TREE_PROOF&&window.TREE_PROOF($("#stpageedit .pebox"),"Save",go))return;
+    await go();return}
+  if(d.perestore!=null){
+    try{finish(await api("page/restore",Object.assign({},pe.at,{stamp:pe.page.stamp,index:+d.perestore})),"Restored. The wording there before is kept as an earlier version.")}catch(er){fail(er)}}});
 })();
 
 /* ---------- Educator growth in TREE ----------
@@ -1825,7 +1834,7 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
   const back=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-prsel="">‹ Presenting</button>${e.status==="presented"?chip("ok","Presented "+fd(e.presentedOn)):chip("soonish","Being planned")}</div>`;
-  const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+aboutCard(e)+creditCard(e)+
+  const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+(dir?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-pageedit="staff/presenting/${H(e.id)}.json">Edit the wording, with its history</button></div>`:"")+aboutCard(e)+creditCard(e)+
     (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 

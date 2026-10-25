@@ -117,3 +117,61 @@ test('the director starts her own plans, marked as hers, ready with no review on
   assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /Waiting for your review, South Classroom plan/);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('Edit, history and restore reach every piece of school writing, with a gentle writing note and one tap restore', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => {
+    put('staff/guides/sand.md', '<!--\nstatus: draft\n-->\n# Sand\n\nA lead line.\n\n## Setting it up\n\nWet sand holds a shape.\n');
+    put('staff/familypieces/rain.md', '<!--\nstatus: draft\n-->\n# Rain days\n\nWe go out in the rain.\n\n## What to pack\n\nBoots.\n');
+    put('staff/help.json', { id: 'help', list: [{ id: 'h01', q: 'How do I keep an observation?', a: ['Tap Keep an observation.', 'Write it.'], roles: ['educator', 'director'] }] });
+    put('staff/presenting/pr1a.json', { id: 'pr1a', title: 'Mud', subtitle: '', audience: 'Our team', place: 'The yard', status: 'planning' });
+    put('staff/wording/story-frames.md', '<!--\nwording: test\n-->\n# Story frames\n\n## puddle\n\nJumping in puddles\n\nRain boots and splashes.\n\n- **I can splash gently.** My friends stay dry.\n');
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const page = (tok, at) => fx.as(tok, '/api/staff/page', at), save = (tok, at, b) => fx.as(tok, '/api/staff/page/save', Object.assign({}, at, b));
+  // a materials guide and a Family page piece open in the editor, for the director only
+  for (const path of ['staff/guides/sand.md', 'staff/familypieces/rain.md']) {
+    assert.strictEqual((await page(ann, { path })).status, 403, path);
+    const g = await page(dee, { path }); assert.strictEqual(g.status, 200, path); assert.ok(g.body.parts.length, path);
+  }
+  // a line that may break a writing rule gets a gentle note, and she can keep it as written
+  let g = (await page(dee, { path: 'staff/guides/sand.md' })).body;
+  const parts = g.parts.map(p => ({ body: p.body })); parts[0].body = 'Wet sand holds a shape — and dry sand pours.';
+  let r = await save(dee, { path: 'staff/guides/sand.md' }, { stamp: g.stamp, title: g.title, parts, note: 'Dry sand' });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.gentle, true); assert.ok(r.body.findings.length);
+  r = await save(dee, { path: 'staff/guides/sand.md' }, { stamp: g.stamp, title: g.title, parts, note: 'Dry sand', keep: true });
+  assert.strictEqual(r.body.ok, true); assert.strictEqual(r.body.page.history.length, 1); assert.strictEqual(r.body.page.updatedBy, 'Dee');
+  // restore brings the earlier version back, keeping the one before it
+  r = await fx.as(dee, '/api/staff/page/restore', { path: 'staff/guides/sand.md', stamp: r.body.page.stamp, index: 0 });
+  assert.strictEqual(r.body.ok, true); assert.match(r.body.page.parts[0].body, /^Wet sand holds a shape\.$/); assert.strictEqual(r.body.page.history.length, 2);
+  // the words inside a record: a Help answer, with its own history
+  const at = { path: 'staff/help.json', item: 'h01' };
+  g = (await page(dee, at)).body; assert.strictEqual(g.kind, 'record'); assert.deepStrictEqual(g.parts.map(p => p.heading), ['Question', 'Steps, one on each line']);
+  r = await save(dee, at, { stamp: g.stamp, parts: [{ body: 'How do I keep an observation?' }, { body: 'Tap Keep an observation.\nWrite what happened.' }], note: 'Clearer step' });
+  assert.strictEqual(r.body.ok, true, JSON.stringify(r.body));
+  await wait(2500);
+  const help = JSON.parse(fs.readFileSync(path.join(fx.dir, 'staff/help.json'), 'utf8'));
+  assert.deepStrictEqual(help.list[0].a, ['Tap Keep an observation.', 'Write what happened.']); assert.deepStrictEqual(help.list[0].roles, ['educator', 'director']);
+  r = await fx.as(dee, '/api/staff/page/restore', Object.assign({ stamp: r.body.page.stamp, index: 0 }, at));
+  assert.deepStrictEqual(r.body.page.parts[1].body, 'Tap Keep an observation.\nWrite it.');
+  // a Presenting entry's wording
+  g = (await page(dee, { path: 'staff/presenting/pr1a.json' })).body;
+  const pp = g.parts.map(p => ({ body: p.body })); pp[0].body = 'Mud and water';
+  assert.strictEqual((await save(dee, { path: 'staff/presenting/pr1a.json' }, { stamp: g.stamp, parts: pp, note: 'Title' })).body.ok, true);
+  await wait(2500); const pr = JSON.parse(fs.readFileSync(path.join(fx.dir, 'staff/presenting/pr1a.json'), 'utf8'));
+  assert.strictEqual(pr.title, 'Mud and water'); assert.strictEqual(pr.status, 'planning');
+  assert.strictEqual((await save(ann, { path: 'staff/presenting/pr1a.json' }, { stamp: g.stamp, parts: pp, note: 'x' })).status, 403);
+  // a state form or notice is never on the list
+  assert.strictEqual((await page(dee, { path: 'staff/notices.json' })).status, 404);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+  // the story frames come from the records
+  assert.deepStrictEqual(await s.p.evaluate(() => stFrames()), [{ k: 'puddle', title: 'Jumping in puddles', line: 'Rain boots and splashes.', words: [{ bold: 'I can splash gently.', plain: 'My friends stay dry.' }] }]);
+  // the editor opens from a Help answer, and Restore this version needs one tap
+  await s.p.evaluate(() => window.TREE_EDIT_PAGE({ path: 'staff/help.json', item: 'h01' }));
+  await s.p.waitForSelector('#stpageedit [data-perestore]', { timeout: 15000 });
+  await s.p.click('#stpageedit [data-perestore]'); await s.p.waitForFunction(() => !document.querySelector('#stpageedit'), null, { timeout: 8000 });
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

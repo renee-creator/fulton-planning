@@ -242,7 +242,10 @@ module.exports = function staffModule(o) {
   // the page's own file is rewritten section by section, its opening note and its headings kept as they are, and each
   // save keeps the wording before it in staff/pd/history, so any earlier version can be restored
   const W = require('./writing.js');
-  const editable = p => /^staff\/pd\/(modules|howto)\/[a-z0-9-]+\.md$/.test(p) || p === 'staff/newed/welcome.md' || /^staff\/wording\/[a-z0-9-]+\.md$/.test(p);
+  // every page of the school's own writing kept in the records as Markdown: PD modules, How To guides, the licensing
+  // pieces, the New Educator pieces and letter, the materials guides, the Family page pieces, the wording the director
+  // edits in place and the libraries for plans, such as recipes and the song book
+  const editable = p => /^staff\/(pd\/(modules|howto|licensing)|newed|guides|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
   // the school's own wording the director edits in place, one page for each piece, such as the Family Questionnaire
   const WD = require('./wording.js');
   function wordingDoc(id) { const r = S.files.get('staff/wording/' + id + '.md'); return WD.parse(r ? r.text : ''); }
@@ -258,7 +261,8 @@ module.exports = function staffModule(o) {
   }
   const pageText = pp => pp.meta + pp.pre + '#'.repeat(pp.level) + ' ' + pp.title + '\n\n' + (pp.lead ? pp.lead + '\n\n' : '') +
     pp.parts.map(x => '#'.repeat(pp.level + 1) + ' ' + x.heading + '\n\n' + (x.body ? x.body + '\n' : '')).join('\n');
-  const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : p.startsWith('staff/wording/') ? 'wording' : 'module';
+  const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : p.startsWith('staff/wording/') ? 'wording' : p.includes('/licensing/') ? 'licensing' :
+    p.startsWith('staff/newed/') ? 'newed' : p.startsWith('staff/guides/') ? 'guide' : p.startsWith('staff/familypieces/') ? 'familypiece' : p.startsWith('staff/library/') ? 'library' : 'module';
   function pageOut(p) {
     const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return null; const h = get(PAGE_HIST(p)) || {};
     return { path: p, stamp: stampOf(r.text), kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };
@@ -277,7 +281,8 @@ module.exports = function staffModule(o) {
       const np = Object.assign({}, pp, { title, lead: String(b.lead == null ? pp.lead : b.lead).replace(/\r/g, '').trim().slice(0, 20000),
         parts: pp.parts.map((x, i) => ({ heading: x.heading, body: given[i] && given[i].body != null ? String(given[i].body).replace(/\r/g, '').trim().slice(0, 60000) : x.body })) });
       next = pageText(np);
-      const found = W.check(r.text, next); if (found.length) return { error: 'Some new wording does not follow the writing rules yet.', findings: found };
+      // a sentence that breaks a writing rule gets a gentle note, and she can keep it as written
+      const found = b.keep ? [] : W.check(r.text, next); if (found.length) return { error: 'Some new wording may not follow the writing rules.', findings: found, gentle: true };
     }
     if (next.trim() === String(r.text || '').trim() || (!restoring && next === pageText(pp))) return { ok: true, same: true, page: pageOut(p) };
     const h = Object.assign({ path: p, history: [] }, get(PAGE_HIST(p)) || {});
@@ -285,6 +290,53 @@ module.exports = function staffModule(o) {
     Object.assign(h, { note, updatedAt: Date.now(), updatedBy: me });
     put(PAGE_HIST(p), h); putText(p, next); pieceCache = null; G.invalidate(); log('PD library page changed', p, 'by', me);
     return { ok: true, page: pageOut(p) };
+  }
+
+  /* The same Edit, history and restore for school writing kept inside a record instead of a page: a Help answer, a
+     Presenting entry and the Garden's own words. Each names the words the director can change, and the rest of the
+     record stays as it is. Every save keeps the words before it, with who changed them and when, and any earlier
+     version can be restored. */
+  const RECORD_EDIT = [
+    { re: /^staff\/help\.json$/, list: 'list', name: 'this Help answer', title: x => x.q, fields: [['q', 'Question'], ['a', 'Steps, one on each line', 'lines']] },
+    { re: /^staff\/presenting\/pr[a-z0-9]+\.json$/, name: 'this Presenting entry', title: d => d.title, fields: [['title', 'Title'], ['subtitle', 'Subtitle'], ['question', 'Question'], ['audience', 'Audience'], ['format', 'Format'], ['place', 'Place'], ['dateNote', 'About the date']] },
+    { re: /^staff\/garden\/setup\.json$/, name: 'the Garden\'s own words', title: () => 'The Garden', fields: [['agreements.guiding', 'Our guiding agreements, one on each line', 'lines'], ['agreements.children.title', 'The children\'s agreements, title'], ['agreements.children.items', 'The children\'s agreements, one on each line', 'lines'],
+      ['agreements.families.title', 'The families\' agreements, title'], ['agreements.families.intro', 'The families\' agreements, opening line'], ['agreements.families.items', 'The families\' agreements, one on each line', 'lines'], ['nochemicals', 'No chemicals'], ['handwash.text', 'Handwashing']] }
+  ];
+  const recordSpec = p => RECORD_EDIT.find(x => x.re.test(p)) || null;
+  const REC_HIST = (p, item) => 'staff/pd/history/record--' + p.slice(6).replace(/\.json$/, '').replace(/\//g, '--') + (item ? '--' + String(item).replace(/[^a-z0-9-]/gi, '') : '') + '.json';
+  const at = (o, k) => k.split('.').reduce((t, x) => (t && typeof t === 'object' ? t[x] : undefined), o);
+  function setPath(o, k, v) { const ks = k.split('.'); let t = o; for (const x of ks.slice(0, -1)) { if (!t[x] || typeof t[x] !== 'object') t[x] = {}; t = t[x]; } t[ks[ks.length - 1]] = v; }
+  function recordTarget(p, item) { const sp = recordSpec(p), d = get(p); if (!sp || !d) return null; const x = sp.list ? (d[sp.list] || []).find(y => y && y.id === item) : d; return x ? { sp, d, x } : null; }
+  const recValues = (sp, x) => Object.fromEntries(sp.fields.map(([k, , t]) => { const v = at(x, k); return [k, t === 'lines' ? (Array.isArray(v) ? v.map(String) : []) : String(v == null ? '' : v)]; }));
+  const recText = (sp, vals) => sp.fields.map(([k, label, t]) => label + '\n' + (t === 'lines' ? vals[k].join('\n') : vals[k])).join('\n\n');
+  function recordOut(p, item) {
+    const T = recordTarget(p, item); if (!T) return null; const vals = recValues(T.sp, T.x); const h = get(REC_HIST(p, item)) || {};
+    return { path: p, item: item || '', stamp: stampOf(JSON.stringify(vals)), kind: 'record', name: T.sp.name, title: String(T.sp.title(T.x) || ''), fixedTitle: true,
+      parts: T.sp.fields.map(([k, label, t]) => ({ heading: label, body: t === 'lines' ? vals[k].join('\n') : vals[k] })), note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '',
+      history: (h.history || []).map(e => ({ at: e.at, by: e.by, note: e.note, text: e.text })) };
+  }
+  function saveRecord(me, p, item, b, restoring) {
+    const T = recordTarget(p, item); if (!T) return { error: 'That could not be read.' };
+    const was = recValues(T.sp, T.x);
+    if (b.stamp && b.stamp !== stampOf(JSON.stringify(was))) return { error: 'This changed since you opened it. Close it and open it again.' };
+    const note = String(b.note || '').trim().slice(0, 300); if (!note) return { error: 'Write a short note about this change.' };
+    let vals;
+    if (restoring) vals = restoring;
+    else {
+      const given = Array.isArray(b.parts) ? b.parts : [];
+      vals = Object.fromEntries(T.sp.fields.map(([k, , t], i) => { const g = given[i] && given[i].body != null ? String(given[i].body).replace(/\r/g, '') : null; if (g == null) return [k, was[k]];
+        return [k, t === 'lines' ? g.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 60).map(l => l.slice(0, 2000)) : g.trim().slice(0, 20000)]; }));
+      const found = b.keep ? [] : W.check(recText(T.sp, was), recText(T.sp, vals)); if (found.length) return { error: 'Some new wording may not follow the writing rules.', findings: found, gentle: true };
+    }
+    if (JSON.stringify(vals) === JSON.stringify(was)) return { ok: true, same: true, page: recordOut(p, item) };
+    const hp = REC_HIST(p, item); const h = Object.assign({ path: p, item: item || '', history: [] }, get(hp) || {});
+    h.history = [...(h.history || []), { values: was, text: recText(T.sp, was), at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
+    Object.assign(h, { note, updatedAt: Date.now(), updatedBy: me }); put(hp, h);
+    const d = JSON.parse(JSON.stringify(T.d)); const x = T.sp.list ? d[T.sp.list].find(y => y && y.id === item) : d;
+    for (const [k] of T.sp.fields) setPath(x, k, vals[k]);
+    if (!T.sp.list) { d.updatedAt = Date.now(); d.updatedBy = me; }
+    put(p, d); pieceCache = null; log('School writing changed', p, item || '', 'by', me);
+    return { ok: true, page: recordOut(p, item) };
   }
 
   /* ---------- people ---------- */
@@ -388,6 +440,15 @@ module.exports = function staffModule(o) {
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
       if (!dir) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
+      if (recordSpec(p)) {
+        const item = String(body.item || ''); if (!recordTarget(p, item)) { err(req, res, 404, 'That is not here.'); return; }
+        if (P === 'page') { json(req, res, 200, recordOut(p, item)); return; }
+        let r;
+        if (P === 'page/restore') { const h = ((get(REC_HIST(p, item)) || {}).history || [])[+body.index]; if (!h || !h.values) { err(req, res, 404, 'That version is not here.'); return; }
+          r = saveRecord(me, p, item, { stamp: body.stamp, note: h.at ? `Restored the version of ${new Date(h.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' })}` : 'Restored the version from before TREE' }, h.values); }
+        else r = saveRecord(me, p, item, body);
+        if (r.error && !r.findings) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
+      }
       if (!editable(p) || !S.files.get(p)) { err(req, res, 404, 'That page is not here.'); return; }
       if (P === 'page') { json(req, res, 200, pageOut(p)); return; }
       let r;
