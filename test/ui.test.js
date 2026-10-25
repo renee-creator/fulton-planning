@@ -42,6 +42,8 @@ test('TREE in the browser', async t => {
     const s = await signedIn(fx, b, 'Ann', '1357');
     await s.p.evaluate(() => goView('stplan')); await s.p.waitForSelector('#gp-ch');
     // on a narrow screen the box can sit in a closed fold, which a person opens first
+    // a long page folds its later sections a moment after it is drawn, so the fold is opened once that has happened
+    await s.p.waitForTimeout(1500);
     await s.p.evaluate(() => { for (let d = document.querySelector('#gp-ch').closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; });
     await s.p.fill('#gp-ch', 'Rain days indoors');
     await s.p.click('#tsubnav [data-tview="strec"]').catch(async () => { await s.p.evaluate(() => goView('strec')); });
