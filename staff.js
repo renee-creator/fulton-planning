@@ -116,13 +116,16 @@ module.exports = function staffModule(o) {
       for (const f of all) if (/^(staff\/policies|family\/handbook)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
       const seen = new Set(want.map(f => f.path));
       for (const p of [...S.files.keys()]) if (/\.md$/.test(p) && !seen.has(p)) S.files.delete(p);
-      for (const f of want) {
-        const cur = S.files.get(f.path); if (cur && cur.local) continue;
+      // a file already read at this version is kept as it is, and the rest are read six at a time
+      const todo = want.filter(f => { const cur = S.files.get(f.path); return !(cur && (cur.local || cur.sha === f.sha)); });
+      const readOne = async f => {
         const b = await gh('GET', `/repos/${repo}/git/blobs/${f.sha}`); if (b.status !== 200) throw new Error('GitHub answered ' + b.status + ' when reading ' + f.path);
+        const cur = S.files.get(f.path); if (cur && cur.local) return;
         const text = Buffer.from(b.json.content, 'base64').toString('utf8');
-        if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); continue; }
+        if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); return; }
         try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); }
-      }
+      };
+      for (let i = 0; i < todo.length; i += 6) await Promise.all(todo.slice(i, i + 6).map(readOne));
       seed(); pieceCache = null; G.invalidate(); S.ready = true;
       try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
       // the two starting Presenting entries, made once
