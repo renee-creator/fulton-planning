@@ -51,13 +51,15 @@ test('editing a module, a How To guide and the letter keeps each earlier version
   const chromium = await browser(); if (chromium) {
     const b = await chromium.launch(); t.after(() => b.close());
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1');
+    // the proofread before saving, Session 11 item 18, answers with nothing to fix, standing in for the real service
+    await s.p.route('**/api/read', r => r.fulfill({ json: { text: JSON.stringify({ fixes: [] }) } }));
     await s.p.evaluate(() => goView('stpd')); await s.p.waitForFunction(() => !!window.TREE_PAGEEDIT, null, { timeout: 15000 });
     await s.p.evaluate(() => window.TREE_PAGEEDIT({ module: 'documentation' }));
     await s.p.waitForSelector('#stpageedit [data-pepart]', { timeout: 15000 });
     const txt = await s.p.evaluate(() => document.querySelector('#stpageedit').innerText);
     assert.match(txt, /Why it matters/); assert.match(txt, /Restore this version/);
     await s.p.fill('#stpageedit [data-pepart="1"]', 'A question.\nAt Fulton we ask this.'); await s.p.fill('#pe-note', 'A try');
-    await s.p.click('#stpageedit [data-pesave]'); await s.p.waitForFunction(() => /Before it saves/.test(document.querySelector('#stpageedit').innerText), null, { timeout: 10000 });
+    await s.p.click('#stpageedit [data-pesave]'); await s.p.waitForFunction(() => /A gentle note|Before it saves/.test(document.querySelector('#stpageedit').innerText), null, { timeout: 10000 });
     assert.deepStrictEqual(s.errors, []); await s.close();
   }
 });
