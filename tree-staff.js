@@ -193,7 +193,16 @@ const ITEMS=()=>B.defs.items,PAPERS=()=>B.defs.papers;
 // Fulton's own trainings are for everyone who cares for children, so the office and the kitchen do not see them
 const careFor=p=>!["Office","Kitchen","Staff","Director"].includes(p.role||whoRole(p))&&!((p.profile||{}).role==="staff");
 // an office member who also works as an educator supervises children, so Fulton's own training is hers too
-const itemsFor=p=>ITEMS().filter(i=>!i.fulton||careFor(p)||!!(p.profile||{}).supervises);
+const itemsFor=p=>ITEMS().filter(i=>(!i.fulton||careFor(p)||!!(p.profile||{}).supervises)&&(!i.chosen||!!((p.profile||{}).needs||{})[i.k]));
+// each training links to the regulation it meets and to where it is taken. A link still to be checked says so to the director.
+const toCheck=x=>x&&x.check&&D()?` <span class="warnline">Link to check.</span>`:"";
+const itemLinks=it=>[it.law?`<a href="${H(it.law.url)}" target="_blank" rel="noopener">The regulation, ${H(it.law.text)}</a>${toCheck(it.law)}`:"",it.course?`<a href="${H(it.course.url)}" target="_blank" rel="noopener">Take the training, ${H(it.course.text)}</a>${toCheck(it.course)}`:""].filter(Boolean).join(`<br>`);
+// on the Official trainings piece, every training on the records list with its regulation and where it is taken
+const trainingsCard=()=>{const its=((B.defs||{}).items||[]).filter(i=>i.course||i.law&&i.fulton);if(!its.length)return "";
+  return card("Each training, its regulation and where it is taken",its.map(i=>`<div class="strow"><div class="sttop"><b>${H(i.label)}</b></div><div class="cnt">${i.note?H(i.note)+". ":""}${itemLinks(i)}</div></div>`).join(""))};
+// the director marks the trainings she chooses for each person, such as the Red Cross water safety course
+const chosenHtml=p=>{const ch=ITEMS().filter(i=>i.chosen);if(!ch.length)return "";const n=(p.profile||{}).needs||{};
+  return `<div class="strow"><div class="sttop"><b>Trainings you choose for ${H(p.name)}</b></div>${ch.map(i=>`<div class="kfields"><label>${H(i.label)}<select data-stprof="${H(p.name)}|need:${H(i.k)}"><option value="0" ${n[i.k]?"":"selected"}>Not needed</option><option value="1" ${n[i.k]?"selected":""}>Needed</option></select></label></div>`).join("")}</div>`};
 // the CCLD video and the active supervision handouts from the school's Google Drive
 const asLinks=()=>{const a=B.activeSupervision;if(!a)return "";return `<div class="stfiles">${a.video?`<a class="linkbtn" href="${H(a.video.url)}" target="_blank" rel="noopener">Watch ${H(a.video.title)}</a>`:""}${(a.handouts||[]).map(x=>`<a class="linkbtn" href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>`).join("")}</div>`};
 function itemState(it,rec){if(!rec||!rec.date)return it.fulton?{s:"soon",t:"Due",ex:""}:{s:"missing",t:"Not on file yet",ex:""};
@@ -291,7 +300,7 @@ function addNewHtml(){const names=B.people||[];
     <div class="actions"><button class="btn small" data-stnew="add">Add</button><button class="linkbtn" data-stnew="cancel">Cancel</button></div>`:`<div class="actions" style="margin:0"><button class="btn small ghost" data-stnew="open">Add a new educator</button></div>`)}
 function groupHtml(){const names=B.people||[];
   return card("Record a training for a group",st.group?`<div class="hint">For an in-house Pediatric First Aid and CPR class, or the yearly emergency and disaster plan training. Everyone chosen gets the same date, and the class roster is kept with each record.</div>
-    <div class="kfields"><label>Training<select id="stg-item">${ITEMS().filter(i=>["cpr","eplan","hsa","hs16","mandated","water","activesup"].includes(i.k)).map(i=>`<option value="${i.k}">${H(i.label)}</option>`).join("")}</select></label><label>Date<input type="date" id="stg-date" value="${today()}"></label></div>
+    <div class="kfields"><label>Training<select id="stg-item">${ITEMS().filter(i=>["cpr","eplan","hsa","hs16","mandated","water","rcwater","activesup"].includes(i.k)).map(i=>`<option value="${i.k}">${H(i.label)}</option>`).join("")}</select></label><label>Date<input type="date" id="stg-date" value="${today()}"></label></div>
     <div class="chips" style="margin-top:8px">${names.map(n=>`<button class="chip on" type="button" data-stgname="${H(n)}">${H(n)}</button>`).join("")}</div>
     <div class="actions"><span class="cnt" id="stg-roster">No roster yet</span><button class="btn small ghost" data-stgroup="roster">Upload the roster</button><button class="btn small" data-stgroup="save">Record for everyone chosen</button><button class="linkbtn" data-stgroup="cancel">Cancel</button></div>`:
     `<div class="actions" style="margin:0"><button class="btn small ghost" data-stgroup="open">Record a group training</button></div>`)}
@@ -313,7 +322,7 @@ const isFormerName=n=>(st.former||[]).some(x=>x.name===n);
 async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc||st.doc.name!==who||!T._keep)await loadPerson(who);const p=P(),dir=D(),mine=who===meName();
   const pr=p.profile||{};const lead=B.school.remindDays||30;
   const itemsHtml=itemsFor(p).map(it=>{const r=(p.items||{})[it.k]||{};const s=itemState(it,r);
-    return `<div class="strow"><div class="sttop"><b>${H(it.label)}</b>${chip(s.s,s.t)}</div><div class="cnt">${it.note?H(it.note)+". ":""}${it.fulton?"A Fulton training":`<a href="${REGS}" target="_blank" rel="noopener">${H(it.reg)}</a>`}</div>${it.fulton?asLinks():""}
+    return `<div class="strow"><div class="sttop"><b>${H(it.label)}</b>${chip(s.s,s.t)}</div><div class="cnt">${it.note?H(it.note)+". ":""}${it.fulton?"A Fulton training. ":""}${it.law||it.course?itemLinks(it):`<a href="${REGS}" target="_blank" rel="noopener">${H(it.reg)}</a>`}</div>${it.fulton?asLinks():""}
       <div class="kfields"><label>Date${it.k==="hs16"?" completed":""}<input type="date" data-stitem="${it.k}" data-f="date" value="${H(r.date||"")}"></label>${it.months||it.k==="water"?`<label>Expires, if the card says<input type="date" data-stitem="${it.k}" data-f="expires" value="${H(r.expires||"")}"></label>`:""}</div>
       <div class="stfiles">${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="item|${it.k}">Upload a photo or PDF</button>${dir?`<button class="linkbtn" data-stlink="item|${it.k}">Link one in Drive</button>`:""}</div></div>`}).join("");
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};
@@ -343,7 +352,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
     ${card("About",`<div class="cnt">${H([whoRole(p),roomName(p),pr.startDate?"Started "+fd(pr.startDate):"",pr.planHour?"Monday planning hour at "+hourText(pr.planHour):""].filter(Boolean).join(", "))}</div>
       ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
-    ${card("Records and certificates",itemsHtml)}
+    ${card("Records and certificates",itemsHtml+(dir?chosenHtml(p):""))}
     ${card("Immunizations",`<div class="hint">California requires everyone who works at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995. Records and exemptions are seen only by ${mine?"you":"the educator"} and the director.</div>${imm}`)}
     ${card("Early childhood units",units)}
     ${card("Continuing hours, this school year",hours)}
@@ -488,6 +497,7 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
     <section class="card"><div class="actions" style="margin:0 0 6px">${x.links.map(l=>`<a class="btn small ghost" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}<span class="cnt">About ${x.minutes} minutes</span>${d?chip("ok","Read "+fms(d.at)):""}</div>
       ${x.sections.filter(s=>s!==q).map(s=>`<h3 style="font-size:16px;margin:14px 0 6px">${H(s.heading)}</h3>${md(s.body)}`).join("")}
       ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Teacher Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
+    ${x.list==="training"?trainingsCard():""}
     ${q?`<section class="card"><h3 style="font-size:17px">${H(q.heading)}</h3><div class="stq" style="margin:6px 0 10px">${md(q.body)}</div>
       <label class="fld-label">In your own words<textarea id="stp-answer" rows="4" placeholder="Never scored. Only you and the director read it.">${H(d?d.answer:"")}</textarea></label>
       <div class="actions"><button class="btn" data-stdone="${H(x.id)}">${d?"Save my answer":"Finish this piece"}</button>${nx?`<button class="btn small ghost" data-stpiece="${H(nx.id)}">Next, ${H(nx.title)}</button>`:""}</div></section>`:
@@ -928,7 +938,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(d.stflu){const p=P();const s=fluSeason();p.flu=p.flu||{};p.flu[s]=Object.assign({},p.flu[s],{[d.stflu]:t.value});await save(p,"Saved.");redraw();return}
   if(d.stonce){const p=P();p.once=p.once||{};p.once[d.stonce]=Object.assign({},p.once[d.stonce],{[d.f]:t.value});await save(p,"Saved.");redraw();return}
   if(d.stunits){const p=P();p.units=Object.assign({},p.units,{completed:t.value===""?"":Number(t.value)});await save(p,"Saved.");redraw();return}
-  if(d.stprof){const [name,k]=d.stprof.split("|");try{await api("profile",{name,profile:{[k]:t.value}});toast("Saved.")}catch(er){fail(er)}return}
+  if(d.stprof){const [name,k]=d.stprof.split("|");try{const r=await api("profile",{name,profile:{[k]:t.value}});toast("Saved.");if(/^need:/.test(k)&&st.doc&&st.doc.name===name&&r.profile){st.doc.profile=r.profile;redraw()}}catch(er){fail(er)}return}
   if(d.stpolmust||d.stpolonly||d.stfhhide){if(VIEW_AS)return;await polChange(t,d);return}
   if(t.id==="sts-days"){try{await api("school",{school:{remindDays:+t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
   if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}

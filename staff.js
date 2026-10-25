@@ -21,18 +21,34 @@ module.exports = function staffModule(o) {
 
   /* ---------- what a record holds ---------- */
   // records and certificates, in the order of CCLD's records list, LIC 311A, after the hiring forms
+  /* Each training has two links, the regulation it meets and the page where the training is taken, from its official
+     provider. A link marked check could not be opened when it was set on October 25, 2026, and waits for the director to
+     confirm it. The Legislature's own site holds the Health and Safety Code, since CDSS links there for it. */
+  const LAW = (code, sec) => ({ text: (code === 'HSC' ? 'Health and Safety Code ' : 'Penal Code ') + sec, url: `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${code}&sectionNum=${sec}`, check: true });
+  const T22 = sec => ({ text: 'Title 22, section ' + sec, url: 'https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc4.pdf', check: true });
+  const EMSA = { text: 'EMSA approved child care training programs', url: 'https://emsa.ca.gov/childcare/', check: true };
+  const REDCROSS = { text: 'American Red Cross, Water Safety for Parents and Caregivers', url: 'https://www.redcross.org/take-a-class/classes/water-safety-for-parents-and-caregivers/a6R3o0000012oT8.html' };
   const ITEMS = [
-    { k: 'clearance', label: 'Criminal record and Child Abuse Central Index clearance', reg: 'Title 22, 101170 and 101170.2', months: 0 },
-    { k: 'tb', label: 'TB and health screening', reg: 'LIC 503', months: 0 },
-    { k: 'cpr', label: 'Pediatric First Aid and CPR', reg: 'Health and Safety Code 1596.866', months: 24, note: 'Fulton runs it in house' },
-    { k: 'hs16', label: 'Health and safety training, 16 hours including 1 hour of nutrition', reg: 'CDSS PIN 26-11-CCP', months: 0 },
-    { k: 'eplan', label: 'Emergency and disaster plan training', reg: 'Health and Safety Code 1596.868', months: 12, note: 'Before the first day of work and each year' },
-    { k: 'mandated', label: 'Mandated reporter training', reg: 'Health and Safety Code 1596.8662', months: 24, note: 'Within 90 days of hire, renewed every two years' },
-    { k: 'hsa', label: 'Healthy Schools Act training', reg: 'Healthy Schools Act', months: 12, note: 'Renewed each year' },
-    { k: 'water', label: 'Water safety certificate', reg: 'Title 22, 101216.6', months: 24, note: 'Required of every educator because of creek walks' },
+    { k: 'clearance', label: 'Criminal record and Child Abuse Central Index clearance', reg: 'Title 22, 101170 and 101170.2', months: 0, law: T22('101170') },
+    { k: 'tb', label: 'TB and health screening', reg: 'LIC 503', months: 0, law: { text: 'LIC 503, Health Screening Report', url: 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC503.pdf', check: true } },
+    { k: 'cpr', label: 'Pediatric First Aid and CPR', reg: 'Health and Safety Code 1596.866', months: 24, note: 'Fulton runs it in house', law: LAW('HSC', '1596.866'), course: EMSA },
+    { k: 'hs16', label: 'Health and safety training, 16 hours including 1 hour of nutrition', reg: 'CDSS PIN 26-11-CCP', months: 0,
+      law: { text: 'CDSS PIN 26-11-CCP, in the child care Provider Information Notices', url: 'https://www.cdss.ca.gov/inforesources/community-care-licensing/policy/provider-information-notices/child-care', check: true }, course: EMSA },
+    { k: 'eplan', label: 'Emergency and disaster plan training', reg: 'Health and Safety Code 1596.868', months: 12, note: 'Before the first day of work and each year', law: LAW('HSC', '1596.868'),
+      course: { text: 'Taken at Fulton, with the CDSS Disaster Resources page', url: 'https://www.cdss.ca.gov/inforesources/child-care-licensing/public-information-and-resources/disaster-resources', check: true } },
+    { k: 'mandated', label: 'Mandated reporter training', reg: 'Health and Safety Code 1596.8662', months: 24, note: 'Within 90 days of hire, renewed every two years', law: LAW('HSC', '1596.8662'),
+      course: { text: 'California mandated reporter training. Choose the child care training on that page', url: 'https://mandatedreportertraining.com/california/', check: true } },
+    { k: 'hsa', label: 'Healthy Schools Act training', reg: 'Healthy Schools Act', months: 12, note: 'Renewed each year',
+      law: { text: 'Healthy Schools Act, California Department of Pesticide Regulation', url: 'https://www.cdpr.ca.gov/healthy-schools-act/', check: true },
+      course: { text: 'Healthy Schools Act training, Basic Integrated Germ Management', url: 'https://www.cdpr.ca.gov/healthy-schools-act/healthy-schools-act-training/', check: true } },
+    { k: 'water', label: 'Water safety certificate', reg: 'Title 22, 101216.6', months: 24, note: 'Required of every educator because of creek walks', law: T22('101216.6'), course: Object.assign({}, REDCROSS, { check: true }) },
+    // a training the director chooses for each person, shown only for those she marks
+    { k: 'rcwater', label: 'Water Safety for Parents and Caregivers, American Red Cross', reg: 'Title 22, 101216.6', months: 0, chosen: true, note: 'For those the director chooses', law: T22('101216.6'), course: REDCROSS },
     // Fulton's own training, for everyone who cares for children. It shows as due until it is completed.
-    { k: 'activesup', label: 'Active Supervision Training', reg: 'Fulton training', months: 0, fulton: true, note: 'With the CCLD video Supervising Children in Child Care Centers and the active supervision handouts' },
+    { k: 'activesup', label: 'Active Supervision Training', reg: 'Fulton training', months: 0, fulton: true, note: 'With the CCLD video Supervising Children in Child Care Centers and the active supervision handouts', law: T22('101229') },
   ];
+  // a chosen training belongs on a records page only once the director marks it for that person
+  const needsItem = (doc, it) => !it.chosen || !!(((doc && doc.profile) || {}).needs || {})[it.k];
   const CDSS_FORM = n => `https://www.cdss.ca.gov/cdssweb/entres/forms/English/${n}.pdf`;
   const PAPERS = [
     { k: 'lic501', form: 'Personnel Record', num: 'LIC 501', why: 'Gives Licensing your work history and contact information', blank: CDSS_FORM('LIC501') },
@@ -374,6 +390,8 @@ module.exports = function staffModule(o) {
       if ('curriculumFrom' in b) doc.profile.curriculumFrom = b.curriculumFrom === 'smallgroup' ? 'smallgroup' : '';
       if ('startDate' in b) doc.profile.startDate = /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : '';
       if ('goTo' in b) doc.profile.goTo = String(b.goTo || '').slice(0, 40);
+      // the trainings the director chooses for this person
+      for (const it of ITEMS.filter(i => i.chosen)) if (('need:' + it.k) in b) { const n = Object.assign({}, doc.profile.needs || {}); if (b['need:' + it.k] && b['need:' + it.k] !== '0') n[it.k] = true; else delete n[it.k]; doc.profile.needs = n; }
       put(pPath(who), doc);
       if ('room' in b) { const a = accountFor(who); if (a) { a.room = String(b.room || '').slice(0, 20); await saveAccounts(me); } }
       json(req, res, 200, { ok: true, profile: doc.profile }); return;
@@ -469,6 +487,7 @@ module.exports = function staffModule(o) {
     const sc = school(), on = k => !sc.remind || sc.remind[k] !== false, lead = sc.remindDays || 30, doc = person(name), out = [];
     if (on('expiry') || on('hsa')) for (const it of ITEMS) {
       if (it.k === 'hsa' ? !on('hsa') : !on('expiry')) continue;
+      if (!needsItem(doc, it)) continue;
       const ex = expiryOf(it, (doc.items || {})[it.k]); if (!ex) continue; const left = daysBetween(day, ex);
       if (left <= lead && left > 0 && once(`${pidOf(name)}|${it.k}|${ex}|soon`)) out.push(`${it.label} expires ${longDay(ex)}`);
       else if (left <= 0 && once(`${pidOf(name)}|${it.k}|${ex}|out`)) out.push(`${it.label} expired ${longDay(ex)}`);
