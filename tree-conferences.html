@@ -846,7 +846,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0
         <select id="f-status" aria-label="Status"><option value="All">Every status</option>${[["none","Not started"],["progress","Preparing"],["scheduled","Scheduled"],["ready","Ready"],["held","Date passed"],["nosignup","Did not sign up"],["complete","Complete"]].map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select>
         ${eduSelect()}${sortSelect()}
         <span id="live-meta"><span class="small muted mono">${list.length} of ${tot.total}</span>
-        ${list.length?`<button class="btn" data-act="pdf-list" title="One PDF with a two-page form for each child shown, ready to print">Print forms for these ${list.length} (PDF)</button>`:""}</span>
+        ${list.length?`<button class="btn" data-act="pdf-list" title="One PDF with a two-page form for each child shown, ready to print">Print forms for these ${list.length} (PDF)</button><button class="btn" data-act="docx-list" title="One Word file with a form for each child shown">Word file for these ${list.length}</button>`:""}</span>
       </div>
       <div id="live-list">${kids.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Class</th><th>Primary educator</th><th>Status</th><th>When</th><th>Filled</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No children match these filters.</td></tr>`}</tbody></table></div>`
       : `<div class="panel empty"><p>No children on the roster yet.</p><button class="btn primary" data-act="roster-import">Import the 1Core roster PDF</button> <button class="btn" data-act="child-new">Add a child</button></div>`}</div>
@@ -1384,6 +1384,9 @@ const actions = {
   "pdf-list": async ()=>{ await flushAll(); const kids=(S.lastList||[]).map(id=>S.children[id]).filter(Boolean); const f=S.filters;
     const name=["conference-forms", S.period.term.toLowerCase(), S.period.year, f.room!=="All"&&f.room, f.edu&&f.edu!=="All"&&f.edu].filter(Boolean).map(s=>slug(String(s))).join("-");
     await downloadPdf(kids.map(c=>({cf:formFor(c), child:c})), name+".pdf"); },
+  "docx-list": async ()=>{ await flushAll(); const kids=(S.lastList||[]).map(id=>S.children[id]).filter(Boolean); const f=S.filters;
+    const name=["conference-forms", S.period.term.toLowerCase(), S.period.year, f.room!=="All"&&f.room, f.edu&&f.edu!=="All"&&f.edu].filter(Boolean).map(s=>slug(String(s))).join("-");
+    await downloadDocx(kids.map(c=>({cf:formFor(c), child:c})), kids[0], name); },
   "docx-conf": async ()=>{ await flushAll(); const cf=S.confs[S.view.id]; await downloadDocx([cf], S.children[cf.childId]); },
   "docx-child": async a=>{ const list=confsFor(a.dataset.id); await downloadDocx(list, S.children[a.dataset.id]); },
   "export-csv": ()=>exportSeasonCSV(),
@@ -1476,7 +1479,8 @@ async function confFonts(){ if(CF_FONTS!==null) return CF_FONTS;
     const [r,b]=await Promise.all(["Andika-Regular.ttf","Andika-Bold.ttf"].map(get)); CF_FONTS={r,s:b,b}; }
   catch(e){ CF_FONTS=false; }
   return CF_FONTS; }
-async function downloadDocx(list, child){
+// a list holds conference forms, or for a set of children, items of a form and its child
+async function downloadDocx(list, child0, setName){
   if(!list.length){ toast("No conferences to include"); return; }
   toast("Preparing the Word file…");
   try{ await loadScript("https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"); }catch(e){ toast("The Word builder could not load. Check your connection."); return; }
@@ -1495,7 +1499,7 @@ async function downloadDocx(list, child){
   // Letter paper is 15840 twips tall. With half-inch margins about 14400 remain, and the title,
   // notes and confidentiality line use roughly 2600 of that on each page.
   const row=(height, children)=>new D.TableRow({height:{value:Math.round(height), rule:D.HeightRule.ATLEAST}, cantSplit:false, children});
-  for(const cf of list){
+  for(const item of list){ const cf=item.cf||item, child=item.child||child0;
     const META=480;
     const bodyRows=[];
     for(let i=0;i<FIELDS.length;i++){
@@ -1543,8 +1547,8 @@ async function downloadDocx(list, child){
   const doc=new D.Document(Object.assign({creator:"Fulton Community School",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
     FF?{fonts:[{name:"Andika",data:FF.r}]}:{}));
   const blob=await D.Packer.toBlob(doc);
-  const base=slug(childName(child));
-  await saveFile(list.length===1? `${base}-conference-${list[0].term.toLowerCase()}-${list[0].schoolYear}.docx` : `${base}-conference-record.docx`, blob);
+  const base=slug(childName(child0));
+  await saveFile(setName? setName+".docx" : list.length===1? `${base}-conference-${list[0].term.toLowerCase()}-${list[0].schoolYear}.docx` : `${base}-conference-record.docx`, blob);
 }
 
 /* ---------- printable PDF, always two letter pages per conference ---------- */
