@@ -466,10 +466,8 @@ const PREP = [
   {k:"offeredVirtual", label:"Offered an in-person or virtual option"},
   {k:"renee", label:"Invited the director to join (optional)"},
 ];
-const DEFAULT_GROUPS = [
-  {name:"Cosmos",room:"West",educator:""},{name:"Yarrow",room:"West",educator:""},{name:"Zinnia",room:"West",educator:""},{name:"Borage",room:"West",educator:""},
-  {name:"Marigold",room:"North",educator:""},{name:"Morning Glory",room:"North",educator:""},{name:"Sunflower",room:"North",educator:""},
-  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:""},{name:"Iris",room:"South",educator:""}];
+// the Classes and small groups are TREE's one list, in Program settings, read below
+const DEFAULT_GROUPS = [];
 const ONBOARD = [
   {k:"questionnaire", label:"Read the Family Questionnaire"},
   {k:"welcomeCall", label:"Welcome phone call with the family"},
@@ -508,9 +506,9 @@ const PLAN_BOXES = [["staying","Staying at our school"],["tk","TK"],["k","Kinder
 const REASONS = ["","Behavior or safety concern","Family request","Educator request","Follow-up on goals","Transition or next school","Other"];
 const DEFAULT_SETTINGS = {
   groups: DEFAULT_GROUPS,
-  classrooms:["West","North","South"],
+  classrooms:[],
   years:["2025-26","2026-27","2027-28"],
-  educators:{West:[],North:[],South:[]},
+  educators:{},
   signupUrl:"https://www.signupgenius.com/go/10C0E44A8A72EA0F9C52-66234452-fulton#/",
   signupFeed:"webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=52b9d3e8d48a36eeafcf25b67ee0ea5a",
 };
@@ -720,10 +718,14 @@ async function boot(){
   db.collection("conferences").limit(1000).onSnapshot(snap=>{
     const m={}; snap.docs.forEach(d=>{ m[d.id]={id:d.id,...d.data()}; }); S.confs=m; S.loaded.confs=true; refresh();
   }, onErr);
-  db.doc("settings/main").onSnapshot(snap=>{
-    if(snap.exists){ const d=snap.data(); S.settings={...structuredClone(DEFAULT_SETTINGS),...d}; }
-    refresh();
-  }, onErr);
+  // Conference settings keep the school years. The Classes and small groups come from Program settings, the one list.
+  let mainDoc=null, progDoc=null;
+  const settle=()=>{ const d=mainDoc||{}; const pg=progDoc||{}; S.settings={...structuredClone(DEFAULT_SETTINGS),...d};
+    S.settings.classrooms=Array.isArray(pg.classrooms)&&pg.classrooms.length? pg.classrooms.slice() : (Array.isArray(d.classrooms)? d.classrooms : []);
+    S.settings.groups=Array.isArray(pg.groups)? pg.groups.filter(g=>g&&g.name).map(g=>({name:String(g.name),room:g.room||"",educator:g.educator||""})) : (Array.isArray(d.groups)? d.groups : []);
+    refresh(); };
+  db.doc("settings/main").onSnapshot(snap=>{ mainDoc=snap.exists? snap.data() : null; settle(); }, onErr);
+  db.doc("settings/program").onSnapshot(snap=>{ progDoc=snap.exists? snap.data() : null; settle(); }, onErr);
 }
 let rafPending=false;
 function refresh(){
@@ -1238,14 +1240,14 @@ function viewSettings(){
   return `<div style="max-width:760px" class="stack">
   <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
-    <div class="field"><label for="s-rooms">Classes</label><div class="hint">One per line</div><textarea id="s-rooms" rows="3" ${isDirector()?"":"disabled"}>${esc(s.classrooms.join("\n"))}</textarea></div>
+    <div class="hint">The Classes and small groups are kept in TREE's Settings, under Program settings, and read here from there.</div>
     <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl??DEFAULT_SETTINGS.signupUrl)}" ${isDirector()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${isDirector()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${isDirector()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
     <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Educator names are kept in one list, in TREE under Settings, Educators. They show here as that list has them.</div>
       ${s.classrooms.map(r=>`<div class="cnt"><b>${esc(r)}</b> ${esc((s.educators?.[r]||[]).join(", ")||"No one yet")}</div>`).join("")}
     </div>
-    <div class="field"><label for="s-groups">Small groups</label><div class="hint">One per line, written as group, Class, educator. The educator becomes the primary educator for every child in that group.</div><textarea id="s-groups" rows="8" ${isDirector()?"":"disabled"}>${esc(groupsList().map(g=>[g.name,g.room,g.educator].join(", ")).join("\n"))}</textarea></div>
+    <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Small groups</div><div class="hint">The lead educator of each group is the primary educator for every child in it.</div>${groupsList().map(g=>`<div class="cnt"><b>${esc(g.name)}</b> ${esc([g.room,g.educator].filter(Boolean).join(", "))}</div>`).join("")}</div>
     ${isDirector()?`<div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>`:""}
   </form>
   <div class="panel stack">
@@ -1371,15 +1373,11 @@ const actions = {
   "child-save": ()=>saveChildForm(),
   "save-settings": async ()=>{
     const lines = v=>v.split(/\n/).map(s=>s.trim()).filter(Boolean);
-    const classrooms=lines($("#s-rooms").value); const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
-    if(!classrooms.length){ toast("Add at least one class"); return; }
+    const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
     if(!years.length){ toast("Write school years like 2026-27"); return; }
-    const educators=Object.assign({},S.settings.educators||{});   // kept from TREE's one list of educator names
-    classrooms.forEach(r=>{ if(!educators[r]) educators[r]=S.settings.educators?.[r]||[]; });
-    const groups=lines($("#s-groups").value).map(l=>l.split(",").map(s=>s.trim())).filter(x=>x[0]).map(([name,room,educator])=>({name,room:room||"",educator:educator||""}));
     const su=$("#s-signup").value.trim(); if(su && !/^https:\/\//i.test(su)){ toast("The sign-up link should start with https://"); return; }
     const feed=$("#s-feed").value.trim(); if(feed && !/^(webcal|https):\/\/(www\.)?signupgenius\.com\//i.test(feed)){ toast("The calendar link should be a SignUpGenius webcal link"); return; }
-    try{ await dbSet("settings/main",{classrooms,years,educators,groups,signupUrl:su,signupFeed:feed,updatedAt:nowISO()}); S.settings={...S.settings,classrooms,years,educators,groups,signupUrl:su,signupFeed:feed}; toast("Settings saved"); render(); }catch(e){}
+    try{ await dbUpdate("settings/main",{years,signupUrl:su,signupFeed:feed,updatedAt:nowISO()}); S.settings={...S.settings,years,signupUrl:su,signupFeed:feed}; toast("Settings saved"); render(); }catch(e){}
   },
   "import-form": a=>openImport(a.dataset.conf||null),
   "attach-only": ()=>openAttachOnly(),

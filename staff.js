@@ -16,6 +16,8 @@ const crypto = require('crypto');
 const NOTICES = require('./notices.js');
 
 module.exports = function staffModule(o) {
+  // the Classes, from Program settings, the one list
+  const classrooms = () => (o.classrooms ? o.classrooms() : []);
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
   const S = { files: new Map(), timers: new Map(), saving: new Map(), imgs: new Map(), imgCache: new Map(), ready: false, loading: null };
   const DAY = 864e5;
@@ -611,7 +613,7 @@ module.exports = function staffModule(o) {
       if (b.meeting && typeof b.meeting === 'object') sc.meeting = { start: /^\d{2}:\d{2}$/.test(b.meeting.start || '') ? b.meeting.start : '13:15', end: /^\d{2}:\d{2}$/.test(b.meeting.end || '') ? b.meeting.end : '14:30' };
       // each Class's team meeting time, and the months the director marks with no all-staff meeting, as December and February have none
       const T = x => /^\d{2}:\d{2}$/.test(x || '') ? x : '';
-      if (b.teamMeetings && typeof b.teamMeetings === 'object') sc.teamMeetings = Object.fromEntries(['West', 'North', 'South'].map(r => [r, { start: T((b.teamMeetings[r] || {}).start), end: T((b.teamMeetings[r] || {}).end) }]));
+      if (b.teamMeetings && typeof b.teamMeetings === 'object') sc.teamMeetings = Object.fromEntries(classrooms().map(r => [r, { start: T((b.teamMeetings[r] || {}).start), end: T((b.teamMeetings[r] || {}).end) }]));
       if (Array.isArray(b.quietMonths)) sc.quietMonths = [...new Set(b.quietMonths.map(String).filter(x => /^\d{4}-(0[13-9]|1[01])$/.test(x)))].sort().slice(-36);
       if (typeof b.welcome === 'string') sc.welcome = b.welcome.slice(0, 8000);
       if (typeof b.philosophy === 'string') sc.philosophy = b.philosophy.slice(0, 30000);
@@ -803,8 +805,8 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
-  const GD = require('./garden.js')({ get, put, log, isDirector, isKitchen, nameKey, roomOf, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
-  const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
+  const GD = require('./garden.js')({ get, put, log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
+  const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id) });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
   // a records page holding nothing but the 2026 Know Your Rights mark TREE made at start is not records of their own, so a

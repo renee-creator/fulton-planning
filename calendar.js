@@ -226,6 +226,13 @@ function expand(calId, parsed, from, to) {
 }
 // A calendar still carrying a starter name takes the name Google gives it. A name the director typed is left alone.
 const STARTER_NAMES = new Set(['School calendar', 'Second calendar', 'Calendar', 'New calendar']);
+function addHiddenSpaces(names) {
+  if (!core) return 0; const p = core.program; const have = new Set(p.spaces.map(s => s.name.toLowerCase()));
+  const add = names.filter(n => n && !have.has(String(n).toLowerCase())).map(n => ({ id: String(n).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 16) || 'space', name: String(n), color: 'moss', note: '', shared: false, hidden: true, byWeek: false }));
+  if (!add.length) return 0;
+  core.setProgram({ director: true, name: 'TREE' }, Object.assign({}, p, { spaces: p.spaces.concat(add) })); log('Spaces added from Program settings, kept off the sign-up list,', add.map(x => x.name).join(', '));
+  return add.length;
+}
 function adoptName(calId, name) {
   if (!name || !core) return;
   const p = core.program; const cal = p.calendars.find(c => c.id === calId);
@@ -314,7 +321,9 @@ const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold'
 // the school calendar that is the family conference sign-up sheet, if there is one
 function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
-  const p0 = core.program; const p = opts.extraEvents ? Object.assign({}, p0, { calendars: p0.calendars.concat(EXTRA_CALS.filter(c => c.id !== 'tconf' || !confCalId())) }) : p0;
+  // the Classes and small groups are TREE's one list, in Program settings. The calendar reads them from there.
+  const one = opts.oneLists ? opts.oneLists() : null;
+  const p0 = one ? Object.assign({}, core.program, { classes: one.classrooms.slice(), groups: one.groups.map(g => ({ name: g.name, room: g.room })) }) : core.program; const p = opts.extraEvents ? Object.assign({}, p0, { calendars: p0.calendars.concat(EXTRA_CALS.filter(c => c.id !== 'tconf' || !confCalId())) }) : p0;
   if (!me.director) return p;
   return Object.assign({}, p, { calendars: p.calendars.map(c => Object.assign({}, c, { hasAddress: !!feedAddresses[c.id], publicAddress: /\/public\/(basic|full)\.ics$/.test(feedAddresses[c.id] || '') })) });
 }
@@ -342,7 +351,9 @@ async function handle(path, me, body, reply) {
     if (path === '/api/book') { reply(200, core.book(me, body)); return true; }
     if (path === '/api/booking/update') { reply(200, core.update(me, String(body.id || ''), body.patch)); return true; }
     if (path === '/api/booking/remove') { reply(200, core.remove(me, String(body.id || ''), body.scope)); return true; }
-    if (path === '/api/settings') { if (body.program && Array.isArray(body.program.calendars)) body.program.calendars = body.program.calendars.filter(c => !EXTRA_CALS.some(x => x.id === (c && c.id))); core.setProgram(me, body.program); reply(200, { settings: settingsFor(me) }); return true; }
+    if (path === '/api/settings') { if (body.program && Array.isArray(body.program.calendars)) body.program.calendars = body.program.calendars.filter(c => !EXTRA_CALS.some(x => x.id === (c && c.id)));
+      // the Classes and small groups are changed in Program settings only, so what the calendar kept stays as it was
+      if (opts.oneLists && body.program && typeof body.program === 'object') { body.program.classes = core.program.classes; body.program.groups = core.program.groups; } core.setProgram(me, body.program); reply(200, { settings: settingsFor(me) }); return true; }
     if (path === '/api/calendar/connect') {
       if (!me.director) { reply(403, { error: 'Only the director can connect calendars.' }); return true; }
       const cal = core.program.calendars.find(c => c.id === body.id);
@@ -374,5 +385,5 @@ async function today(me, from, to) { if (!store.ready) await loadAll(); if (!sto
 function statusLine() { if (!store.ready) return [false, store.error || 'The calendar is still loading.']; const connected = core.program.calendars.filter(c => feedAddresses[c.id]).length; return [true, `The calendar holds ${core.count()} sign-ups and ${core.program.spaces.length} spaces, with ${connected} school calendar${connected === 1 ? '' : 's'} connected.`]; }
 // every calendar file as the records keep it, for the nightly backup
 function dump() { const out = {}; if (!store.ready) return out; for (const p of new Set([PROGRAM_PATH, FEEDS_PATH, ...store.shas.keys(), ...dirtyPaths])) { if (p === PROGRAM_PATH || p === FEEDS_PATH || /^calendar\/bookings\/\d{4}-\d{2}\.json$/.test(p)) out[p] = docFor(p); } return out; }
-return { loadAll, handle, today, spaces: () => (core.program.spaces || []).filter(s => s && !s.hidden).map(s => ({ id: s.id, name: s.name })), events: (f, t) => eventsFor(f, t, null), flushEverything, statusLine, dump, get ready() { return store.ready; }, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
+return { loadAll, handle, today, addHiddenSpaces, allSpaces: () => core ? (core.program.spaces || []).map(s => ({ id: s.id, name: s.name, hidden: !!s.hidden })) : [], classesKept: () => core ? { classes: core.program.classes || [], groups: core.program.groups || [] } : null, spaces: () => (core.program.spaces || []).filter(s => s && !s.hidden).map(s => ({ id: s.id, name: s.name })), events: (f, t) => eventsFor(f, t, null), flushEverything, statusLine, dump, get ready() { return store.ready; }, stop() { stopping = true; for (const t of timers.values()) clearTimeout(t); }, get saveError() { return store.saveError; } };
 };

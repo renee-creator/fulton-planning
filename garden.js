@@ -19,7 +19,8 @@ module.exports = function garden(o) {
   const USES = ['Food', 'Dye', 'Art materials', 'Pollinator', 'Look, don\'t eat'];
   const STAGES = ['plan', 'plant', 'tend', 'harvest', 'seeds', 'compost', 'rest'];
   const WEEKDAYS = [1, 2, 3, 4, 5];
-  const ROOMS = ['West', 'North', 'South'];
+  // the Classes, from Program settings, the one list
+  const ROOMS = () => (o.classrooms ? o.classrooms() : []);
   // words that suggest a chemical, which no task, tip or plan here may carry
   const CHEM = /\b(herbicides?|pesticides?|insecticides?|fungicides?|roundup|glyphosate|weed ?killer|bug ?spray|spray(ed|ing)? (for|with) (bugs|pests|weeds)|neem|copper spray|sevin|malathion|diazinon)\b/i;
   const clean = s => CHEM.test(String(s || '')) ? '' : s;
@@ -105,7 +106,7 @@ module.exports = function garden(o) {
     if (P === 'garden/harvest') {
       const p = plantOf(s, body.plant); if (!p) { err(req, res, 400, 'Choose the plant.'); return; }
       if (!isFood(p)) { err(req, res, 400, `${p.common} is Look, don't eat, so it is never harvested for food.`); return; }
-      const h = { id: rid('h'), plant: p.id, plantName: p.common, amount: txt(body.amount, 60), bed: bedOf(s, body.bed) ? body.bed : p.bed || '', date: ISO.test(body.date || '') ? body.date : today(), children: !!body.children, room: ROOMS.includes(body.room) ? body.room : '', by: me, at: Date.now() };
+      const h = { id: rid('h'), plant: p.id, plantName: p.common, amount: txt(body.amount, 60), bed: bedOf(s, body.bed) ? body.bed : p.bed || '', date: ISO.test(body.date || '') ? body.date : today(), children: !!body.children, room: ROOMS().includes(body.room) ? body.room : '', by: me, at: Date.now() };
       saveL(L => { L.harvests.push(h); }); log('Garden harvest recorded by', me); return back();
     }
     if (P === 'garden/harvest/remove') { if (!dir) { err(req, res, 403, 'Only the director removes a harvest.'); return; } saveL(L => { L.harvests = L.harvests.filter(x => x.id !== body.id); }); return back(); }
@@ -115,7 +116,7 @@ module.exports = function garden(o) {
       const common = txt(body.common, 80), bot = txt(body.botanical, 80); if (!common) { err(req, res, 400, 'Name what you saw.'); return; }
       const link = /^https:\/\/(www\.)?(inaturalist\.org|merlin\.allaboutbirds\.org|ebird\.org|macaulaylibrary\.org)\//.test(body.link || '') ? String(body.link).slice(0, 300) : '';
       saveL(L => { let w = L.wildlife.find(x => nameKey(x.common) === nameKey(common)); if (!w) { w = { id: rid('w'), common, botanical: bot, plants: [], sightings: [] }; L.wildlife.push(w); } if (bot && !w.botanical) w.botanical = bot;
-        w.sightings.push({ date: ISO.test(body.date || '') ? body.date : today(), where: txt(body.where, 80), room: ROOMS.includes(body.room) ? body.room : roomOf(me) || '', link, by: me, at: Date.now() }); });
+        w.sightings.push({ date: ISO.test(body.date || '') ? body.date : today(), where: txt(body.where, 80), room: ROOMS().includes(body.room) ? body.room : roomOf(me) || '', link, by: me, at: Date.now() }); });
       return back();
     }
     // a plant photo, kept only after the face check found no face, never showing children
@@ -177,15 +178,15 @@ module.exports = function garden(o) {
     }
     if (P === 'garden/tending') {
       const t = { home: {}, rotations: [] };
-      for (const [bed, room] of Object.entries((body.tending || {}).home || {})) if (bedOf(s, bed) && ROOMS.includes(room)) t.home[bed] = room;
-      for (const r of ((body.tending || {}).rotations || [])) if (r && Array.isArray(r.beds)) t.rotations.push({ id: r.id || rid('r'), beds: r.beds.filter(b => bedOf(s, b)), who: (r.who || []).map(String).filter(w => ROOMS.includes(w.split('|')[0])).slice(0, 12), every: r.every === 'month' ? 'month' : 'week', weeks: Math.max(1, Math.min(8, +r.weeks || 1)), start: ISO.test(r.start || '') ? r.start : today() });
+      for (const [bed, room] of Object.entries((body.tending || {}).home || {})) if (bedOf(s, bed) && ROOMS().includes(room)) t.home[bed] = room;
+      for (const r of ((body.tending || {}).rotations || [])) if (r && Array.isArray(r.beds)) t.rotations.push({ id: r.id || rid('r'), beds: r.beds.filter(b => bedOf(s, b)), who: (r.who || []).map(String).filter(w => ROOMS().includes(w.split('|')[0])).slice(0, 12), every: r.every === 'month' ? 'month' : 'week', weeks: Math.max(1, Math.min(8, +r.weeks || 1)), start: ISO.test(r.start || '') ? r.start : today() });
       saveS({ tending: t }); return back();
     }
     if (P === 'garden/animal') {
       const list = JSON.parse(JSON.stringify(s.animals || [])); let a = list.find(x => x.id === body.id); if (!a) { err(req, res, 404, 'That animal group is not here.'); return; }
       const v = body.animal || {}; if (Array.isArray(v.names)) a.names = v.names.map(x => txt(x, 40)).filter(Boolean).slice(0, 40);
       if (Array.isArray(v.care)) a.care = v.care.filter(c => c && txt(c.text, 120)).map(c => ({ id: c.id || rid('a'), text: txt(c.text, 120), every: c.every === 'week' ? 'week' : 'day', weekday: Math.max(1, Math.min(5, +c.weekday || 1)) }));
-      if (v.rotation) a.rotation = { who: (v.rotation.who || []).map(String).filter(w => ROOMS.includes(w.split('|')[0])), every: v.rotation.every === 'month' ? 'month' : 'week', weeks: Math.max(1, Math.min(8, +v.rotation.weeks || 1)), start: ISO.test(v.rotation.start || '') ? v.rotation.start : today() };
+      if (v.rotation) a.rotation = { who: (v.rotation.who || []).map(String).filter(w => ROOMS().includes(w.split('|')[0])), every: v.rotation.every === 'month' ? 'month' : 'week', weeks: Math.max(1, Math.min(8, +v.rotation.weeks || 1)), start: ISO.test(v.rotation.start || '') ? v.rotation.start : today() };
       saveS({ animals: list }); return back();
     }
     if (P === 'garden/agreements') { const a = Object.assign({}, s.agreements || {}); for (const k of ['children', 'families']) if (body[k] && Array.isArray(body[k].items)) a[k] = Object.assign({}, a[k] || {}, { items: body[k].items.map(x => txt(x, 200)).filter(Boolean) }); saveS({ agreements: a }); return back(); }

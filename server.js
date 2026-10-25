@@ -312,7 +312,7 @@ function readPhoto(sha) {
   return job;
 }
 // the calendar keeps its own part of the records, under calendar/
-const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
+const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, oneLists: () => oneLists(), extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
 function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
@@ -453,7 +453,7 @@ function runOnce() {
 function syncEducators() {
   const ed = store.recs.settings.get('educators'), mn = store.recs.settings.get('main');
   if (!ed || ed.deleted || !ed.doc || !Array.isArray(ed.doc.names) || !mn || mn.deleted || !mn.doc) return;
-  const by = {}; for (const r of (Array.isArray(mn.doc.classrooms) ? mn.doc.classrooms : [])) by[r] = [];
+  const by = {}; for (const r of oneLists().classrooms) by[r] = [];
   for (const x of ed.doc.names) { if (!x || !x.name || !x.room || isFormerEducator(x.name)) continue; (by[x.room] = by[x.room] || []).push(String(x.name)); }
   if (JSON.stringify(by) === JSON.stringify(mn.doc.educators || {})) return;
   mn.doc.educators = by; mn.local = true; noteChange('settings', 'main'); scheduleSave('settings', 'main'); log('Educators by Class copied from the educator list');
@@ -517,7 +517,7 @@ function settleFormer() {
     const pg = store.recs.settings.get('program');
     if (pg && !pg.deleted && pg.doc && Array.isArray(pg.doc.groups)) {
       const gs = pg.doc.groups.map(g => { if (g && g.educator && nameKey(g.educator) === k) { took.groups.push(g.name); return Object.assign({}, g, { educator: '' }); } return g; });
-      if (took.groups.length) { setSetting('program', Object.assign({}, pg.doc, { groups: gs })); syncGroups('program'); } }
+      if (took.groups.length) setSetting('program', Object.assign({}, pg.doc, { groups: gs })); }
     // a phone that took reminders hears nothing more
     a.leftFrom = took; a.settled = a.leaveOn; delete a.push; changed = true;
     if (typeof staff !== 'undefined') staff.markLeft(a.name, a.leaveOn).catch(() => {});
@@ -536,7 +536,7 @@ function restoreFormer(a) {
   const pg = store.recs.settings.get('program');
   if ((took.groups || []).length && pg && !pg.deleted && pg.doc && Array.isArray(pg.doc.groups)) { let put = false;
     const gs = pg.doc.groups.map(g => g && took.groups.includes(g.name) && !g.educator ? (put = true, Object.assign({}, g, { educator: a.name })) : g);
-    if (put) { setSetting('program', Object.assign({}, pg.doc, { groups: gs })); syncGroups('program'); } }
+    if (put) setSetting('program', Object.assign({}, pg.doc, { groups: gs })); }
   delete a.leftFrom;
 }
 /* ---------- Keeping records. How long a former child's and a former educator's records are kept, from Title 22 as the
@@ -565,7 +565,7 @@ function keepingDue() {
 const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
-const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
@@ -608,7 +608,7 @@ async function doLoadGraph() {
   if (drdpSha) { try { DRDP_DESC = JSON.parse(texts.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
   if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 15 * 60000); }
   store.ready = true; store.error = ''; store.loadedAt = Date.now();
-  try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); }
+  try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
   runOnce();
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
@@ -660,7 +660,7 @@ async function doLoad() {
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
     runOnce();
     staff.load().then(() => runOnce(), e => log('Educator records could not be read', e.message));
-    kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); syncGroups('program'); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
+    kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
     setTimeout(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 20000).unref();
     if (photosDrive.on()) setTimeout(() => photosDrive.moveAll().catch(e => log('Photos could not move to Google Drive', e.message)), 60000).unref();
     log(`Loaded ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.threads.size} threads, ${store.recs.projects.size} projects, ${store.recs.children.size} children, ${store.recs.conferences.size} conferences, ${store.recs.slides.size} slides, ${store.recs.settings.size} settings`);
@@ -669,17 +669,45 @@ async function doLoad() {
 
 // a plan that holds an observation's words, written or pasted in before plans kept the observation's id, keeps the id
 // now, once, so a plan and its observations are found by id and never by matching words
-// the small groups are one list. Program settings (plans, Today, stories) and Conference settings (the primary educator)
-// each keep a copy, and a change saved in either is copied to the other, so the two never drift apart
-const groupsKey = g => JSON.stringify((Array.isArray(g) ? g : []).filter(x => x && x.name).map(x => ({ name: String(x.name), room: String(x.room || ''), educator: String(x.educator || '') })));
-function syncGroups(from) {
-  const to = from === 'program' ? 'main' : 'program';
-  const a = store.recs.settings.get(from), b = store.recs.settings.get(to);
-  if (!a || a.deleted || !a.doc || !Array.isArray(a.doc.groups) || !b || b.deleted || !b.doc) return;
-  if (groupsKey(a.doc.groups) === groupsKey(b.doc.groups)) return;
-  b.doc.groups = JSON.parse(groupsKey(a.doc.groups)); b.local = true;
-  noteChange('settings', to); scheduleSave('settings', to); log('Small groups copied from', from === 'program' ? 'Program settings to Conference settings' : 'Conference settings to Program settings');
+// the Classes and the small groups are one list each, kept in Program settings. Conference settings, the calendar and
+// every page read them from there. Until the one-time step oneLists has run, the Classes Conference settings kept are read.
+function settingDoc(id) { const r = store.recs.settings.get(id); return r && !r.deleted && r.doc ? r.doc : {}; }
+function oneLists() {
+  const pg = settingDoc('program'), mn = settingDoc('main');
+  const clean = a => (Array.isArray(a) ? a : []).map(x => String(x || '').trim()).filter(Boolean);
+  const classrooms = clean(pg.classrooms).length ? clean(pg.classrooms) : clean(mn.classrooms);
+  const groups = (Array.isArray(pg.groups) ? pg.groups : []).filter(g => g && g.name).map(g => ({ name: String(g.name), room: String(g.room || ''), educator: String(g.educator || '') }));
+  return { classrooms, groups };
 }
+// what the three lists held when they became one, for the director to read in Settings
+function listDifferences() {
+  const pg = settingDoc('program'), mn = settingDoc('main'), cal = calendar.classesKept() || { classes: [], groups: [] };
+  const out = []; const j = a => (a || []).join(', ');
+  const progC = (pg.classrooms || mn.classrooms || []);
+  if (j(mn.classrooms) !== j(progC)) out.push(`Conference settings listed the Classes as ${j(mn.classrooms) || 'none'}. Program settings keeps ${j(progC)}.`);
+  if (cal.classes.length && j(cal.classes) !== j(progC)) out.push(`Calendar settings listed the Classes as ${j(cal.classes)}. Program settings keeps ${j(progC)}.`);
+  const gk = g => (g || []).map(x => x.name + ' in ' + (x.room || 'no Class')).join(', ');
+  if (Array.isArray(mn.groups) && gk(mn.groups) !== gk(pg.groups)) out.push(`Conference settings listed the small groups as ${gk(mn.groups)}. Program settings keeps ${gk(pg.groups)}.`);
+  if (cal.groups.length && gk(cal.groups) !== gk(pg.groups)) out.push(`Calendar settings listed the small groups as ${gk(cal.groups)}. Program settings keeps ${gk(pg.groups)}.`);
+  const sp = calendar.allSpaces().map(x => x.name.toLowerCase());
+  const places = (Array.isArray(pg.places) ? pg.places : []).filter(Boolean);
+  const onlyP = places.filter(x => !sp.includes(String(x).toLowerCase())), onlyS = calendar.allSpaces().filter(x => !places.some(p => String(p).toLowerCase() === x.name.toLowerCase())).map(x => x.name);
+  if (onlyP.length) out.push(`Where it happens in Program settings had ${onlyP.join('; ')}, which the calendar's spaces did not. ${onlyP.filter(x => !/^classroom$/i.test(x)).join('; ') || 'None'} joined the spaces, kept off the sign-up list.${onlyP.some(x => /^classroom$/i.test(x)) ? ' Classroom on its own is each Class\'s classroom space.' : ''}`);
+  if (onlyS.length) out.push(`The calendar's spaces had ${onlyS.join('; ')}, which Where it happens in Program settings did not. They stay as spaces.`);
+  return out;
+}
+ONCE.push(['oneLists', () => {
+  if (!calendar.ready || !calendar.classesKept()) return false;
+  const pg = store.recs.settings.get('program'), mn = settingDoc('main'); if (!pg || pg.deleted || !pg.doc) return false;
+  const differences = listDifferences();
+  if (!(Array.isArray(pg.doc.classrooms) && pg.doc.classrooms.length)) { const cal = calendar.classesKept() || { classes: [] };
+    const from = (Array.isArray(mn.classrooms) && mn.classrooms.length) ? mn.classrooms : cal.classes;
+    setSetting('program', Object.assign({}, pg.doc, { classrooms: from.slice() })); }
+  const places = (Array.isArray(pg.doc.places) ? pg.doc.places : []).filter(x => x && !/^classroom$/i.test(x));
+  calendar.addHiddenSpaces(places);
+  setSetting('onelists', { at: new Date().toISOString(), differences });
+  log('One list of Classes, small groups and spaces.', differences.length, 'differences kept for the director');
+}]);
 const PLAN_KINDS = ['classroom', 'individual', 'smallgroup'];
 function linkPlansToObservations() {
   const ns = []; for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue; const bit = String(d.noticed || '').replace(/\s+/g, ' ').trim().slice(0, 50); if (bit.length >= 20) ns.push([id, bit]); }
@@ -1764,7 +1792,6 @@ async function handle(req, res) {
     noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey);
     if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
-    if (kind === 'settings' && (id === 'program' || id === 'main')) syncGroups(id);
     if (kind === 'settings' && (id === 'educators' || id === 'main') && onceDone('educatorList')) syncEducators();
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
@@ -2115,6 +2142,6 @@ server.listen(PORT, () => {
   log(TEACHERS.length + ' educator passcodes set');
   log('Sign-ins set on Render for ' + (TEACHERS.map(t => t.name).join(', ') || 'no one'));
   log('GitHub key ' + (githubToken() ? 'saved' : 'MISSING') + ', Anthropic key ' + (anthropicKey() ? 'saved' : 'MISSING'));
-  loadAll(); calendar.loadAll();
+  loadAll(); calendar.loadAll().then(() => { if (store.ready) runOnce(); }, () => {});
 });
 module.exports = { deepMerge, checkSession, makeSession, isFormerEducator };

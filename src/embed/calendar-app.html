@@ -432,9 +432,8 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
     </div>
     <div class="sect">
       <h3>Classes and small groups</h3>
-      <p class="hint">These fill the Who it is for list on the sign-up form. Each class is offered as a whole class, and each small group by name.</p>
-      <label class="fld">Classes, separated by commas<input type="text" id="set-classes" placeholder="West, North, South"></label>
-      <label class="fld">Small groups, one per line, with the class after a comma<textarea id="set-groups" rows="6" placeholder="Cosmos, West"></textarea></label>
+      <p class="hint">These fill the Who it is for list on the sign-up form. They are kept in TREE's Settings, under Program settings, and read here from there.</p>
+      <p class="hint" id="set-classes-now"></p>
     </div>
     <div class="sect">
       <h3>Hours shown</h3>
@@ -993,7 +992,7 @@ function renderSettings(){
   for(let m=0;m<=1320;m+=60) a.append(h("option",{value:String(m),text:hourLabel(m)}));
   for(let m=120;m<=1440;m+=60) b.append(h("option",{value:String(m),text:m===1440?"12 am, midnight":hourLabel(m)}));
   a.value=String(Draft.dayStart); b.value=String(Draft.dayEnd); $("set-weekends").checked=Draft.weekends;
-  $("set-classes").value=(Draft.classes||[]).join(", "); $("set-groups").value=(Draft.groups||[]).map(g=>g.name+(g.room?", "+g.room:"")).join("\n");
+  $("set-classes-now").textContent=[(Draft.classes||[]).length?"Classes, "+(Draft.classes||[]).join(", ")+".":"",(Draft.groups||[]).length?"Small groups, "+(Draft.groups||[]).map(g=>g.name).join(", ")+".":""].filter(Boolean).join(" ");
 }
 function nextColor(list){ const used=new Set(list.map(x=>x.color)); return Object.keys(COLOR_NAMES).find(c=>!used.has(c)) || "moss"; }
 function openSettings(){ if(!S.director||!S.data) return; Draft=cloneSettings(); CalMsg.i=-1; CalMsg.text=""; $("set-msg").textContent=""; renderSettings(); const d=$("dlg-set"); openDlg(d); }
@@ -1057,8 +1056,6 @@ function wire(){
   $("set-add-space").onclick=()=>{ Draft.spaces.push({name:"",color:nextColor(Draft.spaces.concat(Draft.calendars)),note:"",shared:false,hidden:false,byWeek:false}); renderSettings(); const el=$("set-sp-name-"+(Draft.spaces.length-1)); if(el) el.focus(); };
   $("set-start").addEventListener("change",e=>{ Draft.dayStart=Number(e.target.value); }); $("set-end").addEventListener("change",e=>{ Draft.dayEnd=Number(e.target.value); });
   $("set-weekends").addEventListener("change",e=>{ Draft.weekends=e.target.checked; });
-  $("set-classes").addEventListener("input",e=>{ Draft.classes=e.target.value.split(",").map(x=>x.trim()).filter(Boolean); });
-  $("set-groups").addEventListener("input",e=>{ Draft.groups=e.target.value.split("\n").map(line=>{ const i=line.lastIndexOf(","); return i<0? {name:line.trim(),room:""} : {name:line.slice(0,i).trim(),room:line.slice(i+1).trim()}; }).filter(g=>g.name); });
   document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target===d) closeDlg(d); }));   // a click on the dimmed area closes
   const folds=()=>{ for(const id of ["fold-cals","fold-spaces"]) $(id).open=!narrow.matches; };   // open on a computer, tucked away on a phone
   folds(); narrow.addEventListener("change",()=>{ folds(); render(); });

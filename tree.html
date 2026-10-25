@@ -1085,21 +1085,20 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 
 <script>
 /* ---------- Program data, from the Teacher Policies & Procedures and Small Group Work policy ---------- */
-const CLASSROOMS=["West","North","South"];
+// the Classes, the small groups and the spaces are one list each. The Classes and small groups come from Program
+// settings, and the spaces are the calendar's, read from the server. None is kept in this page.
+let CLASSROOMS=[],CLASSES_MAIN=[];
 // printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
 let PRINT={schoolDocs:false,schoolRecords:true,names:"first",by:true};
 // Proofread before save, for every educator, set by the director in Settings
 let PROOF_SAVE=false;
 // the educator's name under a display printout's title, unless the director turned it off for every printout
 const pBy=b=>PRINT.by===false?"":(b||"");
-let GROUPS=[
-  {name:"Cosmos",room:"West",educator:""},{name:"Yarrow",room:"West",educator:""},{name:"Zinnia",room:"West",educator:""},{name:"Borage",room:"West",educator:""},
-  {name:"Marigold",room:"North",educator:""},{name:"Morning Glory",room:"North",educator:""},{name:"Sunflower",room:"North",educator:""},
-  {name:"Poppy",room:"South",educator:""},{name:"Lavender",room:"South",educator:""},{name:"Iris",room:"South",educator:""}];
+let GROUPS=[];
 const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()]];
 let roster=DEFAULT_ROSTER.slice();
 function rosterNames(){return roster.map(r=>r.name).filter(n=>!isShared(n))}
-let PLACES=["Library","Classroom","Art atelier","Nature atelier","Culinary atelier","Indoor piazza","Outdoor piazza","North yard","Rabbit yard","Garden","Tire swing yard","Tire swing studio","Log yard","Log studio","Long yard","Goat yard"];
+let PLACES=[],PROGRAM_DOC={};
 let AREAS=["Writing center","Block area","Dramatic play","Art","Reading area","Cozy corner","Science and discovery","Sensory table","Math and manipulatives","Music and movement","Light table","Loose parts","Meeting area"];
 let LANGUAGES=["Dialogue and words","Drawing and mark-making","Mapping","Clay and sculpture","Building and construction","Movement and body","Dramatic play","Music and sound","Light and shadow","Loose parts arrangement","Painting","Emergent writing","Recording and comparing"];
 let MATERIALS={
@@ -1347,6 +1346,10 @@ async function boot(){
       // a section another educator changed is shown fresh, and the one being typed in is left alone
       else if(changedCur.length&&view==="plans"&&plans.get(currentId)){const p=plans.get(currentId),typing=document.activeElement?.dataset?.f;for(const k of new Set(changedCur))if(k!==typing&&FORMS[p.type]?.fields.some(f=>f.k===k))try{rerenderCard(p,k)}catch(e){}}
     },()=>setConn("Offline. Changes stay on this device"));
+    // the Classes Conference settings kept, read until Program settings holds the one list
+    db.doc("settings/main").onSnapshot(snap=>{const v=snap.exists?snap.data():null;CLASSES_MAIN=v&&Array.isArray(v.classrooms)?v.classrooms:[];if(!(PROGRAM_DOC.classrooms||[]).length)applyProgram(PROGRAM_DOC)});
+    if(isDirector())db.doc("settings/onelists").onSnapshot(snap=>{ONELISTS=snap.exists?snap.data():null});
+    if(window.FP_HOSTED)setTimeout(()=>loadCalSpaces(),1500);
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -4254,7 +4257,7 @@ function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=682a789c65","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=db1d7b0a08","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["kitchen","Kitchen"]],
@@ -12107,7 +12110,7 @@ Transcribe what the educator wrote, word for word, into the matching sections. R
 ${multi?"This may hold one plan or several plans, for example different weeks or different forms one after another. Return one entry per plan, in the order they appear.":"Treat everything as one single plan."}
 ${type==="auto"?"Decide which of the three forms each plan is.":`${multi?"They are":"This is"} the ${FORMS[type].name}.`}
 ${spec}
-Classrooms are West, North, and South. Handwriting often makes these look like other words, so a word in the classroom or name spot that resembles West, North, or South (for example Seth or Sout for South, Nort for North, Wes or Vest for West) is the classroom, not a person. Known educators include ${rosterNames().join(", ")}, though others may appear. Small groups are ${GROUPS.map(g=>g.name).join(", ")}. If only a date range or a single day is written, give the Monday of that week. When no year is written, use the current school year, which runs from August ${schoolYearStart().slice(0,4)} to July ${+schoolYearStart().slice(0,4)+1}, so August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.
+Classrooms are ${CLASSROOMS.join(", ")}. Handwriting often makes these look like other words, so a word in the classroom or name spot that resembles ${CLASSROOMS.join(" or ")} (for example Seth or Sout for South, Nort for North, Wes or Vest for West) is the classroom, not a person. Known educators include ${rosterNames().join(", ")}, though others may appear. Small groups are ${GROUPS.map(g=>g.name).join(", ")}. If only a date range or a single day is written, give the Monday of that week. When no year is written, use the current school year, which runs from August ${schoolYearStart().slice(0,4)} to July ${+schoolYearStart().slice(0,4)+1}, so August through December are ${schoolYearStart().slice(0,4)} and January through July are ${+schoolYearStart().slice(0,4)+1}.
 Return JSON {"plans":[{"type": ${types.map(x=>`"${x}"`).join(" or ")}, "weekOf": the week's date as yyyy-mm-dd or "", "classroom": "West" or "North" or "South" or "", "educator": names written on the form or "", "group": small group name or "", "fields": {section key: transcribed text}, "web": for a Classroom plan's curriculum web drawing {"focus": the center, "branches": [{"name","materials"}], "languages": [], "questions": "", "environment": ""} or null, "setting": [places written on a Small Group plan], "notes": writing that fits no section, "confidence": "high" or "medium" or "low"}]}
 ${texts.length?"\n"+texts.join("\n\n"):""}`;
   let out;
@@ -12216,7 +12219,7 @@ Individual Curriculum Plan ("individual"). Area Exploration, Anticipated dates, 
 Small Group Plan ("smallgroup"). The thread, intention, guiding questions, languages, graphic languages invitation, materials, documentation plan, a flower group name.
 Older, typed, or homemade versions may look different, so judge by the headings and content. Any page with writing about children, observations, intentions, materials, or plans for the week is a planning page, even when the layout is unfamiliar. Pick the closest form.
 Use "blank" only for a page with no writing at all. Use "other" only for a page that is clearly not about curriculum planning, such as a menu or a sign-in sheet. When unsure, treat the page as part of a plan.
-Classrooms are West, North, and South. A handwritten word that resembles one of these (for example Seth for South) is the classroom, not an educator. Known educators include ${rosterNames().join(", ")}. Small groups are ${GROUPS.map(g=>`${g.name} (${g.room})`).join(", ")}.
+Classrooms are ${CLASSROOMS.join(", ")}. A handwritten word that resembles one of these (for example Seth for South) is the classroom, not an educator. Known educators include ${rosterNames().join(", ")}. Small groups are ${GROUPS.map(g=>`${g.name} (${g.room})`).join(", ")}.
 The page just before this set was ${j.prev?JSON.stringify(j.prev):"none, this is the start of the stack"}.
 For each page decide whether it begins a new plan or continues the plan on the page before it, such as page two of a Classroom plan or the back of a sheet.
 ${typed.length?"Some pages also carry typed text.\n"+typed.join("\n"):""}
@@ -12271,7 +12274,7 @@ function renderAllPlans(){aMode="list";
     <div class="sub">Every plan from every week and class. Filter, open any plan, or download the ones shown as one PDF.</div></div></div>
     <div class="stats"><div class="stat"><b>${base.filter(p=>p.type!=="notice").length}</b><span>plans saved${yours}</span></div><div class="stat"><b>${mine?[...notices.values()].filter(n=>(n.by||"").toLowerCase()===me().toLowerCase()).length:notices.size} </b><span>observations kept${yours}</span></div><div class="stat"><b>${c("done")}</b><span>completed, ready or reviewed${yours}</span></div><div class="stat"><b>${c("ready")}</b><span>waiting for review${yours}</span></div><div class="stat"><b>${c("draft")}</b><span>${mine?"of yours still in draft":"still in draft"}</span></div></div>
     ${dupListHtml()}<section class="card" style="gap:10px">
-${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],["West","West"],["North","North"],["South","South"],["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
+${aMode==="school"?"":`      <div class="filters" style="margin:0">${[["All","All classes"],...CLASSROOMS.map(r=>[r,r]),["none","No class"]].map(([v,l])=>`<button class="pill" aria-pressed="${aRoom===v}" data-aroom="${v}">${l}</button>`).join("")}</div>
       ${aMode!=="list"?"":`<div class="actions">
         <select id="atype" style="width:auto" aria-label="Kind of form">${[["all","All forms"],["classroom","Classroom"],["individual","Individual"],["smallgroup","Small group"],["notice","Observations"]].map(([v,l])=>`<option value="${v}" ${aType===v?"selected":""}>${l}</option>`).join("")}</select>
         <select id="astatus" style="width:auto" aria-label="Status">${[["all","Any status"],["done","Completed"],["ready","Waiting for review"],["reviewed","Reviewed"],["draft","Draft"],["due","Final remarks due"]].map(([v,l])=>`<option value="${v}" ${aStatus===v?"selected":""}>${l}</option>`).join("")}</select>
@@ -13126,10 +13129,12 @@ function displayText(text,mode,extra){
 function credit(name,mode){mode=mode||PRINT.names;if(!name)return"";const n=name.replace(/ \[\?\]$/,"");const c=kidList().find(x=>x.first===n);return mode==="none"?"":shownName(n,c?c.last||"":"",mode)+(name!==n&&mode!=="initials"?" [?]":"")}
 
 /* ---------- A space for the small group. Small groups meet Tuesday to Friday, 9 to 10:30, unless the educator changes it. ---------- */
-let calSpaces=null,calSpacesAt=0,spaceBusy={};
-async function loadCalSpaces(){if(!window.FP_API||!db)return;if(calSpaces&&Date.now()-calSpacesAt<10*60000)return;
-  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpaces=((j.settings&&j.settings.spaces)||[]).filter(s=>!s.hidden);calSpacesAt=Date.now()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
-  if(view==="plans"&&currentId)rerenderSpace()}
+let calSpaces=null,calSpacesAll=null,calSpacesAt=0,spaceBusy={};
+async function loadCalSpaces(force){if(!window.FP_API||!db)return;if(!force&&calSpaces&&Date.now()-calSpacesAt<10*60000)return;
+  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});calSpacesAll=((j.settings&&j.settings.spaces)||[]);calSpaces=calSpacesAll.filter(s=>!s.hidden);calSpacesAt=Date.now();
+    // Where it happens offers every space by name, those on the sign-up list and those kept off it
+    PLACES=calSpacesAll.map(s=>s.name);fillPlaceList()}catch(e){calSpaces=calSpaces||[];calSpacesAt=Date.now()}
+  if(view==="plans"&&currentId)rerenderSpace();if(view==="settings"&&$("#spacesset"))$("#spacesset").outerHTML=spacesSetHtml()}
 // the card is drawn again around the words box only when no one is typing in it
 function rerenderSpace(){const p=plans.get(currentId);const el=$("#spacecard");if(!p||!el)return;if(document.activeElement&&document.activeElement.id==="f-where"&&el.contains(document.activeElement)){el.addEventListener("focusout",()=>setTimeout(rerenderSpace,0),{once:true});return}el.outerHTML=spaceCardHtml(p)}
 const SG_DAYS=[[1,"Mon"],[2,"Tue"],[3,"Wed"],[4,"Thu"],[5,"Fri"]];
@@ -13302,8 +13307,10 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!s
 
 /* ---------- Program settings ---------- */
 function applyProgram(v){
+  PROGRAM_DOC=v||{};
+  CLASSROOMS=(Array.isArray(v.classrooms)&&v.classrooms.length?v.classrooms:CLASSES_MAIN).map(String).filter(Boolean);
   if(Array.isArray(v.groups))GROUPS=v.groups.filter(g=>g&&g.name).map(g=>({name:String(g.name),room:g.room||"",educator:g.educator||""}));
-  if(Array.isArray(v.places))PLACES=v.places.filter(Boolean);
+  if(!calSpacesAll&&Array.isArray(v.places))PLACES=v.places.filter(Boolean);
   if(Array.isArray(v.areas))AREAS=v.areas.filter(Boolean);
   if(Array.isArray(v.languages)&&v.languages.length)LANGUAGES=v.languages.filter(Boolean);
   if(v.materials&&typeof v.materials==="object")MATERIALS=v.materials;
@@ -13317,6 +13324,19 @@ function applyProgram(v){
   GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));
   fillPlaceList();
 }
+// the spaces are the calendar's. Settings lists them all and adds one, and Calendar settings changes or removes one.
+function spacesSetHtml(){if(!window.FP_HOSTED)return"";if(!calSpacesAll){loadCalSpaces(true);return `<section class="card" id="spacesset"><div class="lbl">Spaces</div><div class="cnt">Reading the spaces</div></section>`}
+  return `<section class="card" id="spacesset"><div class="lbl">Spaces</div><div class="hint">The one list of spaces, offered for Where it happens on a plan, on the Garden page and for signing up on the calendar. A space kept off the sign-up list is still offered by name.</div>
+    <div class="chips">${calSpacesAll.map(x=>`<span class="rname">${esc(x.name)}${x.hidden?` <span class="cnt">off the sign-up list</span>`:""}</span>`).join("")}</div>
+    <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button><button class="linkbtn" data-tview="calendar">Change or remove a space in Calendar settings</button></div></section>`}
+async function spaceAdd(n){n=String(n||"").trim();if(!n){toast("Type the space's name first.");return}if((calSpacesAll||[]).some(x=>x.name.toLowerCase()===n.toLowerCase())){toast("That space is already on the list.");return}
+  try{const d=iso(new Date());const j=await window.FP_API("/api/view",{from:d,to:d});const prog=JSON.parse(JSON.stringify(j.settings||{}));prog.calendars=prog.calendars||[];
+    const id=n.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,16)||"space";(prog.spaces=prog.spaces||[]).push({id:(prog.spaces.some(s=>s.id===id)?id.slice(0,12)+Math.random().toString(36).slice(2,6):id),name:n,color:"moss",note:"",shared:false,hidden:false,byWeek:false});
+    await window.FP_API("/api/settings",{program:prog});toast("Added to the spaces.");await loadCalSpaces(true)}catch(e){toast(e&&e.message||"The space could not be added.")}}
+// what the lists held when they became one, for the director to read
+let ONELISTS=null;
+function oneListsNote(){const r=ONELISTS;const L=r&&Array.isArray(r.differences)?r.differences:[];if(!L.length)return"";
+  return `<details style="margin-top:8px"><summary class="linkbtn">What the lists held when they became one</summary>${L.map(x=>`<div class="cnt" style="margin-top:4px">${esc(x)}</div>`).join("")}</details>`}
 function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(x=>`<option value="${esc(x)}">`).join("");const da=$("#arealist");if(da)da.innerHTML=AREAS.map(x=>`<option value="${esc(x)}">`).join("")}
 /* Keeping records. How long a former child's and a former educator's records are kept, with the regulation it comes from,
    and on the director's Today each one whose period has passed, with Keep longer and Remove. Nothing is removed until
@@ -13354,7 +13374,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],
   if(d.keeprmyes){keepCall("/api/keeping/remove",Object.assign(it(d.keeprmyes),{sure:true}),"Removed. The removal is noted in Settings, Keeping records.");return}});
 let progTimer=null;
 function saveProgram(){
-  const v={groups:GROUPS,places:PLACES,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()};
+  // what Program settings keeps that this page does not change, such as the Where it happens list it kept before the
+  // spaces became one list, stays as it was
+  const v=Object.assign({},PROGRAM_DOC,{classrooms:CLASSROOMS,groups:GROUPS,areas:AREAS,languages:LANGUAGES,materials:MATERIALS,seasons:SEASONS,lens:LENS,lenses:LENSES,print:PRINT,proofSave:PROOF_SAVE,updatedAt:Date.now()});
+  for(const k of ["id","updatedByName","savedAt","updatedBy"])delete v[k];PROGRAM_DOC=v;
   LS.set("fps.program",v);GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")));fillPlaceList();
   clearTimeout(progTimer);progTimer=setTimeout(()=>{if(db)db.doc("settings/program").set(JSON.parse(JSON.stringify(v))).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save settings. Check your connection."))},500);
 }
@@ -13472,7 +13495,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=682a789c65","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=db1d7b0a08","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
@@ -13521,7 +13544,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
-const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Small groups","Staff birthdays","Names on plans"]],
+const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records"]]];
 let setOpen="";
@@ -13534,6 +13557,7 @@ function setStatus(t,x){try{
   if(t==="Educators")return plural(rosterNames().length,"educator");
   if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
   if(t==="Small groups")return plural(GROUPS.length,"group");
+  if(t==="Classes")return CLASSROOMS.join(", ");
   if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
   if(t==="Names on plans")return plural(rosterNames().length,"name");
   if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
@@ -13604,6 +13628,9 @@ function renderSettings(){
   <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
+  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of Classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
+    <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
+    <div class="actions"><input type="text" id="c-new" placeholder="A new Class" style="width:200px"><button class="btn small" id="c-add">Add a Class</button></div>${oneListsNote()}</section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
       <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
@@ -13612,9 +13639,7 @@ function renderSettings(){
       <span class="actions" style="margin:0"><button class="linkbtn" data-gdel="${i}">Remove</button></span></div></details>`).join("")}</div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
   <section class="card"><div class="lbl">Names on plans</div><div class="hint">Names offered on plans and used to read handwriting on uploaded plans.</div><div class="roster" id="roster"></div></section>
-  <section class="card"><div class="lbl">Spaces</div><div class="hint">Suggested places where small groups meet, indoors and outdoors.</div>
-    <div class="chips">${chipList(PLACES,"data-pdel")}</div>
-    <div class="actions"><input type="text" id="p-new" placeholder="Add a space" style="width:220px"><button class="btn small" id="p-add">Add</button></div></section>
+  ${spacesSetHtml()}
   <section class="card"><div class="lbl">Classroom areas</div><div class="hint">Offered on the Individual plan when the focus is a classroom area.</div>
     <div class="chips">${chipList(AREAS,"data-adel")}</div>
     <div class="actions"><input type="text" id="a-new" placeholder="Add a classroom area" style="width:220px"><button class="btn small" id="a-add">Add</button></div></section>
@@ -13630,7 +13655,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=682a789c65","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=db1d7b0a08","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   settingsFold();
 }
@@ -13639,8 +13664,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   const val=sel=>{const el=document.querySelector(sel);const v=(el?.value||"").trim();return v};
   if(t.id==="g-add"){const n=val("#g-new");if(!n){toast("Type a group name first.");return}if(GROUPS.some(g=>g.name.toLowerCase()===n.toLowerCase())){toast("That group already exists.");return}GROUPS.push({name:n,room:"",educator:""});saveProgram();renderSettings();return}
   if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
-  if(t.id==="p-add"){const n=val("#p-new");if(n&&!PLACES.includes(n)){PLACES.push(n);saveProgram()}renderSettings();return}
-  if(t.dataset.pdel!=null){PLACES.splice(+t.dataset.pdel,1);saveProgram();renderSettings();return}
+  if(t.id==="p-add"){spaceAdd(val("#p-new"));return}
+  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the Class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That Class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
+  if(t.dataset.cdel!=null){const r=CLASSROOMS[+t.dataset.cdel];const kids=[...children.values()].filter(c=>c.classroom===r&&kidAt(c)).length,gs=GROUPS.filter(g=>g.room===r).length;
+    if(kids||gs){toast(`${r} still has ${kids?kids+(kids===1?" child":" children"):""}${kids&&gs?" and ":""}${gs?gs+(gs===1?" small group":" small groups"):""}. Move them first.`);return}
+    CLASSROOMS=CLASSROOMS.filter(x=>x!==r);saveProgram();renderSettings();return}
   if(t.id==="a-add"){const n=val("#a-new");if(n&&!AREAS.some(x=>x.toLowerCase()===n.toLowerCase())){AREAS.push(n);saveProgram()}renderSettings();return}
   if(t.dataset.adel!=null){AREAS.splice(+t.dataset.adel,1);saveProgram();renderSettings();return}
   if(t.id==="l-add"){const n=val("#l-new");if(n&&!LANGUAGES.some(x=>x.toLowerCase()===n.toLowerCase())){LANGUAGES.push(n);saveProgram()}renderSettings();return}
@@ -13658,7 +13686,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.sadd){const se=t.dataset.sadd;const n=(document.querySelector(`[data-sadd-in="${se}"]`)?.value||"").trim();if(n){(SEASONS[se]=SEASONS[se]||[]).push(n);saveProgram()}renderSettings();return}
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
-  if(t.id==="prog-reset-yes"){const keep=new Map(GROUPS.map(g=>[g.name,g.educator]));const d0=JSON.parse(JSON.stringify(PDEF));(d0.groups||[]).forEach(g=>{if(!g.educator&&keep.get(g.name))g.educator=keep.get(g.name)});applyProgram(d0);saveProgram();renderSettings();toast("Original lists restored.");return}
+  if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
+    // the Classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
+    d0.classrooms=CLASSROOMS.slice();d0.groups=JSON.parse(JSON.stringify(GROUPS));delete d0.places;applyProgram(Object.assign({},PROGRAM_DOC,d0));saveProgram();renderSettings();toast("Original lists restored.");return}
 });
 document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;
   if(t.dataset.gname!=null){const n=t.value.trim();if(n){GROUPS[+t.dataset.gname].name=n;saveProgram()}return}

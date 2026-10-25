@@ -140,7 +140,6 @@ module.exports = function growthModule(c) {
     return shut < 3;
   }
   function nextOpenMonday(d, closed) { for (let i = 0; i < 6; i++) { const x = addDays(d, i * 7); if (openMonday(x, closed)) return x; } return d; }
-  const ROOM_ORDER = ['West', 'North', 'South'];
   function scheduleFor(ym) {
     const mon = cal.months.get(ym); if (!mon) return null;
     const sc = Object.assign({ week: 1, secondTime: '13:00', minutes: 20 }, school().checkin || {});
@@ -153,7 +152,7 @@ module.exports = function growthModule(c) {
     for (const n of ps) { const pr = profileOf(n); const mode = pr.checkin || (pr.planHour ? 'slot' : 'asneeded'); if (mode === 'slot' && pr.planHour) { if (!slots.has(pr.planHour)) slots.set(pr.planHour, []); slots.get(pr.planHour).push(n); } }
     for (const [hr, ns] of [...slots].sort()) {
       // one from each Class steps off, and the order rotates from month to month so the same person is never always last
-      const sorted = ns.sort((a, b) => ROOM_ORDER.indexOf(roomOf(a)) - ROOM_ORDER.indexOf(roomOf(b)) || a.localeCompare(b));
+      const sorted = ns.sort((a, b) => ROOMS().indexOf(roomOf(a)) - ROOMS().indexOf(roomOf(b)) || a.localeCompare(b));
       const r = k % sorted.length; const order = sorted.slice(r).concat(sorted.slice(0, r));
       order.forEach((n, i) => list.push({ name: n, date: day1, time: hhmm(toMin(hr) + i * (+sc.minutes || 20)), minutes: +sc.minutes || 20, kind: 'slot' }));
     }
@@ -261,7 +260,8 @@ module.exports = function growthModule(c) {
      director marks. When the first Monday is a school closure, the director's Today asks once for another day. The
      director can move any month's meeting to another day, and the agenda, the reminders and Today follow it. Each Class
      team meets on every other open Monday, never on the all-staff meeting's day. Check-ins are unchanged. */
-  const ROOMS = ['West', 'North', 'South'];
+  // the Classes, from Program settings, the one list
+  const ROOMS = () => (c.classrooms ? c.classrooms() : []);
   const quietMonth = ym => ['12', '02'].includes(ym.slice(5, 7)) || ((school().quietMonths || []).includes(ym));
   const firstMonday = ym => { let d = ym + '-01'; while (dow(d) !== 1) d = addDays(d, 1); return d; };
   function allStaffDay(ym) {
@@ -288,7 +288,7 @@ module.exports = function growthModule(c) {
   }
   const teamId = (date, room) => date + '-team-' + room;
   // the director sees every Class's team meetings, and an educator who takes part, past their first weeks, their own
-  const roomsFor = me => isDirector(me) ? ROOMS.slice() : takesPart(me) && !isNewHire(me) ? ROOMS.filter(r => r === roomOf(me)) : [];
+  const roomsFor = me => isDirector(me) ? ROOMS().slice() : takesPart(me) && !isNewHire(me) ? ROOMS().filter(r => r === roomOf(me)) : [];
   // the next steps from a Class's team meetings not yet marked done, carried to its next team meeting
   function openSteps(room, beforeDate) {
     const out = []; for (const a of Object.values(pdd().agendas)) if (a.kind === 'team' && a.room === room && a.date < beforeDate) for (const st of a.steps || []) if (!st.done) out.push(Object.assign({ from: a.id, fromDate: a.date }, st));
@@ -658,11 +658,11 @@ module.exports = function growthModule(c) {
       for (let d = tFrom.slice(0, 7) + '-01'; d <= tTo; d = addMonths(d, 1)) await loadMonth(d.slice(0, 7));
       for (const date of teamDays(tFrom, tTo)) for (const room of roomsFor(me)) team.push(teamItem(date, room));
       for (const a of Object.values(ag)) if (a.kind === 'team' && roomsFor(me).includes(a.room) && !team.some(x => x.id === a.id) && a.date >= from) team.push(teamItem(a.date, a.room));
-      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), team: team.sort((a, b) => a.date.localeCompare(b.date) || ROOMS.indexOf(a.room) - ROOMS.indexOf(b.room)), readings: readingsFor(me) }); return;
+      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), team: team.sort((a, b) => a.date.localeCompare(b.date) || ROOMS().indexOf(a.room) - ROOMS().indexOf(b.room)), readings: readingsFor(me) }); return;
     }
     // a Class's team meeting opens with its agenda, started from the Class's week until the team saves its own
     if (P === 'pd/team') {
-      const room = String(body.room || ''), date = String(body.date || ''); if (!ROOMS.includes(room) || !ISO.test(date)) return err(req, res, 400, 'Choose the team meeting.');
+      const room = String(body.room || ''), date = String(body.date || ''); if (!ROOMS().includes(room) || !ISO.test(date)) return err(req, res, 400, 'Choose the team meeting.');
       if (!roomsFor(me).includes(room)) return deny('Each Class team sees its own team meetings.');
       json(req, res, 200, Object.assign(teamItem(date, room), { start: teamStart(room, date) })); return;
     }
@@ -697,7 +697,7 @@ module.exports = function growthModule(c) {
     if (P === 'pd/save') {
       const b = body.agenda || {}; if (!ISO.test(b.date || '')) return err(req, res, 400, 'Choose the day.');
       // a Class team builds its own team meeting's agenda, with its notes and next steps. Other agendas are the director's.
-      const isTeam = b.kind === 'team' && ROOMS.includes(b.room);
+      const isTeam = b.kind === 'team' && ROOMS().includes(b.room);
       if (isTeam ? !roomsFor(me).includes(b.room) : !dir) return deny(isTeam ? 'Each Class team builds its own team meeting agenda.' : 'The director builds each agenda.');
       const kind = isTeam ? 'team' : b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = isTeam ? teamId(b.date, b.room) : b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
       const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '' }));
