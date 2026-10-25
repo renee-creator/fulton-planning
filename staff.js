@@ -891,7 +891,8 @@ module.exports = function staffModule(o) {
     letterTitle: ['staff/once/letter-title.json', 'A Letter to Our Educators, signed by the director'],
     policyWording: ['staff/once/policy-wording.json', 'Wording brought in line with TREE\'s writing rules'],
     readingArticles: ['staff/once/reading-articles.json', 'Articles to read online, confirmed October 25, 2026'],
-    helpNew: ['staff/once/help-new.json', 'Help answers for what Session 10 added'] };
+    helpNew: ['staff/once/help-new.json', 'Help answers for what Session 10 added'],
+    dutiesEmail: ['staff/once/duties-email.json', 'The late pick-up email link reaches the director'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
