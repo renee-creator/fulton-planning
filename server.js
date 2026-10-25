@@ -743,6 +743,30 @@ function linkPlansToObservations() {
   if (n) log('Plans linked to the observations written in them,', n);
 }
 
+// what the director's Records to tidy holds, worked out from the records the server has, kept a few minutes
+let tidyCache = null;
+const planOrObs = id => [store.recs.plans.get(id), store.recs.notices.get(id)].some(r => r && !r.deleted && r.doc);
+function tidyList() {
+  if (tidyCache && Date.now() - tidyCache.at < 5 * 60e3) return tidyCache.out;
+  const live = kind => [...store.recs[kind].values()].filter(r => r && !r.deleted && r.doc).map(r => r.doc);
+  const kidName = id => { const r = store.recs.children.get(id); const c = r && !r.deleted && r.doc; return c ? [c.first, c.last].filter(Boolean).join(' ') : 'A child no longer in TREE'; };
+  const drdp = [], threads = [], photos = [];
+  for (const n of live('notices')) for (const it of ((n.drdp && n.drdp.items) || [])) if (it && it.childId && !(n.children || []).includes(it.childId))
+    drdp.push({ notice: n.id, item: it.id, code: it.code || '', child: it.childId, childName: kidName(it.childId), classroom: n.classroom || '', noticed: String(n.noticed || '').slice(0, 160), on: (n.children || []).map(kidName) });
+  for (const t of live('threads')) for (const e of (t.evidence || [])) if (e && e.planId && !planOrObs(e.planId))
+    threads.push({ thread: t.id, name: t.name || '', planId: e.planId, week: e.week || '', text: String(e.text || '').slice(0, 160) });
+  // a photo counts as linked when any record, the educators' records and the calendar included, names its file
+  let blob = '';
+  try { const parts = []; for (const m of Object.values(store.recs)) for (const r of m.values()) if (r && !r.deleted && r.doc) parts.push(JSON.stringify(r.doc));
+    for (const d of Object.values(calendar.dump())) parts.push(JSON.stringify(d)); for (const d of Object.values(staff.dump())) parts.push(typeof d === 'string' ? d : JSON.stringify(d)); blob = parts.join('\n'); } catch (e) { blob = null; }
+  const keep = settingDoc('tidy').keep || {};
+  if (blob != null) for (const [id, o] of store.originals) if (o && o.drive && /\.(jpe?g|png|heic|webp|gif)$/i.test(id) && !keep[id] && !blob.includes(id))
+    photos.push({ id, size: Number(o.size) || 0 });
+  photos.sort((a, b) => a.id.localeCompare(b.id));
+  const out = { drdp, threads, photos, kept: Object.keys(keep).length };
+  tidyCache = { at: Date.now(), out }; return out;
+}
+
 // one bundle of every record, built once from what the server holds. Each file keeps its path in the records repository,
 // so tools/restore-backup.js can write the set back as it was.
 let lastBackup = null;
@@ -1993,6 +2017,46 @@ async function handle(req, res) {
     err(req, res, 404, 'Not found'); return;
   }
   // Keeping records, the director's alone. The server checks the period has passed before anything is removed.
+  /* Records to tidy, on the director's Today beside Records past their keeping period. A DRDP item naming a child who
+     is not on its observation, a thread pointing to a plan that is gone, and a photo in Google Drive that no record links
+     to. Each opens where it can be fixed, with a one tap fix where one is clear. Nothing changes until she chooses, and a
+     photo is never deleted here. It can be attached to an observation or marked keep. */
+  if (path.startsWith('/api/tidy')) {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director tidies records.'); return; }
+    if (path === '/api/tidy') { json(req, res, 200, tidyList()); return; }
+    if (path === '/api/tidy/fix') {
+      const done = msg => { tidyCache = null; log('Records to tidy,', msg, 'by', me.name); json(req, res, 200, tidyList()); };
+      if (body.kind === 'drdp') {
+        const r = store.recs.notices.get(String(body.notice || '')); const n = r && !r.deleted && r.doc;
+        const it = n && n.drdp && (n.drdp.items || []).find(x => x && x.id === body.item);
+        if (!it || (n.children || []).includes(it.childId)) { err(req, res, 404, 'That DRDP item is already in order.'); return; }
+        if (body.how === 'add') n.children = [...(n.children || []), it.childId];
+        else if (body.how === 'remove') n.drdp = Object.assign({}, n.drdp, { items: n.drdp.items.filter(x => x !== it) });
+        else { err(req, res, 400, 'Choose a fix.'); return; }
+        n.updatedAt = Date.now(); n.updatedByName = me.name; r.local = true; noteChange('notices', n.id); scheduleSave('notices', n.id);
+        done((body.how === 'add' ? 'child added to observation ' : 'DRDP item removed from observation ') + n.id); return;
+      }
+      if (body.kind === 'thread') {
+        const r = store.recs.threads.get(String(body.thread || '')); const t = r && !r.deleted && r.doc; const pid = String(body.planId || '');
+        if (!t || !pid || planOrObs(pid) || !(t.evidence || []).some(e => e && e.planId === pid)) { err(req, res, 404, 'That link is already in order.'); return; }
+        t.evidence = t.evidence.filter(e => !(e && e.planId === pid)); t.updatedAt = Date.now(); t.updatedByName = me.name;
+        r.local = true; noteChange('threads', t.id); scheduleSave('threads', t.id); done('removed link to a plan that is gone from thread ' + t.id); return;
+      }
+      if (body.kind === 'photo') {
+        const id = String(body.id || ''); if (!tidyList().photos.some(p => p.id === id)) { err(req, res, 404, 'That photo is already in order.'); return; }
+        if (body.how === 'keep') { const d = settingDoc('tidy'); setSetting('tidy', Object.assign({}, d, { keep: Object.assign({}, d.keep || {}, { [id]: { at: Date.now(), by: me.name } }) })); done('photo marked keep ' + id); return; }
+        if (body.how === 'attach') {
+          const r = store.recs.notices.get(String(body.notice || '')); const n = r && !r.deleted && r.doc;
+          if (!n) { err(req, res, 404, 'That observation is not here.'); return; }
+          if (n.photo && n.photo.id) { err(req, res, 409, 'That observation already has a photo.'); return; }
+          n.photo = { id }; n.updatedAt = Date.now(); n.updatedByName = me.name; r.local = true; noteChange('notices', n.id); scheduleSave('notices', n.id); done('photo attached to observation ' + n.id); return;
+        }
+        err(req, res, 400, 'Choose a fix.'); return;
+      }
+      err(req, res, 400, 'Choose a fix.'); return;
+    }
+    err(req, res, 404, 'Not found'); return;
+  }
   if (path.startsWith('/api/keeping')) {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps records.'); return; }
     const d0 = keepDoc();

@@ -68,3 +68,54 @@ test('a rewrite proposal replaces one passage in a section, only once the direct
     assert.ok(writing.notThisButThat(s), s);
   for (const s of ['Children may not bring toys from home.', 'If you are not sure, ask.', 'Pick-up is no later than 5:30.']) assert.ok(!writing.notThisButThat(s), s);
 });
+
+test('Records to tidy, for the director only, each fixed only when she chooses, and no photo deleted', async t => {
+  const chromium = await browser();
+  const now = Date.now();
+  const fx = await start({ more: put => {
+    put('children/pip-test.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active' });
+    put('children/rue-test.json', { first: 'Rue', last: 'Test', classroom: 'West', status: 'active' });
+    put('notices/n1.json', { id: 'n1', noticed: 'Pip stacked blocks.', wonder: '', classroom: 'West', children: ['pip-test'], by: 'Ann', at: now - 864e5,
+      drdp: { items: [{ id: 'd1', code: 'ATL 3', childId: 'pip-test' }, { id: 'd2', code: 'SED 4', childId: 'rue-test' }, { id: 'd3', code: 'HLTH 1', childId: 'oak-test' }] } });
+    put('notices/n2.json', { id: 'n2', noticed: 'A walk to the creek.', wonder: '', classroom: 'West', children: [], by: 'Ann', at: now - 2 * 864e5 });
+    put('plans/p1.json', { id: 'p1', type: 'classroom', classroom: 'West', week: '2026-10-12', fields: {} });
+    put('threads/t1.json', { id: 't1', name: 'Worms', classroom: 'West', evidence: [{ planId: 'p1', week: '2026-10-12', text: 'Kept' }, { planId: 'pgone', week: '2026-10-12', text: 'Gone' }] });
+    put('photos/aaaaaaaaaaaa-moment-photo.jpg~1abcdefghijklmnop~5000.ref', 'x');
+    put('photos/bbbbbbbbbbbb-moment-photo.jpg~1bbcdefghijklmnop~6000.ref', 'x');
+    put('photos/cccccccccccc-moment-photo.jpg~1cbcdefghijklmnop~7000.ref', 'x');
+    put('notices/n3.json', { id: 'n3', noticed: 'Linked photo.', wonder: '', classroom: 'West', children: [], by: 'Ann', at: now, photo: { id: 'cccccccccccc-moment-photo.jpg' } });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const read = p => JSON.parse(fs.readFileSync(path.join(fx.dir, p), 'utf8'));
+  assert.strictEqual((await fx.as(ann, '/api/tidy', {})).status, 403);
+  let T = (await fx.as(dee, '/api/tidy', {})).body;
+  assert.deepStrictEqual(T.drdp.map(x => x.item), ['d2', 'd3']); assert.strictEqual(T.drdp[0].childName, 'Rue Test');
+  assert.deepStrictEqual(T.threads.map(x => x.planId), ['pgone']);
+  assert.deepStrictEqual(T.photos.map(x => x.id), ['aaaaaaaaaaaa-moment-photo.jpg', 'bbbbbbbbbbbb-moment-photo.jpg']);
+  if (chromium) {
+    const b = await chromium.launch(); const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 390);
+    await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('#tidytoday', { timeout: 10000 });
+    const text = await s.p.evaluate(() => document.querySelector('#tidytoday').innerText);
+    assert.match(text, /DRDP SED 4 names Rue Test/); assert.match(text, /points to a plan that is gone/); assert.match(text, /no record links to/i);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+    const e = await signedIn(fx, b, 'Ann', '1357', 390); await e.p.evaluate(() => goView('today')); await e.p.waitForTimeout(800);
+    assert.strictEqual(await e.p.$('#tidytoday'), null); await e.close(); await b.close();
+  }
+  // nothing changed on its own
+  assert.strictEqual(read('notices/n1.json').drdp.items.length, 3); assert.strictEqual(read('threads/t1.json').evidence.length, 2);
+  // one tap each
+  T = (await fx.as(dee, '/api/tidy/fix', { kind: 'drdp', notice: 'n1', item: 'd2', how: 'add' })).body;
+  T = (await fx.as(dee, '/api/tidy/fix', { kind: 'drdp', notice: 'n1', item: 'd3', how: 'remove' })).body;
+  assert.strictEqual(T.drdp.length, 0);
+  T = (await fx.as(dee, '/api/tidy/fix', { kind: 'thread', thread: 't1', planId: 'pgone' })).body; assert.strictEqual(T.threads.length, 0);
+  T = (await fx.as(dee, '/api/tidy/fix', { kind: 'photo', id: 'aaaaaaaaaaaa-moment-photo.jpg', how: 'attach', notice: 'n2' })).body;
+  T = (await fx.as(dee, '/api/tidy/fix', { kind: 'photo', id: 'bbbbbbbbbbbb-moment-photo.jpg', how: 'keep' })).body; assert.strictEqual(T.photos.length, 0);
+  await wait(1500);
+  assert.deepStrictEqual(read('notices/n1.json').children, ['pip-test', 'rue-test']); assert.deepStrictEqual(read('notices/n1.json').drdp.items.map(x => x.id), ['d1', 'd2']);
+  assert.deepStrictEqual(read('threads/t1.json').evidence.map(x => x.planId), ['p1']);
+  assert.strictEqual(read('notices/n2.json').photo.id, 'aaaaaaaaaaaa-moment-photo.jpg');
+  assert.ok(read('settings/tidy.json').keep['bbbbbbbbbbbb-moment-photo.jpg']);
+  // every photo marker is still in the records
+  assert.strictEqual(fs.readdirSync(path.join(fx.dir, 'photos')).length, 3);
+});

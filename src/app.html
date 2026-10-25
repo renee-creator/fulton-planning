@@ -4512,7 +4512,7 @@ function renderToday(){
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}
-  ${keepTodayHtml()}
+  ${keepTodayHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
@@ -12875,6 +12875,35 @@ function keepTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";i
       <span class="actions" style="margin:0">${a==="keep"?`<label class="cnt">Keep for <select data-keepfor="${esc(k)}" style="width:auto">${[1,2,3,5].map(n=>`<option value="${n}">${n} more year${n>1?"s":""}</option>`).join("")}</select></label><button class="btn small" data-keepyes="${esc(k)}">Keep</button><button class="linkbtn" data-keepno="1">Cancel</button>`
         :a==="remove"?`<span class="confirm" style="white-space:normal">Remove ${esc(it.name)}'s records from TREE for good? <button class="btn warn small" data-keeprmyes="${esc(k)}">Remove</button><button class="linkbtn" data-keepno="1">Cancel</button></span>`
         :`<button class="btn small ghost" data-keepask="${esc(k)}|keep">Keep longer</button><button class="linkbtn" data-keepask="${esc(k)}|remove">Remove</button>`}</span></div>`}).join("")}</section>`}
+/* Records to tidy, on the director's Today beside Records past their keeping period. A DRDP item naming a child who is
+   not on its observation, a thread pointing to a plan that is gone, and a photo in Google Drive that no record links to.
+   Each opens where it can be fixed, with a one tap fix where one is clear. A photo is never deleted here. It can be
+   attached to an observation or marked keep. */
+let tidyInfo=null,tidyBusy=false,tidyMore=12,tidyAttach="";
+async function tidyLoad(){if(tidyBusy||!window.FP_API||!isDirector()||VIEW_AS)return;tidyBusy=true;try{tidyInfo=await window.FP_API("/api/tidy",{})}catch(e){tidyInfo={drdp:[],threads:[],photos:[]}}tidyBusy=false;if(view==="today")renderMain()}
+function tidyTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";if(!tidyInfo){tidyLoad();return""}const T=tidyInfo,n=T.drdp.length+T.threads.length+T.photos.length;if(!n)return"";
+  const free=[...notices.values()].filter(x=>x&&!x.deleted&&!(x.photo&&x.photo.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,60);
+  return `<section class="card" id="tidytoday" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Records to tidy</h3><span class="cnt">${n}</span></div>
+    <div class="hint">Nothing changes until you choose. A photo is never deleted here.</div>
+    ${T.drdp.map(x=>`<div class="prow" style="align-items:flex-start;flex-wrap:wrap"><div style="min-width:0;flex:1"><b>DRDP ${esc(x.code)} names ${esc(x.childName)}</b><div class="cnt">${esc(x.childName)} is not on this observation${x.on.length?`, which names ${esc(x.on.join(", "))}`:""}. ${esc(x.noticed)}</div></div>
+      <span class="actions" style="margin:0"><button class="btn small ghost" data-obsgo="${esc(x.notice)}">Open the observation</button><button class="btn small ghost" data-tidyfix="drdp|${esc(x.notice)}|${esc(x.item)}|add">Add ${esc(x.childName.split(" ")[0])} to it</button><button class="linkbtn" data-tidyfix="drdp|${esc(x.notice)}|${esc(x.item)}|remove">Remove the DRDP item</button></span></div>`).join("")}
+    ${T.threads.map(x=>`<div class="prow" style="align-items:flex-start;flex-wrap:wrap"><div style="min-width:0;flex:1"><b>${esc(x.name)}</b><div class="cnt">This thread points to a plan that is gone${x.week?`, from the week of ${esc(fmtDate(x.week))}`:""}. ${esc(x.text)}</div></div>
+      <span class="actions" style="margin:0"><button class="btn small ghost" data-tsee="${esc(x.thread)}">Open the thread</button><button class="btn small" data-tidyfix="thread|${esc(x.thread)}|${esc(x.planId)}">Remove the link</button></span></div>`).join("")}
+    ${T.photos.length?`<details class="fold" data-fold="today:tidyphotos" ${foldOpen.has("today:tidyphotos")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Photos in Google Drive that no record links to</span><span class="cnt">${T.photos.length}</span></summary><div class="foldbody">
+      <div class="hint">Attach a photo to an observation that has none, or keep it as it is. Keep takes it off this list.</div>
+      ${T.photos.slice(0,tidyMore).map(x=>`<div class="prow" style="align-items:flex-start;flex-wrap:wrap"><a href="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" target="_blank" rel="noopener"><img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" alt="A photo no record links to" loading="lazy" style="width:84px;height:84px;object-fit:cover;border-radius:8px;background:var(--bg)"></a>
+        <div style="min-width:0;flex:1">${tidyAttach===x.id?`<label class="cnt">Observation <select data-tidyobs="${esc(x.id)}" style="max-width:100%">${free.map(o=>`<option value="${esc(o.id)}">${esc(shortDate(o.at||0))}, ${esc(o.classroom||"")} ${esc(String(o.noticed||"").slice(0,60))}</option>`).join("")}</select></label>`:`<div class="cnt">${esc(x.id.replace(/^[0-9a-f]{12}-/,""))}${x.size?", "+Math.max(1,Math.round(x.size/1024)).toLocaleString()+" KB":""}</div>`}</div>
+        <span class="actions" style="margin:0">${tidyAttach===x.id?`<button class="btn small" data-tidyfix="photo|${esc(x.id)}|attach">Attach</button><button class="linkbtn" data-tidyattach="">Cancel</button>`:`<button class="btn small ghost" data-tidyattach="${esc(x.id)}">Attach to an observation</button><button class="linkbtn" data-tidyfix="photo|${esc(x.id)}|keep">Keep</button>`}</span></div>`).join("")}
+      ${T.photos.length>tidyMore?`<div class="actions"><button class="linkbtn" data-tidymore="1">Show more</button></div>`:""}</div></details>`:""}</section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-tidyfix],[data-tidyattach],[data-tidymore]");if(!t||view!=="today"||!tidyInfo)return;const d=t.dataset;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.tidymore){tidyMore+=24;renderMain();return}
+  if(d.tidyattach!=null){tidyAttach=d.tidyattach;renderMain();return}
+  const [kind,a,b,c]=d.tidyfix.split("|");let body;
+  if(kind==="drdp")body={kind,notice:a,item:b,how:c};else if(kind==="thread")body={kind,thread:a,planId:b};
+  else{body={kind,id:a,how:b};if(b==="attach"){const sel=document.querySelector(`[data-tidyobs="${CSS.escape(a)}"]`);if(!sel||!sel.value){toast("Choose an observation.");return}body.notice=sel.value}}
+  t.disabled=true;try{tidyInfo=await window.FP_API("/api/tidy/fix",body);tidyAttach="";toast(kind==="photo"?(b==="keep"?"Kept. It is off this list.":"Attached to the observation."):kind==="thread"?"Removed the link.":c==="add"?"Added to the observation.":"Removed the DRDP item.")}catch(er){toast(er&&er.message||"That did not save. Try again.")}
+  renderMain()});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],[data-keepask],[data-keepyes],[data-keeprmyes],[data-keepno]");if(!t||!keepInfo||(view!=="settings"&&view!=="today"))return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const it=k=>{const i=k.indexOf("|");return {kind:k.slice(0,i),id:k.slice(i+1)}};
