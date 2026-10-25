@@ -341,9 +341,10 @@ function conferenceEvents(from, to, me) {
   }
   // a walk or a garden day families are invited to, from the participation sign-ups, shows on the calendar for staff
   for (const [id, r] of store.recs.participation) {
-    const it = r.doc; if (r.deleted || !it || it.kind !== 'item' || !it.onCalendar || it.open === false || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || '') || it.date < from || it.date > to) continue;
+    // a gathering shows for staff from the day it is planned, before families are invited
+    const it = r.doc; if (r.deleted || !it || it.kind !== 'item' || !it.onCalendar || (it.open === false && !it.gathering) || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || '') || it.date < from || it.date > to) continue;
     const t = /^\d{2}:\d{2}$/.test(it.start || '') ? it.start : '';
-    events.push(Object.assign({ id: 'tfam.' + hid(id), cal: 'tfam', title: 'Families invited, ' + String(it.title || 'a walk').slice(0, 80) + (it.classroom ? ', ' + it.classroom : ''), desc: '' }, t ? { allDay: false, start: it.date + 'T' + t, end: it.date + 'T' + (/^\d{2}:\d{2}$/.test(it.end || '') ? it.end : plus(t, 60)) } : { allDay: true, start: it.date, end: it.date }));
+    events.push(Object.assign({ id: 'tfam.' + hid(id), cal: 'tfam', title: (it.gathering && it.open === false ? 'Gathering, not yet open to families, ' : 'Families invited, ') + String(it.title || 'a walk').slice(0, 80) + (it.classroom ? ', ' + it.classroom : ''), desc: '' }, t ? { allDay: false, start: it.date + 'T' + t, end: it.date + 'T' + (/^\d{2}:\d{2}$/.test(it.end || '') ? it.end : plus(t, 60)) } : { allDay: true, start: it.date, end: it.date }));
   }
   // every child at Fulton has a birthday on the calendar each year, from the birthday on the roster
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
@@ -513,6 +514,7 @@ for (const name of ['schoolName', 'helpCurrent', 'regLinks', 'trainingVideos', '
 // Session 11's change to the late pick-up email link in Educator Duties & Procedures, from its list in the private records
 ONCE.push(['dutiesEmail', () => staff.once.edits('dutiesEmail', recsEdit)]);
 ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
+ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
@@ -1324,6 +1326,19 @@ function inquiryChildren(x, notices) {
   return kids;
 }
 function inquiryShows(x, notices) { if (x.display === true) return true; if (x.display === false) return false; return inquiryChildren(x, notices).size !== 1; }
+/* Gatherings, Second Saturday and Play Garden, are participation items marked with the gathering they belong to. The
+   director and the office keep them on the Gatherings page. Every educator reads their plans, toolkits and documentation
+   there too, with how many signed up for each volunteer job and never which families. */
+const GATHERING_KINDS = ['second-saturday', 'play-garden'];
+function gatheringsFor() {
+  const all = []; for (const [id, r] of store.recs.participation) if (r && !r.deleted && r.doc) all.push(Object.assign({ id }, r.doc));
+  const conf = all.find(x => x.id === 'gatherings') || {};
+  const jobs = all.filter(x => x.kind === 'item' && x.gatheringId);
+  const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering)).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+    .map(x => ({ id: x.id, gathering: x.gathering, title: x.title || '', date: x.date || '', start: x.start || '', end: x.end || '', gardenDay: !!x.gardenDay, ready: x.open !== false, plan: x.plan || '', toolkit: x.toolkit || '', documentation: x.documentation || '', docLink: x.docLink || '',
+      coming: (x.signups || []).length, jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length })) }));
+  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '' }, conf.toolkits || {}), list };
+}
 async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };
   const trim = (s, n) => { s = String(s || '').replace(/\s+\n/g, '\n').replace(/[ \t]+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n); const sp = cut.lastIndexOf(' '); return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;.\s]+$/, '') + '…'; };
@@ -1465,7 +1480,9 @@ async function displayFeed() {
   const notes = staffNotes().filter(x => x.to === 'all' && x.day === today).map(x => ({ id: x.id, text: trim(x.text, 600), by: firstName(x.by) }));
   // one plant from the children's plant guide each day, as its own quiet slide, once the Garden is ready
   let plant = null; try { const g = staff.garden.forFamily(); const list = g ? g.guide.filter(x => x.words) : []; if (list.length) { const x = list[Math.floor(now / 864e5) % list.length]; plant = { id: x.id, common: x.common, words: x.words, eat: x.eat, gather: x.gather, photo: x.photo && ID_RE.test(x.photo) ? { src: photoSrc(x.photo) } : null }; } } catch (e) {}
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant };
+  // the gatherings coming in the next eight weeks, Second Saturday and Play Garden, with the jobs still looking for help
+  let gatherings = []; try { const end = addDay(today, 56); gatherings = gatheringsFor().list.filter(g => g.date && g.date >= today && g.date <= end).slice(0, 4).map(g => ({ id: g.id, title: trim(g.title, 90), date: g.date, start: g.start, gathering: g.gathering, gardenDay: g.gardenDay, ready: g.ready, jobs: g.jobs.map(j => ({ title: trim(j.title, 60), open: j.spots ? Math.max(0, j.spots - j.taken) : null })) })); } catch (e) { gatherings = []; }
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
 // initial, initials, or no names at all. The educators' words never change otherwise.
@@ -1578,7 +1595,7 @@ async function handle(req, res) {
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
-  if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/handbook' || path === '/public/handbook/img') {
+  if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/handbook' || path === '/public/handbook/img' || path === '/public/playgarden' || path === '/public/playgarden/apply') {
     if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, 'The school records are still loading. Try again in a moment.'); return; } }
     const ip = who(req);
     if (path === '/public/menu') { json(req, res, 200, familyPage.publicMenu(body.month)); return; }
@@ -1590,6 +1607,12 @@ async function handle(req, res) {
       if (path === '/public/handbook/img') { await hbImage(true); return; }
       const hb = staff.handbook.forPublic(); if (!hb) { err(req, res, 403, 'The Family Handbook is not open to the public yet.'); return; }
       json(req, res, 200, hb); return;
+    }
+    // the Play Garden application, a public page the director turns on and off. Applicants see nothing else of TREE.
+    if (path.startsWith('/public/playgarden')) {
+      try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The application is still loading. Try again in a moment.'); return; }
+      if (path === '/public/playgarden') { json(req, res, 200, staff.playgarden.forPublic()); return; }
+      const r = staff.playgarden.apply(body.answers || {}, ip); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
     }
     if (path === '/family/code') { const r = await familyPage.sendCode(body.email, ip); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
     if (path === '/family/login') { const r = familyPage.signIn(body.email, body.code, ip); if (r.error) { err(req, res, 403, r.error); return; } json(req, res, 200, r); return; }
@@ -1715,7 +1738,7 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }

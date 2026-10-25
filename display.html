@@ -208,6 +208,9 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   function birthdayHtml(n){return `<div class="body quiet"><div class="kind">Today</div><h1>Happy birthday, ${esc(n)}</h1></div>`}
   // one plant from the children's plant guide, a quiet slide of its own
   function plantHtml(x){return `<div class="body quiet"><div class="kind">From our garden</div><h1>${esc(x.common)}</h1><div class="words" style="max-width:40ch">${esc(x.words)}</div><div class="small">${x.eat==="food"?"Food":"Look, don't eat"}${x.gather?". Gather with an educator":""}</div></div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
+  // the gatherings coming up, Second Saturday and Play Garden, with the jobs still looking for help
+  function gatheringsHtml(G){const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden"};
+    return `<div class="body"><div class="kind">Gatherings with families</div><h1>Coming up</h1><div class="days">${G.map(g=>`<div class="day"><h2>${esc(dayName(g.date))}${g.start?", "+esc(new Date("2000-01-01T"+g.start).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})):""}</h2><div class="small"><b>${esc(g.title||GN[g.gathering]||"A gathering")}</b>${g.gardenDay?", a seasonal garden day":""}${g.ready?"":", still being planned"}</div>${g.jobs.length?`<div class="small">${esc(g.jobs.map(j=>j.title+(j.open!=null?(j.open?", "+j.open+" open":", full"):"")).join(" · "))}</div>`:""}</div>`).join("")}</div></div>`}
   function noteHtml(x){return `<div class="body quiet"><div class="kind">A note from ${esc(x.by||"the director")}</div><div class="words" style="white-space:pre-line;max-width:40ch">${esc(x.text)}</div></div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
     return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" Class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
@@ -241,6 +244,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
     (feed.birthdays||[]).forEach((n,i)=>O.unshift({k:"birthday",id:"b"+i,cls:"t",html:()=>birthdayHtml(n)}));
     (feed.notes||[]).forEach(x=>O.unshift({k:"note",id:"n"+x.id,cls:"t",html:()=>noteHtml(x)}));
+    if((feed.gatherings||[]).length)O.push({k:"week",id:"gath",cls:"t",html:()=>gatheringsHtml(feed.gatherings)});
     if(feed.plant)O.push({k:"plant",id:"pl"+feed.plant.id,cls:"t",html:()=>plantHtml(feed.plant),src:feed.plant.photo&&feed.plant.photo.src});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin
