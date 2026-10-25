@@ -984,7 +984,8 @@ async function boot(){
    if(own&&stored!==own)LS.set("fps.me",own);else if(isShared(stored))LS.set("fps.me","")}
   PDEF=PROGRAM_DEFAULTS();
   {const pr=LS.get("fps.program",null);if(pr)applyProgram(pr)}
-  {const r=LS.get("fps.roster",null);if(Array.isArray(r)&&r.length)roster=r.filter(x=>x&&!isShared(x.name))}
+  // the educators list comes from the server, so the copy an older TREE kept on this device is let go
+  try{localStorage.removeItem("fps.roster")}catch(e){}
   fillEducatorList();renderRoster();fillPlaceList();
   for(const p of LS.get("fps.local",[]))plans.set(p.id,p);
   for(const t of LS.get("fps.threads",[]))threads.set(t.id,t);
@@ -1634,7 +1635,7 @@ function renderRoster(){
 }
 // the educators list is the director's. An educator adds only their own name, as the server keeps it.
 function addToRoster(name,room){name=name.trim();if(!name||isShared(name))return;if(window.FP_HOSTED&&!isDirector()&&name.toLowerCase()!==String(window.FP_NAME&&window.FP_NAME()||"").toLowerCase())return;if(!roster.some(r=>r.name.toLowerCase()===name.toLowerCase())){roster.push({name,room:room||""});saveRoster()}}
-function saveRoster(){LS.set("fps.roster",roster);renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
+function saveRoster(){renderRoster();fillEducatorList();if(db)db.doc("settings/educators").set({names:JSON.parse(JSON.stringify(roster)),updatedAt:Date.now()}).catch(()=>toast("Could not save the educator list. Check your connection."))}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.rdel!=null){if(!isDirector()){toast("Only the director changes the educators list.");return}roster.splice(+t.dataset.rdel,1);saveRoster();return}
   if(t.id==="r-add"){const n=$("#r-name").value;if(!n.trim()){toast("Type a name first.");return}addToRoster(n,$("#r-room").value);toast("Added to the educator list.");return}
@@ -12821,6 +12822,11 @@ function fillPlaceList(){const dl=$("#placelist");if(dl)dl.innerHTML=PLACES.map(
 let keepInfo=null,keepBusy=false,keepAsk={};
 async function keepLoad(){if(keepBusy||!window.FP_API||!isDirector()||VIEW_AS)return;keepBusy=true;try{keepInfo=await window.FP_API("/api/keeping",{})}catch(e){keepInfo={error:e&&e.message||"Keeping records could not be read."}}keepBusy=false;if(view==="settings"||view==="today")renderMain()}
 async function keepCall(path,body,msg){try{keepInfo=await window.FP_API(path,body);keepAsk={};if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}if(view==="settings"||view==="today")renderMain()}
+// the server's status in full, for the director only. The page anyone can open at the server's address shows no counts.
+let srvStat=null,srvStatBusy=false;
+function serverStatusHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
+  if(!srvStat&&!srvStatBusy){srvStatBusy=true;window.FP_API("/api/server-status",{}).then(j=>{srvStat=j},()=>{srvStat={lines:[]}}).finally(()=>{srvStatBusy=false;if(view==="settings"&&$("#srvstat"))$("#srvstat").outerHTML=serverStatusHtml()})}
+  return `<section class="card" id="srvstat"><div class="lbl">Server status</div>${srvStat?(srvStat.lines||[]).map(x=>`<div class="cnt" style="color:${x.ok?"var(--ink)":"var(--clay)"}">${x.ok?"Working.":"Needs attention."} ${esc(x.text)}</div>`).join(""):`<div class="cnt">Reading</div>`}</section>`}
 function keepingHtml(){if(!window.FP_HOSTED||!isDirector())return"";if(!keepInfo){keepLoad();return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">Reading</div></section>`}
   if(keepInfo.error)return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">${esc(keepInfo.error)}</div></section>`;
   const K=keepInfo,S=K.sources||{};
@@ -13023,7 +13029,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
-  ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records"]]];
+  ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
@@ -13043,6 +13049,7 @@ function setStatus(t,x){try{
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
   if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
   if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
   if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
   if(t==="Story frames")return plural(x.querySelectorAll("details").length,"frame");
@@ -13082,7 +13089,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
-  ${keepingHtml()}
+  ${keepingHtml()}${serverStatusHtml()}
   ${storyFramesHtml()}
   ${displayHtml()}
   ${backupHtml()}

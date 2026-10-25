@@ -1228,8 +1228,8 @@ function snapshot(director, kitchen, office) {
   const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = r.doc; }
   return out;
 }
-// the status page anyone can open names no model and no repository
-function statusPage(req, res) {
+// the server's status, in full for the director in Settings, and without any counts on the page anyone can open
+function statusLines() {
   const lines = [
     [store.ready, store.ready ? `Records are connected. ${store.recs.plans.size} plans and ${store.recs.threads.size} followed threads are loaded from the private records.` : (store.error || 'Records are still loading.')],
     [!!anthropicKey(), anthropicKey() ? 'The writing help key is saved, so writing help is available.' : 'No writing help key is saved. Add ANTHROPIC_API_KEY under Environment to turn on writing help.'],
@@ -1243,6 +1243,12 @@ function statusPage(req, res) {
   if (store.saveError) lines.unshift([false, store.saveError]);
   else if (saveWarn()) lines.unshift([false, saveWarn()]);
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
+  return lines;
+}
+// the status page anyone can open names no model, no repository and no counts. Each part says only whether it works.
+function statusPage(req, res) {
+  const all = statusLines(); const ok = all.every(([x]) => x);
+  const lines = [[ok, ok ? 'The TREE server is running, and every part of it is working.' : 'The TREE server is running. A part of it needs attention.'], [true, 'The director sees each part in TREE, in Settings, Server status.']];
   const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TREE server status</title></head><body style="font-family:system-ui,sans-serif;font-size:18px;line-height:1.5;max-width:680px;margin:32px auto;padding:0 16px"><h1 style="font-size:22px">TREE server</h1><p>The server is running.</p>' +
     lines.map(([ok, t]) => `<p style="font-weight:600;color:${ok ? '#1a7f37' : '#b42318'}">${ok ? 'WORKING.' : 'NEEDS ATTENTION.'} ${t}</p>`).join('') +
 '</body></html>';
@@ -1656,6 +1662,7 @@ async function handle(req, res) {
   // reminders. A phone turns them on once, the director sees who receives them and can send a test
   if (path === '/api/push/key') { const a = accountFor(me.name); json(req, res, 200, { key: reminders.keys() ? reminders.keys().pub : '', phones: ((a && a.push) || []).length }); return; }
   if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
+  if (path === '/api/server-status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the server status.'); return; } json(req, res, 200, { lines: statusLines().map(([ok, text]) => ({ ok: !!ok, text })) }); return; }
   if (path === '/api/notify/status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees reminders.'); return; } json(req, res, 200, reminders.status()); return; }
   if (path === '/api/notify/test') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a test.'); return; }
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
