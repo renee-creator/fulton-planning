@@ -479,6 +479,18 @@ ONCE.push(['planDefaults', () => {
 // current employee has the 2026 Know Your Rights notice on file outside TREE. Each waits until the educator records load.
 ONCE.push(['trainingLinks', () => staff.once.trainingLinks()]);
 ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
+// steps that change records already there from a list of changes kept in the private records. A record in the main
+// records changes through the save queue.
+function recsEdit(path, fn) {
+  const m = String(path).match(/^([a-z]+)\/([^/]+)\.json$/); if (!m || !KINDS.includes(m[1])) return false;
+  const r = store.recs[m[1]].get(m[2]); if (!r || r.deleted || !r.doc) return false;
+  const next = fn(r.doc); if (JSON.stringify(next) === JSON.stringify(r.doc)) return false;
+  r.doc = next; r.local = true; noteChange(m[1], m[2]); scheduleSave(m[1], m[2]); return true;
+}
+// Session 10's changes to records already there, in order, each from its own list in the private records. Naming the
+// school runs first, since later lists read the words it leaves.
+for (const name of ['schoolName', 'helpCurrent', 'regLinks', 'trainingVideos', 'readingLinks', 'handwash', 'restoreStale', 'plantNames', 'moduleTitles', 'letterTitle', 'policyWording', 'readingArticles', 'helpNew'])
+  ONCE.push([name, () => staff.once.edits(name, recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {

@@ -859,5 +859,81 @@ module.exports = function staffModule(o) {
     }
     log('Know Your Rights 2026 marked on file outside TREE for', n, 'people');
   }
-  return { walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026 }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  /* One-time steps that change records already there from a list of changes kept in the private records, so no
+     wording from the records sits in TREE's public code. Each change names a record by its path and either swaps a
+     passage, from and to (with all, a whole value equal to from), or sets one value at a place in the record, such as
+     fields.remarks or list[id=rl31].cite, only while the value there is still what the change expects. A section of
+     the Teacher Policies and Procedures or the Family Handbook changes as any edit does, keeping its earlier wording in
+     its history. Every other record keeps its earlier wording in the records' own history. A record in the main
+     records is changed through recs, the server's save queue. A record's own history is never changed. */
+  // a change can also add an entry to a list, such as a Help answer or a reading, only while no entry has its id
+  const ONCE_LISTS = {
+    schoolName: ['staff/naming-2026.json', 'Naming the school, we and our, and Fulton Community School where a name is needed'],
+    helpCurrent: ['staff/once/help-current.json', 'Help answers brought in line with their buttons'],
+    regLinks: ['staff/once/reg-links.json', 'Links to the CDSS regulation documents each page cites, confirmed October 25, 2026'],
+    trainingVideos: ['staff/once/training-videos.json', 'Watch the training links to CDSS Community Care Licensing videos, confirmed October 25, 2026'],
+    readingLinks: ['staff/once/reading-links.json', 'Readings and policy links corrected and confirmed October 25, 2026'],
+    handwash: ['staff/once/handwash.json', 'Handwashing in the Garden as our own practice'],
+    restoreStale: ['staff/once/restore-stale.json', 'Restored as saved before an older copy replaced it'],
+    plantNames: ['staff/once/plant-names.json', 'Plant card and Full plant page'],
+    moduleTitles: ['staff/once/module-titles.json', 'Module titles renamed, each module keeping its place and progress'],
+    letterTitle: ['staff/once/letter-title.json', 'A Letter to Our Educators, signed by the director'],
+    policyWording: ['staff/once/policy-wording.json', 'Wording brought in line with TREE\'s writing rules'],
+    readingArticles: ['staff/once/reading-articles.json', 'Articles to read online, confirmed October 25, 2026'],
+    helpNew: ['staff/once/help-new.json', 'Help answers for what Session 10 added'] };
+  const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
+  function setAt(doc, at, value, expect) {
+    const ks = placeOf(at); let t = doc;
+    for (let i = 0; i < ks.length; i++) {
+      const [k, id] = ks[i], last = i === ks.length - 1;
+      if (id !== undefined) { const arr = t[k]; if (!Array.isArray(arr)) return false; const j = arr.findIndex(x => x && String(x.id) === id); if (j < 0) return false; if (last) return false; t = arr[j]; continue; }
+      if (last) {
+        if (expect !== undefined && JSON.stringify(t[k] === undefined ? null : t[k]) !== JSON.stringify(expect)) return false;
+        if (JSON.stringify(t[k]) === JSON.stringify(value)) return false;
+        if (value === null) delete t[k]; else t[k] = value; return true;
+      }
+      if (!t[k] || typeof t[k] !== 'object') { if (expect !== undefined && expect !== null) return false; t[k] = {}; }
+      t = t[k];
+    }
+    return false;
+  }
+  function onceEdits(name, recs) {
+    const [listPath, note] = ONCE_LISTS[name] || [];
+    if (!S.ready) return false; const m = get(listPath); if (!m || !Array.isArray(m.changes)) return false;
+    const by = new Map();
+    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
+    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add) continue; if (c.all) { if (t === c.from) { t = c.to; c.hit = true; } } else if (t.includes(c.from)) { t = t.split(c.from).join(c.to); c.hit = true; } } return t; };
+    const deep = (v, cs) => typeof v === 'string' ? swap(v, cs) : Array.isArray(v) ? v.map(x => deep(x, cs)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'history' ? x : deep(x, cs)])) : v;
+    const sets = (doc, cs) => { const d = JSON.parse(JSON.stringify(doc)); for (const c of cs) { if (c.set && setAt(d, c.set, c.value === undefined ? null : c.value, c.expect)) c.hit = true;
+      if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); c.hit = true; } } } return d; };
+    const both = (doc, cs) => sets(deep(doc, cs), cs);
+    const tpFor = p => POL.entries().find(e => { const s = POL.tpSection(e); return s.ref === p || `staff/policies/teacher/${e.id}.json` === p; });
+    let n = 0;
+    for (const [p, cs] of by) {
+      try {
+        if (/^(staff|family\/handbook)\//.test(p)) {
+          const r = S.files.get(p); if (!r) continue; const e = /^family\/handbook\//.test(p) ? null : tpFor(p);
+          if (typeof r.text === 'string') {
+            const next = swap(r.text, cs); if (next === r.text) continue;
+            if (e) { const pp = POL.pieceParts(next); if (pp) POL.saveTeacher('TREE', { id: e.id, title: pp.title, body: pp.body, note }); }
+            // a page with the director's Edit button keeps the wording before the step as its earlier version
+            if (editable(p)) { const h = Object.assign({ path: p, history: [] }, get(PAGE_HIST(p)) || {}); const pp = pageParts(r.text);
+              h.history = [...(h.history || []), { title: pp ? pp.title : '', text: r.text, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
+              Object.assign(h, { note, updatedAt: Date.now(), updatedBy: 'TREE' }); put(PAGE_HIST(p), h); }
+            putText(p, next); n++; continue;
+          }
+          const fh = p.match(/^family\/handbook\/(\d{4})\/([a-z0-9-]+)\.json$/);
+          if (e && p !== 'staff/policies/teacher.json' && !cs.some(c => c.set || c.add)) { const s = POL.tpSection(e); const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveTeacher('TREE', { id: e.id, title, body, note }); n++; } continue; }
+          if (fh && fh[2] !== 'edition' && fh[2] !== 'public' && !cs.some(c => c.set || c.add)) { const s = POL.fhSection(fh[1], fh[2]); if (!s || s.same) continue; const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveFamily('TREE', { edition: fh[1], id: fh[2], title, body, note }); n++; } continue; }
+          const next = both(r.doc, cs); if (JSON.stringify(next) !== JSON.stringify(r.doc)) { put(p, next); n++; }
+          continue;
+        }
+        if (recs(p, doc => both(doc, cs))) n++;
+      } catch (er) { log('One-time step', name, 'could not change', p, er.message); }
+    }
+    pieceCache = null; G.invalidate();
+    const missed = m.changes.filter(c => c && !c.hit).length;
+    log('One-time step', name, 'changed', n, 'records,', m.changes.length - missed, 'of', m.changes.length, 'changes applied');
+  }
+  return { walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
