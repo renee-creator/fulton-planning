@@ -13047,13 +13047,14 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
   if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
+// the Settings card left open, which another page or a link may set before Settings has loaded
+let setOpen="";
 /*__LAZY_BEGIN settings renderSettings__*/
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
-let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);

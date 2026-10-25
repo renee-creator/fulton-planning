@@ -25,8 +25,11 @@ test('one-time steps run once and are recorded', async () => {
     assert.deepStrictEqual(read('settings/main.json').educators, { West: ['Ann'], North: ['Bea'], South: [] });
     // a later change to the one list reaches Conference settings
     const dee = (await fx.login('Dee', 'director-pass-1')).token;
-    await fx.as(dee, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { id: 'educators', names: [{ name: 'Ann', room: 'West' }, { name: 'Bea', room: 'South' }] } });
-    assert.ok(await until(() => JSON.stringify(read('settings/main.json').educators) === JSON.stringify({ West: ['Ann'], North: [], South: ['Bea'] }), 10000));
+    await fx.as(dee, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { id: 'educators', names: [{ name: 'Ann', room: 'West' }, { name: 'Bea', room: 'North' }, { name: 'Cal', room: 'South' }] } });
+    assert.ok(await until(() => JSON.stringify(read('settings/main.json').educators) === JSON.stringify({ West: ['Ann'], North: ['Bea'], South: ['Cal'] }), 10000));
+    // an educator's Class is the one on their sign-in, so a different Class written on the list goes back to it
+    await fx.as(dee, '/api/write', { op: 'set', kind: 'settings', id: 'educators', data: { id: 'educators', names: [{ name: 'Ann', room: 'West' }, { name: 'Bea', room: 'South' }, { name: 'Cal', room: 'South' }] } });
+    assert.ok(await until(() => JSON.stringify(read('settings/main.json').educators) === JSON.stringify({ West: ['Ann'], North: ['Bea'], South: ['Cal'] }) && read('settings/educators.json').names[1].room === 'North', 10000));
     // the director's own choice is never overwritten by a starting choice
     const once = read('settings/once.json');
     assert.ok(once.done.planDefaults);
@@ -35,7 +38,7 @@ test('one-time steps run once and are recorded', async () => {
 
 test('a second start finds the steps done and changes nothing', async () => {
   const more = put => {
-    put('settings/once.json', { id: 'once', done: { planDefaults: '2026-10-24T00:00:00Z', educatorList: '2026-10-24T00:00:00Z', presenting2027: '2026-10-24T00:00:00Z', trainingLinks: '2026-10-25T00:00:00Z', kyr2026: '2026-10-25T00:00:00Z' } });
+    put('settings/once.json', { id: 'once', done: { planDefaults: '2026-10-24T00:00:00Z', educatorList: '2026-10-24T00:00:00Z', presenting2027: '2026-10-24T00:00:00Z', trainingLinks: '2026-10-25T00:00:00Z', kyr2026: '2026-10-25T00:00:00Z', prepDirector: '2026-10-25T00:00:00Z', oneLists: '2026-10-25T00:00:00Z' } });
     put('settings/plandefaults.json', { id: 'plandefaults', people: { Ann: 'none' } });
     put('settings/notify.json', { id: 'notify', start: '2026-10-19', people: { Ann: { plans: 'weekly' } } });
   };

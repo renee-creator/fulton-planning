@@ -12528,8 +12528,10 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(t.dataset.dispnew){if(displayLink()&&!confirm("Make a new link? The screen in the staff room stops until you open the new link there."))return;displayCall("new");return}
   if(t.dataset.dispoff){if(!confirm("Turn the staff room display off? The screen stops showing TREE."))return;displayCall("off");return}
   if(t.dataset.dispcopy){const ta=document.getElementById("display-link");navigator.clipboard.writeText(ta.value).then(()=>toast("Copied."),()=>{ta.focus();ta.select();toast("Selected. Press Copy on your device.")})}});
+// the Settings card left open, which another page or a link may set before Settings has loaded
+let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","91aa00b8ba").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","75125aec24").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

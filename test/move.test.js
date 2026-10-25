@@ -10,7 +10,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 test('Move children', async t => {
   const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
   const fx = await start({ more: put => {
-    put('settings/program.json', { id: 'program', groups: [{ name: 'Fern', room: 'North', educator: 'Bea' }, { name: 'Moss', room: 'North', educator: 'Bea' }, { name: 'Clover', room: 'West', educator: 'Ann' }] });
+    put('settings/program.json', { id: 'program', classrooms: ['West', 'North', 'South'], groups: [{ name: 'Fern', room: 'North', educator: 'Bea' }, { name: 'Moss', room: 'North', educator: 'Bea' }, { name: 'Clover', room: 'West', educator: 'Ann' }] });
     put('children/pip-test.json', { first: 'Pip', last: 'Test', classroom: 'North', group: 'Fern', dob: '2022-03-01', status: 'active', transition: { '2027-28': { plan: 'k' } } });
     put('children/rue-test.json', { first: 'Rue', last: 'Test', classroom: 'North', group: 'Fern', dob: '2022-05-01', status: 'active' });
     put('children/tam-test.json', { first: 'Tam', last: 'Test', classroom: 'North', group: 'Moss', dob: '2022-07-01', status: 'active' });
