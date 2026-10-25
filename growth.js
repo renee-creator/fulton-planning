@@ -92,7 +92,7 @@ module.exports = function growthModule(c) {
   const libReady = () => !!((get(READY) || {}).library);
   const readingsFor = me => { const dir = isDirector(me); const base = (get(READ) || {}).list || [];
     const lib = (get(LIB) || {}).list || []; const on = libReady();
-    const more = dir || on ? lib.filter(x => x && x.id && x.title).map(x => { const o = Object.assign({}, x, { library: true }); if (dir) o.waiting = !on; else delete o.check; return o; }) : [];
+    const more = dir || on ? lib.filter(x => x && x.id && x.title).map(x => { const o = Object.assign({}, x, { library: true, kind: x.kind === 'article' ? 'article' : 'book', onSite: !!x.onSite }); if (dir) o.waiting = !on; else delete o.check; return o; }) : [];
     return [...base, ...more.filter(x => !base.some(b => b.url && b.url === x.url))]; };
   const readyOn = slug => !!(((get(READY) || {}).modules || {})[slug]);
   const published = slug => { const m = modules()[slug]; return !!m && (!m.draft || readyOn(slug)); };
@@ -611,6 +611,30 @@ module.exports = function growthModule(c) {
       if (!dir) return deny('The director marks the readings ready.'); if (!get(LIB)) return err(req, res, 404, 'The readings library is not in the records yet.');
       put(READY, Object.assign({ modules: {} }, get(READY) || {}, { library: body.on ? { on: today(), by: me } : null }));
       json(req, res, 200, { list: readingsFor(me), library: true, libraryReady: libReady() }); return;
+    }
+    // the Readings library's own entries, books and articles to read online, each added, changed or removed by the
+    // director the same way. A book can be marked In our library on site, which is off until the director turns it on.
+    if (P === 'readings/onsite') {
+      if (!dir) return deny(); const all = Object.assign({ list: [] }, get(LIB) || {}); const x = (all.list || []).find(y => y && y.id === String(body.id || ''));
+      if (!x) return err(req, res, 404, 'That reading is not in the library.'); if (x.kind === 'article') return err(req, res, 400, 'Only a book can be in our library on site.');
+      x.onSite = !!body.on; put(LIB, all); json(req, res, 200, { list: readingsFor(me), library: true, libraryReady: libReady() }); return;
+    }
+    if (P === 'readings/lib/save') {
+      if (!dir) return deny(); const b = body.entry || {}; const all = Object.assign({ list: [] }, get(LIB) || {}); all.list = (all.list || []).slice();
+      const kind = b.kind === 'article' ? 'article' : 'book', url = String(b.url || '').trim();
+      if (url && !/^https:\/\//.test(url)) return err(req, res, 400, 'A link starts with https.'); if (kind === 'article' && !url) return err(req, res, 400, 'Add the article\'s web address, starting with https.');
+      const title = txt(b.title, 300).trim(); if (!title) return err(req, res, 400, 'Give it a title.');
+      const fields = { kind, title, author: txt(b.author, 300).trim(), source: txt(b.source, 200).trim(), year: txt(b.year, 12).trim(), url: url.slice(0, 600), note: txt(b.note, 600).trim(), cite: txt(b.cite, 600).trim(),
+        modules: (Array.isArray(b.modules) ? b.modules : []).map(String).filter(m => /^[a-z0-9-]{1,40}$/.test(m)), areas: (Array.isArray(b.areas) ? b.areas : []).filter(a => AREA_KEYS.includes(a)) };
+      let x = b.id ? all.list.find(y => y && y.id === String(b.id)) : null;
+      if (x) Object.assign(x, fields, kind === 'article' ? { onSite: false } : {}, x.url !== fields.url ? { check: false, confirmed: '' } : {});
+      else { x = Object.assign({ id: rid(kind === 'article' ? 'ra' : 'rl'), by: me, check: false }, fields); all.list.push(x); }
+      put(LIB, all); json(req, res, 200, { list: readingsFor(me), library: true, libraryReady: libReady(), id: x.id }); return;
+    }
+    if (P === 'readings/lib/remove') {
+      if (!dir) return deny(); const all = Object.assign({ list: [] }, get(LIB) || {}); const n = (all.list || []).length;
+      all.list = (all.list || []).filter(y => !(y && y.id === String(body.id || ''))); if (all.list.length === n) return err(req, res, 404, 'That reading is not in the library.');
+      put(LIB, all); json(req, res, 200, { list: readingsFor(me), library: true, libraryReady: libReady() }); return;
     }
     if (P === 'readings/add') {
       if (!dir) return deny(); const b = body.reading || {}; if (!/^https:\/\//.test(b.url || '')) return err(req, res, 400, 'Add the reading\'s web address, starting with https.');
