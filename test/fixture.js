@@ -14,7 +14,7 @@ function records() {
     { name: 'Kit', kitchen: true, code: '1357', v: 1 }, { name: 'Neo', newHire: true, code: '1357', v: 1 }] });
   put('access/roles.json', { directors: ['Dee'], office: ['Gia'] });
   put('settings/educators.json', { id: 'educators', names: [{ name: 'Ann', room: 'West' }, { name: 'Bea', room: 'North' }] });
-  put('settings/program.json', { id: 'program', groups: [] });
+  put('settings/program.json', { id: 'program', classrooms: ['West', 'North', 'South'], groups: [] });
   put('staff/school.json', { open: { records: true, pd: true, handbook: true, newed: true, growth: true }, goTo: 'Gia', checkin: { week: 1, secondTime: '13:00', minutes: 20 }, meeting: { start: '13:15', end: '14:30' }, philosophy: '### A heading\n\nWords.' }, 1);
   for (const [n, pr] of [['Ann', { role: 'educator', planHour: '09:00', checkin: 'slot', startDate: '2020-01-01' }], ['Bea', { role: 'educator', planHour: '10:15', checkin: 'slot', startDate: '2020-01-01' }], ['Gia', { role: 'staff' }], ['Kit', { role: 'staff' }], ['Neo', { role: 'educator', startDate: '2026-11-02' }]])
     put(`staff/people/${n.toLowerCase()}.json`, { name: n, profile: pr }, 1);
