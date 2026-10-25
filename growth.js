@@ -87,6 +87,13 @@ module.exports = function growthModule(c) {
     modCache = out; return out;
   }
   const READY = 'staff/pd/ready.json';
+  // the readings library, the shared list and the library added since in its own file, which waits for the director
+  const LIB = 'staff/readings-library.json';
+  const libReady = () => !!((get(READY) || {}).library);
+  const readingsFor = me => { const dir = isDirector(me); const base = (get(READ) || {}).list || [];
+    const lib = (get(LIB) || {}).list || []; const on = libReady();
+    const more = dir || on ? lib.filter(x => x && x.id && x.title).map(x => { const o = Object.assign({}, x, { library: true }); if (dir) o.waiting = !on; else delete o.check; return o; }) : [];
+    return [...base, ...more.filter(x => !base.some(b => b.url && b.url === x.url))]; };
   const readyOn = slug => !!(((get(READY) || {}).modules || {})[slug]);
   const published = slug => { const m = modules()[slug]; return !!m && (!m.draft || readyOn(slug)); };
   // what a reader receives. The director sees every module, drafts marked, with the source note. Others see published ones only.
@@ -599,7 +606,12 @@ module.exports = function growthModule(c) {
     }
 
     /* readings */
-    if (P === 'readings') { json(req, res, 200, { list: ((get(READ) || {}).list || []) }); return; }
+    if (P === 'readings') { json(req, res, 200, { list: readingsFor(me), library: !!get(LIB), libraryReady: libReady() }); return; }
+    if (P === 'readings/ready') {
+      if (!dir) return deny('The director marks the readings ready.'); if (!get(LIB)) return err(req, res, 404, 'The readings library is not in the records yet.');
+      put(READY, Object.assign({ modules: {} }, get(READY) || {}, { library: body.on ? { on: today(), by: me } : null }));
+      json(req, res, 200, { list: readingsFor(me), library: true, libraryReady: libReady() }); return;
+    }
     if (P === 'readings/add') {
       if (!dir) return deny(); const b = body.reading || {}; if (!/^https:\/\//.test(b.url || '')) return err(req, res, 400, 'Add the reading\'s web address, starting with https.');
       const r = { id: rid('r'), title: txt(b.title, 240) || b.url, url: String(b.url).slice(0, 600), source: txt(b.source, 160), supports: txt(b.supports, 160), areas: (b.areas || []).filter(a => AREA_KEYS.includes(a)), modules: (b.modules || []).filter(m => MODULE_LIST.some(x => x[0] === m)), by: me, at: Date.now() };
@@ -621,7 +633,7 @@ module.exports = function growthModule(c) {
       for (let d = tFrom.slice(0, 7) + '-01'; d <= tTo; d = addMonths(d, 1)) await loadMonth(d.slice(0, 7));
       for (const date of teamDays(tFrom, tTo)) for (const room of roomsFor(me)) team.push(teamItem(date, room));
       for (const a of Object.values(ag)) if (a.kind === 'team' && roomsFor(me).includes(a.room) && !team.some(x => x.id === a.id) && a.date >= from) team.push(teamItem(a.date, a.room));
-      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), team: team.sort((a, b) => a.date.localeCompare(b.date) || ROOMS.indexOf(a.room) - ROOMS.indexOf(b.room)), readings: ((get(READ) || {}).list || []) }); return;
+      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), team: team.sort((a, b) => a.date.localeCompare(b.date) || ROOMS.indexOf(a.room) - ROOMS.indexOf(b.room)), readings: readingsFor(me) }); return;
     }
     // a Class's team meeting opens with its agenda, started from the Class's week until the team saves its own
     if (P === 'pd/team') {
@@ -698,5 +710,5 @@ module.exports = function growthModule(c) {
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
   const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
-  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
+  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
 };

@@ -10,7 +10,7 @@
 const crypto = require('crypto');
 
 module.exports = function presentingModule(c) {
-  const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart, isNewHire, moduleOf } = c;
+  const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart, isNewHire, moduleOf, readingsFor } = c;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -59,7 +59,7 @@ module.exports = function presentingModule(c) {
   function forViewer(e, me) {
     const out = JSON.parse(JSON.stringify(e)); out.agendas = agendasUsing(e.id); out.edit = canEdit(me, e);
     if (presents(e, me) && e.status === 'presented') out.mine = { hours: !!(e.credit || {})[pidOf(me)], moment: sharedFor(e, me) };
-    if (out.edit) { out.library = (get('staff/readings.json') || {}).list || []; if (isDirector(me)) { out.choices = choices(); if (e.template) out.templateSource = (get('staff/pd/template.json') || {}).source || ''; } else delete out.credit; return out; }
+    if (out.edit) { out.library = readingsFor ? readingsFor(me) : (get('staff/readings.json') || {}).list || []; if (isDirector(me)) { out.choices = choices(); if (e.template) out.templateSource = (get('staff/pd/template.json') || {}).source || ''; } else delete out.credit; return out; }
     const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
     const safe = Object.fromEntries(keep.map(k => [k, out[k]]));
     safe.readings = (e.readings || []).filter(r => r.kind !== 'drive').map(r => ({ id: r.id, kind: r.kind, title: r.title, url: r.url, source: r.source || '', note: r.note || '' }));

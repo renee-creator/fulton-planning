@@ -722,7 +722,7 @@ module.exports = function staffModule(o) {
     return n;
   }
   // Presenting, kept in presenting.js, beside the PD days and the growth pages
-  PR = require('./presenting.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart: n => G.takesPart(n), isNewHire, moduleOf: slug => G.modules()[slug] || null });
+  PR = require('./presenting.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, nameKey, school, today, store, accountFor, takesPart: n => G.takesPart(n), isNewHire, moduleOf: slug => G.modules()[slug] || null, readingsFor: me => G.readingsFor(me) });
   // a picture in the policies, read from the records the first time it is asked for
   async function readImage(p) {
     if (S.imgCache.has(p)) return S.imgCache.get(p); const sha = S.imgs.get(p); if (!sha) throw new Error('not here');
