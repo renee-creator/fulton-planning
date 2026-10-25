@@ -180,7 +180,7 @@ NOPF = '<style>[data-go="portfolios"]{display:none!important}</style>\n'
 VA = '<script>window.TREE_VA=(()=>{try{return window.parent!==window&&window.parent.TREE_VIEW_AS||null}catch(e){return null}})();if(window.TREE_VA){const st=document.createElement("style");st.textContent=\'[data-go="settings"]{display:none!important}\';document.head.appendChild(st)}</script>\n'
 # Conference settings show only once the server has said this is the director, never from what the browser kept
 NODIR = '<style>body:not(.tree-dir) [data-go="settings"]{display:none!important}</style>\n'
-out = head("Family Conferences, TREE", '<script src="print-kit.js"></script>\n') + TELL + VA + NODIR + NOPF + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
+out = head("Family Conferences, TREE", '<script src="print-kit.js"></script>\n<script src="wording.js"></script>\n') + TELL + VA + NODIR + NOPF + app.replace(marker, shim + "\n" + marker) + WATCH + LOCK + BRING + "\n</body>\n</html>\n"
 (root / "tree-conferences.html").write_text(out)
 print("tree-conferences.html", len(out), "bytes")
 

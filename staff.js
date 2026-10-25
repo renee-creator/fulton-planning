@@ -242,7 +242,11 @@ module.exports = function staffModule(o) {
   // the page's own file is rewritten section by section, its opening note and its headings kept as they are, and each
   // save keeps the wording before it in staff/pd/history, so any earlier version can be restored
   const W = require('./writing.js');
-  const editable = p => /^staff\/pd\/(modules|howto)\/[a-z0-9-]+\.md$/.test(p) || p === 'staff/newed/welcome.md';
+  const editable = p => /^staff\/pd\/(modules|howto)\/[a-z0-9-]+\.md$/.test(p) || p === 'staff/newed/welcome.md' || /^staff\/wording\/[a-z0-9-]+\.md$/.test(p);
+  // the school's own wording the director edits in place, one page for each piece, such as the Family Questionnaire
+  const WD = require('./wording.js');
+  function wordingDoc(id) { const r = S.files.get('staff/wording/' + id + '.md'); return WD.parse(r ? r.text : ''); }
+  function wordingAll() { const out = {}; for (const [p, r] of S.files) { const m = p.match(/^staff\/wording\/([a-z0-9-]+)\.md$/); if (m && typeof r.text === 'string') out[m[1]] = WD.parse(r.text); } return out; }
   const PAGE_HIST = p => 'staff/pd/history/' + p.slice(6).replace(/\.md$/, '').replace(/\//g, '--') + '.json';
   function pageParts(text) {
     text = String(text || '').replace(/\r/g, ''); const m = text.match(/^\s*<!--[\s\S]*?-->\n?/); const meta = m ? m[0] : ''; let rest = text.slice(meta.length);
@@ -254,7 +258,7 @@ module.exports = function staffModule(o) {
   }
   const pageText = pp => pp.meta + pp.pre + '#'.repeat(pp.level) + ' ' + pp.title + '\n\n' + (pp.lead ? pp.lead + '\n\n' : '') +
     pp.parts.map(x => '#'.repeat(pp.level + 1) + ' ' + x.heading + '\n\n' + (x.body ? x.body + '\n' : '')).join('\n');
-  const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : 'module';
+  const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : p.startsWith('staff/wording/') ? 'wording' : 'module';
   function pageOut(p) {
     const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return null; const h = get(PAGE_HIST(p)) || {};
     return { path: p, stamp: stampOf(r.text), kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };
@@ -379,6 +383,8 @@ module.exports = function staffModule(o) {
     if (P === 'pd') { if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny(); json(req, res, 200, piecesFor(me)); return; }
     if (P === 'pd/ready') { if (!dir) return deny(); const id = String(body.id || ''); if (!Object.values(pieces()).some(l => l.some(x => x.id === id))) { err(req, res, 404, 'That piece is not here.'); return; }
       const cur = get(PIECE_READY) || { pieces: {} }; put(PIECE_READY, Object.assign({}, cur, { pieces: Object.assign({}, cur.pieces, { [id]: !!body.on }) })); json(req, res, 200, piecesFor(me)); return; }
+    // the school's own wording, read again after the director edits a piece of it
+    if (P === 'wording') { if (isKitchen(me)) return deny(); json(req, res, 200, { docs: wordingAll() }); return; }
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
       if (!dir) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
@@ -948,5 +954,5 @@ module.exports = function staffModule(o) {
     // a change that could not be made is tried again at the next start, and the changes already made stay as they are
     if (failed) return false;
   }
-  return { walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

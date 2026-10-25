@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="print-kit.js"></script>
+<script src="wording.js"></script>
 <script src="sitemap.js"></script>
 <style>
 /* Layout. A garden-shed clipboard. Sidebar of the week's plans, a working form on the right, paper-like field cards. */
@@ -766,6 +767,9 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 // the Classes, the small groups and the spaces are one list each. The Classes and small groups come from Program
 // settings, and the spaces are the calendar's, read from the server. None is kept in this page.
 let CLASSROOMS=[],CLASSES_MAIN=[];
+// the school's own wording the director edits in place, from staff/wording in the records, sent with the records
+const wordsDoc=id=>(window.FP_WORDS&&window.FP_WORDS[id])||{title:"",parts:[]};
+const wordsOf=id=>window.TREE_WORDS?TREE_WORDS.map(wordsDoc(id)):{};
 // printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
 let PRINT={schoolDocs:false,schoolRecords:true,names:"first",by:true};
 // Proofread before save, for every educator, set by the director in Settings
@@ -3936,6 +3940,12 @@ function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{}
   return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):k==="stfh"?!!(c.family||c.newed):false}
 function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo()||{};if(isNewHire()||(s.can&&s.can.newed))return "stnew";return SUBS.staff.map(x=>x[0]).find(staffSubOk)||"today"}
 let staffLoad=null;
+// the director's Edit for a piece of the school's own wording, in staff/wording, opening the same editor as a PD module,
+// with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
+window.TREE_EDIT_WORDING=async(id,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+  window.TREE_PAGEEDIT({path:"staff/wording/"+id+".md"},async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}if(done)done();else renderMain()})};
+const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-wordsedit="${esc(id)}">${esc(label||"Edit the wording")}</button>`:"";
+document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});
@@ -6855,15 +6865,9 @@ const gOrganic=x=>/^\s*OG\b/.test(x.item||"")||!!gProducer(x.producer).organic;
 function gBinFarms(from,to){const m=new Map();for(const b of binAll())if(b.date>=from&&b.date<=to)for(const it of b.items||[])for(const f of it.farms||[]){const k=gKey(f);const e=m.get(k)||{name:f,town:farmTown(f),items:new Set(),weeks:new Set()};e.items.add(binName(it));e.weeks.add(b.date);m.set(k,e)}return [...m.values()].sort((a,b)=>b.weeks.size-a.weeks.size||a.name.localeCompare(b.name))}
 // hands-on food education, found by words in the educators' own observations and plans
 // the agreement's eight goals and planned activities, from the scope of work (draft of March 20, 2025), for reference
-const G_GOALS=[
-  {n:1,goal:"Increase procurement of California grown or produced, whole or minimally processed food for ECE meals and snacks.",plan:"Purchase California grown or produced food for the daily lunch program, with meals made from scratch on site. The nutrition coordinator's hours allow time to procure and prepare food from scratch rather than pre-prepared offerings.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"California food bought"},
-  {n:2,goal:"Increase procurement from small to midsize food producers in California.",plan:"Purchase wholesale produce from a local aggregator for the lunch program, including FEED Sonoma, and a CSA box subscription for each classroom to prepare.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers and Farms behind the FEED bins"},
-  {n:3,goal:"Increase procurement from veteran, socially disadvantaged and limited resource food producers in California.",plan:"The fruit for snacks includes fruit from farmers with BIPOC and female representation, including Earthseed Farm in Sebastopol and L&N Produce Stand in Santa Rosa.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers"},
-  {n:4,goal:"Increase procurement from California producers using climate smart practices or production systems, such as certified organic or transitioning to organic.",plan:"All items are certified organic or chosen from local growers using sustainable practices such as no till and rotational farming, including Singing Frogs Farm and Green Star Farm in Sebastopol.",by:"The chef plans the menus, buys and cooks, and the office keeps the paperwork",where:"Producers"},
-  {n:5,goal:"Increase hands-on food education that complements the meal program's California food procurement.",plan:"Children gather, wash and deliver the fruit for snack to each classroom as part of daily engagement.",by:"The director, with the educators",where:"Hands-on food education"},
-  {n:6,goal:"Increase hands-on food education that is standards aligned.",plan:"Children prepare snacks and fruit through hands-on cooking with a qualified educator, planned and reviewed to meet the California Preschool Learning Foundations and Quality Counts guidelines, daily.",by:"The director, with the educators",where:"Hands-on food education"},
-  {n:7,goal:"Increase hands-on food education led by educators with a Child Development Teacher Permit.",plan:"Daily small groups in the classroom and garden, planting, harvesting, watering and measuring, with observation, documentation and reflection, led by educators at the Teacher Permit level or higher, who complete the curriculum plans and evaluation.",by:"The director, with the educators",where:"Hands-on food education"},
-  {n:8,goal:"Increase hands-on food education that is culturally relevant.",plan:"A quarterly family meeting to understand the cultural dynamics of families, families invited to grow or bring foods that are culturally relevant to them, and a weekly parent participation opportunity.",by:"The director, with the educators",where:"Families"}];
+// the eight goals, the planned activities, who carries them out and where the evidence is kept, from
+// staff/wording/grant.md, which the director edits in place
+const G_GOALS_=()=>{const W=wordsOf("grant");return [1,2,3,4,5,6,7,8].map(n=>{const ps=window.TREE_WORDS?TREE_WORDS.paras(W["goal "+n]):[];return {n,goal:ps[0]||"",plan:ps[1]||"",by:ps[2]||"",where:ps[3]||""}})};
 // how the school is measuring up to each goal, for the chosen period, from the figures the page gathers
 function gGoalStatus(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
   const P=x=>gProducer(x.producer),pct=v=>all?Math.round(v/all*100)+"%":"0%";const prods=f=>new Set(L.filter(f).map(x=>gKey(x.producer))).size;
@@ -6881,7 +6885,7 @@ function gGoalStatus(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(
     4:`${r(og)}, ${pct(og)}, certified organic, and ${r(loc)}, ${pct(loc)}, from local farms using sustainable practices without certification.`,
     5:e(5),6:e(6),7:e(7),8:`${fam.length} family entr${fam.length===1?"y":"ies"} in the family log.`}}
 // the eight objectives by a short name, for tables on the page and in the summaries
-const G_SHORT={1:"California food",2:"Small and midsize farms",3:"Socially disadvantaged farmers",4:"Organic and climate smart",5:"Children gather fruit",6:"Cooking with an educator",7:"Small groups",8:"Culturally relevant, with families"};
+const G_SHORT=new Proxy({},{get:(o,k)=>wordsOf("grant")["short "+String(k)]||""});
 // where each objective stands, as a short figure and its pace or count, for the table
 function gGoalRows(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
   const P=x=>gProducer(x.producer),pct=v=>all?Math.round(v/all*100)+"%":"0%";const prods=f=>new Set(L.filter(f).map(x=>gKey(x.producer))).size;const allTime=gLines(S.start||"0000","9999");
@@ -6903,15 +6907,16 @@ function gFigures(from,to){const S=gSet(),L=gLines(from,to),sum=a=>a.reduce((t,x
     [String(new Set(L.map(x=>gKey(x.producer))).size),"producers"],[gPct(son,loc$),"from Sonoma County"],[String(sd.days),"school days with lunch and snacks"]]}
 function gGoalsHtml(open,from,to,q){const rows=from?gGoalRows(from,to):[];
   return `<details class="card gsec" data-gsec="goals" ${gIsOpen("goals",open)?"open":""}><summary class="secthead"><h3>The grant's eight objectives</h3><span class="gfig">Where each stands ${q?esc(periodWord(q)):""}</span></summary>
-  <div class="gbody"><div class="gobj">${G_GOALS.map(g=>{const r=rows.find(x=>x[0]===g.n)||[];return `<div class="gobjrow"><span class="gnum">${g.n}</span><div style="min-width:0"><b>${esc(G_SHORT[g.n])}</b><div class="cnt">${esc(r[2]||"")}</div></div><b class="gval">${esc(r[1]||"")}</b></div>`}).join("")}</div>
-  <details class="gmore"><summary class="linkbtn">The official wording, activities and who carries them out</summary>
-  <div class="tlist" style="margin-top:6px">${G_GOALS.map(g=>`<div class="cnt" style="padding:6px 0;border-top:1px solid var(--line)"><b>${g.n}. ${esc(g.goal)}</b> ${esc(g.plan)} ${esc(g.by)}. Evidence under ${esc(g.where)}.</div>`).join("")}</div>
-  <div class="hint">Children's Sustainability Project, Track 3, Farm to Early Care and Education. Goals and activities from the draft scope of work of March 2025, which named a purchasing lead and a food education lead. Today the chef plans the menus, buys the food and cooks, the office does the paperwork and communication with CDFA, and the director leads food education with the educators. Goal 4 counts certified organic and local farms using sustainable practices, as the scope of work allows. If CDFA's executed agreement worded any goal differently, the agreement governs.</div></details></div></details>`}
+  <div class="gbody"><div class="gobj">${G_GOALS_().map(g=>{const r=rows.find(x=>x[0]===g.n)||[];return `<div class="gobjrow"><span class="gnum">${g.n}</span><div style="min-width:0"><b>${esc(G_SHORT[g.n])}</b><div class="cnt">${esc(r[2]||"")}</div></div><b class="gval">${esc(r[1]||"")}</b></div>`}).join("")}</div>
+  <details class="gmore"><summary class="linkbtn">The official wording, activities and who carries them out</summary>${wordsEdit("grant","Edit the goals, objectives and description")}
+  <div class="tlist" style="margin-top:6px">${G_GOALS_().map(g=>`<div class="cnt" style="padding:6px 0;border-top:1px solid var(--line)"><b>${g.n}. ${esc(g.goal)}</b> ${esc(g.plan)} ${esc(g.by)}. Evidence under ${esc(g.where)}.</div>`).join("")}</div>
+  <div class="hint">${esc(wordsOf("grant").description||"")}</div></details></div></details>`}
 // hands-on food education is found by words that are about food, and counts only once the director confirms it
 const G_OBJ=[
-  {n:5,label:"Children gather, wash and deliver fruit for snack",re:/\b(fruits?|snacks?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|lemons?|quinces?|pomegranates?)\b/i},
-  {n:6,label:"Children prepare snacks and food with an educator",re:/\b(cook|cooks|cooked|cooking|bake|baked|bakes|baking|bread|dough|recipes?|kitchen|soup|salad|smoothies?|juiced?|juicing|chopp?(ed|ing)?|peel(ed|ing)?|tast(e|ed|es|ing)|muffins?|pancakes?|tortillas?|pizza|sandwich(es)?|oven|stove|knives|knife)\b/i},
-  {n:7,label:"Small groups in the classroom and garden, planting, harvesting, watering, measuring",re:/\b(garden|gardens|gardening|planted|planting|seeds?|seedlings?|harvest(ed|ing|s)?|sprout(ed|ing|s)?|soil|compost(ing)?|vegetables?|veggies?|herbs?|lettuce|kale|carrots?|tomato(es)?|squash|pumpkins?|beans?|peas|potato(es)?|chard|radish(es)?|zucchini|farm|farmer|farmers|farming|garlic|onions?|cucumbers?|corn)\b/i}];
+  {n:5,re:/\b(fruits?|snacks?|apples?|pears?|plums?|peach(es)?|grapes?|oranges?|figs?|persimmons?|melons?|bananas?|tangerines?|mandarins?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|blackberr(y|ies)|cherr(y|ies)|apricots?|nectarines?|kiwis?|lemons?|quinces?|pomegranates?)\b/i},
+  {n:6,re:/\b(cook|cooks|cooked|cooking|bake|baked|bakes|baking|bread|dough|recipes?|kitchen|soup|salad|smoothies?|juiced?|juicing|chopp?(ed|ing)?|peel(ed|ing)?|tast(e|ed|es|ing)|muffins?|pancakes?|tortillas?|pizza|sandwich(es)?|oven|stove|knives|knife)\b/i},
+  {n:7,re:/\b(garden|gardens|gardening|planted|planting|seeds?|seedlings?|harvest(ed|ing|s)?|sprout(ed|ing|s)?|soil|compost(ing)?|vegetables?|veggies?|herbs?|lettuce|kale|carrots?|tomato(es)?|squash|pumpkins?|beans?|peas|potato(es)?|chard|radish(es)?|zucchini|farm|farmer|farmers|farming|garlic|onions?|cucumbers?|corn)\b/i}];
+G_OBJ.forEach(o=>Object.defineProperty(o,"label",{get:()=>wordsOf("grant")["objective "+o.n]||""}));
 function gTextOfPlan(p){return [Object.values(p.fields||{}).join(" "),p.web?[p.web.focus,(p.web.branches||[]).map(b=>b.name+" "+b.materials).join(" "),p.web.questions].join(" "):""].join(" ")}
 // the director's choice for each observation or plan found, kept in the director's own grant record
 const gEduKey=(n,kind,id)=>n+"|"+kind+"|"+id;
@@ -6966,9 +6971,7 @@ let gEduSorting=false,gEduSortOff=false;
 async function gEduSort(items){if(gEduSorting||gEduSortOff||!grantLoaded||!db||!isDirector()||VIEW_AS||!window.FP_HOSTED)return;
   const todo=items.filter(it=>it.pending&&!gEduSortOf(it.key)).slice(0,12);if(!todo.length)return;gEduSorting=true;
   const prompt=`These are observations and plans written by educators at a farm school for young children. For a Farm to School grant, decide for each one whether the educator's words show children doing hands-on food education under these objectives.
-5. Children gather, wash and deliver fruit for snack.
-6. Children prepare snacks and food with an educator.
-7. Small groups in the classroom and garden, planting, harvesting, watering, measuring.
+${G_OBJ.map(o=>o.n+". "+o.label+".").join("\n")}
 Mark likely true only when the words plainly show children doing it. A passing mention of food, a song or story about food, or something only planned for later is not likely.
 For each, give quote, a few words copied exactly from that item's own text that show why, at most 20 words.
 Return a JSON object {"items":[{"n":1,"likely":true,"objectives":[5],"quote":"..."}]}, one entry for each item.
@@ -7208,7 +7211,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
   const prods=new Map();for(const x of lines){const k=gKey(x.producer);const e=prods.get(k)||{p:gProducer(x.producer),total:0};e.total+=Number(x.total)||0;prods.set(k,e)}
   const blocks=[dFigures(gFigures(from,to))];
   blocks.push(dTable(isQuarter(q)?"Where each objective stands":"The grant's eight objectives",gGoalRows(from,to).map(([n,v,c])=>[String(n),G_SHORT[n],v,c]),{head:["","Objective","Figure","Pace or count"],widths:[.05,.33,.16,.46],align:["l","l","r","l"],bold0:false,muted:[3]}));
-  blocks.push({t:"small",lines:G_GOALS.map(g=>`${g.n}. ${g.goal}`)});
+  blocks.push({t:"small",lines:G_GOALS_().map(g=>`${g.n}. ${g.goal}`)});
   {const S=gSet(),kids=Number(S.enrolled)||kidsAt().length||0,sd=gSchoolDays(from,to);if(sd.days){const lo=sd.full*G_SAVE.low+sd.short*G_SAVE.lowShort,hi=sd.full*G_SAVE.high+sd.short*G_SAVE.highShort,r=n=>"$"+Math.round(n).toLocaleString("en-US");
     const w=gWeek();
     blocks.push(dTable("What families don't have to provide",[["Each week, for each family",`About $${Math.round(w.lo)} to $${Math.round(w.hi)} in groceries, ${gMins(w.mLo)} to ${gMins(w.mHi)} of shopping, packing and cleanup, and 14 meals and snacks`],["School days",`${sd.days} with lunch and snacks`],["Groceries for each child",`About ${r(lo)} to ${r(hi)}`],["Time for each family",`About ${Math.round(sd.days*G_SAVE.minLow/60)} to ${Math.round(sd.days*G_SAVE.minHigh/60)} hours of shopping, packing and cleanup`]].concat(kids?[[`Across ${kids} children`,`About ${r(lo*kids)} to ${r(hi*kids)} in groceries`]]:[]),{widths:[.3,.7],muted:[0]}))}}
@@ -8897,6 +8900,8 @@ function renderParticipation(){
         return `<details class="ptkid"><summary><span style="min-width:0"><b>${esc(kidName(k))}</b> <span class="cnt">${esc(k.classroom||"")}</span></span><span class="pthrs ${h>=c.goal?"done":h<ptPace(c.goal)?"behind":""}">${h} of ${c.goal}${h<c.goal&&h<ptPace(c.goal)?", behind":""}</span></summary>
         ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
         :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
+    ${isDirector()&&!VIEW_AS?`<section class="card"><div class="secthead"><h3 style="font-size:17px">The Family page's wording</h3></div><div class="cnt">Each piece is changed in place, with every earlier version kept and Restore this version.</div>
+      <div class="actions">${[["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
       <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
@@ -10692,7 +10697,7 @@ async function printsClick(t){
   if(kind==="aboutme"){const c=children.get(t.dataset.id);if(!c||!c.aboutMe){toast("The family has not made the book yet.");return true}
     const docs=(c.aboutMe.pages||[]).map((p,i)=>{const blocks=[];const ph=(p.photos||[]).map(id=>({id:"am-"+id,photo:{id}}));
       ph.forEach((n,j)=>blocks.push(dPhoto(n,ph.length===1?430:ph.length===2?250:180,true)));if(has(p.text))blocks.push(dLead("",p.text));
-      return {display:true,type:"report",acc:"smallgroup",fill:true,title:(i<AAM_TITLES.length?AAM_TITLES[i].replace("{first}",c.first):(p.title||"More about me")),meta:[],blocks}});
+      return {display:true,type:"report",acc:"smallgroup",fill:true,title:(i<AAM_TITLES_().length?AAM_TITLES_()[i].replace("{first}",c.first):(p.title||"More about me")),meta:[],blocks}});
     await out(docs,`All About Me ${c.first}`);return true}
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
@@ -12105,7 +12110,7 @@ function kidMoments(c){const re=new RegExp("(^|[^A-Za-z])"+c.first.replace(/[^A-
 const kidTagged=(c,n)=>(n.children||[]).includes(c.id);
 // Ready for the conference, the same rule the Conferences section uses. The thirteen sections an educator prepares have writing and the four preparation steps are checked.
 const CONF_SHORT={interests:"Main interests",friends:"Friends",smallGroup:"Small group",favoriteAreas:"Favorite areas",nature:"Nature and the farm",approaches:"Approaches to learning",social:"Social and emotional",language:"Language and literacy",cognition:"Cognition",physical:"Physical development",expressive:"Expressive languages",strengths:"Strengths",documentation:"Documentation shared"};
-const CONF_STEP_SHORT={questionnaire:"Family Questionnaire reviewed",drdp:"DRDP reviewed",coteachers:"Prepared with co-educators",samples:"Work samples gathered"};
+const CONF_STEP_SHORT=new Proxy({},{get:(o,k)=>wordsOf("conference-prep")[k]||""});
 const CONF_READY_FIELDS=["interests","friends","smallGroup","favoriteAreas","nature","approaches","social","language","cognition","physical","expressive","strengths","documentation"],CONF_READY_STEPS=["questionnaire","drdp","coteachers","samples"];
 function confIsReady(x){return !!x&&x.status!=="complete"&&CONF_READY_FIELDS.every(k=>String(x.fields?.[k]||"").trim())&&CONF_READY_STEPS.every(k=>x.prep?.[k])}
 function kidConfs(c){return [...conferences.values()].filter(x=>x.childId===c.id).sort((a,b)=>((b.schoolYear||"")+(b.term==="Spring"?"2":"1")).localeCompare((a.schoolYear||"")+(a.term==="Spring"?"2":"1"))||(b.confDate||"").localeCompare(a.confDate||""))}
@@ -12158,7 +12163,7 @@ function renderChild(){
         ${list.length?`<div class="kmlist">${list.slice(0,kidDocMax).map(n=>kidMomentRow(c,n)).join("")}</div>${list.length>kidDocMax?`<div class="actions"><button class="btn small ghost" data-kdocmore="1">Show ${Math.min(60,list.length-kidDocMax)} more</button><span class="cnt">Showing the ${kidDocMax} most recent of ${list.length}.</span></div>`:""}`:`<div class="empty">${ms.length?"None here.":`No observations for ${esc(c.first)} yet.`} <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>
       ${ss.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length}</span></div><div class="kmlist">${ss.map(s=>{const ph=notices.get(slidePhotos(s)[0]);return `<div class="kmwrap"><button class="kmrow" data-slide="${esc(s.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(slideTitle(s))}</b><span class="cnt">${shortDate(s.at)}${kidAgeAt(c,s.at)?" · age "+kidAgeAt(c,s.at):""} · ${esc(s.by||"")}</span>${kidDrdpOf(c,"slides",s.id)}</span></button>${pfToggle(c,"slides",s.id,true)}</div>`}).join("")}</div></section>`:""}
       ${c.aboutMe&&c.aboutMe.done?`<section class="card"><div class="secthead"><h3 style="font-size:17px">All About Me, from ${esc(c.first)}'s family</h3><span class="actions">${printBtns("aboutme",c.id,"Print to laminate",true)}</span></div>
-        <div class="aamstaff">${(c.aboutMe.pages||[]).map((p,i)=>`<div><b>${esc((i<AAM_TITLES.length?AAM_TITLES[i].replace("{first}",c.first):(p.title||"More about me")))}</b>${(p.photos||[]).length?`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.photos[0]):"")}" alt="" loading="lazy">`:""}<div class="cnt">${esc(firstLine(p.text,140))}</div></div>`).join("")}</div></section>`:""}
+        <div class="aamstaff">${(c.aboutMe.pages||[]).map((p,i)=>`<div><b>${esc((i<AAM_TITLES_().length?AAM_TITLES_()[i].replace("{first}",c.first):(p.title||"More about me")))}</b>${(p.photos||[]).length?`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.photos[0]):"")}" alt="" loading="lazy">`:""}<div class="cnt">${esc(firstLine(p.text,140))}</div></div>`).join("")}</div></section>`:""}
       ${(()=>{const sts=kidStories(c).sort((a,b)=>(b.at||0)-(a.at||0));return sts.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length}</span></div><div class="kmlist">${sts.map(st=>{const mine=storyPhotoIds(st).find(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)});const ph=notices.get(mine);return `<div class="kmwrap"><button class="kmrow" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(stTitle(st))}</b><span class="cnt">${stReviewed(st)?"":"Draft · "}${shortDate(st.at)} · ${esc(st.by||"")}</span></span></button>${stReviewed(st)?pfToggle(c,"stories",st.id,true):""}</div>`}).join("")}</div><div class="cnt">In the portfolio, a reviewed story prints with its words and only the photos ${esc(c.first)} is in. A draft waits for the team's review.</div></section>`:""})()}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="transition"){body=tsHtml(c)}
@@ -12239,24 +12244,29 @@ function kidFamilySideHtml(c){
   if(isOffice())h+=`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Shared with the family</h3><button class="btn small ghost" data-kshareport="${esc(c.id)}">Share the portfolio</button></div>
     ${files.map((f,i)=>`<div class="ptlog"><span>${esc(f.title)}<span class="cnt"> · ${esc(shortDate(new Date(f.at).getTime()))}</span></span><button class="linkbtn" data-kunshare="${esc(c.id)}|${i}">Stop sharing</button></div>`).join("")}${tsShareRow(c)}${files.length||tsShareRow(c)?"":`<div class="cnt">Nothing shared yet. A portfolio shared here, and conference notes shared from the Conferences tab, appear on the Family page.</div>`}</section>`;
   return h}
-const ENROLL_LABELS={c_first:"Child's first name",c_middle:"Middle name",c_last:"Last name",c_sex:"Sex",c_dob:"Birthday",c_phone:"Home telephone",c_street:"Address",c_city:"City",c_state:"State",c_zip:"Zip",doc_name:"Doctor",doc_phone:"Doctor's telephone",doc_addr:"Doctor's address",doc_plan:"Medical plan",den_name:"Dentist",den_phone:"Dentist's telephone",h_allergies:"Allergies",med_allergy:"Medicine allergies",pickup_time:"Usual pickup time"};
-const AAM_TITLES=["All About {first}","My family","Things I like","Foods I like"];
+// the words for each enrollment box, from staff/wording/family-enrollment.md
+const ENROLL_LABELS=new Proxy({},{get:(o,k)=>wordsOf("family-enrollment")[k]||""});
+// the All About Me book's page titles, from staff/wording/family-aboutme.md
+const AAM_TITLES_=()=>window.TREE_WORDS?TREE_WORDS.list(wordsDoc("family-aboutme")).map(([,t])=>TREE_WORDS.paras(t)[0]||""):[];
 // the office's checklist for a new family, ticking itself where TREE already knows, then the class team's steps
-const OFFICE_STEPS=[["o_1core","Accepted in 1Core, with schedule and first day set"],["o_tree","Added to TREE with the first day and parents' emails",c=>!!c.enrollDate&&(c.parents||[]).some(p=>p&&has(p.email))],["o_link","Family Page link sent"],["o_kaymbu","Family added to Kaymbu, in the child's class"],
-  ["o_visit","Visit time booked",c=>!!c.visit],["o_print","Forms printed for the visit",c=>!!(c.onboarding||{}).printed],["o_signed","State forms, food allergy page and admission agreement signed",c=>!!(c.onboarding||{}).paperwork],["o_701","Original Physician's Report received"],["o_286","Immunization record received"],
-  ["o_allergy","Allergies and dietary needs shared with the kitchen and the class team"],["o_book","All About Me book printed and laminated"]];
-const TEAM_STEPS=[["questionnaire","Read the Family Questionnaire"],["welcomeCall","Welcome phone call with the family"],["visitDone","Visit completed and notes written"],["thankYou","Thank you sent after the visit"],["teamShared","Shared what we learned with the team"],["labels","Labels made for cup, cubby and cot"],["firstDay","First day at school"]];
+// the office steps and the Class team steps, their words from staff/wording/onboarding.md, ticking themselves where TREE already knows
+const OFFICE_RULES=[["o_1core"],["o_tree",c=>!!c.enrollDate&&(c.parents||[]).some(p=>p&&has(p.email))],["o_link"],["o_kaymbu"],
+  ["o_visit",c=>!!c.visit],["o_print",c=>!!(c.onboarding||{}).printed],["o_signed",c=>!!(c.onboarding||{}).paperwork],["o_701"],["o_286"],
+  ["o_allergy"],["o_book"]];
+const OFFICE_STEPS_=()=>{const W=wordsOf("onboarding");return OFFICE_RULES.map(([k,f])=>[k,W["office "+k]||"",f])};
+const TEAM_KEYS=["questionnaire", "welcomeCall", "visitDone", "thankYou", "teamShared", "labels", "firstDay"];
+const TEAM_STEPS_=()=>{const W=wordsOf("onboarding");return TEAM_KEYS.map(k=>[k,W["team "+k]||""])};
 function officeChecklistHtml(c){const oc=c.officeChecks||{},ob=c.onboarding||{};
   const row=(on,auto,t,attr)=>`<label class="radio octick" style="margin:0"><input type="checkbox" ${attr} ${on?"checked":""} ${auto?"disabled":""}><span>${esc(t)}${auto?` <span class="cnt">by TREE</span>`:""}</span></label>`;
-  const off=OFFICE_STEPS.map(([k,t,f])=>{const auto=f&&f(c);return row(auto||!!oc[k],auto,t,`data-ocheck="${esc(c.id)}|${k}"`)+(k==="o_allergy"?`<div class="cnt" style="margin:0 0 6px 26px">${dietLine(c)?esc(dietLine(c)):dietPending(c)?"The family's line waits for you to confirm.":(c.diet&&c.diet.none)?"No food allergies or dietary needs.":"No line yet."} <button class="linkbtn" data-kdietgo="${esc(c.id)}">${dietPending(c)?"Confirm the line":"Open the line"}</button></div>`:"")});
-  const team=TEAM_STEPS.map(([k,t])=>row(!!ob[k],false,t,`data-tcheck="${esc(c.id)}|${k}"`));
-  const n=OFFICE_STEPS.filter(([k,,f])=>(f&&f(c))||oc[k]).length;
-  return `<details class="occk" ${LS.get("tree.occk")?"open":""}><summary class="chiprow-label">New family checklist, ${n} of ${OFFICE_STEPS.length} for the office</summary><div class="ocgrid"><div><b class="cnt">Office</b>${off.join("")}</div><div><b class="cnt">Class team</b>${team.join("")}</div></div></details>`}
+  const off=OFFICE_STEPS_().map(([k,t,f])=>{const auto=f&&f(c);return row(auto||!!oc[k],auto,t,`data-ocheck="${esc(c.id)}|${k}"`)+(k==="o_allergy"?`<div class="cnt" style="margin:0 0 6px 26px">${dietLine(c)?esc(dietLine(c)):dietPending(c)?"The family's line waits for you to confirm.":(c.diet&&c.diet.none)?"No food allergies or dietary needs.":"No line yet."} <button class="linkbtn" data-kdietgo="${esc(c.id)}">${dietPending(c)?"Confirm the line":"Open the line"}</button></div>`:"")});
+  const team=TEAM_STEPS_().map(([k,t])=>row(!!ob[k],false,t,`data-tcheck="${esc(c.id)}|${k}"`));
+  const n=OFFICE_STEPS_().filter(([k,,f])=>(f&&f(c))||oc[k]).length;
+  return `<details class="occk" ${LS.get("tree.occk")?"open":""}><summary class="chiprow-label">New family checklist, ${n} of ${OFFICE_STEPS_().length} for the office</summary><div class="ocgrid"><div><b class="cnt">Office</b>${off.join("")}</div><div><b class="cnt">Class team</b>${team.join("")}</div></div>${wordsEdit("onboarding","Edit the steps")}</details>`}
 document.addEventListener("change",e=>{const t=e.target.closest("[data-ocheck],[data-tcheck]");if(!t)return;if(VIEW_AS){t.checked=!t.checked;toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const [id,k]=(t.dataset.ocheck||t.dataset.tcheck).split("|");const c=children.get(id);if(!c)return;
   if(t.dataset.ocheck){const oc=Object.assign({},c.officeChecks||{});if(t.checked)oc[k]=Date.now();else delete oc[k];c.officeChecks=oc;db.doc("children/"+id).update({officeChecks:oc}).catch(er=>toast(er&&er.message||"Could not save."))}
   else{const ob=Object.assign({},c.onboarding||{});if(t.checked)ob[k]=true;else delete ob[k];c.onboarding=ob;db.doc("children/"+id).update({onboarding:ob}).catch(er=>toast(er&&er.message||"Could not save."))}
-  const s0=t.closest(".occk");if(s0){const n=OFFICE_STEPS.filter(([k2,,f])=>(f&&f(c))||(c.officeChecks||{})[k2]).length;s0.querySelector("summary").textContent=`New family checklist, ${n} of ${OFFICE_STEPS.length} for the office`}});
+  const s0=t.closest(".occk");if(s0){const n=OFFICE_STEPS_().filter(([k2,,f])=>(f&&f(c))||(c.officeChecks||{})[k2]).length;s0.querySelector("summary").textContent=`New family checklist, ${n} of ${OFFICE_STEPS_().length} for the office`}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("occk"))LS.set("tree.occk",d.open?"1":null)},true);
 /* the allergy and dietary line. When a family submits the enrollment form, a short line from what they typed waits on
    the child as pending. Once the office confirms it, the line shows on the child's card, the Children page, the Kitchen

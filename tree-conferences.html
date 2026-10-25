@@ -8,6 +8,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Family Conferences, TREE</title>
 <script src="print-kit.js"></script>
+<script src="wording.js"></script>
 <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -313,7 +314,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Records can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; window.FP_WORDS=j.wording||{}; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -451,38 +452,15 @@ const FIELDS = [
   {k:"goals", label:"Shared Goals (school and home)", hint:"Goals agreed on together during the conference, drawing on Family Reflections", full:true},
   {k:"nextSteps", label:"Next Steps", hint:"How school and home will each support the goals, and when we will check in again", full:true},
 ];
-const REFLECTIONS = [
-  {k:"r1", q:"What are you noticing about your child at home right now?"},
-  {k:"r2", q:"What are they especially interested in or talking about outside of school?"},
-  {k:"r3", q:"Are there any changes, new developments, or challenges you have noticed?"},
-  {k:"r4", q:"Which friends, educators, or small group projects does your child mention?"},
-  {k:"r5", q:"Looking back at the hopes and goals you shared at enrollment, what feels most important to you now?"},
-  {k:"r6", q:"Is there anything you are wondering about or would like us to think about together?"},
-];
-const PREP = [
-  {k:"questionnaire", label:"Reviewed the Family Questionnaire"},
-  {k:"drdp", label:"Reviewed current DRDP documentation"},
-  {k:"coteachers", label:"Prepared together with co-educators"},
-  {k:"samples", label:"Gathered work samples and photos to share"},
-  {k:"priorGoals", label:"Reviewed goals from the last conference", needsPrior:true},
-  {k:"offeredVirtual", label:"Offered an in-person or virtual option"},
-  {k:"renee", label:"Invited the director to join (optional)"},
-];
+const WORDS_OF=id=>{ const d=(window.FP_WORDS||{})[id]; return window.TREE_WORDS&&d? window.TREE_WORDS.map(d) : {}; };
+// the Family Reflections, in the same words as the Family page, from TREE's records
+const REFLECTIONS = ["r1","r2","r3","r4","r5","r6"].map(k=>({k, get q(){ return WORDS_OF("family-reflections")[k]||""; }}));
+// the preparation steps and the new family steps, their words from TREE's records, staff/wording, which the director edits in place
+const PREP_KEYS = [["questionnaire"],["drdp"],["coteachers"],["samples"],["priorGoals",true],["offeredVirtual"],["director"]];
+const PREP = PREP_KEYS.map(([k,needsPrior])=>({k, needsPrior:!!needsPrior, get label(){ return WORDS_OF("conference-prep")[k]||""; }}));
 // the Classes and small groups are TREE's one list, in Program settings, read below
 const DEFAULT_GROUPS = [];
-const ONBOARD = [
-  {k:"questionnaire", label:"Read the Family Questionnaire"},
-  {k:"welcomeCall", label:"Welcome phone call with the family"},
-  {k:"visitScheduled", label:"Home or garden visit scheduled"},
-  {k:"calendar", label:"Visit added to the CFC internal calendar"},
-  {k:"contactVerified", label:"Contact information verified"},
-  {k:"visitDone", label:"Visit completed and notes written"},
-  {k:"thankYou", label:"Thank you sent after the visit"},
-  {k:"teamShared", label:"Shared what we learned with the team"},
-  {k:"labels", label:"Labels made for cup, cubby and cot"},
-  {k:"aboutMe", label:"All About Me book received"},
-  {k:"firstDay", label:"First day at school"},
-];
+const ONBOARD = ["questionnaire", "welcomeCall", "visitScheduled", "calendar", "contactVerified", "visitDone", "thankYou", "teamShared", "labels", "aboutMe", "firstDay"].map(k=>({k, get label(){ return WORDS_OF("onboarding")["team "+k]||""; }}));
 const MONTHS = ["Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul"];
 // next year's plan, in the same words TREE's Children page uses
 const PLANS = [["","Not discussed yet"],["staying","Staying at our school next year"],["tk","Going to TK next year"],["k","Going to kindergarten next year"],["deciding","Family still deciding about next year"],["other","Another plan for next year"]];
@@ -1245,6 +1223,7 @@ function viewSettings(){
   <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
     <div class="hint">The Classes and small groups are kept in TREE's Settings, under Program settings, and read here from there.</div>
+    ${isDirector()&&(()=>{try{return !!window.parent.TREE_EDIT_WORDING}catch(e){return false}})()?`<div class="row"><button class="btn" type="button" data-act="edit-prep">Edit the preparation steps</button></div>`:""}
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${isDirector()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
     <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Each educator's Class is kept on their sign-in, changed in TREE's Settings, Sign-ins, or on the Educators page. They show here by that Class.</div>
       ${s.classrooms.map(r=>`<div class="cnt"><b>${esc(r)}</b> ${esc((s.educators?.[r]||[]).join(", ")||"No one yet")}</div>`).join("")}
@@ -1367,6 +1346,7 @@ const actions = {
   "conf-delete-yes": async ()=>{ const cf=S.confs[S.view.id]; const child=cf.childId; pending.clear(); try{ await dbDelete("conferences/"+cf.id); closeModal(); toast("Conference record deleted"); go("child",{id:child}); }catch(e){} },
   "close": ()=>closeModal(),
   "tree-children": ()=>openInTree("",""),
+  "edit-prep": ()=>{ try{ window.parent.TREE_EDIT_WORDING("conference-prep",()=>{ try{ window.FP_WORDS=window.parent.FP_WORDS; }catch(e){} render(); }); }catch(e){} },
   "tree-kid": a=>openInTree(a.dataset.id,"details"),
   "save-settings": async ()=>{
     const lines = v=>v.split(/\n/).map(s=>s.trim()).filter(Boolean);
@@ -1617,13 +1597,15 @@ async function buildFormsPdf(items){
     y-=18;
     if(info){
       // the plan's boxes run on as many lines as their words need, so the full wording always fits the sheet
-      const boxRows=[]; { let bx=M+10+66, row=[]; for(const [v,l] of PLAN_BOXES){ const w=11+F.r.widthOfTextAtSize(l,8.5)+16; if(row.length&&bx+w>M+TW-6){ boxRows.push(row); row=[]; bx=M+10+66; } row.push([v,l,bx]); bx+=w; } if(row.length) boxRows.push(row); }
-      const fh=38+12*Math.max(0,boxRows.length-1); pg.drawRectangle({x:M,y:y-fh,width:TW,height:fh,color:CREAM,borderColor:GOLD,borderWidth:.8}); pg.drawRectangle({x:M,y:y-fh,width:4,height:fh,color:GOLD});
+      // two lines of boxes sit in the band's own height, a little smaller, so nothing below it moves
+      const boxRows=[]; let PS=8.5; for(const sz of [8.5,7.6]){ PS=sz; boxRows.length=0; let bx=M+10+66, row=[]; for(const [v,l] of PLAN_BOXES){ const w=11+F.r.widthOfTextAtSize(l,PS)+14; if(row.length&&bx+w>M+TW-6){ boxRows.push(row); row=[]; bx=M+10+66; } row.push([v,l,bx]); bx+=w; } if(row.length) boxRows.push(row); if(boxRows.length<2) break; }
+      const two=boxRows.length>1, top=two?-23:-29, gap=9.5;
+      const fh=38+gap*Math.max(0,boxRows.length-2); pg.drawRectangle({x:M,y:y-fh,width:TW,height:fh,color:CREAM,borderColor:GOLD,borderWidth:.8}); pg.drawRectangle({x:M,y:y-fh,width:4,height:fh,color:GOLD});
       const tw=F.b.widthOfTextAtSize(clean(info.text),9)+5; pg.drawText(clean(info.text),{x:M+10,y:y-13,size:9,font:F.b});
       pg.drawText(wrap(info.more,F.r,8.5,TW-20-tw)[0]||"",{x:M+10+tw,y:y-13,size:8.5,font:F.r});
-      let x=M+10; pg.drawText("Family's plan",{x,y:y-29,size:8.5,font:F.b}); x+=66;
-      boxRows.forEach((row,ri)=>{ const yy=y-12*ri; for(const [v,l,x] of row){ pg.drawRectangle({x,y:yy-30,width:8,height:8,borderColor:INK,borderWidth:.7}); if(info.plan===v){ pg.drawLine({start:{x:x+1.5,y:yy-26},end:{x:x+3.5,y:yy-28.5},thickness:1.2,color:INK}); pg.drawLine({start:{x:x+3.5,y:yy-28.5},end:{x:x+7,y:yy-23},thickness:1.2,color:INK}); }
-        pg.drawText(l,{x:x+11,y:yy-29,size:8.5,font:F.r}); } });
+      pg.drawText("Family's plan",{x:M+10,y:y+top,size:8.5,font:F.b});
+      boxRows.forEach((row,ri)=>{ const yy=y+top+29-gap*ri, b=two?7:8; for(const [v,l,x] of row){ pg.drawRectangle({x,y:yy-30,width:b,height:b,borderColor:INK,borderWidth:.7}); if(info.plan===v){ pg.drawLine({start:{x:x+1.3,y:yy-26.5},end:{x:x+3.1,y:yy-28.8},thickness:1.1,color:INK}); pg.drawLine({start:{x:x+3.1,y:yy-28.8},end:{x:x+b-1,y:yy-23.6},thickness:1.1,color:INK}); }
+        pg.drawText(l,{x:x+b+3,y:yy-29,size:PS,font:F.r}); } });
       y-=fh+6; }
     prepLine(pg,y,cf); y-=15; const META=22;
     const rows=[]; for(let i=0;i<FIELDS.length;i++){ const f=FIELDS[i];

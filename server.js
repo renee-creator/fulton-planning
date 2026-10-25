@@ -393,7 +393,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -677,6 +677,15 @@ async function doLoad() {
 
 // a plan that holds an observation's words, written or pasted in before plans kept the observation's id, keeps the id
 // now, once, so a plan and its observations are found by id and never by matching words
+// the conference preparation step once stored under a person's name is stored as the director's, the step's own words
+ONCE.push(['prepDirector', () => {
+  let n = 0;
+  for (const [id, r] of store.recs.conferences) {
+    if (!r || r.deleted || !r.doc || !r.doc.prep || !Object.prototype.hasOwnProperty.call(r.doc.prep, 'renee')) continue;
+    if (recsEdit('conferences/' + id + '.json', d => { const prep = Object.assign({}, d.prep); if (prep.director === undefined) prep.director = prep.renee; delete prep.renee; return Object.assign({}, d, { prep }); })) n++;
+  }
+  log('Conference preparation, the step to invite the director kept under its own name on', n, 'conferences');
+}]);
 // the Classes and the small groups are one list each, kept in Program settings. Conference settings, the calendar and
 // every page read them from there. Until the one-time step oneLists has run, the Classes Conference settings kept are read.
 function settingDoc(id) { const r = store.recs.settings.get(id); return r && !r.deleted && r.doc ? r.doc : {}; }
@@ -1668,7 +1677,7 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? undefined : staff.wordingAll(), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? r.doc : null; }

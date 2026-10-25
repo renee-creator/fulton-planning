@@ -86,6 +86,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 </div>
 <script src="print-kit.js"></script>
 <script src="enroll-rules.js"></script>
+<script src="wording.js"></script>
 <script src="agreement.js"></script>
 <script src="policy-md.js"></script>
 <script src="sitemap.js"></script>
@@ -321,7 +322,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <div class="err" id="ee" aria-live="polite"></div><div style="margin-top:10px"><button class="btn" data-esave="${esc(k.id)}|done">Submit</button> <button class="btn ghost" data-esave="${esc(k.id)}|">Save my progress</button> <button class="link" data-eview="${esc(k.id)}">See the state forms with your answers</button></div></section>`}
   // the page keeps its height while photos load after a redraw, so it does not jump under the reader
   let rKey="",rHold=null;
-  function render(){const m=$("#main"),k=(form||"")+"|"+tab;if(k===rKey&&m){clearTimeout(rHold);m.style.minHeight=m.offsetHeight+"px"}else if(m)m.style.minHeight="";rKey=k;
+  function render(){if(D&&D.agreementWords)try{window.FultonAgreement.use(D.agreementWords)}catch(e){}const m=$("#main"),k=(form||"")+"|"+tab;if(k===rKey&&m){clearTimeout(rHold);m.style.minHeight=m.offsetHeight+"px"}else if(m)m.style.minHeight="";rKey=k;
     renderInner();try{enrollStatus()}catch(e){}
     try{const el=document.getElementById("fam-smap");if(el&&D.siteMap&&window.SiteMap)window.SiteMap.mount(el,{src:SERVER+D.siteMap.src,spots:D.siteMap.spots})}catch(e){}
     if(!m)return;const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const rel=()=>{m.style.minHeight=""};
@@ -376,7 +377,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
         if(miss.length){miss.forEach(f=>{const el=document.querySelector(`[data-ef="${f.k}"]`);if(el){el.classList.add("miss");const dt=el.closest("details");if(dt)dt.open=true}});$("#ee").textContent=`${miss.length} box${miss.length===1?" is":"es are"} still empty, marked in red. Write None when something does not apply.`;const first=document.querySelector(".miss");if(first)first.scrollIntoView({block:"center"});return}
         const [id]=d.esave.split("|");clearTimeout(eTimer);try{D=await api("/family/enroll",{childId:id,data:readEnroll(),done:true});form=null;render();window.scrollTo(0,0)}catch(er){$("#ee").textContent=er.message}}
       else if(d.eview){const w=window.open("","_blank");try{if(!window.fillEnrollForms)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="enroll-forms.js";sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)});
-          const kk=D.children.find(x=>x.id===d.eview)||{};const bytes=await window.fillEnrollForms(readEnroll(),{agreement:kk.agreement||null,aa:D.aa||{},email:D.email||"",schedule:kk.schedule||"",classroom:kk.classroom||""});const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));if(w)w.location=url;else location.href=url}catch(er){if(w)w.close();$("#ee").textContent="The forms could not be shown just now."}}
+          const kk=D.children.find(x=>x.id===d.eview)||{};const bytes=await window.fillEnrollForms(readEnroll(),{agreementWords:D.agreementWords||null,agreement:kk.agreement||null,aa:D.aa||{},email:D.email||"",schedule:kk.schedule||"",classroom:kk.classroom||""});const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));if(w)w.location=url;else location.href=url}catch(er){if(w)w.close();$("#ee").textContent="The forms could not be shown just now."}}
       else if(d.agt!=null&&!d.agsave){const ini=($("#agi").value||"").trim();if(!ini){$("#eg").textContent="Type your initials first.";$("#agi").focus();return}const on=b.getAttribute("aria-pressed")!=="true";b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?ini.toUpperCase():"";$("#eg").textContent=""}
       else if(d.agsave){const [cid,sub]=d.agsave.split("|");const ag=readAgree();if(sub){const miss=window.FultonAgreement.missing(ag);if(miss.length){$("#eg").textContent="Please complete "+miss.slice(0,5).join(", ")+(miss.length>5?", and "+(miss.length-5)+" more":"")+".";return}}
         try{D=await api("/family/agree",{childId:cid,agreement:ag,submit:!!sub});if(!sub){render();$("#eg").textContent="Saved. The agreement is not signed yet.";return}form=null;render();window.scrollTo(0,0)}catch(er){$("#eg").textContent=er.message}}

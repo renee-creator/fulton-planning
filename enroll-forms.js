@@ -9,6 +9,8 @@ const mdy=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`
 const splitStreet=s=>{const m=String(s||"").trim().match(/^(\d+[A-Za-z]?)\s+(.*)$/);return m?[m[1],m[2]]:["",String(s||"").trim()]};
 const splitPhone=s=>{const d=String(s||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");return d.length===10?[d.slice(0,3),d.slice(3,6)+"-"+d.slice(6)]:["",String(s||"")]};
 async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const base=o.base||"";
+  // the agreement's wording comes from the records, passed in as o.agreementWords
+  if(!window.TREE_WORDS)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=base+"wording.js";sc.onload=ok;sc.onerror=()=>no(new Error("The agreement could not be loaded."));document.head.appendChild(sc)});
   if(!window.FultonAgreement)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=base+"agreement.js";sc.onload=ok;sc.onerror=()=>no(new Error("The agreement could not be loaded."));document.head.appendChild(sc)});
   // pdf-lib comes from the print kit, print-kit.js, as every print does
   if(!window.PDFLib)await window.TREE_KIT.pdfLib().catch(()=>{throw new Error("The forms could not be opened.")});
@@ -54,7 +56,7 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     const ag=o.agreement||null;let ai=0;
     const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});if(ag&&ag.initials&&(ag.ticks||[])[ai])pg.drawText(String(ag.initials).toUpperCase(),{x:M+2,y,size:9,font:B,color:ink});ai++;ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
     const box=(on,t)=>{pg.drawRectangle({x:M,y:y-1.5,width:8,height:8,borderColor:ink,borderWidth:.7});if(on){pg.drawLine({start:{x:M+1.5,y:y+2.5},end:{x:M+3.5,y:y},thickness:1.1,color:ink});pg.drawLine({start:{x:M+3.5,y},end:{x:M+7,y:y+6},thickness:1.1,color:ink})}pg.drawText(t,{x:M+14,y,size:9.5,font:F,color:ink});y-=15};
-    const A=window.FultonAgreement;const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
+    const A=window.FultonAgreement;if(o.agreementWords)A.use(o.agreementWords);const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
     const prog=g?g.program:A.programFor(o.schedule);const T=A.terms(g&&g.aa&&g.aa.start?g.aa:yr,prog);
     page();
     field("Child's name",g?gf.child:nm("c_"),M,300);field("Sex",g?gf.sex:v("c_sex"),M+310,80);field("DOB",g?gf.dob:mdy(v("c_dob")),M+400,104);y-=20;
