@@ -2174,6 +2174,13 @@ function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observ
   const show=tries=>{const el=find();if(!el){if(tries>0)setTimeout(()=>show(tries-1),150);else toast("That observation could not be found on Observations.");return}
     const d=el.closest("details");if(d&&!d.open)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
   setTimeout(()=>show(8),120)}
+/* a reading of our own links to its place in TREE, such as tree:hb/language-parameters for a section of the Teacher
+   Policies and Procedures, tree:fh/behavior-and-discipline for the Family Handbook, or tree:stories for a page */
+const TREE_PLACE={hb:"the Teacher Policies and Procedures",fh:"the Family Handbook",stories:"Stories",stpd:"the PD library",stnew:"New Educator"};
+window.treeReadPlace=u=>{const m=String(u||"").match(/^tree:([a-z0-9]+)/);return m?"in TREE, "+(TREE_PLACE[m[1]]||m[1]):String(u||"")};
+window.treeReadLink=(u,title)=>/^tree:/.test(u||"")?`<button class="linkbtn" data-treelink="${esc(u)}">${esc(title)}</button>`:`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(title)}</a>`;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-treelink]");if(!t)return;e.preventDefault();const m=t.dataset.treelink.match(/^tree:([a-z0-9]+)(?:\/(.+))?$/);if(!m)return;
+  if(m[1]==="hb"){LS.set("tree.hb",m[2]||"__contents");goView("sthb");return}if(m[1]==="fh"){LS.set("tree.fh",m[2]||"__contents");goView("stfh");return}goView(m[1])});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hbopen]");if(!t)return;e.preventDefault();LS.set("tree.hb",t.dataset.hbopen);goView("sthb")});
 // a link to the exact section of the Family Handbook, such as Behavior and Discipline
 document.addEventListener("click",e=>{const t=e.target.closest("[data-fhopen]");if(!t)return;e.preventDefault();LS.set("tree.fh",t.dataset.fhopen);goView("stfh")});
@@ -4284,7 +4291,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4294,7 +4301,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -12989,7 +12996,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

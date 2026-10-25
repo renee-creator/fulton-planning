@@ -81,7 +81,7 @@ module.exports = function growthModule(c) {
       const sections = parts.map(s => { const i = s.indexOf('\n'); return { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
       // an adapted module written as a draft says status draft, and waits for the director to mark it ready. Its source
       // note, its library description and its place in the list come from the same comment, so no new title is in this file
-      out[slug] = { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 90, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
+      out[slug] = { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 0, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
         draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean) };
     }
     modCache = out; return out;
@@ -576,7 +576,7 @@ module.exports = function growthModule(c) {
       if (b.finish && !cur.done) { if (!String(cur.reflection || '').trim()) return err(req, res, 400, 'Write your reflection on what happened when you tried it first.'); cur.done = Date.now(); logged = true; }
       g.modules = Object.assign({}, g.modules, { [slug]: cur }); put(gPath(me), g);
       // a finished module logs its hours on the records page, as Fulton PD hours
-      if (logged) { const doc = person(me); doc.hours = [...(doc.hours || []), { id: rid('h'), date: today(), title: 'PD module, ' + md.title, hours: Math.round(md.minutes / 6) / 10, kind: 'module', approved: false, by: 'TREE' }]; put(pPath(me), doc); }
+      if (logged) { const doc = person(me); doc.hours = [...(doc.hours || []), { id: rid('h'), date: today(), title: 'PD module, ' + md.title, hours: md.minutes ? Math.round(md.minutes / 6) / 10 : 0, kind: 'module', approved: false, by: 'TREE' }]; put(pPath(me), doc); }
       json(req, res, 200, forViewer(me, me)); return;
     }
     if (P === 'module/ready') {
@@ -623,7 +623,10 @@ module.exports = function growthModule(c) {
     if (P === 'readings/lib/save') {
       if (!dir) return deny(); const b = body.entry || {}; const all = Object.assign({ list: [] }, get(LIB) || {}); all.list = (all.list || []).slice();
       const kind = b.kind === 'article' ? 'article' : 'book', url = String(b.url || '').trim();
-      if (url && !/^https:\/\//.test(url)) return err(req, res, 400, 'A link starts with https.'); if (kind === 'article' && !url) return err(req, res, 400, 'Add the article\'s web address, starting with https.');
+      // every reading carries a link, a web reading to its source, a book to its publisher or a catalog page, a Drive file
+      // to the file, and one of our own pieces to its place in TREE, written tree: and the place
+      if (!url) return err(req, res, 400, kind === 'article' ? 'Add the article\'s web address, starting with https, so everyone can open it.' : 'Add a link so everyone can find it, the publisher\'s page or a library catalog page for a book.');
+      if (!/^(https:\/\/|tree:[a-z0-9]+(\/[a-z0-9-]+)?$)/.test(url)) return err(req, res, 400, 'A link starts with https, or tree: for a place in TREE.');
       const title = txt(b.title, 300).trim(); if (!title) return err(req, res, 400, 'Give it a title.');
       const fields = { kind, title, author: txt(b.author, 300).trim(), source: txt(b.source, 200).trim(), year: txt(b.year, 12).trim(), url: url.slice(0, 600), note: txt(b.note, 600).trim(), cite: txt(b.cite, 600).trim(),
         modules: (Array.isArray(b.modules) ? b.modules : []).map(String).filter(m => /^[a-z0-9-]{1,40}$/.test(m)), areas: (Array.isArray(b.areas) ? b.areas : []).filter(a => AREA_KEYS.includes(a)) };
@@ -700,7 +703,13 @@ module.exports = function growthModule(c) {
       const isTeam = b.kind === 'team' && ROOMS().includes(b.room);
       if (isTeam ? !roomsFor(me).includes(b.room) : !dir) return deny(isTeam ? 'Each Class team builds its own team meeting agenda.' : 'The director builds each agenda.');
       const kind = isTeam ? 'team' : b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = isTeam ? teamId(b.date, b.room) : b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
-      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '' }));
+      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '',
+        // a guest session, training our team receives from outside presenters, with its presenters, their organization,
+        // its length, its link and any handout
+        guest: !!x.guest && x.guest !== 'no', guestBy: txt(x.guestBy, 200), guestOrg: txt(x.guestOrg, 200), guestMinutes: Math.max(0, Math.min(600, Math.round(+x.guestMinutes || 0))), guestLink: /^https:\/\//.test(x.guestLink || '') ? String(x.guestLink).slice(0, 600) : '', guestHandout: /^https:\/\//.test(x.guestHandout || '') ? String(x.guestHandout).slice(0, 600) : '', guestPeople: Math.max(0, Math.min(200, Math.round(+x.guestPeople || 0))) }))
+        .map(x => x.guest ? x : Object.assign(x, { guestBy: '', guestOrg: '', guestMinutes: 0, guestLink: '', guestHandout: '', guestPeople: 0 }));
+      const noLink = blocks.find(x => x.guest && !x.guestLink);
+      if (noLink) return err(req, res, 400, 'A guest session needs a link, such as the presenters\' page, so everyone can find it. Add the link to ' + (noLink.title || 'the guest session') + '.');
       // every agenda ends with plus delta
       const body0 = blocks.filter(x => !x.closing && x.title.trim());
       const close = blocks.find(x => x.closing) || { id: rid('k'), closing: true, title: 'Plus delta', why: 'Each educator writes what went well and what to change in TREE on their phone, and a few are shared aloud before leaving.', how: 'quiet', prepare: '', readings: [], time: '' };
@@ -721,8 +730,10 @@ module.exports = function growthModule(c) {
       if (!dir) return deny(); const d = pdd(); const a = d.agendas[String(body.id || '')]; if (!a) return err(req, res, 404, 'Save the agenda first.');
       if (a.kind === 'team') return err(req, res, 400, 'Team meetings are not logged as PD hours.');
       const names = (Array.isArray(body.names) ? body.names : []).filter(n => staffNames().some(x => nameKey(x) === nameKey(n)));
-      const hrs = agendaHours(a); const already = new Set((a.logged && a.logged.names || []).map(nameKey)); let n = 0;
-      for (const nm of names) { if (already.has(nameKey(nm))) continue; const doc = person(nm); doc.hours = [...(doc.hours || []), { id: rid('h'), date: a.date, title: (a.kind === 'meeting' ? 'PD staff meeting, ' : 'PD day, ') + (a.title || a.date), hours: hrs, kind: a.kind === 'meeting' ? 'meeting' : 'pdday', approved: false, by: 'TREE' }]; put(pPath(nm), doc); n++; }
+      // the guest sessions count within the day's hours, and a day that is only a longer guest session counts its length
+      const guests = (a.blocks || []).filter(x => x.guest && x.title);
+      const hrs = Math.max(agendaHours(a), Math.round(guests.reduce((t, x) => t + (+x.guestMinutes || 0), 0) / 15) / 4); const already = new Set((a.logged && a.logged.names || []).map(nameKey)); let n = 0;
+      for (const nm of names) { if (already.has(nameKey(nm))) continue; const doc = person(nm); doc.hours = [...(doc.hours || []), { id: rid('h'), date: a.date, title: (a.kind === 'meeting' ? 'PD staff meeting, ' : 'PD day, ') + (a.title || a.date) + (guests.length ? ', with ' + guests.map(x => x.title + (x.guestOrg ? ' (' + x.guestOrg + ')' : '')).join(' and ') : ''), hours: hrs, kind: a.kind === 'meeting' ? 'meeting' : 'pdday', approved: false, by: 'TREE' }]; put(pPath(nm), doc); n++; }
       a.logged = { at: Date.now(), names: [...new Set([...(a.logged && a.logged.names || []), ...names])] }; put(PDD, d); json(req, res, 200, { ok: true, n, hours: hrs }); return;
     }
     err(req, res, 404, 'Not found');

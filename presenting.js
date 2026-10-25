@@ -54,13 +54,13 @@ module.exports = function presentingModule(c) {
   const PD = () => (get('staff/pddays.json') || {}).agendas || {};
   const agendasUsing = id => Object.values(PD()).filter(a => (a.blocks || []).some(b => b.presenting === id)).map(a => ({ id: a.id, date: a.date, kind: a.kind, title: a.title || '' })).sort((x, y) => x.date.localeCompare(y.date));
   const sharedFor = (e, me) => { const m = ((get('staff/moments.json') || {}).list || []).find(x => nameKey(x.by) === nameKey(me) && x.link && x.link.kind === 'presenting' && x.link.id === e.id); return m ? 'shared' : ((e.credit || {})[pidOf(me)] || {}).moment === 'no' ? 'no' : ''; };
-  const summary = (e, me) => ({ id: e.id, title: e.title, subtitle: e.subtitle, audience: e.audience, date: e.date, minutes: e.minutes, status: e.status, presentedOn: e.presentedOn || '', presenters: e.presenters || [], edit: canEdit(me, e), copiedFrom: e.copiedFrom || '' });
+  const summary = (e, me) => ({ id: e.id, title: e.title, subtitle: e.subtitle, audience: e.audience, date: e.date, minutes: e.minutes, mode: e.mode || '', audienceType: e.audienceType || '', status: e.status, presentedOn: e.presentedOn || '', presenters: e.presenters || [], edit: canEdit(me, e), copiedFrom: e.copiedFrom || '' });
   // a reader who is not a presenter receives what is safe for all staff. Notes, meetings, evidence and Drive files stay out.
   function forViewer(e, me) {
     const out = JSON.parse(JSON.stringify(e)); out.agendas = agendasUsing(e.id); out.edit = canEdit(me, e);
     if (presents(e, me) && e.status === 'presented') out.mine = { hours: !!(e.credit || {})[pidOf(me)], moment: sharedFor(e, me) };
     if (out.edit) { out.library = readingsFor ? readingsFor(me) : (get('staff/readings.json') || {}).list || []; if (isDirector(me)) { out.choices = choices(); if (e.template) out.templateSource = (get('staff/pd/template.json') || {}).source || ''; } else delete out.credit; return out; }
-    const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
+    const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'mode', 'audienceType', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
     const safe = Object.fromEntries(keep.map(k => [k, out[k]]));
     safe.readings = (e.readings || []).filter(r => r.kind !== 'drive').map(r => ({ id: r.id, kind: r.kind, title: r.title, url: r.url, source: r.source || '', note: r.note || '' }));
     safe.plan = (e.plan || []).map(s => Object.assign({}, s, { readings: (s.readings || []).filter(id => safe.readings.some(r => r.id === id)) }));
@@ -172,7 +172,7 @@ module.exports = function presentingModule(c) {
     if (list === 'prompts' || list === 'checks') return { id, text: txt(x.text, 1200) };
     if (list === 'readings') {
       const kind = ['library', 'link', 'drive', 'licensing'].includes(x.kind) ? x.kind : 'link';
-      if (kind === 'library') { const r = ((get('staff/readings.json') || {}).list || []).find(y => y.id === x.ref); if (!r) throw new Error('Choose a reading from the library.'); return { id, kind, ref: r.id, title: r.title, url: r.url || '', source: r.source || '', note: txt(x.note, 600) }; }
+      if (kind === 'library') { const r = ((get('staff/readings.json') || {}).list || []).find(y => y.id === x.ref); if (!r) throw new Error('Choose a reading from the library.'); if (!r.url) throw new Error('That reading has no link yet. Add its link in the PD library first, so everyone can open it.'); return { id, kind, ref: r.id, title: r.title, url: r.url || '', source: r.source || '', note: txt(x.note, 600) }; }
       if (!okUrl(x.url)) throw new Error('Paste a link starting with https.');
       if (kind === 'drive' && !isDrive(x.url)) throw new Error('Paste a Google Drive link.');
       // licensing references come only from CCLD or CDSS
@@ -200,14 +200,14 @@ module.exports = function presentingModule(c) {
       // a PD library module opened to lead at a staff meeting fills the template's parts from the module's own words
       const mod = body.module && moduleOf ? moduleOf(String(body.module)) : null;
       if (body.module && !mod) return err(req, res, 404, 'That module is not here.');
-      if (tpl) { e0.plan = (tpl.sections || []).slice(0, LISTS.plan).map(x => ({ id: rid('s'), title: txt(x.title, 200), minutes: Math.round(+x.minutes || 0), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: [], readings: [] })); e0.minutes = e0.plan.reduce((a, x) => a + x.minutes, 0); e0.template = true; }
+      if (tpl) { e0.plan = (tpl.sections || []).slice(0, LISTS.plan).map(x => ({ id: rid('s'), title: txt(x.title, 200), minutes: Math.round(+x.minutes || 0), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: [], readings: [] })); /* the entry's own length waits for the director, so none is set from the parts */ e0.minutes = 0; e0.template = true; }
       if (tpl && mod) {
         const sec = h => (mod.sections.find(x => x.heading.toLowerCase().startsWith(h)) || {}).body || '';
         const plain = t => String(t).replace(/^#+\s*/gm, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*/g, '').trim();
         const subs = (sec('reading').match(/^###\s+(.+)$/gm) || []).map(x => x.replace(/^###\s+/, '').trim());
         const fill = { 'Framing': plain(sec('why it matters')).slice(0, 1200), 'Key ideas': subs.join('. ') + (subs.length ? '.' : ''), 'Reflection': plain(sec('reflect')).slice(0, 1200), 'Commitment': plain(sec('try this week')).slice(0, 1200) };
         for (const p of e0.plan) if (fill[p.title]) p.do = txt(fill[p.title], 6000);
-        e0.question = ''; e0.module = mod.slug;
+        e0.question = ''; e0.module = mod.slug; e0.audienceType = 'internal';
       }
       const e = save(e0, me); json(req, res, 200, forViewer(e, me)); return;
     }
@@ -227,7 +227,12 @@ module.exports = function presentingModule(c) {
       for (const k of ['start', 'end']) if (k in b) e[k] = /^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || '') ? b[k] : '';
       if ('title' in b && !e.title.trim()) return err(req, res, 400, 'Give the entry a title.');
       if ('date' in b) e.date = ISO.test(b.date || '') ? b.date : '';
-      if ('minutes' in b) e.minutes = Math.max(0, Math.min(2400, Math.round(+b.minutes || 0)));
+      if ('minutes' in b) { e.minutes = Math.max(0, Math.min(2400, Math.round(+b.minutes || 0)));
+        // a presented entry logs its hours once the director sets its length
+        if (dir && e.status === 'presented' && e.minutes) credit(e, me); }
+      // in person, virtual or both, and who it is for, our own staff, other schools and groups, or both
+      if ('mode' in b) e.mode = ['inperson', 'virtual', 'both'].includes(b.mode) ? b.mode : '';
+      if ('audienceType' in b) e.audienceType = ['internal', 'external', 'both'].includes(b.audienceType) ? b.audienceType : '';
       if ('followupOn' in b) e.followup = Object.assign({ reads: [], prompts: [], checks: [] }, e.followup, { on: !!b.followupOn });
       if ('followupReads' in b) e.followup = Object.assign({ reads: [], prompts: [], checks: [] }, e.followup, { reads: (Array.isArray(b.followupReads) ? b.followupReads : []).map(String).filter(id => (e.readings || []).some(r => r.id === id)).slice(0, 12) });
       // the presenters, the names on prints and what TREE looks for are the director's

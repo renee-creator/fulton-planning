@@ -17,7 +17,8 @@ test('the Fulton PD template', async t => {
   const e = (await P(dee, 'new', { title: 'Seeing the garden', template: true })).body;
   assert.deepStrictEqual(e.plan.map(s => s.title), PARTS);
   assert.strictEqual(e.plan[3].script, 'Say The experience'); assert.strictEqual(e.plan[6].handout, 'Line Plus and delta');
-  assert.strictEqual(e.minutes, T.sections.reduce((a, s) => a + s.minutes, 0));
+  // the entry's own length waits for the director, Session 11 item 38
+  assert.strictEqual(e.minutes, 0);
   assert.strictEqual(e.templateSource, 'From a test source.');
   // a plan saved keeps the script and the handout line
   await P(dee, 'item', { id: e.id, list: 'plan', item: Object.assign({}, e.plan[0], { script: 'Say Opening again' }) });

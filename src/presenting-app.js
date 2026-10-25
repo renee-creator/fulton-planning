@@ -43,11 +43,15 @@ Pr.render=async function(my){if(VIEW_AS){X.draw(my,head("Presenting","Presenting
 Pr.open=id=>{st.sel=id;st.e=null;st.ev=null;st.help=null};
 async function loadEntry(id){st.e=await pa("get",{id});return st.e}
 async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D();
-  const row=x=>`<div class="prow"><span><b>${H(x.title)}</b>${x.subtitle?`<div class="cnt">${H(x.subtitle)}</div>`:""}<div class="cnt">${H([x.audience,x.date?fd(x.date):"",dur(x.minutes)].filter(Boolean).join(", "))}${x.presenters.length?`. Presented by ${H(kList(x.presenters))}`:""}</div></span>
+  const row=x=>`<div class="prow"><span><b>${H(x.title)}</b>${x.subtitle?`<div class="cnt">${H(x.subtitle)}</div>`:""}<div class="cnt">${H([x.audience||"Audience not yet set",PR_AUD[x.audienceType]||"audience type not yet set",PR_MODE[x.mode]||"",x.date?fd(x.date):"",dur(x.minutes)].filter(Boolean).join(", "))}${x.presenters.length?`. Presented by ${H(kList(x.presenters))}`:""}</div></span>
     <span class="actions" style="margin:0">${x.status==="presented"?chip("ok","Presented "+fd(x.presentedOn)):""}<button class="btn small ghost" data-prsel="${H(x.id)}">${x.edit?"Open":"Read"}</button></span></div>`;
-  const now=r.list.filter(x=>x.status!=="presented"),done=r.list.filter(x=>x.status==="presented");
+  // the list filters and sorts by internal, external or both
+  const aud=st.aud||"";const fit=x=>!aud||(aud==="unset"?!x.audienceType:x.audienceType===aud);const AO={internal:0,external:1,both:2};
+  const sorted=st.audSort?r.list.slice().sort((a,b)=>(AO[a.audienceType]??3)-(AO[b.audienceType]??3)):r.list;
+  const filt=`<div class="chips" role="group" aria-label="Audience type">${[["","All"],["internal","Internal"],["external","External"],["both","Both"],["unset","Not yet set"]].map(([k,l])=>`<button class="chip ${aud===k?"on":""}" type="button" data-praud="${k}" aria-pressed="${aud===k}">${l}</button>`).join("")}<button class="chip ${st.audSort?"on":""}" type="button" data-praudsort="1" aria-pressed="${!!st.audSort}">Sort by audience type</button></div>`;
+  const now=sorted.filter(x=>x.status!=="presented"&&fit(x)),done=sorted.filter(x=>x.status==="presented"&&fit(x));
   X.draw(my,head("PD and Licensing","Presenting",dir?"Every talk, PD session or module presented at our school or for other schools, each its own entry. Add educators as presenters and they work on the entry with you. Other educators see an entry once it is presented.":"The talks and PD sessions you present, and the ones we have presented. You see an entry when you are one of its presenters, and every entry once it is presented.")+
-    card("Being planned",now.length?now.map(row).join(""):empty(dir?"Start an entry below for a talk, a PD session or a module.":"An entry shows here when the director adds you as a presenter."))+
+    filt+card("Being planned",now.length?now.map(row).join(""):empty(dir?"Start an entry below for a talk, a PD session or a module.":"An entry shows here when the director adds you as a presenter."))+
     card("Presented",done.length?done.map(row).join(""):empty("Entries move here once they are presented."))+
     (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button><button class="btn small ghost" data-prnew="template">Start from our PD template</button></div>`):""))}
 
@@ -60,11 +64,15 @@ async function entryPage(my){const e=E(),dir=D(),ed=edit();
 
 /* the entry's own details, which every reader sees. The day reads with its times, such as Saturday, May 22, 2027,
    9:00 am to 12:00 pm, and a day still to be settled says so. */
+// how an entry is offered, and who it is for
+const PR_MODE={inperson:"In person",virtual:"Virtual",both:"In person and virtual"};
+const PR_AUD={internal:"Internal, our own staff",external:"External, other schools and groups",both:"Internal and external"};
+const prAudLine=e=>[e.audience?"For "+e.audience:"Audience not yet set",PR_AUD[e.audienceType]||"Audience type not yet set"].join(". ");
 const prWhen=e=>e.date?[fd(e.date)+(e.start?", "+clockTime(e.start)+(e.end?" to "+clockTime(e.end):""):""),e.dateNote||""].filter(Boolean).join(". "):"";
 function aboutCard(e){const ed=edit(),dir=D();
   const ag=(e.agendas||[]).map(a=>`${a.kind==="meeting"?"PD staff meeting":"PD day"}, ${fd(a.date)}${a.title?", "+a.title:""}`);
   const agLine=ag.length?`<div class="cnt" style="margin-top:6px">On the agenda of ${H(kList(ag))}. ${typeof staffSubOk==="function"&&staffSubOk("stpdd")?(e.agendas||[]).map(a=>`<button class="linkbtn" data-pragenda="${H(a.date)}">Open the agenda for ${H(fd(a.date))}</button>`).join(" "):""}</div>`:`<div class="cnt" style="margin-top:6px">No PD day or staff meeting agenda uses this entry yet.${dir?" A block on any agenda can open it.":""}</div>`;
-  if(!ed)return card("About this entry",`${e.question?`<div class="prwhy"><b>Guiding question.</b> ${H(e.question)}</div>`:""}<div class="cnt" style="margin-top:6px">${H([e.audience?"For "+e.audience:"",prWhen(e),e.place?"At "+e.place:"",dur(e.minutes),e.format].filter(Boolean).join(". "))}</div>${(e.presenters||[]).length?`<div class="cnt">Presented by ${H(kList(e.presenters))}</div>`:""}${agLine}`);
+  if(!ed)return card("About this entry",`${e.question?`<div class="prwhy"><b>Guiding question.</b> ${H(e.question)}</div>`:""}<div class="cnt" style="margin-top:6px">${H([prAudLine(e),PR_MODE[e.mode]||"",prWhen(e),e.place?"At "+e.place:"",dur(e.minutes),e.format].filter(Boolean).join(". "))}</div>${(e.presenters||[]).length?`<div class="cnt">Presented by ${H(kList(e.presenters))}</div>`:""}${agLine}`);
   const f=(k,l,ph,span)=>`<label${span?' style="grid-column:span 2"':""}>${l}<input type="text" data-prf="${k}" value="${H(e[k]||"")}" placeholder="${H(ph||"")}"></label>`;
   const pres=dir?`<div class="chiprow-label" style="margin-top:10px">Presenters</div><div class="chips">${[...new Set([...(e.choices||[]),...(e.presenters||[])])].map(n=>`<button class="chip ${(e.presenters||[]).includes(n)?"on":""}" type="button" data-prpres="${H(n)}" aria-pressed="${(e.presenters||[]).includes(n)}">${H(n)}</button>`).join("")||`<span class="cnt">No educator to add yet.</span>`}</div><div class="cnt">Each presenter sees this entry and works on it from their own Presenting page.</div>`
     :`<div class="cnt" style="margin-top:8px">${(e.presenters||[]).length?"Presented by "+H(kList(e.presenters))+".":""} The director chooses the presenters.</div>`;
@@ -72,6 +80,7 @@ function aboutCard(e){const ed=edit(),dir=D();
     <label class="fld-label">Guiding question<input type="text" data-prf="question" value="${H(e.question||"")}" placeholder="The question the session follows"></label>
     <div class="kfields">${f("audience","Audience","Who it is for",1)}<label>Date<input type="date" data-prf="date" value="${H(e.date||"")}"></label><label>Length, in minutes<input type="number" min="0" step="15" data-prf="minutes" value="${H(e.minutes||"")}"></label>
       <label>Starts<input type="time" data-prf="start" value="${H(e.start||"")}"></label><label>Ends<input type="time" data-prf="end" value="${H(e.end||"")}"></label>${f("place","Place","Where it is held",1)}${f("dateNote","About the date","Such as to be confirmed with the host",1)}</div>
+    <div class="kfields"><label>Audience type<select data-prf="audienceType"><option value="">Not yet set</option>${Object.entries(PR_AUD).map(([v,t])=>`<option value="${v}" ${e.audienceType===v?"selected":""}>${t}</option>`).join("")}</select></label><label>In person or virtual<select data-prf="mode"><option value="">Not yet set</option>${Object.entries(PR_MODE).map(([v,t])=>`<option value="${v}" ${e.mode===v?"selected":""}>${t}</option>`).join("")}</select></label></div>
     <label class="fld-label">How it is offered<input type="text" data-prf="format" value="${H(e.format||"")}" placeholder="Such as a facilitated session with a self-paced follow-up"></label>
     <div class="cnt" id="pr-saved">${e.minutes?H(dur(e.minutes))+". ":""}Changes save as you go.</div>${pres}${agLine}`)}
 
@@ -146,7 +155,7 @@ function pickHtml(e){const q=st.pickQ.trim().toLowerCase(),lens=(typeof LENSES!=
 /* readings and files */
 const KIND={library:"From the library",link:"A link",drive:"From Google Drive",licensing:"Licensing reference"};
 function readingsFold(e){const ed=edit();const L=e.readings||[];const lib=e.library||[];
-  const r=x=>`<div class="strow"><div class="sttop"><b>${x.url?`<a href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>`:H(x.title)}</b><span class="cnt">${H(KIND[x.kind]||"")}</span></div>${x.source&&x.kind!=="drive"?`<div class="cnt">${H(x.source)}</div>`:""}${x.note?`<div class="cnt" style="white-space:pre-line">${H(x.note)}</div>`:""}${ed?`<div><button class="linkbtn" data-prrmi="readings|${H(x.id)}">Take it out</button></div>`:""}</div>`;
+  const r=x=>`<div class="strow"><div class="sttop"><b>${x.url?treeReadLink(x.url,x.title):H(x.title)}</b><span class="cnt">${H(KIND[x.kind]||"")}</span></div>${x.source&&x.kind!=="drive"?`<div class="cnt">${H(x.source)}</div>`:""}${x.note?`<div class="cnt" style="white-space:pre-line">${H(x.note)}</div>`:""}${ed?`<div><button class="linkbtn" data-prrmi="readings|${H(x.id)}">Take it out</button></div>`:""}</div>`;
   return fold("readings","Readings and files",L.length?L.length+(L.length===1?" piece":" pieces"):"",(L.length?L.map(r).join(""):empty("Readings from the shared library, a link with a short note, or a file from the director's Google Drive, such as a past facilitator guide or slide deck. Licensing references come only from CCLD or CDSS."))+
     (ed?`<details style="margin-top:8px"><summary class="cnt" style="cursor:pointer">From the library</summary><div class="kfields" style="margin-top:6px"><label style="grid-column:span 2">Reading<select id="prr-lib"><option value="">Choose</option>${lib.filter(x=>!L.some(y=>y.ref===x.id)).map(x=>`<option value="${H(x.id)}">${H(x.title)}${x.source?", "+H(x.source):""}</option>`).join("")}</select></label></div><label class="fld-label">A short note<input type="text" id="prr-libnote"></label><div class="actions"><button class="btn small ghost" data-pradd="library">Add it</button></div></details>
     <details style="margin-top:6px"><summary class="cnt" style="cursor:pointer">A link with a short note</summary><div class="kfields" style="margin-top:6px"><label>Link<input type="url" id="prr-url" placeholder="https://"></label><label>Title<input type="text" id="prr-title"></label></div><label class="fld-label">A short note<input type="text" id="prr-note"></label><label class="radio"><input type="checkbox" id="prr-lic"><span>A licensing reference, from CCLD or CDSS only</span></label><div class="actions"><button class="btn small ghost" data-pradd="link">Add it</button></div></details>
@@ -190,19 +199,19 @@ function printsFold(e){const dir=D();const nm=e.names||"none";
 const nmOf=e=>e.names||"none";
 const words=(x,e)=>displayText(x.text||"",nmOf(e),x.wonder||"");
 const photoOf=x=>{const s=picOf(x,true);return s&&x.photo&&x.photo.w?[{key:"pr:"+x.id,src:s,w:x.photo.w,h:x.photo.h}]:[]};
-const metaOf=e=>[["Audience",e.audience],["Date",e.date?fd(e.date):""],["Length",dur(e.minutes)],["Presenters",kList(e.presenters||[])]];
-function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:"");
+const metaOf=e=>[["Audience",e.audience||"Not yet set"],["Audience type",PR_AUD[e.audienceType]||"Not yet set"],["Offered",PR_MODE[e.mode]||""],["Date",e.date?fd(e.date):""],["Length",dur(e.minutes)],["Presenters",kList(e.presenters||[])]];
+function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":"")+(x.note?". "+x.note:"");
   return report(e.title+", facilitator guide",metaOf(e),[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,e.format?{t:"text",label:"How it is offered",text:e.format}:null,
     ...(e.plan||[]).map((s,i)=>({t:"text",label:(s.title||"Section "+(i+1))+(s.minutes?", "+dur(+s.minutes):""),text:[s.do,s.script?"Facilitator script. "+s.script:"",...(s.moments||[]).map(id=>C.find(x=>x.id===id)).filter(Boolean).map(x=>"Moment "+(C.indexOf(x)+1)+". "+clip(words(x,e),400)+(where(x)?" ("+where(x)+")":"")),...(s.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(rd)].filter(Boolean).join("\n\n")})),
     !(e.plan||[]).length?{t:"text",text:"The plan has no sections yet."}:null,
     C.length?{t:"list",label:"Chosen moments",numbered:true,items:C.map(x=>clip(words(x,e),500)+(where(x)?" ("+where(x)+")":""))}:null,
     R.length?{t:"list",label:"Readings and files",items:R.map(rd)}:null,followBlocks(e)].flat().filter(Boolean))}
 function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],checks:[]},e.followup);if(!f.on)return [];const R=e.readings||[];
-  return [{t:"sub",text:"Self-paced follow-up"},f.reads.length?{t:"list",label:"Short readings",items:f.reads.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+(x.url?" ("+x.url+")":""))}:null,
+  return [{t:"sub",text:"Self-paced follow-up"},f.reads.length?{t:"list",label:"Short readings",items:f.reads.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":""))}:null,
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
-function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
+function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Offered",PR_MODE[e.mode]||""],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
   (e.plan||[]).some(s=>s.handout)?{t:"list",label:"For today",items:(e.plan||[]).filter(s=>s.handout).map(s=>(s.title?s.title+". ":"")+s.handout)}:null,
-  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,
+  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":"")+(x.note?". "+x.note:""))}:null,
   ...(e._map?[{t:"photo",key:"sitemap",full:true,maxH:420},{t:"list",label:"The site map",items:e._map}]:[]),...followBlocks(e)].filter(Boolean))}
 // the site map for visitors, numbered, once the director marks it ready. Never a child's photo or name.
 async function handoutMap(){try{const m=window.TREE_SITEMAP?await window.TREE_SITEMAP():null;if(!m||!m.ready||!m.src||!window.SiteMap||!m.spots.some(x=>x.x!=null))return null;
@@ -247,7 +256,7 @@ const said=t=>{const s=$("#pr-saved");if(s)s.textContent=t};
 /* ---------- taps ---------- */
 const val=s=>{const e=$(s);return e?e.value:""};
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.help=null},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-prsel],[data-prnew],[data-prpres],[data-prnames],[data-prdone],[data-prundo],[data-prcopy],[data-prrm],[data-pradd],[data-prrmi],[data-prmv],[data-prkeep],[data-prevg],[data-prlooksave],[data-prfind],[data-prlens],[data-prchoose],[data-pruse],[data-prfur],[data-prhelp],[data-prhelpuse],[data-prhelpno],[data-prprint],[data-prword],[data-prmoment],[data-prmomentno],[data-pragenda]");
+document.addEventListener("click",e=>{const t=e.target.closest("[data-praud],[data-praudsort],[data-prsel],[data-prnew],[data-prpres],[data-prnames],[data-prdone],[data-prundo],[data-prcopy],[data-prrm],[data-pradd],[data-prrmi],[data-prmv],[data-prkeep],[data-prevg],[data-prlooksave],[data-prfind],[data-prlens],[data-prchoose],[data-pruse],[data-prfur],[data-prhelp],[data-prhelpuse],[data-prhelpno],[data-prprint],[data-prword],[data-prmoment],[data-prmomentno],[data-pragenda]");
   if(!t)return;X.tapOnce(t,()=>prTap(e,t))},true);
 async function prTap(e,t){const d=t.dataset;const en=E();
   if(VIEW_AS&&d.prsel==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -277,6 +286,8 @@ async function prTap(e,t){const d=t.dataset;const en=E();
   if(d.prlooksave){const look=[];document.querySelectorAll("[data-prlook]").forEach(x=>{const [i,f]=x.dataset.prlook.split("|");const g=look[+i]=look[+i]||{k:((st.ev||{}).look||[])[+i]?.k||"g"+i};g[f]=f==="label"?x.value:x.value.split(",").map(w=>w.trim()).filter(Boolean)});
     set(await pa("save",{id:en.id,fields:{look:look.filter(g=>g&&(g.words||[]).length),youngest:!!($("#pr-young")&&$("#pr-young").checked),lens:val("#pr-lens")}}));st.ev=await pa("evidence",{id:en.id});st.evFor=en.id;toast("Saved. TREE has read the records again.");X.redraw();return}
   if(d.prfind){st.pickQ=val("#prp-q");X.redraw();return}
+  if(d.praud!=null){st.aud=d.praud;X.redraw();return}
+  if(d.praudsort){st.audSort=!st.audSort;X.redraw();return}
   if(d.prlens){st.pickLens=st.pickLens===d.prlens?"":d.prlens;st.pickQ=val("#prp-q");X.redraw();return}
   if(d.prchoose){set(await pa("choose",{id:en.id,obs:d.prchoose}));toast("Chosen. It is at the end of Chosen moments.");X.redraw();return}
   if(d.pruse){const [sid,k,id]=d.pruse.split("|");const s=(en.plan||[]).find(x=>x.id===sid);if(!s)return;collectPlan(s);const L=new Set(s[k]||[]);L.has(id)?L.delete(id):L.add(id);await saveItem("plan",Object.assign({},s,{[k]:[...L]}));X.redraw();return}
