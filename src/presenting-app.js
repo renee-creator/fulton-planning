@@ -202,7 +202,11 @@ function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],che
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
 function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
   (e.plan||[]).some(s=>s.handout)?{t:"list",label:"For today",items:(e.plan||[]).filter(s=>s.handout).map(s=>(s.title?s.title+". ":"")+s.handout)}:null,
-  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,...followBlocks(e)].filter(Boolean))}
+  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,
+  ...(e._map?[{t:"photo",key:"sitemap",full:true,maxH:420},{t:"list",label:"The site map",items:e._map}]:[]),...followBlocks(e)].filter(Boolean))}
+// the site map for visitors, numbered, once the director marks it ready. Never a child's photo or name.
+async function handoutMap(){try{const m=window.TREE_SITEMAP?await window.TREE_SITEMAP():null;if(!m||!m.ready||!m.src||!window.SiteMap||!m.spots.some(x=>x.x!=null))return null;
+  const blob=await (await fetchPhoto(m.src)).blob();const pic=await window.SiteMap.picture(blob,m.spots);photoCache.set("sitemap",{url:pic.url,bytes:pic.bytes,w:pic.w,h:pic.h});return pic.names}catch(e){return null}}
 // panels, one idea to a page. The opening, the guiding question, each moment, and the question again to close.
 function sheet(o){return Object.assign({centered:true,display:true,type:"report",acc:"story",title:"",details:[],photos:[],blocks:[]},o)}
 // a moment's own heading, as its sheet in TREE would have it, or its first words
@@ -219,7 +223,7 @@ function slideDocs(e){const C=e.chosen||[];const land=(o,ph)=>ph.length?sheet(Ob
 // slides shown during the presentation itself may keep children's faces. Everything participants take away, and every
 // Word file, is made with faces softened.
 async function print(k,word,toShow){const e=E();const kind=word?"word":"pdf";progress("Making the file");
-  const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(e)]:k==="panels"?panelDocs(e):slideDocs(e);
+  const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(Object.assign({},e,{_map:await handoutMap()}))]:k==="panels"?panelDocs(e):slideDocs(e);
   if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs);if(!(toShow&&k==="slides"&&!word))await softenDocPhotos(docs)}
   return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:toShow&&!word?"slides to show":"slides"}[k])}
 

@@ -332,6 +332,8 @@ module.exports = function staffModule(o) {
     // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'garden' || P.startsWith('garden/')) { await GD.handle(P, body, me, req, res, { json, err }); return; }
+    // the site map, for every signed-in page that shows it, a new educator's New Educator section included
+    if (P === 'sitemap') { json(req, res, 200, { map: GD.siteMap(o.spaces ? o.spaces() : [], isDirector(me)) }); return; }
     /* ---------- walk safety, for staff once the director marks it ready ---------- */
     // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
     // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches

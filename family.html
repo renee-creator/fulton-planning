@@ -87,6 +87,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 <script src="enroll-rules.js"></script>
 <script src="agreement.js"></script>
 <script src="policy-md.js"></script>
+<script src="sitemap.js"></script>
 <script>
 (function(){
   const qs=new URLSearchParams(location.search);
@@ -209,6 +210,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(D.gardenInfo&&(D.gardenInfo.agreements||(D.gardenInfo.guide||[]).length)){const G=D.gardenInfo,A=G.agreements||{};
       h+=`<section class="card"><h2>Our garden</h2>${(G.guiding||[]).length?`<p style="margin:0 0 6px">${esc(G.guiding.join(" "))}</p>`:""}${A.intro?`<p style="margin:0 0 6px">${esc(A.intro)}</p>`:""}${(A.items||[]).length?`<ul style="margin:4px 0;padding-left:18px">${A.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
         ${(G.guide||[]).length?`<details style="margin-top:8px"><summary>Plant cards</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">${G.guide.map(p=>`<div style="border:1px solid #e3dccb;border-radius:12px;padding:8px;min-width:0">${p.photo?`<img src="${esc(p.photo)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px">`:""}<b>${esc(p.common)}</b><div class="small">${esc(p.words)}</div><div class="small"><b>${p.eat==="food"?"Food":"Look, don't eat"}</b>${p.gather?". Gather with an educator":""}</div></div>`).join("")}</div></details>`:""}</section>`}
+    // the site map, the photo from above and the names of the spaces, the same map TREE shows everywhere
+    if(D.siteMap&&window.SiteMap)h+=`<section class="card"><h2>Our site</h2><p class="small muted" style="margin:0 0 8px">The Classes, the yards, the garden and the farm, from above. Pinch or use the zoom buttons to look closer.</p><div id="fam-smap"></div></section>`;
     h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
     if(wishes.length)h+=`<section class="card"><h2>Our wish list</h2><p class="small muted" style="margin:0 0 6px">Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.</p>${wishes.map(itemCard).join("")}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
@@ -319,6 +322,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   let rKey="",rHold=null;
   function render(){const m=$("#main"),k=(form||"")+"|"+tab;if(k===rKey&&m){clearTimeout(rHold);m.style.minHeight=m.offsetHeight+"px"}else if(m)m.style.minHeight="";rKey=k;
     renderInner();try{enrollStatus()}catch(e){}
+    try{const el=document.getElementById("fam-smap");if(el&&D.siteMap&&window.SiteMap)window.SiteMap.mount(el,{src:SERVER+D.siteMap.src,spots:D.siteMap.spots})}catch(e){}
     if(!m)return;const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const rel=()=>{m.style.minHeight=""};
     if(!imgs.length){rHold=setTimeout(rel,60);return}let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(rHold);rHold=setTimeout(rel,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});rHold=setTimeout(rel,4000)}
   function renderInner(){

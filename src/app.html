@@ -3,6 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="sitemap.js"></script>
 <style>
 /* Layout. A garden-shed clipboard. Sidebar of the week's plans, a working form on the right, paper-like field cards. */
 :root{
@@ -12573,6 +12574,7 @@ function spaceCardHtml(p){
     <div class="hint">Small groups meet Tuesday to Friday, 9 to 10:30. Change the days or times when this group meets at another time.</div>
     <div class="kfields"><label>Space<select data-spsel="1"><option value="">Choose a space</option>${calSpaces.map(x=>`<option value="${esc(x.id)}" ${x.id===sp.spaceId?"selected":""}>${esc(x.name)}${x.byWeek?", by the week":""}</option>`).join("")}</select></label>
       <label>From<input type="time" data-spstart="1" value="${esc(sp.start)}" step="300"></label><label>Until<input type="time" data-spend="1" value="${esc(sp.end)}" step="300"></label></div>
+    ${window.TREE_SMAP_FOLD?window.TREE_SMAP_FOLD("smap-plan",{pick:"#spacecard [data-spsel]",label:"Choose on the site map"}):""}
     <div class="tseg" role="group" aria-label="Days">${SG_DAYS.map(([d,l])=>`<button data-spday="${d}" aria-pressed="${sp.days.includes(d)}">${l}</button>`).join("")}</div>
     ${space&&space.byWeek?`<div class="cnt">${esc(space.name)} is signed up for by the week, so it is held Monday to Friday.</div>`:""}
     <div class="actions"><button class="btn small" data-spbook="${esc(p.id)}" ${busy||!sp.spaceId||!sp.days.length?"disabled":""}>${busy?'<span class="spin"></span> Signing up':"Sign up for these days"}</button>

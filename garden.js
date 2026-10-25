@@ -74,7 +74,7 @@ module.exports = function garden(o) {
     return { agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
-    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, wanted: s.wantedSpaces || [],
+    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials();
@@ -137,6 +137,8 @@ module.exports = function garden(o) {
     }
     if (!dir) { err(req, res, 403, 'Only the director changes the Garden.'); return; }
     if (P === 'garden/ready') { saveS({ ready: !!body.on }); return back(); }
+    // the site map shows beyond the Garden, on sign-ups, plans, New Educator, the Family page and handouts, once ready
+    if (P === 'garden/mapready') { saveS({ mapReady: !!body.on }); return back(); }
     if (P === 'garden/seed') {
       saveL(L => { let x = L.seeds.find(y => y.id === body.id); if (body.remove) { L.seeds = L.seeds.filter(y => y.id !== body.id); return; } if (!x) { x = { id: rid('s') }; L.seeds.push(x); }
         Object.assign(x, { name: txt(body.name, 80) || x.name || '', variety: txt(body.variety, 80), from: body.from === 'bought' ? 'bought' : 'saved', source: txt(body.source, 80), link: /^https:\/\//.test(body.link || '') ? String(body.link).slice(0, 300) : '', plant: plantOf(s, body.plant) ? body.plant : '', bed: bedOf(s, body.bed) ? body.bed : '', savedOn: ISO.test(body.savedOn || '') ? body.savedOn : '', left: txt(body.left, 60), stored: txt(body.stored, 80), months: (Array.isArray(body.months) ? body.months : []).filter(m => /^(0[1-9]|1[0-2])$/.test(m)), grow: !!body.grow }); });
@@ -221,5 +223,9 @@ module.exports = function garden(o) {
         out.push({ id: 'tgarden.' + t.id + '.' + d, cal: 'tgarden', title: 'Garden, ' + t.text + (t.room ? ', ' + t.room : ''), desc: (t.bedName ? t.bedName + '. ' : '') + 'Mark it done on the Garden page or Today.', allDay: true, start: d, end: d }); }
     return out;
   }
-  return { handle, view, forFamily, evidence, harvestsFor, materials, calendar, tasksFor, CHEM };
+  // the site map's photo and where each space sits, one place for every page that shows it. Off until the director
+  // marks it ready, and never anything but the map photo, the spaces and their names.
+  const siteMap = (names, dir) => { const s = setup(); if (!s || !s.mapPhoto || (!dir && !s.mapReady)) return null;
+    const pos = s.mapSpots || {}; return { ready: !!s.mapReady, photo: s.mapPhoto, spots: names.map(x => Object.assign({ id: x.id, name: x.name }, pos[x.id] ? { x: pos[x.id].x, y: pos[x.id].y } : {})) }; };
+  return { handle, view, forFamily, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, CHEM };
 };

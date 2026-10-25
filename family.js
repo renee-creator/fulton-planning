@@ -103,7 +103,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, pieces }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces }) {
   // the Family Handbook now lives in TREE. A family acknowledges the edition that is current, at enrollment and at each
   // re-enrollment after a new edition is published. A tick from before TREE held the handbook was the 2026 edition.
   const hbYear = () => { try { return (handbook && handbook() && handbook().current()) || ''; } catch (e) { return ''; } };
@@ -215,7 +215,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // the garden agreements for families and the children's plant guide, once the director marks the Garden ready
     let gardenInfo = null; try { gardenInfo = garden ? garden() : null; if (gardenInfo) gardenInfo = Object.assign({}, gardenInfo, { guide: gardenInfo.guide.map(g => Object.assign({}, g, { photo: g.photo ? photoSrc(g.photo) : '' })) }); } catch (e) { gardenInfo = null; }
     let piecesAll = []; try { piecesAll = pieces ? pieces() || [] : []; } catch (e) { piecesAll = []; }
-    return { pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+    // the site map, the photo from above and the names of the spaces, never a child's photo or name
+    let mapInfo = null; try { const m = siteMap ? siteMap() : null; if (m && m.ready) mapInfo = { src: photoSrc(m.photo), spots: m.spots }; } catch (e) { mapInfo = null; }
+    return { pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS : [], pack: anyNew ? PACK : [], questions: anyNew ? QUESTIONS : [], enrollForm: anyNew ? ENROLL : [], reflectionQs: REFLECTIONS, confOpen: c.confOpen };
   }
 

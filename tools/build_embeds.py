@@ -253,6 +253,6 @@ function renderNext(idx){
 function renderMonth(idx){''')
 cal = cal.replace("<!--PREVIEW-->", "")
 cut = cal.index("<style>")
-out = head("Calendar, TREE") + TELL + VA + cal[:cut].replace("<title>Fulton Calendar</title>", "") + cal[cut:] + "\n</body>\n</html>\n"
+out = head("Calendar, TREE", '<script src="sitemap.js"></script>\n') + TELL + VA + cal[:cut].replace("<title>Fulton Calendar</title>", "") + cal[cut:] + "\n</body>\n</html>\n"
 (root / "tree-calendar.html").write_text(out)
 print("tree-calendar.html", len(out), "bytes")

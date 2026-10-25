@@ -15,6 +15,20 @@ const gdnOk=()=>!!gdn&&(gdn.ready||isDirector());
 const gdnPlant=id=>((gdn&&gdn.plants)||[]).find(p=>p.id===id)||null;
 const gdnBed=id=>((gdn&&gdn.beds)||[]).find(b=>b.id===id)||null;
 const gdnSpace=id=>(gdnSpaces||[]).find(s=>s.id===id)||null;
+/* the site map, read from the server, for every page in TREE that shows it. It shows beyond the Garden once the
+   director marks it ready, and the director sees it before then. A fold opens it, and tapping a space on it chooses
+   that space wherever the fold names a choice. */
+let smapData=null,smapAt=0;
+window.TREE_SITEMAP=async function(force){if(!force&&smapAt&&Date.now()-smapAt<6e5)return smapData;
+  try{const j=await window.FP_API("/api/staff/sitemap",{});const m=j&&j.map;smapData=m&&m.photo?{ready:!!m.ready,photo:m.photo,src:window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(m.photo):"",spots:m.spots||[]}:null}catch(e){smapData=null}
+  smapAt=Date.now();return smapData};
+// the fold, drawn only once the map is known, with a note for the director while it waits to be marked ready
+window.TREE_SMAP_FOLD=(id,o)=>{o=o||{};if(!smapData){if(!smapAt&&window.FP_API)window.TREE_SITEMAP().then(m=>{if(m&&typeof renderMain==="function")renderMain()});return ""}
+  return `<details class="smapfold" data-smapfold="${esc(id)}" ${o.pick?`data-smappick="${esc(o.pick)}"`:""} ${o.open?"open":""}><summary class="linkbtn">${esc(o.label||"Show on the site map")}</summary>${smapData.ready?"":`<div class="cnt">A draft. Only you see the site map until you mark it ready on the Garden page.</div>`}<div data-smapin="1" style="margin-top:8px"></div></details>`};
+function smapMount(d){if(d.dataset.mounted||!d.open||!smapData||!window.SiteMap)return;d.dataset.mounted="1";const pick=d.dataset.smappick;const sel=pick?document.querySelector(pick):null;
+  window.SiteMap.mount(d.querySelector("[data-smapin]"),smapData,{selected:sel?sel.value:"",onPick:pick?id=>{const s=document.querySelector(pick);if(!s)return;if(![...s.options].some(o=>o.value===id))return toast("That space cannot be signed up for here.");s.value=id;s.dispatchEvent(new Event("change",{bubbles:true}))}:null})}
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.matches&&d.matches("details[data-smapfold]"))smapMount(d)},true);
+new MutationObserver(()=>{for(const d of document.querySelectorAll("details[data-smapfold][open]:not([data-mounted])"))smapMount(d)}).observe(document.documentElement,{childList:true,subtree:true});
 const GDN_STAGE={plan:"Planning",plant:"Planting",tend:"Tending",harvest:"Harvesting",seeds:"Saving seeds",compost:"Compost",rest:"Resting beds"};
 const GDN_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const gdnPhotoOf=id=>{const p=((gdn&&gdn.photos)||[]).find(x=>x.plant===id);return p&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(p.id):""};
@@ -40,6 +54,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   // the site map, with each space placed on it, and the children's own maps beside it
   const spots=g.mapSpots||{},maps=[...notices.values()].filter(n=>n.gardenMap&&n.photo).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8);
   h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">The site map</h3>${dir?`<button class="linkbtn" data-gmapup="1">${g.mapPhoto?"Change the map":"Add the site map"}</button>`:""}</div>
+    ${dir&&g.mapPhoto?`<div class="actions" style="margin:0 0 6px"><span class="cnt">${g.mapReady?"Shown on sign-ups, plans, New Educator, the Family page and handouts":"Only on this page until you mark it ready"}</span><button class="btn small ghost" data-gmapready="${g.mapReady?"0":"1"}">${g.mapReady?"Back to the Garden only":"Mark the site map ready"}</button></div>`:""}
     ${g.mapPhoto?`<div class="gmap" id="gmap" ${gdnPlace?'data-gmapplace="1" style="cursor:crosshair"':""}><img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(g.mapPhoto):"")}" alt="Our site map, from above">${Object.entries(spots).map(([id,p])=>`<a class="gspot" href="#gsp-${esc(id)}" style="left:${p.x*100}%;top:${p.y*100}%" title="${esc((gdnSpace(id)||{}).name||id)}">${esc(((gdnSpace(id)||{}).name||id).slice(0,18))}</a>`).join("")}</div>
       ${gdnPlace?`<div class="hint">Tap the map where ${esc((gdnSpace(gdnPlace)||{}).name||"the space")} sits.</div>`:""}`:`<div class="empty">${dir?"The site map is in TREE Source Materials in Google Drive as Fulton site map. Add it here, then place each space on it.":"The site map is added by the director."}</div>`}
     <div class="lbl" style="margin-top:10px">Children's maps</div><div class="gmaps">${maps.map(n=>`<button class="gmapkid" data-open="${esc(n.id)}"><img src="${esc(photoSrc(n))}" alt=""><span class="cnt">${esc([n.classroom?n.classroom+" Class":"",longDate(iso(new Date(n.at||0)))].filter(Boolean).join(", "))}</span></button>`).join("")||`<div class="cnt">None yet.</div>`}</div>
@@ -145,7 +160,7 @@ function gdnAgreeDoc(k){const A=(gdn.agreements||{})[k]||{};const ph=(gdn.photos
 async function gdnCall(p,b,msg){try{gdn=await window.FP_API("/api/staff/garden"+(p?"/"+p:""),b||{});gdnAt=Date.now();if(msg)toast(msg);renderMain();return true}catch(e){toast(e&&e.message||"That did not work. Check the connection and try again.");return false}}
 async function gdnPickPhoto(){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()})}
 async function gdnFaceFree(blob){const url=URL.createObjectURL(blob);try{const im=await new Promise((ok,no)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=no;x.src=url});return (await shFindFaces(im)).length===0}finally{URL.revokeObjectURL(url)}}
-document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gdone],[data-gready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
+document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
   const d=t.dataset,v=id=>(document.getElementById(id)||{}).value||"";
   if(d.gguide){gdnGuide=d.gguide;renderMain();return}
   if(d.gpedit!=null){gdnEdit=d.gpedit||null;renderMain();return}
@@ -154,6 +169,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gmapplace!=null&&gdnPlace){const r=t.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;const sp=gdnPlace;gdnPlace="";await gdnCall("map",{space:sp,x,y},"Placed on the map.");return}
   if(d.gdone){t.disabled=true;await gdnCall("done",{task:d.gdone,day:d.day,undo:!!d.undo});return}
   if(d.gready){await gdnCall("ready",{on:d.gready==="1"});return}
+  if(d.gmapready){if(await gdnCall("mapready",{on:d.gmapready==="1"},d.gmapready==="1"?"The site map shows on sign-ups, plans, New Educator, the Family page and handouts.":"The site map shows on the Garden page only."))window.TREE_SITEMAP(true);return}
   if(d.gharvest){const r=v("gh-room");await gdnCall("harvest",{plant:v("gh-plant"),amount:v("gh-amount"),bed:v("gh-bed"),date:v("gh-date"),children:!!r,room:r},"Kept. It shows on the Kitchen page.");return}
   if(d.gpsave!=null){const uses=[...document.querySelectorAll("[data-gpuse]:checked")].map(x=>x.dataset.gpuse);const eat=v("gp-eat");if(eat!=="food")uses.push("Look, don't eat");
     gdnEdit=null;await gdnCall("plant",{id:d.gpsave||undefined,plant:{common:v("gp-common"),botanical:v("gp-bot"),bed:v("gp-bed"),eat,uses,gather:!!document.getElementById("gp-gather")?.checked,words:{child:v("gp-child"),adult:v("gp-adult")}}},"Saved.");return}

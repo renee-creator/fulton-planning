@@ -454,6 +454,18 @@ Garden sits beside Farm to School and Kitchen under Documentation. It holds the 
 - **Garden days.** A family work day, a planting day or a harvest is posted as a participation event, shown on the Family page and the calendar.
 - **Agreements.** Both sets open with our two guiding agreements. They are drafts until the Garden is ready, print as PDF and Word, and are proposed as new sections for the 2027 Family Handbook draft and the Teacher Policies and Procedures, waiting under Proposed sections.
 
+## The site map
+
+One site map, from above, with the same space names everywhere TREE shows it. The map photo and where each space sits are the Garden's, placed by the director on the Garden page, and the space names are the calendar's Spaces in Settings, read from the server, never kept in this public code. sitemap.js draws it the same way in each place. The site is 3.5 acres, so the map zooms by pinching, by the zoom buttons or by a double tap, and drags, and each space name keeps its size at every zoom so it stays readable on a phone. Each space is a button on the map and in the list under it.
+
+- **Signing up for a space**, on the calendar, Choose on the site map sets the Space.
+- **The Space on a plan**, under Where it happens, Choose on the site map sets the Space, the same as the list.
+- **New Educator** has Our site, open.
+- **The Family page** has Our site, the photo from above and the space names only, never a child's photo or name.
+- **A Presenting handout** prints the map with each placed space numbered and the list of names, in the PDF and the Word file.
+
+The map stays on the Garden page until the director marks the site map ready there. Until then the director sees it in each place with a note that only they see it.
+
 ## Walk safety
 
 We take children on walks, such as creek walks and walks to the garden or the farm. Walk safety is kept in the records in staff/walks.json and opens for educators and families only once the director marks it ready on the Walk safety page.

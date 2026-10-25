@@ -481,6 +481,7 @@ async function pageNew(my){const dir=D();let who=meName();
     ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.done?chip("ok",c.note||"Done"):chip(c.note==="Due"?"soon":"missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto&&!dir?"":c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}${c.links?asLinks():""}${c.view&&B.can&&B.can.growth?`<button class="linkbtn" data-tview="${c.view}">Open</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
     ${welcomeHtml(p,dir)}
     ${await newPolCard(p,dir)}
+    ${(()=>{const f=window.TREE_SMAP_FOLD?window.TREE_SMAP_FOLD("smap-ne",{open:true,label:"The site map"}):"";return f?card("Our site",`<div class="hint">The Classes, the yards, the garden and the farm, from above. Tap a space to find its name, and pinch or use the zoom buttons to look closer.</div>${f}`):""})()}
     ${card("Who's who",`<div class="tablewrap"><table class="grid2" style="min-width:360px"><thead><tr><th>Name</th><th>Role</th><th>Class</th></tr></thead><tbody>${B.whosWho.map(w=>`<tr><td><b>${H(w.name)}</b></td><td>${H(w.role)}</td><td>${H(w.room?w.room+" Class":"")}</td></tr>`).join("")}</tbody></table></div>
       ${!dir?`<div class="actions">${(p.pd&&p.pd.read||{}).whoswho?chip("ok","Read"):`<button class="btn small ghost" data-stread="whoswho">I have read Who's who</button>`}</div>`:""}`)}
     ${card("Paperwork",`<div class="hint">Each form has a blank copy to download and print, and a place to upload the completed form as a photo or PDF. Uploads save to the school's Google Drive. Payroll and tax forms are completed in QuickBooks Workforce.</div>${papers.map(paperRow).join("")}
@@ -1886,7 +1887,11 @@ function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],che
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
 function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
   (e.plan||[]).some(s=>s.handout)?{t:"list",label:"For today",items:(e.plan||[]).filter(s=>s.handout).map(s=>(s.title?s.title+". ":"")+s.handout)}:null,
-  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,...followBlocks(e)].filter(Boolean))}
+  R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+x.url+")":"")+(x.note?". "+x.note:""))}:null,
+  ...(e._map?[{t:"photo",key:"sitemap",full:true,maxH:420},{t:"list",label:"The site map",items:e._map}]:[]),...followBlocks(e)].filter(Boolean))}
+// the site map for visitors, numbered, once the director marks it ready. Never a child's photo or name.
+async function handoutMap(){try{const m=window.TREE_SITEMAP?await window.TREE_SITEMAP():null;if(!m||!m.ready||!m.src||!window.SiteMap||!m.spots.some(x=>x.x!=null))return null;
+  const blob=await (await fetchPhoto(m.src)).blob();const pic=await window.SiteMap.picture(blob,m.spots);photoCache.set("sitemap",{url:pic.url,bytes:pic.bytes,w:pic.w,h:pic.h});return pic.names}catch(e){return null}}
 // panels, one idea to a page. The opening, the guiding question, each moment, and the question again to close.
 function sheet(o){return Object.assign({centered:true,display:true,type:"report",acc:"story",title:"",details:[],photos:[],blocks:[]},o)}
 // a moment's own heading, as its sheet in TREE would have it, or its first words
@@ -1903,7 +1908,7 @@ function slideDocs(e){const C=e.chosen||[];const land=(o,ph)=>ph.length?sheet(Ob
 // slides shown during the presentation itself may keep children's faces. Everything participants take away, and every
 // Word file, is made with faces softened.
 async function print(k,word,toShow){const e=E();const kind=word?"word":"pdf";progress("Making the file");
-  const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(e)]:k==="panels"?panelDocs(e):slideDocs(e);
+  const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(Object.assign({},e,{_map:await handoutMap()}))]:k==="panels"?panelDocs(e):slideDocs(e);
   if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs);if(!(toShow&&k==="slides"&&!word))await softenDocPhotos(docs)}
   return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:toShow&&!word?"slides to show":"slides"}[k])}
 

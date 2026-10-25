@@ -361,6 +361,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
     <h2 id="bk-title">Sign up for a space</h2>
     <label class="fld" id="bk-who-wrap" hidden>Your name<input type="text" id="bk-who" maxlength="40" autocomplete="given-name" placeholder="So everyone can see who has the space"></label>
     <label class="fld">Space<select id="bk-space"></select></label>
+    <details id="bk-mapfold" hidden><summary class="link">Choose on the site map</summary><div id="bk-mapnote" class="small muted" hidden>A draft. Only you see the site map until you mark it ready on the Garden page.</div><div id="bk-map" style="margin-top:8px"></div></details>
     <p class="hint" id="bk-space-note" hidden></p>
     <label class="fld"><span id="bk-date-label">Date</span><input type="date" id="bk-date" required></label>
     <div class="two" id="bk-times">
@@ -852,12 +853,17 @@ function bkHint(){
   box.className="nudge"; box.textContent="Taken. "+nameOf(o)+" has "+space.name+" from "+span(o.start,o.end)+".";
 }
 function disarm(){ Bk.armed=null; $("bk-remove").textContent="Remove"; $("bk-remove-all").textContent="Remove this and later weeks"; }
+// the site map, the same one TREE shows everywhere, to choose the space by tapping it
+async function bkMap(){ const f=$("bk-mapfold"); if(!f) return; f.hidden=true; f.open=false; let m=null;
+  try{ const P=window.parent!==window?window.parent:null; m=P&&P.TREE_SITEMAP?await P.TREE_SITEMAP():null; }catch(e){ m=null; }
+  if(!m||!window.SiteMap) return; f.hidden=false; $("bk-mapnote").hidden=!!m.ready;
+  f.ontoggle=()=>{ if(!f.open) return; window.SiteMap.mount($("bk-map"),m,{selected:$("bk-space").value,onPick:id=>{ const s=$("bk-space"); if(![...s.options].some(o=>o.value===id)){ toast("That space is not open for sign-ups."); return; } s.value=id; s.dispatchEvent(new Event("change",{bubbles:true})); }}); }; }
 function openBookDialog(opts){
   if(!S.data) return;
   const st=settings(), edit=opts.edit||null; Bk.edit=edit; disarm();
   const open=st.spaces.filter(s=>!s.hidden || (edit&&edit.spaceId===s.id));
   if(!open.length){ toast(S.director? "Add a space in Settings first." : "No spaces are open for sign-ups yet."); return; }
-  const sel=$("bk-space"); sel.textContent="";
+  const sel=$("bk-space"); sel.textContent=""; bkMap();
   if(!edit && !opts.spaceId && open.length>1) sel.append(h("option",{value:"",text:"Choose a space"}));
   for(const s of open) sel.append(h("option",{value:s.id,text:s.name}));
   const visible=open.filter(s=>!S.hiddenSpaces.has(s.id));
