@@ -82,17 +82,24 @@ module.exports = function garden(o) {
   const mine = (list, me) => isDirector(me) || isKitchen(me) ? list : list.filter(t => !t.room || t.room === roomOf(me));
 
   /* ---------- what a reader receives ---------- */
-  const forFamily = () => { const s = setup(); if (!s || !s.ready) return null;
+  // the season sheet and the recipes the director chose to share on the Family page, which reach families even before
+  // the Garden itself is ready. The rest of the garden year stays with the staff.
+  const shared = s => { const fs = (s && s.familyShare) || {}; const L = library(); const sk = SEASONS.find(x => x[0] === fs.season);
+    const season = sk && L['season-' + sk[0]] ? { key: sk[0], name: sk[1], lead: L['season-' + sk[0]].lead || '', parts: (L['season-' + sk[0]].parts || []).map(p => ({ key: p.key, text: p.text })) } : null;
+    const recipes = (Array.isArray(fs.recipes) ? fs.recipes : []).map(id => o.recipeFor ? o.recipeFor(id) : null).filter(Boolean);
+    return { season, recipes }; };
+  const forFamily = () => { const s = setup(); if (!s) return null; const sh = shared(s);
+    if (!s.ready) return sh.season || sh.recipes.length ? Object.assign({ seedLibrary: [], agreements: null, guiding: [], guide: [] }, sh) : null;
     // the family seed library, the seeds we share with families, by name only
     const seedLibrary = (glog().seeds || []).filter(x => x && x.share && x.name).map(x => ({ name: x.name, variety: x.variety || '', from: x.from === 'donated' ? 'donated' : x.from === 'bought' ? 'bought' : 'saved' }));
-    return { seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
+    return { season: sh.season, recipes: sh.recipes, seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
-    if (dir) Object.assign(out, { offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });
+    if (dir) Object.assign(out, { familyShare: s.familyShare || { season: '', recipes: [] }, offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });
     if (isKitchen(me)) { for (const k of ['seeds', 'trays', 'compost', 'wildlife', 'animals', 'plan', 'tending']) delete out[k]; }
     return out;
   }
@@ -161,6 +168,11 @@ module.exports = function garden(o) {
     }
     if (!dir) { err(req, res, 403, 'Only the director changes the Garden.'); return; }
     if (P === 'garden/ready') { saveS({ ready: !!body.on }); return back(); }
+    // the director chooses one season sheet and some recipes from the library to share with families
+    if (P === 'garden/familyshare') { const fs = Object.assign({ season: '', recipes: [] }, s.familyShare || {});
+      if (body.season !== undefined) fs.season = SEASONS.some(x => x[0] === body.season) ? body.season : '';
+      if (Array.isArray(body.recipes)) fs.recipes = [...new Set(body.recipes.map(x => String(x).replace(/[^a-z0-9-]/g, '').slice(0, 60)).filter(Boolean))].slice(0, 24);
+      saveS({ familyShare: fs }); return back(); }
     // the site map shows beyond the Garden, on sign-ups, plans, New Educator, the Family page and handouts, once ready
     if (P === 'garden/mapready') { saveS({ mapReady: !!body.on }); return back(); }
     if (P === 'garden/seed') {
