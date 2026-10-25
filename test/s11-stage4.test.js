@@ -44,3 +44,40 @@ test('walls are the director\'s, and an educator\'s project save keeps the wall'
   await d.p.evaluate(() => goView('walls')); await wait(400); assert.strictEqual(await d.p.evaluate(() => view), 'walls');
   assert.deepStrictEqual(d.errors, []); await d.close();
 });
+
+test('Children and Conferences open on the educator\'s own Class each visit', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => {
+    put('settings/educators.json', { id: 'educators', names: [{ name: 'Ann', room: 'West' }, { name: 'Bea', room: 'North' }, { name: 'Gia', room: '' }] });
+    put('children/pip-test.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active' });
+    put('children/rue-test.json', { first: 'Rue', last: 'Test', classroom: 'North', status: 'active' });
+  } });
+  const b = await chromium.launch();
+  t.after(async () => { await b.close(); await fx.stop(); });
+  const kroom = p => p.evaluate(() => kRoom);
+  const s = await signedIn(fx, b, 'Bea', '1357', 390);
+  await s.p.evaluate(() => goView('children')); await s.p.waitForFunction(() => kVisit, null, { timeout: 8000 });
+  assert.strictEqual(await kroom(s.p), 'North');
+  // another Class holds for this visit, and a child's page and back is the same visit
+  await s.p.click('[data-kroom="West"]'); assert.strictEqual(await kroom(s.p), 'West');
+  await s.p.evaluate(() => { kidOpen = 'pip-test'; goView('child'); }); await s.p.evaluate(() => goView('children'));
+  assert.strictEqual(await kroom(s.p), 'West');
+  // the next visit opens on her own Class again
+  await s.p.evaluate(() => goView('today')); await s.p.evaluate(() => goView('children'));
+  assert.strictEqual(await kroom(s.p), 'North');
+  // a page reload opens on her Class too
+  await s.p.reload(); await s.p.waitForFunction(() => typeof kVisit !== 'undefined' && view === 'children' && kVisit, null, { timeout: 15000 });
+  assert.strictEqual(await kroom(s.p), 'North');
+  // the Conferences page opens on her Class
+  await s.p.evaluate(() => goView('conferences'));
+  const fr = await (await s.p.waitForSelector('#tembed-conferences')).contentFrame();
+  await fr.waitForFunction(() => typeof S !== 'undefined' && S.filters, null, { timeout: 15000 });
+  assert.strictEqual(await fr.evaluate(() => S.filters.room), 'North');
+  assert.deepStrictEqual(s.errors, []); await s.close();
+  // an educator with no Class, and the director, see every Class
+  for (const [n, pc] of [['Gia', '1357'], ['Dee', 'director-pass-1']]) {
+    const x = await signedIn(fx, b, n, pc, 1280);
+    await x.p.evaluate(() => goView('children')); await x.p.waitForFunction(() => kVisit, null, { timeout: 8000 });
+    assert.strictEqual(await kroom(x.p), 'All', n); await x.close();
+  }
+});

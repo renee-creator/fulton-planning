@@ -508,6 +508,9 @@ const S = {
 };
 S.period = currentPeriod();
 try{ const f = JSON.parse(localStorage.getItem("fcf-filters")||"null"); if(f) Object.assign(S.filters,f); }catch(e){}
+// the page opens on the signed-in educator's own Class each visit, and on every Class for the director or an educator
+// with no Class. Another Class holds for this visit only.
+try{ const own = window.parent!==window && window.parent.treeOwnClass ? window.parent.treeOwnClass() : null; if(own!=null) S.filters.room = own || "All"; }catch(e){}
 function checkFilters(){ const f=S.filters; if(f.room!=="All" && !(S.settings.classrooms||[]).includes(f.room)) f.room="All"; if(f.edu && f.edu!=="All" && !educatorsFor().includes(f.edu)) f.edu="All"; }
 
 /* ---------- helpers ---------- */

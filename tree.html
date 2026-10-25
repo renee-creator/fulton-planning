@@ -1104,7 +1104,7 @@ let PROOF_SAVE=false;
 const pBy=b=>PRINT.by===false?"":(b||"");
 let GROUPS=[];
 const DEFAULT_ROSTER=[...[...new Map(GROUPS.filter(g=>g.educator).map(g=>[g.educator,{name:g.educator,room:g.room}])).values()]];
-let roster=DEFAULT_ROSTER.slice();
+let roster=DEFAULT_ROSTER.slice(),rosterSeen=false,kVisit=false;
 function rosterNames(){return roster.map(r=>r.name).filter(n=>!isShared(n))}
 let PLACES=[],PROGRAM_DOC={};
 let AREAS=["Writing center","Block area","Dramatic play","Art","Reading area","Cozy corner","Science and discovery","Sensory table","Math and manipulatives","Music and movement","Light table","Loose parts","Meeting area"];
@@ -1301,8 +1301,14 @@ document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#
 {let lastY=0;window.addEventListener("scroll",()=>{const y=window.scrollY||0,f=document.getElementById("newnotice");if(!f)return;
   if(y>lastY+6&&y>140)f.classList.add("away");else if(y<lastY-6||y<140)f.classList.remove("away");lastY=y},{passive:true})}
 /* An educator's lists open on their own classroom until they choose another. The director starts on All. */
+/* Children and Conferences open on the signed-in educator's own Class each time the page opens, the Class on their
+   sign-in, which the educators list carries. Another Class holds for that visit only. An educator with no Class and the
+   director see every Class. */
+function ownClass(){if(VIEW_AS)return VIEW_AS.room&&CLASSROOMS.includes(VIEW_AS.room)?VIEW_AS.room:"";if(isDirector())return"";const m=me().toLowerCase();if(!m)return"";
+  const e=roster.find(x=>(x.name||"").toLowerCase()===m);const r=e?String(e.room||""):((GROUPS.find(g=>(g.educator||"").toLowerCase()===m)||{}).room||"");return CLASSROOMS.includes(r)?r:""}
+window.treeOwnClass=()=>ownClass();
 function ownRoomDefaults(){if(isDirector())return false;const r=myRoom();if(!r||!CLASSROOMS.includes(r))return false;let ch=false;
-  for(const [k,set] of [["fps.troom",v=>tRoom=v],["fps.kroom",v=>kRoom=v],["fps.lroom",v=>lRoom=v],["fps.nroom",v=>nRoom=v]]){let raw=null;try{raw=localStorage.getItem(k)}catch(e){}if(raw==null){set(r);ch=true}}
+  for(const [k,set] of [["fps.troom",v=>tRoom=v],["fps.lroom",v=>lRoom=v],["fps.nroom",v=>nRoom=v]]){let raw=null;try{raw=localStorage.getItem(k)}catch(e){}if(raw==null){set(r);ch=true}}
   return ch}
 /* ---------- Storage, shared when available ---------- */
 function setConn(t){$("#conn").textContent=t}
@@ -1360,7 +1366,7 @@ async function boot(){
     if(isDirector())db.doc("settings/onelists").onSnapshot(snap=>{ONELISTS=snap.exists?snap.data():null});
     if(window.FP_HOSTED)setTimeout(()=>loadCalSpaces(),1500);
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
-    db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));renderRoster();fillEducatorList();if(view==="plans"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
+    db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));rosterSeen=true;renderRoster();fillEducatorList();if((view==="plans"||(view==="children"&&!kVisit))&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);projBase.set(d.id,JSON.stringify(v))}});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -4290,6 +4296,7 @@ function goView(v,opts){
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
   // the newsletter, the grant, the kitchen and the walls are the director's and the kitchen's, so an educator who reaches one goes to Today
   else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen","walls"].includes(v))v="today";
+  if(v==="children"&&view!=="children"&&view!=="child")kVisit=false;
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
   renderNav();renderMain();if(!(opts&&opts.noScroll))window.scrollTo(0,0);
@@ -11520,7 +11527,7 @@ document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.
    One roster for the whole school, the same records Family Conferences kept, so a child's classroom, group and family
    details are written once. Each child is At Fulton, Left Fulton, or Moved on to kindergarten. Nobody is removed. A child
    who leaves moves to Former children, and every record about them stays until the director chooses how long to keep them. */
-let children=new Map(), conferences=new Map(), kRoom=LS.get("fps.kroom","All"), kShow="at", kQ="", kEdit="", kAdding=false, kidOpen=LS.get("tree.kid",""), kMove=null;
+let children=new Map(), conferences=new Map(), kRoom="All", kShow="at", kQ="", kEdit="", kAdding=false, kidOpen=LS.get("tree.kid",""), kMove=null;
 // the same choices Family Conferences offered for next year
 const NEXTPLAN={staying:"Staying at our school next year",tk:"Going to TK next year",k:"Going to kindergarten next year",deciding:"Family still deciding about next year",other:"Another plan for next year"};
 const kidAt=c=>(c.status||"active")!=="withdrawn";
@@ -11555,6 +11562,8 @@ function portfoliosHtml(list,yr){
     <div class="pflist">${cards||`<div class="empty">No children in this view.</div>`}</div></section>`;
 }
 function renderChildren(){
+  // a new visit opens on the educator's own Class, once the educators list has arrived
+  if(!kVisit&&(rosterSeen||isDirector()||VIEW_AS)){kRoom=ownClass()||"All";kVisit=true}
   const all=kidList(),dir=isDirector();
   const inRoom=c=>kRoom==="All"||c.classroom===kRoom;
   const q=kQ.trim().toLowerCase();
@@ -11912,7 +11921,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(view!=="children"&&view!=="child")return;
   if(t.dataset.kshow){kShow=t.dataset.kshow;renderChildren();return}
   if(t.dataset.kdocgo&&t.dataset.kid){kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child");return}
-  if(t.dataset.kroom){kRoom=t.dataset.kroom;LS.set("fps.kroom",kRoom);renderChildren();return}
+  if(t.dataset.kroom){kRoom=t.dataset.kroom;kVisit=true;renderChildren();return}
   if(!isDirector())return;
   if(t.dataset.kstatus){const c=children.get(t.dataset.id);if(!c)return;const st=t.dataset.kstatus;
     const date=st==="at"?iso(new Date()):($("#kdate-"+CSS.escape(c.id))?.value||iso(new Date()));
