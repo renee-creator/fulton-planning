@@ -128,3 +128,24 @@ test('the Conferences page keeps no Add a child, Edit details or 1Core import, a
   assert.match(tree, /window\.TREE_OPEN_KID=/);
   assert.match(tree, /function kidOfferHtml/);
 });
+
+test('conference booking is in TREE only. SignUpGenius is retired and its links are out of the public code', async t => {
+  const fx = await start({ more: put => {
+    put('calendar/settings/program.json', { calendars: [{ id: 'cal3', name: 'Conferences', color: 'clay' }], spaces: [], dayStart: 420, dayEnd: 1080, weekends: true });
+    put('calendar/settings/feeds.json', { addresses: { cal3: 'webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=madeup' } });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  assert.strictEqual((await fx.as(dee, '/api/signup-feed', { fresh: true })).status, 404);
+  const v = await fx.as(dee, '/api/view', { from: '2026-11-02', to: '2026-11-06' });
+  assert.strictEqual(v.status, 200);
+  assert.deepStrictEqual(v.body.calendarStatus.cal3, { connected: false, retired: true });
+  assert.ok(JSON.parse(fs.readFileSync(path.join(fx.dir, 'calendar/settings/feeds.json'), 'utf8')).addresses.cal3, 'the address stays in the records');
+  for (const f of ['tree.html', 'tree-conferences.html', 'tree-calendar.html', 'server.js', 'calendar.js', 'family.html', 'src/embed/conferences-app.html'])
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, f), 'utf8'), /signupgenius\.com\/(go|index\.cfm)|record=[0-9a-f]{20,}|10C0E44A8A72EA0F9C52/i, f);
+  assert.ok(!fs.existsSync(path.join(ROOT, 'signup-sync.js')));
+  // next year's plan reads in one wording
+  const conf = fs.readFileSync(path.join(ROOT, 'tree-conferences.html'), 'utf8');
+  assert.match(conf, /\["k","Going to kindergarten next year"\]/);
+  assert.doesNotMatch(conf, /"Going to Kindergarten"|"Still deciding"/);
+});
