@@ -220,6 +220,10 @@ Settings, then Keeping records, for the director. It sets how long TREE keeps th
 
 When a former child or former educator reaches the period, the director's Today shows them once, under Records past their keeping period, with Keep longer and Remove. Nothing is removed until she chooses. Keep longer asks how many more years and asks again then. Remove asks once more before it happens. The server checks the period has passed, then removes the child's record and their conference records, or the former educator's records page, growth, journal, Proud Moments and sign-in, and writes the removal to the server log. Observations, plans and documentation stay as written. The removal, with the name, the day and who chose it, is kept in Settings, Keeping records, under Removed. The removed files stay in the records' history on GitHub and in the nightly backups made before. The choices are kept in settings/keeping in the records, which only the director's TREE receives.
 
+### Drafts in the PD library
+
+A TREE How To guide or Licensing page whose opening note says status: draft shows only to the director, with A draft, only you see it and Mark it ready, until the director marks it ready. staff/pd/pieceready.json keeps which are ready. Preparing a family conference, from the October 19 TREE practice, waits this way, as the family pieces What Your Child Is Learning and From Activity to Academic Skill wait on the Family Handbook page.
+
 ### Training links
 
 Each Licensing at Fulton Community School page links the official CDSS regulation document that holds the sections it cites, a Word file from CDSS, labeled with its sections, such as Title 22 sections 101229 and 101230, CDSS Article 6, Word file. A page citing sections in two documents has a link for each. All CDSS child care regulations, the general page, is a second, smaller link. Pages with a CDSS Community Care Licensing training video have Watch the training, with the video's title as CDSS wrote it. The director sees the date the links were confirmed, from linkschecked in the page's opening note. Health and Safety Code links go to the Legislature's site.

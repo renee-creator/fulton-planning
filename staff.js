@@ -210,6 +210,12 @@ module.exports = function staffModule(o) {
     }
     pieceCache = out; return out;
   }
+  // a piece marked draft in its opening note, such as a new TREE How To guide, waits for the director to mark it ready
+  const PIECE_READY = 'staff/pd/pieceready.json';
+  const pieceReady = id => !!(((get(PIECE_READY) || {}).pieces || {})[id]);
+  const piecesFor = me => { const dir = isDirector(me), all = pieces(), out = {};
+    for (const [k, list] of Object.entries(all)) out[k] = list.filter(x => dir || !x.draft || pieceReady(x.id)).map(x => dir ? Object.assign({}, x, { waiting: !!x.draft && !pieceReady(x.id) }) : x);
+    return out; };
   function parsePiece(dir, file, text) {
     const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
     if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
@@ -227,7 +233,7 @@ module.exports = function staffModule(o) {
     }
     const sections = (cut >= 0 ? rest.slice(cut) : '').split(/^###\s+/m).filter(s => s.trim()).map(s => { const i = s.indexOf('\n'); return { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
     return { id: dir + '/' + file.replace(/\.md$/, ''), dir, title: t[1].trim(), source, links, checked: /^\d{4}-\d{2}-\d{2}$/.test(meta.linkschecked || '') ? meta.linkschecked : '', minutes: minutes || 5, list: meta.list || '', week: Number(meta.week) || 0,
-      handbook: String(meta.handbook || '').split(',').map(s => s.trim()).filter(Boolean), sections };
+      handbook: String(meta.handbook || '').split(',').map(s => s.trim()).filter(Boolean), draft: meta.status === 'draft', sections };
   }
 
   /* ---------- people ---------- */
@@ -323,7 +329,9 @@ module.exports = function staffModule(o) {
     }
     // a piece added to the records is read without restarting TREE
     if (P === 'reload') { if (!dir) return deny(); S.loading = null; try { await load(); } catch (e) { err(req, res, 502, e.message); return; } json(req, res, 200, { ok: true, pieces: (pieces().licensing || []).length + (pieces().howto || []).length }); return; }
-    if (P === 'pd') { if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny(); json(req, res, 200, pieces()); return; }
+    if (P === 'pd') { if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny(); json(req, res, 200, piecesFor(me)); return; }
+    if (P === 'pd/ready') { if (!dir) return deny(); const id = String(body.id || ''); if (!Object.values(pieces()).some(l => l.some(x => x.id === id))) { err(req, res, 404, 'That piece is not here.'); return; }
+      const cur = get(PIECE_READY) || { pieces: {} }; put(PIECE_READY, Object.assign({}, cur, { pieces: Object.assign({}, cur.pieces, { [id]: !!body.on }) })); json(req, res, 200, piecesFor(me)); return; }
     if (P === 'handbook') {
       if (!allowed(me, 'handbook') && !allowed(me, 'newed')) return deny();
       const secs = [...S.files].filter(([p]) => p.startsWith('staff/handbook/')).map(([, r]) => r.doc).filter(Boolean).sort((a, b) => (a.order || 0) - (b.order || 0));
