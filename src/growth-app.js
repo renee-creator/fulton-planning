@@ -358,7 +358,7 @@ Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await 
 `)};
 /* the readings library, grouped by area of practice, each a link to its publisher. The library added since waits for the director. */
 async function loadReadings(force){if(!st.rlib||force){try{st.rlib=await ga("readings")}catch(e){st.rlib={list:[]}}}return st.rlib}
-const readingRow=x=>`<div class="strow"><div><a href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>${x.check?" "+chip("soonish","Link to check"):""}</div>${x.cite?`<div class="cnt">${H(x.cite)}</div>`:x.source?`<div class="cnt">${H(x.source)}</div>`:""}${x.supports?`<div class="cnt">${H(x.supports)}</div>`:""}</div>`;
+const readingRow=x=>`<div class="strow"><div>${x.url?`<a href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>`:`<b>${H(x.title)}</b>`}${x.check?" "+chip("soonish","Link to check"):""}</div>${x.cite?`<div class="cnt">${H(x.cite)}</div>`:x.source?`<div class="cnt">${H(x.source)}</div>`:""}${x.supports?`<div class="cnt">${H(x.supports)}</div>`:""}</div>`;
 Gr.readingsHtml=async function(){const r=await loadReadings();const L=r.list||[];if(!L.length)return "";const dir=isDir();const waiting=dir&&r.library&&!r.libraryReady;
   const groups=AK().map(k=>[k,L.filter(x=>(x.areas||[]).includes(k))]).filter(([,g])=>g.length);const other=L.filter(x=>!(x.areas||[]).length);
   return card("Readings",`<div class="hint">Books, articles and public resources, each linked to its publisher, grouped by area of practice. Open one to read it where it lives.</div>
