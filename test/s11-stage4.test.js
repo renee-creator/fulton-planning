@@ -81,3 +81,39 @@ test('Children and Conferences open on the educator\'s own Class each visit', as
     assert.strictEqual(await kroom(x.p), 'All', n); await x.close();
   }
 });
+
+test('the director starts her own plans, marked as hers, ready with no review once every box is written', async t => {
+  const chromium = await browser();
+  const fx = await start();
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const read = id => JSON.parse(fs.readFileSync(path.join(fx.dir, 'plans/' + id + '.json'), 'utf8'));
+  const full = { observation: 'o', intentions: 'i', meeting: 'm', interests: 'n', indoor: 'd', outdoor: 'u', brainstorm: 'b' };
+  // a box left empty keeps her plan a draft, on the server
+  let r = await fx.as(dee, '/api/write', { op: 'set', kind: 'plans', id: 'dp1', data: { id: 'dp1', type: 'classroom', classroom: 'South', weekOf: '2026-10-19', educator: 'Dee', byDirector: true, status: 'ready', fields: Object.assign({}, full, { brainstorm: '' }) } });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.doc.status, 'draft');
+  r = await fx.as(dee, '/api/write', { op: 'update', kind: 'plans', id: 'dp1', patch: { status: 'ready', fields: { brainstorm: 'b' } } });
+  assert.strictEqual(r.body.doc.status, 'ready');
+  // it never waits for a review step
+  r = await fx.as(dee, '/api/write', { op: 'update', kind: 'plans', id: 'dp1', patch: { status: 'reviewed' } });
+  assert.strictEqual(r.body.doc.status, 'ready');
+  // an educator cannot mark a plan as the director's
+  r = await fx.as(ann, '/api/write', { op: 'set', kind: 'plans', id: 'ap1', data: { id: 'ap1', type: 'individual', classroom: 'West', weekOf: '2026-10-19', educator: 'Ann', byDirector: true, status: 'draft', fields: {} } });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.doc.byDirector, undefined);
+  // an educator's edit of her plan keeps it hers
+  r = await fx.as(ann, '/api/write', { op: 'update', kind: 'plans', id: 'dp1', patch: { fields: { indoor: 'dd' } } });
+  assert.strictEqual(r.body.doc.byDirector, true);
+  await wait(1200); assert.strictEqual(read('dp1').byDirector, true);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 390);
+  await s.p.evaluate(() => goView('today')); await s.p.click('[data-dirplan]');
+  await s.p.selectOption('#dp-room', 'North'); await s.p.click('[data-dirnew="individual"]');
+  const np = await s.p.evaluate(() => { const p = plans.get(currentId); return { type: p.type, classroom: p.classroom, byDirector: p.byDirector, view }; });
+  assert.deepStrictEqual(np, { type: 'individual', classroom: 'North', byDirector: true, view: 'plans' });
+  assert.match(await s.p.evaluate(() => document.querySelector('#sendsec').innerText), /Mark it ready/);
+  // her own ready plan is not in her review list
+  await s.p.evaluate(() => goView('today'));
+  assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /Waiting for your review, South Classroom plan/);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

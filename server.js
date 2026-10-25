@@ -39,7 +39,7 @@ const forViewer = (kind, doc, director) => (kind === 'projects' && !director && 
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
 const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
-const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy'];
+const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy', 'byDirector'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
 const SEND_NEED = { individual: ['area', 'dates', 'observation', 'intent', 'materials', 'questions'], classroom: ['observation', 'intentions', 'meeting', 'interests', 'indoor', 'outdoor', 'brainstorm'] };
 // an educator sends a plan only once its boxes are written. Once sent or reviewed it stays so, and only the director
@@ -51,6 +51,13 @@ function planStatusFor(cur, next) {
   if (was === 'ready' || was === 'reviewed') return was;
   if (want === 'ready' && need.every(k => String((next.fields || {})[k] || '').trim())) return 'ready';
   return 'draft';
+}
+// a plan the director writes is marked as hers and needs no review. It is ready once every box has writing, the same
+// rule as an educator's, and she can take it back to draft.
+function directorPlanStatus(next) {
+  const need = SEND_NEED[next.type]; let want = next.status || 'draft'; if (want === 'reviewed') want = 'ready';
+  if (want === 'ready' && need && !need.every(k => String((next.fields || {})[k] || '').trim())) return 'draft';
+  return want;
 }
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,150}$/i;
 // a phone's client id for one save of a draft, so a save sent twice is kept once. The last few thousand are remembered.
@@ -1828,6 +1835,14 @@ async function handle(req, res) {
         const next = op === 'update' ? Object.assign({}, cur && !cur.deleted ? cur.doc : {}, body.patch || {}, { fields: Object.assign({}, cur && !cur.deleted ? cur.doc.fields : {}, (body.patch || {}).fields || {}) }) : (body.data || {});
         const st = planStatusFor(cur, next); const asked = next.status || 'draft';
         if (st !== asked) { log('Plan status kept as', st, 'for', me.name, id, 'asked', asked); if (op === 'update') { body.patch = body.patch || {}; body.patch.status = st; } else if (body.data) body.data.status = st; }
+      }
+    }
+    if (kind === 'plans' && isDirector(me.name) && op !== 'delete') {
+      const base = cur && !cur.deleted ? cur.doc : {};
+      const next = op === 'update' ? Object.assign({}, base, body.patch || {}, { fields: Object.assign({}, base.fields || {}, (body.patch || {}).fields || {}) }) : (body.data || {});
+      if (next.byDirector) {
+        const st = directorPlanStatus(next); const asked = next.status || 'draft';
+        if (st !== asked) { log('Director plan status kept as', st, id, 'asked', asked); if (op === 'update') { body.patch = body.patch || {}; body.patch.status = st; } else if (body.data) body.data.status = st; }
       }
     }
     const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;

@@ -956,6 +956,7 @@ function newPlan(type,extra={}){
   const p={id:uid(),type,weekOf:week,classroom:roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""),educator:me(),group:"",setting:[],session:"Morning",languages:[],docplan:[],
     fields:{},status:"draft",feedback:"",prevId:"",createdAt:Date.now(),updatedAt:Date.now()};
   if(type==="classroom")p.web=blankWeb();
+  if(isDirector()&&!VIEW_AS)p.byDirector=true;
   if(type==="smallgroup"){const g=GROUPS.find(g=>(g.educator||"").toLowerCase()===me().toLowerCase());if(g){p.group=g.name;p.classroom=g.room}}
   if(type==="individual"){const g=me()&&GROUPS.find(g=>(g.educator||"").toLowerCase()===me().toLowerCase());p.focus=g?"smallgroup":"area";p.groups=g?[g.name]:[];p.where="";if(g&&!p.classroom)p.classroom=g.room}
   return Object.assign(p,extra);
@@ -1203,6 +1204,9 @@ function renderFeedbackPanel(){
   el.innerHTML=list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="fb"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${dir?", from "+esc(p.feedbackReply.by||"an educator"):""}</span></span><span class="status" style="color:var(--moss);border-color:var(--moss)">New</span></button>`).join("")+(list.length>6?`<div class="cnt">${list.length-6} more</div>`:"");
 }
 function sendHtml(p){
+  if(sendable(p)&&isDirector()&&p.byDirector){
+    if(p.status==="ready"||p.status==="reviewed")return `<section class="sendsec done" id="sendsec"><b>Ready</b><div class="cnt">Your plan, marked as yours. It needs no review.</div></section>`;
+    return `<section class="sendsec" id="sendsec"><button class="btn" id="sendplan">Mark it ready</button><div id="sendmsg" aria-live="polite"></div></section>`}
   if(!sendable(p)||isDirector())return "";
   const when=ms=>ms?" on "+shortDate(ms):"";
   if(p.status==="reviewed")return `<section class="sendsec done" id="sendsec"><b>Reviewed by the director${when(p.reviewedAt)}</b></section>`;
@@ -4097,7 +4101,7 @@ function todayWaiting(){
   // notes from the director, and replies to the director
   for(const p of all.filter(p=>dir?replyNew(p):fbNew(p)&&isMine(p,m)).slice(0,4))
     out.push({dot:"moss",t:dir?`A reply on ${planTitle(p)}'s plan`:`A note from the director on your ${FORMS[p.type].short.toLowerCase()} plan`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}" data-jump="fb"`,b:"Read it"});
-  if(dir)for(const p of all.filter(p=>p.status==="ready").sort((a,b)=>b.weekOf.localeCompare(a.weekOf)))
+  if(dir)for(const p of all.filter(p=>p.status==="ready"&&!p.byDirector).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)))
     out.push({dot:"sky",t:`Waiting for your review, ${p.type==="classroom"?(p.classroom||"")+" Classroom plan":planTitle(p)}`,s:"Week of "+fmtDate(p.weekOf),act:`data-open="${p.id}"`,b:"Review"});
   // the director and the office see a family's visit coming up, so the forms are printed and ready to sign
   if(isOffice()){const t0=iso(new Date()),t2=addDays(t0,2);for(const c of kidsAt().filter(c=>c.visit&&c.visit.date>=t0&&c.visit.date<=t2&&!(c.onboarding||{}).paperwork).sort((a,b)=>(a.visit.date+a.visit.time).localeCompare(b.visit.date+b.visit.time)))
@@ -4487,6 +4491,18 @@ function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";cons
   return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
 // a Class team asks families for help. It goes to the director, who posts it to the Family page.
 let askFam=false;
+// the director's Write my plan, an Individual or a Classroom plan for any Class, on the same form. Her plan is marked as
+// hers and is ready once its boxes have writing, with no review.
+let dirPlanAsk=false;
+function dirPlanHtml(){return `<section class="card" style="margin-top:12px"><div class="lbl">Write my plan</div><div class="hint">Your plan is marked as yours and needs no review. It is ready once every box has writing.</div>
+  <div class="actions"><label class="cnt">Class <select id="dp-room" style="width:auto">${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label>
+  <button class="btn small" data-dirnew="individual">Individual plan</button><button class="btn small" data-dirnew="classroom">Classroom plan</button><button class="linkbtn" data-dirplan="1">Cancel</button></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-dirplan],[data-dirnew]");if(!t||!isDirector()||VIEW_AS)return;e.stopImmediatePropagation();
+  if(t.dataset.dirplan){dirPlanAsk=!dirPlanAsk;renderMain();return}
+  const type=t.dataset.dirnew,room=$("#dp-room")?.value||CLASSROOMS[0]||"";dirPlanAsk=false;week=planWeekNow();
+  const had=type==="classroom"?[...plans.values()].find(p=>!p.deleted&&p.type==="classroom"&&p.weekOf===week&&p.classroom===room&&p.id!=="example"):null;
+  const np=had||newPlan(type,{classroom:room});if(!had){np.classroom=room;plans.set(np.id,np);persist(np)}
+  view="plans";LS.set("fps.view",view);renderNav();currentId=np.id;renderList();renderMain();jumpTop()},true);
 function askFamHtml(room){return `<section class="card ptform" style="margin-top:12px"><h3 style="font-size:17px">Ask families for help</h3><div class="cnt">The director sees it first and posts it to the Family page. Helping counts toward each family's hours.</div>
   <label class="fld-label">What you need<input type="text" id="af-title" placeholder="Ex. Two parents for the creek walk"></label>
   <div class="gsrow"><label>Day, if it has one<input type="date" id="af-date"></label><label>Starts<input type="time" id="af-start"></label><label>Ends<input type="time" id="af-end"></label></div>
@@ -4514,11 +4530,11 @@ function renderToday(){
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button data-tview="slides"><b>Make documentation</b><span>${isDirector()?"A slide or a wall from observations":"A slide from observations"}</span></button>
-    ${isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
+    ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any Class</span></button>`:isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
-  ${askFam?askFamHtml(room):""}
+  ${askFam?askFamHtml(room):""}${dirPlanAsk?dirPlanHtml():""}
   ${keepTodayHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
@@ -4642,7 +4658,7 @@ function renderWeekBoard(){
   const usedIds=new Set(groups.map(planFor).filter(Boolean).map(p=>p.id));
   const others=ps.filter(p=>(p.type==="individual"||p.type==="smallgroup")&&!usedIds.has(p.id));
   const cls=ps.filter(p=>p.type==="classroom");const stories=ps.filter(p=>p.type==="story");
-  const statusPill=p=>`<span class="status ${p?p.status:"missing"}">${p?(p.status==="ready"?"Waiting for review":STATUS[p.status]):"Not started"}</span>`;
+  const statusPill=p=>`<span class="status ${p?p.status:"missing"}">${p?(p.status==="ready"?(p.byDirector?"Ready, the director's":"Waiting for review"):STATUS[p.status]):"Not started"}</span>`;
   const first=t=>firstLine(t,90);
   const thisWk=planWeekNow();
   const loose=[...plans.values()].filter(p=>p.weekOf===week&&!p.classroom&&p.id!=="example"&&p.type!=="notice");
@@ -5372,11 +5388,11 @@ function sendPlan(p){
   // a saved plan opens for reading, so it opens to edit when boxes are still to fill
   if(miss.length&&$("#main")?.classList.contains("locked")){const u=$(".lockbar [data-unlock]");if(u)u.click()}
   const msg=$("#sendmsg");
-  if(miss.length){if(msg)msg.innerHTML=`<div class="sendmiss">Before sending, fill in ${miss.map(m=>`<button class="linkbtn" data-secjump="${esc(m.k)}">${esc(m.label)}</button>`).join(miss.length===2?" and ":", ")}.</div>`;
+  if(miss.length){if(msg)msg.innerHTML=`<div class="sendmiss">Before ${p.byDirector?"marking it ready":"sending"}, fill in ${miss.map(m=>`<button class="linkbtn" data-secjump="${esc(m.k)}">${esc(m.label)}</button>`).join(miss.length===2?" and ":", ")}.</div>`;
     const el=document.querySelector(`[data-card="${miss[0].k}"]`);if(el){el.classList.add("showall");el.scrollIntoView({behavior:"smooth",block:"start"})}return}
   if(!p.educator&&needName())return;if(!p.educator&&me())p.educator=me();
   p.status="ready";p.sentAt=Date.now();p.sentBy=myName()||me()||"";sendAskedSet(p.id);persist(p);closeSendAsk();renderList();renderMain();
-  const s=$("#sendsec");if(s)s.scrollIntoView({block:"center"});toast("Sent to the director for review.");
+  const s=$("#sendsec");if(s)s.scrollIntoView({block:"center"});toast(p.byDirector?"Ready. Your plan needs no review.":"Sent to the director for review.");
 }
 // once a plan's last box gets writing and the educator pauses, TREE asks once whether to send it
 const sendAskedGet=()=>{try{return new Set(LS.get("tree.sendasked",[]))}catch(e){return new Set()}};
@@ -10771,7 +10787,7 @@ function renderThreads(){
   const cols=tRoom==="All"&&ps.some(p=>!p.classroom)?[...rooms,""]:rooms;
   // observations are read with the plans, and they are counted on their own, so a count of plans means plans
   const realPs=ps.filter(p=>p.type!=="notice"),obsN=ps.length-realPs.length;
-  const waiting=realPs.filter(p=>p.status==="ready").length;
+  const waiting=realPs.filter(p=>p.status==="ready"&&!p.byDirector).length;
   const withTeam=new Set(ps.filter(p=>p.type==="classroom").map(p=>p.weekOf+p.classroom)).size;
   const inRoom=[...threads.values()].filter(t=>tRoom==="All"||t.classroom===tRoom||!t.classroom);
   const tracked=inRoom.filter(t=>!t.unfollowed).sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.lastWeek||"").localeCompare(a.lastWeek||""));
