@@ -468,6 +468,22 @@ module.exports = function staffModule(o) {
       if (P === 'proposals/aside') { put(path, Object.assign({}, get(path), { status: body.back ? 'proposed' : 'aside', decidedAt: Date.now(), decidedBy: me })); json(req, res, 200, { list: proposals() }); return; }
       if (P === 'proposals/accept') {
         if (pr.status === 'accepted') { json(req, res, 200, { list: proposals() }); return; }
+        // a rewrite replaces one passage in a section already there, saved as any edit is, with the earlier wording in
+        // the section's history. The director may change the new wording first.
+        if (pr.kind === 'replace') {
+          const cur = pr.doc === 'family' ? POL.fhSection(String(pr.edition || ''), pr.section) : (() => { const e = POL.entries().find(x => x.id === pr.section); return e ? POL.tpSection(e) : null; })();
+          if (!cur || cur.removed) { err(req, res, 404, 'That section is not here any more.'); return; }
+          const from = String(pr.from || ''), to = String(body.to != null ? body.to : pr.to || '').replace(/\r/g, '').trim();
+          if (!from || !to) { err(req, res, 400, 'The new wording is empty.'); return; }
+          const was = String(cur.body || ''); const at = was.indexOf(from);
+          if (at < 0) { err(req, res, 409, 'This passage has changed since the rewrite was drafted, so nothing was changed. Open the section to edit it.'); return; }
+          const note = ('Accepted from a proposal, ' + pr.title).slice(0, 300);
+          const next = was.slice(0, at) + to + was.slice(at + from.length);
+          const r = pr.doc === 'family' ? POL.saveFamily(me, { edition: pr.edition, id: pr.section, title: cur.title, body: next, note }) : POL.saveTeacher(me, { id: pr.section, title: cur.title, body: next, note });
+          if (r.error) { err(req, res, 400, r.error); return; }
+          put(path, Object.assign({}, get(path), { status: 'accepted', section: pr.section, accepted: to, decidedAt: Date.now(), decidedBy: me }));
+          log('Proposal accepted', pr.id, 'by', me); json(req, res, 200, { list: proposals(), id: pr.section }); return;
+        }
         const r = pr.doc === 'family' ? POL.saveFamily(me, { edition: pr.edition, part: pr.part, title: pr.title, body: pr.body, note: 'Accepted from a proposal' }) : POL.saveTeacher(me, { part: pr.part, title: pr.title, body: pr.body, note: 'Accepted from a proposal' });
         if (r.error) { err(req, res, 400, r.error); return; }
         put(path, Object.assign({}, get(path), { status: 'accepted', section: r.id, decidedAt: Date.now(), decidedBy: me }));
