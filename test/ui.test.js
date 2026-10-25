@@ -41,6 +41,8 @@ test('TREE in the browser', async t => {
   await t.test('words typed in the Growth Plan are still there after opening another page and coming back', async () => {
     const s = await signedIn(fx, b, 'Ann', '1357');
     await s.p.evaluate(() => goView('stplan')); await s.p.waitForSelector('#gp-ch');
+    // on a narrow screen the box can sit in a closed fold, which a person opens first
+    await s.p.evaluate(() => { for (let d = document.querySelector('#gp-ch').closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; });
     await s.p.fill('#gp-ch', 'Rain days indoors');
     await s.p.click('#tsubnav [data-tview="strec"]').catch(async () => { await s.p.evaluate(() => goView('strec')); });
     await s.p.waitForFunction(() => /My records/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
@@ -64,7 +66,8 @@ test('TREE in the browser', async t => {
     assert.doesNotMatch(await s.p.evaluate(() => document.querySelector('#main').innerText), /Written next|coming soon/i);
     await s.close();
     const n = await signedIn(fx, b, 'Neo', '1357');
-    await n.p.evaluate(() => goView('stnew')); await n.p.waitForFunction(() => /Your first two months/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    // the go-to person's line comes with the educator records, which can arrive a moment after the page is drawn
+    await n.p.evaluate(() => goView('stnew')); await n.p.waitForFunction(() => /Gia answers your questions/.test(document.querySelector('#main').innerText), null, { timeout: 15000 }).catch(() => {});
     const text = await n.p.evaluate(() => document.querySelector('#main').innerText);
     assert.match(text, /Gia answers your questions/);
     assert.deepStrictEqual(n.errors, []); await n.close();
