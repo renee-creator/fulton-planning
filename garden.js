@@ -168,7 +168,7 @@ module.exports = function garden(o) {
       const mm = String(body.month || ''); if (!/^(0[1-9]|1[0-2])$/.test(mm)) { err(req, res, 400, 'Choose the month.'); return; }
       const plan = JSON.parse(JSON.stringify(s.plan || { months: {} })); plan.months = plan.months || {}; const m = plan.months[mm] = plan.months[mm] || { tasks: [] };
       if (body.remove) m.tasks = m.tasks.filter(t => t.id !== body.id);
-      else { const text = txt(body.text, 200); if (!text || !clean(text)) { err(req, res, 400, text ? 'Fulton uses no herbicides or pesticides, so that task cannot be added.' : 'Write the task.'); return; }
+      else { const text = txt(body.text, 200); if (!text || !clean(text)) { err(req, res, 400, text ? 'We use no herbicides or pesticides, so that task cannot be added.' : 'Write the task.'); return; }
         let t = m.tasks.find(x => x.id === body.id); if (!t) { t = { id: rid('k') }; m.tasks.push(t); }
         Object.assign(t, { text, stage: STAGES.includes(body.stage) ? body.stage : 'tend', bed: bedOf(s, body.bed) ? body.bed : '', repeat: +body.weekday >= 1 && +body.weekday <= 5 ? { weekday: +body.weekday } : null }); }
       saveS({ plan }); return back();

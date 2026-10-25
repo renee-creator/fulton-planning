@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Fulton Family Page</title>
+<title>Fulton Community School Family Page</title>
 <link rel="icon" href="tree-icons/favicon-32.png" type="image/png">
 <link rel="apple-touch-icon" href="tree-icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="Fulton Family">
+<meta name="apple-mobile-web-app-title" content="Family Page">
 <style>
 @font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
 @font-face{font-family:Andika;font-weight:700;src:url(fonts/Andika-Bold.ttf)}
@@ -64,7 +64,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 </head>
 <body>
 <div class="wrap">
-<header><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Family page</h1></header>
+<header><div class="eyebrow">Fulton Community School</div><h1>Family page</h1></header>
 
 <section class="card" id="gate" hidden>
   <form id="f1" class="stack">
@@ -144,7 +144,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
   function welcomeHtml(){const ks=D.children.filter(k=>k.isNew);
-    return `<section class="card"><h2>Welcome to Fulton</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
+    return `<section class="card"><h2>Welcome to Fulton Community School</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
     ks.map(k=>{const e=k.enroll||{},q=k.questionnaire;const steps=[
       [hbRead(k),"Read the Family Handbook",hbRead(k)?(k.handbook?`Read the ${k.handbook.year} edition.`:"Read."):"Required before enrollment. Please read the Family Handbook in full.",`<button class="btn sm ${hbRead(k)?"ghost":""}" data-chk="${esc(k.id)}|handbook">${hbRead(k)?"Undo":"I have read it"}</button>`,hbLink()],
       [!!e.done,"Enrollment information",e.done?"Complete. The state licensing forms will be ready for your signature at your visit.":e.at?"In progress. Every box is required before your visit.":"Required. Your answers complete the state licensing forms, which you sign at your visit.",`<button class="btn sm ${e.done?"ghost":""}" data-form="enroll|${esc(k.id)}">${e.done?"Review":e.at?"Continue":"Start"}</button>`],
@@ -158,7 +158,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       (()=>{const n=D.pack.filter(([key])=>k.checks&&k.checks["pack_"+key]).length;return [n===D.pack.length,"Ready for the first day",`${n} of ${D.pack.length} packed. Rain gear and spare clothes stay at school all season.`,`<button class="btn sm ghost" data-packopen="${esc(k.id)}">${packOpen===k.id?"Close":"See the list"}</button>`]})()];
       const pack=packOpen===k.id?`<div class="sub">${D.pack.map(([key,t])=>`<label class="chk packi"><input type="checkbox" data-pack="${esc(k.id)}|pack_${key}" ${k.checks&&k.checks["pack_"+key]?"checked":""}> ${esc(t)}</label>`).join("")}</div>`:"";
       // toilet learning, for a family whose child is not yet toilet trained
-      const toilet=((k.enroll||{}).data||{}).d_toilet==="No"?`<div class="sub"><b>Toilet learning at Fulton</b><p class="small" style="margin:4px 0">When and how a child learns to use the toilet is very individual, and most children are out of diapers by three and a half. Children show they are ready when they want to use the toilet, tell you about a wet or soiled diaper, can pull their own pants up and down, notice when they are going, and have had a weekend at home without accidents.</p><p class="small" style="margin:4px 0">Power struggles are common, since children learn they have control over their bodies. Stay calm and matter of fact, and if it becomes a struggle, take the pressure off and wait for your child's interest.</p><p class="small" style="margin:4px 0">Children at Fulton use the bathroom independently. Before your child comes to school in underwear, they need to be fully independent and tell us when they need to go. Until then, please send diapers or pull-ups. Talk with your child's educators any time.</p></div>`:"";
+      const toilet=((k.enroll||{}).data||{}).d_toilet==="No"?`<div class="sub"><b>Toilet learning at our school</b><p class="small" style="margin:4px 0">When and how a child learns to use the toilet is very individual, and most children are out of diapers by three and a half. Children show they are ready when they want to use the toilet, tell you about a wet or soiled diaper, can pull their own pants up and down, notice when they are going, and have had a weekend at home without accidents.</p><p class="small" style="margin:4px 0">Power struggles are common, since children learn they have control over their bodies. Stay calm and matter of fact, and if it becomes a struggle, take the pressure off and wait for your child's interest.</p><p class="small" style="margin:4px 0">Children at our school use the bathroom independently. Before your child comes to school in underwear, they need to be fully independent and tell us when they need to go. Until then, please send diapers or pull-ups. Talk with your child's educators any time.</p></div>`:"";
       return `<section class="card"><h2>${esc(k.first)}'s first steps</h2>${steps.map(([ok,t,s,b,more])=>`<div class="step"><span class="tick ${ok?"on":""}" aria-hidden="true">${ok?"✓":""}</span><div style="flex:1;min-width:0"><b>${t}</b><div class="small muted">${esc(s)}</div>${more?`<div style="margin-top:4px">${more}</div>`:""}</div>${b||""}</div>`).join("")}${pack}${toilet}
 </section>`}).join("")}
   function kidsHtml(){return D.children.map(k=>{const c=k.conference;let h=`<section class="card"><h2>${esc(k.first)}</h2>`;

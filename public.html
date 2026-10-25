@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fulton Menu</title>
+<title>Fulton Community School Menu</title>
 <style>
 @font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
 @font-face{font-family:Andika;font-weight:700;src:url(fonts/Andika-Bold.ttf)}
@@ -32,7 +32,7 @@ h1{font-size:26px;margin:0;color:var(--moss)}h2{font-size:19px;margin:0 0 8px}
 </head>
 <body>
 <div class="wrap">
-<div class="eyebrow">Fulton Community School &amp; Farm</div>
+<div class="eyebrow">Fulton Community School</div>
 <h1>What we're eating</h1>
 <div id="out" class="muted" style="margin-top:12px">Loading the menu…</div>
 </div>
@@ -66,9 +66,9 @@ const G_SCHOOL_LL=[38.4706,-122.779];
     let h="";
     if(fromFarms.length)h+=`<section class="card f2s"><h2>Where our food came from in ${esc(monthName(j.prev))}</h2>
       <div class="stats"><div class="stat"><b>${list.length}</b>farms and producers</div><div class="stat"><b>${son}</b>in Sonoma County</div>${avg!=null?`<div class="stat"><b>${avg}</b>miles on average</div>`:""}<div class="stat"><b>${j.bins}</b>weekly farm boxes</div></div>
-      <div class="small">Breads, doughs and crusts are made by hand at Fulton, and almost everything on the menu is cooked from scratch. Scraps go to our chickens and goats.</div>
+      <div class="small">Breads, doughs and crusts are made by hand in our kitchen, and almost everything on the menu is cooked from scratch. Scraps go to our chickens and goats.</div>
       <div class="farms">${list.sort((a,b)=>(a.mi==null)-(b.mi==null)||a.mi-b.mi).map(x=>`<span class="farm">${esc(x.name)}${x.town?", "+esc(x.town):""}</span>`).join("")}</div>
-      <div class="fund">Fulton's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.</div></section>`;
+      <div class="fund">Fulton Community School & Farm's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.</div></section>`;
     const months=(j.months||[]).filter(Boolean);const ix=months.indexOf(month);
     h+=`<section class="card"><div class="nav"><button id="pv" ${ix>0?"":"disabled"} aria-label="The month before">‹</button><h2 style="margin:0">${esc(monthName(month))}</h2><button id="nx" ${ix>=0&&ix<months.length-1?"":"disabled"} aria-label="The month after">›</button></div>`;
     if(!j.menu)h+=`<p class="muted">This month's menu is not posted yet.</p>`;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fulton Family Handbook</title>
+<title>Fulton Community School & Farm Family Handbook</title>
 <link rel="icon" href="tree-icons/favicon-32.png" type="image/png">
 <style>
 @font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
@@ -49,7 +49,7 @@ details.part>summary h2{margin:0}details.part>summary::after{content:"Open";font
   const slug=s=>"s-"+String(s).replace(/[^a-z0-9-]/gi,"");
   async function load(){const r=await post("/public/handbook");let j={};try{j=await r.json()}catch(e){}
     if(!r.ok)throw new Error(r.status===403?"The Family Handbook is not open to read here yet. Please contact the school.":(j.error||"The Family Handbook could not be opened. Try again in a moment."));return j}
-  function render(h){document.getElementById("title").textContent=`${h.title||"Family Handbook"}, ${h.edition}`;document.title=`Fulton Family Handbook ${h.edition}`;
+  function render(h){document.getElementById("title").textContent=`${h.title||"Family Handbook"}, ${h.edition}`;document.title=`Fulton Community School & Farm Family Handbook ${h.edition}`;
     const im=(src,alt)=>`<img data-img="${esc(src)}" alt="${esc(alt||"A picture from the Family Handbook")}">`;
     let out=`${h.image?`<img class="cover" data-img="${esc(h.image)}" alt="A child on a swing in a tree, the cover of the Family Handbook">`:""}<section class="card"><h2>Contents</h2><nav class="toc">${h.parts.map(p=>`<a href="#${slug(p.id)}">${esc(p.title)}</a>`).join("")}</nav></section>`;
     // each part folds closed under its title, so a phone shows the whole handbook in a few screens. Contents opens a part.

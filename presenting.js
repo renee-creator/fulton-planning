@@ -122,8 +122,8 @@ module.exports = function presentingModule(c) {
       }
       if (e.youngest) {
         const small = r.kind === 'obs' && (r.children || []).some(id => underThree(kids.get(id), r.date));
-        if (small) { groups.push('youngest'); score += 2; why.push('With Fulton\'s youngest children. A child in it was under three that day.'); }
-        else if (young && r.room === young && ['obs', 'plan', 'thread'].includes(r.kind)) { groups.push('youngest'); score += 1; why.push(`With Fulton's youngest children. Kept in ${young} Class, where Fulton's two-year-olds are.`); }
+        if (small) { groups.push('youngest'); score += 2; why.push('With our youngest children. A child in it was under three that day.'); }
+        else if (young && r.room === young && ['obs', 'plan', 'thread'].includes(r.kind)) { groups.push('youngest'); score += 1; why.push(`With our youngest children. Kept in ${young} Class, where our two-year-olds are.`); }
       }
       if (!groups.length) continue;
       let lensLine = '';
@@ -196,7 +196,7 @@ module.exports = function presentingModule(c) {
       // Start from the Fulton template gives the entry its seven parts, each with its time, what participants do, a
       // facilitator script and what goes on the one-page handout, from the template kept in the records
       const e0 = blank(t, me); const tpl = body.template ? get('staff/pd/template.json') : null;
-      if (body.template && !tpl) return err(req, res, 404, 'The Fulton template is not in the records yet.');
+      if (body.template && !tpl) return err(req, res, 404, 'The Fulton Community School PD template is not in the records yet.');
       // a PD library module opened to lead at a staff meeting fills the template's parts from the module's own words
       const mod = body.module && moduleOf ? moduleOf(String(body.module)) : null;
       if (body.module && !mod) return err(req, res, 404, 'That module is not here.');

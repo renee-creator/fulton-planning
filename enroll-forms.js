@@ -83,7 +83,7 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     if(yes("fa_has")){text("Foods to avoid",B,11);text(v("fa_food"),F,10.5);y-=6;text("The nature of the reaction or sensitivity",B,11);text(v("fa_reaction"),F,10.5);y-=6;
       pair("Reason",v("fa_reason"));pair("Medical condition",v("fa_medical"));if(yes("fa_medical"))text("Please bring a note from the doctor.",F,10,gray)}
     else text("My child has no food allergy, severe food allergy or dietary need.",F,11);
-    y-=14;text("Fulton is a nut free school. A severe food allergy is a dangerous or life-threatening reaction to a food, by breathing, eating or touching it, that needs medical care right away.",F,9.5,gray);y-=4;
+    y-=14;text("We are a nut free school. A severe food allergy is a dangerous or life-threatening reaction to a food, by breathing, eating or touching it, that needs medical care right away.",F,9.5,gray);y-=4;
     text("We keep this information confidential and share it only with the educators and school staff who care for your child.",F,9.5,gray);
     y=Math.min(y-40,170);pg.drawLine({start:{x:M,y},end:{x:M+300,y},thickness:.6,color:gray});pg.drawLine({start:{x:M+340,y},end:{x:M+W,y},thickness:.6,color:gray});
     pg.drawText("Signature of parent or guardian",{x:M,y:y-12,size:8.5,font:F,color:gray});pg.drawText("Date",{x:M+340,y:y-12,size:8.5,font:F,color:gray})}

@@ -731,7 +731,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 </style>
 
 <header class="ttop"><div class="ttop-in">
-  <button class="brand" data-tsec="today" aria-label="TREE, Today"><span class="eyebrow">Fulton Community School &amp; Farm</span><h1>TREE</h1><small>Traces, Reflection, Evidence, Experience</small></button>
+  <button class="brand" data-tsec="today" aria-label="TREE, Today"><span class="eyebrow">Fulton Community School</span><h1>TREE</h1><small>Traces, Reflection, Evidence, Experience</small></button>
   <nav class="tnav" id="tnav" aria-label="Sections"></nav>
   <div class="who">
     <span id="mewrap" class="mewrap"><label for="me">Educator</label><input id="me" type="text" list="educators" placeholder="Your name" style="width:150px"></span>
@@ -804,7 +804,7 @@ let PDEF=null;
 function seasonOf(wk){const m=parseIso(wk).getMonth();return m>=8&&m<=10?"Fall":(m===11||m<=1)?"Winter":"Spring"}
 const PROGRAM="Fulton Community School & Farm (Child Family Community, Inc.) is a Reggio-inspired, nature-based early childhood program in Santa Rosa, California, with a garden, farm animals, and art, nature, library, and culinary ateliers. Its mission is to respect and honor the whole child and support children as citizens of the world who follow their imagination into deep discovery. Guiding principles are social constructivism, the image of the child as competent and capable, the educator as researcher and partner, relationships, environment as the third teacher, family involvement, collaboration, documentation, and projects that last days to months. The curriculum is emergent and co-constructed by children and educators, following the cycle of informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, which leads back to informal observation. At its center are visible purposeful learning, emergent curriculum, project work, and community. Classrooms are mixed-age. Risky play is valued, as safe as necessary rather than as safe as possible. The school does not celebrate holidays and instead discusses the values behind them. Families receive weekly classroom newsletters and Friday picture digests through Kaymbu.";
 const DOC_PLAN=["Photos","Children's words and quotes","Work samples","Revisit an earlier drawing or map","Post work at children's eye level","Notepad observations"];
-const WEAK=[["theme","Name what children are doing or wondering. Themes are outside our approach."],["activity","Connect it to what children are thinking.",{not:["materials"]}],["enjoyed","Say how children's thinking changed."],["had fun","Say how children's thinking changed."],["learn about","Phrase it as a question children are holding."],["talk about","Describe how children will share and compare ideas."],["set up","Name the specific materials and how the space changes.",{only:["indoor","outdoor","materials"]}],["all children","Our plans hold several threads at once. Name the different groups."],["worksheet","Worksheets are outside our approach."],["craft","Offer open materials as languages for thinking."],["halloween","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["christmas","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["thanksgiving","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["valentine","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["easter","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."],["holiday","Fulton does not celebrate holidays. Follow the values or the children's own questions underneath."]];
+const WEAK=[["theme","Name what children are doing or wondering. Themes are outside our approach."],["activity","Connect it to what children are thinking.",{not:["materials"]}],["enjoyed","Say how children's thinking changed."],["had fun","Say how children's thinking changed."],["learn about","Phrase it as a question children are holding."],["talk about","Describe how children will share and compare ideas."],["set up","Name the specific materials and how the space changes.",{only:["indoor","outdoor","materials"]}],["all children","Our plans hold several threads at once. Name the different groups."],["worksheet","Worksheets are outside our approach."],["craft","Offer open materials as languages for thinking."],["halloween","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["christmas","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["thanksgiving","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["valentine","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["easter","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["holiday","We do not celebrate holidays. Follow the values or the children's own questions underneath."]];
 
 const FORMS={
  classroom:{name:"Classroom Curriculum Plan",short:"Classroom",who:"Completed together by the classroom team",fields:[
@@ -1649,7 +1649,7 @@ function renderWelcome(){
     <p class="muted" style="max-width:62ch;margin:.4em 0 0">Each form follows the cycle in our handbook. Informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, then back to observation. Tap a sentence starter or a material to add it, check the example for each section, and download a printable PDF when you are done.</p></div>
     <div class="steps">
       <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"TREE can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
-      <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, Fulton's outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
+      <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, our outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
       <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team. Send each one to the director for review when every box has writing.</p></div>
       <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
     </div>
@@ -2480,7 +2480,7 @@ async function shareDraftEdu(){
   const QS=SHQ(),aud=shAudience(shareSt.src);
   const prompt=`${STYLE}
 
-The director is making a teaching post for the school's public Instagram account, ${aud.toLowerCase()}. TREE exists to make children's learning and thinking visible, and a teaching post shares how Fulton understands children and practice, so families and educators can look to the school as a resource.
+The director is making a teaching post for the school's public Instagram account, ${aud.toLowerCase()}. TREE exists to make children's learning and thinking visible, and a teaching post shares how we understand children and practice, so families and educators can look to the school as a resource.
 
 ${A.kind==="inquiry"?`This post draws on a team inquiry, the educators' private study of a challenge, and it carries the school's approach to behavior.
 ${IQ_POLICY}
@@ -2535,7 +2535,7 @@ async function shareDraft(btn){
 
 TREE exists to make children's learning and thinking visible. The director is making a post for the school's public Instagram account from the educators' documentation below, so families and the wider community can see how children think, what they are working out, and how the educators listen and respond. Children's names and children's own words have already been taken out, and they must stay out.
 
-Write in Fulton's voice, the voice of Reggio-inspired documentation, for the school's Instagram.
+Write in the school's own voice, the voice of Reggio-inspired documentation, for the school's Instagram.
 The language standard.
 Every line you write is a complete, grammatical sentence with a subject and a verb. Never write fragments, labels standing in for sentences, or clipped statements, and never drop articles or verbs for brevity.
 The writing is intentional, purposeful and conceptually sophisticated, and it never talks down to the reader. Present ordinary moments as the intellectually serious work they are, naming what children are constructing, such as theories about how living things behave, memory built from experience, relationships, responsibility to others, and the meaning children make together.
@@ -2799,7 +2799,7 @@ async function shareDocx(){
   if(has(shareSt.caption)||has(shareSt.tags)){kids.push(new Paragraph({pageBreakBefore:kids.length>0,spacing:{after:200},children:[new TextRun({text:"Caption",bold:true,size:30,font:"Arial"})]}));
     for(const p of String(shareSt.caption||"").split(/\n+/).filter(has))kids.push(new Paragraph({spacing:{after:160},children:[new TextRun({text:p,size:24,font:"Arial"})]}));
     if(has(shareSt.tags))kids.push(new Paragraph({children:[new TextRun({text:shareSt.tags,size:24,font:"Arial"})]}))}
-  const d=new Document({creator:"Fulton Community School & Farm",title:"Instagram post",sections:[{properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:kids}]});
+  const d=new Document({creator:"Fulton Community School",title:"Instagram post",sections:[{properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:kids}]});
   saveFile(await Packer.toBlob(d),safeFile(`Instagram post ${iso(new Date())}`)+".docx");
 }
 function renderShare(){
@@ -2965,7 +2965,7 @@ const ST_FRAMES=[
   {k:"meal",title:"Sharing a meal together",line:"Food made by hand, treated with care, scraps for the chickens and goats."},
   {k:"hard",title:"When something is hard",line:"Saying what happened, trying again, making things right."},
   {k:"heard",title:"Being heard",line:"Everyone's ideas matter."},
-  {k:"morning",title:"Coming to Fulton in the morning",line:"Arriving, greeting, the animals and the yards."},
+  {k:"morning",title:"Coming to our school in the morning",line:"Arriving, greeting, the animals and the yards."},
   {k:"listen",title:"Listening to each other",line:"Educators and friends listening to one another."},
   {k:"yards",title:"Our yards and garden",line:"The Tire swing yard, the Log yard, the climbing trees."},
   {k:"room",title:"Making room for friends",line:"Inviting, joining, belonging."},
@@ -3034,7 +3034,7 @@ function storyDesignHtml(st){const pal=st.pal||"story",custom=String(pal).starts
     <div class="cnt">Stories print in the same typeface, ink and footer as slides and walls.</div></section>`}
 // a project's first class, whether its classes are kept as names or as entries with a room
 function projRoom(x){const c=(x&&x.classrooms||[])[0];const r=c&&typeof c==="object"?c.room:c;return CLASSROOMS.includes(r)?r:(typeof x.home==="string"&&CLASSROOMS.includes(x.home)?x.home:"")}
-function storyFoot(st){return ["Fulton Community School & Farm",st.classroom?st.classroom+" Class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
+function storyFoot(st){return ["Fulton Community School",st.classroom?st.classroom+" Class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
 function newStory(o){
   if(needName())return null;o=o||{};const n=o.from||null;
   // where the story starts, the observations it brings and the educators' words it is drafted from
@@ -3466,7 +3466,7 @@ async function storyDocx(st){
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
   const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:6}},children:[run(ST_CYCLE,false,8,ST_MUT)]}),
     new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,7.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:15,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(d),safeFile(`Story ${stTitle(st)}`)+".docx");
 }
 /* the small book, a half-letter page for each page of the story, for a family to keep at home or a child to hold */
@@ -3528,7 +3528,7 @@ async function storyBooklet(bytes,n){
   const src=await L.PDFDocument.load(bytes);const out=await L.PDFDocument.create();
   const pages=await out.embedPages(src.getPages());
   for(const [a,b] of bookletOrder(n)){const sh=out.addPage([792,612]);sh.drawPage(pages[a],{x:0,y:0,width:396,height:612});sh.drawPage(pages[b],{x:396,y:0,width:396,height:612})}
-  out.setTitle("Small book");out.setCreator("Fulton Community School & Farm");out.setProducer("TREE");
+  out.setTitle("Small book");out.setCreator("Fulton Community School");out.setProducer("TREE");
   return new Blob([await out.save()],{type:"application/pdf"});
 }
 async function storySmallDocx(st){
@@ -3562,7 +3562,7 @@ async function storySmallDocx(st){
     if(i<pages.length-1)kids.push(new Paragraph({children:[new PageBreak()]}));ch.push(...kids)});
   const footer=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,border:{top:{style:BorderStyle.SINGLE,size:4,color:hx(ST_HAIR),space:5}},children:[run(ST_CYCLE,false,6.5,ST_MUT)]}),
     new Paragraph({alignment:AlignmentType.CENTER,children:[run(storyFoot(st)+"    ·    Page ",false,6.5,ST_MUT),new TextRun({children:[PageNumber.CURRENT],size:13,color:hx(ST_MUT),font:F(false)})]})]});
-  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School & Farm",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
+  const wf=wordFonts();const d=new Document(Object.assign({creator:"Fulton Community School",title:stTitle(st),...(st.bg==="tint"?{background:{color:hx(BG)}}:{}),sections:[{properties:{page:{size:{width:7920,height:12240,orientation:PageOrientation.PORTRAIT},margin:{top:720,bottom:720,left:720,right:720}}},footers:{default:footer},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(d),safeFile(`Small book ${stTitle(st)}`)+".docx");
 }
 // the deck as its sheets, in order, numbered, each with its evidence page when asked, and the closing quote
@@ -3734,7 +3734,7 @@ const PF_DRDP={within:"DRDP on each page",end:"DRDP at the end",none:"No DRDP"};
 const pfDrdpMode=()=>{const v=LS.get("tree.pfdrdp","within");return PF_DRDP[v]?v:"within"};
 function portfolioDocs(c,mode,drdp){
   mode=mode||PRINT.names;drdp=drdp||pfDrdpMode();const items=portfolioItems(c);
-  const name=mode==="none"?"A year at Fulton":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
+  const name=mode==="none"?"A year at Fulton Community School":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   const who=[...new Set(items.map(x=>x.kind==="slides"?x.s.by:x.kind==="stories"?x.st.by:x.n.by).filter(Boolean))];
   const cover={centered:true,display:true,type:"report",acc:"story",title:name,details:[c.classroom?c.classroom+" class":"",yearFromTime(Date.now()).replace("-"," to "),who.length&&who.length<=3?"With "+who.join(", ").replace(/, ([^,]*)$/," and $1"):""],photos:[],
     blocks:[{t:"para",text:(()=>{const whose=mode==="none"?"A child's":`${shownName(c.first,c.last||"",mode==="initials"?"initials":"first")}'s`;if(!items.length)return `${whose} story`;
@@ -4577,7 +4577,7 @@ function renderWalks(){const m=$("#main");if(walkInfo===null){loadWalks();m.inne
     <div class="lbl" style="margin-top:8px">${esc((w.backpack||{}).title||"The emergency backpack")}</div>${list((w.backpack||{}).items)}<button class="linkbtn" data-hbopen="${esc((w.backpack||{}).id||"")}">In the Teacher Policies and Procedures</button></section>
   <section class="card"><h3 style="font-size:17px">Safety comes first</h3><div>${esc((w.rule||[]).join(" "))}</div></section>
   <section class="card"><div class="secthead"><h3 style="font-size:17px">Walk agreements for children</h3><span class="actions" style="margin:0">${printBtns("walkcard","","PDF")}</span></div>${list(w.agreements)}
-    <div class="cnt">The card prints with photos of Fulton's own walks and never a child's face.${(w.photos||[]).length?` ${w.photos.length} photo${w.photos.length>1?"s":""} chosen.`:" No photos chosen yet."}</div>
+    <div class="cnt">The card prints with photos of our own walks and never a child's face.${(w.photos||[]).length?` ${w.photos.length} photo${w.photos.length>1?"s":""} chosen.`:" No photos chosen yet."}</div>
     ${dir?`<details style="margin-top:8px"><summary class="linkbtn">Choose the card's photos</summary><div class="hint">Each photo is checked for faces on this device. A photo with a face found is never offered. Look at each one yourself too, since a face check can miss a face.</div>
       <div class="walkpics" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:6px">${choices.map(n=>{const pk=walkPick&&walkPick[n.photo.id];return `<div class="cnt" style="min-width:0"><img src="${esc(photoSrc(n))}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px">${pk==="face"?`<div class="warnline">A face was found. Not offered.</div>`:pk==="clear"||chosen.has(n.photo.id)?`<label class="radio"><input type="checkbox" data-walkpic="${esc(n.photo.id)}" data-obs="${esc(n.id)}" ${chosen.has(n.photo.id)?"checked":""}><span>No child's face shows</span></label>`:`<button class="linkbtn" data-walkcheck="${esc(n.photo.id)}" data-obs="${esc(n.id)}">Check for faces</button>`}</div>`}).join("")||`<div class="empty">No observation photos of walks yet.</div>`}</div>
       <div class="actions"><button class="btn small" data-walkpicsave="1">Keep the photos ticked</button></div></details>`:""}</section>
@@ -5079,7 +5079,7 @@ document.addEventListener("click",async e=>{
   if(d.nlkaymbu){nlKaymbu=!nlKaymbu;renderNewsletter();if(nlKaymbu)setTimeout(()=>{const b=$(".nlblock");if(b)b.scrollIntoView({block:"start",behavior:"smooth"})},60);return}
   if(t.hasAttribute("data-nlcopy")){copyText($("#nlb-"+d.nlcopy));return}
   if(d.nlsave){const n=notices.get(d.nlsave);if(!n||!n.photo)return;try{const r=await fetchPhoto(window.FP_ORIGINAL_URL(n.photo.id));const blob=await r.blob();
-      await downloads.save({filename:`Fulton newsletter ${nlMonthOnly(k)} photo ${n.photo.id.slice(0,6)}.jpg`,data:blob})}catch(err){toast("The photo could not be saved. Try again.")}return}
+      await downloads.save({filename:`Fulton Community School newsletter ${nlMonthOnly(k)} photo ${n.photo.id.slice(0,6)}.jpg`,data:blob})}catch(err){toast("The photo could not be saved. Try again.")}return}
   if(d.nlword){nlWord(x);return}
   if(d.nlpdf){nlPdf(x);return}
   if(d.nlsent){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length&&!confirm("A topic about a behavior names a child. Mark it as sent anyway?"))return;x.status="sent";x.sentAt=Date.now();nlSave(x,true);toast("Marked as sent. It stays in Past newsletters.");renderNewsletter();return}
@@ -5138,11 +5138,11 @@ async function nlWord(x){
   if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
   {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){ch.push(rule());ch.push(H("From our farms",28,{before:120}));for(const pp of ft.split(/\n\n/))ch.push(P(pp))}}
   if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(c.text)]))}
-  const wf=wordFonts();const doc=new Document({creator:"Fulton Community School & Farm",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
+  const wf=wordFonts();const doc=new Document({creator:"Fulton Community School",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
     numbering:{config:[{reference:"dots",levels:[{level:0,format:LevelFormat.BULLET,text:"•",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:240}}}}]}]},
-    sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1080,bottom:1080,left:1200,right:1200}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School & Farm",{size:16,color:MUTED})]})]})},children:ch}]});
+    sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1080,bottom:1080,left:1200,right:1200}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School",{size:16,color:MUTED})]})]})},children:ch}]});
   const blob=await Packer.toBlob(doc);
-  await downloads.save({filename:`Fulton family newsletter ${nlName(x.month)}.docx`,data:blob});
+  await downloads.save({filename:`Fulton Community School family newsletter ${nlName(x.month)}.docx`,data:blob});
 }
 // tips drafted with markdown keep their words and lose the asterisks
 const nlTxt=t=>String(t??"").replace(/\*+/g,"").replace(/ +([.,])/g,"$1");
@@ -5192,8 +5192,8 @@ async function nlPdf(x){
   // a last page under a third full, or more than four pages, is worth setting a little smaller
   for(const sc of [.96,.93,.9,.87]){const n=B.doc.getNumberOfPages();if(n<2||(B.last>PH*.33&&n<=4))break;const T=build(sc);if(T.doc.getNumberOfPages()<n){B=T;break}}
   const doc=B.doc;
-  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);pfont(doc,"fr",7.6);doc.setTextColor(...C.muted);doc.text("Fulton Community School & Farm"+(n>1?`   ${i} of ${n}`:""),PW/2,PH-28,{align:"center"})}
-  await saveFile(doc.output("blob"),`Fulton family newsletter ${nlName(x.month)}.pdf`);
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);pfont(doc,"fr",7.6);doc.setTextColor(...C.muted);doc.text("Fulton Community School"+(n>1?`   ${i} of ${n}`:""),PW/2,PH-28,{align:"center"})}
+  await saveFile(doc.output("blob"),`Fulton Community School family newsletter ${nlName(x.month)}.pdf`);
 }
 
 /* ---------- Conferences and the calendar, inside TREE ---------- */
@@ -5267,11 +5267,11 @@ document.addEventListener("click",async e=>{
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
   if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();if(view==="plans"&&!currentId)renderMain();return}
   if(t.id==="prevwk"||t.id==="nextwk"){week=addDays(week,t.id==="prevwk"?-7:7);currentId=null;renderAll();return}
-  if(t.id==="blanks"){makePdf(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.pdf");return}
-  if(t.id==="packet"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makePdf(ps,`Fulton plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.pdf`);return}
-  if(t.id==="packetw"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makeDocx(ps,`Fulton plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.docx`);return}
-  if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton blank planning forms.docx");return}
-  if(t.id==="sample"){makePdf([EXAMPLE],"Fulton sample classroom plan.pdf");return}
+  if(t.id==="blanks"){makePdf(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.pdf");return}
+  if(t.id==="packet"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makePdf(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.pdf`);return}
+  if(t.id==="packetw"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makeDocx(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.docx`);return}
+  if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.docx");return}
+  if(t.id==="sample"){makePdf([EXAMPLE],"Fulton Community School sample classroom plan.pdf");return}
   if(!p)return;
   if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);const list=ev?[p,ev]:[p];
     (async()=>{if(ev)await loadPhotos([ev]);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"))})();return}
@@ -5442,7 +5442,7 @@ function talkClosed(text){
     if(alt)out.push({q,alt})}
   return out}
 function talkNoteHtml(text){const f=talkClosed(text);if(!f.length)return "";
-  return `<div class="talknote" role="note"><b>${f.length>1?"These may be closed questions":"This may be a closed question"}.</b> ${f.slice(0,3).map(x=>`<div>“${esc(x.q)}” <span class="muted">One open way to say it.</span> ${esc(x.alt)}</div>`).join("")}<div class="muted">Fulton's language favors describing, noticing and inviting, like Tell me about this. Nothing is changed unless you change it.</div></div>`}
+  return `<div class="talknote" role="note"><b>${f.length>1?"These may be closed questions":"This may be a closed question"}.</b> ${f.slice(0,3).map(x=>`<div>“${esc(x.q)}” <span class="muted">One open way to say it.</span> ${esc(x.alt)}</div>`).join("")}<div class="muted">Our language favors describing, noticing and inviting, like Tell me about this. Nothing is changed unless you change it.</div></div>`}
 function talkScan(root){for(const el of (root||document).querySelectorAll("[data-talk]")){let n=el.nextElementSibling;if(!(n&&n.classList.contains("talkslot"))){n=document.createElement("div");n.className="talkslot";el.after(n)}
   const h=talkNoteHtml(el.value);if(n.innerHTML!==h)n.innerHTML=h}}
 document.addEventListener("input",e=>{const el=e.target;if(el&&el.matches&&el.matches("[data-talk]")){clearTimeout(el._talkT);el._talkT=setTimeout(()=>talkScan(el.parentElement),400)}});
@@ -5450,7 +5450,7 @@ new MutationObserver(()=>{clearTimeout(window.__talkT);window.__talkT=setTimeout
 /* How Fulton talks with children and families, from Fulton's own guide, Effective Responses to Children's Aesthetic
    Products, and Tom Drummond's Enterprise Talk. Every prompt that writes a question, an invitation or a suggestion for
    children or families carries it, and the closed-question note below checks drafts against it. */
-const FULTON_TALK="How Fulton talks with children and families. Favor statements over questions. Describe what is there to see, the lines, colors, shapes, textures, patterns and materials. Name what the child did, like You carried the bowl all the way to the table. Share the adult's own noticing or memory with I, like I notice the yellow is brighter next to the gray, or I remember making a boat like that. Acknowledge effort and feelings with specific feeling words offered gently, like You worked a long time on that, or You look proud of your collage. Recognize progress and what the child keeps returning to, like This is your third drawing of the goats. Invite in ways only the child can answer, like Tell me about this, Show me a part you like, Tell me how you made it, or Tell me the story that goes with it. When a question is right, ask an open one the child is the expert on, with no single right answer. Never ask What is it, and never guess what something is. Never quiz on colors, counting, names or facts, like What color is it or How many are there. Never ask children yes or no questions, like Can you, Do you want, Would you like or Did you. Never ask a question that is really a direction or a test of what a child should say or do, like What do you say, What could you say to your friend, or Where does your coat go. No praise or judgment words, like good job, beautiful, pretty, nice, great, amazing or I like the way. For families, suggest noticing, describing, joining in, telling stories, and displaying and keeping children's work, never giving children jobs, directions or tests.";
+const FULTON_TALK="How we talk with children and families. Favor statements over questions. Describe what is there to see, the lines, colors, shapes, textures, patterns and materials. Name what the child did, like You carried the bowl all the way to the table. Share the adult's own noticing or memory with I, like I notice the yellow is brighter next to the gray, or I remember making a boat like that. Acknowledge effort and feelings with specific feeling words offered gently, like You worked a long time on that, or You look proud of your collage. Recognize progress and what the child keeps returning to, like This is your third drawing of the goats. Invite in ways only the child can answer, like Tell me about this, Show me a part you like, Tell me how you made it, or Tell me the story that goes with it. When a question is right, ask an open one the child is the expert on, with no single right answer. Never ask What is it, and never guess what something is. Never quiz on colors, counting, names or facts, like What color is it or How many are there. Never ask children yes or no questions, like Can you, Do you want, Would you like or Did you. Never ask a question that is really a direction or a test of what a child should say or do, like What do you say, What could you say to your friend, or Where does your coat go. No praise or judgment words, like good job, beautiful, pretty, nice, great, amazing or I like the way. For families, suggest noticing, describing, joining in, telling stories, and displaying and keeping children's work, never giving children jobs, directions or tests.";
 const STYLE=PROGRAM+" Write in plain, warm, professional language an early childhood educator would use. Refer to adults as educators, never teachers. Never use em dashes. Never use colons except in clock times. Never use analogies or 'not X but Y' framing. Never mention DRDP measures or domains. Do not use theme language, activity-based language, or evaluative words like enjoyed or had fun. Outside exact quotes from the plans, avoid these words and phrases and reword around them while keeping every fact, theme, activity, enjoyed, had fun, learn about, talk about, set up, all children, worksheet, craft, and holiday names. When you write a question, an invitation or a suggestion for children or families yourself, follow this. "+FULTON_TALK+" When you strengthen or tidy an educator's own words, keep each question the educator wrote as their question, in its meaning and its kind.";
 // the plan's other sections, given for understanding. The section being worked on is left out so it is not read twice.
 function planContext(p,skip){const F=FORMS[p.type];return F.fields.filter(f=>f.k!==skip&&p.fields[f.k]).map(f=>`${f.label}. ${p.fields[f.k]}`).join("\n")}
@@ -5841,7 +5841,7 @@ async function makeDocx(list,filename,ret){
     sections.push({properties:{page:{size:p.centered&&p.sq?{width:12240,height:12240}:landP?{width:12240,height:15840,orientation:D.PageOrientation.LANDSCAPE}:{width:12240,height:15840},margin:p.display?{top:900,bottom:840,left:p.centered?1080:DISPLAY_DOCX_MARGIN,right:p.centered?1080:DISPLAY_DOCX_MARGIN}:{top:720,bottom:720,left:800,right:800}},pageNumbers:{start:1}},footers:{default:new Footer({children:p.display?dFoot:footKids})},children:ch});
   }
   const wf=wordFonts();
-  const docx=new Document(Object.assign({creator:"TREE, Fulton Community School & Farm",title:filename.replace(/\.docx$/,""),sections},{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}},wf.length?{fonts:wf}:{}));
+  const docx=new Document(Object.assign({creator:"TREE, Fulton Community School",title:filename.replace(/\.docx$/,""),sections},{styles:{default:{document:{run:{font:wf.length?PF.word.fr:"Arial"}}}}},wf.length?{fonts:wf}:{}));
   const blob=await Packer.toBlob(docx);
   if(ret){if(ret==="quiet")centerOver=[];else overWarn();return blob}
   saveFile(blob,filename);overWarn();
@@ -6787,7 +6787,7 @@ const gList=id=>Object.values((grantRecs.get(id)||{}).list||{}).filter(Boolean);
 const gMoney=n=>"$"+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const gKey=s=>String(s||"").toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").replace(/\s*(co|llc|inc)\.?$/,"").trim();
 // producers named in the school's own application, as the application describes them
-const G_KNOWN={"central milling":{town:"Petaluma",miles:620,county:"Utah",note:"Organic whole wheat flours for the breads, doughs and crusts made by hand at Fulton, picked up at Keith Giusto Bakery Supply in Petaluma. The wheat is grown out of state, largely by Utah growers, and milled in Logan, Utah, about 620 miles away. Whole grain flour keeps the bran and germ, with their fiber, B vitamins and vitamin E. Certified organic wheat is grown without glyphosate or other synthetic pesticides. The flour is unbleached and never bromated, an additive California bans in food from 2027. Central Milling has been part of Grain Craft, a large Tennessee miller, since 2024.",sources:["https://centralmilling.com/faqs-flour-grains","https://centralmilling.com/product/high-protein-100-whole-wheat-flour-hi-pro-fine/","https://nutritionsource.hsph.harvard.edu/what-should-you-eat/whole-grains/","https://www.ecfr.gov/current/title-7/subtitle-B/chapter-I/subchapter-M/part-205/subpart-G/subject-group-ECFR4b1a0b2d8de2b8f/section-205.601","https://legiscan.com/CA/text/AB418/2023","https://www.graincraft.com/grain-craft-announces-acquisition-partnership-with-central-milling/"]},"earthseed farm":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"l&n produce stand":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"singing frogs farm":{climate:true,note:"Named in the application for no till and rotational practices"},"green star farm":{climate:true,note:"Named in the application for sustainable practices"},"petaluma creamery":{town:"Petaluma",standing:"Cheese"},"next generation foods":{town:"West Sacramento",standing:"Beans and grains"}};
+const G_KNOWN={"central milling":{town:"Petaluma",miles:620,county:"Utah",note:"Organic whole wheat flours for the breads, doughs and crusts made by hand in our kitchen, picked up at Keith Giusto Bakery Supply in Petaluma. The wheat is grown out of state, largely by Utah growers, and milled in Logan, Utah, about 620 miles away. Whole grain flour keeps the bran and germ, with their fiber, B vitamins and vitamin E. Certified organic wheat is grown without glyphosate or other synthetic pesticides. The flour is unbleached and never bromated, an additive California bans in food from 2027. Central Milling has been part of Grain Craft, a large Tennessee miller, since 2024.",sources:["https://centralmilling.com/faqs-flour-grains","https://centralmilling.com/product/high-protein-100-whole-wheat-flour-hi-pro-fine/","https://nutritionsource.hsph.harvard.edu/what-should-you-eat/whole-grains/","https://www.ecfr.gov/current/title-7/subtitle-B/chapter-I/subchapter-M/part-205/subpart-G/subject-group-ECFR4b1a0b2d8de2b8f/section-205.601","https://legiscan.com/CA/text/AB418/2023","https://www.graincraft.com/grain-craft-announces-acquisition-partnership-with-central-milling/"]},"earthseed farm":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"l&n produce stand":{sdlr:true,note:"Named in the application for BIPOC and female representation"},"singing frogs farm":{climate:true,note:"Named in the application for no till and rotational practices"},"green star farm":{climate:true,note:"Named in the application for sustainable practices"},"petaluma creamery":{town:"Petaluma",standing:"Cheese"},"next generation foods":{town:"West Sacramento",standing:"Beans and grains"}};
 function gProducer(name){const k=gKey(name);const L=(grantRecs.get("producers")||{}).list||{};
   // FEED names a farm a little differently in different places, such as Devoto Gardens and Devoto Gardens & Orchards
   const own=L[k]||Object.entries(L).find(([n])=>n.length>5&&(k.startsWith(n)||n.startsWith(k)))?.[1]||{};const base=G_KNOWN[k]||{};
@@ -7463,7 +7463,7 @@ function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.fi
 /* ---------- Food at Fulton, made for the school ----------
    Farm to School does work for the school from what TREE already holds. Each piece waits for the director before it
    leaves the school. Nothing here invents a farm, a number or a child's words. */
-const F2S_FUND="Fulton's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
+const F2S_FUND="Fulton Community School & Farm's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
 const mShift=(m,k)=>{const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo-1+k,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
 const mNow=()=>iso(new Date()).slice(0,7);
 // food education in the observations, the ones the director marked Counts first, then everything the food words found
@@ -7506,7 +7506,7 @@ function farmPostStart(month){const {F,best}=farmOfMonth(month);if(!best){toast(
   const src="food:"+(month===mShift(mNow(),-1)?"lastmonth":"month");const ns=shareGather(src);
   if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;shView=false;shStarting=false;
   const foods=[...new Set(best.foods.map(f=>foodName(f)))].filter(Boolean).slice(0,4);
-  const cap=`Farm of the month. ${best.farm}${best.town?" in "+best.town:""} grew the ${kList(foods)} on our children's table in ${F.name}. Everything at Fulton is cooked from scratch, with our breads baked by hand, and this month our food came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}${F.sonoma?`, ${F.sonoma} of them here in Sonoma County`:""}. Thank you, ${best.farm}.\n\n${F2S_FUND}`;
+  const cap=`Farm of the month. ${best.farm}${best.town?" in "+best.town:""} grew the ${kList(foods)} on our children's table in ${F.name}. Everything here is cooked from scratch, with our breads baked by hand, and this month our food came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}${F.sonoma?`, ${F.sonoma} of them here in Sonoma County`:""}. Thank you, ${best.farm}.\n\n${F2S_FUND}`;
   shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,ids:ns.map(n=>n.id),off:[],add:[],titleOn:true,title:"Farm of the month, "+best.farm,linesOn:false,menuOn:true,farmsOn:true,lines:{},quote:"",quotePhoto:"none",wordsOn:true,words:{},cardsOn:false,cards:shareCardsFrom(src),caption:cap,tags:"#farmtoschool #sonomacounty #eatlocal #reggioinspired",at:Date.now(),farmMonth:month};
   shareSave();goView("share");shareCheckFaces()}
 const farmPostMade=m=>[...posts.values()].some(x=>x&&!x.deleted&&x.farmMonth===m);
@@ -7521,34 +7521,34 @@ function impactDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to)
   if(qs.length){blocks.push(dSub("In the educators' words"));for(const n of qs)blocks.push(dQuote(shareScrub(sentFit(momentBody(n),360)),n.by||"An educator",shortDate(n.at)))}
   const ph=foodPhotos(from,to,1)[0];if(ph)blocks.push(dPhoto(ph,300,true));
   blocks.push(dText("",F2S_FUND));
-  return {display:true,type:"report",acc:"smallgroup",title:"Farm to School at Fulton, "+periodName(q),meta:[["Agreement",gSet().agreement]],blocks}}
+  return {display:true,type:"report",acc:"smallgroup",title:"Farm to School at Fulton Community School & Farm, "+periodName(q),meta:[["Agreement",gSet().agreement]],blocks}}
 // a page for tours and Open House, for the school year so far
 function tourDoc(){const ys=ptYearStart(),to=iso(new Date());const lines=gLines(ys,to);
   const farms=new Set(lines.map(x=>gKey(x.producer)));for(const b of binAll().filter(b=>b.date>=ys))for(const i of b.items||[])for(const f of i.farms||[])farms.add(gKey(f));
   const names=new Map();for(const x of lines)names.set(gKey(x.producer),x.producer);for(const b of binAll().filter(b=>b.date>=ys))for(const i of b.items||[])for(const f of i.farms||[])names.set(gKey(f),f);
   const son=[...farms].filter(k=>gTownCounty(fTown(names.get(k)))==="Sonoma").length;const st=kStapleList().slice(0,3);const blocks=[];
-  blocks.push(dLead("","Every meal at Fulton is cooked from scratch in our school kitchen, and our breads, doughs and crusts are made by hand."));
+  blocks.push(dLead("","Every meal here is cooked from scratch in our school kitchen, and our breads, doughs and crusts are made by hand."));
   blocks.push(dText("This school year",`${farms.size} local farms and producers have grown our food${son?`, ${son} of them here in Sonoma County`:""}. Each Class opens a FEED Sonoma bin of fresh produce every week, and the children wash, prepare, taste and share it together.`));
   if(st.length)blocks.push(dText("Our staples",kCap(kList(st.map(x=>x.food+(x.maker?" from "+x.maker:""))))+"."));
   blocks.push(dText("Scraps","What is left goes to our chickens and goats at the end of each day."));
   for(const n of foodPhotos(addDays(to,-120),to,2))blocks.push(dPhoto(n,220));
   blocks.push(dText("",F2S_FUND));
-  return {display:true,type:"report",acc:"smallgroup",title:"Food at Fulton",meta:[["Fulton Community School & Farm","1225 Fulton Road, Santa Rosa"]],blocks}}
+  return {display:true,type:"report",acc:"smallgroup",title:"Food at Fulton Community School",meta:[["Fulton Community School","1225 Fulton Road, Santa Rosa"]],blocks}}
 // a thank-you card for each farm the school ate from in the quarter, with space for the children's drawings
 function thanksDocs(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const by=new Map();
   for(const x of lines){if(kIsStaple({food:x.item,farm:x.producer}))continue;const k=gKey(x.producer);const e=by.get(k)||{farm:x.producer,foods:new Set()};e.foods.add(foodName(x.item));by.set(k,e)}
   for(const b of binAll().filter(b=>b.date>=from&&b.date<=to))for(const i of b.items||[])for(const f of i.farms||[]){const k=gKey(f);const e=by.get(k)||{farm:f,foods:new Set()};e.foods.add(foodName(i.name));by.set(k,e)}
   const pics=foodPhotos(from,to,12);
   return [...by.values()].filter(e=>e.foods.size).slice(0,20).map((e,i)=>{const foods=[...new Set([...e.foods].filter(Boolean))].slice(0,5);const blocks=[];
-    blocks.push(dLead("",`Thank you for the ${kList(foods)} you grew for the children of Fulton Community School & Farm this season.`));
+    blocks.push(dLead("",`Thank you for the ${kList(foods)} you grew for our children this season.`));
     const pic=pics.find(n=>foods.some(f=>String(n.noticed||"").toLowerCase().includes(f.split(" ")[0])))||pics[i%Math.max(1,pics.length)];if(pic)blocks.push(dPhoto(pic,230,true));
     blocks.push(dText("From the children","\n\n\n\n\n"));
-    return {display:true,type:"report",acc:"smallgroup",title:"Thank you, "+e.farm,meta:[["From","the children and educators of Fulton"]],blocks}})}
+    return {display:true,type:"report",acc:"smallgroup",title:"Thank you, "+e.farm,meta:[["From","the children and educators of Fulton Community School"]],blocks}})}
 // the month's recipe, as the kitchen wrote it, for families
 function recipeDoc(month){const mrec=menus.get(month)||{};const name=String(mrec.recipe||"").trim(),card=String(mrec.recipeCard||"").trim();if(!card)return null;
   const F=farmMonthData(month);const low=card.toLowerCase();const from=(F.top||[]).filter(t=>low.includes(String(t.food||"").toLowerCase().split(" ")[0])).slice(0,3).map(t=>`The ${String(t.food).toLowerCase()} came from ${t.farm}${t.town?" in "+t.town:""}.`);
-  const blocks=[dText("",card)];if(from.length)blocks.push(dText("Where it came from",from.join(" ")));blocks.push(dText("","Made from scratch in the Fulton kitchen."));
-  return {display:true,type:"report",acc:"smallgroup",title:name||"Recipe of the month",meta:[["From the Fulton kitchen",parseIso(month+"-01").toLocaleDateString("en-US",{month:"long",year:"numeric"})]],blocks}}
+  const blocks=[dText("",card)];if(from.length)blocks.push(dText("Where it came from",from.join(" ")));blocks.push(dText("","Made from scratch in our kitchen."));
+  return {display:true,type:"report",acc:"smallgroup",title:name||"Recipe of the month",meta:[["From the Fulton Community School kitchen",parseIso(month+"-01").toLocaleDateString("en-US",{month:"long",year:"numeric"})]],blocks}}
 
 /* the director's card on the Farm to School page, and the rows on Today */
 function madeForSchoolHtml(){const b=binCurrent(),bn=binNoteRec(b),pm=mShift(mNow(),-1),lq=lastQuarter(),m=mNow();const mrec=menus.get(m)||{};
@@ -7556,7 +7556,7 @@ function madeForSchoolHtml(){const b=binCurrent(),bn=binNoteRec(b),pm=mShift(mNo
     <div class="gmade"><div><b>This week's bin note for families</b><div class="cnt">${!b?"The bin list has not arrived yet.":!bn?"TREE writes it as soon as the bin list arrives.":bn.status==="posted"?"On the Family page.":"Ready for you to read."}</div>
       ${b&&bn?`<textarea id="g-binnote" aria-label="The bin note" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button><button class="linkbtn" data-gbn="again">Write it again</button></div>`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
     <div><b>Farm of the month</b><div class="cnt">${(()=>{const fm=farmOfMonth(pm).best;return fm?`${esc(fm.farm)} for ${esc(parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"}))}${farmPostMade(pm)?", the post is started in Share":""}.`:"No farm in last month's orders yet."})()}</div><div class="actions"><button class="btn small ghost" data-gfom="${pm}">${farmPostMade(pm)?"Start it again":"Start the post in Share"}</button></div></div>
-    <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${printBtns("ftour","","Food at Fulton for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
+    <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${printBtns("ftour","","Food at Fulton Community School for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
       <div class="cnt">The recipe card comes once the kitchen writes the recipe on the Kitchen page.</div></div></div></div></details>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gbn],[data-gfom]");if(!t)return;e.stopImmediatePropagation();
   if(t.dataset.gfom){farmPostStart(t.dataset.gfom);return}
@@ -7596,7 +7596,7 @@ function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&String(l.date
   const fams=[...new Set(ls.map(l=>{const c=children.get(l.childId);return c?(has(c.last)?"the "+c.last+" family":c.first+"'s family"):""}).filter(Boolean))].sort();
   const what=[...new Set(ls.map(l=>String(l.what||"").trim().toLowerCase()).filter(Boolean))].slice(0,4);
   const mn=parseIso(month+"-01").toLocaleDateString("en-US",{month:"long"});
-  return `Thank you to ${kList(fams)} for the time you gave the school in ${mn}${what.length?`, from ${kList(what)}`:""}. It makes Fulton the community it is.`}
+  return `Thank you to ${kList(fams)} for the time you gave the school in ${mn}${what.length?`, from ${kList(what)}`:""}. It makes our school the community it is.`}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.nlthanks&&view==="newsletter"){const x=nlDoc(nlCur());if(!x)return;x.thanks=t.checked;nlSave(x);renderNewsletter();return}});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Meals or education ----------
@@ -7852,7 +7852,7 @@ async function kMonthMenuDocx(month,D,title,foot,extra){let X;try{X=await loadSc
   ch.push(new Paragraph({spacing:{before:0,after:0,line:40,lineRule:"exact"},children:[run(" ","fr",2)]}));
   // Word ends a page with a paragraph after the last table, so it is kept one point tall and never opens a second page
   ch.push(new Paragraph({spacing:{before:0,after:0,line:20,lineRule:"exact"},children:[run(" ","fr",1)]}));
-  const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School & Farm",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
+  const wf=wordFonts();const docx=new Document(Object.assign({creator:"Fulton Community School",title:`${title} ${name}`,sections:[{properties:{page:{size:{width:12240,height:15840,orientation:PageOrientation.LANDSCAPE},margin:{top:580,bottom:580,left:600,right:600}}},children:ch}]},wf.length?{fonts:wf}:{}));
   await saveFile(await Packer.toBlob(docx),`${name} ${title==="Monthly menu"?"menu":title.toLowerCase()}.docx`)}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
@@ -8221,7 +8221,7 @@ const ISTATUS={open:"Open",resting:"Resting",closed:"Closed"};
    Discipline policy sets out. An inquiry is usually about a behavior or a challenge, so it is rooted there. The relationship
    with the child comes first, then open communication with the family, then guiding with the children themselves. */
 const IQ_PHIL="We guide children through relationship-based, positive discipline. Connection with the child comes first, we work in open communication with the family, and we guide with the children, so they learn to manage their own behavior and keep a positive image of themselves.";
-const IQ_POLICY=`Fulton guides children through relationship-based, positive discipline, as its Behavior and Discipline policy sets out. Behavior is how a child meets a need. The educators look for the reason behind it, knowing they will not always find it, and respond in the way that fits this child. Write about the reason as something the team is looking for, never as something known. Every child is guided as an individual.
+const IQ_POLICY=`We guide children through relationship-based, positive discipline, as our Behavior and Discipline policy sets out. Behavior is how a child meets a need. The educators look for the reason behind it, knowing they will not always find it, and respond in the way that fits this child. Write about the reason as something the team is looking for, never as something known. Every child is guided as an individual.
 The policy rests on three things. First, open communication and a positive relationship with the family, so home and school can offer the child consistency. Second, a positive relationship between the child and the educators, who know the child's cues, such as when the child is tired, hungry, angry, hurt, content or needs time alone, and who build connection before they guide. Third, guiding the children themselves, through meeting time conversations about expectations, with children taking part in deciding them and hearing why they exist, and through peer problem solving with an educator's support when it is needed.
 The aim is that children learn to manage their own behavior, rather than needing adults to control it, and keep a positive image of themselves.
 Never suggest or describe time-outs, punishment, consequences meant to make a child feel bad, removing a child from the group as a penalty, shame, ridicule, threats, coercion, or withholding food, rest, toileting, comfort or anything a child needs. Never label a child.`;
@@ -8821,7 +8821,7 @@ const ptItems=()=>[...participation.values()].filter(x=>x.kind==="item");
 // ways to take part to start from, so posting one is a tap. At home gives working families real options.
 const PT_BANK=[
   {g:"At school",items:[{type:"task",title:"Garden workday",hours:3,note:"Weeding, planting and watering with the children's small groups."},{type:"task",title:"Animal care morning",hours:2,note:"Feeding and cleaning with the chickens and goats, alongside the children."},{type:"task",title:"Kitchen prep with the chef",hours:2,note:"Washing and chopping for lunch in the school kitchen."},{type:"task",title:"Help on a creek walk",hours:2,note:"An extra adult so a small group can walk to the creek."},{type:"task",title:"Wash classroom materials",hours:2,note:"Washing blocks, baskets and loose parts."},{type:"task",title:"Fix and build",hours:3,note:"Repairs around the yards and studios."}]},
-  {g:"At home",items:[{type:"task",title:"Sew or mend dress-up clothes",hours:2,note:"Pick up a bag at the office and bring it back mended."},{type:"task",title:"Wash classroom laundry",hours:1,note:"Take home a bag of towels and smocks on Friday, bring it back Monday."},{type:"task",title:"Prepare art materials at home",hours:2,note:"Cutting, sorting and bundling materials for the studios."},{type:"task",title:"Translate a family letter",hours:1,note:"For families who read another language."},{type:"task",title:"Make playdough",hours:1,note:"A batch for a classroom, with the recipe from the office."},{type:"task",title:"Collect materials for the children to reuse",hours:1,note:"Clean bottle caps, corks, jar lids, cardboard tubes, fabric scraps and ribbon for the studios. Fulton is nut free, so nothing that held nuts or nut butters, please."}]},
+  {g:"At home",items:[{type:"task",title:"Sew or mend dress-up clothes",hours:2,note:"Pick up a bag at the office and bring it back mended."},{type:"task",title:"Wash classroom laundry",hours:1,note:"Take home a bag of towels and smocks on Friday, bring it back Monday."},{type:"task",title:"Prepare art materials at home",hours:2,note:"Cutting, sorting and bundling materials for the studios."},{type:"task",title:"Translate a family letter",hours:1,note:"For families who read another language."},{type:"task",title:"Make playdough",hours:1,note:"A batch for a classroom, with the recipe from the office."},{type:"task",title:"Collect materials for the children to reuse",hours:1,note:"Clean bottle caps, corks, jar lids, cardboard tubes, fabric scraps and ribbon for the studios. We are nut free, so nothing that held nuts or nut butters, please."}]},
   {g:"Community events",items:[{type:"event",title:"Family potluck",hours:2,counts:true,question:"What dish will you bring?"},{type:"event",title:"Parent information night",hours:2,counts:true},{type:"event",title:"Family workday",hours:4,counts:true},{type:"event",title:"Second Saturday helper",hours:3,counts:true}]},
   {g:"Share a skill",items:[{type:"task",title:"Share a skill or craft with a small group",hours:2,note:"Knitting, woodworking, music, building, anything your family loves to do."},{type:"task",title:"Share a family tradition or recipe",hours:2},{type:"task",title:"Share a song or a language",hours:1}]},
   {g:"Wish list",items:[{type:"wish",title:"A fruit tree for the farm",hours:3,note:"A young fruit tree for the orchard. Ask the office which kinds fit."},{type:"wish",title:"Plants and seedlings for the garden",hours:2},{type:"wish",title:"Seeds for the season",hours:1},{type:"wish",title:"Rain gear in children's sizes",hours:2,note:"Waterproof rain suits, rain pants and jackets, and rain boots with no fabric lining, clean and in good shape, for children who need them."},{type:"wish",title:"Art materials",hours:1,note:"Watercolors, oil pastels, good paper."},{type:"wish",title:"Loose parts from nature",hours:1,note:"Pinecones, shells, smooth stones, wood rounds."}]}];
@@ -8887,7 +8887,7 @@ function renderParticipation(){
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
       <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
       <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
-      ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from Fulton's Welcome Letter and Logistics.</div>`}</details></section>
+      ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from our Welcome Letter and Logistics.</div>`}</details></section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Admission agreement dates</h3> <span class="cnt">${c.aa&&c.aa.start?esc(fmtDate(c.aa.start))+" to "+esc(fmtDate(c.aa.end||"")):"Not set, so the agreement prints blank lines"}</span></summary>
       <div class="cnt" style="margin:6px 0">These print on the admission agreement each family signs at the visit. Set them once each school year.</div>
       <div class="gsrow"><label>School year begins<input type="date" id="aa-start" value="${esc((c.aa||{}).start||"")}"></label><label>School year ends<input type="date" id="aa-end" value="${esc((c.aa||{}).end||"")}"></label><label>Program fee due<input type="date" id="aa-fee" value="${esc((c.aa||{}).fee||"")}"></label></div>
@@ -10105,7 +10105,7 @@ const dq=(doc,t)=>doc.__pf?"\u201C"+t+"\u201D":'"'+t+'"';
 const deep=c=>c.map(v=>Math.round(v*.8));
 function displayHead(doc,p,A,dry){
   const {m,w}=DG;let y=DG.top;
-  if(PRINT.schoolDocs){if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,y+8)}y+=22}
+  if(PRINT.schoolDocs){if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",m,y+8)}y+=22}
   let ts=38,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean(p.title||""),w);if(tl.length<=(ts>30?1:2)||ts<=24)break;ts-=2}
   tl=tl.slice(0,3);const tlh=ts*1.12;
   if(!dry){doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,y+ts*.8+i*tlh))}
@@ -10120,7 +10120,7 @@ function displayHead(doc,p,A,dry){
   return y+20;
 }
 function displayHeadCont(doc,p,A){
-  const {m,w}=DG;if(PRINT.schoolDocs){pfont(doc,"fs",9);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School & Farm",m,DG.top+8)}
+  const {m,w}=DG;if(PRINT.schoolDocs){pfont(doc,"fs",9);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",m,DG.top+8)}
   pfont(doc,"bs",11);doc.setTextColor(...D_INK);const t=doc.splitTextToSize(clean(p.title||""),PRINT.schoolDocs?w-200:w)[0];if(PRINT.schoolDocs)doc.text(t,m+w,DG.top+8,{align:"right"});else doc.text(t,m,DG.top+8);
   doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,DG.top+18,m+w,DG.top+18);
   return DG.top+40;
@@ -10324,7 +10324,7 @@ const ct=(doc,t)=>doc.__pf?String(t??"").replace(/\s*[—–]\s*/g,", ").replace
 function cwrap(doc,k,s,text,w){pfont(doc,k,s);return ct(doc,text).split("\n").flatMap(p=>p.trim()?doc.splitTextToSize(p.trim(),w):[])}
 function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
-  if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School & Farm"});y+=24}else y+=4;
+  if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School"});y+=24}else y+=4;
   if(md.over){ops.push({t:"text",x,y:y+9,k:"fs",s:11,c:deep(A.c),txt:ct(doc,md.over)});y+=22}
   let ts=36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
@@ -10512,7 +10512,7 @@ async function centeredDocx(ch,p,D,A){
   F.sheets.forEach((md,si)=>{const L=F.pages[si];
     let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
     if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
-    if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School & Farm","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
+    if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
     if(md.over)ch.push(P1(run(md.over,"fs",11,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
     ch.push(P1(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
     const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
@@ -10579,7 +10579,7 @@ async function displayDocx(ch,p,D,A){
   const W=12240-2*DISPLAY_DOCX_MARGIN;
   const spacer=h=>para([],{spacing:{before:0,after:0,line:h,lineRule:"exact"}});
   // heading: the school, the title, a row of facts, and a rule in the page's colour
-  if(PRINT.schoolDocs)ch.push(para(run("Fulton Community School & Farm","fs",9.5,dp),{spacing:{after:70}}));
+  if(PRINT.schoolDocs)ch.push(para(run("Fulton Community School","fs",9.5,dp),{spacing:{after:70}}));
   const tpt=String(p.title||"").length>30?28:36;
   ch.push(para(run(p.title||"","bs",tpt),{spacing:{after:150,line:Math.round(tpt*22.4),lineRule:"atLeast"}}));
   const facts=(p.meta||[]).filter(r=>has(r[1]));
@@ -10658,7 +10658,7 @@ async function printsClick(t){
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
-  if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`Plant guide ${(gdnPlant(id)||{}).common||""}`:who==="children"?"The Fulton plant guide for children":"The Fulton plant guide");return true}
+  if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`Plant guide ${(gdnPlant(id)||{}).common||""}`:who==="children"?"The Fulton Community School plant guide for children":"The Fulton Community School plant guide");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
   if(kind==="helpquick"){if(!helpData)await loadHelp(true);const L=((helpData||{}).list||[]).filter(h=>h.quick);if(L.length)await out(L.map(helpDoc),"TREE quick cards");return true}
@@ -10671,7 +10671,7 @@ async function printsClick(t){
   if(kind==="thread"){const th=threads.get(t.dataset.id);if(th)out([threadDoc(th)],`Thread ${th.name}`);return true}
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
-  if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton projects ${mondayOf(new Date())}`);return true}
+  if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton Community School projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
   if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");await kMonthMenu(m,k,word);return true}
   if((kind==="farmsheet"||kind==="farmwall")&&!isDirector())await kMonthFetch(t.dataset.id);
@@ -10680,7 +10680,7 @@ async function printsClick(t){
   if(kind==="farmweek"){const d=farmWallWeek(t.dataset.id);if(!d){toast("The kitchen's order for this week has not arrived yet.");return true}await out([d],`Our food this week ${t.dataset.id}`);return true}
   if(kind==="drdprep"){const ds=drdpReportDocs(t.dataset.id);if(!ds.length){toast("No class has children on the roster.");return true}await out(ds,`DRDP evidence ${t.dataset.id==="All"?"all classes":t.dataset.id}`);return true}
   if(kind==="fimpact"){await out([impactDoc(t.dataset.id)],`Farm to School impact ${periodName(t.dataset.id)}`);return true}
-  if(kind==="ftour"){await out([tourDoc()],"Food at Fulton");return true}
+  if(kind==="ftour"){await out([tourDoc()],"Food at Fulton Community School");return true}
   if(kind==="fthanks"){const ds=thanksDocs(t.dataset.id);if(!ds.length){toast("No farm is in the orders or bins for that quarter yet.");return true}await out(ds,`Farm thank-you cards ${periodName(t.dataset.id)}`);return true}
   if(kind==="frecipe"){const d=recipeDoc(t.dataset.id);if(!d){toast("Write the recipe on the Kitchen page first.");return true}await out([d],`Recipe ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="aboutme"){const c=children.get(t.dataset.id);if(!c||!c.aboutMe){toast("The family has not made the book yet.");return true}
@@ -10693,11 +10693,11 @@ async function printsClick(t){
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
-    const name=`Fulton observations ${nRoom==="All"?"all classes":nRoom==="none"?"no class":nRoom} ${mondayOf(new Date())}`;
+    const name=`Fulton Community School observations ${nRoom==="All"?"all classes":nRoom==="none"?"no class":nRoom} ${mondayOf(new Date())}`;
     if(long){await out(docs,name);return true}
     await loadPrintFonts();out(await onePage(n=>momentsDocs(false,n),12,2),name);return true}
-  if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton threads ${tRoom==="All"?"all classes":tRoom} ${mondayOf(new Date())}`);return true}
-  if(kind==="lens"){const name=`Fulton lens ${LENS.name} ${lRoom==="All"?"all classes":lRoom} ${mondayOf(new Date())}`;
+  if(kind==="threads"){if(!threadsDocs(long).length){toast("There are no threads to print yet.");return true}out(threadsDocs(long),`Fulton Community School threads ${tRoom==="All"?"all classes":tRoom} ${mondayOf(new Date())}`);return true}
+  if(kind==="lens"){const name=`Fulton Community School lens ${LENS.name} ${lRoom==="All"?"all classes":lRoom} ${mondayOf(new Date())}`;
     if(long){out(lensDocs(true),name);return true}
     await loadPrintFonts();out(await onePage(n=>lensDocs(false,n),5,3),name);return true}
   return false;
@@ -12007,9 +12007,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.howfocus!=null){aFocus=t.dataset.howfocus;howPick="";LS.set("fps.afocus",aFocus);aConnShow=40;if(view==="connect")renderConnect();else refreshAll();jumpTop();return}
   if(t.dataset.amode){aMode=t.dataset.amode;LS.set("fps.amode",aMode);renderAllPlans();return}
   if((t.id==="adl"||t.id==="adlw")&&view!=="all"){const docs=String(aFocus||"").includes(":")&&String(aFocus).split(":")[1]?[howDoc()]:[schoolDoc(),howDoc()];if(!docs.length)return;
-    (async()=>{await loadPhotos(docs);const n=`Fulton ${view==="school"?"across the school":"connections"} ${mondayOf(new Date())}`;if(t.id==="adl")makePdf(docs,n+".pdf");else makeDocx(docs,n+".docx")})();return}
-  if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.docx`);return}
-  if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.pdf`)}});
+    (async()=>{await loadPhotos(docs);const n=`Fulton Community School ${view==="school"?"across the school":"connections"} ${mondayOf(new Date())}`;if(t.id==="adl")makePdf(docs,n+".pdf");else makeDocx(docs,n+".docx")})();return}
+  if(t.id==="adlw"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makeDocx(ps,`Fulton Community School plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.docx`);return}
+  if(t.id==="adl"){const ps=allFiltered().filter(p=>p.type!=="notice");if(ps.length)makePdf(ps,`Fulton Community School plans ${aRoom==="All"?"all classes":aRoom} ${mondayOf(new Date())}.pdf`)}});
 // a box or a line on the map opens the connections it stands for. SVG parts are not buttons, so they are read here
 document.addEventListener("click",e=>{if(view!=="connect")return;const t=e.target.closest("[data-howpick],svg.howmap [data-howfocus],svg.howmap [data-tsee]");if(!t)return;
   if(t.dataset.howpick!=null){e.preventDefault();e.stopImmediatePropagation();howPick=t.dataset.howpick;aConnShow=40;refreshAll();setTimeout(()=>{const l=$("#howlist");if(l)l.scrollIntoView({block:"start",behavior:"smooth"})},60);return}
@@ -12024,10 +12024,10 @@ document.addEventListener("input",e=>{if(view==="all"&&e.target.id==="aq"){aQ=e.
    who leaves moves to Former children, and every record about them stays until the director chooses how long to keep them. */
 let children=new Map(), conferences=new Map(), kRoom=LS.get("fps.kroom","All"), kShow="at", kQ="", kEdit="", kAdding=false, kidOpen=LS.get("tree.kid",""), kMove=null;
 // the same choices Family Conferences offered for next year
-const NEXTPLAN={staying:"Staying at Fulton next year",tk:"Going to TK next year",k:"Going to kindergarten next year",deciding:"Family still deciding about next year",other:"Another plan for next year"};
+const NEXTPLAN={staying:"Staying at our school next year",tk:"Going to TK next year",k:"Going to kindergarten next year",deciding:"Family still deciding about next year",other:"Another plan for next year"};
 const kidAt=c=>(c.status||"active")!=="withdrawn";
 const kidLeftAs=c=>kidAt(c)?"":c.leftAs==="moved"?"moved":"left";
-const KSTATUS_LABEL=c=>kidAt(c)?"At Fulton":kidLeftAs(c)==="moved"?"Moved on to kindergarten":"Left Fulton";
+const KSTATUS_LABEL=c=>kidAt(c)?"At our school":kidLeftAs(c)==="moved"?"Moved on to kindergarten":"Left our school";
 function kidList(){return [...children.values()].filter(c=>c&&c.first)}
 function kidsAt(){return kidList().filter(kidAt)}
 function kidName(c){return [c.first,c.last].filter(Boolean).join(" ")}
@@ -12078,7 +12078,7 @@ function renderChildren(){
     body+=`<section style="display:grid;gap:8px"><div class="spread"><div class="lbl">${esc(r)}</div><span class="cnt">${rs.length} ${rs.length===1?"child":"children"}</span></div><div class="kids">${rs.map(card).join("")}</div></section>`}
   const other=shown.filter(c=>!CLASSROOMS.includes(c.classroom));if(other.length)body+=`<section style="display:grid;gap:8px"><div class="lbl">No class chosen</div><div class="kids">${other.map(card).join("")}</div></section>`;
   if(kShow==="pf")body=portfoliosHtml(shown.sort((a,b)=>(CLASSROOMS.indexOf(a.classroom)-CLASSROOMS.indexOf(b.classroom))||a.first.localeCompare(b.first)),yearFromTime(Date.now()));
-  if(!body)body=`<div class="empty">${all.length?(kShow!=="former"?"No children match.":"No former children yet. A child who leaves Fulton or moves on to kindergarten is kept here."):"The roster has not come in yet."}</div>`;
+  if(!body)body=`<div class="empty">${all.length?(kShow!=="former"?"No children match.":"No former children yet. A child who leaves our school or moves on to kindergarten is kept here."):"The roster has not come in yet."}</div>`;
   const addHtml=dir?(kAdding?`<section class="card"><div class="lbl">Add a child</div><div class="kfields">
       <label>First name<input type="text" id="ka-first"></label><label>Last name<input type="text" id="ka-last"></label>
       <label>Class<select id="ka-room">${CLASSROOMS.map(r=>`<option ${kRoom===r?"selected":""}>${r}</option>`).join("")}</select></label>
@@ -12087,8 +12087,8 @@ function renderChildren(){
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
     :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button></div>`):"";
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
-    <div class="sub">Each child's documentation, conferences and years at Fulton in one place.${dir?" Changes made here are the roster.":""}</div></div>
-    <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At Fulton ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
+    <div class="sub">Each child's documentation, conferences and years at our school in one place.${dir?" Changes made here are the roster.":""}</div></div>
+    <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At our school ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
     <div class="tseg" role="group" aria-label="Class">${["All",...CLASSROOMS].map(r=>`<button data-kroom="${r}" aria-pressed="${kRoom===r}">${r}</button>`).join("")}</div>
     <input type="search" id="kq" placeholder="Find a child or group" value="${esc(kQ)}" style="max-width:220px"></div>
     ${addHtml}<div style="display:grid;gap:18px">${body}</div>`;
@@ -12166,10 +12166,10 @@ function renderChild(){
         <div><span class="lbl">Schedule</span><div>${esc(c.program||c.schedule||"Not on the roster")}</div></div><div><span class="lbl">Next year</span><div>${esc(NEXTPLAN[nx]||"Not decided")}</div></div></div>
 </section>
       ${kidFamilyHtml(c)}${kidFamilySideHtml(c)}
-      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at Fulton"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
+      ${dir?`<section class="card" id="kclose"><div class="secthead"><h3 style="font-size:17px">${kidAt(c)?"Change class, group or next year":"Back at our school"}</h3></div>${kidEditHtml(c)}</section>`:""}`;
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
-      <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At Fulton${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
+      <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At our school${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
       <span class="actions pfrow"><select data-pfdrdp="1" aria-label="How the DRDP prints in the portfolio" style="width:auto">${Object.entries(PF_DRDP).map(([k,l])=>`<option value="${k}" ${pfDrdpMode()===k?"selected":""}>${l}</option>`).join("")}</select>${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
     <div class="tseg ktabs" role="tablist" aria-label="${esc(c.first)}'s page">${tabs.map(([k,l])=>`<button role="tab" data-ktab="${k}" aria-pressed="${kidTab===k}">${l}</button>`).join("")}</div>
     <div style="display:grid;gap:14px">${body}</div>`;
@@ -12305,10 +12305,10 @@ function kidEditHtml(c){
   return `<div class="kfields"><label>Class<select data-kroomset="${esc(c.id)}">${CLASSROOMS.map(r=>`<option ${c.classroom===r?"selected":""}>${r}</option>`).join("")}</select></label>
       <label>Small group<select data-kgroupset="${esc(c.id)}"><option value="">None</option>${[...new Set([...groupsFor(c.classroom),c.group].filter(Boolean))].map(g=>`<option ${c.group===g?"selected":""}>${esc(g)}</option>`).join("")}</select></label>
       <label>Next year<select data-knextset="${esc(c.id)}"><option value="">Not decided</option>${Object.entries(NEXTPLAN).map(([k,v])=>`<option value="${k}" ${kidNext(c)===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
-    ${kidAt(c)?`<div class="lbl" style="margin-top:6px">Leaving Fulton</div><div class="kfields"><label>Last day<input type="date" id="kdate-${esc(c.id)}" value="${iso(new Date())}"></label></div>
-      <div class="actions"><button class="btn small ghost" data-kstatus="left" data-id="${esc(c.id)}">Left Fulton</button><button class="btn small ghost" data-kstatus="moved" data-id="${esc(c.id)}">Moved on to kindergarten</button></div>
+    ${kidAt(c)?`<div class="lbl" style="margin-top:6px">Leaving our school</div><div class="kfields"><label>Last day<input type="date" id="kdate-${esc(c.id)}" value="${iso(new Date())}"></label></div>
+      <div class="actions"><button class="btn small ghost" data-kstatus="left" data-id="${esc(c.id)}">Left our school</button><button class="btn small ghost" data-kstatus="moved" data-id="${esc(c.id)}">Moved on to kindergarten</button></div>
       <div class="cnt">Observations, plans, conferences and the portfolio that name ${esc(c.first)} stay as they are. ${esc(c.first)} moves to Former children, and the portfolio can still be printed for the family.</div>`
-    :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${esc(c.id)}">At Fulton again</button></div>`}
+    :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${esc(c.id)}">At our school again</button></div>`}
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
 // a child's move to another Class or small group, noted on the child with the day and who made it. Moving children
@@ -12340,7 +12340,7 @@ function kMoveHtml(){const m=kMove;
     <div class="lbl">Choose children by</div><div class="tseg" role="group" aria-label="Choose children by">${Object.entries(kMoveBy).map(([k,l])=>`<button data-kmvby="${k}" aria-pressed="${m.by===k}">${l}</button>`).join("")}</div>
     <div class="kfields" style="margin-top:8px"><label>${kMoveBy[m.by]}<select data-kmvval="1">${vals.map(([v,l])=>`<option value="${esc(v)}" ${m.val===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label></div>
     ${list.length?`<div class="kmvlist">${list.map(c=>`<label class="radio"><input type="checkbox" data-kmvtick="${esc(c.id)}" ${m.ticked.has(c.id)?"checked":""}><span>${esc(kidName(c))} <span class="cnt">${esc([c.classroom,c.group].filter(Boolean).join(", "))}</span></span></label>`).join("")}</div>
-      <div class="actions"><button class="linkbtn" data-kmvall="1">${allOn?"Untick these":"Tick all "+list.length}</button></div>`:`<div class="empty">No children at Fulton here.</div>`}
+      <div class="actions"><button class="linkbtn" data-kmvall="1">${allOn?"Untick these":"Tick all "+list.length}</button></div>`:`<div class="empty">No children here.</div>`}
     <div class="cnt">${n?`${n===1?"1 child":n+" children"} ticked.`:"Tick the children to move."} Ticks stay when you choose by something else.</div>
     <div class="lbl" style="margin-top:10px">Move them to</div>
     <div class="kfields"><label>Class<select data-kmvroom="1">${CLASSROOMS.map(r=>`<option ${m.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
@@ -12358,8 +12358,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(!isDirector())return;
   if(t.dataset.kstatus){const c=children.get(t.dataset.id);if(!c)return;const st=t.dataset.kstatus;
     const date=st==="at"?iso(new Date()):($("#kdate-"+CSS.escape(c.id))?.value||iso(new Date()));
-    if(st==="at"){c.status="active";delete c.leftAs;delete c.leftOn;delete c.withdrawnAt;kidNote(c,"At Fulton again",{date})}
-    else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left Fulton",{date})}
+    if(st==="at"){c.status="active";delete c.leftAs;delete c.leftOn;delete c.withdrawnAt;kidNote(c,"At our school again",{date})}
+    else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left our school",{date})}
     saveKid(c);toast(st==="at"?`${c.first} is back on the roster.`:`${c.first} is now with Former children.`);renderMain();return}
   if(t.dataset.kmvopen){const r=kRoom!=="All"?kRoom:CLASSROOMS[0];kMove={by:"room",val:r,ticked:new Set(),room:r,group:"",review:false};kAdding=false;renderChildren();formTop($("#kmove"));return}
   if(kMove&&t.dataset.kmvclose){kMove=null;renderChildren();return}
@@ -12397,7 +12397,7 @@ document.addEventListener("input",e=>{if(view==="children"&&e.target.id==="kq"){
    language. Educators change it, proofread it and mark it Ready. It is kept on the child's record by school year, so it is
    in the nightly backup, and it reaches the family only when the director shares it, as it reads at that moment. */
 const TS_SECTIONS=[["who","Who this child is"],["play","How they play and learn"],["friends","Friends and relationships"],["working","What they are working on"],["helps","What helps"]];
-const TS_HINT={who:"Who {first} is at Fulton, and what {first} loves and brings to the Class.",play:"How {first} plays, explores and learns.",friends:"{first}'s friends, and how {first} is with other children and the educators.",working:"What {first} is practicing and growing in now.",helps:"What helps {first}, at the start of the day, somewhere new and in a hard moment."};
+const TS_HINT={who:"Who {first} is at our school, and what {first} loves and brings to the Class.",play:"How {first} plays, explores and learns.",friends:"{first}'s friends, and how {first} is with other children and the educators.",working:"What {first} is practicing and growing in now.",helps:"What helps {first}, at the start of the day, somewhere new and in a hard moment."};
 // the DRDP and words that rate or compare a child stay out of the summary
 const TS_RATING=/\bDRDP\b|\b(levels?|scor(e|es|ed|ing)|ratings?|rated|meets? expectations|exceeds? expectations|below expectations|above average|below average|on track|ahead of|behind (his|her|their|other|peers)|advanced for|delayed?|(responding|exploring|building|integrating) (earlier|middle|later))\b/i;
 // the conference notes the draft reads, all but the DRDP evidence box
@@ -12435,7 +12435,7 @@ Never mention the DRDP, measures, levels, scores or ratings, and never use words
 Call the child ${c.first}. Other children keep the initial the notes give them. Say educator, never teacher, and Class, never classroom. Never use a colon, a semicolon, an em dash or an en dash. Write paragraphs, with no lists or headings.
 
 The parts are
-who, Who this child is. Who ${c.first} is at Fulton, and what ${c.first} loves and brings.
+who, Who this child is. Who ${c.first} is at our school, and what ${c.first} loves and brings.
 play, How they play and learn. How ${c.first} plays, explores and learns.
 friends, Friends and relationships. ${c.first}'s friends, and how ${c.first} is with other children and adults.
 working, What they are working on. What ${c.first} is practicing and growing in now, as the educators describe it.
@@ -12682,16 +12682,16 @@ function signinsHtml(){
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
     <details class="fold" data-fold="set:sghow" ${foldOpen.has("set:sghow")?"open":""}><summary class="foldhead"><span class="cnt">How sign-ins work</span></summary><div class="foldbody">
     <div class="hint">Each educator signs in with their first name. The first time, they type the six number start code shown beside their name, then choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
-    <div class="hint">Leaving Fulton is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div></div></details>
+    <div class="hint">Leaving our school is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div></div></details>
     ${L.length?`<div class="sglist">${L.map(a=>`<details class="sgrow" data-sgopen="${esc(a.name)}" ${signins.open===a.name?"open":""}><summary><b>${esc(a.name)}</b><span class="cnt">${esc(a.room?a.room:a.kitchen?"Kitchen":a.director?"Director":"No Class")}</span><span class="cnt sglast">${a.leaveOn?"Leaves "+esc(sgDay(a.leaveOn)):a.lastAt?esc(sgDay(a.lastAt)):"Never signed in"}</span></summary>
       <div class="sgbody">${notSetUp(a)&&a.lastAt?`<div class="cnt warnline">${esc(notSetUp(a))}</div>`:""}${a.lastAt?`<div class="cnt">Last signed in ${esc(longDate(iso(new Date(a.lastAt))))}</div>`:""}${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}
         <label class="sgf"><span>Class</span><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
         <label class="radio"><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""}><span>Director</span></label>
         <label class="radio"><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""}><span>Kitchen sign-in</span></label>
         <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. Give it to ${esc(a.name)} for their first sign-in.</span>`}</div>
-        <span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at Fulton</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving Fulton</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span>
+        <span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at our school</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving our school</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span>
       </div></details>`).join("")}</div>`:`<div class="empty">No one has a sign-in yet.</div>`}
-    ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left Fulton. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
+    ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left our school. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
     <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
@@ -12705,10 +12705,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   const acct=n=>signins.list.find(a=>a.name===n);
   if(t.dataset.sgshow){signins.show[t.dataset.sgshow]=!signins.show[t.dataset.sgshow];renderSettings();return}
   if(t.dataset.sgreset){signinCall("/api/accounts/reset",{name:t.dataset.sgreset},`${t.dataset.sgreset} chooses a new code at their next sign-in.`);return}
-  if(t.dataset.sgleave){const n=t.dataset.sgleave,w=document.getElementById("sgdel-"+n.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm" style="display:grid;gap:6px;white-space:normal;max-width:300px">${esc(n)}'s last day at Fulton. Sign-in ends at the end of that day.<span class="actions" style="margin:0"><button class="btn small" data-sgleaveon="${esc(n)}" data-day="${iso(new Date())}">Today</button><input type="date" id="sgleave-day" aria-label="${esc(n)}'s last day" style="width:auto"><button class="btn small ghost" data-sgleaveon="${esc(n)}">Set this day</button><button class="linkbtn" data-sgkeep="1">Cancel</button></span></span>`;return}
+  if(t.dataset.sgleave){const n=t.dataset.sgleave,w=document.getElementById("sgdel-"+n.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm" style="display:grid;gap:6px;white-space:normal;max-width:300px">${esc(n)}'s last day here. Sign-in ends at the end of that day.<span class="actions" style="margin:0"><button class="btn small" data-sgleaveon="${esc(n)}" data-day="${iso(new Date())}">Today</button><input type="date" id="sgleave-day" aria-label="${esc(n)}'s last day" style="width:auto"><button class="btn small ghost" data-sgleaveon="${esc(n)}">Set this day</button><button class="linkbtn" data-sgkeep="1">Cancel</button></span></span>`;return}
   if(t.dataset.sgleaveon){const n=t.dataset.sgleaveon,day=t.dataset.day||($("#sgleave-day")?.value||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(day)){toast("Choose their last day.");return}
     signinCall("/api/accounts/leave",{name:n,leaveOn:day},day===iso(new Date())?`Today is ${n}'s last day. Their sign-in ends tonight.`:`${n}'s last day is ${longDate(day)}. Their sign-in ends at the end of that day.`);return}
-  if(t.dataset.sgstay){signinCall("/api/accounts/return",{name:t.dataset.sgstay},`${t.dataset.sgstay} is staying at Fulton.`);return}
+  if(t.dataset.sgstay){signinCall("/api/accounts/return",{name:t.dataset.sgstay},`${t.dataset.sgstay} is staying at our school.`);return}
   if(t.dataset.sgback){const n=t.dataset.sgback,w=document.getElementById("sgback-"+n.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Bring ${esc(n)} back with their history? <button class="btn small" data-sgbackyes="${esc(n)}">Bring back</button><button class="linkbtn" data-sgkeep="1">Cancel</button></span>`;return}
   if(t.dataset.sgbackyes){signinCall("/api/accounts/return",{name:t.dataset.sgbackyes},`${t.dataset.sgbackyes} is back, with their history. They choose a new code at their next sign-in.`);return}
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in, added by mistake? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
@@ -12757,8 +12757,8 @@ function keepingHtml(){if(!window.FP_HOSTED||!isDirector())return"";if(!keepInfo
     ${s.years?`<div class="cnt">${esc(s.reg)} says "${esc(s.words)}" <a href="${esc(s.url)}" target="_blank" rel="noopener">Child Care Center regulations, California Department of Social Services</a></div>`:`<div class="cnt">TREE could not confirm this period in the Department of Social Services' own pages, so it is left for you to set.</div>`}</div>
     <label class="cnt" style="white-space:nowrap">Years <input type="number" min="1" max="50" data-keepyears="${f}" value="${esc(String(v||""))}" style="width:4.5em"></label></div>`};
   return `<section class="card" id="keepcard"><div class="lbl">Keeping records</div>
-    <div class="hint">How long TREE keeps the records of a child or an educator who has left Fulton. When one reaches the period, your Today shows it once, with Keep longer and Remove. Nothing is ever removed until you choose Remove, and Remove asks once more before it happens. Removed records stay in the records' history on GitHub and in the nightly backups made before.</div>
-    ${row("child","childYears","Children's records","after a child leaves Fulton")}${row("staff","staffYears","Staff records","after an educator's last day")}
+    <div class="hint">How long TREE keeps the records of a child or an educator who has left our school. When one reaches the period, your Today shows it once, with Keep longer and Remove. Nothing is ever removed until you choose Remove, and Remove asks once more before it happens. Removed records stay in the records' history on GitHub and in the nightly backups made before.</div>
+    ${row("child","childYears","Children's records","after a child leaves our school")}${row("staff","staffYears","Staff records","after an educator's last day")}
     <div class="actions"><button class="btn small" data-keepsave="1">Save the periods</button>${K.due&&K.due.length?`<span class="cnt">${K.due.length} waiting for your choice on Today</span>`:""}</div>
     ${(K.removed||[]).length?`<details class="fold" data-fold="set:keepremoved" ${foldOpen.has("set:keepremoved")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Removed</span><span class="cnt">${K.removed.length}</span></summary><div class="foldbody">${K.removed.map(r=>`<div class="cnt">${esc(r.name)}, ${r.kind==="child"?"a former child":"a former educator"} who left ${esc(longDate(r.left))}. Removed ${esc(shortDate(r.at))} by ${esc(r.by)}.</div>`).join("")}</div></details>`:""}</section>`}
 // on the director's Today, each former child or educator whose keeping period has passed, once, until she chooses
@@ -12833,7 +12833,7 @@ function rcJobs(){const F=r=>CLASSROOMS.includes(r)?r+" Class":"School",out=[];
   // this school year's plans, one file for each Class and week, as the week's plans download makes them
   const y0=schoolYearStart(),wk=new Map();
   for(const p of plans.values())if(p&&p.id!=="example"&&!p.deleted&&FORMS[p.type]&&p.type!=="notice"&&p.weekOf>=y0){const r=CLASSROOMS.includes(p.classroom)?p.classroom:"",k=p.weekOf+"|"+r;if(!wk.has(k))wk.set(k,[]);wk.get(k).push(p)}
-  for(const [k,ps] of [...wk].sort((a,b)=>a[0].localeCompare(b[0]))){const [w,r]=k.split("|");out.push({folder:F(r),name:`Fulton plans week of ${w}${r?" "+r:""}`,docs:()=>ps})}
+  for(const [k,ps] of [...wk].sort((a,b)=>a[0].localeCompare(b[0]))){const [w,r]=k.split("|");out.push({folder:F(r),name:`Fulton Community School plans week of ${w}${r?" "+r:""}`,docs:()=>ps})}
   for(const t of threads.values())if(t&&!t.unfollowed&&!t.deleted)out.push({folder:F(t.classroom),name:`Thread ${t.name||"untitled"}`,docs:()=>[threadDoc(t)]});
   for(const x of projects.values())if(x&&!x.deleted)out.push({folder:F(x.home),name:`Project ${x.name||"untitled"} full`,docs:()=>[projectDoc(x,true)]});
   for(const x of inqAll())out.push({folder:F(x.room),name:`Team inquiry ${x.name||"untitled"} full`,docs:()=>[inquiryDoc(x,true)]});

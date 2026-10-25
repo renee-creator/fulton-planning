@@ -115,7 +115,7 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     await s.p.waitForFunction(() => readableSeen && rcCan() && rcDue(), null, { timeout: 15000 });
     await s.p.evaluate(() => { clearTimeout(rcTimer); return rcMake(false); });
     const files = d.tree().map(f => f.replace(/^TREE readable copies\/\d{4}-\d{2}-\d{2}\//, ''));
-    const want = ['North Class/Portfolio Pip Test', 'Former children/Portfolio Rue Test', 'North Class/Fulton plans week of 2026-10-12 North', 'West Class/Fulton plans week of 2026-10-12 West',
+    const want = ['North Class/Portfolio Pip Test', 'Former children/Portfolio Rue Test', 'North Class/Fulton Community School plans week of 2026-10-12 North', 'West Class/Fulton Community School plans week of 2026-10-12 West',
       'North Class/Thread Heavy and light', 'School/Project The goat path full', 'South Class/Team inquiry Rest time full', 'North Class/pip-test-conference-fall-2026-27',
       'West Class/Ann records', 'North Class/Bea records', 'School/Gia records'];
     for (const w of want) for (const ext of ['.pdf', '.docx']) if (!/Rest time/.test(w) || ext === '.pdf') assert.ok(files.includes(w + ext), w + ext + ' in ' + files.join(', '));

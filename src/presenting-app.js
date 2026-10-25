@@ -1,5 +1,5 @@
 /* ---------- Presenting in TREE ----------
-   Every talk, PD session or module presented at Fulton or for other schools, one entry each, under Educators, PD and
+   Every talk, PD session or module presented at our school or for other schools, one entry each, under Educators, PD and
    Licensing. The director starts an entry and adds presenters, who see and work on it from their own Presenting page.
    The server sends an entry to no other educator until it is presented, and then only what is safe for all staff. It
    sits after the growth pages in tree-staff.js, loaded only when opened, and shares their helpers. */
@@ -46,10 +46,10 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
   const row=x=>`<div class="prow"><span><b>${H(x.title)}</b>${x.subtitle?`<div class="cnt">${H(x.subtitle)}</div>`:""}<div class="cnt">${H([x.audience,x.date?fd(x.date):"",dur(x.minutes)].filter(Boolean).join(", "))}${x.presenters.length?`. Presented by ${H(kList(x.presenters))}`:""}</div></span>
     <span class="actions" style="margin:0">${x.status==="presented"?chip("ok","Presented "+fd(x.presentedOn)):""}<button class="btn small ghost" data-prsel="${H(x.id)}">${x.edit?"Open":"Read"}</button></span></div>`;
   const now=r.list.filter(x=>x.status!=="presented"),done=r.list.filter(x=>x.status==="presented");
-  X.draw(my,head("PD and Licensing","Presenting",dir?"Every talk, PD session or module presented at Fulton or for other schools, each its own entry. Add educators as presenters and they work on the entry with you. Other educators see an entry once it is presented.":"The talks and PD sessions you present, and the ones Fulton has presented. You see an entry when you are one of its presenters, and every entry once it is presented.")+
+  X.draw(my,head("PD and Licensing","Presenting",dir?"Every talk, PD session or module presented at our school or for other schools, each its own entry. Add educators as presenters and they work on the entry with you. Other educators see an entry once it is presented.":"The talks and PD sessions you present, and the ones we have presented. You see an entry when you are one of its presenters, and every entry once it is presented.")+
     card("Being planned",now.length?now.map(row).join(""):empty(dir?"Start an entry below for a talk, a PD session or a module.":"An entry shows here when the director adds you as a presenter."))+
     card("Presented",done.length?done.map(row).join(""):empty("Entries move here once they are presented."))+
-    (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button><button class="btn small ghost" data-prnew="template">Start from the Fulton template</button></div>`):""))}
+    (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button><button class="btn small ghost" data-prnew="template">Start from our PD template</button></div>`):""))}
 
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
@@ -78,12 +78,12 @@ function aboutCard(e){const ed=edit(),dir=D();
 /* the presenter's own credit, once the entry is presented */
 function creditCard(e){if(!e.mine||e.status!=="presented")return "";const hrs=Math.round((+e.minutes||0)/6)/10;const growth=!!(X.boot().can&&X.boot().can.growth);
   const m=e.mine.moment;
-  return card("You led this",`<div class="cnt">${hrs?`${H(hrs)} hours are on your records page as Fulton PD hours.`:"Add the length to log the hours."} It is listed on your growth page, under What I led.</div>
+  return card("You led this",`<div class="cnt">${hrs?`${H(hrs)} hours are on your records page as our PD hours.`:"Add the length to log the hours."} It is listed on your growth page, under What I led.</div>
     ${m==="shared"?`<div class="cnt" style="margin-top:6px">Shared as a Proud Moment.</div>`:growth?`<div class="actions"><button class="btn small" data-prmoment="1">Share it as a Proud Moment</button>${m==="no"?`<span class="cnt">You chose not now.</span>`:`<button class="linkbtn" data-prmomentno="1">Not now</button>`}</div><div class="cnt">You choose who sees it, as with every Proud Moment.</div>`:""}`)}
 
 /* the director's marks: presented, copied, removed */
 function doneCard(e){const cr=Object.keys(e.credit||{}).length;
-  if(e.status!=="presented")return card("When it is presented",`<div class="cnt">Marking it presented logs the time as Fulton PD hours on each presenter's records page, lists it on their growth page, and offers them to share it as a Proud Moment. Other educators can then read it.</div>
+  if(e.status!=="presented")return card("When it is presented",`<div class="cnt">Marking it presented logs the time as our PD hours on each presenter's records page, lists it on their growth page, and offers them to share it as a Proud Moment. Other educators can then read it.</div>
     <div class="actions"><button class="btn small" data-prdone="1">Mark as presented</button><button class="linkbtn" data-prrm="1">Remove this entry</button></div>`);
   return card("Presented",`<div class="cnt">Presented ${H(fd(e.presentedOn))}.${cr?` Hours logged for ${H(kList(e.presenters||[]))}.`:""}</div>
     <div class="kfields" style="margin-top:8px"><label style="grid-column:span 2">Title for the new entry<input type="text" id="prc-title" value="${H(e.title)}"></label></div>
@@ -99,19 +99,19 @@ function notesFold(e){const L=[...(e.notes||[])].sort((a,b)=>String(b.date).loca
 /* meetings */
 function meetingsFold(e){const L=e.meetings||[];
   const m=x=>`<div class="prsec"><div class="kfields"><label>Date<input type="date" data-pri="meetings|${H(x.id)}|date" value="${H(x.date||"")}"></label></div>
-    <label class="fld-label">What Fulton brought<textarea rows="2" data-pri="meetings|${H(x.id)}|fulton">${H(x.fulton||"")}</textarea></label>
+    <label class="fld-label">What we brought<textarea rows="2" data-pri="meetings|${H(x.id)}|fulton">${H(x.fulton||"")}</textarea></label>
     <label class="fld-label">What others brought<textarea rows="2" data-pri="meetings|${H(x.id)}|others">${H(x.others||"")}</textarea></label>
     <label class="fld-label">Questions carried forward<textarea rows="2" data-pri="meetings|${H(x.id)}|questions">${H(x.questions||"")}</textarea></label>
     <div><button class="linkbtn" data-prrmi="meetings|${H(x.id)}">Take it out</button></div></div>`;
-  return fold("meetings","Meetings",L.length?L.length+(L.length===1?" meeting":" meetings"):"",(e.meetingsNote?`<div class="hint">${H(e.meetingsNote)}</div>`:"")+(L.length?L.map(m).join(""):empty("One entry for each planning or group meeting, with the date, what Fulton brought, what others brought, and the questions carried forward."))+
+  return fold("meetings","Meetings",L.length?L.length+(L.length===1?" meeting":" meetings"):"",(e.meetingsNote?`<div class="hint">${H(e.meetingsNote)}</div>`:"")+(L.length?L.map(m).join(""):empty("One entry for each planning or group meeting, with the date, what we brought, what others brought, and the questions carried forward."))+
     `<div class="actions"><button class="btn small ghost" data-pradd="meetings">Add a meeting</button><span class="cnt">Each meeting saves as you type and leave a box.</span></div>`)}
 
 /* evidence, read by the server from Fulton's own records */
 function evidenceFold(e){const v=st.evFor===e.id?st.ev:null;const dir=D();
-  if(!v)return fold("evidence","Evidence","",empty("TREE reads Fulton's observations, plans, threads, projects, lenses and team inquiries for moments that fit this entry's topic and guiding question. Open this to read them."));
+  if(!v)return fold("evidence","Evidence","",empty("TREE reads our observations, plans, threads, projects, lenses and team inquiries for moments that fit this entry's topic and guiding question. Open this to read them."));
   const look=v.look||[];const items=v.items||[];const g=st.evGroup;
   const shown=items.filter(x=>x.state!=="aside"&&(!g||x.groups.includes(g))),aside=items.filter(x=>x.state==="aside");
-  const groups=[...look.map(l=>[l.k,l.label]),...(v.youngest?[["youngest","With Fulton's youngest children"]]:[])];
+  const groups=[...look.map(l=>[l.k,l.label]),...(v.youngest?[["youngest","With our youngest children"]]:[])];
   const it=x=>{const src=picOf(x);return `<div class="prmom ${src?"":"nophoto"}">${src?`<img src="${H(src)}" alt="" loading="lazy">`:""}<div style="min-width:0;display:grid;gap:4px">
     <div class="cnt"><b>${H(x.label)}</b>${x.by?", "+H(x.by):""}${where(x)?". "+H(where(x)):""}</div><div style="white-space:pre-line">${H(clipL(x.text,420))}</div>${x.wonder?`<div class="cnt">${H(clip(x.wonder,200))}</div>`:""}
     <div class="prwhy">${H(x.why)}${x.lens?" "+H(x.lens):""}</div>
@@ -119,12 +119,12 @@ function evidenceFold(e){const v=st.evFor===e.id?st.ev:null;const dir=D();
   const lookHtml=`<details style="margin-top:6px"><summary class="cnt" style="cursor:pointer">What TREE looks for</summary><div style="display:grid;gap:8px;margin-top:6px">
     ${look.map((l,i)=>dir?`<div class="prsec"><label class="fld-label">Name<input type="text" data-prlook="${i}|label" value="${H(l.label)}"></label><label class="fld-label">Words, separated by commas<textarea rows="2" data-prlook="${i}|words">${H((l.words||[]).join(", "))}</textarea></label><label class="fld-label">Only together with one of these words, if any<input type="text" data-prlook="${i}|with" value="${H((l.with||[]).join(", "))}"></label></div>`:`<div class="cnt"><b>${H(l.label)}.</b> ${H((l.words||[]).join(", "))}${(l.with||[]).length?". Together with "+H(l.with.join(", ")):""}</div>`).join("")||empty("No words yet. TREE reads the title, subtitle and guiding question.")}
     ${dir?`<div class="prsec"><label class="fld-label">Another group of words, separated by commas<textarea rows="2" data-prlook="${look.length}|words"></textarea></label><label class="fld-label">Its name<input type="text" data-prlook="${look.length}|label"></label></div>
-      <label class="radio"><input type="checkbox" id="pr-young" ${v.youngest?"checked":""}><span>Moments with Fulton's youngest children, under three${v.youngClass?", and in "+H(v.youngClass)+" Class":""}</span></label>
+      <label class="radio"><input type="checkbox" id="pr-young" ${v.youngest?"checked":""}><span>Moments with our youngest children, under three${v.youngClass?", and in "+H(v.youngClass)+" Class":""}</span></label>
       <label class="fld-label">A lens to read through<select id="pr-lens"><option value="">None</option>${(v.lenses||[]).map(n=>`<option ${n===v.lens?"selected":""}>${H(n)}</option>`).join("")}</select></label>
-      <div class="actions"><button class="btn small ghost" data-prlooksave="1">Save what TREE looks for</button></div>`:`<div class="cnt">${v.youngest?"Also moments with Fulton's youngest children, under three. ":""}${v.lens?"Read through the lens "+H(v.lens)+".":""}</div>`}</div></details>`;
-  return fold("evidence","Evidence",shown.length?shown.length+" moments":"",`<div class="hint">From Fulton's own records only. Each moment shows the educators' words, the date, the Class and a line on why it fits, quoting the record. Keep one and it joins Chosen moments.</div>${lookHtml}
+      <div class="actions"><button class="btn small ghost" data-prlooksave="1">Save what TREE looks for</button></div>`:`<div class="cnt">${v.youngest?"Also moments with our youngest children, under three. ":""}${v.lens?"Read through the lens "+H(v.lens)+".":""}</div>`}</div></details>`;
+  return fold("evidence","Evidence",shown.length?shown.length+" moments":"",`<div class="hint">From our own records only. Each moment shows the educators' words, the date, the Class and a line on why it fits, quoting the record. Keep one and it joins Chosen moments.</div>${lookHtml}
     ${groups.length>1?`<div class="actions" style="margin:6px 0 0;flex-wrap:wrap"><button class="pill" aria-pressed="${!g}" data-prevg="">All</button>${groups.map(([k,l])=>`<button class="pill" aria-pressed="${g===k}" data-prevg="${H(k)}">${H(l)}</button>`).join("")}</div>`:""}
-    <div style="margin-top:6px">${shown.length?shown.map(it).join(""):empty("Nothing in Fulton's records fits yet. Moments that fit show here as they are kept in TREE.")}</div>${v.more?`<div class="cnt">${v.more} more fit less closely.</div>`:""}
+    <div style="margin-top:6px">${shown.length?shown.map(it).join(""):empty("Nothing in our records fits yet. Moments that fit show here as they are kept in TREE.")}</div>${v.more?`<div class="cnt">${v.more} more fit less closely.</div>`:""}
     ${aside.length?`<details style="margin-top:8px"><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(it).join("")}</details>`:""}`)}
 
 /* chosen moments, in an order the director can drag, or move with a tap */
@@ -253,7 +253,7 @@ async function prTap(e,t){const d=t.dataset;const en=E();
   if(d.prnew){const title=val("#prn-title").trim();if(!title){toast("Give the entry a title.");return}const r=await pa("new",{title,template:d.prnew==="template"});Pr.open(r.id);toast("Started.");T.render("stpres");return}
   if(d.prpres){const cur=new Set(en.presenters||[]);cur.has(d.prpres)?cur.delete(d.prpres):cur.add(d.prpres);set(await pa("save",{id:en.id,fields:{presenters:[...cur]}}));toast(cur.has(d.prpres)?`${d.prpres} can see and work on this entry now.`:`${d.prpres} is no longer a presenter.`);X.redraw();return}
   if(d.prnames){set(await pa("save",{id:en.id,fields:{names:d.prnames}}));X.redraw();return}
-  if(d.prdone){const alone=!(en.presenters||[]).length;if(!confirm(alone?"Mark it presented with no presenters? No hours are logged.":`Mark it presented? ${kList(en.presenters)} ${en.presenters.length===1?"gets":"get"} the time as Fulton PD hours.`))return;
+  if(d.prdone){const alone=!(en.presenters||[]).length;if(!confirm(alone?"Mark it presented with no presenters? No hours are logged.":`Mark it presented? ${kList(en.presenters)} ${en.presenters.length===1?"gets":"get"} the time as our PD hours.`))return;
     const r=set(await pa("presented",{id:en.id,alone}));toast(r.credited?"Marked presented. The hours are on each presenter's records page.":"Marked presented.");X.redraw();return}
   if(d.prundo){if(!confirm("Mark it as not presented? The hours it logged come off the presenters' records pages."))return;set(await pa("presented",{id:en.id,undo:true}));toast("Marked as not presented.");X.redraw();return}
   if(d.prcopy){const r=await pa("copy",{id:en.id,title:val("#prc-title")});Pr.open(r.id);toast("Copied. Set the date and presenters for the new entry.");T.render("stpres");window.scrollTo(0,0);return}

@@ -386,7 +386,7 @@ const signupSync = require('./signup-sync.js')({ store, log, readFeed: l => read
 // a family's sign-in code goes out through the school's Google Workspace mailbox script, set as FAMILY_MAIL_URL and FAMILY_MAIL_KEY
 async function mailCode(to, code) {
   const url = process.env.FAMILY_MAIL_URL, key = process.env.FAMILY_MAIL_KEY; if (!url || !key) throw new Error('Family email is not set up yet');
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton family page code', body: `Your code for the Fulton family page is ${code}. It works for 15 minutes.\n\nFulton Community School & Farm` }), redirect: 'follow' });
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
 const familyPage = require('./family.js')({ store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), pieces: () => staff.familyPiecesForFamily() });
@@ -1009,12 +1009,14 @@ function postAnthropic(payload) {
     req.on('error', reject); req.end(body);
   });
 }
+// how TREE's writing help names the school in what it writes itself. Words it copies or quotes keep their own.
+const SCHOOL_NAME = 'When you write in your own words, call the school we and our in sentences, and Fulton Community School where a name is needed, such as in a title. Never call it Fulton on its own. Text you copy, transcribe or quote keeps its own words.';
 async function askClaude(content, careful, extra) {
   const lane = careful ? 'careful' : 'quick'; const list = careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {
     const model = list[modelAt[lane]];
     // careful requests (finding threads, project stories, scans) can write long answers, so they get more room
-    const payload = Object.assign({ model, max_tokens: careful ? 20000 : 8000, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {}, extra || {});
+    const payload = Object.assign({ model, max_tokens: careful ? 20000 : 8000, system: SCHOOL_NAME, messages: [{ role: 'user', content }] }, MODEL_SETTINGS[model] || {}, extra || {});
     let r = await postAnthropic(payload);
     // a search that pauses part way is asked to carry on, a few times at most
     for (let k = 0; k < 3 && r.status === 200; k++) { let m; try { m = JSON.parse(r.text); } catch (e) { break; } if (m.stop_reason !== 'pause_turn') break;
@@ -1831,12 +1833,12 @@ async function handle(req, res) {
     if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
     // Remove is only for a sign-in added by mistake. Someone with records leaves Fulton instead, so nothing of theirs is lost.
     if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; }
-      if (hasRecords(a.name)) { err(req, res, 400, a.name + ' has records at Fulton, so choose Leaving Fulton. Their records are kept.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
+      if (hasRecords(a.name)) { err(req, res, 400, a.name + ' has records here, so choose Leaving our school. Their records are kept.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
     // the director chooses an educator's last day. Sign-in ends at the end of that day.
     if (path === '/api/accounts/leave') {
       const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; }
       if (nameKey(a.name) === nameKey(me.name) || isDirector(a.name)) { err(req, res, 400, 'A director\'s sign-in stays.'); return; }
-      if (isFormerAccount(a)) { err(req, res, 400, a.name + ' has already left Fulton.'); return; }
+      if (isFormerAccount(a)) { err(req, res, 400, a.name + ' has already left our school.'); return; }
       const day = String(body.leaveOn || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { err(req, res, 400, 'Choose their last day.'); return; }
       const was = a.leaveOn; a.leaveOn = day;
       if (!(await saveAccounts(me.name))) { if (was) a.leaveOn = was; else delete a.leaveOn; err(req, res, 502, 'The last day could not be saved. Try again.'); return; }
@@ -1845,7 +1847,7 @@ async function handle(req, res) {
     }
     // bringing an educator back keeps all their history. A former educator gets a new start code, as for a cleared code.
     if (path === '/api/accounts/return') {
-      const a = accountFor(body.name); if (!a || !a.leaveOn) { err(req, res, 404, 'That educator has not left Fulton.'); return; }
+      const a = accountFor(body.name); if (!a || !a.leaveOn) { err(req, res, 404, 'That educator has not left our school.'); return; }
       const former = isFormerAccount(a);
       if (former) { a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); restoreFormer(a); }
       delete a.leaveOn; delete a.settled;

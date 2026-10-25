@@ -32,11 +32,11 @@ module.exports = function staffModule(o) {
   const ITEMS = [
     { k: 'clearance', label: 'Criminal record and Child Abuse Central Index clearance', reg: 'Title 22, 101170 and 101170.2', months: 0, law: T22('101170') },
     { k: 'tb', label: 'TB and health screening', reg: 'LIC 503', months: 0, law: { text: 'LIC 503, Health Screening Report', url: 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC503.pdf', check: true } },
-    { k: 'cpr', label: 'Pediatric First Aid and CPR', reg: 'Health and Safety Code 1596.866', months: 24, note: 'Fulton runs it in house', law: LAW('HSC', '1596.866'), course: EMSA },
+    { k: 'cpr', label: 'Pediatric First Aid and CPR', reg: 'Health and Safety Code 1596.866', months: 24, note: 'We run it in house', law: LAW('HSC', '1596.866'), course: EMSA },
     { k: 'hs16', label: 'Health and safety training, 16 hours including 1 hour of nutrition', reg: 'CDSS PIN 26-11-CCP', months: 0,
       law: { text: 'CDSS PIN 26-11-CCP, in the child care Provider Information Notices', url: 'https://www.cdss.ca.gov/inforesources/community-care-licensing/policy/provider-information-notices/child-care', check: true }, course: EMSA },
     { k: 'eplan', label: 'Emergency and disaster plan training', reg: 'Health and Safety Code 1596.868', months: 12, note: 'Before the first day of work and each year', law: LAW('HSC', '1596.868'),
-      course: { text: 'Taken at Fulton, with the CDSS Disaster Resources page', url: 'https://www.cdss.ca.gov/inforesources/child-care-licensing/public-information-and-resources/disaster-resources', check: true } },
+      course: { text: 'Taken at our school, with the CDSS Disaster Resources page', url: 'https://www.cdss.ca.gov/inforesources/child-care-licensing/public-information-and-resources/disaster-resources', check: true } },
     { k: 'mandated', label: 'Mandated reporter training', reg: 'Health and Safety Code 1596.8662', months: 24, note: 'Within 90 days of hire, renewed every two years', law: LAW('HSC', '1596.8662'),
       course: { text: 'California mandated reporter training. Choose the child care training on that page', url: 'https://mandatedreportertraining.com/california/', check: true } },
     { k: 'hsa', label: 'Healthy Schools Act training', reg: 'Healthy Schools Act', months: 12, note: 'Renewed each year',
@@ -46,7 +46,7 @@ module.exports = function staffModule(o) {
     // a training the director chooses for each person, shown only for those she marks
     { k: 'rcwater', label: 'Water Safety for Parents and Caregivers, American Red Cross', reg: 'Title 22, 101216.6', months: 0, chosen: true, note: 'For those the director chooses', law: T22('101216.6'), course: REDCROSS },
     // Fulton's own training, for everyone who cares for children. It shows as due until it is completed.
-    { k: 'activesup', label: 'Active Supervision Training', reg: 'Fulton training', months: 0, fulton: true, note: 'With the CCLD video Supervising Children in Child Care Centers and the active supervision handouts', law: T22('101229') },
+    { k: 'activesup', label: 'Active Supervision Training', reg: 'Fulton Community School training', months: 0, fulton: true, note: 'With the CCLD video Supervising Children in Child Care Centers and the active supervision handouts', law: T22('101229') },
   ];
   // a chosen training belongs on a records page only once the director marks it for that person
   const needsItem = (doc, it) => !it.chosen || !!(((doc && doc.profile) || {}).needs || {})[it.k];
@@ -60,16 +60,16 @@ module.exports = function staffModule(o) {
     { k: 'lic9052', form: 'Notice of Employee Rights, a copy given to the educator', num: 'LIC 9052', why: 'Tells you your rights, including how to raise a concern with Licensing', blank: CDSS_FORM('LIC9052') },
     { k: 'lic9095', form: 'Evaluation of Teacher Qualifications, with transcripts or ECE units', num: 'LIC 9095', why: 'Shows your education meets the state\'s requirements for your role', blank: CDSS_FORM('LIC9095') },
     { k: 'immun', form: 'Immunization record or exemption', num: 'H&S Code 1596.7995', why: 'Protects young children, who are most at risk from flu, whooping cough and measles', blank: '' },
-    { k: 'emergency', form: 'Emergency contact information', num: 'Fulton', why: 'Lets us reach someone for you in an emergency', blank: '' },
-    { k: 'mealwaiver', form: 'Meal Break Waiver', num: 'Fulton', why: 'Lets you waive your 30-minute meal break on shifts of six hours or less, as California law allows', blank: '' },
+    { k: 'emergency', form: 'Emergency contact information', num: 'Fulton Community School', why: 'Lets us reach someone for you in an emergency', blank: '' },
+    { k: 'mealwaiver', form: 'Meal Break Waiver', num: 'Fulton Community School', why: 'Lets you waive your 30-minute meal break on shifts of six hours or less, as California law allows', blank: '' },
     { k: 'quickbooks', form: 'QuickBooks Workforce invitation, completed', num: 'QuickBooks', why: 'Sets up your pay and tax forms, which stay in QuickBooks', blank: '', director: true },
-    { k: 'tppack', form: 'Teacher Policies and Procedures acknowledgment', num: 'Fulton', why: 'Confirms you have read how Fulton works', blank: '', ack: true },
+    { k: 'tppack', form: 'Teacher Policies and Procedures acknowledgment', num: 'Fulton Community School', why: 'Confirms you have read how we work', blank: '', ack: true },
   ];
   // the director's own marks, never an upload
   const DIRECTOR_PAPERS = ['quickbooks', 'idseen'];
   const CHECKLIST = [
     'Paperwork uploaded and clearances received', 'Immunization records or exemptions uploaded', 'Welcome and philosophy read', 'Who\'s who read', 'TREE How To guides read',
-    'Mandated reporter certificate uploaded', 'Licensing at Fulton pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with their go-to person',
+    'Mandated reporter certificate uploaded', 'Licensing at Fulton Community School pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with their go-to person',
     'Educator Reflection and Growth Plan started', 'Starting-point conversation, scheduled two months from the start date'];
   const DRILL_TYPES = ['Fire', 'Earthquake', 'Lockdown', 'Evacuation', 'Shelter in place', 'Other'];
   const REMIND_TYPES = { expiry: 'Certificates and trainings before they expire', flu: 'The yearly flu shot', hsa: 'Healthy Schools Act training each year', semester: 'Proof of enrollment each semester, below twelve units', drill: 'A drill when three months pass without one' };
@@ -609,7 +609,7 @@ module.exports = function staffModule(o) {
       const was = doc.pd.done[pc.id];
       doc.pd.done[pc.id] = { at: (was && was.at) || Date.now(), answer: String(body.answer || '').slice(0, 4000), minutes: pc.minutes };
       // each finished piece logs its minutes toward the year's professional development hours, once
-      if (!was) doc.hours = [...(doc.hours || []), { id: 'h' + crypto.randomBytes(4).toString('hex'), date: today(), title: (pc.dir === 'licensing' ? 'Licensing at Fulton, ' : 'TREE How To, ') + pc.title, hours: Math.round(pc.minutes / 6) / 10, kind: pc.dir === 'licensing' ? 'licensing' : 'pd', approved: false, by: 'TREE' }];
+      if (!was) doc.hours = [...(doc.hours || []), { id: 'h' + crypto.randomBytes(4).toString('hex'), date: today(), title: (pc.dir === 'licensing' ? 'Licensing at Fulton Community School, ' : 'TREE How To, ') + pc.title, hours: Math.round(pc.minutes / 6) / 10, kind: pc.dir === 'licensing' ? 'licensing' : 'pd', approved: false, by: 'TREE' }];
       doc.updatedAt = Date.now(); put(pPath(me), doc); json(req, res, 200, doc); return;
     }
     if (P === 'read') {

@@ -59,7 +59,7 @@ app = rep(app, '<div class="eyebrow">Advocate educators</div><h1>Portfolios</h1>
 import re as _re
 app = _re.sub(r"(?<![A-Za-z.])Claude(?![A-Za-z])(?! was not allowed)(?!, which is not available)", "TREE", app.replace("Open this page inside Claude", "Open this page inside TREE"))
 # the word for a child who has left, as TREE names it
-app = app.replace(">Withdrawn<", ">Left Fulton<").replace('"Withdrawn"', '"Left Fulton"')
+app = app.replace(">Withdrawn<", ">Left our school<").replace('"Withdrawn"', '"Left our school"')
 marker = '<script>\n"use strict";\n/* ---------- constants'
 assert app.count(marker) == 1
 # if the records have not arrived after a while, say so and offer to try again, never an endless loading line

@@ -13,7 +13,7 @@ const KYR_LETTER = 'https://dir.ca.gov/DLSE/LCO-Letter-to-Employers-New-Laws-202
 // the posters that hang in the staff area, for finding and replacing them
 const POSTERS = [
   { id: 'minwage', title: 'California minimum wage', agency: 'Department of Industrial Relations, Labor Commissioner', url: DLSE_POSTERS, when: 'Replaced each year when the new rate is published' },
-  { id: 'wageorder', title: 'The Industrial Welfare Commission wage order for Fulton\'s industry', agency: 'Department of Industrial Relations, Labor Commissioner', url: DLSE_POSTERS, when: 'Kept current' },
+  { id: 'wageorder', title: 'The Industrial Welfare Commission wage order for our industry', agency: 'Department of Industrial Relations, Labor Commissioner', url: DLSE_POSTERS, when: 'Kept current' },
   { id: 'payday', title: 'Pay day notice', agency: 'Department of Industrial Relations, Labor Commissioner', url: DLSE_POSTERS, when: 'Kept current' },
   { id: 'sickleave', title: 'Paid sick leave', agency: 'Department of Industrial Relations, Labor Commissioner', url: DLSE_POSTERS, when: 'Kept current' },
   { id: 'whistle', title: 'Whistleblower protections, in lettering larger than 14 point', agency: 'Department of Industrial Relations, Labor Commissioner', url: DIR_POSTINGS, when: 'Kept current' },
@@ -28,8 +28,8 @@ const POSTERS = [
   { id: 'flsa', title: 'Employee Rights Under the Fair Labor Standards Act', agency: 'U.S. Department of Labor, Wage and Hour Division', url: 'https://www.dol.gov/agencies/whd/posters/flsa', when: 'Kept current' },
   { id: 'eppa', title: 'Employee Polygraph Protection Act', agency: 'U.S. Department of Labor', url: 'https://www.dol.gov/general/topics/posters', when: 'Kept current' },
   { id: 'userra', title: 'Your Rights Under USERRA', agency: 'U.S. Department of Labor', url: 'https://www.dol.gov/general/topics/posters', when: 'Kept current' },
-  { id: 'eeoc', title: 'Know Your Rights, Workplace Discrimination is Illegal', agency: 'U.S. Equal Employment Opportunity Commission', url: 'https://www.eeoc.gov/poster', when: 'For employers of 15 or more. Fulton\'s own count decides' },
-  { id: 'fmla', title: 'Family and Medical Leave Act', agency: 'U.S. Department of Labor', url: 'https://www.dol.gov/general/topics/posters', when: 'For employers of 50 or more, so not at Fulton\'s size' },
+  { id: 'eeoc', title: 'Know Your Rights, Workplace Discrimination is Illegal', agency: 'U.S. Equal Employment Opportunity Commission', url: 'https://www.eeoc.gov/poster', when: 'For employers of 15 or more. Our own count decides' },
+  { id: 'fmla', title: 'Family and Medical Leave Act', agency: 'U.S. Department of Labor', url: 'https://www.dol.gov/general/topics/posters', when: 'For employers of 50 or more, so not at our size' },
 ].map(x => Object.assign({ checked: CHECKED, status: 'unconfirmed' }, x));
 
 // what a new hire receives. A notice that is a filled-in form stays in the paper and QuickBooks Workforce hiring packet,
@@ -51,7 +51,7 @@ const kyrLink = lang => lang === 'English' || !KYR_LANGS.includes(lang) ? 'https
 const KYR_WAYS = [['person', 'In person, on paper'], ['email', 'By email'], ['text', 'By text message']];
 const KYR_RULES = { checked: CHECKED, status: 'unconfirmed', url: KYR_LETTER, postings: DIR_POSTINGS,
   languages: 'In a language the employee understands, where the Labor Commissioner offers the notice in it, and otherwise in English',
-  ways: 'In the way Fulton usually reaches each employee, such as in person, by email or by text message, when it can reasonably be expected to arrive within one business day',
+  ways: 'In the way we usually reach each employee, such as in person, by email or by text message, when it can reasonably be expected to arrive within one business day',
   due: 'By February 1 each year, and to each new hire at hire',
   emergency: 'Each employee may name an emergency contact, and say whether that person should be told if the employee is arrested or detained at work. Offered at hire and with the yearly notice, and the contact can be changed at any time' };
 

@@ -218,7 +218,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     return `<div class="body"><div class="kind">The week ahead</div><h1>Coming up</h1><div class="days">${days.map(d=>`<div class="day"><h2>${esc(d===feed.today?"Today":dayName(d).split(",")[0])}</h2>
       ${by[d].map(e=>`<div>${!e.allDay&&timeOf(e.start)?`<b>${esc(timeOf(e.start))}</b>`:""}${esc(e.title)}</div>`).join("")}</div>`).join("")}</div></div>`}
   function foodHtml(m,b){const meals=m?[["Morning snack",m.am],["Lunch",m.lunch],["Afternoon snack",m.pm]].filter(v=>v[1]):[];
-    return `<div class="body"><div class="kind">Food at Fulton</div><h1>${meals.length?"Today's table":"This week's bin"}</h1>
+    return `<div class="body"><div class="kind">Food at Fulton Community School</div><h1>${meals.length?"Today's table":"This week's bin"}</h1>
       ${meals.length?`<div class="meals">${meals.map(([k,v])=>`<div class="meal"><h2>${esc(k)}</h2><p>${esc(v)}</p></div>`).join("")}</div>`:""}
       ${b&&b.items.length?`<div class="bin"><h2>${meals.length?"In this week's FEED bin":esc(b.label||"FEED bin")}</h2><ul>${b.items.map(i=>`<li>${esc(i.name)}${i.farm?`<span>${esc(i.farm)}</span>`:""}</li>`).join("")}</ul></div>`:""}</div>`}
 

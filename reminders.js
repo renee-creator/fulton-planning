@@ -69,7 +69,7 @@ module.exports = function reminders(o) {
   // a message reaches every phone the educator turned reminders on with. A phone that no longer takes them is dropped
   async function sendTo(name, msg) {
     const a = accountFor(name); if (!a || !keys()) return { sent: 0, why: !keys() ? 'Reminders are not set up on the server yet.' : 'No sign-in' };
-    if (leftFulton(a.name)) return { sent: 0, why: a.name + ' has left Fulton.' };
+    if (leftFulton(a.name)) return { sent: 0, why: a.name + ' has left our school.' };
     const subs = a.push || []; if (!subs.length) return { sent: 0, why: 'Reminders are not turned on on this educator\'s phone yet.' };
     let sent = 0, gone = [], fail = '';
     for (const s of subs) {

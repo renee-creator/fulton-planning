@@ -12,7 +12,7 @@
 <script>window.TREE_VA=(()=>{try{return window.parent!==window&&window.parent.TREE_VIEW_AS||null}catch(e){return null}})();if(window.TREE_VA){const st=document.createElement("style");st.textContent='[data-go="settings"]{display:none!important}';document.head.appendChild(st)}</script>
 <script>try{if(localStorage.getItem("fp-director")!=="1"){const st=document.createElement("style");st.textContent='[data-go="settings"]{display:none!important}';document.head.appendChild(st)}}catch(e){}</script>
 <style>[data-go="portfolios"]{display:none!important}</style>
-<title>Fulton Family Conferences</title>
+<title>Fulton Community School Family Conferences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <style>
@@ -223,7 +223,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
   <div class="top-in">
     <div class="brand">
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 28V15M15 15c-4-1-7-4-8-8M15 15c4-1 7-4 8-8M15 19c-3 0-5-2-6-4M15 19c3 0 5-2 6-4M15 11V3" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 28h16" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <div><b>Family Conferences</b><span>Fulton Community School &amp; Farm</span></div>
+      <div><b>Family Conferences</b><span>Fulton Community School</span></div>
     </div>
     <!-- one row of tabs, TREE's own. Each child's conferences and next year are on TREE's Children page, so this page
          opens on the season's conferences, with Conference settings one tap away for the director. -->
@@ -249,7 +249,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
 <div id="gate" hidden>
   <form class="card" id="gate-form" autocomplete="off">
     <svg width="34" height="34" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 28V15M15 15c-4-1-7-4-8-8M15 15c4-1 7-4 8-8M15 19c-3 0-5-2-6-4M15 19c3 0 5-2 6-4M15 11V3" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 28h16" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round"/></svg>
-    <div><div class="eyebrow">Fulton Community School &amp; Farm</div><h1>Family Conferences</h1></div>
+    <div><div class="eyebrow">Fulton Community School</div><h1>Family Conferences</h1></div>
     <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
     <input id="gate-code" type="password" autocomplete="current-password" required>
     <button class="btn primary" id="gate-btn" type="submit" style="justify-content:center">Sign in</button>
@@ -484,7 +484,7 @@ const ONBOARD = [
   {k:"firstDay", label:"First day at school"},
 ];
 const MONTHS = ["Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul"];
-const PLANS = [["","Not discussed yet"],["staying","Staying at Fulton"],["tk","Going to TK"],["k","Going to Kindergarten"],["deciding","Family still deciding"],["other","Other"]];
+const PLANS = [["","Not discussed yet"],["staying","Staying at our school"],["tk","Going to TK"],["k","Going to Kindergarten"],["deciding","Family still deciding"],["other","Other"]];
 const SELF_CARE = [
   {k:"toileting", label:"Toileting", opts:[["diapers","Diapers"],["pullups","Pull-ups"],["learning","Toilet learning"],["reminders","With reminders"],["independent","Independent"]]},
   {k:"eating", label:"Eating", opts:[["feeds","Feeds self"],["utensils","Uses utensils"],["cup","Open cup"],["serves","Serves self"],["tries","Tries new foods"]]},
@@ -504,7 +504,7 @@ function scBlock(cf, side, dis){
     ${SELF_CARE.map(r=>`<div class="sc-row"><span class="sc-name">${r.label}</span>${r.opts.map(([k,l])=>`<label class="sc-opt"><input type="checkbox" data-k="selfCare.${side}.${r.k}.${k}" ${cf.selfCare?.[side]?.[r.k]?.[k]?"checked":""} ${dis}> ${esc(l)}</label>`).join("")}</div>`).join("")}
     <div class="sc-row"><span class="sc-name">Notes</span><input data-k="selfCare.${side}Notes" value="${esc(cf.selfCare?.[side+"Notes"]||"")}" ${dis} placeholder="${side==="school"?"Anything the boxes do not capture":"What the family shares about routines at home"}" style="flex:1;min-width:200px"></div></div>`;
 }
-const PLAN_BOXES = [["staying","Staying at Fulton"],["tk","TK"],["k","Kindergarten"],["deciding","Still deciding"],["other","Other"]];
+const PLAN_BOXES = [["staying","Staying at our school"],["tk","TK"],["k","Kindergarten"],["deciding","Still deciding"],["other","Other"]];
 const REASONS = ["","Behavior or safety concern","Family request","Educator request","Follow-up on goals","Transition or next school","Other"];
 const DEFAULT_SETTINGS = {
   groups: DEFAULT_GROUPS,
@@ -883,7 +883,7 @@ function viewChildren(){
   sortKids(list);
   const rows = list.map(c=>{ const n=confsFor(c.id).length;
     return `<tr class="click" tabindex="0" data-go="child" data-id="${esc(c.id)}">
-    <td class="name-cell"><b>${esc(childName(c))}</b>${c.status==="withdrawn"?' <span class="chip st-withdrawn">Left Fulton</span>':""}</td>
+    <td class="name-cell"><b>${esc(childName(c))}</b>${c.status==="withdrawn"?' <span class="chip st-withdrawn">Left our school</span>':""}</td>
     <td class="mono small">${esc(fmtDate(c.dob))}</td><td class="small">${esc(ageAt(c.dob))}</td>
     <td>${esc(c.classroom||"")}</td>
     <td class="small">${canEdit()? `<select data-group-for="${esc(c.id)}" aria-label="Small group for ${esc(childName(c))}"><option value="">Choose</option>${groupsList().filter(g=>!c.classroom||g.room===c.classroom).map(g=>`<option ${c.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select>` : esc(c.group||"")}<div class="muted">${esc(educatorOf(c))}</div></td>
@@ -897,7 +897,7 @@ function viewChildren(){
   <div class="filters" style="margin-bottom:12px">
     <input type="search" id="f-q" placeholder="Find a child or parent" value="${esc(f.q)}" aria-label="Find">
     <select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
-    <div class="seg" role="group" aria-label="Enrollment">${[["active","Enrolled"],["withdrawn","Left Fulton"],["all","All"]].map(([k,l])=>`<button data-act="show" data-v="${k}" aria-pressed="${f.show===k}">${l}</button>`).join("")}</div>
+    <div class="seg" role="group" aria-label="Enrollment">${[["active","Enrolled"],["withdrawn","Left our school"],["all","All"]].map(([k,l])=>`<button data-act="show" data-v="${k}" aria-pressed="${f.show===k}">${l}</button>`).join("")}</div>
     ${eduSelect()}${sortSelect()}
     <span id="live-meta"><span class="small muted mono">${list.length} shown</span></span>
   </div>
@@ -927,7 +927,7 @@ function viewChild(id){
   return `
   <div style="margin-bottom:6px"><a href="#" data-go="children" class="small">All children</a></div>
   <div class="conf-head"><div class="who"><div class="eyebrow">${esc(c.classroom||"")} class</div><h1>${esc(childName(c))}</h1>
-    <div class="meta-line"><span>Born ${esc(fmtDate(c.dob))}</span><span>${esc(ageAt(c.dob))}</span>${c.program?`<span>${esc(c.program)}</span>`:""}${c.status==="withdrawn"?'<span class="chip st-withdrawn">Left Fulton</span>':""}</div></div>
+    <div class="meta-line"><span>Born ${esc(fmtDate(c.dob))}</span><span>${esc(ageAt(c.dob))}</span>${c.program?`<span>${esc(c.program)}</span>`:""}${c.status==="withdrawn"?'<span class="chip st-withdrawn">Left our school</span>':""}</div></div>
     <div class="row">${canEdit()?`<button class="btn" data-act="child-edit" data-id="${esc(id)}">Edit details</button>
       <button class="btn" data-act="conf-new-additional" data-id="${esc(id)}">Add an extra conference</button>
       <button class="btn primary" data-act="open-child-conf" data-id="${esc(id)}">${p?"Open":"Start"} ${esc(periodLabel(S.period))} conference</button>`:""}
@@ -1527,7 +1527,7 @@ async function downloadDocx(list, child){
     const CONF="Confidential. Kept in the child's file and shared only with the family and educators.";
     // the confidentiality line sits in the page footer, on both pages, so it never pushes a table onto a third page
     sections.push({properties:{page:{margin:{top:720,bottom:720,left:720,right:720,footer:360}}},footers:{default:new D.Footer({children:[conf(CONF)]})},children:[
-      new D.Paragraph({children:[new D.TextRun({text:"Fulton Community School & Farm",size:18,color:"55625A"})]}),
+      new D.Paragraph({children:[new D.TextRun({text:"Fulton Community School",size:18,color:"55625A"})]}),
       title(`Family Conference · ${confLabel(cf)}`),
       new D.Paragraph({spacing:{after:80},children:[new D.TextRun({text:"Conference Date and Time  ",bold:true,size:20}),new D.TextRun({text:[fmtDate(cf.confDate),fmtTime(cf.confTime),cf.format].filter(Boolean).join(", ")||"________________",size:20}),new D.TextRun({text:"     Educators  ",bold:true,size:20}),new D.TextRun({text:cf.teacher||"________________",size:20})]}),
       ...(info? [new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:[new D.TableRow({children:[new D.TableCell({borders:{top:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},bottom:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"},left:{style:D.BorderStyle.SINGLE,size:24,color:"C9962A"},right:{style:D.BorderStyle.SINGLE,size:6,color:"C9962A"}},shading:{type:D.ShadingType.CLEAR,color:"auto",fill:"FDF3D8"},margins:{top:80,bottom:80,left:140,right:120},children:[
@@ -1540,7 +1540,7 @@ async function downloadDocx(list, child){
       new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:refRows}),
     ]});
   }
-  const doc=new D.Document(Object.assign({creator:"Fulton Community School & Farm",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
+  const doc=new D.Document(Object.assign({creator:"Fulton Community School",title:"Family Conference",styles:{default:{document:{run:{font:FF?"Andika":"Calibri"}}}},sections},
     FF?{fonts:[{name:"Andika",data:FF.r}]}:{}));
   const blob=await D.Packer.toBlob(doc);
   const base=slug(childName(child));
@@ -1552,7 +1552,7 @@ async function buildFormsPdf(items){
   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
   const {PDFDocument, StandardFonts, rgb}=window.PDFLib;
   const doc=await PDFDocument.create();
-  doc.setTitle("Family Conference"); doc.setAuthor("Fulton Community School & Farm");
+  doc.setTitle("Family Conference"); doc.setAuthor("Fulton Community School");
   let F=null;const FF=await confFonts();
   if(FF){ try{ await loadScript("https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"); doc.registerFontkit(window.fontkit);
       // ligatures off, so fi and fl print as two letters rather than a gap
@@ -1627,7 +1627,7 @@ async function buildFormsPdf(items){
     labs.forEach(([x,l,hint])=>label(pg,x,top,LW,h,cont(l,p.cont),p.cont?"":hint));
     cellsOf(r).forEach((cl,i)=>{ box(pg,cl.x,top,cl.w,h); if(fitMode) fit(pg,cl.t,cl.x+5,top-4,cl.w-10,h-8,9.5,p.s); else lines(pg,p.ls[i],cl.x+5,top-4,F.r,p.s); }); };
   const contPage=(title,c)=>{ const p=doc.addPage([W,H]); let y=H-M;
-    p.drawText("Fulton Community School & Farm",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
+    p.drawText("Fulton Community School",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
     p.drawText(clean(title+", continued"),{x:M,y:y-17,size:17,font:F.t,color:INK}); y-=25;
     p.drawText("Child",{x:M,y:y-9,size:9,font:F.b,color:INK}); p.drawText(clean(childName(c)),{x:M+32,y:y-9,size:9,font:F.r,color:INK}); y-=18;
     return {p,y}; };
@@ -1652,7 +1652,7 @@ async function buildFormsPdf(items){
     const info=nextYearInfo(c, cf);
     // page one
     let pg=doc.addPage([W,H]); let y=H-M;
-    pg.drawText("Fulton Community School & Farm",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
+    pg.drawText("Fulton Community School",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
     pg.drawText(clean("Family Conference \u00B7 "+confLabel(cf)),{x:M,y:y-17,size:17,font:F.t,color:INK}); y-=25;
     const when=[fmtDate(cf.confDate),fmtTime(cf.confTime),cf.format].filter(Boolean).join(", ");
     pg.drawText("Conference Date and Time",{x:M,y:y-9,size:9,font:F.b}); pg.drawText(clean(when),{x:M+122,y:y-9,size:9,font:F.r}); if(!when) pg.drawLine({start:{x:M+122,y:y-10},end:{x:M+262,y:y-10},thickness:.5,color:LINE});
@@ -1679,7 +1679,7 @@ async function buildFormsPdf(items){
     footer(pg);
     // page two
     pg=doc.addPage([W,H]); y=H-M;
-    pg.drawText("Fulton Community School & Farm",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
+    pg.drawText("Fulton Community School",{x:M,y:y-8,size:8,font:F.r,color:GRAY}); y-=12;
     pg.drawText("Family Reflections",{x:M,y:y-17,size:17,font:F.t,color:INK}); y-=25;
     y-=lines(pg,wrap("Completed together with the family during the conference. These questions build on the Family Questionnaire and focus on what has grown and changed since the start of the year.",F.r,8.5,TW),M,y,F.r,8.5,GRAY)+6;
     pair(y,META,"Child",childName(c),"Family Members Present",cf.familyPresent); y-=META;
@@ -2585,7 +2585,7 @@ function showRosterDiff(list){
     const diffs=ROSTER_KEYS.filter(([f])=>(k[f]||"")!==(ex[f]||"") && (k[f]||"")).map(([f,l])=>({f,l,from:ex[f]||"",to:k[f]}));
     const pa=JSON.stringify((k.parents||[]).map(p=>[p.name,p.cell,p.email])), pb=JSON.stringify((ex.parents||[]).map(p=>[p.name,p.cell,p.email]));
     if(pa!==pb && k.parents?.length) diffs.push({f:"parents",l:"Family contacts",from:(ex.parents||[]).map(p=>p.name).join(", "),to:k.parents.map(p=>p.name).join(", ")});
-    if(ex.status==="withdrawn") diffs.push({f:"status",l:"Enrollment",from:"Left Fulton",to:"Enrolled"});
+    if(ex.status==="withdrawn") diffs.push({f:"status",l:"Enrollment",from:"Left our school",to:"Enrolled"});
     if(diffs.length) changes.push({k,ex,diffs}); });
   const missing=Object.values(S.children).filter(c=>c.status!=="withdrawn"&&!seen.has(c.id));
   S.rosterDiff={adds,changes,missing};

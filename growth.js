@@ -29,16 +29,16 @@ module.exports = function growthModule(c) {
   const POINTS = ['Beginning', 'Developing', 'Established', 'Mentoring'];
   // the PD library's modules in the design's order. A module with its file in staff/pd/modules opens, the rest are still being written.
   const MODULE_LIST = [
-    ['researcher', 'The Educator as Researcher', 'Fulton\'s project cycle from informal observation to reflection, and writing plans that grow from observation.', ['cur', 'obs']],
-    ['documentation', 'Documentation at Fulton', 'Writing observations that separate noticing from wondering, and documentation that makes children\'s thinking visible.', ['obs']],
-    ['language', 'The Language of Learning', 'Fulton\'s language parameters and the Effective Responses guide, describing and narrating in place of praise.', ['lang']],
+    ['researcher', 'The Educator as Researcher', 'Our project cycle from informal observation to reflection, and writing plans that grow from observation.', ['cur', 'obs']],
+    ['documentation', 'Documentation at Fulton Community School', 'Writing observations that separate noticing from wondering, and documentation that makes children\'s thinking visible.', ['obs']],
+    ['language', 'The Language of Learning', 'Our language parameters and the Effective Responses guide, describing and narrating in place of praise.', ['lang']],
     ['beyond', 'Beyond Discipline', 'Relationship-based positive discipline, looking for the reason behind a behavior, and staying regulated so children can regulate.', ['lang', 'img']],
     ['families', 'The Home and School Partnership', 'Daily communication, conferences, and difficult conversations.', ['fam']],
     ['development', 'Developmental Deep Dive', 'Development in the Twos and Threes and in the Fours and Fives, in a mixed-age community.', ['img', 'cur']],
     ['spaces', 'Spaces That Teach', 'The outdoor classroom, the garden, the farm and the neighborhood as spaces that teach.', ['env']],
     ['meeting', 'The Art of the Meeting', 'Meeting time as a place for listening and making space for others\' words and bodies.', ['lang', 'team']],
     ['howto', 'TREE How To', 'Short guides for keeping observations, writing plans and making documentation.', ['obs']],
-    ['licensing', 'Licensing at Fulton', 'Each Title 22 requirement and Fulton procedure in short pieces for nap time, with the official trainings linked.', []]];
+    ['licensing', 'Licensing at Fulton Community School', 'Each Title 22 requirement and our own procedures in short pieces for nap time, with the official trainings linked.', []]];
   const FEEDBACK = ['scores', 'continuum', 'narrative', 'conversation', 'notes'];
   const AUDIENCE = ['everyone', 'class', 'director'];
 
@@ -392,7 +392,7 @@ module.exports = function growthModule(c) {
         put(pPath(n), doc);
         if (pr.blankPlan) { const g = growth(n); const y = sd.id; if (!g.plans[y]) { g.plans[y] = { source: 'tree', goals: [], wentWell: { choice: 'last', text: '' }, challenges: '', need: { director: '', team: '', training: '' }, feedback: '', at: Date.now(), by: 'TREE' }; put(gPath(n), g); } }
       }
-      for (const [n, date] of Object.entries(sd.activeSupervision || {})) { const doc = person(n); doc.items = Object.assign({}, doc.items); if (!(doc.items.activesup || {}).date) { doc.items.activesup = { date, note: 'Fulton training', by: 'TREE', at: Date.now() }; put(pPath(n), doc); } }
+      for (const [n, date] of Object.entries(sd.activeSupervision || {})) { const doc = person(n); doc.items = Object.assign({}, doc.items); if (!(doc.items.activesup || {}).date) { doc.items.activesup = { date, note: 'Fulton Community School training', by: 'TREE', at: Date.now() }; put(pPath(n), doc); } }
       for (const [n, pl] of Object.entries(sd.plans || {})) { const g = growth(n); g.plans[sd.id] = Object.assign({ source: 'august', at: Date.now(), by: 'TREE' }, pl); put(gPath(n), g); }
       if (rooms) { await saveAccounts('TREE'); const ed = store.recs.settings.get('educators'); if (ed && ed.doc && Array.isArray(ed.doc.names)) { const names = ed.doc.names.map(x => { const r = (sd.people[x.name] || {}).room; return r ? Object.assign({}, x, { room: r }) : x; }); setSetting('educators', Object.assign({}, ed.doc, { names })); } }
       const s2 = Object.assign({}, school()); const add = sd.school || {};
