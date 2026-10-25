@@ -1688,7 +1688,7 @@ function renderMain(){
   if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's Class newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" data-talk="1" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
-  h+=sendHtml(p)+feedbackHtml(p)+`
+  h+=attachHtml(p)+sendHtml(p)+feedbackHtml(p)+`
     <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
   planFolds(p);
@@ -5405,6 +5405,50 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-song
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.songrow!=null&&d.open)songOpen=d.dataset.songrow},true);
 // a song as a sheet: a traditional song with its words, a © song with only its title and songwriter
 function songDoc(x){const w=songWords(x);return {display:true,type:"report",acc:"story",title:(songCopy(x)?"© ":"")+x.title,meta:[(x.meta||{}).songwriter||""].filter(Boolean),blocks:w?[dText("",w)]:[]}}
+/* ---------- Attach to a plan ----------
+   One optional Attach on a plan reaches every library: recipes, songs, read-alouds, provocations and the materials
+   guides. The three or four best matches show first, drawn from the plan's own words, its space or focus, this week's
+   produce bin and the garden season, with no outside call, so they are instant. Nothing is attached unless an educator
+   chooses it, and whatever is attached prints with the plan. A plan with nothing attached prints as it always has. */
+let attachOpen="",attachQ="";
+const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",prompt:"Provocation",guide:"Materials guide"};
+const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
+function attachPool(){if(!libData){loadLibrary();return []}const out=[];
+  for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients")].join(" ")});
+  for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:x.title});
+  for(const x of (libData.readalouds||[]))out.push({kind:"readaloud",id:x.id,title:x.title,text:[x.title,x.lead].join(" ")});
+  const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
+  if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});
+  return out}
+// the best matches for a plan, from its words, its space or focus, this week's bin and the garden season
+function attachSuggest(p){const words=new Set(attWords([...Object.values(p.fields||{}),p.where,...(p.groups||[])].join(" ")));const bin=binCurrent();const prod=new Set(attWords(((bin&&bin.items)||[]).map(it=>it.name).join(" ")));
+  const season=(typeof gdn!=="undefined"&&gdn&&gdn.season)||"";const garden=/garden|yard|orchard|piazza/i.test(String(p.where||""))||isGardenPlan(p);const had=new Set((p.attached||[]).map(a=>a.kind+"|"+a.id));
+  return attachPool().filter(x=>!had.has(x.kind+"|"+x.id)).map(x=>{const ws=attWords(x.text);let sc=0;for(const w of ws){if(words.has(w))sc+=attWords(x.title).includes(w)?3:1;if(prod.has(w)&&(x.kind==="recipe"||/piazza|kitchen/i.test(String(p.where||""))))sc+=2}
+    if(x.season&&season&&x.season===season&&garden)sc+=2;return Object.assign({},x,{sc})}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,4)}
+function attachHtml(p){if(!p||p.id==="example"||!PLAN_TYPES.includes(p.type))return "";const att=p.attached||[];const open=attachOpen===p.id;
+  if(!att.length&&!open)return `<div class="actions" style="margin:10px 0 0"><button class="btn small ghost" data-attopen="${esc(p.id)}">Attach from our libraries</button></div>`;
+  const pool=open?attachPool():[];const q=attachQ.trim().toLowerCase();const found=open&&q?pool.filter(x=>x.text.toLowerCase().includes(q)&&!att.some(a=>a.kind===x.kind&&a.id===x.id)).slice(0,12):[];
+  const sug=open?attachSuggest(p):[];
+  return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div>${open?`<button class="linkbtn" data-attopen="">Done</button>`:`<button class="linkbtn" data-attopen="${esc(p.id)}">Attach</button>`}</div>
+    ${att.map((a,i)=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> <b>${esc(a.title)}</b></div><button class="linkbtn" data-attrm="${i}" aria-label="Take off ${esc(a.title)}">Take off</button></div>`).join("")||`<div class="cnt">Nothing attached.</div>`}
+    ${open?`${sug.length?`<div class="lbl" style="margin-top:8px">Might fit this plan</div>${sug.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}
+      <input type="search" id="att-q" placeholder="Search recipes, songs, read-alouds, provocations and guides" value="${esc(attachQ)}" style="margin-top:8px" data-noproof="1">
+      ${found.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-attopen],[data-attadd],[data-attrm]");if(!t)return;const p=currentId&&plans.get(currentId);if(!p)return;const d=t.dataset;
+  if(d.attopen!=null){attachOpen=d.attopen;attachQ="";renderMain();if(attachOpen)setTimeout(()=>$("#attachsec")?.scrollIntoView({block:"nearest"}),50);return}
+  if(d.attadd){const i=d.attadd.indexOf("|"),kind=d.attadd.slice(0,i),id=d.attadd.slice(i+1);const x=attachPool().find(y=>y.kind===kind&&y.id===id);if(!x)return;
+    p.attached=[...(p.attached||[]),{kind,id,title:x.title}];persist(p);renderMain();return}
+  if(d.attrm!=null){p.attached=(p.attached||[]).filter((_,i)=>i!==+d.attrm);if(!p.attached.length)delete p.attached;persist(p);renderMain()}});
+document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#att-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
+// what is attached, as pages printed after the plan. A © song prints only its title and songwriter.
+async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null)await loadGuides();const docs=[],recipes=[];
+  for(const a of p.attached||[]){
+    if(a.kind==="recipe"){const x=(libData.recipes||[]).find(y=>y.id===a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
+    else if(a.kind==="song"){const x=(libData.songs||[]).find(y=>y.id===a.id);if(x)docs.push(songDoc(x))}
+    else if(a.kind==="readaloud"){const x=(libData.readalouds||[]).find(y=>y.id===a.id);if(x)docs.push({display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",x.lead||"")]})}
+    else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
+    else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
+  return {docs,recipes}}
 const walkOpen=()=>!!walkInfo&&(walkInfo.ready||isDirector());
 // a walk is on the calendar today, or in a plan of this week for today
 function walkToday(){const dow=new Date().getDay();const re=/\b(walks?|walking)\b/i;
@@ -5611,8 +5655,10 @@ document.addEventListener("click",async e=>{
   if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.docx");return}
   if(t.id==="sample"){makePdf([EXAMPLE],"Fulton Community School sample classroom plan.pdf");return}
   if(!p)return;
-  if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);const list=ev?[p,ev]:[p];
-    (async()=>{if(ev)await loadPhotos([ev]);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"))})();return}
+  if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);
+    (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];if(ev)await loadPhotos([ev]);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
+      // a recipe attached to the plan prints its demonstration sheets beside it
+      for(const x of att.recipes){try{const n=safeFile("Demonstration "+x.title);if(t.id==="dl")await saveFile(await demoPdf(x,"letter"),n+".pdf",true);else await saveFile(await demoWord(x,"letter"),n+".docx")}catch(er){}}})();return}
   if(t.id==="carry"){carryForward(p);return}
   if(t.id==="del"){askDelete($("#delwrap"),p.id,"del");return}
   if(t.dataset.dupdel){askDelete($("#dupwrap"),t.dataset.dupdel,"dup");return}

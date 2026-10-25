@@ -464,3 +464,31 @@ test('the song book: a © song keeps only its title, songwriter and recording, a
   assert.deepStrictEqual(await s.p.evaluate(() => songDoc(libData.songs.find(x => x.id === 'a-song')).blocks), []);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('Attach on a plan reaches every library, suggests the best matches instantly, and prints what is attached', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => {
+    put('staff/library/songs/five-little-speckled-frogs.md', '<!--\nlibrary: song\ncopyright: no\nsongwriter: Traditional\n-->\n# Five Little Speckled Frogs\n\n## Words\n\nSat on a log\n');
+    put('staff/library/songs/a-hit.md', '<!--\nlibrary: song\ncopyright: yes\nsongwriter: A Writer\n-->\n# A Hit About Frogs\n');
+    put('staff/library/recipes/pear-crisp.md', RECIPE('Pear crisp', 'food').replace('2 cups flour', '4 pears'));
+    put('staff/library/recipes/flatbread.md', RECIPE('Flatbread', 'food'));
+  } });
+  const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
+  const s = await signedIn(fx, b, 'Ann', '1357', 1280);
+  await s.p.evaluate(() => goView('songs')); await s.p.waitForFunction(() => libData, null, { timeout: 15000 });
+  // a plan that names frogs is offered the frog songs first
+  const sug = await s.p.evaluate(() => { const p = newPlan('individual'); p.classroom = 'West'; p.fields.area = 'Frogs at the creek'; return attachSuggest(p).map(x => x.kind + ':' + x.id); });
+  assert.deepStrictEqual(sug.slice(0, 2).sort(), ['song:a-hit', 'song:five-little-speckled-frogs']);
+  // a piazza plan in a week with pears in the bin is offered the pear recipe
+  const pear = await s.p.evaluate(() => { binCurrent = () => ({ items: [{ name: 'Bartlett pears' }] }); const p = newPlan('individual'); p.where = 'The piazza'; return attachSuggest(p).map(x => x.id); });
+  assert.strictEqual(pear[0], 'pear-crisp');
+  // attaching, and what prints with the plan: a traditional song's words, a © song's title alone, a recipe
+  const docs = await s.p.evaluate(async () => { const p = newPlan('individual'); p.attached = [{ kind: 'song', id: 'five-little-speckled-frogs', title: 'x' }, { kind: 'song', id: 'a-hit', title: 'x' }, { kind: 'recipe', id: 'pear-crisp', title: 'x' }];
+    const a = await attachDocs(p); return { titles: a.docs.map(d => d.title), blocks: a.docs.map(d => d.blocks.length), recipes: a.recipes.map(r => r.id) }; });
+  assert.deepStrictEqual(docs.titles, ['Five Little Speckled Frogs', '© A Hit About Frogs', 'Pear crisp']);
+  assert.strictEqual(docs.blocks[1], 0); assert.deepStrictEqual(docs.recipes, ['pear-crisp']);
+  // a plan with nothing attached shows only the Attach button
+  await s.p.evaluate(() => { const p = newPlan('individual'); p.classroom = 'West'; plans.set(p.id, p); currentId = p.id; view = 'plans'; renderMain(); });
+  assert.ok(await s.p.$('[data-attopen]')); assert.strictEqual(await s.p.$('#attachsec'), null);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});
