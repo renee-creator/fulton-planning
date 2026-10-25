@@ -74,6 +74,11 @@ module.exports = function library(o) {
     if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); json(req, res, 200, list(me)); return; }
     // marking a song copyright removes its words, and taking the mark off lets words be added
     if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } setMeta(x.path, 'copyright', body.on ? 'yes' : 'no'); json(req, res, 200, list(me)); return; }
+    // a photo from our own observations on a step of the demonstration set, chosen by the director or the kitchen once
+    // the face check on the device found no faces
+    if (P === 'library/photo') { if (!dir && !kit) { err(req, res, 403, 'The director chooses the photos.'); return; } const step = Math.round(+body.step); const id = String(body.photo || '');
+      if (!(step >= 2 && step <= 40) || !/^[a-z0-9][a-z0-9._-]{0,150}$/i.test(id)) { err(req, res, 400, 'Choose a step and a photo.'); return; }
+      const cur = String(x.meta.photos || '').split(/[;,]\s*/).filter(p => p && !p.startsWith(step + '=')); cur.push(step + '=' + id); setMeta(x.path, 'photos', cur.join('; ')); json(req, res, 200, list(me)); return; }
     err(req, res, 404, 'Not found');
   }
   return { list, add, guard, handle, item, isCopyright, META };

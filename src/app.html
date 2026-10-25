@@ -4624,9 +4624,9 @@ function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools
     ${x.lead?`<p>${esc(x.lead)}</p>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
     ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
     ${parts.map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
-    <div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>
+    ${recPhotoFor===x.id?recPhotoPick(x):""}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>
     <div class="actions" style="flex-wrap:wrap">${printBtns("recipe",esc(x.id),"Recipe")}${printBtns("recdemo",esc(x.id),"Demonstration sheets")}${printBtns("recdemoposter",esc(x.id),"Demonstration posters")}
-      ${recCanEdit()?pageEditBtn(x.path,"Edit"):""}${(isDirector()||isKitchenUser())&&!VIEW_AS&&x.draft?`<button class="btn small" data-recready="${esc(x.path)}">Add to the library</button>`:""}</div></details>`}
+      ${recCanEdit()?pageEditBtn(x.path,"Edit")+`<button class="linkbtn" data-recphotopick="${esc(x.id)}">A photo for a step</button>`:""}${(isDirector()||isKitchenUser())&&!VIEW_AS&&x.draft?`<button class="btn small" data-recready="${esc(x.path)}">Add to the library</button>`:""}</div></details>`}
 function gdnFoodRuleText(){return (wordsOf("food-rule").rule||"").trim()}
 function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the recipes</div></section>`;return}
   const all=(libData.recipes||[]),list=all.filter(x=>recKindOf(x)===recKind).sort((a,b)=>a.title.localeCompare(b.title)),drafts=all.filter(x=>x.draft);
@@ -4654,6 +4654,18 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-reck
     try{const r=await window.FP_API("/api/staff/library/add",b);libData=r;recAdd=false;recOpen=r.id;recKind=b.sensory?"sensory":"food";toast(r.draft?"Sent to the director as a draft.":"Added to the library.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
   if(d.recready){try{libData=await window.FP_API("/api/staff/library/ready",{path:d.recready,on:true});toast("Added to the library.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.recrow!=null&&d.open)recOpen=d.dataset.recrow},true);
+/*__DEMO_SHEETS__*/
+// a photo from our own observations on one step of the demonstration set, kept only once the face check finds no faces
+let recPhotoFor="";
+function recPhotoPick(x){const ns=[...notices.values()].filter(n=>n&&n.photo&&n.photo.id&&!n.deleted).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24);const steps=libLines(recPart(x,"Steps"));
+  return `<div class="kfields"><label>For step<select id="rp-step">${steps.map((s2,i)=>`<option value="${i+2}">${i+2}. ${esc(s2.slice(0,40))}</option>`).join("")}</select></label></div>
+    <div class="gmaps">${ns.map(n=>`<button class="gmapkid" data-recphoto="${esc(x.path)}|${esc(n.photo.id)}"><img src="${esc(photoThumb(n))}" alt="An observation photo"></button>`).join("")||`<div class="cnt">No observation photos yet.</div>`}</div>
+    <div class="actions"><button class="linkbtn" data-recphotopick="">Close</button></div>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-recphotopick],[data-recphoto]");if(!t||view!=="recipes")return;const d=t.dataset;
+  if(d.recphotopick!=null){recPhotoFor=d.recphotopick;renderMain();return}
+  const [path,id]=d.recphoto.split("|");const step=$("#rp-step")?.value||"2";
+  try{progress("Checking the photo for faces");const blob=await (await fetch(window.FP_ORIGINAL_URL(id))).blob();if(!(await gdnFaceFree(blob))){toast("A face may show in this photo, so it is not used. Choose another.");return}
+    libData=await window.FP_API("/api/staff/library/photo",{path,step,photo:id});recPhotoFor="";toast("The photo stands on step "+step+".");renderMain()}catch(er){toast(er&&er.message||"The photo could not be checked.")}});
 // a recipe as a page, PDF and Word
 function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";const blocks=[];if(x.lead)blocks.push(dText("",x.lead));
   for(const k of ["Ingredients","Tools"])if(recPart(x,k))blocks.push(dList(k,libLines(recPart(x,k))));
@@ -10776,6 +10788,8 @@ async function printsClick(t){
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
+  if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=(libData.recipes||[]).find(r=>r.id===t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
+    const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
   if(kind==="recipe"){if(!libData)await loadLibrary();const x=(libData.recipes||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
   if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}

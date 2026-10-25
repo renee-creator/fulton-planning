@@ -414,7 +414,7 @@ module.exports = function staffModule(o) {
     // a kitchen sign-in reaches its own records page and nothing else here
     // the kitchen also adds and edits recipes in the recipe library
     const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && /^staff\/library\/recipes\//.test(String(body.path || ''));
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry

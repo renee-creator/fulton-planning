@@ -21,9 +21,10 @@
       const had = document.querySelector('script[src="' + src + '"]');
       const done = () => globalName ? (root[globalName] ? res(root[globalName]) : rej(new Error('load'))) : res();
       if (had && !globalName) return res();
-      const sc = had || document.createElement('script');
+      // a script tag that is there without what it brings, such as one that failed to load, is tried again
+      const fresh = !had || !!globalName; const sc = fresh ? document.createElement('script') : had;
       sc.addEventListener('load', done); sc.addEventListener('error', () => rej(new Error('load')));
-      if (!had) { sc.src = src; document.head.appendChild(sc); }
+      if (fresh) { sc.src = src; document.head.appendChild(sc); }
     });
   }
 
