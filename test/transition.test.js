@@ -152,5 +152,13 @@ test('the family copy of a transition summary never names another child, and the
   assert.doesNotMatch(text, /\bRue\b|\bOak\b|\bLane\b|\bMoss\b|\bR\./);
   assert.match(text, /Pip plays with friends\. A friend and Pip dug\. A friend's tower fell\. Bea, an educator, helped\./);
   assert.strictEqual(fam.withoutOthers('Bunny laughed.', { id: 'pip', first: 'Pip' }, [...kids].map(([id, r]) => Object.assign({ id }, r.doc))), 'A friend laughed.');
+  // another child's initials that share this child's first letter, names that are everyday words, the school's own
+  // words, and a brother or sister
+  const rosa = { id: 'rosa', first: 'Rosa', last: 'Lee', parents: [{ email: 'lee@example.test' }] };
+  const others = [rosa, { id: 'rt', first: 'Ruby', last: 'Tran' }, { id: 'mg', first: 'May', last: 'Green' }, { id: 'sl', first: 'Sam', last: 'Lee', parents: [{ email: 'lee@example.test' }] }, { id: 'af', first: 'Ava', last: 'Fulton' }];
+  assert.strictEqual(fam.withoutOthers('Rosa plays with R.T. every day.', rosa, others), 'Rosa plays with a friend every day.');
+  assert.strictEqual(fam.withoutOthers('May I help? She played with May.', rosa, others), 'May I help? She played with a friend.');
+  assert.strictEqual(fam.withoutOthers('Green beans grew. Ava Green ran.', rosa, others), 'Green beans grew. A friend ran.');
+  assert.strictEqual(fam.withoutOthers('Rosa and Sam built a tower at Fulton.', rosa, others), 'Rosa and Sam built a tower at Fulton.');
   assert.strictEqual(kids.get('pip').doc.transitionSummary['2026-27'].sections.friends, 'Plays with Rue most days.');
 });

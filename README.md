@@ -426,7 +426,7 @@ Educators change any part, proofread it with the same Proofread as every page, a
 
 It reaches the family only when the director shares it, from the child's Details tab under Shared with the family, once it is ready. The family sees it on the Family page as it read when she shared it, and a change made after that waits until she shares it again. She can stop sharing it at any time. The server keeps the rule, so an educator's or the office's save never shares a summary or takes one away, a whole child record saved from anywhere keeps the summary as it is, and the Family page receives nothing of a summary that is not shared.
 
-The copy a family reads on the Family page never names another child. Other children's first and last names, the nicknames their families gave in the Family Questionnaire and their initials, such as R. or R.T., read as a friend, or friends for two or more together, and the educators' words are otherwise kept. The family copy holds no photos. The staff copy stays as written.
+The copy a family reads on the Family page never names another child. Other children's first and last names, the nicknames their families gave in the Family Questionnaire and their initials, such as R. or R.T., read as a friend, or friends for two or more together, and the educators' words are otherwise kept. A brother or sister who shares the family's sign-in keeps their name. The school's own words, such as Fulton and the Class names, are never changed, and a name that is also an everyday word, such as May or Green, is changed inside a sentence but not when it starts one. The family copy holds no photos. The staff copy stays as written.
 
 ## The Family page
 

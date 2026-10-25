@@ -66,6 +66,11 @@ const HANDBOOK_URL = 'https://docs.google.com/document/d/1rV5B3qqimv6iAdAL_pCUiO
    the nicknames their families gave in the Family Questionnaire and their initials, such as R. or R.T., become a friend,
    and the educators' words are otherwise kept. The staff copy stays as written. */
 const NOT_NAMES = new Set(['We', 'She', 'He', 'Her', 'His', 'They', 'Them', 'Their', 'No', 'None', 'Yes', 'Our', 'The', 'A', 'An', 'And', 'Or', 'But', 'Sometimes', 'Usually', 'Mostly', 'Just', 'Only', 'Call', 'Calls', 'Called', 'Likes', 'Prefers', 'Goes', 'By', 'Name', 'Nickname', 'Nicknames', 'Family', 'Mom', 'Dad', 'Mama', 'Papa', 'Grandma', 'Grandpa', 'Not', 'Na', 'Also', 'At', 'Home', 'School', 'It', 'Is', 'In', 'Of', 'To', 'For', 'With', 'Sister', 'Brother', 'Baby']);
+// names that are also the school's own words are never changed, and names that are also everyday words are changed only
+// inside a sentence, so May I help? and Green beans stay as written
+const NEVER_NAMES = new Set(['Fulton', 'Farm', 'School', 'Community', 'Class', 'West', 'North', 'South', 'Garden', 'Piazza']);
+const EVERYDAY = new Set(['May', 'June', 'April', 'August', 'Will', 'Grace', 'Hope', 'Joy', 'Rose', 'Lily', 'Hope', 'Iris', 'Ivy', 'Sky', 'Sky', 'Rain', 'Sunny', 'Star', 'Green', 'Brown', 'White', 'Black', 'Gray', 'Grey', 'Bean', 'Berry', 'Hunter', 'Mason', 'Taylor', 'Cook', 'Baker', 'Miller', 'Wood', 'Stone', 'Hill', 'Rivers', 'Summer', 'Winter', 'Autumn', 'Faith', 'Bell', 'Love', 'Max', 'Sage', 'Olive', 'Pearl', 'Ruby', 'Jade', 'Dawn', 'Eve', 'Art', 'Bill', 'Frank', 'Mark', 'Rob', 'Sue', 'Pat', 'Dash']);
+const shareFamily = (a, b) => { const em = c => new Set(((c && c.parents) || []).map(x => String((x && x.email) || '').trim().toLowerCase()).filter(Boolean)); const x = em(a); return [...em(b)].some(e => x.has(e)); };
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function nicknamesOf(c) { const a = c && c.familyQuestionnaire && Array.isArray(c.familyQuestionnaire.answers) ? String(c.familyQuestionnaire.answers[0] || '') : ''; return (a.match(/\b[A-Z][a-z]{1,20}\b/g) || []).filter(w => !NOT_NAMES.has(w)); }
 function withoutOthers(text, child, all) {
@@ -73,14 +78,19 @@ function withoutOthers(text, child, all) {
   const own = new Set([child.first, child.last, ...nicknamesOf(child)].filter(Boolean).map(x => String(x).toLowerCase()));
   const words = new Set(), inits = new Set();
   for (const c of all) {
-    if (!c || c === child || (c.id && c.id === child.id)) continue;
-    for (const w of [c.first, c.last, ...nicknamesOf(c)]) { const x = String(w || '').trim(); if (x.length >= 2 && !own.has(x.toLowerCase())) words.add(x); }
+    // a brother or sister is the family's own, and keeps their name
+    if (!c || c === child || (c.id && c.id === child.id) || shareFamily(c, child)) continue;
+    for (const w of [c.first, c.last, ...nicknamesOf(c)]) { const x = String(w || '').trim(); if (x.length >= 2 && !own.has(x.toLowerCase()) && !NEVER_NAMES.has(x)) words.add(x); }
+    // only this child's own initials are left as written
     const f = String(c.first || '').trim()[0], l = String(c.last || '').trim()[0];
-    if (f && f.toUpperCase() !== String(child.first || ' ')[0].toUpperCase()) { inits.add(f.toUpperCase() + '\\.'); if (l) inits.add(f.toUpperCase() + '\\.\\s?' + l.toUpperCase() + '\\.'); }
+    const of = String(child.first || ' ').trim()[0] || ' ', ol = String(child.last || ' ').trim()[0] || ' ';
+    if (f) { if (f.toUpperCase() !== of.toUpperCase()) inits.add(f.toUpperCase() + '\\.'); if (l && !(f.toUpperCase() === of.toUpperCase() && l.toUpperCase() === ol.toUpperCase())) inits.add(f.toUpperCase() + '\\.\\s?' + l.toUpperCase() + '\\.'); }
   }
   // full names first, then single names, each with a possessive
   const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
-  if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos) => 'a friend' + (pos ? '\'s' : ''));
+  if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos, at, all) => {
+    const first = m.split(/\\s+/)[0].replace(/(\'s|’s)$/, ''); const start = !all.slice(0, at).trim() || /[.!?]["”]?\\s*$|\\n\\s*$/.test(all.slice(0, at));
+    return EVERYDAY.has(first) && start ? m : 'a friend' + (pos ? '\'s' : ''); });
   if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), '$1a friend');
   // two friends named together read as friends, and a sentence that starts with one starts with a capital
   t = t.replace(/\ba friend(?:,\s*a friend)*,?\s+and\s+a friend\b/g, 'friends').replace(/\ba friend(?:,\s*a friend)+\b/g, 'friends').replace(/\ba friend\s+and\s+friends\b/g, 'friends');
