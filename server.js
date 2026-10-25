@@ -516,6 +516,7 @@ ONCE.push(['dutiesEmail', () => staff.once.edits('dutiesEmail', recsEdit)]);
 ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
+ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
