@@ -320,3 +320,28 @@ test('preserving the harvest, with our food rule, and never canning', async t =>
   assert.match(txt, /Our food rule\. Never on the menu\./); assert.match(txt, /Fig, dried, Two jars, with children/); assert.doesNotMatch(txt, /\bcann(ed|ing)\b/i);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('the family seed library: families offer seed through the wish list, and the director adds a donation', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => { put('staff/garden/setup.json', GARDEN); put('staff/garden/log.json', { id: 'gardenlog', seeds: [{ id: 's1', name: 'Fava bean', from: 'saved' }] });
+    put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'fern.family@example.test', children: ['fern'] }] });
+    put('children/fern.json', { first: 'Fern', last: 'Test', classroom: 'West', status: 'active', parents: [{ email: 'fern.family@example.test' }] });
+    put('participation/seeds1.json', { id: 'seeds1', kind: 'item', type: 'wish', title: 'Seeds for the family seed library', seedLibrary: true, question: 'Which seeds are you bringing?', open: true, test: true, hours: 1, signups: [] }); } });
+  t.after(() => fx.stop());
+  const c = await fx.as('', '/family/code', { email: 'fern.family@example.test' }); const fam = (await fx.as('', '/family/login', { email: 'fern.family@example.test', code: c.body.code })).body.token;
+  const su = await fx.as(fam, '/family/signup', { itemId: 'seeds1', on: true, who: 'Fern\'s dad', answer: 'Sunflower seeds' });
+  assert.strictEqual(su.status, 200, JSON.stringify(su.body));
+  // a family never writes to the garden records
+  assert.notStrictEqual((await fx.as(fam, '/api/staff/garden/seed', { name: 'x' })).status, 200);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+  await s.p.evaluate(() => goView('garden')); await s.p.waitForSelector('[data-gseedaccept]', { timeout: 15000, state: 'attached' });
+  await s.p.evaluate(() => document.querySelector('[data-gseedaccept]').click());
+  await s.p.waitForFunction(() => (gdn.seeds || []).some(x => x.name === 'Sunflower seeds'), null, { timeout: 10000 });
+  const seed = await s.p.evaluate(() => gdn.seeds.find(x => x.name === 'Sunflower seeds'));
+  assert.strictEqual(seed.from, 'donated'); assert.strictEqual(seed.share, true); assert.strictEqual(seed.source, 'Fern\'s dad');
+  await wait(2000);
+  assert.ok(JSON.parse(fs.readFileSync(path.join(fx.dir, 'participation/seeds1.json'), 'utf8')).signups[0].seedAccepted);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

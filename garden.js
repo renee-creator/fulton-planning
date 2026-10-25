@@ -83,7 +83,9 @@ module.exports = function garden(o) {
 
   /* ---------- what a reader receives ---------- */
   const forFamily = () => { const s = setup(); if (!s || !s.ready) return null;
-    return { agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
+    // the family seed library, the seeds we share with families, by name only
+    const seedLibrary = (glog().seeds || []).filter(x => x && x.share && x.name).map(x => ({ name: x.name, variety: x.variety || '', from: x.from === 'donated' ? 'donated' : x.from === 'bought' ? 'bought' : 'saved' }));
+    return { seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
@@ -163,7 +165,7 @@ module.exports = function garden(o) {
     if (P === 'garden/mapready') { saveS({ mapReady: !!body.on }); return back(); }
     if (P === 'garden/seed') {
       saveL(L => { let x = L.seeds.find(y => y.id === body.id); if (body.remove) { L.seeds = L.seeds.filter(y => y.id !== body.id); return; } if (!x) { x = { id: rid('s') }; L.seeds.push(x); }
-        Object.assign(x, { name: txt(body.name, 80) || x.name || '', variety: txt(body.variety, 80), from: body.from === 'bought' ? 'bought' : 'saved', source: txt(body.source, 80), link: /^https:\/\//.test(body.link || '') ? String(body.link).slice(0, 300) : '', plant: plantOf(s, body.plant) ? body.plant : '', bed: bedOf(s, body.bed) ? body.bed : '', savedOn: ISO.test(body.savedOn || '') ? body.savedOn : '', left: txt(body.left, 60), stored: txt(body.stored, 80), months: (Array.isArray(body.months) ? body.months : []).filter(m => /^(0[1-9]|1[0-2])$/.test(m)), grow: !!body.grow }); });
+        Object.assign(x, { name: txt(body.name, 80) || x.name || '', variety: txt(body.variety, 80), from: ['bought', 'donated'].includes(body.from) ? body.from : 'saved', share: body.share === undefined ? !!x.share : !!body.share, source: txt(body.source, 80), link: /^https:\/\//.test(body.link || '') ? String(body.link).slice(0, 300) : '', plant: plantOf(s, body.plant) ? body.plant : '', bed: bedOf(s, body.bed) ? body.bed : '', savedOn: ISO.test(body.savedOn || '') ? body.savedOn : '', left: txt(body.left, 60), stored: txt(body.stored, 80), months: (Array.isArray(body.months) ? body.months : []).filter(m => /^(0[1-9]|1[0-2])$/.test(m)), grow: !!body.grow }); });
       return back();
     }
     // a plant, a bed, an animal group, a task, the agreements, who tends what and the map, each set by the director
