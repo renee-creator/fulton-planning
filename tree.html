@@ -6997,7 +6997,7 @@ function momentsReadHtml(){
   return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these observations keep returning to</h3>
     <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
-    ${(s.patterns||[]).length?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>
+    ${(s.patterns||[]).some(patternIsNew)?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>!patternIsNew(p)?"":`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>
       ${patternMatchHtml(p,i)}${patternObsHtml(p,i)}
       ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:patternMatch(p)?"":isDirector()?`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`:""}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
@@ -7020,10 +7020,9 @@ function patternMatch0(p){if(!p||p.notThread||(p.threadId&&threads.get(p.threadI
 const tookOut=(n,th)=>noteGroup(n).some(g=>(g.threadNo||[]).includes(th.id));
 function patternMissing(p,th){const inIt=n=>threadsOfNotice(n).some(t=>t.id===th.id);
   const seen=new Set(),out=[];for(const n of patternMoments(p)){const k=n.group||n.id;if(seen.has(k)||inIt(n)||tookOut(n,th))continue;seen.add(k);out.push(n)}return out}
-function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const miss=patternMissing(p,th),all=patternMoments(p);
-  const inIt=all.filter((n,k)=>all.findIndex(o=>(o.group||o.id)===(n.group||n.id))===k&&threadsOfNotice(n).some(t=>t.id===th.id)).length;
-  return `<div class="nfsuggest" style="margin-top:8px"><span>This looks like the thread <b>${esc(th.name)}</b>, ${th.status==="closed"?"which the team had closed. Children may be returning to it.":"which the team is already following."}${inIt?` ${inIt} ${inIt>1?"are":"is"} already in it.`:""}${miss.length?" Add the ones below that belong.":""}</span>
-    <span class="actions">${miss.length>1&&!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add all ${miss.length}</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`}
+function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const miss=patternMissing(p,th),all=patternMoments(p);if(!miss.length)return "";
+  return `<div class="nfsuggest" style="margin-top:8px"><span>${miss.length} new observation${miss.length>1?"s look":" looks"} like the thread <b>${esc(th.name)}</b>${th.status==="closed"?", which the team had closed. Children may be returning to it.":"."}</span>
+    <span class="actions">${!VIEW_AS?`<button class="btn small" data-patadd="${i}">Add ${miss.length>1?"all "+miss.length:"it"}</button>`:""}<button class="linkbtn" data-tsee="${esc(th.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-patnot="${i}">Not this thread</button>`:""}</span></div>`;}
 // the observations a pattern draws on, each with its photo, who kept it and its words, so the team can judge whether each belongs.
 // When the pattern matches a thread, each one not yet in it can be added on its own
 function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";const th=patternMatch(p);
@@ -7045,7 +7044,19 @@ function addNoticesToThread(th,ns,meta){let added=0;meta=meta||{};
 function patternRoom(ns){if(nRoom!=="All"&&nRoom!=="none")return nRoom;const c={};for(const n of ns)for(const r of momentRooms(n))c[r]=(c[r]||0)+1;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||myRoom()||""}
 // a plan from what the observations keep returning to. The plan begins from the observations themselves, and the
 // pattern's name and TREE's reading stay out of it, so the educator writes the area and the intent.
-function planFromPattern(p){const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
+// a plan from a thread the team follows, Individual, carrying the thread's question and its last reflection
+function planFromThread(th){if(!th)return;const first=[...(th.weeks||[])].sort()[0];
+  const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
+  // the thread's last reflection opens the observation, as last week's Final remarks do when a plan continues
+  {const last=threadLastRemarks(th);if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}}
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop()}
+// a pattern's thread, the one it was followed as or the one TREE matched it to
+const patternThread=p=>(p.threadId&&threads.get(p.threadId))||patternMatch(p)||null;
+// a pattern shows only what is new. One whose observations all sit in its thread leaves the list and stays under the thread.
+function patternIsNew(p){const th=patternThread(p);if(!th)return true;const inIt=n=>threadsOfNotice(n).some(t=>t.id===th.id)||tookOut(n,th);
+  return patternMoments(p).some(n=>!inIt(n))}
+function planFromPattern(p){const th0=patternThread(p);if(th0){planFromThread(th0);return}
+  const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
   const np=newPlan("individual",{classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
   np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");
   np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);np.source={kind:"pattern",name:p.name||"",ids:ns.map(n=>n.id),at:Date.now()};
@@ -11117,11 +11128,7 @@ async function threadsClick(t){
     return true}
   if(t.dataset.pplango!=null){const [xid,tid]=t.dataset.pplango.split("|");const x=projects.get(xid);if(x)planFromProject(x,tid);return true}
   if(t.dataset.pplanno){const el=$("#pplan-pick");if(el)el.innerHTML="";return true}
-  if(t.dataset.tplan){const th=threads.get(t.dataset.tplan);const first=[...(th.weeks||[])].sort()[0];
-    const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
-    // the thread's last reflection opens the observation, as last week's Final remarks do when a plan continues
-    {const last=threadLastRemarks(th);if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}}
-    plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();return true}
+  if(t.dataset.tplan){planFromThread(threads.get(t.dataset.tplan));return true}
   // A classroom writes one Classroom Plan a week, so a thread joins that plan. A new one is started only when the week has none yet.
   if(t.dataset.tcplan){const th=threads.get(t.dataset.tcplan);if(!th)return true;
     const room=th.classroom||(roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""));
