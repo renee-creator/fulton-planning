@@ -12261,6 +12261,12 @@ function signinsHtml(){
 let rowOpen="";
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("sgrow")){const k=d.dataset.sgopen?"sg:"+d.dataset.sgopen:d.dataset.rowkey||"";
   if(d.open){rowOpen=k;if(d.dataset.sgopen)signins.open=d.dataset.sgopen;document.querySelectorAll(".sgrow[open]").forEach(x=>{if(x!==d)x.open=false})}else if(rowOpen===k){rowOpen="";if(d.dataset.sgopen&&signins.open===d.dataset.sgopen)signins.open=""}}},true);
+// Add educator here adds a new hire, the same way as adding from Educators. Each sees only the New Educator section
+// until the director turns on school and children's work access.
+async function sgNewHires(list){if(!list.length)return;signins.busy=true;if(view==="settings")renderSettings();const added=[];
+  try{for(const x of list){await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator"});added.push(x.name)}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
+  try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||signins.list}catch(e){}
+  signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name and choose a passcode. ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
 async function signinCall(path,body,msg){signins.busy=true;try{const j=await window.FP_API(path,body);signins.list=j.accounts||signins.list;if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}signins.busy=false;if(view==="settings")renderSettings()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
@@ -12275,8 +12281,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in, added by mistake? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
   if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
-  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}signinCall("/api/accounts/save",{name:n,room:$("#sg-newroom")?.value||"",director:false},`${n} can sign in now and choose a code.`);return}
-  if(t.id==="sg-addall"){(async()=>{const known=new Set(signins.list.map(a=>a.name.toLowerCase()));for(const r of roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)))await signinCall("/api/accounts/save",{name:r.name,room:r.room||"",director:false});toast("Everyone on the educators list can sign in now.")})();return}
+  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}sgNewHires([{name:n,room:$("#sg-newroom")?.value||""}]);return}
+  if(t.id==="sg-addall"){const known=new Set(signins.list.map(a=>a.name.toLowerCase()));sgNewHires(roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)).map(r=>({name:r.name,room:r.room||""})));return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!signins.list)return;
   const a=signins.list.find(x=>x.name===(t.dataset.sgroom||t.dataset.sgdir||t.dataset.sgkit));if(!a)return;
