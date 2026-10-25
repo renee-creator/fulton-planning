@@ -30,7 +30,7 @@ module.exports = function growthModule(c) {
   // the PD library's modules in the design's order. A module with its file in staff/pd/modules opens, the rest are still being written.
   const MODULE_LIST = [
     ['researcher', 'The Educator as Researcher', 'Our project cycle from informal observation to reflection, and writing plans that grow from observation.', ['cur', 'obs']],
-    ['documentation', 'Documentation at Fulton Community School', 'Writing observations that separate noticing from wondering, and documentation that makes children\'s thinking visible.', ['obs']],
+    ['documentation', 'Documentation', 'Writing observations that separate noticing from wondering, and documentation that makes children\'s thinking visible.', ['obs']],
     ['language', 'The Language of Learning', 'Our language parameters and the Effective Responses guide, describing and narrating in place of praise.', ['lang']],
     ['beyond', 'Beyond Discipline', 'Relationship-based positive discipline, looking for the reason behind a behavior, and staying regulated so children can regulate.', ['lang', 'img']],
     ['families', 'The Home and School Partnership', 'Daily communication, conferences, and difficult conversations.', ['fam']],
