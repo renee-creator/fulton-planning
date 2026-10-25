@@ -151,6 +151,19 @@ module.exports = function growthModule(c) {
       for (const x of s.list) { if (x.date < from || x.date > to) continue; if (!name || (!dir && nameKey(x.name) !== nameKey(name))) continue; if (!dir && !allowed(name)) continue;
         out.push(Object.assign({ id: `tgrow.ci.${pidOf(x.name)}.${x.date}`, cal: 'tgrow', title: dir ? `Check-in, ${x.name}` : 'Check-in with the director', desc: dir ? 'Monthly check-in, about twenty minutes' : 'Your monthly check-in, about twenty minutes. Nothing needs to be prepared.' },
           x.time ? { allDay: false, start: x.date + 'T' + x.time, end: x.date + 'T' + hhmm(toMin(x.time) + x.minutes) } : { allDay: true, start: x.date, end: x.date })); } }
+    // the monthly PD staff meeting on its first Monday, or the day the director chose, for everyone, and each Class's team
+    // meetings for the director and that Class's educators
+    for (const [ym] of cal.months) {
+      const all = allStaffDay(ym); const [ms, me2] = meetTimes();
+      if (all.kind === 'meeting' && all.auto && all.date && all.date >= from && all.date <= to && !((get(PDD) || {}).manual || []).some(m => m.date === all.date && m.kind === 'meeting'))
+        out.push({ id: 'tgrow.pdm.' + all.date, cal: 'tgrow', title: 'PD staff meeting', desc: 'The whole staff and PD meeting, the first Monday of the month. The agenda is in TREE, under Educators, PD days.', agenda: all.date, allDay: false, start: all.date + 'T' + ms, end: all.date + 'T' + me2 });
+      const last = addDays(addMonths(ym + '-01', 1).slice(0, 7) + '-01', -1);
+      for (const d of teamDays(ym + '-01' > from ? ym + '-01' : from, last < to ? last : to)) for (const room of roomsFor(name)) {
+        const [ts, te] = teamTimes(room);
+        out.push(Object.assign({ id: `tgrow.tm.${room}.${d}`, cal: 'tgrow', title: room + ' Class team meeting', desc: 'For the ' + room + ' Class team. The agenda is in TREE, under Educators, PD days.', agenda: teamId(d, room) },
+          ts ? { allDay: false, start: d + 'T' + ts, end: d + 'T' + (te || hhmm(toMin(ts) + 60)) } : { allDay: true, start: d, end: d }));
+      }
+    }
     for (const m of ((get(PDD) || {}).manual || [])) { if (m.date < from || m.date > to) continue;
       out.push(Object.assign({ id: 'tgrow.pd.' + m.id, cal: 'tgrow', title: m.title || (m.kind === 'meeting' ? 'PD staff meeting' : 'PD day'), desc: 'The agenda is in TREE, under Educators, PD days.', agenda: m.date }, m.start ? { allDay: false, start: m.date + 'T' + m.start, end: m.date + 'T' + (m.end || m.start) } : { allDay: true, start: m.date, end: m.date })); }
     return out;
@@ -211,7 +224,65 @@ module.exports = function growthModule(c) {
     const out = new Map(); const ms = []; for (let d = fromIso.slice(0, 7) + '-01'; d <= toIso; d = addDays(addMonths(d, 1).slice(0, 7) + '-01', 0)) ms.push(d.slice(0, 7));
     for (const ym of ms) { const mo = await loadMonth(ym); for (const p of mo.pd) if (p.date >= fromIso && p.date <= toIso) { const id = p.date + '-' + p.kind; if (!out.has(id)) out.set(id, Object.assign({ id, from: 'calendar' }, p)); } }
     for (const m of pdd().manual) if (m.date >= fromIso && m.date <= toIso) { const id = m.date + '-' + m.kind; out.set(id, Object.assign({ from: 'tree' }, m, { id, manualId: m.id })); }
+    // one all-staff meeting a month. A weekly staff meeting on the school's calendar is not a PD staff meeting, and an
+    // agenda kept for one still shows to the director.
+    for (const ym of ms) { const all = allStaffDay(ym);
+      for (const [id, x] of [...out]) if (x.kind === 'meeting' && x.date.slice(0, 7) === ym && x.date !== all.date) out.delete(id);
+      if (all.kind === 'meeting' && all.date && all.date >= fromIso && all.date <= toIso && !out.has(all.date + '-meeting')) { const [st, en] = meetTimes(); out.set(all.date + '-meeting', { id: all.date + '-meeting', date: all.date, kind: 'meeting', from: 'tree', auto: true, title: 'PD staff meeting', start: st, end: en }); } }
     return [...out.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+  /* Mondays. The whole staff and PD meeting is the first Monday of each month. When that Monday is a school closure, the
+     director's Today asks once for another day. December and February have no all-staff meeting, and nor does any month
+     the director marks, and a PD day in such a month is that month's all-staff meeting. Each Class team meets on every
+     other open Monday, and on every open Monday of a month without an all-staff meeting. Check-ins are unchanged. */
+  const ROOMS = ['West', 'North', 'South'];
+  const quietMonth = ym => ['12', '02'].includes(ym.slice(5, 7)) || ((school().quietMonths || []).includes(ym));
+  const firstMonday = ym => { let d = ym + '-01'; while (dow(d) !== 1) d = addDays(d, 1); return d; };
+  function allStaffDay(ym) {
+    const mo = cal.months.get(ym); if (!mo) return { date: '', kind: '' };
+    if (quietMonth(ym)) { const pd = mo.pd.find(x => x.kind === 'pdday') || pdd().manual.find(x => x.kind === 'pdday' && x.date.slice(0, 7) === ym); return pd ? { date: pd.date, kind: 'pdday' } : { date: '', kind: '' }; }
+    const set = pdd().manual.find(x => x.kind === 'meeting' && x.date.slice(0, 7) === ym); if (set) return { date: set.date, kind: 'meeting' };
+    const moved = (pdd().moved || {})[ym]; if (moved === 'none') return { date: '', kind: '' }; if (moved) return { date: moved, kind: 'meeting', auto: true };
+    const fm = firstMonday(ym); const onCal = mo.pd.find(x => x.kind === 'meeting' && x.date === fm) || mo.pd.find(x => x.kind === 'meeting');
+    if (mo.closed.has(fm)) return onCal && !mo.closed.has(onCal.date) ? { date: onCal.date, kind: 'meeting' } : { date: '', kind: 'meeting', needsDate: true, firstMonday: fm };
+    return { date: fm, kind: 'meeting', auto: !onCal || onCal.date !== fm };
+  }
+  const meetTimes = () => [(school().meeting || {}).start || '13:15', (school().meeting || {}).end || '14:30'];
+  const teamTimes = room => { const t = (school().teamMeetings || {})[room] || {}; return [t.start || '', t.end || '']; };
+  // every team meeting of a Class in a stretch of days, open Mondays other than the all-staff meeting's
+  function teamDays(fromIso, toIso) {
+    const out = [];
+    for (let d = fromIso; d <= toIso; d = addDays(d, 1)) { if (dow(d) !== 1) continue; const ym = d.slice(0, 7); const mo = cal.months.get(ym); if (!mo || mo.closed.has(d)) continue;
+      const all = allStaffDay(ym); if (all.date === d) continue; out.push(d); }
+    return out;
+  }
+  const teamId = (date, room) => date + '-team-' + room;
+  const roomsFor = me => isDirector(me) ? ROOMS.slice() : ROOMS.filter(r => r === roomOf(me));
+  // the next steps from a Class's team meetings not yet marked done, carried to its next team meeting
+  function openSteps(room, beforeDate) {
+    const out = []; for (const a of Object.values(pdd().agendas)) if (a.kind === 'team' && a.room === room && a.date < beforeDate) for (const st of a.steps || []) if (!st.done) out.push(Object.assign({ from: a.id, fromDate: a.date }, st));
+    return out.sort((x, y) => x.fromDate.localeCompare(y.fromDate));
+  }
+  function teamItem(date, room) { const a = pdd().agendas[teamId(date, room)] || null; const [st, en] = teamTimes(room);
+    return { id: teamId(date, room), date, kind: 'team', room, title: room + ' Class team meeting', start: (a && a.start) || st, end: (a && a.end) || en, agenda: a ? withPres(a, '') : null, carried: openSteps(room, date) }; }
+  // a team meeting's agenda starts from the Class's own week, and the team removes or adds what it wants
+  function teamStart(room, date) {
+    const live = k => [...(store.recs[k] || new Map()).values()].filter(r => r && !r.deleted && r.doc).map(r => r.doc);
+    const mon = mondayOf(date), last = addDays(mon, -7); const blocks = []; const id = () => rid('k');
+    const plans = live('plans').filter(x => x.classroom === room && (x.weekOf === mon || x.weekOf === last) && !['ready', 'reviewed'].includes(x.status) && x.type !== 'notice');
+    // each kind of plan named once with how many, and each list ends its sentences once
+    const longDay = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+    const sentences = a => a.map(x => String(x).trim().replace(/[.?!]?$/, m => m || '.')).join(' ');
+    if (plans.length) { const n = new Map(); for (const x of plans) { const k = (x.type === 'classroom' ? 'The Classroom plan' : (x.educator || 'An educator') + "'s " + (x.type === 'individual' ? 'Individual' : 'Small Group') + ' plan') + ', week of ' + longDay(x.weekOf); n.set(k, (n.get(k) || 0) + 1); }
+      blocks.push({ id: id(), title: 'Plans waiting to be finished', why: sentences([...n].map(([k, c]) => c > 1 ? k.replace(' plan,', ' plans (' + c + '),') : k)) }); }
+    const threads = live('threads').filter(t => t.classroom === room && !t.unfollowed && !['closed', 'resting'].includes(t.status));
+    const projects = live('projects').filter(x => x.status !== 'closed' && (x.home === room || (x.classrooms || []).some(c => c && c.room === room)));
+    if (threads.length || projects.length) blocks.push({ id: id(), title: 'Threads and projects we are following', why: sentences([...projects.map(x => 'Project, ' + x.name), ...threads.map(t => 'Thread, ' + t.name)]) });
+    const inq = live('inquiries').filter(x => x.room === room && x.status !== 'closed' && x.status !== 'resting');
+    if (inq.length) blocks.push({ id: id(), title: 'Open team inquiries', why: sentences(inq.map(x => x.name)) });
+    const obs = live('notices').filter(n => n.classroom === room && String(n.noticed || '').trim() && Date.now() - (n.at || 0) < 10 * 864e5).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3);
+    if (obs.length) blocks.push({ id: id(), title: 'A few recent observations to talk about', why: obs.map(n => { const t = String(n.noticed).replace(/\s+/g, ' ').trim(); return '\u2022 ' + (t.length > 160 ? t.slice(0, 160).replace(/\s+\S*$/, '') + '\u2026' : t); }).join('\n') });
+    return blocks;
   }
   const DEFAULT_TIMES = { meeting: ['13:15', '14:30'], pdday: ['08:30', '15:30'] };
   function agendaHours(a) { const t = a.kind === 'meeting' ? [(school().meeting || {}).start || '13:15', (school().meeting || {}).end || '14:30'] : DEFAULT_TIMES.pdday; const s = a.start || t[0], e = a.end || t[1]; return Math.max(0.25, Math.round((toMin(e) - toMin(s)) / 15) / 4); }
@@ -269,7 +340,7 @@ module.exports = function growthModule(c) {
       }
       // a few days before a PD day, a reminder about anything to read or bring
       if (hr >= 8 && hr < 11) for (const a of Object.values(pdd().agendas)) {
-        const left = daysBetween(day, a.date); if (left !== 3 || !(a.blocks || []).length) continue; if (!once(`pdday|${a.id}|remind`)) continue;
+        const left = daysBetween(day, a.date); if (a.kind === 'team' || left !== 3 || !(a.blocks || []).length) continue; if (!once(`pdday|${a.id}|remind`)) continue;
         const prep = (a.blocks || []).map(b => String(b.prepare || '').trim()).filter(Boolean);
         // a new hire before full access cannot open the PD days, so hears nothing about them
         for (const n of people().filter(n => !isNewHire(n))) await reminders.sendTo(n, { title: 'TREE, ' + (a.kind === 'meeting' ? 'PD staff meeting' : 'PD day') + ' in three days', body: prep.length ? 'To prepare. ' + prep.join(' ').slice(0, 300) : 'The agenda is ready to read in TREE.', url: 'tree.html?go=pdday', tag: 'tree-pdday' });
@@ -305,7 +376,9 @@ module.exports = function growthModule(c) {
   async function handle(P, body, me, req, res, { json, err }) {
     const dir = isDirector(me); const who = String(body.name || me);
     const deny = m => err(req, res, 403, m || 'This is not open yet.');
-    if (!allowed(me)) return deny('This part of TREE is not open yet.');
+    // a Class team reaches its own team meetings whether or not the growth pages are open yet
+    const teamOnly = !allowed(me);
+    if (teamOnly && !(['pd/list', 'pd/team', 'pd/step', 'pd/today', 'pd/save'].includes(P) && takesPart(me) && !isNewHire(me))) return deny('This part of TREE is not open yet.');
     // a new hire before full access reaches only their own growth, never other staff's moments or the PD days
     const OWN = ['boot', 'mine', 'plan', 'journal/open', 'journal/save', 'journal/bring', 'checkin/pre', 'checkin/followed', 'eval/self', 'eval/goals', 'modules', 'module/progress', 'schedule'];
     if (isNewHire(me) && !OWN.includes(P)) return deny('This opens once the director turns on full access.');
@@ -499,15 +572,45 @@ module.exports = function growthModule(c) {
 
     /* PD days and monthly PD staff meetings */
     if (P === 'pd/list') {
-      const from = addDays(today(), -75), to = addDays(today(), 150); const dates = await pdDates(from, to); const ag = pdd().agendas;
+      const from = addDays(today(), -75), to = addDays(today(), 150); const dates = teamOnly ? [] : await pdDates(from, to); const ag = pdd().agendas;
       const list = dates.map(d => { const a = ag[d.id]; const base = Object.assign({}, d, { hours: agendaHours(Object.assign({}, d, a || {})) });
         if (dir) return Object.assign(base, { agenda: a ? Object.assign({}, withPres(a, me), { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })), plusDeltaCount: undefined }) : null });
         if (!visibleToStaff(a)) return null;
         const mine = (a.plusDelta || {})[pidOf(me)] || null; return Object.assign(base, { agenda: Object.assign({}, withPres(a, me), { plusDelta: undefined, logged: undefined }), mine });
       }).filter(Boolean);
       // an agenda kept for a day no longer on the calendar still shows to the director
-      if (dir) for (const a of Object.values(ag)) if (!list.some(x => x.id === a.id) && a.date >= from) list.push({ id: a.id, date: a.date, kind: a.kind, title: a.title || '', from: 'tree', hours: agendaHours(a), agenda: Object.assign({}, withPres(a, me), { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })) }) });
-      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), readings: ((get(READ) || {}).list || []) }); return;
+      if (dir) for (const a of Object.values(ag)) if (a.kind !== 'team' && !list.some(x => x.id === a.id) && a.date >= from) list.push({ id: a.id, date: a.date, kind: a.kind, title: a.title || '', from: 'tree', hours: agendaHours(a), agenda: Object.assign({}, withPres(a, me), { plusDelta: undefined, plusDeltaList: Object.values(a.plusDelta || {}).map(x => ({ plus: x.plus, delta: x.delta })) }) });
+      // the team meetings of the director's Classes, or the educator's own Class, from two weeks back to four ahead
+      const team = []; const tFrom = addDays(today(), -14), tTo = addDays(today(), 28);
+      for (let d = tFrom.slice(0, 7) + '-01'; d <= tTo; d = addMonths(d, 1)) await loadMonth(d.slice(0, 7));
+      for (const date of teamDays(tFrom, tTo)) for (const room of roomsFor(me)) team.push(teamItem(date, room));
+      for (const a of Object.values(ag)) if (a.kind === 'team' && roomsFor(me).includes(a.room) && !team.some(x => x.id === a.id) && a.date >= from) team.push(teamItem(a.date, a.room));
+      json(req, res, 200, { list: list.sort((a, b) => a.date.localeCompare(b.date)), team: team.sort((a, b) => a.date.localeCompare(b.date) || ROOMS.indexOf(a.room) - ROOMS.indexOf(b.room)), readings: ((get(READ) || {}).list || []) }); return;
+    }
+    // a Class's team meeting opens with its agenda, started from the Class's week until the team saves its own
+    if (P === 'pd/team') {
+      const room = String(body.room || ''), date = String(body.date || ''); if (!ROOMS.includes(room) || !ISO.test(date)) return err(req, res, 400, 'Choose the team meeting.');
+      if (!roomsFor(me).includes(room)) return deny('Each Class team sees its own team meetings.');
+      json(req, res, 200, Object.assign(teamItem(date, room), { start: teamStart(room, date) })); return;
+    }
+    if (P === 'pd/step') {
+      const d = pdd(); const a = d.agendas[String(body.id || '')]; if (!a || a.kind !== 'team') return err(req, res, 404, 'That team meeting is not here.');
+      if (!roomsFor(me).includes(a.room)) return deny('Each Class team sees its own team meetings.');
+      const st = (a.steps || []).find(x => x.id === body.step); if (!st) return err(req, res, 404, 'That next step is not here.');
+      st.done = !!body.done; st.doneAt = st.done ? Date.now() : 0; st.doneBy = st.done ? me : ''; put(PDD, d); bump(); json(req, res, 200, { ok: true }); return;
+    }
+    // Today. The team meetings today for the director or the educator's Class, and for the director a month whose first
+    // Monday is a closure, asked once
+    if (P === 'pd/today') {
+      const t = today(); for (const ym of [t.slice(0, 7), addMonths(t.slice(0, 7) + '-01', 1).slice(0, 7)]) await loadMonth(ym);
+      const team = teamDays(t, t).flatMap(date => roomsFor(me).map(room => teamItem(date, room)));
+      const ask = []; if (dir) for (const ym of [t.slice(0, 7), addMonths(t.slice(0, 7) + '-01', 1).slice(0, 7)]) { const all = allStaffDay(ym); if (all.needsDate && all.firstMonday >= t) ask.push({ ym, firstMonday: all.firstMonday }); }
+      json(req, res, 200, { team, ask }); return;
+    }
+    if (P === 'pd/move') {
+      if (!dir) return deny(); const ym = String(body.ym || ''); if (!/^\d{4}-\d{2}$/.test(ym)) return err(req, res, 400, 'Choose the month.');
+      const v = body.date === 'none' ? 'none' : ISO.test(body.date || '') && body.date.slice(0, 7) === ym ? body.date : ''; if (!v) return err(req, res, 400, 'Choose a day in that month.');
+      const d = pdd(); d.moved = Object.assign({}, d.moved, { [ym]: v }); put(PDD, d); bump(); json(req, res, 200, { ok: true }); return;
     }
     if (P === 'pd/add') {
       if (!dir) return deny(); if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.');
@@ -516,13 +619,19 @@ module.exports = function growthModule(c) {
       put(PDD, d); bump(); json(req, res, 200, { ok: true }); return;
     }
     if (P === 'pd/save') {
-      if (!dir) return deny('The director builds each agenda.'); const b = body.agenda || {}; if (!ISO.test(b.date || '')) return err(req, res, 400, 'Choose the day.');
-      const kind = b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
+      const b = body.agenda || {}; if (!ISO.test(b.date || '')) return err(req, res, 400, 'Choose the day.');
+      // a Class team builds its own team meeting's agenda, with its notes and next steps. Other agendas are the director's.
+      const isTeam = b.kind === 'team' && ROOMS.includes(b.room);
+      if (isTeam ? !roomsFor(me).includes(b.room) : !dir) return deny(isTeam ? 'Each Class team builds its own team meeting agenda.' : 'The director builds each agenda.');
+      const kind = isTeam ? 'team' : b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = isTeam ? teamId(b.date, b.room) : b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
       const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '' }));
       // every agenda ends with plus delta
       const body0 = blocks.filter(x => !x.closing && x.title.trim());
       const close = blocks.find(x => x.closing) || { id: rid('k'), closing: true, title: 'Plus delta', why: 'Each educator writes what went well and what to change in TREE on their phone, and a few are shared aloud before leaving.', how: 'quiet', prepare: '', readings: [], time: '' };
-      d.agendas[id] = Object.assign({}, was, { id, date: b.date, kind, mode: b.mode === 'light' ? 'light' : 'full', title: txt(b.title, 160), start: /^\d{2}:\d{2}$/.test(b.start || '') ? b.start : was.start || '', end: /^\d{2}:\d{2}$/.test(b.end || '') ? b.end : was.end || '', blocks: [...body0, Object.assign(close, { title: 'Plus delta', closing: true })], updatedAt: Date.now(), by: me });
+      const teamPart = isTeam ? { room: b.room, notes: txt(b.notes, 8000),
+        steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 40).filter(x => x && String(x.text || '').trim()).map(x => { const old = (was.steps || []).find(y => y.id === x.id) || {};
+          return { id: String(x.id || rid('s')).slice(0, 20), text: txt(x.text, 400), who: staffNames().find(n => nameKey(n) === nameKey(x.who)) || '', done: !!x.done, doneAt: x.done ? old.doneAt || Date.now() : 0 }; }) } : {};
+      d.agendas[id] = Object.assign({}, was, { id, date: b.date, kind, mode: isTeam ? 'light' : b.mode === 'light' ? 'light' : 'full', title: txt(b.title, 160), start: /^\d{2}:\d{2}$/.test(b.start || '') ? b.start : was.start || '', end: /^\d{2}:\d{2}$/.test(b.end || '') ? b.end : was.end || '', blocks: isTeam ? body0 : [...body0, Object.assign(close, { title: 'Plus delta', closing: true })], updatedAt: Date.now(), by: me }, teamPart);
       put(PDD, d); bump(); json(req, res, 200, { ok: true, agenda: d.agendas[id] }); return;
     }
     if (P === 'pd/suggest') { if (!dir) return deny(); json(req, res, 200, { topics: suggestions() }); return; }
@@ -533,6 +642,7 @@ module.exports = function growthModule(c) {
     if (P === 'pd/hours') {
       // the time is logged on each attendee's records page as Fulton PD hours
       if (!dir) return deny(); const d = pdd(); const a = d.agendas[String(body.id || '')]; if (!a) return err(req, res, 404, 'Save the agenda first.');
+      if (a.kind === 'team') return err(req, res, 400, 'Team meetings are not logged as PD hours.');
       const names = (Array.isArray(body.names) ? body.names : []).filter(n => staffNames().some(x => nameKey(x) === nameKey(n)));
       const hrs = agendaHours(a); const already = new Set((a.logged && a.logged.names || []).map(nameKey)); let n = 0;
       for (const nm of names) { if (already.has(nameKey(nm))) continue; const doc = person(nm); doc.hours = [...(doc.hours || []), { id: rid('h'), date: a.date, title: (a.kind === 'meeting' ? 'PD staff meeting, ' : 'PD day, ') + (a.title || a.date), hours: hrs, kind: a.kind === 'meeting' ? 'meeting' : 'pdday', approved: false, by: 'TREE' }]; put(pPath(nm), doc); n++; }

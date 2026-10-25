@@ -372,6 +372,13 @@ Each save from a draft carries a client id made once, and each photo one made fr
 - On an observation, More holds Day it happened, Small group, Plan, Project, Thread and the weekly bin in one column, with the languages last. The bin button says what it does. Pages with a summary and a full print show one Print or download menu.
 - On a phone, a row of tabs that does not fit on one line, such as the director's eight Plans tabs, is one dropdown labelled with the open tab. A page longer than three phone screens folds its secondary sections closed, each with its heading and a line about what it holds, and a long list shows about a screen and a half with Show all.
 
+## Mondays
+
+- The PD staff meeting is on the first Monday of each month, at the staff meeting time in Settings, and shows on the calendar for everyone without being entered there. December and February have no all-staff meeting, and nor does any month the director marks in Settings, Team meetings. A PD day in such a month is that month's all-staff gathering. A weekly staff meeting on the school's calendar is not a PD staff meeting.
+- When the first Monday is a school closure on the calendar, the director's Today asks once for another day, or for no all-staff meeting that month.
+- Each Class team meets on every other open Monday, at the time set for that Class in Settings, Team meetings, under People. A team meeting shows on the calendar and on Today for that Class team and the director only.
+- A team meeting opens from the calendar, Today or PD days, with the same agenda builder. Its agenda starts from the Class's own week, the plans waiting to be finished, the threads, projects and team inquiries it follows and a few recent observations, and the team removes or adds what it wants. It keeps notes and next steps, each with a person, and a next step stays on the next team meeting's agenda until it is marked done. Team meetings do not log PD hours, and check-ins are unchanged.
+
 ## One place each
 
 - A new educator says they have read the Teacher Policies and Procedures in one place, the card Teacher Policies and Procedures, before the first day, in the New Educator section. It counts for the Paperwork row too, and the policies page sends a new educator there.

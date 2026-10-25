@@ -682,6 +682,22 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
       <div class="actions"><button class="btn small" data-stforms="1">Save the links</button></div></details>
     <div class="actions"><button class="btn small ghost" data-streload="1">Read the PD pieces again</button><span class="cnt">After a new piece is added to the records.</span></div>`};
 
+/* team meetings, under People in Settings. A time for each Class, and the months with no all-staff meeting. December and
+   February have none, and the director can mark any other month the same way. */
+T.teamSettings=async function(el){try{await boot(true)}catch(e){el.innerHTML=`<div class="lbl">Team meetings</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
+  const tm0=B.school.teamMeetings||{},q=B.school.quietMonths||[];const y=+today().slice(0,4)-(+today().slice(5,7)<8?1:0);
+  const months=Array.from({length:12},(_,i)=>{const m=(7+i)%12+1,yy=m>=8?y:y+1;return yy+"-"+String(m).padStart(2,"0")});
+  el.innerHTML=`<div class="lbl">Team meetings</div><div class="hint">The whole staff and PD meeting is the first Monday of each month. Each Class team meets on the other open Mondays, and on every open Monday of a month with no all-staff meeting. Each shows on the calendar and on Today for that Class team only.</div>
+    ${["West","North","South"].map(r=>`<div class="prow"><b>${H(r)} Class</b><span class="actions" style="margin:0"><input type="time" data-sttm="${r}|start" value="${H((tm0[r]||{}).start||"")}" aria-label="${H(r)} Class team meeting starts"><input type="time" data-sttm="${r}|end" value="${H((tm0[r]||{}).end||"")}" aria-label="${H(r)} Class team meeting ends"></span></div>`).join("")}
+    <div class="chiprow-label" style="margin-top:10px">Months with no all-staff meeting</div><div class="hint">December and February have none. A PD day in such a month is that month's all-staff meeting.</div>
+    <div class="chips">${months.map(ym=>{const fixed=/-(12|02)$/.test(ym);const on=fixed||q.includes(ym);return `<button class="chip ${on?"on":""}" type="button" data-stquiet="${ym}" ${fixed?"disabled":""} aria-pressed="${on}">${H(new Date(ym+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}))}</button>`}).join("")}</div>
+    <div class="actions"><button class="btn small" data-stteamsave="1">Save the team meetings</button></div>`};
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("[data-stquiet],[data-stteamsave]");if(!t||!D())return;
+  if(t.dataset.stquiet){if(t.disabled)return;const on=!t.classList.contains("on");t.classList.toggle("on",on);t.setAttribute("aria-pressed",on);return}
+  const tms={};document.querySelectorAll("[data-sttm]").forEach(x=>{const [r,k]=x.dataset.sttm.split("|");(tms[r]=tms[r]||{})[k]=x.value});
+  const quiet=[...document.querySelectorAll("[data-stquiet].on:not([disabled])")].map(x=>x.dataset.stquiet);
+  try{await api("school",{school:{teamMeetings:tms,quietMonths:quiet}});await boot(true).catch(()=>{});toast("Saved. The calendar follows.")}catch(er){toast(er&&er.message||"That did not save.")}});
+
 /* ---------- printouts and Word files ---------- */
 // the readable copies in Drive leave out health details, the flu shot, immunizations, the TB and health screening and
 // any medical note, as they leave out evaluations, journals and check-ins. The records page and its own print keep them.

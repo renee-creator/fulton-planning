@@ -774,6 +774,22 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
       <div class="actions"><button class="btn small" data-stforms="1">Save the links</button></div></details>
     <div class="actions"><button class="btn small ghost" data-streload="1">Read the PD pieces again</button><span class="cnt">After a new piece is added to the records.</span></div>`};
 
+/* team meetings, under People in Settings. A time for each Class, and the months with no all-staff meeting. December and
+   February have none, and the director can mark any other month the same way. */
+T.teamSettings=async function(el){try{await boot(true)}catch(e){el.innerHTML=`<div class="lbl">Team meetings</div><div class="hint warnline">${H(e.message||"This part could not open.")}</div>`;return}
+  const tm0=B.school.teamMeetings||{},q=B.school.quietMonths||[];const y=+today().slice(0,4)-(+today().slice(5,7)<8?1:0);
+  const months=Array.from({length:12},(_,i)=>{const m=(7+i)%12+1,yy=m>=8?y:y+1;return yy+"-"+String(m).padStart(2,"0")});
+  el.innerHTML=`<div class="lbl">Team meetings</div><div class="hint">The whole staff and PD meeting is the first Monday of each month. Each Class team meets on the other open Mondays, and on every open Monday of a month with no all-staff meeting. Each shows on the calendar and on Today for that Class team only.</div>
+    ${["West","North","South"].map(r=>`<div class="prow"><b>${H(r)} Class</b><span class="actions" style="margin:0"><input type="time" data-sttm="${r}|start" value="${H((tm0[r]||{}).start||"")}" aria-label="${H(r)} Class team meeting starts"><input type="time" data-sttm="${r}|end" value="${H((tm0[r]||{}).end||"")}" aria-label="${H(r)} Class team meeting ends"></span></div>`).join("")}
+    <div class="chiprow-label" style="margin-top:10px">Months with no all-staff meeting</div><div class="hint">December and February have none. A PD day in such a month is that month's all-staff meeting.</div>
+    <div class="chips">${months.map(ym=>{const fixed=/-(12|02)$/.test(ym);const on=fixed||q.includes(ym);return `<button class="chip ${on?"on":""}" type="button" data-stquiet="${ym}" ${fixed?"disabled":""} aria-pressed="${on}">${H(new Date(ym+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}))}</button>`}).join("")}</div>
+    <div class="actions"><button class="btn small" data-stteamsave="1">Save the team meetings</button></div>`};
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("[data-stquiet],[data-stteamsave]");if(!t||!D())return;
+  if(t.dataset.stquiet){if(t.disabled)return;const on=!t.classList.contains("on");t.classList.toggle("on",on);t.setAttribute("aria-pressed",on);return}
+  const tms={};document.querySelectorAll("[data-sttm]").forEach(x=>{const [r,k]=x.dataset.sttm.split("|");(tms[r]=tms[r]||{})[k]=x.value});
+  const quiet=[...document.querySelectorAll("[data-stquiet].on:not([disabled])")].map(x=>x.dataset.stquiet);
+  try{await api("school",{school:{teamMeetings:tms,quietMonths:quiet}});await boot(true).catch(()=>{});toast("Saved. The calendar follows.")}catch(er){toast(er&&er.message||"That did not save.")}});
+
 /* ---------- printouts and Word files ---------- */
 // the readable copies in Drive leave out health details, the flu shot, immunizations, the TB and health screening and
 // any medical note, as they leave out evaluations, journals and check-ins. The records page and its own print keep them.
@@ -1302,19 +1318,55 @@ Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();con
 
 /* ---------- PD days and monthly PD staff meetings ---------- */
 const HOW={whole:"Whole group",class:"By Class",pairs:"In pairs",quiet:"Quiet individual time"};
-async function pdPage(my){const dir=isDir();const r=await ga("pd/list");st.pd=r.list;st.readings=r.readings;
+async function pdPage(my){const dir=isDir();const r=await ga("pd/list");st.pd=[...r.list,...(r.team||[])];st.team=r.team||[];st.readings=r.readings;
   // the director's Presenting entries, which a block can open
   if(dir){try{st.presList=(await api("pres/list")).list}catch(e){st.presList=[]}}
-  {const want=Gr._wantDate||LS.get("tree.pdwant","");if(want){LS.set("tree.pdwant",null);Gr._wantDate="";const it=st.pd.find(x=>x.date===want);if(it){st.pdSel=it.id;st.pdEdit=null}}}
-  if(st.pdSel){const it=st.pd.find(x=>x.id===st.pdSel);if(it)return dir&&st.pdEdit?agendaBuilder(my,it):agendaView(my,it)}
-  const up=st.pd.filter(x=>x.date>=today()),past=st.pd.filter(x=>x.date<today()).reverse();
+  {const want=Gr._wantDate||LS.get("tree.pdwant","");if(want){LS.set("tree.pdwant",null);Gr._wantDate="";const it=st.pd.find(x=>x.id===want)||st.pd.find(x=>x.date===want&&x.kind!=="team");if(it){st.pdSel=it.id;st.pdEdit=null}}}
+  if(st.pdSel){const it=st.pd.find(x=>x.id===st.pdSel);
+    if(it&&it.kind==="team"){if(!it.agenda&&!it.startBlocks){try{it.startBlocks=(await ga("pd/team",{room:it.room,date:it.date})).start||[]}catch(e){it.startBlocks=[]}}return st.pdEdit?teamBuilder(my,it):teamView(my,it)}
+    if(it)return dir&&st.pdEdit?agendaBuilder(my,it):agendaView(my,it)}
+  const up=st.pd.filter(x=>x.kind!=="team"&&x.date>=today()),past=st.pd.filter(x=>x.kind!=="team"&&x.date<today()).reverse();
+  // team meetings, each Class on the open Mondays without the all-staff meeting, the director's every Class and an educator's own
+  const tRow=x=>`<div class="prow"><span><b>${H(new Date(x.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"}))}</b> ${H(x.room)} Class team meeting${x.start?` <span class="cnt">${H(tm(x.start))}${x.end?" to "+H(tm(x.end)):""}</span>`:""}</span><span class="actions" style="margin:0">${x.agenda&&((x.agenda.blocks||[]).length||x.agenda.notes)?chip("ok","Agenda"):""}${(x.carried||[]).length?chip("soon",(x.carried.length)+" next step"+(x.carried.length===1?"":"s")+" open"):""}<button class="btn small ghost" data-gpd="${H(x.id)}">Open</button></span></div>`;
+  const tUp=st.team.filter(x=>x.date>=today()),tPast=st.team.filter(x=>x.date<today()).reverse();
+  const teamCard=st.team.length?card("Team meetings",`<div class="hint">Each Class team meets on the open Mondays without the all-staff meeting, and on every open Monday of December, February and any month the director marks. The agenda starts from the Class's own week.</div>${tUp.slice(0,8).map(tRow).join("")}${tPast.length?`<details><summary class="cnt">Earlier team meetings</summary>${tPast.slice(0,8).map(tRow).join("")}</details>`:""}`):"";
   const row=x=>`<div class="prow"><span><b>${H(new Date(x.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"}))}</b> ${H(x.title||(x.kind==="meeting"?"PD staff meeting":"PD day"))} <span class="cnt">${x.kind==="meeting"?"Monthly PD staff meeting":"PD day"}</span></span><span class="actions" style="margin:0">${dir?(x.agenda&&(x.agenda.blocks||[]).length?chip("ok",x.agenda.mode==="light"?"Light agenda":"Agenda ready"):chip("missing","No agenda yet")):""}<button class="btn small ghost" data-gpd="${H(x.id)}">${dir?"Open":"Read the agenda"}</button></span></div>`;
   draw(my,head("PD days","PD days and PD staff meetings",dir?"Each PD day and monthly PD staff meeting on the TREE calendar opens an agenda builder. Staff see an agenda two weeks before the day, hear a reminder a few days before, and every agenda ends with plus delta.":"PD days are the shared work, and each one builds on the individual work in the PD library. You can see each agenda two weeks before the day, with readings one tap away.")+
-    card("Coming up",up.length?up.map(row).join(""):`<div class="cnt">${dir?"No PD day or PD staff meeting is on the calendar in the next months. Add one below.":"Agendas appear here two weeks before the day."}</div>`)+
+    teamCard+(!dir&&!up.length&&!past.length&&st.team.length?"":card("Coming up",up.length?up.map(row).join(""):`<div class="cnt">${dir?"No PD day or PD staff meeting is on the calendar in the next months. Add one below.":"Agendas appear here two weeks before the day."}</div>`))+
     (past.length?card("Recent",past.slice(0,6).map(row).join("")):"")+
     (dir?card("Add a day",`<div class="hint">PD days and staff meetings already on the calendar appear by themselves. Add one here when it is not.</div><div class="kfields"><label>Day<input type="date" id="gpd-date"></label><label>Kind<select id="gpd-kind"><option value="pdday">PD day</option><option value="meeting">Monthly PD staff meeting, ${H(tm(B().settings.meeting.start))} to ${H(tm(B().settings.meeting.end))}</option></select></label><label>Title<input type="text" id="gpd-title" placeholder="Optional"></label></div><div class="actions"><button class="btn small" data-gpdadd="1">Add to the calendar</button></div>`):""))}
-function agendaBlocksHtml(a){const R=st.readings||[];return (a.blocks||[]).map(b=>`<div class="gblock"><div class="sttop" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${b.time?H(tm(b.time))+", ":""}${H(b.title)}</b>${b.how?`<span class="cnt">${H(HOW[b.how]||"")}</span>`:""}</div>${b.why?`<div class="cnt">${H(b.why)}</div>`:""}${b.prepare?`<div class="cnt"><b>To prepare.</b> ${H(b.prepare)}</div>`:""}
+function agendaBlocksHtml(a){const R=st.readings||[];return (a.blocks||[]).map(b=>`<div class="gblock"><div class="sttop" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${b.time?H(tm(b.time))+", ":""}${H(b.title)}</b>${b.how?`<span class="cnt">${H(HOW[b.how]||"")}</span>`:""}</div>${b.why?`<div class="cnt" style="white-space:pre-line">${H(b.why)}</div>`:""}${b.prepare?`<div class="cnt"><b>To prepare.</b> ${H(b.prepare)}</div>`:""}
   ${(b.readings||[]).length?`<div class="cnt">${b.readings.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.url?`<a href="${H(x.url)}" target="_blank" rel="noopener">${H(x.title)}</a>, ${H(x.source)}`:`${H(x.title)}, ${H(x.source)}`).join("<br>")}</div>`:""}${b.module&&modReady(b.module)?`<div><button class="linkbtn" data-tview="stpd" data-stmod="${b.module==="licensing"||b.module==="howto"?b.module:"m:"+b.module}">${H(modTitle(b.module))}</button></div>`:""}${b.presenting&&b.presTitle?`<div><button class="linkbtn" data-gpres="${H(b.presenting)}">Presenting, ${H(b.presTitle)}</button></div>`:""}</div>`).join("")}
+/* A Class team meeting, with the same agenda builder as PD days. Its agenda starts from the Class's own week, the team
+   removes or adds items, and keeps notes and next steps, each with a person. A next step stays on the next team
+   meeting's agenda until it is marked done. Team meetings are not logged as PD hours. */
+const teamWho=it=>{const ps=(B().people||[]).filter(p=>p.room===it.room).map(p=>p.name);return ps.length?ps:(B().people||[]).map(p=>p.name)};
+const stepRow=(x,from)=>`<div class="prow"><label class="radio" style="flex:1;min-width:0"><input type="checkbox" data-gstep="${H(from)}|${H(x.id)}" ${x.done?"checked":""}><span>${H(x.text)}${x.who?` <span class="cnt">${H(x.who)}</span>`:""}${x.fromDate?` <span class="cnt">from ${H(fd(x.fromDate))}</span>`:""}</span></label></div>`;
+function teamView(my,it){const a=it.agenda||{};const day=H(new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}));
+  const blocks=(a.blocks||[]).length?a.blocks:(it.startBlocks||[]);
+  draw(my,head("Team meeting",it.room+" Class team meeting",day+(it.start?", "+H(tm(it.start))+(it.end?" to "+H(tm(it.end)):""):""))+
+    `<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-gpd="">‹ PD days</button><button class="btn small" data-gpdedit="1">${(a.blocks||[]).length||a.notes?"Change the agenda and notes":"Build the agenda"}</button><button class="btn small ghost" data-gprint="team">Print</button><button class="linkbtn" data-gword="team">Word</button></div>`+
+    ((it.carried||[]).length?card("Next steps from earlier team meetings",`<div class="hint">Each stays here until it is marked done.</div>${it.carried.map(x=>stepRow(x,x.from)).join("")}`):"")+
+    card(a.blocks?"The agenda":"The agenda, started from the Class's week",blocks.length?`<div style="display:grid;gap:8px">${agendaBlocksHtml({blocks})}</div>`:`<div class="cnt">Nothing from the Class's week yet. Build the agenda to add items.</div>`)+
+    (a.notes?card("Notes",`<div style="white-space:pre-wrap">${H(a.notes)}</div>`):"")+
+    ((a.steps||[]).length?card("Next steps",(a.steps||[]).map(x=>stepRow(x,it.id)).join("")):""))}
+function teamBuilder(my,it){
+  if(!st.pdEdit.blocks){const a=it.agenda||{};st.pdEdit={date:it.date,kind:"team",room:it.room,title:a.title||"",start:a.start||"",end:a.end||"",blocks:JSON.parse(JSON.stringify((a.blocks||[]).length?a.blocks:(it.startBlocks||[]))),notes:a.notes||"",steps:JSON.parse(JSON.stringify(a.steps||[])),loaded:true,found:{}}}
+  const E=st.pdEdit;const who=teamWho(it);
+  const blk=(b,i)=>`<div class="gblock"><label class="fld-label">Item<input type="text" data-gbk="${i}|title" value="${H(b.title||"")}"></label><label class="fld-label">What it holds<textarea rows="2" data-gbk="${i}|why">${H(b.why||"")}</textarea></label>
+    <div class="actions" style="margin:0"><button class="linkbtn" data-gbkmv="${i}|-1">Move up</button><button class="linkbtn" data-gbkmv="${i}|1">Move down</button><button class="linkbtn" data-gbkrm="${i}">Remove</button></div></div>`;
+  const stp=(x,i)=>`<div class="gblock"><label class="fld-label">Next step<input type="text" data-gstp="${i}|text" value="${H(x.text||"")}"></label><div class="kfields"><label>Who<select data-gstp="${i}|who"><option value="">Choose</option>${[...new Set([...who,x.who].filter(Boolean))].map(n=>`<option ${x.who===n?"selected":""}>${H(n)}</option>`).join("")}</select></label><label class="radio"><input type="checkbox" data-gstp="${i}|done" ${x.done?"checked":""}><span>Done</span></label></div><div class="actions" style="margin:0"><button class="linkbtn" data-gstprm="${i}">Remove</button></div></div>`;
+  draw(my,head("Team meeting",it.room+" Class team meeting",H(new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))+". The Class team and the director see it.")+
+    `<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-gpdedit="0">‹ The team meeting</button></div>`+
+    card("Agenda",`<div class="hint">Started from the Class's week, plans waiting to be finished, the threads, projects and team inquiries the team is following, and a few recent observations. Remove or add what you want.</div><div style="display:grid;gap:8px">${E.blocks.map(blk).join("")}</div><div class="actions"><button class="btn small ghost" data-gbkadd="1">Add an item</button></div>`)+
+    card("Notes",`<textarea id="gte-notes" rows="5" placeholder="What the team talked about">${H(E.notes||"")}</textarea>`)+
+    card("Next steps",`<div class="hint">Each with a person. A next step stays on the next team meeting's agenda until it is marked done.</div><div style="display:grid;gap:8px">${E.steps.map(stp).join("")}</div><div class="actions"><button class="btn small ghost" data-gstpadd="1">Add a next step</button></div>`)+
+    `<div class="actions"><button class="btn" data-gteamsave="1">Save the team meeting</button></div>`)}
+const collectTeam=()=>collectAgenda();
+function teamDoc(it){const a=it.agenda||{};const blocks=(a.blocks||[]).length?a.blocks:(it.startBlocks||[]);
+  return report(it.room+" Class team meeting",[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})]],[
+    ...blocks.map(b=>({t:"text",label:b.title,text:b.why||""})),a.notes?{t:"text",label:"Notes",text:a.notes}:null,
+    [...(it.carried||[]),...(a.steps||[])].length?{t:"list",label:"Next steps",items:[...(it.carried||[]),...(a.steps||[])].map(x=>x.text+(x.who?", "+x.who:"")+(x.done?", done":""))}:null].filter(Boolean))}
 function agendaView(my,it){const a=it.agenda||{};const dir=isDir();const closed=it.date<=today();const mine=it.mine||{};
   draw(my,head(it.kind==="meeting"?"PD staff meeting":"PD day",a.title||it.title||(it.kind==="meeting"?"PD staff meeting":"PD day"),H(new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))+(a.start?", "+H(tm(a.start))+(a.end?" to "+H(tm(a.end)):""):""))+
     `<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-gpd="">‹ PD days</button>${dir?`<button class="btn small" data-gpdedit="1">Build the agenda</button>`:""}<button class="btn small ghost" data-gprint="agenda">Print</button><button class="linkbtn" data-gword="agenda">Word</button></div>`+
@@ -1396,7 +1448,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-t
   // the typing in an agenda being built is kept for that day, and opens again with Build the agenda
   try{collectAgenda()}catch(er){}if(st.pdEdit&&st.pdEdit.blocks&&st.pdSel)st.pdStash={id:st.pdSel,edit:st.pdEdit};
   st.jr=null;st.fj=null;st.jDraft=null;st.self=false;st.selfDraft=null;st.starting=false;st.startDraft=null;st.tab="";st.ci=null;st.ciWho="";st.pdSel="";st.pdEdit=null;st.editCont=false;st.planDraft=null;st.examplesPick=null},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-gsel],[data-gtab],[data-gself],[data-gselfback],[data-gselfpt],[data-gwrite],[data-gselfsave],[data-gdir],[data-gdirsave],[data-gmeet],[data-gnextsave],[data-gstart],[data-gstartback],[data-gstartpt],[data-gstartsave],[data-gcont],[data-gcontsave],[data-gpww],[data-gpok],[data-gpadd],[data-gpsave],[data-gjopen],[data-gjclose],[data-gjsave],[data-gjbring],[data-gcpre],[data-gcfollow],[data-gci],[data-gciback],[data-gciopen],[data-gctemps],[data-gctempd],[data-gcalign],[data-gceffect],[data-gcsave],[data-gbook],[data-gmkind],[data-gmaud],[data-gmshare],[data-gmphoto],[data-gmview],[data-gmrm],[data-gexrm],[data-gexsave],[data-gmodsave],[data-gmodfinish],[data-gpd],[data-gpdedit],[data-gpdadd],[data-gpdmode],[data-gsugload],[data-gsugadd],[data-gbkadd],[data-gbkrm],[data-gbkmv],[data-gbkrd],[data-gbksearch],[data-gbkfound],[data-gpdsave],[data-gpdname],[data-gpdhours],[data-gpddsave],[data-gprint],[data-gword],[data-gsset],[data-gfjopen],[data-gpres]");
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gsel],[data-gtab],[data-gself],[data-gselfback],[data-gselfpt],[data-gwrite],[data-gselfsave],[data-gdir],[data-gdirsave],[data-gmeet],[data-gnextsave],[data-gstart],[data-gstartback],[data-gstartpt],[data-gstartsave],[data-gcont],[data-gcontsave],[data-gpww],[data-gpok],[data-gpadd],[data-gpsave],[data-gjopen],[data-gjclose],[data-gjsave],[data-gjbring],[data-gcpre],[data-gcfollow],[data-gci],[data-gciback],[data-gciopen],[data-gctemps],[data-gctempd],[data-gcalign],[data-gceffect],[data-gcsave],[data-gbook],[data-gmkind],[data-gmaud],[data-gmshare],[data-gmphoto],[data-gmview],[data-gmrm],[data-gexrm],[data-gexsave],[data-gmodsave],[data-gmodfinish],[data-gpd],[data-gpdedit],[data-gpdadd],[data-gpdmode],[data-gsugload],[data-gsugadd],[data-gbkadd],[data-gbkrm],[data-gbkmv],[data-gbkrd],[data-gbksearch],[data-gbkfound],[data-gpdsave],[data-gpdname],[data-gpdhours],[data-gpddsave],[data-gprint],[data-gword],[data-gsset],[data-gfjopen],[data-gpres],[data-gstpadd],[data-gstprm],[data-gteamsave]");
   if(!t)return;X.tapOnce(t,()=>gTap(e,t))},true);
 async function gTap(e,t){const d=t.dataset;
   if(d.gpres){if(window.TreePres){TreePres.open(d.gpres);goView("stpres")}return}
@@ -1466,16 +1518,21 @@ async function gTap(e,t){const d=t.dataset;
       toast(st.pdEdit.found[i].length?"Found some. Open each one before choosing it.":"Nothing came back from trusted sites. Add your own instead.")}catch(er){toast("Suggested readings are not available right now.")}
     st.searching=false;redraw();return}
   if(d.gbkfound){collectAgenda();const [i,j]=d.gbkfound.split("|").map(Number);const x=st.pdEdit.found[i][j];const b=st.pdEdit.blocks[i];const r=await ga("readings/add",{reading:{title:x.title,url:x.url,source:x.source,areas:b.area?[b.area]:[],modules:b.module?[b.module]:[]}});st.readings=r.list;const got=r.list.find(y=>y.url===x.url);if(got){b.readings=[...(b.readings||[]),got.id]}st.pdEdit.found[i].splice(j,1);redraw();return}
+  if(d.gstpadd){collectTeam();st.pdEdit.steps.push({id:"s"+Date.now().toString(36),text:"",who:"",done:false});redraw();return}
+  if(d.gstprm!=null){collectTeam();st.pdEdit.steps.splice(+d.gstprm,1);redraw();return}
+  if(d.gteamsave){collectTeam();const E=st.pdEdit;await ga("pd/save",{agenda:{date:E.date,kind:"team",room:E.room,title:E.title,start:E.start,end:E.end,blocks:E.blocks,notes:E.notes,steps:E.steps}});toast("Saved. The Class team and the director see it.");st.pdEdit=null;T.render("stpdd");return}
   if(d.gpdsave){collectAgenda();const E=st.pdEdit;st.pdStash=null;await ga("pd/save",{agenda:{date:E.date,kind:E.kind,mode:E.mode,title:E.title,start:E.start,end:E.end,blocks:E.blocks}});toast(`Saved. Staff see it from ${fd(X.addDays(E.date,-14))}.`);st.pdEdit=null;T.render("stpdd");return}
   if(d.gpdname){t.classList.toggle("on");return}
   if(d.gpdhours){const names=[...document.querySelectorAll("[data-gpdname].on")].map(x=>x.dataset.gpdname);if(!names.length){toast("Choose who attended.");return}const r=await ga("pd/hours",{id:d.gpdhours,names});toast(r.n?`Logged ${r.hours} hours for ${names.length===1?names[0]:"everyone chosen"}.`:"Already logged.");T.render("stpdd");return}
   if(d.gpddsave){await ga("pd/plusdelta",{id:d.gpddsave,plus:val("#gpdd-plus"),delta:val("#gpdd-delta")});toast("Saved. Thank you.");T.render("stpdd");return}
   if(d.gprint||d.gword){const k=d.gprint||d.gword;const kind=d.gword?"word":"pdf";progress("Making the file");
     if(k==="eval"){const dd=st.docs[who()];return out(kind,[evalDoc(dd)],"End of year evaluation "+dd.name+" "+yr())}
+    if(k==="team"){const it=st.pd.find(x=>x.id===st.pdSel);return out(kind,[teamDoc(it)],it.room+" Class team meeting "+it.date)}
     if(k==="agenda"){const it=st.pd.find(x=>x.id===st.pdSel);return out(kind,[agendaDoc(it)],(it.kind==="meeting"?"PD staff meeting ":"PD day ")+it.date)}}
   if(d.gsset){await api("school",{school:{checkin:{week:+val("#gs-week"),secondTime:val("#gs-second")},meeting:{start:val("#gs-mstart"),end:val("#gs-mend")}}});bootP=null;await Gr.ready();toast("Saved. The calendar follows.");return}
   }catch(er){fail(er)}
 }
+document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||!t.dataset.gstep)return;const [id,step]=t.dataset.gstep.split("|");try{await ga("pd/step",{id,step,done:t.checked});toast(t.checked?"Marked done.":"Open again.");T.render("stpdd")}catch(er){toast(er&&er.message||"That did not save.")}});
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#main"))return;const d=t.dataset;
   if(d.gwrite){collectSelf();if(t.checked){st.selfDraft.writes[d.gwrite]=st.selfDraft.writes[d.gwrite]||""}else delete st.selfDraft.writes[d.gwrite];redraw();return}
   if(d.gparea!=null){collectPlan();const x=st.planDraft.goals[+d.gparea];x.area=t.value;x.areaOk=false;redraw();return}
@@ -1491,7 +1548,9 @@ function collectCi(){const c=st.ci;if(!c)return;document.querySelectorAll("[data
   document.querySelectorAll("[data-gcgoal]").forEach(x=>{c.goals=c.goals||{};c.goals[x.dataset.gcgoal]=x.value});const dt=$("#gc-date");if(dt&&dt.value)c.date=dt.value;if($("#gc-area"))c.focus.area=val("#gc-area");if($("#gc-mod"))c.focus.module=val("#gc-mod")}
 function collectMoment(){const f=st.mform;if($("#gm-text"))f.text=val("#gm-text");if($("#gm-to"))f.to=val("#gm-to");if($("#gm-area"))f.area=val("#gm-area");const l=val("#gm-link");if($("#gm-link")){if(l){const [kind,id,...rest]=l.split("|");f.link={kind,id,label:rest.join("|")}}else f.link=null}}
 function collectAgenda(){const E=st.pdEdit;if(!E||!E.blocks)return;if($("#gpde-title"))E.title=val("#gpde-title");if($("#gpde-start"))E.start=val("#gpde-start");if($("#gpde-end"))E.end=val("#gpde-end");
-  document.querySelectorAll("[data-gbk]").forEach(x=>{const [i,f]=x.dataset.gbk.split("|");const b=E.blocks[+i];if(b)b[f]=x.value})}
+  document.querySelectorAll("[data-gbk]").forEach(x=>{const [i,f]=x.dataset.gbk.split("|");const b=E.blocks[+i];if(b)b[f]=x.value});
+  // a team meeting's notes and next steps
+  if(E.kind==="team"){if($("#gte-notes"))E.notes=val("#gte-notes");document.querySelectorAll("[data-gstp]").forEach(x=>{const [i,f]=x.dataset.gstp.split("|");const s0=E.steps[+i];if(!s0)return;s0[f]=f==="done"?x.checked:x.value})}}
 // the calendar's PD day opens its agenda, and a reminder's link opens the journal or the PD days
 Gr.openAgenda=function(date){st.pdSel="";st.pdEdit=null;Gr._wantDate=date};
 })();

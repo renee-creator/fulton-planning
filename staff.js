@@ -241,7 +241,7 @@ module.exports = function staffModule(o) {
       json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {}, takesPart: G.takesPart(me), kitchen: isKitchen(me), goTo: goToOf(me) },
         open: o, can: canFor(me), goTo: goToName(), activeSupervision: school().activeSupervision || null,
         defs: { items: ITEMS, papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
-        school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName() },
+        school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName(), ...(dir ? { teamMeetings: school().teamMeetings || {}, quietMonths: school().quietMonths || [] } : {}) },
         whosWho: whosWho(), lens: lensNow(), paired: pairedWith(me), today: today(), people: dir ? staffNames().sort() : [] });
       return;
     }
@@ -351,6 +351,10 @@ module.exports = function staffModule(o) {
       if ('goTo' in b) { const g = String(b.goTo || '').slice(0, 40); if (g && (!staffNames().some(n => nameKey(n) === nameKey(g)) || profileOf(g).neverGoTo)) { err(req, res, 400, 'Choose someone else as the go-to person.'); return; } sc.goTo = g; }
       if (b.checkin && typeof b.checkin === 'object') sc.checkin = { week: Math.min(4, Math.max(1, Math.round(+b.checkin.week || 1))), secondTime: /^\d{2}:\d{2}$/.test(b.checkin.secondTime || '') ? b.checkin.secondTime : '', minutes: 20 };
       if (b.meeting && typeof b.meeting === 'object') sc.meeting = { start: /^\d{2}:\d{2}$/.test(b.meeting.start || '') ? b.meeting.start : '13:15', end: /^\d{2}:\d{2}$/.test(b.meeting.end || '') ? b.meeting.end : '14:30' };
+      // each Class's team meeting time, and the months the director marks with no all-staff meeting, as December and February have none
+      const T = x => /^\d{2}:\d{2}$/.test(x || '') ? x : '';
+      if (b.teamMeetings && typeof b.teamMeetings === 'object') sc.teamMeetings = Object.fromEntries(['West', 'North', 'South'].map(r => [r, { start: T((b.teamMeetings[r] || {}).start), end: T((b.teamMeetings[r] || {}).end) }]));
+      if (Array.isArray(b.quietMonths)) sc.quietMonths = [...new Set(b.quietMonths.map(String).filter(x => /^\d{4}-(0[13-9]|1[01])$/.test(x)))].sort().slice(-36);
       if (typeof b.welcome === 'string') sc.welcome = b.welcome.slice(0, 8000);
       if (typeof b.philosophy === 'string') sc.philosophy = b.philosophy.slice(0, 30000);
       if (b.formLinks && typeof b.formLinks === 'object') sc.formLinks = Object.fromEntries(Object.entries(b.formLinks).filter(([k, v]) => PAPERS.some(p => p.k === k) && (!v || /^https:\/\//.test(v))).map(([k, v]) => [k, String(v || '').slice(0, 500)]));
@@ -514,7 +518,7 @@ module.exports = function staffModule(o) {
   function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false, family: allowed(name, 'family') };
     if (isKitchen(name)) return { records: allowed(name, 'records'), pd: false, handbook: false, newed: false, growth: false, family: false };
     if (profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false, family: allowed(name, 'family') }; }
-    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
+    return { records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), team: !!S.ready && (isDirector(name) || (G.takesPart(name) && !isNewHire(name))), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current() }; }
   // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.

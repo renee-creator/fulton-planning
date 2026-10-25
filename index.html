@@ -847,7 +847,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
   // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
-  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings"];
+  const VA_READ=["/api/data","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings","/api/staff/g/pd/today","/api/staff/g/pd/list","/api/staff/g/pd/team","/api/notes"];
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
@@ -4228,13 +4228,14 @@ function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{}
   if(isNewHire())return ["strec","stnew","stpd","sthb","stfh"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
   if(["stteam","st27","stdrill","stfiles","stformer"].includes(k))return false;
   // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
-  if(GROW_VIEWS.includes(k))return !!c.growth;
+  // a Class team's own team meetings open from PD days whether or not the growth pages are open yet
+  if(GROW_VIEWS.includes(k))return !!c.growth||(k==="stpdd"&&!!(VIEW_AS?!isKitchenUser():c.team));
   return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):k==="stfh"?!!(c.family||c.newed):false}
 function staffHome(){if(isDirector()&&!VIEW_AS)return "stteam";const s=staffInfo()||{};if(isNewHire()||(s.can&&s.can.newed))return "stnew";return SUBS.staff.map(x=>x[0]).find(staffSubOk)||"today"}
 let staffLoad=null;
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=6b60c2d8fe","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=daff8c8268","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["kitchen","Kitchen"]],
@@ -4799,7 +4800,7 @@ function renderToday(){
   </div>
   ${askFam?askFamHtml(room):""}
   ${keepTodayHtml()}
-  ${staffNotesHtml()}${setupTodayHtml()}${hardSavesHtml()}
+  ${staffNotesHtml()}${meetTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
@@ -5423,7 +5424,7 @@ function openConference(id,sec){window.TREE_CONF_SEC=sec||"";embedRoute.conferen
 // a page inside TREE can ask TREE to open something of its own, such as a child's page
 window.addEventListener("message",e=>{if(e.origin!==location.origin||!e.data||typeof e.data!=="object")return;const d=e.data;
   // a day on the calendar can start a Getting ready story
-  if(d.treeOpenAgenda&&typeof d.treeOpenAgenda==="object"){LS.set("tree.pdwant",String(d.treeOpenAgenda.date||"").slice(0,10));if(staffSubOk("stpdd"))goView("stpdd");return}
+  if(d.treeOpenAgenda&&typeof d.treeOpenAgenda==="object"){LS.set("tree.pdwant",(String(d.treeOpenAgenda.date||"").match(/^\d{4}-\d{2}-\d{2}(-team-[A-Za-z]{1,20})?/)||[""])[0]);if(staffSubOk("stpdd"))goView("stpdd");return}
   if(d.treeStoryEvent&&typeof d.treeStoryEvent==="object"){const ev=d.treeStoryEvent;newStory({event:{id:String(ev.id||"").slice(0,120),title:String(ev.title||"").slice(0,200),when:String(ev.when||"").slice(0,200),where:String(ev.where||"").slice(0,200),desc:String(ev.desc||"").slice(0,1200)}});return}
   if(d.tree==="child"&&d.id){kidOpen=d.id;goView("child")}
   if(d.tree==="moment"){document.getElementById("newnotice").click()}
@@ -12710,6 +12711,21 @@ function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   return `<section class="card" id="setuptoday" style="margin-top:14px"><details class="fold" data-fold="today:setup" ${foldOpen.has("today:setup")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Not set up yet</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
     <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
     <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div><div class="actions"><button class="linkbtn" data-tview="settings">Sign-ins</button></div></div></details></section>`}
+/* Team meetings on Today, for that Class team and the director, and once for the director a month whose first Monday is
+   a school closure, to choose another day for the PD staff meeting */
+let meetSt={loaded:false,team:[],ask:[]};setInterval(()=>{meetSt.loaded=false},15*60e3);
+async function loadMeetToday(){if(!window.FP_API||meetSt.loading)return;meetSt.loading=true;try{const j=await window.FP_API("/api/staff/g/pd/today",{});meetSt.team=j.team||[];meetSt.ask=j.ask||[]}catch(e){meetSt.team=[];meetSt.ask=[]}meetSt.loading=false;meetSt.loaded=true;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()}
+function meetTodayHtml(){if(!window.FP_HOSTED||isKitchenUser())return"";if(!meetSt.loaded){loadMeetToday();return""}
+  const asked=LS.get("tree.meetask",{})||{};const ask=isDirector()&&!VIEW_AS?meetSt.ask.filter(a=>!asked[a.ym]):[];
+  const t=meetSt.team.map(x=>`<div class="prow"><div><b>${esc(x.room)} Class team meeting</b><div class="cnt">${x.start?esc(clockTime(x.start))+(x.end?" to "+esc(clockTime(x.end)):""):"Today"}${(x.carried||[]).length?`, ${x.carried.length} next step${x.carried.length===1?"":"s"} open`:""}</div></div><button class="btn small ghost" data-meetopen="${esc(x.id)}">Open the agenda</button></div>`).join("");
+  const a=ask.map(x=>{const mo=parseIso(x.firstMonday).toLocaleDateString("en-US",{month:"long"});return `<div class="ref" style="margin-top:8px" id="meetask-${esc(x.ym)}"><b>The first Monday of ${esc(mo)}, ${esc(longDate(x.firstMonday))}, is a school closure.</b><div>Choose another day for the PD staff meeting.</div>
+    <div class="actions"><input type="date" id="meetday-${esc(x.ym)}" min="${esc(x.ym)}-01" max="${esc(x.ym)}-31"><button class="btn small" data-meetmove="${esc(x.ym)}">Use this day</button><button class="linkbtn" data-meetnone="${esc(x.ym)}">No all-staff meeting this month</button></div></div>`}).join("");
+  if(!t&&!a)return"";
+  return `<section class="card" id="meettoday"><h3 style="font-size:17px">${t?"Team meeting today":"PD staff meeting"}</h3>${t}${a}</section>`}
+document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-meetopen],[data-meetmove],[data-meetnone]");if(!b)return;
+  if(b.dataset.meetopen){LS.set("tree.pdwant",b.dataset.meetopen);goView("stpdd");return}
+  const ym=b.dataset.meetmove||b.dataset.meetnone;const date=b.dataset.meetnone?"none":($("#meetday-"+ym)||{}).value;if(!date){toast("Choose the day first.");return}
+  try{await window.FP_API("/api/staff/g/pd/move",{ym,date});const asked=LS.get("tree.meetask",{})||{};asked[ym]=1;LS.set("tree.meetask",asked);toast(date==="none"?"No all-staff meeting that month. Each Class team meets every open Monday.":"The PD staff meeting moves to that day.");meetSt.loaded=false;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 /* A note from the director, to all staff or to one person, shows on Today that day for the people it is for. A note to
    all staff also shows on the staff room display that day. The director writes it here. */
 let staffNotesSt={loaded:false,notes:[],sent:[],busy:false};setInterval(()=>{staffNotesSt.loaded=false},5*60e3);
@@ -12971,7 +12987,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=6b60c2d8fe","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=daff8c8268","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
@@ -13031,6 +13047,7 @@ function setStatus(t,x){try{
   if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
   if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
   if(t==="Educators")return plural(rosterNames().length,"educator");
+  if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
   if(t==="Small groups")return plural(GROUPS.length,"group");
   if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
   if(t==="Names on plans")return plural(rosterNames().length,"name");
@@ -13075,7 +13092,7 @@ function renderSettings(){
   ${viewAsHtml()}
   ${remindersHtml()}
   ${signinsHtml()}
-  ${window.FP_HOSTED?`<section class="card" id="staffset"><div class="lbl">Educators</div><div class="empty"><span class="spin"></span> Opening</div></section>`:""}
+  ${window.FP_HOSTED?`<section class="card" id="staffset"><div class="lbl">Educators</div><div class="empty"><span class="spin"></span> Opening</div></section><section class="card" id="teamset"><div class="lbl">Team meetings</div><div class="empty"><span class="spin"></span> Opening</div></section>`:""}
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
@@ -13128,7 +13145,7 @@ function renderSettings(){
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
   // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
-  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=6b60c2d8fe","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
+  if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=daff8c8268","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   settingsFold();
 }
