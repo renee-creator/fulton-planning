@@ -4681,7 +4681,10 @@ function gthPgHtml(){if(!isDirector()||VIEW_AS||!window.FP_API)return"";if(!gthP
       ${on?`<textarea rows="1" readonly aria-label="Play Garden application link" style="font-size:13px">${esc(link)}</textarea>`:`<div class="cnt">It is off. The link shows that the application is closed.</div>`}
       ${(p.applications||[]).length?`<details style="margin-top:6px"><summary><b>${p.applications.length} ${p.applications.length==1?"application":"applications"}</b></summary>${p.applications.map(a=>`<div class="strow"><div class="cnt">${esc(shortDate(a.at))} · ${esc(a.status==="welcomed"?"Welcomed":a.status==="declined"?"Not this time":"New")}</div>${(a.questions||[]).map(q=>`<div><b>${esc(q.label)}</b> ${esc(a.answers[q.key]===true?"Yes":a.answers[q.key]===false?"No":String(a.answers[q.key]||""))}</div>`).join("")}
         <div class="actions"><button class="linkbtn" data-gthpgst="${esc(a.id)}|welcomed">Welcomed</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|declined">Not this time</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|new">New</button></div></div>`).join("")}</details>`:`<div class="cnt">No applications yet.</div>`}`}</div>`}
+let gthAt=0;
 function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!VIEW_AS,today=iso(new Date());
+  // an educator reads the gatherings again each time the page opens, at most twice a minute
+  if(!ed&&window.FP_API&&Date.now()-gthAt>30000){gthAt=Date.now();window.FP_API("/api/gatherings",{}).then(r=>{window.FP_GATHERINGS=r;if(view==="gatherings")renderMain()}).catch(()=>{})}
   const list=gthList(),tk=gthToolkits();
   const up=list.filter(g=>!g.date||g.date>=today),past=list.filter(g=>g.date&&g.date<today).reverse();
   const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>
@@ -4727,7 +4730,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthn
     const ns=prompt("Starts, as 09:00",x.start||"");if(ns===null)return;const ne=prompt("Ends, as 12:00",x.end||"");if(ne===null)return;const okT=s=>!s||/^\d{2}:\d{2}$/.test(s);if(!okT(ns)||!okT(ne)){toast("Write a time as 09:00.");return}
     const gd=x.gathering==="second-saturday"&&!!GTH_GARDEN_MONTHS[nd.slice(5,7)];
     await gthSave(Object.assign({},x,{date:nd,start:ns,end:ne,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[nd.slice(5,7)]:"",updatedAt:Date.now()}));
-    for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{date:nd,start:ns,end:ne,updatedAt:Date.now()}));renderMain();return}
+    for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{date:nd,start:ns,end:ne,note:(x.title||GTH_NAMES[x.gathering])+(nd?", "+fmtDate(nd):""),updatedAt:Date.now()}));renderMain();return}
   if(d.gthoffer){const x=participation.get(d.gthoffer);if(!x||typeof gdnCall!=="function")return;await gdnCall("offer",{text:(x.title||GTH_NAMES[x.gathering])+(x.documentation?". "+x.documentation.slice(0,200):""),date:x.date||iso(new Date())},"Offered on the Farm to School page.");return}
   if(d.gthpg){try{gthPg=await window.FP_API("/api/staff/playgarden/switch",{on:d.gthpg==="on"});toast(d.gthpg==="on"?"The application is open.":"The application is closed.")}catch(er){toast(er&&er.message||"That did not work.")}renderMain();return}
   if(d.gthpgst){const [id,status]=d.gthpgst.split("|");try{gthPg=await window.FP_API("/api/staff/playgarden/status",{id,status});toast("Saved.")}catch(er){toast(er&&er.message||"That did not work.")}renderMain();return}

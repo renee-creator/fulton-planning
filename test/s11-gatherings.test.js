@@ -70,6 +70,20 @@ test('gatherings stay with the staff until the director marks them ready, and fa
     assert.ok(!d.signed.some(it => it.id === 'it-job1'));
   });
 
+  await t.test('the office cannot open a gathering to families, and the kitchen cannot edit a module through a recipe', async () => {
+    const gia = (await fx.login('Gia', '1357')).token, kit = (await fx.login('Kit', '1357')).token;
+    await fx.as(dee, '/api/write', { op: 'create', kind: 'participation', id: 'it-ss2', data: { kind: 'item', type: 'event', gathering: 'play-garden', onCalendar: true, title: 'Play Garden', signups: [], open: false, test: true } });
+    const r = await fx.as(gia, '/api/write', { op: 'update', kind: 'participation', id: 'it-ss2', patch: { open: true, plan: 'Mud kitchen.' } });
+    assert.strictEqual(r.status, 200); await wait(800);
+    const doc = JSON.parse(fs.readFileSync(path.join(fx.dir, 'participation/it-ss2.json'), 'utf8'));
+    assert.strictEqual(doc.open, false); assert.strictEqual(doc.plan, 'Mud kitchen.');
+    const made = await fx.as(gia, '/api/write', { op: 'create', kind: 'participation', id: 'it-job9', data: { kind: 'item', type: 'task', gatheringId: 'it-ss2', title: 'Snacks', signups: [], open: true, test: true } });
+    assert.strictEqual(made.status, 200); await wait(800);
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(fx.dir, 'participation/it-job9.json'), 'utf8')).open, false);
+    const k = await fx.as(kit, '/api/staff/page/save', { path: 'staff/library/recipes/x.md', module: 'language', parts: [], note: 'x' });
+    assert.strictEqual(k.status, 403);
+  });
+
   await t.test('the director shares one season sheet and a recipe on the Family page before the Garden is ready', async () => {
     assert.strictEqual((await fx.as(ann, '/api/staff/garden/familyshare', { season: 'winter' })).status, 403);
     const r = await fx.as(dee, '/api/staff/garden/familyshare', { season: 'winter', recipes: ['pumpkin-muffins', '../x'] });

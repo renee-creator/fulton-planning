@@ -227,9 +227,11 @@ module.exports = function presentingModule(c) {
       for (const k of ['start', 'end']) if (k in b) e[k] = /^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || '') ? b[k] : '';
       if ('title' in b && !e.title.trim()) return err(req, res, 400, 'Give the entry a title.');
       if ('date' in b) e.date = ISO.test(b.date || '') ? b.date : '';
-      if ('minutes' in b) { e.minutes = Math.max(0, Math.min(2400, Math.round(+b.minutes || 0)));
-        // a presented entry logs its hours once the director sets its length
-        if (dir && e.status === 'presented' && e.minutes) credit(e, me); }
+      // the length, which sets PD hours, how it is offered and who it is for are the director's
+      if (!dir && ['minutes', 'mode', 'audienceType'].some(k => k in b)) return deny('The director sets the length, how it is offered and who it is for.');
+      if ('minutes' in b) { const was = +e.minutes || 0; e.minutes = Math.max(0, Math.min(2400, Math.round(+b.minutes || 0)));
+        // a presented entry logs its hours once the director sets its length, and a changed length replaces the hours logged
+        if (e.status === 'presented' && e.minutes !== was) { uncredit(e); if (e.minutes) credit(e, me); } }
       // in person, virtual or both, and who it is for, our own staff, other schools and groups, or both
       if ('mode' in b) e.mode = ['inperson', 'virtual', 'both'].includes(b.mode) ? b.mode : '';
       if ('audienceType' in b) e.audienceType = ['internal', 'external', 'both'].includes(b.audienceType) ? b.audienceType : '';

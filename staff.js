@@ -413,7 +413,7 @@ module.exports = function staffModule(o) {
     if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
     // the kitchen also adds and edits recipes in the recipe library
-    const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && /^staff\/library\/recipes\//.test(String(body.path || ''));
+    const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''));
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err }); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
@@ -443,7 +443,8 @@ module.exports = function staffModule(o) {
     // the school's own wording, read again after the director edits a piece of it
     if (P === 'wording') { if (isKitchen(me)) return deny(); json(req, res, 200, { docs: wordingAll() }); return; }
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
-      if (!dir && !(isKitchen(me) && /^staff\/library\/recipes\//.test(String(body.path || '')))) return deny('The director edits this page.');
+      // the kitchen edits a recipe and nothing else, so a module named alongside a recipe's path is refused
+      if (!dir && !(isKitchen(me) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || '')))) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
       if (recordSpec(p)) {
         const item = String(body.item || ''); if (!recordTarget(p, item)) { err(req, res, 404, 'That is not here.'); return; }

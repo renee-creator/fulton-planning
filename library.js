@@ -46,7 +46,8 @@ module.exports = function library(o) {
     const meta = [`library: ${kind}`];
     if (kind === 'recipe') meta.push(`kind: ${b.sensory ? 'sensory' : 'food'}`, `source: ${String(b.source || (from === 'family' ? 'A family' : 'Ours')).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
     if (kind === 'song') { meta.push(`copyright: ${b.copyright ? 'yes' : 'no'}`, `songwriter: ${String(b.songwriter || '').replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`); if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`); }
-    if (draft) meta.push('status: draft', `by: ${String(me).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
+    // a family's draft names no one, since every staff member reads the library. An educator's names the educator.
+    if (draft) meta.push('status: draft', `by: ${from === 'family' ? 'a family' : String(me).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
     if (from === 'family') meta.push('from: family');
     const sec = (h, v) => { const t = String(v || '').replace(/\r/g, '').trim().slice(0, 8000); return t ? `## ${h}\n\n${t}\n\n` : `## ${h}\n\n`; };
     let body = '';
@@ -71,7 +72,7 @@ module.exports = function library(o) {
     if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); return; }
     const x = item(String(body.path || '')); if (!x) { err(req, res, 404, 'That is not in the library.'); return; }
     // the director marks a draft recipe ready, or takes it out
-    if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); json(req, res, 200, list(me)); return; }
+    if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); if (body.on && x.meta.by) setMeta(x.path, 'by', null); json(req, res, 200, list(me)); return; }
     // marking a song copyright removes its words, and taking the mark off lets words be added
     if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
       // a song without the mark has a place for its words, ready for the director to add them

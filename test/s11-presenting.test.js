@@ -21,6 +21,11 @@ test('Presenting and the PD library keep lengths, links and audiences honest', a
     assert.strictEqual(e.minutes, 0); assert.strictEqual(e.audienceType, 'internal');
     const s = (await P('save', { id: e.id, fields: { mode: 'both', audienceType: 'nonsense' } })).body;
     assert.strictEqual(s.mode, 'both'); assert.strictEqual(s.audienceType, '');
+    // a presenter changes none of the length, how it is offered or who it is for
+    await P('save', { id: e.id, fields: { presenters: ['Ann'] } });
+    const pr = await fx.as(ann, '/api/staff/pres/save', { id: e.id, fields: { minutes: 180 } });
+    assert.strictEqual(pr.status, 403);
+    assert.strictEqual((await fx.as(ann, '/api/staff/pres/save', { id: e.id, fields: { audienceType: 'external' } })).status, 403);
     const l = (await P('list')).body.list.find(x => x.id === e.id);
     assert.strictEqual(l.mode, 'both');
   });

@@ -292,6 +292,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const p = season(), id = confIdOf(childId, p); remember(f, 'conferences', id);
     const cur = getRec('conferences', id) || { childId, schoolYear: p.year, term: p.term, status: 'open', fields: {}, reflections: {}, prep: {}, attachments: [], createdAt: nowIso() };
     if (cur.status === 'complete') return { error: 'This conference is already complete.' };
+    // the wording comes from the school's records, and a page that reads empty saves nothing
+    if (!REFLECTIONS().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
     const fam = {}; for (const [key] of REFLECTIONS()) fam[key] = String((answers || {})[key] || '').trim().slice(0, 3000);
     // the family's words go into the form's Family Reflections where the educator has not written anything yet
     const refl = Object.assign({}, cur.reflections || {}); const before = cur.familyReflections || {};
@@ -306,6 +308,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   }
   function questionnaire(f, childId, answers) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
+    // the wording comes from the school's records, and a page that reads empty saves nothing
+    if (!QUESTIONS().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
     const a = QUESTIONS().map((q, i) => String((answers || [])[i] || '').trim().slice(0, 3000));
     { const left = a.filter(x => !x).length; if (left) return { error: left === 1 ? 'Please answer every question. One is still empty.' : 'Please answer every question. ' + left + ' are still empty.' }; }
     remember(f, 'children', childId); const kd = getRec('children', childId);
@@ -327,6 +331,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   }
   function enroll(f, childId, data, done) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
+    // the wording comes from the school's records, and a page that reads empty saves nothing
+    if (!ENROLL_NOW().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
     const keys = new Set(ENROLL_NOW().flatMap(s => s.fields.map(x => x.k)));
     const clean = {}; for (const [key, v] of Object.entries(data || {})) { if (key.startsWith('h_ill_')) { const b = key.slice(6); if (keys.has('h_ill')) clean[key] = String(v).slice(0, 200); continue; } if (keys.has(key)) clean[key] = typeof v === 'boolean' ? v : String(v == null ? '' : v).slice(0, 2000); }
     // complete means every box the form needs is filled in
@@ -366,6 +372,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   // a step or a packed item the family ticks off on their checklist
   function check(f, childId, key, on) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
+    // the wording comes from the school's records, and a page that reads empty saves nothing
+    if (!CHECKS().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
     if (![...CHECKS().map(c => c[0]), ...PACK().map(c => 'pack_' + c[0]), 'notices', 'handbook'].includes(key)) return { error: 'That step is not on the list.' };
     remember(f, 'children', childId); const kd = getRec('children', childId); const ch = Object.assign({}, kd.familyChecks || {}); if (on) ch[key] = nowIso(); else delete ch[key];
     const extra = {};
@@ -440,7 +448,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     if (!lines(b.ingredients) || !lines(b.steps)) return { error: 'Add the ingredients and the steps.' };
     if (/\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachios?|nut butter)\b/i.test([b.ingredients, b.steps].join(' '))) return { error: 'We are nut free, so we cannot use a recipe with nuts.' };
     const last = [...new Set(f.kids.map(k => k.last).filter(Boolean))].join(' and ');
-    const r = addRecipe(f.email, { kind: 'recipe', title: b.title, sensory: false, source: last ? `The ${last} family` : 'A family', ingredients: lines(b.ingredients), steps: lines(b.steps), notes: lines(b.story) });
+    const r = addRecipe(f.email, { kind: 'recipe', title: b.title, sensory: false, source: 'A family', ingredients: lines(b.ingredients), steps: lines(b.steps), notes: lines(b.story) });
     if (r.error) return r; log('A family shared a recipe'); return { ok: true };
   }
   function addLog(f, b) {

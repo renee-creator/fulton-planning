@@ -4291,7 +4291,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=c227a1a641","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4301,7 +4301,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=c227a1a641","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -5283,7 +5283,10 @@ function gthPgHtml(){if(!isDirector()||VIEW_AS||!window.FP_API)return"";if(!gthP
       ${on?`<textarea rows="1" readonly aria-label="Play Garden application link" style="font-size:13px">${esc(link)}</textarea>`:`<div class="cnt">It is off. The link shows that the application is closed.</div>`}
       ${(p.applications||[]).length?`<details style="margin-top:6px"><summary><b>${p.applications.length} ${p.applications.length==1?"application":"applications"}</b></summary>${p.applications.map(a=>`<div class="strow"><div class="cnt">${esc(shortDate(a.at))} · ${esc(a.status==="welcomed"?"Welcomed":a.status==="declined"?"Not this time":"New")}</div>${(a.questions||[]).map(q=>`<div><b>${esc(q.label)}</b> ${esc(a.answers[q.key]===true?"Yes":a.answers[q.key]===false?"No":String(a.answers[q.key]||""))}</div>`).join("")}
         <div class="actions"><button class="linkbtn" data-gthpgst="${esc(a.id)}|welcomed">Welcomed</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|declined">Not this time</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|new">New</button></div></div>`).join("")}</details>`:`<div class="cnt">No applications yet.</div>`}`}</div>`}
+let gthAt=0;
 function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!VIEW_AS,today=iso(new Date());
+  // an educator reads the gatherings again each time the page opens, at most twice a minute
+  if(!ed&&window.FP_API&&Date.now()-gthAt>30000){gthAt=Date.now();window.FP_API("/api/gatherings",{}).then(r=>{window.FP_GATHERINGS=r;if(view==="gatherings")renderMain()}).catch(()=>{})}
   const list=gthList(),tk=gthToolkits();
   const up=list.filter(g=>!g.date||g.date>=today),past=list.filter(g=>g.date&&g.date<today).reverse();
   const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>
@@ -5329,7 +5332,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthn
     const ns=prompt("Starts, as 09:00",x.start||"");if(ns===null)return;const ne=prompt("Ends, as 12:00",x.end||"");if(ne===null)return;const okT=s=>!s||/^\d{2}:\d{2}$/.test(s);if(!okT(ns)||!okT(ne)){toast("Write a time as 09:00.");return}
     const gd=x.gathering==="second-saturday"&&!!GTH_GARDEN_MONTHS[nd.slice(5,7)];
     await gthSave(Object.assign({},x,{date:nd,start:ns,end:ne,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[nd.slice(5,7)]:"",updatedAt:Date.now()}));
-    for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{date:nd,start:ns,end:ne,updatedAt:Date.now()}));renderMain();return}
+    for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{date:nd,start:ns,end:ne,note:(x.title||GTH_NAMES[x.gathering])+(nd?", "+fmtDate(nd):""),updatedAt:Date.now()}));renderMain();return}
   if(d.gthoffer){const x=participation.get(d.gthoffer);if(!x||typeof gdnCall!=="function")return;await gdnCall("offer",{text:(x.title||GTH_NAMES[x.gathering])+(x.documentation?". "+x.documentation.slice(0,200):""),date:x.date||iso(new Date())},"Offered on the Farm to School page.");return}
   if(d.gthpg){try{gthPg=await window.FP_API("/api/staff/playgarden/switch",{on:d.gthpg==="on"});toast(d.gthpg==="on"?"The application is open.":"The application is closed.")}catch(er){toast(er&&er.message||"That did not work.")}renderMain();return}
   if(d.gthpgst){const [id,status]=d.gthpgst.split("|");try{gthPg=await window.FP_API("/api/staff/playgarden/status",{id,status});toast("Saved.")}catch(er){toast(er&&er.message||"That did not work.")}renderMain();return}
@@ -12996,7 +12999,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=754660fc65","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=c227a1a641","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

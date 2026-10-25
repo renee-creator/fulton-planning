@@ -1769,6 +1769,15 @@ async function handle(req, res) {
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
+    // a gathering and its volunteer jobs reach families only when the director marks them ready, so the office's saves
+    // keep whether one is open as it was, and anything the office starts for a gathering starts closed
+    if (kind === 'participation' && !isDirector(me.name)) {
+      const was = cur && !cur.deleted && cur.doc ? cur.doc : null; const isG = d => d && (d.gathering || d.gatheringId);
+      // closing is always allowed, and opening is the director's
+      const openAs = d => d.open === false ? false : was ? was.open !== false : false;
+      if (body.data && typeof body.data === 'object' && (isG(was) || isG(body.data))) body.data = Object.assign({}, body.data, { open: openAs(body.data) });
+      if (body.patch && typeof body.patch === 'object' && (isG(was) || isG(body.patch)) && 'open' in body.patch) body.patch = Object.assign({}, body.patch, { open: openAs(body.patch) });
+    }
     const dev = typeof body.dev === 'string' && /^[A-Za-z0-9]{6,32}$/.test(body.dev) ? body.dev : '';
     // conference notes reach a family only when the director or the office shares them, the same check the Family page
     // makes, so an educator's save never shares notes or takes them away
@@ -1936,6 +1945,8 @@ async function handle(req, res) {
     savedAsks.set(me.name, asks);
     json(req, res, 200, Object.assign({ bootId: BOOT_ID }, out)); return;
   }
+  // the gatherings, read again when an educator opens the Gatherings page
+  if (path === '/api/gatherings') { if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; } json(req, res, 200, gatheringsFor()); return; }
   // the director makes, renews or turns off the staff room display's link
   if (path === '/api/display') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sets up the staff room display.'); return; }

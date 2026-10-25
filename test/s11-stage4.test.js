@@ -396,7 +396,7 @@ test('the recipe library: food and sensory apart, drafts for the director, the k
   assert.strictEqual((await fx.as(fam, '/family/recipe', { title: 'Nut bars', ingredients: 'almonds', steps: 'mix' })).status, 400);
   r = await fx.as(fam, '/family/recipe', { title: 'Grandma\'s rice', ingredients: 'rice\nwater', steps: 'Cook the rice.' }); assert.strictEqual(r.status, 200, JSON.stringify(r.body));
   const fr = (await fx.as(dee, '/api/staff/library', {})).body.recipes.find(x => x.id === 'grandma-s-rice');
-  assert.ok(fr.draft); assert.strictEqual(fr.meta.source, 'The Test family');
+  assert.ok(fr.draft); assert.strictEqual(fr.meta.source, 'A family'); assert.strictEqual(fr.meta.by, 'a family');
   // the recipe of the month on the Family page comes from the library
   const fd = (await fx.as(fam, '/family/data', {})).body;
   const rec = JSON.stringify(fd).match(/"recipe":\{"name":"Flatbread","text":"Ingredients\\n2 cups flour/); assert.ok(rec, 'recipe of the month from the library');
