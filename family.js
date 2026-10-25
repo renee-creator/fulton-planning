@@ -245,7 +245,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const nextPlan = ((k.transition || {})[nyKey] || {}).plan || '';
     let tkGuide = null; if (nextPlan === 'k' || nextPlan === 'tk') { try { tkGuide = (pieces ? pieces() || [] : []).find(p => p.audience === 'tk') || null; } catch (e) { tkGuide = null; } }
     const visit = k.visit && k.visit.date ? k.visit : null;
-    const purpose = isNew(k) ? 'visit' : (c.confOpen ? 'conference' : '');
+    const purpose = isNew(k) ? 'visit' : (c.confOpen && treeBooking() ? 'conference' : '');
     const open = purpose ? slots().filter(s => s.purpose === purpose && !!s.test === f.test && s.date >= today && (!s.classroom || s.classroom === k.classroom) && (!s.booked || s.booked.childId === k.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => ({ id: s.id, date: s.date, time: s.time, minutes: s.minutes, with: s.with || '', mine: !!(s.booked && s.booked.childId === k.id) })) : [];
     const q = k.familyQuestionnaire || null;
     const ef = k.enrollForm || null;
@@ -261,9 +261,13 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
       // earlier is the edition before this one that the family read, so a returning family is asked once to read the new one
       handbook: (() => { const y = hbYear(); const a = y && hbAck(k, y); if (!y) return null; const past = Object.keys(k.handbookAck || {}).filter(x => x < y).sort().pop() || (y > '2026' && hbAck(k, '2026') ? '2026' : ''); return { year: y, at: a ? a.at : '', earlier: past }; })() };
   }
+  // families book conference times on the Family page only once the director switches booking from SignUpGenius to
+  // TREE, in Conference settings. Until then the Family page offers no conference times.
+  function treeBooking() { const r = store.recs.settings.get('main'); return !!(r && !r.deleted && r.doc && r.doc.conferenceBooking === 'tree'); }
   function book(f, slotId, childId, on) {
     const s0 = getRec(KIND, slotId), s = s0 && Object.assign(s0, { id: slotId }); const k = f.kids.find(x => x.id === childId);
     if (!s || s.kind !== 'slot' || !!s.test !== f.test || !k) return { error: 'That time is no longer open.' };
+    if (s.purpose === 'conference' && !treeBooking()) return { error: 'Conference times are booked through the sign-up link the school sent.' };
     if (on) {
       if (s.booked && s.booked.childId !== childId) return { error: 'Someone just took that time. Choose another.' };
       if (s.classroom && s.classroom !== k.classroom) return { error: 'That time is for another class.' };

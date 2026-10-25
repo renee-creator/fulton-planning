@@ -267,6 +267,8 @@ function scBlock(cf, side, dis){
 }
 const PLAN_BOXES = PLANS.filter(([v])=>v);
 const REASONS = ["","Behavior or safety concern","Family request","Educator request","Follow-up on goals","Transition or next school","Other"];
+// the SignUpGenius sign-up page and calendar link are kept in Conference settings, in the private records
+function signupUrl(){ const u=String(S.settings.signupUrl||"").trim(); return /^https:\/\//i.test(u)? u : ""; }
 const DEFAULT_SETTINGS = {
   groups: DEFAULT_GROUPS,
   classrooms:[],
@@ -630,7 +632,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0
       ${(()=>{ const waiting=kids.filter(c=>noDateYet(periodConf(c.id)) && !(periodConf(c.id)?.signup==="signedup"));
         return `<div class="panel"><h3>Families to reach</h3>
         <p class="small muted" style="margin:0 0 10px">${waiting.length} ${waiting.length===1?"family has":"families have"} no conference date yet and ${waiting.length===1?"has":"have"} not signed up.</p>
-        ${waiting.length?`<div class="stack" style="gap:8px"><button class="btn sm" data-act="copy-emails">Copy their parent emails</button><p class="small muted" style="margin:0">Families book a conference time on the Family page, from the times the office opens there.</p>${canEdit()?`<button class="btn sm ghost" data-act="mark-noresponse">Mark them as no response</button>`:""}</div>`:""}
+        ${waiting.length?`<div class="stack" style="gap:8px"><button class="btn sm" data-act="copy-emails">Copy their parent emails</button>${signupUrl()?`<button class="btn sm" data-act="copy-signup">Copy the sign-up link</button><a class="btn sm ghost" href="${esc(signupUrl())}" target="_blank" rel="noopener">Open SignUpGenius</a>`:""}${canEdit()&&window.FC_SIGNUP_FEED?`<button class="btn sm" data-act="sug-check">Fill in times from SignUpGenius</button>`:""}${window.FC_SIGNUP_FEED?`<p class="small muted" style="margin:0">TREE checks SignUpGenius every hour and fills in the families it can match. Use the button for any it could not.</p>`:""}${canEdit()?`<button class="btn sm ghost" data-act="mark-noresponse">Mark them as no response</button>`:""}</div>`:""}
         </div>`; })()}
       ${(()=>{ const nw=kids.filter(isNewChild).sort((a,b)=>(a.enrollDate||"").localeCompare(b.enrollDate||""));
         return nw.length? `<div class="panel"><h3>New children getting started</h3><ul class="list-plain">${nw.slice(0,10).map(c=>`<li><span><a href="#" data-go="child" data-id="${esc(c.id)}"><b>${esc(childName(c))}</b></a><div class="small muted">${esc(c.classroom||"")}${c.enrollDate?" · starts "+esc(fmtDate(c.enrollDate,{month:"long",day:"numeric"})):""}</div></span><span class="mono small">${onboardCount(c)}/${ONBOARD.length}</span></li>`).join("")}</ul></div>` : ""; })()}
@@ -827,7 +829,7 @@ function viewConf(id){
           <div class="field" style="margin-top:12px"><label for="i-teacher">Educators</label><input id="i-teacher" data-k="teacher" value="${esc(cf.teacher||"")}" ${dis} autocomplete="off" placeholder="Everyone who held the conference, separated by commas${educatorOf(c)? ", like "+esc(educatorOf(c)) : ""}"></div>
           ${cf.term==="Additional"? `<div class="field" style="margin-top:12px"><label for="i-reason">Reason for this conference</label><select id="i-reason" data-k="reason" ${dis}>${REASONS.map(o=>`<option value="${o}" ${(cf.reason||"")===o?"selected":""}>${o||"Choose"}</option>`).join("")}</select></div>`:""}
           <div class="grid2" style="margin-top:12px">
-            <div class="field"><label for="i-signup">Family sign-up</label><select id="i-signup" data-k="signup" ${dis}>${SIGNUP.map(([v,l])=>`<option value="${v}" ${(cf.signup||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
+            <div class="field"><label for="i-signup">Family sign-up${signupUrl()?` <a href="${esc(signupUrl())}" target="_blank" rel="noopener" class="small" style="font-weight:400;margin-left:6px">Open SignUpGenius</a>`:""}</label><select id="i-signup" data-k="signup" ${dis}>${SIGNUP.map(([v,l])=>`<option value="${v}" ${(cf.signup||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
             <div class="field"><label for="i-signupNote">Sign-up note</label><input id="i-signupNote" data-k="signupNote" value="${esc(cf.signupNote||"")}" ${dis} placeholder="Reminder sent in Kaymbu on 10/20"></div>
           </div>
           <p class="small muted" style="margin:10px 0 0">Educators review the Family Questionnaire and current DRDP documentation before the conference.</p>
@@ -1005,6 +1007,11 @@ function viewSettings(){
   <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
     <div class="hint">The Classes and small groups are kept in TREE's Settings, under Program settings, and read here from there.</div>
+    <div class="field"><label>Families book conference times</label><div class="hint">Through SignUpGenius, with TREE filling in each time every hour, or on the Family page, from the times the office opens there. Only the director changes this.</div>
+      <label class="check"><input type="radio" name="s-booking" value="signupgenius" ${S.settings.conferenceBooking!=="tree"?"checked":""} ${isDirector()?"":"disabled"}><span>Through SignUpGenius</span></label>
+      <label class="check"><input type="radio" name="s-booking" value="tree" ${S.settings.conferenceBooking==="tree"?"checked":""} ${isDirector()?"":"disabled"}><span>On the Family page in TREE</span></label></div>
+    <div class="field"><label for="s-signup">Family sign-up link</label><div class="hint">The SignUpGenius page families use to choose a conference time. It appears with the families still to reach.</div><input id="s-signup" value="${esc(S.settings.signupUrl||"")}" ${isDirector()?"":"disabled"} placeholder="https://www.signupgenius.com/go/..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
+    <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${isDirector()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     ${isDirector()&&(()=>{try{return !!window.parent.TREE_EDIT_WORDING}catch(e){return false}})()?`<div class="row"><button class="btn" type="button" data-act="edit-prep">Edit the preparation steps</button></div>`:""}
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${isDirector()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
     <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Each educator's Class is kept on their sign-in, changed in TREE's Settings, Sign-ins, or on the Educators page. They show here by that Class.</div>
@@ -1134,7 +1141,10 @@ const actions = {
     const lines = v=>v.split(/\n/).map(s=>s.trim()).filter(Boolean);
     const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
     if(!years.length){ toast("Write school years like 2026-27"); return; }
-    try{ await dbUpdate("settings/main",{years,updatedAt:nowISO()}); S.settings={...S.settings,years}; toast("Settings saved"); render(); }catch(e){}
+    const su=$("#s-signup").value.trim(); if(su && !/^https:\/\//i.test(su)){ toast("The sign-up link should start with https://"); return; }
+    const feed=$("#s-feed").value.trim(); if(feed && !/^(webcal|https):\/\/(www\.)?signupgenius\.com\//i.test(feed)){ toast("The calendar link should be a SignUpGenius webcal link"); return; }
+    const booking=($('input[name="s-booking"]:checked')||{}).value==="tree"?"tree":"signupgenius";
+    try{ await dbUpdate("settings/main",{years,signupUrl:su,signupFeed:feed,conferenceBooking:booking,updatedAt:nowISO()}); S.settings={...S.settings,years,signupUrl:su,signupFeed:feed,conferenceBooking:booking}; toast("Settings saved"); render(); }catch(e){}
   },
   "import-form": a=>openImport(a.dataset.conf||null),
   "attach-only": ()=>openAttachOnly(),
@@ -1944,6 +1954,108 @@ actions["visit-upload"]=a=>{
 
 
 function familiesToReach(){ return activeChildren().filter(c=>noDateYet(periodConf(c.id)) && !(periodConf(c.id)?.signup==="signedup")); }
+/* ---------- SignUpGenius ---------- */
+// One SignUpGenius time slot can hold a family from each classroom, written as
+// "West Conferences", then "Parent Name (1)", then the family's comment. Split them apart.
+function sugSplit(ev){
+  const rooms=S.settings.classrooms||[]; const lines=String(ev.description||"").split(/\n/).map(s=>s.trim());
+  const out=[]; let room="", cur=null;
+  for(const line of lines){
+    const head=line.match(/^(.+?)\s+conferences?\s*$/i);
+    if(head && rooms.some(r=>r.toLowerCase()===head[1].trim().toLowerCase())){ room=rooms.find(r=>r.toLowerCase()===head[1].trim().toLowerCase()); cur=null; continue; }
+    const who=line.match(/^(.+?)\s*\(\d+\)\s*$/);
+    if(who && room){ cur={...ev, room, signer:who[1].trim(), comment:""}; out.push(cur); continue; }
+    if(cur && line){ cur.comment=(cur.comment? cur.comment+" " : "")+line; }
+  }
+  if(!out.length) return [{...ev, room:"", signer:"", comment:ev.description||""}];
+  return out.map(e=>({...e, description:[e.signer,e.comment].filter(Boolean).join(" · ")}));
+}
+function sugMatch(ev){
+  const words=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(w=>w.length>1);
+  const tw=words([ev.summary,ev.description,ev.location].join(" "));
+  if(!tw.length) return null;
+  const close=(a,b)=>{ if(a===b) return true; if(Math.min(a.length,b.length)<5 || Math.abs(a.length-b.length)>1) return false; return lev(a,b)<=1; };
+  const has=w=>tw.some(t=>close(t,w));
+  let kids=activeChildren(); if(ev.room){ const inRoom=kids.filter(c=>c.classroom===ev.room); if(inRoom.length) kids=inRoom; }
+  let best=null, score=0, tie=false;
+  const count=(k)=>{ const m={}; kids.forEach(c=>words(c[k]).forEach(w=>m[w]=(m[w]||0)+1)); return m; };
+  const firsts=count("first"), lasts=count("last");
+  for(const c of kids){
+    const f=words(c.first), l=words(c.last), pw=(c.parents||[]).map(p=>words(p.name)).filter(x=>x.length);
+    const hasF=f.length&&f.every(has), hasL=l.length&&l.some(has);
+    let s=0;
+    if(hasF && hasL) s=4;                                                           // child first and last name, any order
+    else if(pw.some(p=>p.length>1 && p.every(has))) s=3;                            // a parent's full name
+    else if(hasF && pw.some(p=>p.slice(1).some(has))) s=3;                          // child first name and a parent's last name
+    else if(hasF && f.every(w=>firsts[w]===1)) s=2;                                 // a first name no other child has
+    else if(hasL && l.every(w=>lasts[w]===1) && pw.some(p=>has(p[0]))) s=2;         // a unique last name with a parent's first name
+    if(s>score){ best=c; score=s; tie=false; } else if(s && s===score && best!==c) tie=true;
+  }
+  return score && !tie? best : null;
+}
+function lev(a,b){ const d=Array.from({length:a.length+1},(_,i)=>[i]); for(let j=1;j<=b.length;j++) d[0][j]=j;
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[a.length][b.length]; }
+actions["sug-check"]=async()=>{
+  openModal(`<h2>SignUpGenius</h2><p class="muted"><span class="spinner" style="display:inline-block;vertical-align:middle"></span> Reading the sign-up calendar…</p>`);
+  let j; try{ j=await window.FC_SIGNUP_FEED(true, S.settings.signupFeed||""); }catch(e){ openModal(`<h2>SignUpGenius</h2><p>${esc(e.message||"The sign-up calendar could not be read.")}</p><div class="modal-foot"><button class="btn" data-act="close">Close</button></div>`); return; }
+  const today=new Date(); today.setDate(today.getDate()-60); const since=today.toISOString().slice(0,10);
+  const evs=(j.events||[]).filter(e=>e.date>=since).flatMap(sugSplit);
+  S.sug=evs.map(e=>({...e, childId:sugMatch(e)?.id||""}));
+  const left=S.sug.map((e,i)=>({i,classroom:e.room||"",text:e.room? e.description : [e.summary,e.description].join(" | ").trim()})).filter(x=>!S.sug[x.i].childId && x.text.replace(/[^a-z]/gi,"").length>8);
+  if(left.length && S.sample){
+    openModal(`<h2>SignUpGenius</h2><p class="muted"><span class="spinner" style="display:inline-block;vertical-align:middle"></span> Matching ${left.length} more ${left.length===1?"slot":"slots"} to children…</p>`);
+    try{
+      const roster=activeChildren().map(c=>({id:c.id, child:childName(c), classroom:c.classroom||"", parents:(c.parents||[]).map(p=>p.name).filter(Boolean)}));
+      const r=await S.sample.json(`These are conference sign-up slots from SignUpGenius for a preschool. Each slot gives the classroom, the name of the person who signed up, and their comment, which often names the child. Families wrote names in their own way, so spellings, nicknames, word order and which parent signed up vary. Match each slot to one child from the roster. Use the empty string when a slot has no family in it or you are not reasonably sure. Reply with only JSON in this shape {"matches":[{"i":0,"id":""}]}
+
+Slots
+${JSON.stringify(left)}
+
+Roster
+${JSON.stringify(roster)}`, {modelTier:"quick"});
+      const ids=new Set(roster.map(x=>x.id));
+      for(const m of (r?.matches||[])){ const e=S.sug[m.i]; if(e && !e.childId && ids.has(m.id)){ e.childId=m.id; e.byClaude=true; } }
+    }catch(err){ console.warn(err); }
+  }
+  const kids=activeChildren().sort((a,b)=>childName(a).localeCompare(childName(b)));
+  const fmtT=t=>t? fmtTime(t) : "";
+  const rows=S.sug.map((e,i)=>{ const c=S.children[e.childId]; const cf=c? periodConf(c.id, currentPeriod(new Date(e.date+"T12:00:00"))) : null;
+    const same=cf && cf.confDate===e.date && (cf.confTime||"")===(e.time||"");
+    return `<tr><td class="mono small" style="white-space:nowrap">${esc(fmtDate(e.date))}<div class="muted">${esc(fmtT(e.time))}${e.end?" to "+esc(fmtT(e.end)):""}</div></td>
+      <td class="small">${e.room? `<b>${esc(e.room)}</b> · ${esc(e.description.slice(0,160))}` : esc((e.summary+(e.description?" · "+e.description:"")).slice(0,160))}</td>
+      <td><select data-sug="${i}" aria-label="Child for this slot"><option value="">Not matched</option>${kids.map(k=>`<option value="${esc(k.id)}" ${k.id===e.childId?"selected":""}>${esc(childName(k))}</option>`).join("")}</select>${same?`<div class="small muted">Already filled in</div>`:""}${e.byClaude?`<div class="small muted">Matched by TREE, check it</div>`:""}${e.childId&&S.sug.filter(x=>x.childId===e.childId).length>1?`<div class="small" style="color:var(--danger)">Matched to more than one slot. Pick the right one.</div>`:""}</td></tr>`; }).join("");
+  openModal(`<h2>Conference times from SignUpGenius</h2>
+    <p class="small muted" style="margin:0 0 10px">${S.sug.length} ${S.sug.length===1?"slot":"slots"} found, ${S.sug.filter(e=>e.childId).length} matched to a child. Each one is matched to a child by the names in the slot. Check the matches, pick a child for any that are blank, then fill them in. Open slots with no family stay blank and are skipped.</p>
+    ${S.sug.length?`<div class="tbl-wrap" style="max-height:52vh;overflow:auto"><table class="list"><thead><tr><th>When</th><th>In SignUpGenius</th><th>Child</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p>No conference slots are in the calendar yet.</p>`}
+    <div class="modal-foot"><button class="btn" data-act="close">Cancel</button>${S.sug.length?`<button class="btn primary" data-act="sug-apply">Fill in conference times</button>`:""}</div>`);
+  $$("[data-sug]").forEach(s=>s.onchange=()=>{ S.sug[+s.dataset.sug].childId=s.value; });
+};
+actions["sug-apply"]=async btn=>{
+  btn.disabled=true; let n=0, same=0, failed=0;
+  for(const e of S.sug||[]){
+    if(!e.childId) continue;
+    try{
+      const p=currentPeriod(new Date(e.date+"T12:00:00"));
+      let cf=periodConf(e.childId,p); let id=cf?.id;
+      if(!id){ id=await createConf(e.childId,p.year,p.term); cf=S.confs[id]; }
+      if(!id) throw new Error("create");
+      const patch={};
+      if(cf?.confDate!==e.date) patch.confDate=e.date;
+      if(e.time && cf?.confTime!==e.time) patch.confTime=e.time;
+      if(!["signedup","missed"].includes(cf?.signup||"")) patch.signup="signedup";
+      if(!Object.keys(patch).length){ same++; continue; }
+      patch.sugDate=e.date; patch.sugTime=e.time||""; // so the hourly check can follow a family who moves their slot
+      patch.updatedAt=nowISO(); if(S.uid) patch.updatedBy=S.uid;
+      await dbUpdate("conferences/"+id, patch); n++; btn.textContent=`Filled in ${n}…`;
+    }catch(err){ failed++; }
+  }
+  closeModal(); toast(`${n} ${n===1?"conference":"conferences"} filled in${same?`, ${same} already up to date`:""}${failed?`, ${failed} could not be saved`:""}`); render();
+};
+actions["copy-signup"]=async()=>{
+  const u=signupUrl(); if(!u) return;
+  try{ await navigator.clipboard.writeText(u); toast("Sign-up link copied"); }
+  catch(e){ openModal(`<h2>Sign-up link</h2><textarea style="width:100%;min-height:70px" readonly>${esc(u)}</textarea><div class="modal-foot"><button class="btn" data-act="close">Close</button></div>`); }
+};
 actions["copy-emails"]=async()=>{
   const emails=[...new Set(familiesToReach().flatMap(c=>(c.parents||[]).map(p=>(p.email||"").trim()).filter(Boolean)))];
   const text=emails.join(", ");

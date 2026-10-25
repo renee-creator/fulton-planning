@@ -387,6 +387,7 @@ const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
 const readable = require('./readable.js')({ drive: photosDrive, store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const reminders = require('./reminders.js')({ store, accounts, accountFor, isFormer: n => isFormerEducator(n), saveAccounts: n => saveAccounts(n), isDirector, isKitchen, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
+const signupSync = require('./signup-sync.js')({ oneLists: () => oneLists(), store, log, readFeed: l => readSignupFeed(l, true), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 // a family's sign-in code goes out through the school's Google Workspace mailbox script, set as FAMILY_MAIL_URL and FAMILY_MAIL_KEY
 async function mailCode(to, code) {
   const url = process.env.FAMILY_MAIL_URL, key = process.env.FAMILY_MAIL_KEY; if (!url || !key) throw new Error('Family email is not set up yet');
@@ -2025,6 +2026,19 @@ async function handle(req, res) {
     }
     err(req, res, 404, 'Not found'); return;
   }
+  if (path === '/api/signup-feed') {
+    const set = store.recs.settings.get('main'); let link = String(body.link || (set && set.doc && set.doc.signupFeed) || '').trim().replace(/^webcal:\/\//i, 'https://');
+    if (!link) { err(req, res, 400, 'Add the SignUpGenius calendar link in Settings first.'); return; }
+    try {
+      await readSignupFeed(link, !!body.fresh);
+      json(req, res, 200, { events: feedCache.data, checkedAt: new Date(feedCache.at).toISOString() });
+    } catch (e) {
+      // a network failure reads as a plain sentence, and the technical reason stays in the log
+      const plain = /^(SignUpGenius|That link)/.test(e.message || '');
+      if (!plain) log('SignUpGenius could not be reached,', e.message || e.code || 'no answer');
+      err(req, res, 502, plain ? e.message : 'SignUpGenius could not be reached just now. Try again in a few minutes.'); }
+    return;
+  }
   // what the kitchen ordered for lunch and snack this week and next, for every educator. Only the food, its farm and the
   // day it comes. No prices, totals, order numbers or vendor details, and no FEED bin lines, since the bin has its own page.
   // the allergy and dietary lines the office has confirmed, for the Kitchen page. The kitchen receives no children's
@@ -2071,6 +2085,62 @@ async function handle(req, res) {
   if (await feedBin.handle(path, { name: me.name, director: isDirector(me.name) }, body, (status, obj) => json(req, res, status, obj))) return;
   if (await calendar.handle(path, { name: me.name, director: isDirector(me.name), shared: me.name === 'Staff' }, body, (status, obj) => json(req, res, status, obj))) return;
   err(req, res, 404, 'Not found');
+}
+
+/* ---------- SignUpGenius, read only, for family conference times ---------- */
+const feedCache = { url: '', at: 0, data: null };
+async function readSignupFeed(link, fresh) {
+  link = String(link || '').trim().replace(/^webcal:\/\//i, 'https://');
+      if (!(feedCache.url === link && Date.now() - feedCache.at < 5 * 60000 && !fresh)) {
+        const r = await getText(link);
+        if (r.status !== 200) throw new Error('SignUpGenius answered ' + r.status + '.');
+        if (!/BEGIN:VCALENDAR/.test(r.text)) throw new Error(/does not exist/i.test(r.text) ? 'SignUpGenius says this calendar does not exist. In SignUpGenius, open Tools, then Calendar Subscriptions, check the feed is saved with the conference sign up in it, and copy its link again.' : 'That link did not return a calendar.');
+        feedCache.url = link; feedCache.at = Date.now(); feedCache.data = parseIcs(r.text);
+      }
+  return feedCache.data;
+}
+function getText(url, hops = 0) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' || !/(^|\.)signupgenius\.com$/i.test(u.hostname)) { reject(new Error('Only SignUpGenius calendar links can be read.')); return; }
+    const req = https.get(u, { headers: { 'User-Agent': 'fulton-tree', 'Accept': 'text/calendar,*/*' } }, res => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 3) { res.resume(); resolve(getText(new URL(res.headers.location, u).toString(), hops + 1)); return; }
+      const chunks = []; let n = 0;
+      res.on('data', c => { n += c.length; if (n > 5e6) { req.destroy(new Error('The calendar is too large.')); return; } chunks.push(c); });
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      res.on('error', reject);
+    });
+    req.setTimeout(20000, () => req.destroy(new Error('SignUpGenius did not answer in time.')));
+    req.on('error', reject);
+  });
+}
+function laParts(d) {
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const o = Object.fromEntries(f.formatToParts(d).map(x => [x.type, x.value]));
+  return { date: `${o.year}-${o.month}-${o.day}`, time: `${o.hour}:${o.minute}` };
+}
+function icsTime(prop) {
+  if (!prop) return null;
+  const v = prop.value; const m = v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/); if (!m) return null;
+  if (!m[4]) return { date: `${m[1]}-${m[2]}-${m[3]}`, time: '' };
+  if (m[7]) return laParts(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])));
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}` };
+}
+function parseIcs(text) {
+  const lines = String(text).replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '').split(/\r?\n/);
+  const unesc = s => s.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1');
+  const out = []; let ev = null;
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { ev = {}; continue; }
+    if (line === 'END:VEVENT') { if (ev) out.push(ev); ev = null; continue; }
+    if (!ev) continue;
+    const i = line.indexOf(':'); if (i < 0) continue;
+    const name = line.slice(0, i).split(';')[0].toUpperCase(); ev[name] = { value: line.slice(i + 1) };
+  }
+  return out.map(e => { const s = icsTime(e.DTSTART), en = icsTime(e.DTEND);
+    return { uid: e.UID ? e.UID.value : '', date: s ? s.date : '', time: s ? s.time : '', end: en ? en.time : '',
+      summary: unesc(e.SUMMARY ? e.SUMMARY.value : ''), description: unesc(e.DESCRIPTION ? e.DESCRIPTION.value : ''), location: unesc(e.LOCATION ? e.LOCATION.value : '') }; })
+    .filter(e => e.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
 const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms'); }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });

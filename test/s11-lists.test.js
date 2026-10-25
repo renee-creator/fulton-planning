@@ -129,21 +129,29 @@ test('the Conferences page keeps no Add a child, Edit details or 1Core import, a
   assert.match(tree, /function kidOfferHtml/);
 });
 
-test('conference booking is in TREE only. SignUpGenius is retired and its links are out of the public code', async t => {
+test('SignUpGenius keeps booking conferences until the director switches to the Family page, and its link is out of the public code', async t => {
   const fx = await start({ more: put => {
-    put('calendar/settings/program.json', { calendars: [{ id: 'cal3', name: 'Conferences', color: 'clay' }], spaces: [], dayStart: 420, dayEnd: 1080, weekends: true });
-    put('calendar/settings/feeds.json', { addresses: { cal3: 'webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=madeup' } });
+    put('settings/main.json', { id: 'main', classrooms: ['West'], years: ['2026-27'] });
+    put('participation/config.json', { id: 'config', test: true, confOpen: true, testers: [{ email: 'ash.family@example.test', children: ['ash'] }] });
+    put('children/ash.json', { first: 'Ash', last: 'Test', classroom: 'West', status: 'active', enrollDate: '2020-01-01', parents: [{ email: 'ash.family@example.test' }] });
+    put('participation/slot1.json', { id: 'slot1', kind: 'slot', purpose: 'conference', test: true, date: '2099-11-09', time: '09:00', minutes: 20, classroom: 'West' });
   } });
   t.after(() => fx.stop());
-  const dee = (await fx.login('Dee', 'director-pass-1')).token;
-  assert.strictEqual((await fx.as(dee, '/api/signup-feed', { fresh: true })).status, 404);
-  const v = await fx.as(dee, '/api/view', { from: '2026-11-02', to: '2026-11-06' });
-  assert.strictEqual(v.status, 200);
-  assert.deepStrictEqual(v.body.calendarStatus.cal3, { connected: false, retired: true });
-  assert.ok(JSON.parse(fs.readFileSync(path.join(fx.dir, 'calendar/settings/feeds.json'), 'utf8')).addresses.cal3, 'the address stays in the records');
-  for (const f of ['tree.html', 'tree-conferences.html', 'tree-calendar.html', 'server.js', 'calendar.js', 'family.html', 'src/embed/conferences-app.html'])
-    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, f), 'utf8'), /signupgenius\.com\/(go|index\.cfm)|record=[0-9a-f]{20,}|10C0E44A8A72EA0F9C52/i, f);
-  assert.ok(!fs.existsSync(path.join(ROOT, 'signup-sync.js')));
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  // the SignUpGenius check is there as it was, reading the link from Conference settings
+  const sf = await fx.as(dee, '/api/signup-feed', { fresh: true });
+  assert.strictEqual(sf.status, 400); assert.match(sf.body.error, /SignUpGenius calendar link in Settings/);
+  const c = await fx.as('', '/family/code', { email: 'ash.family@example.test' }); const fam = (await fx.as('', '/family/login', { email: 'ash.family@example.test', code: c.body.code })).body.token;
+  let fd = (await fx.as(fam, '/family/data', {})).body;
+  assert.deepStrictEqual(fd.children[0].slots, [], 'no conference times on the Family page while SignUpGenius books them');
+  assert.match((await fx.as(fam, '/family/book', { slotId: 'slot1', childId: 'ash', on: true })).body.error, /sign-up link/);
+  // only the director switches it
+  assert.strictEqual((await fx.as(ann, '/api/write', { op: 'update', kind: 'settings', id: 'main', patch: { conferenceBooking: 'tree' } })).status, 403);
+  assert.strictEqual((await fx.as(dee, '/api/write', { op: 'update', kind: 'settings', id: 'main', patch: { conferenceBooking: 'tree' } })).status, 200);
+  fd = (await fx.as(fam, '/family/data', {})).body;
+  assert.deepStrictEqual(fd.children[0].slots.map(x => x.id), ['slot1']);
+  for (const f of ['tree.html', 'tree-conferences.html', 'tree-calendar.html', 'server.js', 'calendar.js', 'signup-sync.js', 'family.html', 'src/embed/conferences-app.html'])
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, f), 'utf8'), /signupgenius\.com\/go\/[0-9A-F]{6}|record=[0-9a-f]{20,}|10C0E44A8A72EA0F9C52/i, f);
   // next year's plan reads in one wording
   const conf = fs.readFileSync(path.join(ROOT, 'tree-conferences.html'), 'utf8');
   assert.match(conf, /\["k","Going to kindergarten next year"\]/);

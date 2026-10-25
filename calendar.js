@@ -250,11 +250,7 @@ function feedError(status, address) {
   if (status === 404 || status === 403 || status === 401) return 'Google would not share this calendar. Paste the Secret address in iCal format from the calendar\'s Settings and sharing page, or make the calendar public.';
   return 'Google answered ' + status + ' for this calendar. It will be tried again shortly.';
 }
-// families book conferences on the Family page now, so a SignUpGenius sign-up sheet is retired. Its address stays in
-// the records, and the calendar neither reads it nor shows its slots. Conferences show from TREE's own records.
-function retired(calId) { try { return isGenius(new URL(String(feedAddresses[calId] || '').replace(/^webcal:/i, 'https:')).hostname); } catch (e) { return false; } }
 function loadFeed(calId) {
-  if (retired(calId)) return Promise.resolve(null);
   const address = feedAddresses[calId]; if (!address) { feeds.delete(calId); return Promise.resolve(null); }
   let f = feeds.get(calId);
   if (!f || f.address !== address) { f = { address, fetchedAt: 0, parsed: null, error: '', hash: '', running: null }; feeds.set(calId, f); }
@@ -283,7 +279,6 @@ async function eventsFor(from, to, me) {
   const out = []; const status = {};
   await Promise.all(core.program.calendars.map(async c => {
     if (!feedAddresses[c.id]) { status[c.id] = { connected: false }; return; }
-    if (retired(c.id)) { status[c.id] = { connected: false, retired: true }; return; }
     let f = feeds.get(c.id);
     if (!f || f.address !== feedAddresses[c.id] || (!f.parsed && !f.error)) f = await Promise.race([loadFeed(c.id), new Promise(r => setTimeout(() => r(feeds.get(c.id)), 12000))]);
     else if (Date.now() - f.fetchedAt > (f.error ? 60000 : FEED_TTL_MS)) loadFeed(c.id);   // refresh in the background, show what is known now
@@ -324,7 +319,7 @@ function slotsNamed(out, calId, confs) {
 
 const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold' }, { id: 'tbday', name: 'Birthdays', color: 'rose' }, { id: 'tmenu', name: 'Snack and lunch', color: 'moss' }, { id: 'tgrow', name: 'Check-ins and PD', color: 'sky' }, { id: 'tfam', name: 'Families invited', color: 'teal' }, { id: 'tgarden', name: 'Garden', color: 'moss' }];
 // the school calendar that is the family conference sign-up sheet, if there is one
-function confCalId() { const c = core.program.calendars.find(c => !retired(c.id) && /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
+function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
   // the Classes and small groups are TREE's one list, in Program settings. The calendar reads them from there.
   const one = opts.oneLists ? opts.oneLists() : null;

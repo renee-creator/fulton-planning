@@ -863,7 +863,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
   // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
-  const VA_READ=["/api/data","/api/transition/nextschool","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings","/api/staff/g/pd/today","/api/staff/g/pd/list","/api/staff/g/pd/team","/api/notes"];
+  const VA_READ=["/api/data","/api/transition/nextschool","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings","/api/staff/g/pd/today","/api/staff/g/pd/list","/api/staff/g/pd/team","/api/notes"];
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
@@ -1092,7 +1092,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 /* ---------- Program data, from the Teacher Policies & Procedures and Small Group Work policy ---------- */
 // the Classes, the small groups and the spaces are one list each. The Classes and small groups come from Program
 // settings, and the spaces are the calendar's, read from the server. None is kept in this page.
-let CLASSROOMS=[],CLASSES_MAIN=[];
+let CLASSROOMS=[],CLASSES_MAIN=[],snapMain=null;
 // the school's own wording the director edits in place, from staff/wording in the records, sent with the records
 const wordsDoc=id=>(window.FP_WORDS&&window.FP_WORDS[id])||{title:"",parts:[]};
 const wordsOf=id=>window.TREE_WORDS?TREE_WORDS.map(wordsDoc(id)):{};
@@ -1356,7 +1356,7 @@ async function boot(){
       else if(changedCur.length&&view==="plans"&&plans.get(currentId)){const p=plans.get(currentId),typing=document.activeElement?.dataset?.f;for(const k of new Set(changedCur))if(k!==typing&&FORMS[p.type]?.fields.some(f=>f.k===k))try{rerenderCard(p,k)}catch(e){}}
     },()=>setConn("Offline. Changes stay on this device"));
     // the Classes Conference settings kept, read until Program settings holds the one list
-    db.doc("settings/main").onSnapshot(snap=>{const v=snap.exists?snap.data():null;CLASSES_MAIN=v&&Array.isArray(v.classrooms)?v.classrooms:[];if(!(PROGRAM_DOC.classrooms||[]).length)applyProgram(PROGRAM_DOC)});
+    db.doc("settings/main").onSnapshot(snap=>{const v=snap.exists?snap.data():null;snapMain=v||null;CLASSES_MAIN=v&&Array.isArray(v.classrooms)?v.classrooms:[];if(!(PROGRAM_DOC.classrooms||[]).length)applyProgram(PROGRAM_DOC)});
     if(isDirector())db.doc("settings/onelists").onSnapshot(snap=>{ONELISTS=snap.exists?snap.data():null});
     if(window.FP_HOSTED)setTimeout(()=>loadCalSpaces(),1500);
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
@@ -8401,7 +8401,7 @@ function ptSlotsHtml(c,test){const today=iso(new Date());
     return Object.entries(days).map(([d,xs])=>`<div style="margin-top:8px"><b>${esc(fmtDate(d))}</b> <span class="cnt">${xs.filter(s=>s.booked).length} of ${xs.length} taken</span><div class="tlist">${xs.map(s=>`<div class="ptlog"><span>${esc(tlabel(s.time))}${s.classroom?" · "+esc(s.classroom):""}${s.with?" · "+esc(s.with):""}${s.booked?` · <b>${esc(s.booked.family||"A family")}</b>`:` <span class="cnt">open</span>`}${s.test?` <span class="status ready">Test</span>`:""}</span><button class="linkbtn" data-ptslotdel="${esc(s.id)}">${s.booked?"Remove":"Delete"}</button></div>`).join("")}</div></div>`).join("")};
   const f=ptSlotForm;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Times families choose</h3>${f?"":`<button class="btn small" data-ptslotnew="visit">Add visit times</button> <button class="btn small ghost" data-ptslotnew="conference">Add conference times</button>`}</div>
-    <div class="actions" style="margin:4px 0"><label class="radio"><input type="checkbox" data-ptconfopen="1" ${c.confOpen?"checked":""}><span>Conference sign-ups are open to families</span></label></div>
+    <div class="actions" style="margin:4px 0"><label class="radio"><input type="checkbox" data-ptconfopen="1" ${c.confOpen?"checked":""}><span>Conference sign-ups are open to families</span></label></div>${(()=>{let m="";try{m=(snapMain&&snapMain.conferenceBooking)||""}catch(e){}return m==="tree"?"":`<div class="cnt">Families book conferences through SignUpGenius for now. These times reach the Family page once the director chooses the Family page in Conference settings.</div>`})()}
     ${f?`<div class="ptform" style="margin:8px 0"><b>${f.purpose==="visit"?"Visit times before the first day":"Conference times"}</b>
       <div class="gsrow"><label>Day<input type="date" id="ps-date" value="${esc(f.date||"")}"></label><label>From<input type="time" id="ps-from" value="${esc(f.from||"08:30")}"></label><label>Until<input type="time" id="ps-to" value="${esc(f.to||"11:30")}"></label><label>Minutes each<input type="number" id="ps-min" min="10" step="5" value="${esc(f.min||(f.purpose==="visit"?30:20))}"></label></div>
       <div class="gsrow"><label>For<select id="ps-class"><option value="">Every class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>With, optional<input type="text" id="ps-with" placeholder="Ex. a co-educator"></label></div>
