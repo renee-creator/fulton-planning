@@ -155,6 +155,16 @@ module.exports = function staffModule(o) {
   const newedFor = (me, experienced) => { const dir = isDirector(me);
     return newedParts().filter(g => dir || ((!g.draft || newedReady(g.slug)) && (g.audience === 'all' || experienced))).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !newedReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
 
+  /* ---------- Help inside TREE ---------- */
+  // short how-to answers in the records, staff/help.json, each for the roles that can do it. Educators never receive a
+  // director-only answer, and the kitchen receives the Kitchen and harvest answers. Families never reach this.
+  const HELP = 'staff/help.json', HELP_READY = 'staff/helpready.json';
+  const helpRoles = me => isDirector(me) ? null : isKitchen(me) ? ['kitchen'] : isNewHire(me) ? ['newhire'] : isOffice(me) ? ['office', 'educator'] : ['educator'];
+  const helpFor = me => { const h = get(HELP) || {}; const on = !!(get(HELP_READY) || {}).on; const roles = helpRoles(me);
+    if (roles && !on) return { list: [], ready: false };
+    const list = (h.list || []).filter(x => x && x.id && x.q && (!roles || (x.roles || []).some(r => roles.includes(r)))).map(x => ({ id: x.id, q: x.q, a: (x.a || []).slice(0, 8), go: x.go || '', label: x.label || '', words: x.words || '', quick: !!x.quick, roles: roles ? undefined : x.roles }));
+    return roles ? { list, ready: true } : { list, ready: on, waiting: !on && list.length > 0, source: h.source || '' }; };
+
   /* ---------- pieces for the Family page ---------- */
   // one Markdown file each in staff/familypieces, read through the signed-in server. A draft shows only to the director, with
   // its source note, until she marks it ready, and then reaches families on the Family page. The TK and kindergarten guide
@@ -288,7 +298,7 @@ module.exports = function staffModule(o) {
     // what TREE opens for this sign-in, asked again by a page that signed in while the records were still loading
     if (P === 'info') { json(req, res, 200, { staff: bootInfo(me) }); return; }
     // a kitchen sign-in reaches its own records page and nothing else here
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest'].includes(P)) return deny('A kitchen sign-in reaches its own records page.');
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help'].includes(P)) return deny('A kitchen sign-in reaches its own records page.');
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
     if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
@@ -322,6 +332,10 @@ module.exports = function staffModule(o) {
     // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
     // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches
     // only a new educator the director marked experienced.
+    if (P === 'help' || P === 'help/ready') {
+      if (P === 'help/ready') { if (!dir) return deny('The director marks Help ready.'); put(HELP_READY, { id: 'helpready', on: !!body.on, at: today(), by: me }); }
+      json(req, res, 200, helpFor(me)); return;
+    }
     if (P === 'familypieces' || P === 'familypieces/ready') {
       if (!dir) return deny('Only the director reviews the Family page pieces.');
       if (P === 'familypieces/ready') { const g = familyPieces().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That piece is not here.');

@@ -1243,7 +1243,7 @@ function renderMain(){
   queueMicrotask(()=>{try{renderWaitBar()}catch(e){}});
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
-  if(isNewHire()&&!STAFF_VIEWS.includes(view)&&view!=="settings"){view="stnew";LS.set("fps.view",view)}
+  if(isNewHire()&&!STAFF_VIEWS.includes(view)&&view!=="settings"&&view!=="search"){view="stnew";LS.set("fps.view",view)}
   if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()||isNewHire()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="walks"){renderWalks();return}
@@ -3902,7 +3902,7 @@ window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const i
 const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["docs","Documentation"],["children","Children"],["calendar","Calendar"]];
 // a kitchen sign-in sees the Kitchen, Today and the calendar
 const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
-const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec","garden"];
+const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec","garden","search"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"],...(staffSubOk("strec")?[["staff","My records"]]:[])]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
 /* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Teacher Policies and
    Procedures live in tree-staff.js, loaded only when someone opens them, so this page stays the same size. The server
@@ -3958,7 +3958,7 @@ function renderTreeNav(){
   const nav=$("#tnav");if(nav)nav.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("");
   // seven sections share the phone's bar by the width of their names, so Documentation and Educators both fit
   const tb=$("#ttab");if(tb){const n=navSections().length;tb.style.gridTemplateColumns=n>6?`repeat(${n},auto)`:`repeat(${n},minmax(0,1fr))`;tb.style.justifyContent=n>6?"space-around":"";tb.style.columnGap=n>6?"2px":""}if(tb)tb.innerHTML=navSections().map(([k,l])=>`<button data-tsec="${k}" ${cur===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TICON[k]}</svg>${l}</button>`).join("");
-  {const sa=$("#tsearchall");if(sa)sa.hidden=isNewHire()}
+  {const sa=$("#tsearchall");if(sa)sa.hidden=false}
   const fab=$("#newnotice");if(fab)fab.hidden=isKitchenUser()||isNewHire()||STAFF_VIEWS.includes(view)||view==="calendar"||view==="conferences"||view==="kitchen"||view==="proofobs"||(view==="moments"&&!!noticeForm);
   const st=$("#tsettings");if(st){st.hidden=!window.FP_HOSTED&&!isDirector();st.setAttribute("aria-current",view==="settings"?"page":"false")}
   const mw=$("#mewrap");if(mw){const signed=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";mw.hidden=!!(signed&&!isShared(signed)&&me())}
@@ -8768,7 +8768,25 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
   for(const st of stories.values()){const text=gsText(st);const at=st.updatedAt||st.at||0;const ids=st.children||[];
     if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"story",at,text,title:"Story, "+stTitle(st),open:`data-story="${esc(st.id)}"`})}
   return out.sort((a,b)=>b.at-a.at)}
+/* ---------- Help inside TREE ----------
+   Short how-to answers from the records, staff/help.json, each for the roles that can do it, shown at the top of Search
+   and as the whole of Search for the kitchen and a new educator. Each prints as a one-page card, as PDF and Word, and the
+   most common print as quick cards for the staff room. No card names or shows a child. */
+let helpData=null,helpBusy=false;
+async function loadHelp(force){if(!window.FP_API||helpBusy||(helpData&&!force))return;helpBusy=true;try{helpData=await window.FP_API("/api/staff/help",{})}catch(e){helpData={list:[]}}finally{helpBusy=false}if(view==="search")gsResults()}
+const helpOnly=()=>isKitchenUser()||isNewHire();
+function helpMatch(q){const L=(helpData&&helpData.list)||[];const terms=String(q||"").toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["how","the","and","for","what","can","does"].includes(w));
+  if(!terms.length)return L.filter(x=>x.quick);return L.map(x=>{const hay=(x.q+" "+x.words+" "+x.label+" "+(x.a||[]).join(" ")).toLowerCase();const n=terms.filter(w=>hay.includes(w)||hay.includes(w.replace(/s$/,""))).length;return [n,x]}).filter(([n])=>n>=Math.min(terms.length,2)||n===terms.length).sort((a,b)=>b[0]-a[0]).map(([,x])=>x).slice(0,6)}
+const helpCard=x=>`<div class="strow helpans"><b>${esc(x.q)}</b><ol style="margin:4px 0;padding-left:20px">${(x.a||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol><div class="actions" style="margin:2px 0 0">${x.go?`<button class="btn small ghost" data-tview="${esc(x.go)}">Open ${esc(x.label||"the page")}</button>`:""}${printBtns("helpcard",esc(x.id),"PDF")}</div></div>`;
+function helpHtml(q){if(helpData===null){loadHelp();return ""}const hits=helpMatch(q);const H=helpData||{};
+  const top=isDirector()&&H.waiting?`<div class="hint">${`<span class="pill" style="pointer-events:none">Draft</span>`} Help shows only to you until you mark it ready.</div><div class="actions"><button class="btn small" data-helpready="1">Mark Help ready</button></div>`:isDirector()&&H.ready?`<div class="actions"><button class="linkbtn" data-helpready="0">Hide Help again</button></div>`:"";
+  if(!hits.length&&!top)return helpOnly()?`<section class="card"><div class="empty">${q?"No help found for "+esc(q)+".":"Help will appear here."}</div></section>`:"";
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">${q?"Help":"Help with common tasks"}</h3><span class="actions" style="margin:0">${(H.list||[]).some(x=>x.quick)?printBtns("helpquick","","Quick cards"):""}</span></div>${top}${hits.map(helpCard).join("")||`<div class="cnt">No help found for ${esc(q)}.</div>`}</section>`}
+function helpDoc(x){return {display:true,type:"report",acc:"story",title:x.q,meta:[],blocks:[dList("",x.a||[],true),dText("Where",x.label?"In TREE, open "+x.label+".":"")]}}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-helpready]");if(!t)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  try{helpData=await window.FP_API("/api/staff/help/ready",{on:t.dataset.helpready==="1"});toast(t.dataset.helpready==="1"?"Help is ready. Everyone who signs in sees it now.":"Hidden again.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 function renderSearchAll(){
+  if(helpOnly()){$("#main").innerHTML=`<div class="head"><h2>Help</h2><div class="sub">How to do things in TREE, in a few short steps.</div></div><section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="Ask how, ex. record a harvest" aria-label="Search Help" autocomplete="off"></section><div id="gres"></div>`;gsResults();return}
   const kids=kidsAt().sort((a,b)=>(a.first||"").localeCompare(b.first||""));
   $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story.</div></div>
     <section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="A word, a child's name or an educator, ex. water or Maya" aria-label="Search TREE" autocomplete="off">
@@ -8778,13 +8796,13 @@ function renderSearchAll(){
       <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
     <div id="gres"></div>`;
   gsResults();if(window.innerWidth>760)$("#gq")?.focus({preventScroll:true})}
-function gsResults(){const box=$("#gres");if(!box)return;const all=gsRun();
-  if(!all){box.innerHTML=`<div class="empty">Type a word or choose a child or group to search.</div>`;return}
+function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);if(helpOnly()){box.innerHTML=hh;return}const all=gsRun();
+  if(!all){box.innerHTML=hh+`<div class="empty">Type a word or choose a child or group to search.</div>`;return}
   const terms=evTerms(gs.q);const rs=gs.kind==="all"?all:all.filter(r=>r.kind===gs.kind);
-  if(!rs.length){box.innerHTML=`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}
+  if(!rs.length){box.innerHTML=hh+`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}
   const counts=Object.fromEntries(GS_KINDS.map(([k])=>[k,all.filter(r=>r.kind===k).length]));
   const order=GS_KINDS.slice(1).map(k=>k[0]).filter(k=>gs.kind==="all"||k===gs.kind);
-  box.innerHTML=`<div class="cnt" style="margin:4px 2px 10px">${all.length} found${gs.kind==="all"?". "+order.filter(k=>counts[k]).map(k=>{const l=GS_KINDS.find(x=>x[0]===k)[1].toLowerCase();return counts[k]+" "+(counts[k]===1?(l==="stories"?"story":l.replace(/s$/,"")):l)}).join(", "):""}</div>`+
+  box.innerHTML=hh+`<div class="cnt" style="margin:4px 2px 10px">${all.length} found${gs.kind==="all"?". "+order.filter(k=>counts[k]).map(k=>{const l=GS_KINDS.find(x=>x[0]===k)[1].toLowerCase();return counts[k]+" "+(counts[k]===1?(l==="stories"?"story":l.replace(/s$/,"")):l)}).join(", "):""}</div>`+
     order.filter(k=>rs.some(r=>r.kind===k)).map(k=>{const list=rs.filter(r=>r.kind===k);const shown=list.slice(0,gs.kind==="all"?6:80);
       return `<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">${GS_KINDS.find(x=>x[0]===k)[1]}</h3><span class="cnt">${list.length}</span></div>
       ${k==="photo"?`<div class="gsphotos">${shown.map(r=>`<button class="gsph" ${r.open}><img src="${esc(photoThumb(r.ph))}" alt="${esc(firstLine(r.text,80))}" loading="lazy"><span class="cnt">${esc(shortDate(r.at))}</span><span class="gssnip">${evSnip(r.text,terms)}</span></button>`).join("")}</div>`
@@ -10642,6 +10660,8 @@ async function printsClick(t){
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`Plant guide ${(gdnPlant(id)||{}).common||""}`:who==="children"?"The Fulton plant guide for children":"The Fulton plant guide");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
+  if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
+  if(kind==="helpquick"){if(!helpData)await loadHelp(true);const L=((helpData||{}).list||[]).filter(h=>h.quick);if(L.length)await out(L.map(helpDoc),"TREE quick cards");return true}
   if(kind==="guide"){if(!guideList)await loadGuides(true);const g=(guideList||[]).find(x=>x.slug===t.dataset.id);if(g)await out([guideDoc(g)],g.title);return true}
   if(kind==="walkcheck"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCheckDoc()],`Before we walk ${iso(new Date())}`);return true}
   if(kind==="walkcard"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCardDoc()],"Our walk agreements");return true}
