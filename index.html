@@ -2497,6 +2497,8 @@ window.TREE_CONF_FACTS=(childId,from,to)=>{const c=children.get(childId);if(!c)r
     if(nm.length)out.nature=nm.map(n=>`${shortDate(n.at).replace(/, \d{4}$/,"")}. ${firstLine(momentHeading(n)?momentHeading(n)+". "+momentBody(n):String(n.noticed||""),160)}`).join("\n")}
   return out};
 // opens a piece of documentation from a conference form
+// the Conferences page opens a child's page in Children, where children and family contacts are kept
+window.TREE_OPEN_KID=(id,tab)=>{if(!children.has(id)){goView("children");return}kidOpen=id;LS.set("tree.kid",id);kidTab=tab||"overview";LS.set("tree.kidtab",kidTab);goView("child")};
 window.TREE_OPEN_DOC=(kind,id)=>{if(kind==="stories"&&stories.has(id)){storyOpen=id;LS.set("tree.story",id);storyDraft=null;goView("story");return}if(kind==="slides"&&slides.has(id)){slideOpen=id;LS.set("tree.slide",id);goView("slide");return}
   const n=notices.get(id);if(!n)return;nRoom="All";mRange="all";goView("moments");setTimeout(()=>{const el=document.getElementById("nw-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash")}},400)};
 window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)return[];const t0=from?Date.parse(from+"T00:00:00"):0,t1=to?Date.parse(to+"T23:59:59"):Date.now();
@@ -12868,7 +12870,20 @@ function kidFamilyHtml(c){
       <div class="actions"><button class="btn small" data-kfamsave="${esc(c.id)}">Save</button><button class="btn small ghost" data-kfamadd="1">Add another parent</button><button class="linkbtn" data-kfamcancel="1">Cancel</button></div></section>`}
   return `<section class="card" id="kfam" data-keep="1"><div class="secthead"><h3 style="font-size:17px">Family contacts</h3><button class="btn small ghost" data-kfamedit="${esc(c.id)}">${ps.length?"Change":"Add a parent"}</button></div>
     ${ps.length?`<div class="kgrid">${ps.map(p=>`<div><b>${esc(p.name||"A parent")}</b>${p.cell?`<div><a href="tel:${esc(String(p.cell).replace(/[^0-9+]/g,""))}">${esc(p.cell)}</a></div>`:""}${p.email?`<div style="overflow-wrap:anywhere"><a href="mailto:${esc(p.email)}">${esc(p.email)}</a></div>`:""}</div>`).join("")}</div>`:`<div class="cnt">No family contacts on file.</div>`}
-    ${noEmail?`<div class="cnt" style="color:var(--clay);margin-top:6px">No parent email, so this family cannot sign in to the Family page.</div>`:""}</section>`}
+    ${noEmail?`<div class="cnt" style="color:var(--clay);margin-top:6px">No parent email, so this family cannot sign in to the Family page.</div>`:""}${kidOfferHtml(c)}</section>`}
+// the parents' names and telephones a family typed on the enrollment form, offered for the office to accept, so contacts
+// are typed once. Accepting adds a new parent or fills in the telephone of one already on file, and every email stays.
+function kidOfferHtml(c){const o=c.contactsOffer;if(!isOffice()||!o||!(o.parents||[]).length)return "";
+  return `<div class="kdietwait"><div class="cnt">The family typed these on the enrollment form, ${esc(longDate(String(o.at||"").slice(0,10)))}.</div>${o.parents.map(p=>`<div><b>${esc(p.name)}</b>${p.cell?` ${esc(p.cell)}`:""}</div>`).join("")}
+    <div class="actions"><button class="btn small" data-kofferok="${esc(c.id)}">Add them to the family contacts</button><button class="linkbtn" data-kofferno="${esc(c.id)}">Keep the contacts on file</button></div></div>`}
+function kidOfferMerge(parents,offer){const out=(parents||[]).map(p=>Object.assign({},p));const k=v=>String(v||"").trim().toLowerCase();
+  for(const o of offer||[]){let m=out.find(p=>k(p.name)===k(o.name));if(!m)m=out.find(p=>!k(p.name)&&(has(p.email)||has(p.cell)));
+    if(m){if(!has(m.name))m.name=o.name;if(has(o.cell))m.cell=o.cell}else out.push({name:o.name,cell:o.cell||"",email:""})}
+  return out}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-kofferok],[data-kofferno]");if(!t)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const c=children.get(t.dataset.kofferok||t.dataset.kofferno);if(!c||!isOffice())return;
+  const patch={contactsOffer:{__delete__:true}};if(t.dataset.kofferok){c.parents=kidOfferMerge(c.parents,(c.contactsOffer||{}).parents);patch.parents=c.parents;kidNote(c,"Family contacts from the enrollment form added");patch.treeHistory=c.treeHistory}
+  delete c.contactsOffer;db.doc("children/"+c.id).update(patch).then(()=>{renderMain();toast(t.dataset.kofferok?"Added to the family contacts.":"The contacts on file stay.")}).catch(er=>toast(er&&er.message||"Could not save."))});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-kfamedit],[data-kfamcancel],[data-kfamadd],[data-kfamsave]");if(!t)return;const d=t.dataset;
   if(d.kfamedit){kidFamEdit=d.kfamedit;kidFamRows=null;renderMain();$("#kfam")?.scrollIntoView({block:"center"});$("#kfam input")?.focus({preventScroll:true});return}
   if(d.kfamcancel){kidFamEdit="";kidFamRows=null;renderMain();return}

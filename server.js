@@ -1709,8 +1709,9 @@ async function handle(req, res) {
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); keepSt(body.data); }
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
       // the allergy and dietary line is confirmed by the office, so an educator's save keeps it as it is
-      if (!isOffice(me.name)) { if (body.data && typeof body.data === 'object') { if (cur && !cur.deleted && cur.doc.diet !== undefined) body.data.diet = cur.doc.diet; else delete body.data.diet; }
-        if (body.patch && typeof body.patch === 'object') delete body.patch.diet; }
+      // and so are the contacts a family typed on the enrollment form, which wait for the office to accept
+      if (!isOffice(me.name)) for (const k of ['diet', 'contactsOffer']) { if (body.data && typeof body.data === 'object') { if (cur && !cur.deleted && cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; }
+        if (body.patch && typeof body.patch === 'object') delete body.patch[k]; }
       // a transition summary reaches a family only when the director shares it, so an educator's save never shares one or takes one away
       if (body.patch && body.patch.transitionSummary !== undefined) { const ts = body.patch.transitionSummary;
         if (!ts || typeof ts !== 'object' || Array.isArray(ts) || ts.__delete__) delete body.patch.transitionSummary;

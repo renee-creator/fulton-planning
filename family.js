@@ -316,6 +316,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     if (med) line += (line ? ', ' : '') + 'medical';
     return { line, none: false, food: v('fa_food').slice(0, 600), reaction: v('fa_reaction').slice(0, 600) };
   }
+  function contactsFrom(d) {
+    const v = k => String(d[k] == null ? '' : d[k]).replace(/\s+/g, ' ').trim();
+    return ['p1_', 'p2_'].map(p => ({ name: [v(p + 'first'), v(p + 'last')].filter(Boolean).join(' ').slice(0, 80), cell: (v(p + 'home') || v(p + 'work')).slice(0, 40) })).filter(x => x.name);
+  }
   function enroll(f, childId, data, done) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
     const keys = new Set(ENROLL.flatMap(s => s.fields.map(x => x.k)));
@@ -327,7 +331,11 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // a submitted form leaves a short allergy and dietary line on the child, waiting for the office to confirm it
     if (done) { const p = dietFrom(clean); const d = Object.assign({}, kd.diet || {});
       if (p && d.at && p.none === !!d.none && p.line === String(d.line || '')) { delete d.pending; next.diet = d; }
-      else if (p) next.diet = Object.assign(d, { pending: Object.assign(p, { at: nowIso(), by: f.email }) }); }
+      else if (p) next.diet = Object.assign(d, { pending: Object.assign(p, { at: nowIso(), by: f.email }) });
+      // the parents' names and telephones the family typed are offered to the child's family contacts, for the office to
+      // accept, so they are typed once. A contact already on file just as typed is not offered again.
+      const offer = contactsFrom(clean).filter(o => !(kd.parents || []).some(x => x && String(x.name || '').trim().toLowerCase() === o.name.toLowerCase() && (!o.cell || String(x.cell || '').replace(/\D/g, '') === o.cell.replace(/\D/g, ''))));
+      if (offer.length) next.contactsOffer = { parents: offer, at: nowIso(), by: f.email }; else delete next.contactsOffer; }
     saveRec('children', childId, next);
     return { ok: true };
   }

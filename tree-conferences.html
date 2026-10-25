@@ -692,6 +692,10 @@ function loadScript(src){ return new Promise((res,rej)=>{ if($(`script[src="${sr
 function setPath(obj, path, val){ const parts=path.split("."); let o=obj; parts.slice(0,-1).forEach(p=>{ o[p]=o[p]||{}; o=o[p]; }); o[parts.at(-1)]=val; return obj; }
 function getPath(obj, path){ return path.split(".").reduce((o,p)=>o?.[p], obj); }
 function canEdit(){ return S.db && S.canWrite!==false; }
+// children and family contacts are kept in TREE's Children page. This page opens a child there.
+function openInTree(id,tab){ try{ if(window.parent!==window&&window.parent.TREE_OPEN_KID){ window.parent.TREE_OPEN_KID(id||"",tab||"details"); return; } }catch(e){} toast("Open the child in TREE, under Children."); }
+// where a child is, in the words TREE's Children page uses
+function kidWord(c){ return c.status!=="withdrawn"? "At our school" : c.leftAs==="moved"? "Moved on to kindergarten" : "Left our school"; }
 // adding a child, the 1Core roster and a child's Class are the director's, as the server keeps them
 function isDirector(){ return canEdit() && !!S.director; }
 
@@ -856,7 +860,7 @@ const tot = {total:0,complete:0,nosignup:0,held:0,ready:0,scheduled:0,progress:0
         ${list.length?`<button class="btn" data-act="pdf-list" title="One PDF with a two-page form for each child shown, ready to print">Print forms for these ${list.length} (PDF)</button><button class="btn" data-act="docx-list" title="One Word file with a form for each child shown">Word file for these ${list.length}</button>`:""}</span>
       </div>
       <div id="live-list">${kids.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Class</th><th>Primary educator</th><th>Status</th><th>When</th><th>Filled</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No children match these filters.</td></tr>`}</tbody></table></div>`
-      : `<div class="panel empty"><p>No children on the roster yet.</p><button class="btn primary" data-act="roster-import">Import the 1Core roster PDF</button> <button class="btn" data-act="child-new">Add a child</button></div>`}</div>
+      : `<div class="panel empty"><p>No children on the roster yet. The roster is kept in TREE's Children page.</p></div>`}</div>
     </div>
     <aside class="stack">
       <div class="panel"><h3>Coming up, the whole school</h3>
@@ -890,26 +894,26 @@ function viewChildren(){
   sortKids(list);
   const rows = list.map(c=>{ const n=confsFor(c.id).length;
     return `<tr class="click" tabindex="0" data-go="child" data-id="${esc(c.id)}">
-    <td class="name-cell"><b>${esc(childName(c))}</b>${c.status==="withdrawn"?' <span class="chip st-withdrawn">Left our school</span>':""}</td>
+    <td class="name-cell"><b>${esc(childName(c))}</b>${c.status==="withdrawn"?` <span class="chip st-withdrawn">${esc(kidWord(c))}</span>`:""}</td>
     <td class="mono small">${esc(fmtDate(c.dob))}</td><td class="small">${esc(ageAt(c.dob))}</td>
     <td>${esc(c.classroom||"")}</td>
-    <td class="small">${canEdit()? `<select data-group-for="${esc(c.id)}" aria-label="Small group for ${esc(childName(c))}"><option value="">Choose</option>${groupsList().filter(g=>!c.classroom||g.room===c.classroom).map(g=>`<option ${c.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select>` : esc(c.group||"")}<div class="muted">${esc(educatorOf(c))}</div></td>
+    <td class="small">${esc(c.group||"")}<div class="muted">${esc(educatorOf(c))}</div></td>
     <td class="small">${esc((c.parents||[]).map(p=>p.name).join(", "))}</td>
     <td class="mono small">${n}</td></tr>`; }).join("");
   return `
   <div class="spread" style="margin-bottom:18px">
     <div><div class="eyebrow">Roster</div><h1>Children</h1></div>
-    ${isDirector()? `<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button><button class="btn primary" data-act="child-new">Add a child</button></div>`:""}
+    <div class="row"><button class="btn" data-act="tree-children">Children and family contacts are kept in Children</button></div>
   </div>
   <div class="filters" style="margin-bottom:12px">
     <input type="search" id="f-q" placeholder="Find a child or parent" value="${esc(f.q)}" aria-label="Find">
     <select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>
-    <div class="seg" role="group" aria-label="Enrollment">${[["active","Enrolled"],["withdrawn","Left our school"],["all","All"]].map(([k,l])=>`<button data-act="show" data-v="${k}" aria-pressed="${f.show===k}">${l}</button>`).join("")}</div>
+    <div class="seg" role="group" aria-label="Enrollment">${[["active","At our school"],["withdrawn","Former children"],["all","All"]].map(([k,l])=>`<button data-act="show" data-v="${k}" aria-pressed="${f.show===k}">${l}</button>`).join("")}</div>
     ${eduSelect()}${sortSelect()}
     <span id="live-meta"><span class="small muted mono">${list.length} shown</span></span>
   </div>
   <div id="live-list">${list.length? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Birthdate</th><th>Age</th><th>Class</th><th>Small group and educator</th><th>Family</th><th>Conferences</th></tr></thead><tbody>${rows}</tbody></table></div>`
-  : `<div class="panel empty">No children here yet. ${isDirector()?`<button class="btn" data-act="child-new">Add a child</button>`:""}</div>`}</div>`;
+  : `<div class="panel empty">No children here yet. The roster is kept in TREE's Children page.</div>`}</div>`;
 }
 
 function viewChild(id){
@@ -934,8 +938,8 @@ function viewChild(id){
   return `
   <div style="margin-bottom:6px"><a href="#" data-go="children" class="small">All children</a></div>
   <div class="conf-head"><div class="who"><div class="eyebrow">${esc(c.classroom||"")} class</div><h1>${esc(childName(c))}</h1>
-    <div class="meta-line"><span>Born ${esc(fmtDate(c.dob))}</span><span>${esc(ageAt(c.dob))}</span>${c.program?`<span>${esc(c.program)}</span>`:""}${c.status==="withdrawn"?'<span class="chip st-withdrawn">Left our school</span>':""}</div></div>
-    <div class="row">${canEdit()?`<button class="btn" data-act="child-edit" data-id="${esc(id)}">Edit details</button>
+    <div class="meta-line"><span>Born ${esc(fmtDate(c.dob))}</span><span>${esc(ageAt(c.dob))}</span>${c.program?`<span>${esc(c.program)}</span>`:""}${c.status==="withdrawn"?`<span class="chip st-withdrawn">${esc(kidWord(c))}</span>`:""}</div></div>
+    <div class="row"><button class="btn" data-act="tree-kid" data-id="${esc(id)}">Details and family contacts, in Children</button>${canEdit()?`
       <button class="btn" data-act="conf-new-additional" data-id="${esc(id)}">Add an extra conference</button>
       <button class="btn primary" data-act="open-child-conf" data-id="${esc(id)}">${p?"Open":"Start"} ${esc(periodLabel(S.period))} conference</button>`:""}
       <button class="btn" data-act="pdf-child" data-id="${esc(id)}">Print ${esc(periodLabel(S.period))} form (PDF)</button>
@@ -1255,11 +1259,7 @@ function viewSettings(){
     <p class="small muted" style="margin:0">Download everything as one file to keep a copy outside this page.</p>
     <div class="row"><button class="btn" data-act="export-json">Download full backup (JSON)</button><button class="btn" data-act="export-csv-all">Download every conference (CSV)</button></div>
   </div>
-  <div class="panel stack">
-    <h3>Roster</h3>
-    <p class="small muted" style="margin:0">Upload the Family Information Sheets PDF exported from 1Core. New children are added, changed details are updated, and children missing from the export can be marked withdrawn. Conference history is never removed.</p>
-    ${isDirector()?`<div class="row"><button class="btn" data-act="roster-import">Update from 1Core PDF</button></div>`:""}
-  </div></div>`;
+</div>`;
 }
 
 /* a month of a child's portfolio fills itself from the documentation TREE holds for that child that month. A month
@@ -1368,9 +1368,8 @@ const actions = {
   },
   "conf-delete-yes": async ()=>{ const cf=S.confs[S.view.id]; const child=cf.childId; pending.clear(); try{ await dbDelete("conferences/"+cf.id); closeModal(); toast("Conference record deleted"); go("child",{id:child}); }catch(e){} },
   "close": ()=>closeModal(),
-  "child-new": ()=>childForm(null),
-  "child-edit": a=>childForm(S.children[a.dataset.id]),
-  "child-save": ()=>saveChildForm(),
+  "tree-children": ()=>openInTree("",""),
+  "tree-kid": a=>openInTree(a.dataset.id,"details"),
   "save-settings": async ()=>{
     const lines = v=>v.split(/\n/).map(s=>s.trim()).filter(Boolean);
     const years=lines($("#s-years").value).filter(y=>/^\d{4}-\d{2}$/.test(y));
@@ -1381,7 +1380,6 @@ const actions = {
   },
   "import-form": a=>openImport(a.dataset.conf||null),
   "attach-only": ()=>openAttachOnly(),
-  "roster-import": ()=>openRosterImport(),
   "pdf-conf": async ()=>{ await flushAll(); const cf=S.confs[S.view.id], c=S.children[cf.childId]; await downloadPdf([{cf, child:c}], `${slug(childName(c))}-conference-${cf.term.toLowerCase()}-${cf.schoolYear}.pdf`); },
   "pdf-child": async a=>{ await flushAll(); const c=S.children[a.dataset.id]; const cf=formFor(c); await downloadPdf([{cf, child:c}], `${slug(childName(c))}-conference-${cf.term.toLowerCase()}-${cf.schoolYear}.pdf`); },
   "pdf-list": async ()=>{ await flushAll(); const kids=(S.lastList||[]).map(id=>S.children[id]).filter(Boolean); const f=S.filters;
@@ -1409,45 +1407,6 @@ async function createConf(childId, year, term){
     if(ex?.exists){ S.confs[id]={id,...ex.data()}; return id; }
     await dbSet("conferences/"+id, doc); S.confs[id]={id,...doc}; return id;
   }catch(e){ return null; }
-}
-
-/* ---------- child form ---------- */
-function childForm(c){
-  const isNew=!c; c=c||{parents:[{},{}],status:"active",classroom:S.settings.classrooms[0]};
-  const ps=[...(c.parents||[])]; while(ps.length<2) ps.push({});
-  const rooms=S.settings.classrooms;
-  openModal(`<h2>${isNew?"Add a child":"Edit "+esc(childName(c))}</h2>
-  <form id="child-form" class="stack" data-id="${esc(c.id||"")}">
-    <div class="grid3">
-      <div class="field"><label for="c-first">First name</label><input id="c-first" value="${esc(c.first||"")}" required></div>
-      <div class="field"><label for="c-last">Last name</label><input id="c-last" value="${esc(c.last||"")}"></div>
-      <div class="field"><label for="c-dob">Birthdate</label><input id="c-dob" type="date" value="${esc(c.dob||"")}"></div>
-      <div class="field"><label for="c-gender">Gender</label><input id="c-gender" value="${esc(c.gender||"")}"></div>
-      <div class="field"><label for="c-room">Class</label><select id="c-room" ${S.director?"":"disabled title=\"The director changes a child's Class, in Move children on the Children page.\""}>${(c.classroom&&!rooms.includes(c.classroom)?[c.classroom,...rooms]:rooms).map(r=>`<option ${c.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
-      <div class="field"><label for="c-group">Small group</label><select id="c-group"><option value="">Choose</option>${c.group&&!groupsList().some(g=>g.name===c.group)?`<option selected value="${esc(c.group)}">${esc(c.group)}</option>`:""}${groupsList().map(g=>`<option ${c.group===g.name?"selected":""} value="${esc(g.name)}">${esc(g.name)} · ${esc(g.room)} · ${esc(g.educator)}</option>`).join("")}</select></div>
-      <div class="field"><label for="c-edu">Primary educator</label><input id="c-edu" value="${esc(c.primaryEducator||"")}" autocomplete="off" placeholder="From the small group"></div>
-      <div class="field"><label for="c-program">Program</label><input id="c-program" value="${esc(c.program||"")}"></div>
-      <div class="field"><label for="c-schedule">Schedule</label><input id="c-schedule" value="${esc(c.schedule||"")}" placeholder="M,Tu,W,Th,F"></div>
-      <div class="field"><label for="c-enroll">Enrollment date</label><input id="c-enroll" type="date" value="${esc(c.enrollDate||"")}"></div>
-    </div>
-    ${ps.map((p,i)=>`<div class="grid3"><div class="field"><label for="p${i}-name">Parent ${i+1}</label><input id="p${i}-name" value="${esc(p.name||"")}"></div><div class="field"><label for="p${i}-cell">Cell</label><input id="p${i}-cell" value="${esc(p.cell||"")}"></div><div class="field"><label for="p${i}-email">Email</label><input id="p${i}-email" type="email" value="${esc(p.email||"")}"></div></div>`).join("")}
-    <div class="field"><label for="c-ifsp">IEP/IFSP</label><input id="c-ifsp" value="${esc(c.ifsp||"")}"></div>
-    <div class="field"><label for="c-notes">Notes</label><textarea id="c-notes" rows="2">${esc(c.notes||"")}</textarea></div>
-    <div class="field"><label for="c-status">Enrollment</label><select id="c-status"><option value="active" ${c.status!=="withdrawn"?"selected":""}>Enrolled</option><option value="withdrawn" ${c.status==="withdrawn"?"selected":""}>Withdrawn (keeps conference history)</option></select></div>
-  </form>
-  <div class="modal-foot"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="child-save">${isNew?"Add child":"Save changes"}</button></div>`);
-}
-async function saveChildForm(){
-  const f=$("#child-form"); const v=id=>$("#"+id).value.trim();
-  if(!v("c-first")){ toast("Add the child's first name"); $("#c-first").focus(); return; }
-  const parents=[0,1].map(i=>({name:v(`p${i}-name`),cell:v(`p${i}-cell`),email:v(`p${i}-email`)})).filter(p=>p.name||p.cell||p.email);
-  const data={first:v("c-first"),last:v("c-last"),dob:v("c-dob"),gender:v("c-gender"),classroom:v("c-room"),group:v("c-group"),primaryEducator:v("c-edu"),program:v("c-program"),schedule:v("c-schedule"),enrollDate:v("c-enroll"),parents,ifsp:v("c-ifsp"),notes:v("c-notes"),status:v("c-status"),updatedAt:nowISO()};
-  let id=f.dataset.id;
-  try{
-    if(id){ const {id:_,...prev}=S.children[id]; await dbSet("children/"+id,{...prev,...data}); toast("Saved"); }
-    else { id=slug(data.first+" "+data.last)+"-"+(data.dob||"").replace(/-/g,""); if(S.children[id]) id+="-"+uid().slice(0,4); await dbSet("children/"+id,{...data,source:"manual",createdAt:nowISO()}); toast("Child added"); }
-    closeModal(); go("child",{id});
-  }catch(e){}
 }
 
 /* ---------- files ---------- */
@@ -2169,7 +2128,7 @@ function showBatchReview(){
     const combined = F.include && F.childId && group.length>1 && firstI!==F.i ? B.forms[firstI] : null;
     const existing = F.childId ? findConf(F.childId, F.year, F.term) : null;
     const note = F.state==="failed"? `<span style="color:var(--danger)">${esc(F.error)}</span> <button class="btn sm" data-act="batch-retry" data-i="${F.i}">Try again</button>`
-      : !F.childId? `<span style="color:var(--danger)">${bestChildMatch(r.childName||F.nameHint)?"Choose the child":"This child is not in TREE yet. Choose the child, or add them."}</span>${r.childName||F.nameHint?`<div><button class="btn sm" data-act="batch-addchild" data-i="${F.i}">Add ${esc(String(r.childName||F.nameHint).split(/\s+/)[0])} as a new child</button></div>`:""}`
+      : !F.childId? `<span style="color:var(--danger)">${bestChildMatch(r.childName||F.nameHint)?"Choose the child":"This child is not in TREE yet. Choose the child. The director adds a child in TREE's Children page."}</span>`
       : (combined? `Combined with ${esc(pageRange(combined.pages).toLowerCase())}. Repeated text is left out.`
         : existing? (F.term==="Historical"? "Adds to earlier conferences" : hasWork(existing)?"Adds to the existing conference":"Fills the started conference")
         : F.term==="Historical"? "Starts the earlier conferences record" : "Starts a new conference")
@@ -2227,37 +2186,6 @@ function toggleBatchDetail(i, forceOpen){
     ${batchFieldList().map(([path,label])=>{ const v=batchValue(F,path); return `<div class="review-row" style="grid-template-columns:180px minmax(0,1fr)"><div><b class="small">${esc(label)}</b></div><div><textarea data-path="${esc(path)}" aria-label="${esc(label)}">${esc(v)}</textarea></div></div>`; }).join("")}</div>`;
 }
 actions["batch-check"]=a=>toggleBatchDetail(+a.dataset.i);
-// a form for a child who is not in TREE yet offers a short add-a-child form, filled from what the form says
-actions["batch-addchild"]=a=>{
-  const B=S.importCtx.batch, F=B.forms[+a.dataset.i], tr=$(`tr[data-detail="${F.i}"]`); if(!tr) return;
-  const r=F.result||{}; const parts=String(r.childName||F.nameHint||"").trim().split(/\s+/); const rooms=S.settings.classrooms||[];
-  tr.hidden=false;
-  tr.firstElementChild.innerHTML=`<div class="stack" style="padding:6px 0;gap:8px"><b class="small">Add a child</b>
-    <div class="grid3">
-      <div class="field"><label for="ba-first">First name</label><input id="ba-first" value="${esc(parts[0]||"")}"></div>
-      <div class="field"><label for="ba-last">Last name</label><input id="ba-last" value="${esc(parts.slice(1).join(" "))}"></div>
-      <div class="field"><label for="ba-dob">Birthdate</label><input id="ba-dob" type="date" value="${esc(toISODate(r.birthdate)||"")}"></div>
-      <div class="field"><label for="ba-room">Class</label><select id="ba-room">${rooms.map(x=>`<option>${esc(x)}</option>`).join("")}</select></div>
-      <div class="field"><label for="ba-status">Enrollment</label><select id="ba-status"><option value="active">Enrolled</option><option value="withdrawn">Withdrawn (keeps conference history)</option></select></div>
-    </div>
-    <p class="small muted" style="margin:0">More details, such as parents and small group, can be added on the child's page later.</p>
-    <div class="row"><button class="btn primary sm" data-act="batch-addchild-save" data-i="${F.i}">Add child</button></div></div>`;
-  $("#ba-first").focus();
-};
-actions["batch-addchild-save"]=async a=>{
-  const B=S.importCtx.batch, F=B.forms[+a.dataset.i]; const v=id=>($("#"+id)?.value||"").trim();
-  if(!v("ba-first")){ toast("Add the child's first name"); $("#ba-first")?.focus(); return; }
-  const data={first:v("ba-first"),last:v("ba-last"),dob:v("ba-dob"),classroom:v("ba-room"),status:v("ba-status")||"active",parents:[],updatedAt:nowISO()};
-  let id=slug(data.first+" "+data.last)+"-"+(data.dob||"").replace(/-/g,""); if(S.children[id]) id+="-"+uid().slice(0,4);
-  a.disabled=true; a.textContent="Adding…";
-  try{ await dbSet("children/"+id,{...data,source:"conference form",createdAt:nowISO()}); }catch(e){ a.disabled=false; a.textContent="Add child"; toast("The child could not be added. Try again."); return; }
-  S.children[id]={id,...data};
-  // every form in this upload for the same child goes to them
-  for(const G of B.forms){ if(G.state!=="read" || G.childId) continue;
-    const m=bestChildMatch(G.result?.childName||G.nameHint, G.result?.birthdate, G.result?.parentNames||G.result?.familyMembersPresent);
-    if(G===F || m?.id===id){ G.childId=id; if(!G.seasonTouched){ const pd=inferSeason(G.result, S.children[id]); G.year=pd.year; G.term=pd.term; G.date=pd.date; G.how=pd.how; } } }
-  toast(`${data.first} added`); showBatchReview();
-};
 actions["show-onboarding"]=()=>{ S.view.showOb=true; render(); };
 actions["visit-upload"]=a=>{
   const id=a.dataset.id;
@@ -2542,81 +2470,6 @@ function openAttachOnly(){
     catch(err){ $("#att-status").innerHTML=`<div class="notice">${err?.code==="unsupported_type"?"This file type cannot be stored. Upload an image, PDF, or text file. Word files can be saved as PDF first.":"The file could not be attached. Try again."}</div>`; } };
 }
 
-/* ---------- roster import from 1Core ---------- */
-function parseRosterPages(pages){
-  const norm=s=>s.replace(/\s+/g," ").trim(); const kids=[]; let cur=null;
-  for(const pg of pages){
-    const items=pg.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:norm(i.str),x:i.x,y:i.y})); const mid=pg.width/2;
-    const rowVal=(lab,minX,maxX)=>{ const v=items.filter(i=>Math.abs(i.y-lab.y)<3&&i.x>lab.x+5&&i.x>=minX&&i.x<maxX&&!/:\s*$/.test(i.s)).sort((a,b)=>a.x-b.x); return norm(v.map(x=>x.s).join(" ")).replace(/^:\s*/,""); };
-    const findLabel=(re,cond=()=>true)=>items.find(i=>re.test(i.s)&&cond(i));
-    const header=findLabel(/^Child Name\s*:?/);
-    if(header){
-      cur={name:"",parents:[],ifsp:""}; kids.push(cur);
-      const inline=header.s.replace(/^Child Name\s*:\s*/,""); cur.name=inline||rowVal(header,header.x,99999);
-      const fk=findLabel(/^Family Account Key/); if(fk) cur.familyKey=fk.s.replace(/^Family Account Key\s*:\s*/,"")||rowVal(fk,fk.x,header.x);
-      const ci=findLabel(/^Child Information/); const below=i=>ci?i.y>ci.y:true;
-      const field=re=>{ const l=findLabel(re,i=>below(i)&&i.x<mid); return l?rowVal(l,l.x,mid+200):""; };
-      cur.gender=field(/^Gender\s*:/); cur.dob=field(/^Date of Birth\s*:/); cur.classroom=field(/^Primary Classroom\s*:/); cur.program=field(/^Program\s*:/); cur.schedule=field(/^Schedule\s*:/); cur.enrollDate=field(/^Enrollment Date\s*:/);
-      const p1=findLabel(/^Parent 1/), p2=findLabel(/^Parent 2/); const ft=findLabel(/^Family Type/); const stopY=ft?ft.y:(ci?ci.y:99999);
-      const pb=(head,minX,maxX)=>{ if(!head) return null; const g=re=>{ const l=items.find(i=>re.test(i.s)&&i.y>head.y&&i.y<stopY&&i.x>=minX&&i.x<maxX); return l?rowVal(l,minX,maxX):""; };
-        const p={name:g(/^Name\s*:/),cell:g(/^Cell Phone\s*:/),email:g(/^Email\s*:/)}; return p.name?p:null; };
-      const a=pb(p1,0,mid-40), b=pb(p2,mid-40,99999); if(a) cur.parents.push(a); if(b) cur.parents.push(b);
-    } else if(cur){
-      const ifsp=findLabel(/^IFSP\s*:/); if(ifsp) cur.ifsp=rowVal(ifsp,ifsp.x,mid);
-    }
-  }
-  return kids.filter(k=>k.name).map(k=>{ const parts=k.name.split(" "); return {first:parts[0]||"",last:parts.slice(1).join(" "),dob:toISODate(k.dob),gender:k.gender,classroom:k.classroom,program:k.program,schedule:k.schedule,enrollDate:toISODate(k.enrollDate),familyKey:k.familyKey||"",parents:k.parents,ifsp:k.ifsp}; });
-}
-const ROSTER_KEYS=[["classroom","Class"],["program","Program"],["schedule","Schedule"],["dob","Birthdate"],["enrollDate","Enrolled"],["ifsp","IEP/IFSP"],["gender","Gender"]];
-function openRosterImport(){
-  openModal(`<h2>Update the roster from 1Core</h2>
-    <p class="small muted" style="margin:0">In 1Core, export the Family Information Sheets as a PDF and upload it here. You will see every change before anything is saved.</p>
-    <label class="drop" id="rdrop" for="r-file"><b>Choose the PDF or drop it here</b></label><input type="file" id="r-file" accept=".pdf,application/pdf" hidden>
-    <div id="r-status"></div><div class="modal-foot" id="r-foot"><button class="btn" data-act="close">Cancel</button></div>`,{wide:true});
-  const run=async f=>{
-    $("#r-status").innerHTML=`<div class="progress-note"><span class="spinner"></span>Reading ${esc(f.name)}…</div>`;
-    try{ const r=await readPdf(f); const list=parseRosterPages(r.pages); if(!list.length) throw new Error("No Family Information Sheets were found in this PDF."); showRosterDiff(list); }
-    catch(e){ $("#r-status").innerHTML=`<div class="notice">${esc(e.message||"The PDF could not be read.")}</div>`; }
-  };
-  const inp=$("#r-file"), drop=$("#rdrop"); inp.onchange=()=>inp.files[0]&&run(inp.files[0]);
-  drop.ondragover=e=>{e.preventDefault();drop.classList.add("over");}; drop.ondragleave=()=>drop.classList.remove("over"); drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");e.dataTransfer.files[0]&&run(e.dataTransfer.files[0]);};
-}
-function findExisting(k){
-  const nm=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
-  const all=Object.values(S.children);
-  return all.find(c=>nm(childName(c))===nm(k.first+" "+k.last)&&(!c.dob||!k.dob||c.dob===k.dob)) || all.find(c=>c.dob&&c.dob===k.dob&&nm(c.first)===nm(k.first));
-}
-function showRosterDiff(list){
-  const adds=[], changes=[], seen=new Set();
-  list.forEach(k=>{ const ex=findExisting(k); if(!ex){ adds.push(k); return; } seen.add(ex.id);
-    const diffs=ROSTER_KEYS.filter(([f])=>(k[f]||"")!==(ex[f]||"") && (k[f]||"")).map(([f,l])=>({f,l,from:ex[f]||"",to:k[f]}));
-    const pa=JSON.stringify((k.parents||[]).map(p=>[p.name,p.cell,p.email])), pb=JSON.stringify((ex.parents||[]).map(p=>[p.name,p.cell,p.email]));
-    if(pa!==pb && k.parents?.length) diffs.push({f:"parents",l:"Family contacts",from:(ex.parents||[]).map(p=>p.name).join(", "),to:k.parents.map(p=>p.name).join(", ")});
-    if(ex.status==="withdrawn") diffs.push({f:"status",l:"Enrollment",from:"Left our school",to:"Enrolled"});
-    if(diffs.length) changes.push({k,ex,diffs}); });
-  const missing=Object.values(S.children).filter(c=>c.status!=="withdrawn"&&!seen.has(c.id));
-  S.rosterDiff={adds,changes,missing};
-  $("#r-status").innerHTML=`
-    <p><b>${list.length}</b> children found in the PDF. <b>${adds.length}</b> new, <b>${changes.length}</b> with changes, <b>${missing.length}</b> on this roster but missing from the PDF.</p>
-    ${adds.length?`<h3>New children</h3>${adds.map((k,i)=>`<label class="check"><input type="checkbox" data-add="${i}" checked><span><b>${esc(k.first+" "+k.last)}</b> · ${esc(k.classroom)} · born ${esc(fmtDate(k.dob))}</span></label>`).join("")}`:""}
-    ${changes.length?`<h3 style="margin-top:12px">Changed details</h3>${changes.map((c,i)=>`<label class="check"><input type="checkbox" data-chg="${i}" checked><span><b>${esc(childName(c.ex))}</b>${c.diffs.map(d=>`<br><span class="small">${esc(d.l)} <span class="diff-old">${esc(d.from||"blank")}</span> to ${esc(d.to)}</span>`).join("")}</span></label>`).join("")}`:""}
-    ${missing.length?`<h3 style="margin-top:12px">Missing from the PDF</h3><p class="small muted" style="margin:0">Tick any child who has left to mark them withdrawn. Their conference history stays.</p>${missing.map((c,i)=>`<label class="check"><input type="checkbox" data-miss="${i}"><span>${esc(childName(c))} · ${esc(c.classroom||"")}</span></label>`).join("")}`:""}
-    ${!adds.length&&!changes.length&&!missing.length?`<p class="muted">The roster already matches this PDF.</p>`:""}`;
-  $("#r-foot").innerHTML=`<button class="btn" data-act="close">Cancel</button><button class="btn primary" id="r-apply" ${!adds.length&&!changes.length&&!missing.length?"disabled":""}>Apply selected changes</button>`;
-  $("#r-apply").onclick=applyRosterDiff;
-}
-async function applyRosterDiff(){
-  const {adds,changes,missing}=S.rosterDiff; const btn=$("#r-apply"); btn.disabled=true; btn.textContent="Saving…";
-  let n=0;
-  try{
-    for(const el of $$("[data-add]:checked")){ const k=adds[+el.dataset.add]; let id=slug(k.first+" "+k.last)+"-"+(k.dob||"").replace(/-/g,""); if(S.children[id]) id+="-"+uid().slice(0,4);
-      await dbSet("children/"+id,{...k,status:"active",source:"1core",createdAt:nowISO(),updatedAt:nowISO()}); n++; }
-    for(const el of $$("[data-chg]:checked")){ const c=changes[+el.dataset.chg]; const upd={updatedAt:nowISO()}; c.diffs.forEach(d=>{ if(d.f==="parents") upd.parents=c.k.parents; else if(d.f==="status") upd.status="active"; else upd[d.f]=c.k[d.f]; });
-      const {id:_,...prev}=c.ex; await dbSet("children/"+c.ex.id,{...prev,...upd}); n++; }
-    for(const el of $$("[data-miss]:checked")){ const c=missing[+el.dataset.miss]; const {id:_,...prev}=c; await dbSet("children/"+c.id,{...prev,status:"withdrawn",withdrawnAt:nowISO(),updatedAt:nowISO()}); n++; }
-    closeModal(); toast(`${n} roster ${n===1?"change":"changes"} saved`);
-  }catch(e){ btn.disabled=false; btn.textContent="Apply selected changes"; }
-}
 
 boot();
 </script>

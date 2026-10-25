@@ -90,3 +90,41 @@ test('an educator\'s Class is kept on the sign-in, and the educators list and Ed
   assert.strictEqual(g.status, 200);
   assert.strictEqual(g.body.doc.names.find(x => x.name === 'Gia').room, 'West');
 });
+
+test('children and family contacts are kept in Children, and contacts a family types are offered to the office', async t => {
+  const today = new Date().toISOString().slice(0, 10);
+  const fx = await start({ more: put => {
+    put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'moss.family@example.test', children: ['moss'] }] });
+    put('children/moss.json', { first: 'Moss', last: 'Test', classroom: 'West', status: 'active', enrollDate: today, parents: [{ email: 'moss.family@example.test' }] });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const c = await fx.as('', '/family/code', { email: 'moss.family@example.test' }); const fam = (await fx.as('', '/family/login', { email: 'moss.family@example.test', code: c.body.code })).body.token;
+  const fd = (await fx.as(fam, '/family/data', {})).body;
+  const data = {}; for (const f of fd.enrollForm.flatMap(s => s.fields)) data[f.k] = f.type === 'yn' ? 'No' : f.type === 'check' ? true : f.type === 'illness' ? '' : 'x';
+  Object.assign(data, { p1_first: 'Rowan', p1_middle: 'A', p1_last: 'Test', p1_home: '707 555 0101', p2_first: 'Sky', p2_last: 'Test', p2_home: '707 555 0199', p2_work: '707 555 0100', fa_has: 'No' });
+  assert.strictEqual((await fx.as(fam, '/family/enroll', { childId: 'moss', data, done: true })).status, 200);
+  const kid = async () => (await fx.as(dee, '/api/data', {})).body.data.children.moss;
+  let k = await kid();
+  assert.deepStrictEqual(k.contactsOffer.parents, [{ name: 'Rowan Test', cell: '707 555 0101' }, { name: 'Sky Test', cell: '707 555 0199' }]);
+  assert.deepStrictEqual(k.parents, [{ email: 'moss.family@example.test' }], 'nothing changes until the office accepts');
+  // an educator's save keeps the offer as it is
+  await fx.as(ann, '/api/write', { op: 'update', kind: 'children', id: 'moss', patch: { contactsOffer: { __delete__: true } } });
+  assert.ok((await kid()).contactsOffer);
+  // the office accepts
+  await fx.as(dee, '/api/write', { op: 'update', kind: 'children', id: 'moss', patch: { contactsOffer: { __delete__: true }, parents: [{ email: 'moss.family@example.test', name: 'Rowan Test', cell: '707 555 0101' }, { name: 'Sky Test', cell: '707 555 0199', email: '' }] } });
+  k = await kid(); assert.ok(!k.contactsOffer); assert.strictEqual(k.parents.length, 2);
+  // the same contacts typed again are not offered again
+  await fx.as(fam, '/family/enroll', { childId: 'moss', data, done: true });
+  assert.ok(!(await kid()).contactsOffer);
+});
+
+test('the Conferences page keeps no Add a child, Edit details or 1Core import, and reads children in TREE\'s words', () => {
+  const conf = fs.readFileSync(path.join(ROOT, 'tree-conferences.html'), 'utf8');
+  for (const s of ['data-act="child-new"', 'data-act="child-edit"', 'data-act="roster-import"', 'function childForm', 'function openRosterImport', 'batch-addchild', '"Enrolled"]']) assert.ok(!conf.includes(s), s);
+  assert.match(conf, /At our school/);
+  assert.match(conf, /TREE_OPEN_KID/);
+  const tree = fs.readFileSync(path.join(ROOT, 'tree.html'), 'utf8');
+  assert.match(tree, /window\.TREE_OPEN_KID=/);
+  assert.match(tree, /function kidOfferHtml/);
+});
