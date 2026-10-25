@@ -1130,10 +1130,10 @@ function snapshot(director, kitchen, office) {
   const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !(k === 'settings' && (id === 'display' || id === 'keeping' || id === 'saves' || id === 'readable' || id === 'staffnotes')))) out[k][id] = r.doc; }
   return out;
 }
+// the status page anyone can open names no model and no repository
 function statusPage(req, res) {
-  const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const lines = [
-    [store.ready, store.ready ? `Records are connected. ${store.recs.plans.size} plans and ${store.recs.threads.size} followed threads are loaded from ${RECORDS_REPO}.` : (store.error || 'Records are still loading.')],
+    [store.ready, store.ready ? `Records are connected. ${store.recs.plans.size} plans and ${store.recs.threads.size} followed threads are loaded from the private records.` : (store.error || 'Records are still loading.')],
     [!!anthropicKey(), anthropicKey() ? 'The writing help key is saved, so writing help is available.' : 'No writing help key is saved. Add ANTHROPIC_API_KEY under Environment to turn on writing help.'],
     [TEACHERS.length > 0, TEACHERS.length ? `${TEACHERS.length} educator passcodes are set. ${TEACHERS.some(t => isDirector(t.name)) ? 'The director has access.' : 'No director yet, so set DIRECTOR_NAMES.'}` : 'No educator passcodes are set. Add TEACHER_PASSCODES under Environment, like FirstName=a long passcode.'],
   ];
@@ -1147,7 +1147,7 @@ function statusPage(req, res) {
   if (SKIPPED_PASSCODES) lines.push([false, `${SKIPPED_PASSCODES} passcode entries were ignored. Each must be a passcode of at least 6 characters, or Name=passcode.`]);
   const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TREE server status</title></head><body style="font-family:system-ui,sans-serif;font-size:18px;line-height:1.5;max-width:680px;margin:32px auto;padding:0 16px"><h1 style="font-size:22px">TREE server</h1><p>The server is running.</p>' +
     lines.map(([ok, t]) => `<p style="font-weight:600;color:${ok ? '#1a7f37' : '#b42318'}">${ok ? 'WORKING.' : 'NEEDS ATTENTION.'} ${t}</p>`).join('') +
-    `<p style="color:#555;font-size:15px">Everyday model ${esc(QUICK_MODELS[modelAt.quick])}. Careful model ${esc(CAREFUL_MODELS[modelAt.careful])}.</p></body></html>`;
+'</body></html>';
   send(req, res, 200, { 'Content-Type': 'text/html; charset=utf-8' }, html);
 }
 
