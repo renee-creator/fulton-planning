@@ -41,6 +41,11 @@ test('Twenty saves at the same moment each arrive once', async t => {
   const again = await fx.as(me.token, '/api/write', { op: 'set', kind: 'notices', id: ids[3], sid: sids[3], data: { id: ids[3], noticed: 'Save number 3 arrived.' } });
   assert.strictEqual(again.body.again, true);
   assert.ok(await until(async () => { const s = await fx.as(me.token, '/api/saved', { items: ids.map((id, i) => ({ sid: sids[i], kind: 'notices', id })) }); return s.body.written.length === 20; }, 30000), 'every save is written');
+  // a save this server knows nothing of, for a record it does not hold, is sent again without asking GitHub
+  const reads = () => fx.gh.reads ? fx.gh.reads.length : 0; const r0 = reads();
+  const none = await fx.as(me.token, '/api/saved', { items: [{ sid: 'zz-never-made-1', kind: 'notices', id: 'nnotthere1', at: Date.now() }] });
+  assert.deepStrictEqual(none.body.unknown, ['zz-never-made-1']);
+  if (fx.gh.reads) assert.strictEqual(reads(), r0);
   for (let i = 0; i < 20; i++) {
     const f = path.join(fx.dir, 'notices', ids[i] + '.json');
     assert.ok(fs.existsSync(f), ids[i] + ' is in the records');

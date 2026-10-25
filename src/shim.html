@@ -204,7 +204,7 @@
         catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } e.failed=Date.now(); await obPut(e); break; } }
       // then the server is asked which of the rest are written
       const list=(await obAll()).filter(x=>x.sent); if(!list.length) return;
-      const j=await api("/api/saved",{items:list.slice(0,60).map(e=>({sid:e.sid,kind:e.kind,id:e.id}))});
+      const j=await api("/api/saved",{items:list.slice(0,60).map(e=>({sid:e.sid,kind:e.kind,id:e.id,at:e.at}))});
       const done=new Set(j.written||[]); for(const sid of done) await obDel(sid);
       const unk=new Set(j.unknown||[]), again=new Set(list.filter(e=>unk.has(e.sid)).map(e=>e.kind+"/"+e.id));
       for(const e of list) if(again.has(e.kind+"/"+e.id)&&!done.has(e.sid)){ e.sent=0; await obPut(e); }

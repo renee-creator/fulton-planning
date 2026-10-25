@@ -881,11 +881,14 @@ async function flushEverything() { await Promise.all([...dirtyPaths.keys()].map(
 // the address changes each time, so GitHub never hands back a copy from before the last save
 // the messages of the latest commits that changed a file, kept a minute, or null when GitHub cannot be asked just now
 const commitCache = new Map();
+const savedAsks = new Map();
 async function commitMessages(path) {
   const c = commitCache.get(path); if (c && Date.now() - c.at < 60000) return c.msgs;
   try { const r = await gh('GET', `/repos/${RECORDS_REPO}/commits?path=${encodeURIComponent(path)}&sha=${encodeURIComponent(store.branch)}&per_page=100&fresh=${Date.now()}`);
     if (r.status !== 200 || !Array.isArray(r.json)) return null;
-    const msgs = r.json.map(x => String((x.commit && x.commit.message) || '')); commitCache.set(path, { at: Date.now(), msgs }); if (commitCache.size > 500) commitCache.delete(commitCache.keys().next().value); return msgs; }
+    // each message with its time, and whether the list is full, so older commits may be left out of it
+    const msgs = r.json.map(x => String((x.commit && x.commit.message) || '')); msgs.full = r.json.length >= 100;
+    msgs.oldest = msgs.full ? Date.parse((r.json[r.json.length - 1].commit || {}).committer && r.json[r.json.length - 1].commit.committer.date || '') || 0 : 0; commitCache.set(path, { at: Date.now(), msgs }); if (commitCache.size > 500) commitCache.delete(commitCache.keys().next().value); return msgs; }
   catch (e) { return null; }
 }
 async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); return r.status === 200 ? r.json.sha : null; }
@@ -1690,8 +1693,17 @@ async function handle(req, res) {
     const items = (Array.isArray(body.items) ? body.items : []).filter(x => x && typeof x.sid === 'string' && SID_RE.test(x.sid) && KINDS.includes(x.kind) && typeof x.id === 'string' && ID_RE.test(x.id)).slice(0, 60);
     const out = { written: [], waiting: [], unknown: [] }; const look = new Map();
     for (const x of items) { if (sidsWritten.has(x.sid)) out.written.push(x.sid); else if (sidsWaiting.has(x.sid)) out.waiting.push(x.sid); else { const fp = `${x.kind}/${x.id}.json`; if (!look.has(fp)) look.set(fp, []); look.get(fp).push(x.sid); } }
-    for (const [fp, sids] of [...look].slice(0, 20)) { const msgs = await commitMessages(fp); for (const s0 of sids) { if (msgs === null) out.waiting.push(s0); else if (msgs.some(m => m.includes(s0))) { sidWritten(s0); out.written.push(s0); } else out.unknown.push(s0); } }
-    for (const [, sids] of [...look].slice(20)) out.waiting.push(...sids);
+    // a record this server does not hold was never written, so its saves are sent again without asking GitHub. Each
+    // person asks GitHub about at most 20 records a minute. A save older than the last 100 commits of its record is
+    // taken as written, so an old copy never goes over newer work.
+    const atOf = new Map(items.map(x => [x.sid, Number(x.at) || 0])); const now = Date.now(); const asks = (savedAsks.get(me.name) || []).filter(t => now - t < 60e3);
+    for (const [fp, sids] of look) {
+      const [kind, id] = fp.replace(/\.json$/, '').split('/'); const held = store.recs[kind] && store.recs[kind].has(id);
+      if (!held) { out.unknown.push(...sids); continue; }
+      if (asks.length >= 20) { out.waiting.push(...sids); continue; }
+      asks.push(now); const msgs = await commitMessages(fp);
+      for (const s0 of sids) { if (msgs === null) out.waiting.push(s0); else if (msgs.some(m => m.includes(s0)) || (msgs.full && atOf.get(s0) && atOf.get(s0) < msgs.oldest)) { sidWritten(s0); out.written.push(s0); } else out.unknown.push(s0); } }
+    savedAsks.set(me.name, asks);
     json(req, res, 200, Object.assign({ bootId: BOOT_ID }, out)); return;
   }
   // the director makes, renews or turns off the staff room display's link
