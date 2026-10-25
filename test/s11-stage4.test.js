@@ -175,3 +175,29 @@ test('Edit, history and restore reach every piece of school writing, with a gent
   await s.p.click('#stpageedit [data-perestore]'); await s.p.waitForFunction(() => !document.querySelector('#stpageedit'), null, { timeout: 8000 });
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('the director keeps her own reflective journal, behind her passcode, read by her alone', async t => {
+  const chromium = await browser();
+  const fx = await start();
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  assert.strictEqual((await fx.as(dee, '/api/staff/g/journal/open', { name: 'Dee', passcode: 'wrong' })).status, 403);
+  const o = await fx.as(dee, '/api/staff/g/journal/open', { name: 'Dee', passcode: 'director-pass-1' });
+  assert.strictEqual(o.status, 200, JSON.stringify(o.body));
+  const sv = await fx.as(dee, '/api/staff/g/journal/save', { name: 'Dee', key: o.body.key, entry: { joy: 'The goats met the new class.' } });
+  assert.strictEqual(sv.status, 200, JSON.stringify(sv.body)); assert.strictEqual(sv.body.entries[0].joy, 'The goats met the new class.');
+  // nobody else opens it
+  assert.strictEqual((await fx.as(ann, '/api/staff/g/journal/open', { name: 'Dee', passcode: '1357' })).status, 403);
+  // she never joins the growth counts, check-ins, evaluations or reminders
+  const boot = (await fx.as(dee, '/api/staff/g/boot', {})).body;
+  assert.ok(!boot.people.some(p => p.name === 'Dee')); assert.strictEqual(boot.me.takesPart, false);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
+  await s.p.evaluate(() => goView('stjour')); await s.p.waitForSelector('[data-gjself]', { timeout: 15000 });
+  await s.p.click('[data-gjself]'); await s.p.fill('#gj-pass', 'director-pass-1'); await s.p.click('[data-gjopen]');
+  await s.p.waitForSelector('[data-gjf="joy"]', { timeout: 8000 });
+  assert.match(await s.p.evaluate(() => document.querySelector('#main').innerText), /Only you read it/);
+  assert.strictEqual(await s.p.evaluate(() => document.querySelector('[data-gjf="joy"]').value), 'The goats met the new class.');
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});
