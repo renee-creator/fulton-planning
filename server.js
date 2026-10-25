@@ -1735,6 +1735,7 @@ async function handle(req, res) {
     if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads.', 'thread search by an educator'); return; }
     if ((body.purpose === 'newsletter' || body.purpose === 'newsletter-reading') && !isDirector(me.name)) { refuse(403, 'Only the director makes the family newsletter.', 'newsletter by an educator'); return; }
     if (body.purpose === 'share' && !isDirector(me.name)) { refuse(403, 'Only the director makes posts.', 'share by an educator'); return; }
+    if (body.purpose === 'food' && !isDirector(me.name)) { refuse(403, 'Only the director confirms Farm to School records.', 'food education sorting by someone else'); return; }
     if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can read through the lens.', 'lens reading by an educator'); return; }
     if (!anthropicKey()) { refuse(503, 'TREE\'s writing help is not set up yet. The director adds its key on Render.', 'no key'); return; }
     const content = body.content;

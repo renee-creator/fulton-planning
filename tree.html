@@ -1338,7 +1338,7 @@ async function boot(){
     db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
+    db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;grantLoaded=true;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
     db.doc("settings/weekly").onSnapshot(snap=>{weeklyRec=snap.exists?snap.data():null;setTimeout(()=>weeklyReads().catch(()=>{}),20000);if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{weeklyRec=null});
     db.doc("settings/staples").onSnapshot(snap=>{const v=snap.exists?snap.data():null;kStaples=v&&Array.isArray(v.list)?v.list:null;kStapleNote=v&&typeof v.note==="string"?v.note:null;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#staples-card"))renderSettings()},()=>{});
     db.doc("settings/saves").onSnapshot(snap=>{savesInfo=snap.exists?snap.data():null;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -1360,7 +1360,7 @@ async function boot(){
       posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);shStale()}
       if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
-    db.collection("notices").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     draftBoot();
   }else setConn("Saving on this device");
@@ -4454,9 +4454,9 @@ function todayWaiting(){
       out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
   // order lines TREE is not sure were bought for meals, for the director to place
   if(dir){let n=0;try{n=gUnsure().length}catch(e){}if(n)out.push({dot:"mari",n,t:`${n} order line${n===1?"":"s"} to place, meals or education`,s:"TREE is not sure these were bought for meals. Choose on the Farm to School page.",act:`data-tview="grant"`,b:"Place"})}
-  // observations and plans the words tie to food education, still to be counted or set aside
-  if(dir){let n=0;try{const {from,to}=periodRange("all");n=gEducation(from,to).reduce((t,o)=>t+o.pending,0)}catch(e){}
-    if(n)out.push({dot:"mari",n,t:`${n} possible food education record${n===1?"":"s"} to confirm`,s:"Observations and plans that mention food, gardening or cooking. Count each one for the grant or set it aside.",act:`data-tview="grant"`,b:"Confirm"})}
+  // this week's few observations and plans the words tie to food education, each counted once
+  if(dir){let w=[];try{w=gEduWeek()}catch(e){}
+    if(w.length){const lk=w.filter(it=>gEduWhy(it).likely).length;out.push({dot:"mari",n:w.length,t:`${w.length} food education record${w.length===1?"":"s"} to confirm this week`,s:`${lk?lk+" likely count"+(lk===w.length?"":", "+(w.length-lk)+" to check")+". ":""}Nothing counts for the grant until you confirm it.`,act:`data-tview="grant"`,b:"Confirm"})}}
   {const si=dir&&storageInfo();if(si&&si.near)out.push({dot:si.over?"clay":"mari",t:si.over?`The records are past 1 GB, at ${si.usedText}`:`The records are at ${si.usedText} of 1 GB`,s:si.over?"GitHub strongly recommends staying under 5 GB. Time to make photos smaller or move them to file storage.":`Room for about ${si.roomFor.toLocaleString()} more photos at today's size. Settings has the details.`,act:`data-tview="settings"`,b:"See"})}
   const room=myRoom(),today=iso(new Date()),soon=addDays(today,21);
   const upcoming=[...conferences.values()].filter(c=>c.confDate&&c.confDate>=today&&c.confDate<=soon&&children.get(c.childId)).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
@@ -6988,7 +6988,7 @@ function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)}))
    worksheet, the weekly bins give the farms behind each bin, the menus name the standing producers, and observations
    and plans show the hands-on food education in the educators' own words. Counting is arithmetic on the school's own
    records. Claude only drafts the quarterly check-in from them, and the director rewrites it. */
-let grantRecs=new Map(), gQuarter=LS.get("fps.gq",""), gBusy=false, gAdd=null;
+let noticesSeen=false, grantLoaded=false, grantRecs=new Map(), gQuarter=LS.get("fps.gq",""), gBusy=false, gAdd=null;
 const G_DEFAULT={agreement:"24-0887-000-SG",end:"2027-06-30",start:"",award:200000,b1a:80000,b1b:10000};
 const gSet=()=>Object.assign({},G_DEFAULT,grantRecs.get("settings")||{});
 const gList=id=>Object.values((grantRecs.get(id)||{}).list||{}).filter(Boolean);
@@ -7110,15 +7110,80 @@ const G_OBJ=[
 function gTextOfPlan(p){return [Object.values(p.fields||{}).join(" "),p.web?[p.web.focus,(p.web.branches||[]).map(b=>b.name+" "+b.materials).join(" "),p.web.questions].join(" "):""].join(" ")}
 // the director's choice for each observation or plan found, kept in the director's own grant record
 const gEduKey=(n,kind,id)=>n+"|"+kind+"|"+id;
-const gEduShowNo=new Set();
-document.addEventListener("click",e=>{const t=e.target.closest("[data-gedushow]");if(!t)return;const n=+t.dataset.gedushow;gEduShowNo.has(n)?gEduShowNo.delete(n):gEduShowNo.add(n);const y=window.scrollY;renderMain();window.scrollTo(0,y)});
 const gEduMark=(n,kind,id)=>{const v=((grantRecs.get("education")||{}).list||{})[gEduKey(n,kind,id)];return v&&typeof v.v==="boolean"?v.v:null};
-function gEducation(from,to){const inR=ms=>{const d=iso(new Date(ms||0));return d>=from&&d<=to};
-  const inq=new Set(inqAll().flatMap(x=>x.obs||[]));const obs=[...notices.values()].filter(n=>inR(n.at)&&!inq.has(n.id)),plans_=[...plans.values()].filter(p=>p.weekOf>=from&&p.weekOf<=to&&p.id!=="example");
-  return G_OBJ.map(o=>{const fo=obs.filter(n=>(o.n===7&&n.bin)||o.re.test((n.noticed||"")+" "+(n.wonder||""))).sort((a,b)=>(b.at||0)-(a.at||0));const fp=plans_.filter(p=>o.re.test(gTextOfPlan(p)));
-    const ok=(k,x)=>gEduMark(o.n,k,x.id)===true,un=(k,x)=>gEduMark(o.n,k,x.id)===null;
-    // obs and plans are the confirmed ones, which count. found holds everything the words found, for checking.
-    return Object.assign({},o,{obs:fo.filter(x=>ok("o",x)),plans:fp.filter(x=>ok("p",x)),foundObs:fo,foundPlans:fp,pending:fo.filter(x=>un("o",x)).length+fp.filter(x=>un("p",x)).length})})}
+/* One observation with several photos is kept as one record a photo, sharing a group. It is checked and counted once:
+   it counts for an objective when any of its records is marked Counts, and a choice is saved on every record of it. */
+const gEduMarkIds=(n,kind,ids)=>{const v=ids.map(id=>gEduMark(n,kind,id));return v.includes(true)?true:v.includes(false)?false:null};
+function gEduItems(from,to){const inR=ms=>{const d=iso(new Date(ms||0));return d>=from&&d<=to};
+  const inq=new Set(inqAll().flatMap(x=>x.obs||[]));const groups=new Map();
+  for(const n of notices.values()){if(!inR(n.at)||inq.has(n.id))continue;const g=n.group||n.id;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(n)}
+  const out=[];
+  for(const [g,rs] of groups){rs.sort((a,b)=>(b.at||0)-(a.at||0));const n=rs[0],ids=rs.map(x=>x.id),text=(n.noticed||"")+" "+(n.wonder||"");
+    out.push({key:"o|"+g,kind:"o",x:n,ids,at:n.at||0,text,bin:rs.some(x=>x.bin)})}
+  for(const p of plans.values())if(p.weekOf>=from&&p.weekOf<=to&&p.id!=="example")out.push({key:"p|"+p.id,kind:"p",x:p,ids:[p.id],at:parseIso(p.weekOf).getTime(),text:gTextOfPlan(p)});
+  // an item is found for an objective by its own words, or when the director has already chosen for that objective
+  for(const it of out){it.found=G_OBJ.filter(o=>(o.n===7&&it.bin)||o.re.test(it.text)).map(o=>o.n);
+    it.marks={};for(const o of G_OBJ){const m=gEduMarkIds(o.n,it.kind,it.ids);it.marks[o.n]=m;if(m!==null&&!it.found.includes(o.n))it.found.push(o.n)}
+    it.found.sort();it.pending=it.found.some(n=>it.marks[n]===null)}
+  return out.filter(it=>it.found.length).sort((a,b)=>b.at-a.at)}
+function gEducation(from,to){const items=gEduItems(from,to);
+  // obs and plans are the confirmed ones, which count, one for each observation or plan. found holds everything the words found, for checking.
+  return G_OBJ.map(o=>{const mine=items.filter(it=>it.found.includes(o.n)),pick=(k,f)=>mine.filter(it=>it.kind===k&&f(it)).map(it=>it.x);
+    return Object.assign({},o,{obs:pick("o",it=>it.marks[o.n]===true),plans:pick("p",it=>it.marks[o.n]===true),foundObs:pick("o",()=>true),foundPlans:pick("p",()=>true),pending:mine.filter(it=>it.marks[o.n]===null).length})})}
+// the observations and plans still to check, each counted once however many objectives or photos it has
+const gEduPending=(from,to)=>gEduItems(from,to).filter(it=>it.pending);
+// the ticks on a row. A confirmed item shows its marks, and one still to check starts from what the words suggest.
+let gEduLast=new Map();const gEduTicks=new Map();const G_EDU_CHIP={5:"Fruit",6:"Cooking",7:"Small groups"};
+const gEduTicksOf=it=>!it.pending?new Set(G_OBJ.filter(o=>it.marks[o.n]===true).map(o=>o.n)):gEduTicks.get(it.key)||new Set(gEduWhy(it).objs);
+// a choice is saved on every record of the observation, for each objective
+async function gEduSet(list){const patch={},at=Date.now(),by=whoAmI();for(const [it,m] of list)for(const n of Object.keys(m))for(const id of it.ids)patch[gEduKey(n,it.kind,id)]={v:m[n],by,at};
+  return gWrite("education",{list:patch},{id:"education",list:{}})}
+const gEduChoice=(it,yes)=>{const tk=gEduTicksOf(it);const m={};for(const o of G_OBJ)if(it.found.includes(o.n)||tk.has(o.n))m[o.n]=yes&&tk.has(o.n);return m};
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gedtick],[data-gedok],[data-gedno],[data-gedall]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;const y=window.scrollY;
+  if(d.gedall){const list=[...gEduLast.values()].filter(it=>it.pending&&gEduWhy(it).likely).map(it=>[it,gEduChoice(it,true)]);if(await gEduSet(list))toast(`${list.length} confirmed.`)}
+  else if(d.gedtick){const k=d.gedtick.lastIndexOf("|"),it=gEduLast.get(d.gedtick.slice(0,k)),n=+d.gedtick.slice(k+1);if(!it)return;
+    if(it.pending){const tk=new Set(gEduTicksOf(it));tk.has(n)?tk.delete(n):tk.add(n);gEduTicks.set(it.key,tk)}else await gEduSet([[it,{[n]:it.marks[n]!==true}]])}
+  else{const it=gEduLast.get(d.gedok||d.gedno);if(!it)return;if(d.gedok&&!gEduTicksOf(it).size){toast("Tick the objectives it meets first.");return}await gEduSet([[it,gEduChoice(it,!!d.gedok)]])}
+  renderGrant();window.scrollTo(0,y)});
+/* The writing help sorts new items into Likely counts and Check these, each with a few of the educator's own words on
+   why. Nothing counts until the director confirms. A line the help gives that is not in the educator's words is not used. */
+const gEduSortOf=key=>(((grantRecs.get("education")||{}).sort)||{})[key]||null;
+const gEduNorm=t=>String(t||"").toLowerCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/\s+/g," ").trim();
+function gEduQuote(it,objs){const t=String(it.text||"").replace(/\s+/g," ").trim();
+  for(const n of objs){const o=G_OBJ.find(z=>z.n===n);const m=o&&o.re.exec(t);if(!m)continue;
+    const st=Math.max(t.lastIndexOf(". ",m.index)+2,0),en=t.indexOf(". ",m.index);let q=t.slice(st>1?st:0,en<0?t.length:en+1).trim();
+    if(q.length>150){const k=Math.max(0,m.index-60);q=(k?"…":"")+t.slice(k,k+140).replace(/\s+\S*$/,"").trim()+"…"}return q}
+  return t.length>140?t.slice(0,140).replace(/\s+\S*$/,"")+"…":t}
+const gEduWhy=it=>{const so=gEduSortOf(it.key);const objs=so&&so.objs&&so.objs.length?so.objs:it.found;return {objs,likely:!!(so&&so.likely),words:so&&so.why?so.why:gEduQuote(it,objs)}};
+let gEduSorting=false,gEduSortOff=false;
+async function gEduSort(items){if(gEduSorting||gEduSortOff||!grantLoaded||!db||!isDirector()||VIEW_AS||!window.FP_HOSTED)return;
+  const todo=items.filter(it=>it.pending&&!gEduSortOf(it.key)).slice(0,12);if(!todo.length)return;gEduSorting=true;
+  const prompt=`These are observations and plans written by educators at a farm school for young children. For a Farm to School grant, decide for each one whether the educator's words show children doing hands-on food education under these objectives.
+5. Children gather, wash and deliver fruit for snack.
+6. Children prepare snacks and food with an educator.
+7. Small groups in the classroom and garden, planting, harvesting, watering, measuring.
+Mark likely true only when the words plainly show children doing it. A passing mention of food, a song or story about food, or something only planned for later is not likely.
+For each, give quote, a few words copied exactly from that item's own text that show why, at most 20 words.
+Return a JSON object {"items":[{"n":1,"likely":true,"objectives":[5],"quote":"..."}]}, one entry for each item.
+
+${todo.map((it,k)=>`${k+1}. ${it.kind==="o"?"Observation":"Plan"}. ${String(it.text).replace(/\s+/g," ").trim().slice(0,1500)}`).join("\n\n")}`;
+  let res=[];try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"food"});res=Array.isArray(out&&out.items)?out.items:[]}
+  catch(e){gEduSortOff=true;gEduSorting=false;return}
+  const patch={};todo.forEach((it,k)=>{const r=res.find(z=>Number(z&&z.n)===k+1)||{};const objs=[...new Set((r.objectives||[]).map(Number).filter(n=>[5,6,7].includes(n)))].sort();
+    const q=String(r.quote||"").replace(/^["“]|["”]$/g,"").trim();const ok=q.length>3&&gEduNorm(it.text).includes(gEduNorm(q));
+    patch[it.key]={likely:!!r.likely&&objs.length>0&&ok,objs:objs.length?objs:it.found,why:ok?q:gEduQuote(it,objs.length?objs:it.found),at:Date.now()}});
+  if(!await gWrite("education",{sort:patch},{id:"education",list:{}}))gEduSortOff=true;gEduSorting=false;if(view==="grant")renderGrant();else if(view==="today")renderMain()}
+/* Today. New items reach the director in a small weekly batch, made on the first visit of each week from what was
+   written before that Monday and not offered before, newest first. The count is separate observations and plans. */
+const G_EDU_BATCH=10;let gEduWeekBusy=false;
+function gEduWeek(){const ed=grantRecs.get("education")||{};const mon=mondayOf(new Date());const w=ed.week||{};const {from,to}=periodRange("all");
+  const pend=gEduPending(from,to);const byKey=new Map(pend.map(it=>[it.key,it]));
+  if(w.mon===mon){const mine=(w.keys||[]).map(k=>byKey.get(k)).filter(Boolean);gEduSort(mine);return mine}
+  // made once the grant records have arrived, so a batch already made this week is never made again
+  if(grantLoaded&&noticesSeen&&plansSeen&&db&&!gEduWeekBusy&&isDirector()&&!VIEW_AS&&window.FP_HOSTED){const offered=ed.offered||{};const t0=parseIso(mon).getTime();
+    const keys=pend.filter(it=>it.at<t0&&!offered[it.key]).slice(0,G_EDU_BATCH).map(it=>it.key);gEduWeekBusy=true;
+    gWrite("education",{week:{mon,keys},offered:Object.fromEntries(keys.map(k=>[k,mon]))},{id:"education",list:{}}).then(ok=>{setTimeout(()=>{gEduWeekBusy=false;if(ok&&view==="today")renderMain()},ok?0:60e3)})}
+  return []}
 // a section of the page as a card, with its main figure on the line that opens it
 let gOpen=LS.get("fps.gopen",{})||{};
 const gIsOpen=(id,dflt)=>gOpen[id]!=null?!!gOpen[id]:!!dflt;
@@ -7199,16 +7264,31 @@ function renderGrant0(){
   const cheese=menuDays(/cheese|pizza|quesadilla/i),beans=menuDays(/bean|rice|lentil/i);
   if(mm.length)h+=`${gCardO("menus","From the lunch menus",cheese+" lunches with cheese, "+beans+" with beans or rice")}<div class="gstats"><div class="gstat"><b>${cheese}</b><span>lunches with cheese from Petaluma Creamery</span></div><div class="gstat"><b>${beans}</b><span>lunches with beans or rice from Next Generation Foods</span></div></div></div></details>`;
 
-  // objectives 5 to 7, hands-on food education, confirmed by the director one by one
-  const ed=gEducation(from,to);const conf=ed.reduce((n,o)=>n+o.obs.length+o.plans.length,0),pend=ed.reduce((n,o)=>n+o.pending,0);
-  const mk=(o,kind,x,html)=>{const v=gEduMark(o.n,kind,x.id);return `<div class="gedu"><div style="min-width:0;flex:1">${html}</div><div class="gmarks" style="flex:none"><button class="chip-btn" data-gedu="${o.n}|${kind}|${esc(x.id)}" data-gv="1" aria-pressed="${v===true}">Counts</button><button class="chip-btn" data-gedu="${o.n}|${kind}|${esc(x.id)}" data-gv="0" aria-pressed="${v===false}">Does not count</button></div></div>`};
-  h+=`${gCardO("edu","Hands-on food education, objectives 5 to 7",conf+" confirmed"+(pend?", "+pend+" to check":""),pend>0)}
-    <div class="cnt" style="margin-bottom:8px">Found by food words in the educators' own observations and plans ${pw}. Only those you mark Counts are counted, here and in the summaries.</div>
-    ${ed.map(o=>`<details class="gmore" style="margin-top:6px"><summary style="cursor:pointer"><b>${o.n}. ${esc(G_SHORT[o.n])}</b> <span class="cnt">· ${o.obs.length+o.plans.length} confirmed${o.pending?`, ${o.pending} to check`:""}, of ${o.foundObs.length+o.foundPlans.length} found</span></summary>
-      ${(()=>{const no=x=>gEduMark(o.n,x[0],x[1].id)===false;const all=o.foundObs.map(n=>["o",n]).concat(o.foundPlans.map(p=>["p",p]));const hid=all.filter(no).length;const show=gEduShowNo.has(o.n);
-        // what is marked Does not count is set aside out of the list, and can be shown again to change it
-        const rows=all.filter(x=>show||!no(x)).map(([k,x])=>k==="o"?mk(o,"o",x,momentMini(x)):mk(o,"p",x,`<button class="item" data-open="${esc(x.id)}"><span class="nm">${esc(planTitle(x))}<br><span class="cnt">week of ${fmtDate(x.weekOf)}${x.classroom?", "+esc(x.classroom):""}</span></span></button>`));
-        return (gFold(rows,10)||(hid?"":`<div class="cnt">Nothing found ${pw}.</div>`))+(hid?`<button class="linkbtn" data-gedushow="${o.n}" style="margin-top:6px">${show?"Hide":"Show"} the ${hid} marked Does not count</button>`:"")})()}</details>`).join("")}</div></details>`;
+  // objectives 5 to 7, hands-on food education. Each observation or plan shows once, with a tick for each objective it
+  // meets, and counts once for each objective ticked, after the director confirms it.
+  const ed=gEducation(from,to);const items=gEduItems(from,to);gEduLast=new Map(items.map(it=>[it.key,it]));
+  const conf=ed.reduce((n,o)=>n+o.obs.length+o.plans.length,0),pendI=items.filter(it=>it.pending);
+  if(pendI.length)gEduSort(pendI);
+  const likely=pendI.filter(it=>gEduWhy(it).likely),check=pendI.filter(it=>!gEduWhy(it).likely);
+  const counted=items.filter(it=>!it.pending&&G_OBJ.some(o=>it.marks[o.n]===true)),aside=items.filter(it=>!it.pending&&!G_OBJ.some(o=>it.marks[o.n]===true));
+  const body=it=>it.kind==="o"?momentMini(it.x):`<button class="item" data-open="${esc(it.x.id)}"><span class="nm">${esc(planTitle(it.x))}<br><span class="cnt">week of ${fmtDate(it.x.weekOf)}${it.x.classroom?", "+esc(it.x.classroom):""}</span></span></button>`;
+  const andList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+  const row=it=>{const w=gEduWhy(it);const tk=gEduTicksOf(it);
+    return `<div class="gedu" style="display:block"><div style="min-width:0">${body(it)}</div>
+      ${it.pending?`<div class="cnt" style="margin:4px 0">For ${andList(w.objs.map(String))}, “${esc(w.words)}”</div>`:""}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0">${G_OBJ.map(o=>`<button class="chip-btn" data-gedtick="${esc(it.key)}|${o.n}" aria-pressed="${tk.has(o.n)}" title="${esc(G_SHORT[o.n])}">${tk.has(o.n)?"✓ ":""}${o.n}. ${G_EDU_CHIP[o.n]}</button>`).join("")}</div>
+      ${it.pending?`<div class="actions" style="margin-top:4px"><button class="btn small" data-gedok="${esc(it.key)}">Counts</button><button class="btn small ghost" data-gedno="${esc(it.key)}">Does not count</button></div>`:""}</div>`};
+  const per=ed.map(o=>`<div class="gstat"><b>${o.obs.length+o.plans.length}</b><span>${o.n}. ${esc(G_SHORT[o.n])}, ${o.obs.length} observation${o.obs.length===1?"":"s"} and ${o.plans.length} plan${o.plans.length===1?"":"s"}</span></div>`).join("");
+  h+=`${gCardO("edu","Hands-on food education, objectives 5 to 7",conf+" confirmed"+(pendI.length?", "+pendI.length+" to check":""),pendI.length>0)}
+    <div class="cnt" style="margin-bottom:8px">Found by food words in the educators' own observations and plans ${pw}. Each shows once, with a tick for each objective it meets. Only what you confirm is counted, once for each objective ticked, here and in the summaries.</div>
+    <div class="gstats">${per}</div>
+    ${likely.length?`<h4 style="margin:14px 0 4px">Likely counts, ${likely.length}</h4><div class="cnt">The writing help read these as plainly hands-on food education, from the educator's own words.</div>
+      <div class="actions" style="margin:6px 0"><button class="btn small" data-gedall="1">Confirm all ${likely.length}</button></div>${gFold(likely.map(row),8)}`:""}
+    ${check.length?`<h4 style="margin:14px 0 4px">Check these, ${check.length}</h4><div class="cnt">These mention food, cooking or the garden. Tick each objective it meets, then choose Counts or Does not count.</div>${gFold(check.map(row),8)}`:""}
+    ${!pendI.length?`<div class="cnt" style="margin-top:10px">Nothing waiting to check ${pw}.</div>`:""}
+    ${counted.length?`<details class="gmore" style="margin-top:10px"><summary class="linkbtn">Confirmed, ${counted.length}</summary><div class="cnt" style="margin:4px 0">Tap a tick to change what it counts for.</div>${gFold(counted.map(row),10)}</details>`:""}
+    ${aside.length?`<details class="gmore" style="margin-top:6px"><summary class="linkbtn">Marked Does not count, ${aside.length}</summary><div class="cnt" style="margin:4px 0">Tap a tick to count it after all.</div>${gFold(aside.map(row),10)}</details>`:""}
+  </div></details>`;
 
   // objective 8, families
   const fam=gList("families").filter(x=>x.date>=from&&x.date<=to).sort((a,b)=>b.date.localeCompare(a.date));
@@ -7370,11 +7450,9 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
   if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-gedu],[data-grevuse],[data-grevkeep],[data-gplace]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
   if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,noDate:{__delete__:true},checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
   // the director counts an observation or plan for a food education goal, or sets it aside. Pressing the same choice again clears it.
-  if(d.gedu){const [n,kind,id]=d.gedu.split("|");const v=d.gv==="1";const cur=gEduMark(n,kind,id);const key=gEduKey(n,kind,id);
-    await gWrite("education",{list:{[key]:cur===v?{__delete__:true}:{v,by:whoAmI(),at:Date.now()}}},{id:"education",list:{}});renderGrant();return}
   // a new reading of an order already checked, used in place of the lines kept, or set aside
   if(d.grevuse){const o=grantRecs.get(d.grevuse),r=o&&o.revision;if(!r||!db)return;
     const patch={items:r.items||[],fulfilled:r.fulfilled||o.fulfilled||"",subtotal:r.subtotal??null,delivery:r.delivery??null,total:r.total??null,distributor:r.distributor||o.distributor||"",noDate:r.noDate?true:{__delete__:true},revision:{__delete__:true},review:!!r.noDate,checkedBy:whoAmI(),checkedAt:Date.now()};
@@ -12715,7 +12793,7 @@ function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
    a school closure, to choose another day for the PD staff meeting */
 let meetSt={loaded:false,team:[],ask:[]};setInterval(()=>{meetSt.loaded=false},15*60e3);
 async function loadMeetToday(){if(!window.FP_API||meetSt.loading)return;meetSt.loading=true;try{const j=await window.FP_API("/api/staff/g/pd/today",{});meetSt.team=j.team||[];meetSt.ask=j.ask||[]}catch(e){meetSt.team=[];meetSt.ask=[]}meetSt.loading=false;meetSt.loaded=true;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()}
-function meetTodayHtml(){if(!window.FP_HOSTED||isKitchenUser())return"";if(!meetSt.loaded){loadMeetToday();return""}
+function meetTodayHtml(){if(!window.FP_HOSTED||isKitchenUser()||!(window.FP_NAME&&window.FP_NAME()))return"";if(!meetSt.loaded){loadMeetToday();return""}
   const asked=LS.get("tree.meetask",{})||{};const ask=isDirector()&&!VIEW_AS?meetSt.ask.filter(a=>!asked[a.ym]):[];
   const t=meetSt.team.map(x=>`<div class="prow"><div><b>${esc(x.room)} Class team meeting</b><div class="cnt">${x.start?esc(clockTime(x.start))+(x.end?" to "+esc(clockTime(x.end)):""):"Today"}${(x.carried||[]).length?`, ${x.carried.length} next step${x.carried.length===1?"":"s"} open`:""}</div></div><button class="btn small ghost" data-meetopen="${esc(x.id)}">Open the agenda</button></div>`).join("");
   const a=ask.map(x=>{const mo=parseIso(x.firstMonday).toLocaleDateString("en-US",{month:"long"});return `<div class="ref" style="margin-top:8px" id="meetask-${esc(x.ym)}"><b>The first Monday of ${esc(mo)}, ${esc(longDate(x.firstMonday))}, is a school closure.</b><div>Choose another day for the PD staff meeting.</div>
@@ -12730,7 +12808,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.c
    all staff also shows on the staff room display that day. The director writes it here. */
 let staffNotesSt={loaded:false,notes:[],sent:[],busy:false};setInterval(()=>{staffNotesSt.loaded=false},5*60e3);
 async function loadStaffNotes(){if(!window.FP_API||staffNotesSt.loading)return;staffNotesSt.loading=true;try{const j=await window.FP_API("/api/notes",{});staffNotesSt.notes=j.notes||[];staffNotesSt.sent=j.sent||[]}catch(e){}staffNotesSt.loading=false;staffNotesSt.loaded=true;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()}
-function staffNotesHtml(){if(!window.FP_HOSTED)return"";if(!staffNotesSt.loaded){loadStaffNotes();return""}
+function staffNotesHtml(){if(!window.FP_HOSTED||!(window.FP_NAME&&window.FP_NAME()))return"";if(!staffNotesSt.loaded){loadStaffNotes();return""}
   const mine=staffNotesSt.notes.filter(x=>!isDirector()||x.to==="you");
   const got=mine.length?`<section class="card"><h3 style="font-size:17px">${mine.length>1?"Notes from the director":"A note from the director"}</h3>${mine.map(x=>`<div class="ref" style="margin-top:8px"><div style="white-space:pre-line">${esc(x.text)}</div><div class="cnt">${esc(x.by)}${x.to==="all"?", to all staff":""}</div></div>`).join("")}</section>`:"";
   if(!isDirector()||VIEW_AS)return got;
