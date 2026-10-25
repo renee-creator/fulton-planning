@@ -301,3 +301,22 @@ test('the permaculture premises sit once at the top of the Garden, beside our gu
   assert.strictEqual(await s.p.evaluate(() => document.querySelector('#main a[href="https://example.test/ethics"]').textContent), 'the book');
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('preserving the harvest, with our food rule, and never canning', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => { put('staff/garden/setup.json', GARDEN); put('staff/garden/log.json', { id: 'gardenlog', harvests: [{ id: 'h1', plant: 'p-fig', plantName: 'Fig', date: '2026-09-20' }] });
+    put('staff/library/garden/preserving.md', '<!--\nlibrary: test\n-->\n# Preserving\n\nWe preserve.\n\n## How we preserve\n\n- Drying.\n\n## Herbs, drying and tea\n\n- Hang small bundles.\n');
+    put('staff/wording/food-rule.md', '<!--\nwording: test\n-->\n# Food rule\n\n## rule\n\nNever on the menu.\n'); } });
+  t.after(() => fx.stop());
+  const ann = (await fx.login('Ann', '1357')).token, kit = (await fx.login('Kit', '1357')).token;
+  let r = await fx.as(ann, '/api/staff/garden/preserve', { harvest: 'h1', method: 'dry', note: 'Two jars', children: true });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.deepStrictEqual(r.body.preserves.map(x => [x.what, x.method, x.children]), [['Fig', 'dry', true]]);
+  assert.strictEqual((await fx.as(ann, '/api/staff/garden/preserve', { harvest: 'h1', method: 'can' })).status, 400);
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Ann', '1357', 390);
+  await s.p.evaluate(() => goView('garden')); await s.p.waitForSelector('[data-gfold="preserve"]', { timeout: 15000, state: 'attached' });
+  const txt = await s.p.evaluate(() => document.querySelector('[data-gfold="preserve"]').textContent);
+  assert.match(txt, /Our food rule\. Never on the menu\./); assert.match(txt, /Fig, dried, Two jars, with children/); assert.doesNotMatch(txt, /\bcann(ed|ing)\b/i);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+});

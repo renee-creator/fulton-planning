@@ -12,11 +12,12 @@ module.exports = function garden(o) {
   const { get, put, log, isDirector, isKitchen, nameKey, roomOf, today, addDays, mondayOf, staffNames } = o;
   const SETUP = 'staff/garden/setup.json', LOG = 'staff/garden/log.json';
   const setup = () => get(SETUP) || null;
-  const glog = () => Object.assign({ done: [], harvests: [], compost: [], seeds: [], trays: [], wildlife: [], photos: [], offered: [], years: [] }, get(LOG) || {});
+  const glog = () => Object.assign({ done: [], harvests: [], preserves: [], compost: [], seeds: [], trays: [], wildlife: [], photos: [], offered: [], years: [] }, get(LOG) || {});
   const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n || 300);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const USES = ['Food', 'Dye', 'Art materials', 'Pollinator', 'Look, don\'t eat'];
+  const PRESERVE = ['dry', 'herbs', 'tea', 'freeze', 'pickle', 'salt', 'seed'];
   const STAGES = ['plan', 'plant', 'tend', 'harvest', 'preserve', 'seeds', 'compost', 'rest'];
   /* The garden year in four seasons, which organize the garden's work only and never belong on plans, threads or
      projects. Fall is September to November, winter December to February, spring March to May and summer June to
@@ -86,7 +87,7 @@ module.exports = function garden(o) {
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
-      today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
+      today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
     if (dir) Object.assign(out, { offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });
@@ -118,6 +119,16 @@ module.exports = function garden(o) {
       if (!isFood(p)) { err(req, res, 400, `${p.common} is Look, don't eat, so it is never harvested for food.`); return; }
       const h = { id: rid('h'), plant: p.id, plantName: p.common, amount: txt(body.amount, 60), bed: bedOf(s, body.bed) ? body.bed : p.bed || '', date: ISO.test(body.date || '') ? body.date : today(), children: !!body.children, room: ROOMS().includes(body.room) ? body.room : '', by: me, at: Date.now() };
       saveL(L => { L.harvests.push(h); }); log('Garden harvest recorded by', me); return back();
+    }
+    // what we preserved from a harvest, by drying, herb drying and tea, freezing, quick refrigerator pickles, herb salt
+    // or seed saving. We do not can for storage, so canning is never a way here.
+    if (P === 'garden/preserve') {
+      const h = (glog().harvests || []).find(x => x.id === body.harvest) || null; const p = plantOf(s, body.plant || (h && h.plant));
+      if (!p && !txt(body.what, 80)) { err(req, res, 400, 'Choose the harvest or say what was preserved.'); return; }
+      if (p && !isFood(p) && body.method !== 'seed') { err(req, res, 400, `${p.common} is Look, don't eat, so it is only ever saved as seed.`); return; }
+      if (!PRESERVE.includes(body.method)) { err(req, res, 400, 'Choose how it was preserved.'); return; }
+      const x = { id: rid('pv'), harvest: h ? h.id : '', plant: p ? p.id : '', what: txt(body.what, 80) || (p ? p.common : ''), method: body.method, note: txt(body.note, 200), date: ISO.test(body.date || '') ? body.date : today(), children: !!body.children, room: ROOMS().includes(body.room) ? body.room : '', by: me, at: Date.now() };
+      saveL(L => { L.preserves = [...(L.preserves || []), x]; }); log('Garden preserving recorded by', me); return back();
     }
     if (P === 'garden/harvest/remove') { if (!dir) { err(req, res, 403, 'Only the director removes a harvest.'); return; } saveL(L => { L.harvests = L.harvests.filter(x => x.id !== body.id); }); return back(); }
     if (kit) { err(req, res, 403, 'The kitchen records harvests.'); return; }

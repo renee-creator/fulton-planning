@@ -5021,8 +5021,8 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   // who tends what
   h+=gdnFold("tend","Who tends what",`${Object.keys(g.tending.home||{}).length} home beds, ${(g.tending.rotations||[]).length} shared rotations`,
     `<div class="hint">Each Class keeps its home beds all year, set on each bed under Beds and yards. Shared spaces take turns among the Classes or their small groups.</div>${(g.tending.rotations||[]).map(r=>`<div class="strow"><b>${esc(r.beds.map(b=>(gdnBed(b)||{}).name||b).join(" and "))}</b><div class="cnt">Each ${r.every==="month"?"month":r.weeks>1?r.weeks+" weeks":"week"}, ${esc(r.who.map(w=>w.replace("|",", ")+" group").map(x=>x.replace(/^(\w+) group$/,"$1 Class")).join(", then "))}.</div></div>`).join("")}`);
-  // harvests
-  h+=gdnHarvestCard(foods,beds);
+  // harvests, and what we preserve from them
+  h+=gdnHarvestCard(foods,beds)+gdnPreserveCard();
   // compost, seeds and the greenhouse
   h+=gdnFold("compost","Compost",`${(g.compost||[]).length} entries`,`<div class="kfields"><label>What<input type="text" id="gc-what" placeholder="Ex. kitchen scraps, bedding from the goats"></label><label>Kind<select id="gc-kind"><option value="in">Went in</option><option value="turned">Turned</option><option value="used">Used on a bed</option></select></label></div><div class="actions"><button class="btn small ghost" data-gcomp="1">Add to the log</button></div>
     <ul style="margin:4px 0;padding-left:18px">${(g.compost||[]).slice().reverse().slice(0,15).map(c=>`<li>${esc(longDate(c.date))}, ${esc({in:"in",turned:"turned",used:"used"}[c.kind]||"")}, ${esc(c.what)}</li>`).join("")}</ul>`);
@@ -5069,6 +5069,19 @@ function gdnPlantForm(p,beds,uses){return `<div class="gform" style="margin-top:
   <div class="chips">${(uses||[]).filter(u=>u!=="Look, don't eat").map(u=>`<label class="radio"><input type="checkbox" data-gpuse="${esc(u)}" ${(p.uses||[]).includes(u)?"checked":""}><span>${esc(u)}</span></label>`).join("")}<label class="radio"><input type="checkbox" id="gp-gather" ${p.gather?"checked":""}><span>Gather with an educator</span></label></div>
   <label class="fld-label">Plant card, read aloud<textarea id="gp-child" rows="2">${esc((p.words||{}).child||"")}</textarea></label><label class="fld-label">Full plant page<textarea id="gp-adult" rows="2">${esc((p.words||{}).adult||"")}</textarea></label>
   <div class="actions"><button class="btn small" data-gpsave="${esc(p.id)}">Save the plant</button><button class="linkbtn" data-gpedit="">Cancel</button>${p.id?`<button class="linkbtn" data-gpdel="${esc(p.id)}">Take it off the list</button>`:""}</div></div>`}
+// preserving, from the harvests, with how we preserve, herbs and tea, and our food rule. We do not can for storage.
+function gdnPreserveCard(){const g=gdn,day=iso(new Date()),pg=gdnPage("preserving"),dir=isDirector()&&!VIEW_AS;
+  const hs=(g.harvests||[]).slice().reverse().slice(0,20);
+  return gdnFold("preserve","Preserving",`${(g.preserves||[]).filter(x=>String(x.date||"").slice(0,4)===day.slice(0,4)).length} this year. Drying, freezing, quick pickles, herb salt and seed`,
+    `${pg?`<div class="guidebody">${pg.lead?`<p>${esc(pg.lead)}</p>`:""}${guideMd(gdnPart("preserving","How we preserve"))}</div>
+      <details><summary class="linkbtn">Herbs, drying and tea</summary><div class="guidebody">${guideMd(gdnPart("preserving","Herbs, drying and tea"))}</div></details>`:""}
+    ${gdnFoodRule()?`<div class="hint"><b>Our food rule.</b> ${esc(gdnFoodRule())}</div>`:""}
+    <div class="kfields"><label>From the harvest<select id="gv-h"><option value="">Choose</option>${hs.map(x=>`<option value="${esc(x.id)}">${esc(x.plantName)}, ${esc(longDate(x.date))}</option>`).join("")}</select></label>
+      <label>Or what<input type="text" id="gv-what" placeholder="Ex. lemon balm"></label><label>How<select id="gv-m">${Object.entries(GDN_PRESERVE).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("")}</select></label>
+      <label>A note<input type="text" id="gv-note" placeholder="Ex. two jars"></label></div>
+    <label class="radio"><input type="checkbox" id="gv-kids"><span>Children preserved it with us</span></label>
+    <div class="actions"><button class="btn small" data-gpreserve="1">Record it</button>${dir&&pg?`<button class="linkbtn" data-pageedit="staff/library/garden/preserving.md">Edit the preserving page</button>`:""}</div>
+    <ul style="margin:4px 0;padding-left:18px">${(g.preserves||[]).slice().reverse().slice(0,12).map(x=>`<li>${esc(longDate(x.date))}, ${esc(x.what)}, ${esc((GDN_PRESERVE[x.method]||"").toLowerCase())}${x.note?", "+esc(x.note):""}${x.children?", with children":""}</li>`).join("")}</ul>`)}
 function gdnHarvestCard(foods,beds){const g=gdn,day=iso(new Date());
   return gdnFold("harvest","Harvests",`${(g.harvests||[]).filter(h=>h.date.slice(0,7)===day.slice(0,7)).length} this month, shown on the Kitchen page`,`<div class="kfields"><label>What<select id="gh-plant"><option value="">Choose</option>${foods.map(p=>`<option value="${esc(p.id)}">${esc(p.common)}</option>`).join("")}</select></label><label>How much<input type="text" id="gh-amount" placeholder="Ex. 2 pounds, a basket"></label><label>From the bed<select id="gh-bed"><option value="">Its usual bed</option>${beds.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></label><label>Date<input type="date" id="gh-date" value="${day}"></label><label>Children gathered it<select id="gh-room"><option value="">No</option>${CLASSROOMS.map(r=>`<option value="${esc(r)}">Yes, ${esc(r)} Class</option>`).join("")}</select></label></div>
     <div class="actions"><button class="btn small" data-gharvest="1">Record the harvest</button></div><div class="cnt">Look, don't eat plants are never harvested for food.</div>
@@ -5086,10 +5099,11 @@ function gdnAgreeDoc(k){const A=(gdn.agreements||{})[k]||{};const ph=(gdn.photos
 async function gdnCall(p,b,msg){try{gdn=await window.FP_API("/api/staff/garden"+(p?"/"+p:""),b||{});gdnAt=Date.now();if(msg)toast(msg);renderMain();return true}catch(e){toast(e&&e.message||"That did not work. Check the connection and try again.");return false}}
 async function gdnPickPhoto(){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()})}
 async function gdnFaceFree(blob){const url=URL.createObjectURL(blob);try{const im=await new Promise((ok,no)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=no;x.src=url});return (await shFindFaces(im)).length===0}finally{URL.revokeObjectURL(url)}}
-document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gaseason],[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
+document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gaseason],[data-gpreserve],[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmapplace],[data-gkidmap],[data-gevent],[data-goffer],[data-gcarry]");if(!t)return;
   const d=t.dataset,v=id=>(document.getElementById(id)||{}).value||"";
   if(d.gguide){gdnGuide=d.gguide;renderMain();return}
   if(d.gaseason){gdnASeason=d.gaseason;renderMain();return}
+  if(d.gpreserve){const b={harvest:v("gv-h"),what:v("gv-what"),method:v("gv-m"),note:v("gv-note"),children:!!(document.getElementById("gv-kids")||{}).checked};if(!b.harvest&&!b.what.trim()){toast("Choose the harvest or say what was preserved.");return}await gdnCall("preserve",b,"Recorded.");return}
   if(d.gpedit!=null){gdnEdit=d.gpedit||null;renderMain();return}
   if(d.gmplace){gdnPlace=d.gmplace;renderMain();document.getElementById("gmap")?.scrollIntoView({block:"center"});return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
