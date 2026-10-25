@@ -140,6 +140,20 @@ module.exports = function staffModule(o) {
   const school = () => get(SCHOOL) || {};
   const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false, family: false }, school().open || {});
 
+  /* ---------- the materials guides ---------- */
+  const GUIDE_READY = 'staff/guides/ready.json';
+  function guides() {
+    return [...S.files.keys()].filter(p => /^staff\/guides\/[a-z0-9-]+\.md$/.test(p)).sort().map(p => {
+      let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
+      if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
+      const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
+      return { slug: p.slice(13, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), group: meta.group || '', area: meta.area || '', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
+    }).filter(Boolean);
+  }
+  const guideReady = slug => !!(((get(GUIDE_READY) || {}).guides || {})[slug]);
+  const guidesFor = me => { const dir = isDirector(me);
+    return guides().filter(g => dir || !g.draft || guideReady(g.slug)).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !guideReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
+
   /* ---------- the PD library's pieces, one file each in pd/, so a new piece needs no code ---------- */
   let pieceCache = null;
   function pieces() {
@@ -274,6 +288,17 @@ module.exports = function staffModule(o) {
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'garden' || P.startsWith('garden/')) { await GD.handle(P, body, me, req, res, { json, err }); return; }
     /* ---------- walk safety, for staff once the director marks it ready ---------- */
+    // the one-page materials guides, one Markdown file each in staff/guides. A guide written as a draft shows only to the
+    // director, with its source note, until she marks it ready. Each one names the Materials library group and the
+    // Classroom area it is linked from.
+    if (P === 'guides' || P === 'guides/ready') {
+      if (P === 'guides/ready') {
+        if (!dir) return deny('The director marks a guide ready.'); const g = guides().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That guide is not here.');
+        const all = Object.assign({ guides: {} }, get(GUIDE_READY) || {}); all.guides = Object.assign({}, all.guides); if (body.on) all.guides[g.slug] = { on: today(), by: me }; else delete all.guides[g.slug];
+        put(GUIDE_READY, all);
+      }
+      json(req, res, 200, { list: guidesFor(me) }); return;
+    }
     if (P === 'walks' || P.startsWith('walks/')) {
       const w = walksDoc(); if (!w) { err(req, res, 404, 'Walk safety is not in the records yet.'); return; }
       if (!dir && !w.ready) return deny('Walk safety opens once the director marks it ready.');

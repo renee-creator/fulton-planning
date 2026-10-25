@@ -1567,6 +1567,7 @@ function renderMain(){
   if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()||isNewHire()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="walks"){renderWalks();return}
+  if(view==="guide"){renderGuide();return}
   if(view==="garden"){renderGarden();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
@@ -1757,7 +1758,7 @@ function focusCard(p){
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
       ${window.FP_HOSTED?"":`<label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>${gardenNote(p)}`}`
     :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="arealist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
-      <div class="chips">${AREAS.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-area="${esc(x)}">${esc(x)}</button>`).join("")}</div>`}
+      <div class="chips">${AREAS.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-area="${esc(x)}">${esc(x)}</button>`).join("")}</div>${guideBy("area",p.where)?`<div class="hint">${guideLink(guideBy("area",p.where),"Open the guide, "+guideBy("area",p.where).title)}</div>`:""}`}
   </section>`;
 }
 // the garden is always one adult for every six children, so a group set there with more shows a gentle note
@@ -1788,7 +1789,7 @@ function fieldCard(p,f){
   let starters=`<div class="chips">${f.starters.map(s=>`<button class="chip" data-insert="${esc(s)}" data-field="${f.k}">${esc(s.trim())}${/[ "]$/.test(s)?"…":""}</button>`).join("")}</div>`,chips="";
   if(f.groups){const gs=GROUPS.filter(g=>!p.classroom||g.room===p.classroom);starters+=`<div class="chips">${gs.map(g=>`<button class="chip" data-insert="${esc(g.name)} group " data-field="${f.k}">${esc(g.name)}</button>`).join("")}</div>`}
   if(f.places)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Outdoor spaces</summary><div class="chips" style="margin-top:6px">${PLACES.filter(x=>!/Library|Classroom|Indoor/.test(x)).map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`;
-  if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}</span>${[...list,...(c==="Atelier"?gdnMaterials():[])].map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
+  if(f.materials)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Materials library</summary><div style="display:grid;gap:6px;margin-top:6px">${Object.entries(MATERIALS).map(([c,list])=>`<div class="chips"><span class="muted" style="font-size:12px;width:84px">${c}${guideBy("group",c)?`<br>${guideLink(guideBy("group",c),"Guide")}`:""}</span>${[...list,...(c==="Atelier"?gdnMaterials():[])].map(m=>`<button class="chip" data-mat="${esc(m)}" data-field="${f.k}">${esc(m)}</button>`).join("")}</div>`).join("")}</div></details>`;
   if(f.seasons){const se=seasonOf(p.weekOf);chips+=`<details><summary class="chiprow-label" style="cursor:pointer">${se} concepts from the Family Handbook</summary><div class="hint" style="margin-top:6px">Concepts we hold loosely. Use one only where it meets what children are already doing.</div><div class="chips" style="margin-top:6px">${SEASONS[se].map(x=>`<button class="chip" data-insert="${esc(x.toLowerCase())} " data-field="${f.k}">${esc(x)}</button>`).join("")}</div></details>`}
   if(f.languages)chips+=`<div class="chiprow-label">Languages to keep open</div><div class="chips">${langList(p.languages).map(x=>`<button class="chip ${(p.languages||[]).includes(x)?"on":""}" data-toggle="languages" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div>${langAddRow("plan")}`;
   if(f.docplan)chips+=`<details><summary class="chiprow-label" style="cursor:pointer">Documentation</summary><div class="chips" style="margin-top:6px">${DOC_PLAN.map(x=>`<button class="chip ${(p.docplan||[]).includes(x)?"on":""}" data-toggle="docplan" data-val="${esc(x)}">${esc(x)}</button>`).join("")}</div></details>`;
@@ -5015,6 +5016,35 @@ let walkInfo=null,walkAt=0,walkBusy=false,walkPick=null;
 async function loadWalks(force){if(walkBusy||!window.FP_API)return;if(!force&&walkInfo!==null&&Date.now()-walkAt<5*60000)return;walkBusy=true;
   try{walkInfo=await window.FP_API("/api/staff/walks",{})}catch(e){walkInfo=false}finally{walkAt=Date.now();walkBusy=false}
   if(view==="today"||view==="walks")renderMain()}
+/* ---------- one-page materials guides ----------
+   Read from the records, staff/guides, through the signed-in server. Each is linked from its group in the Materials
+   library and from its Classroom area on plans. A draft shows only to the director until she marks it ready. */
+let guideList=null,guideBusy=false,guideSel="",guidePrev="today";
+async function loadGuides(force){if(!window.FP_API||guideBusy||(guideList&&!force))return;guideBusy=true;
+  try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain()}
+const guideBy=(k,v)=>{if(guideList===null)loadGuides();return (guideList||[]).find(g=>v&&String(g[k]||"").toLowerCase()===String(v).toLowerCase())||null};
+const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-guide="${esc(g.slug)}">${esc(label||g.title)}</button>${g.waiting?` <span class="cnt">Draft</span>`:""}`:"";
+function guideMd(t){const L=String(t||"").split("\n");let h="",ul=false;const inl=x=>esc(x).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+  for(const l of L){const m=l.match(/^\s*[-*]\s+(.*)$/);if(m){if(!ul){h+="<ul>";ul=true}h+=`<li>${inl(m[1])}</li>`;continue}if(ul){h+="</ul>";ul=false}
+    const hd=l.match(/^#{2,3}\s+(.*)$/);if(hd){h+=`<h3 style="font-size:16px;margin:12px 0 4px">${inl(hd[1])}</h3>`;continue}if(l.trim())h+=`<p>${inl(l)}</p>`}
+  return h+(ul?"</ul>":"")}
+function guideDoc(g){const parts=String(g.body||"").split(/^##\s+/m);const lead=parts.shift().trim();const blocks=lead?[dText("",lead.replace(/\*\*/g,""))]:[];
+  for(const p of parts){const i=p.indexOf("\n");const head=(i<0?p:p.slice(0,i)).trim(),rest=i<0?"":p.slice(i+1);const items=rest.split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].replace(/\*\*/g,""));
+    blocks.push(items.length?dList(head,items):dText(head,rest.trim().replace(/\*\*/g,"")))}
+  return {display:true,type:"report",acc:"story",title:g.title,meta:[],blocks}}
+function renderGuide(){const m=$("#main");if(guideList===null){loadGuides();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the guide</div></section>`;return}
+  const g=(guideList||[]).find(x=>x.slug===guideSel);if(!g){m.innerHTML=`<section class="card"><div class="empty">This guide is not here.</div><div class="actions"><button class="chip-btn back" data-guideback="1">‹ Back</button></div></section>`;return}
+  m.innerHTML=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-guideback="1">‹ Back</button></div>
+    ${isDirector()&&g.waiting!==undefined?`<section class="card"><div class="lbl">${g.waiting?"Draft":"Ready"}</div><div class="hint">${g.waiting?"Only you see this guide and its links. Educators see them once you mark it ready.":"Educators see this guide from the Materials library and from plans."}</div><div class="actions"><button class="btn small${g.waiting?"":" ghost"}" data-guideready="${esc(g.slug)}|${g.waiting?1:0}">${g.waiting?"Mark it ready":"Hide it again"}</button></div></section>`:""}
+    <section class="card"><div class="secthead"><h2 style="font-size:20px">${esc(g.title)}</h2><span class="actions" style="margin:0">${printBtns("guide",esc(g.slug),"PDF")}</span></div>
+      <div class="cnt">${[g.group?"Materials library, "+g.group:"",g.area?"Classroom area, "+g.area:""].filter(Boolean).map(esc).join(". ")}</div>
+      <div class="guidebody">${guideMd(g.body)}</div>
+      ${isDirector()&&g.source?`<div class="cnt" style="margin-top:10px">Source, seen only by you. ${esc(g.source)}</div>`:""}</section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-guide],[data-guideback],[data-guideready]");if(!t)return;
+  if(t.dataset.guide){e.preventDefault();e.stopPropagation();if(view!=="guide")guidePrev=view;guideSel=t.dataset.guide;goView("guide");return}
+  if(t.dataset.guideback){goView(guidePrev||"today");return}
+  if(t.dataset.guideready){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const [slug,on]=t.dataset.guideready.split("|");
+    try{guideList=(await window.FP_API("/api/staff/guides/ready",{slug,on:on==="1"})).list||[];toast(on==="1"?"Marked ready. Educators see it now.":"Hidden again. Only you see it.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}},true);
 const walkOpen=()=>!!walkInfo&&(walkInfo.ready||isDirector());
 // a walk is on the calendar today, or in a plan of this week for today
 function walkToday(){const dow=new Date().getDay();const re=/\b(walks?|walking)\b/i;
@@ -11110,6 +11140,7 @@ async function printsClick(t){
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`Plant guide ${(gdnPlant(id)||{}).common||""}`:who==="children"?"The Fulton plant guide for children":"The Fulton plant guide");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
+  if(kind==="guide"){if(!guideList)await loadGuides(true);const g=(guideList||[]).find(x=>x.slug===t.dataset.id);if(g)await out([guideDoc(g)],g.title);return true}
   if(kind==="walkcheck"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCheckDoc()],`Before we walk ${iso(new Date())}`);return true}
   if(kind==="walkcard"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCardDoc()],"Our walk agreements");return true}
   if(kind==="transitionnext"){const c=children.get(t.dataset.id);if(!c)return true;tsFlush(c.id);let j;try{j=await window.FP_API("/api/transition/nextschool",{id:c.id,year:tsYear()})}catch(e){toast(e&&e.message||"The copy for the next school could not be made. Check your connection.");return true}

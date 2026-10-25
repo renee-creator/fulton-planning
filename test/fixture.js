@@ -33,7 +33,7 @@ async function start(opt) {
   opt = opt || {};
   const dir = opt.dir || records();
   const port = 5000 + Math.floor(Math.random() * 400), web = port + 500;
-  const put = (rel, doc) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(doc, null, 2) + '\n'); };
+  const put = (rel, doc) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof doc === 'string' ? doc : JSON.stringify(doc, null, 2) + '\n'); };
   if (opt.more) opt.more(put);
   if (opt.feed) { put('calendar/settings/program.json', { calendars: [{ id: 'cal3', name: 'Conferences', color: 'clay' }], spaces: [], dayStart: 420, dayEnd: 1080, weekends: true });
     put('calendar/settings/feeds.json', { addresses: { cal3: `http://127.0.0.1:${web}/feeds/conf.ics` } }); }
