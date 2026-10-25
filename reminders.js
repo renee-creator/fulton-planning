@@ -170,7 +170,8 @@ module.exports = function reminders(o) {
   function openFor(e, when, S) {
     const { week } = when; const start = S.start || week; const off = new Set(personOf(S, e.name).off || []); const on = t => S.types[t] && !off.has(t);
     const out = []; const ps = plansAll(); const every = planEvery(S, e.name);
-    const mine = ps.filter(p => (p.type === 'individual' || p.type === 'smallgroup') && nameIn(p.educator, e.name));
+    // a garden plan belongs to the Garden group, so it never counts as an educator's plan for their Class
+    const mine = ps.filter(p => (p.type === 'individual' || p.type === 'smallgroup') && p.focus !== 'garden' && nameIn(p.educator, e.name));
     if (every === 'weekly') {
       const last = addDays(week, -7);
       if (on('remarks') && last >= start) for (const p of mine.filter(p => p.weekOf === last && nonEmpty(p) && !filled(p.fields && p.fields[AFTER[p.type]])))

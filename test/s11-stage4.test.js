@@ -201,3 +201,38 @@ test('the director keeps her own reflective journal, behind her passcode, read b
   assert.strictEqual(await s.p.evaluate(() => document.querySelector('[data-gjf="joy"]').value), 'The goats met the new class.');
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
+
+test('the Garden educator role and the Garden group', async t => {
+  const chromium = await browser();
+  const fx = await start({ more: put => {
+    put('children/pip-test.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active' });
+    put('children/rue-test.json', { first: 'Rue', last: 'Test', classroom: 'North', status: 'active' });
+    put('calendar/settings/program.json', { calendars: [], spaces: [{ id: 'garden', name: 'The garden' }, { id: 'library', name: 'Library' }], dayStart: 420, dayEnd: 1080 });
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  // until someone holds the role, the director does
+  assert.deepStrictEqual((await fx.as(dee, '/api/data', {})).body.gardenEducators, []);
+  // the director gives Bea the role beside her own, which stays as it was
+  assert.strictEqual((await fx.as(ann, '/api/staff/profile', { name: 'Bea', profile: { garden: '1' } })).status, 403);
+  const r = await fx.as(dee, '/api/staff/profile', { name: 'Bea', profile: { garden: '1' } });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.profile.garden, true); assert.strictEqual(r.body.profile.role, 'educator');
+  assert.deepStrictEqual((await fx.as(dee, '/api/data', {})).body.gardenEducators, ['Bea']);
+  // a garden plan never counts as the educator's Class plan for reminders
+  assert.ok(/p\.focus !== 'garden'/.test(fs.readFileSync(path.join(__dirname, '..', 'reminders.js'), 'utf8')));
+  if (!chromium) return;
+  const b = await chromium.launch(); t.after(() => b.close());
+  const s = await signedIn(fx, b, 'Bea', '1357', 1280);
+  const np = await s.p.evaluate(() => { const p = newPlan('individual'); plans.set(p.id, p); currentId = p.id; view = 'plans'; renderMain(); return p.id; });
+  await s.p.click('[data-focus="garden"]');
+  await s.p.click('[data-gkid="pip-test"]'); await s.p.click('[data-gkid="rue-test"]'); await s.p.click('[data-gspace="The garden"]');
+  const p = await s.p.evaluate(id => { const p = plans.get(id); return { focus: p.focus, children: p.children, where: p.where, group: p.gardenGroup }; }, np);
+  assert.deepStrictEqual(p, { focus: 'garden', children: ['pip-test', 'rue-test'], where: 'The garden', group: 'Garden' });
+  // it shows on each Class whose children are in it
+  assert.deepStrictEqual(await s.p.evaluate(id => ['West', 'North', 'South'].map(r => planInRoom(plans.get(id), r)), np), [true, true, false]);
+  assert.deepStrictEqual(s.errors, []); await s.close();
+  // an educator without the role sees no Garden focus
+  const a = await signedIn(fx, b, 'Ann', '1357', 1280);
+  await a.p.evaluate(() => { const p = newPlan('individual'); plans.set(p.id, p); currentId = p.id; view = 'plans'; renderMain(); });
+  assert.strictEqual(await a.p.$('[data-focus="garden"]'), null); await a.close();
+});

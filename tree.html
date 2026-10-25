@@ -868,7 +868,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; window.FP_WORDS=j.wording||{}; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; window.FP_WORDS=j.wording||{};window.FP_GARDENERS=Array.isArray(j.gardenEducators)?j.gardenEducators:[]; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
     /* a new educator reaches only the New Educator section until the director turns on full access */
     window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); if(j.staff&&j.staff.loading) staffAgain(0); obReapply(); }
   /* signed in while the educator records were still loading after an update, TREE asks again until Educators can open */
@@ -1565,7 +1565,18 @@ function renderDue(){
     list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="${AFTER_KEY[p.type]}"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span class="status" style="color:var(--clay);border-color:var(--clay)">Due</span></button>`).join("")+
     (list.length>6?`<button class="linkbtn" data-view="all" data-astatus="due">See all ${list.length}</button>`:"")+(mineOnly&&total>list.length?`<div class="cnt">${total-list.length} more for other educators</div>`:"");
 }
-function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||p.classroom===roomFilter))}
+/* The Garden group. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any
+   Class. It belongs to the Garden group and shows on each Class whose children are in it, without counting as that
+   Class's plan for reminders. The Garden educator leads it, a role held beside the person's own, and until someone holds
+   it the director does. */
+const gardenGroupName=()=>String(((PROGRAM_DOC||{}).gardenGroup||{}).name||"Garden");
+const gardeners=()=>Array.isArray(window.FP_GARDENERS)?window.FP_GARDENERS:[];
+function holdsGarden(){if(VIEW_AS)return gardeners().some(n=>n.toLowerCase()===String(VIEW_AS.name||"").toLowerCase());const m=me().toLowerCase();return gardeners().length?gardeners().some(n=>n.toLowerCase()===m)||isDirector():isDirector()}
+const isGardenPlan=p=>!!p&&p.type==="individual"&&p.focus==="garden";
+const gardenRooms=p=>[...new Set((p.children||[]).map(id=>(children.get(id)||{}).classroom).filter(Boolean))];
+function planInRoom(p,room){return p.classroom===room||(isGardenPlan(p)&&gardenRooms(p).includes(room))}
+const GARDEN_SPACE=/garden|yard|orchard|bed|goat|chicken|farm|pollinator|compost|green ?house|field|meadow/i;
+function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||planInRoom(p,roomFilter)))}
 function renderList(){
   pruneEmpty();renderDue();renderFeedbackPanel();
   const ps=weekPlans();
@@ -1774,12 +1785,24 @@ function refCard(prev){
 }
 const focusAll=new Set();
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-fshowall]");if(!t)return;focusAll.add(t.dataset.fshowall);renderMain()});
+// a garden plan's focus, a garden or yard space and children from any Class
+function gardenFocusCard(p){const sp=PLACES.filter(x=>GARDEN_SPACE.test(x));const spaces=sp.length?sp:PLACES;const sel=new Set(p.children||[]);
+  const kids=kidsAt().sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||(a.first||"").localeCompare(b.first||""));
+  return `<section class="card"><div class="lbl">Focus this week</div>
+    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="false">Small group</button><button data-focus="area" aria-pressed="false">Classroom area</button><button data-focus="garden" aria-pressed="true">${esc(gardenGroupName())}</button></div>
+    <div class="hint">A garden plan belongs to the ${esc(gardenGroupName())} group. It shows on each Class whose children are in it, and it never counts as that Class's plan for reminders.</div>
+    <label class="fld-label">The garden or yard space<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
+    <div class="chips">${spaces.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-gspace="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    <div class="chiprow-label">Children, from any Class</div>
+    ${CLASSROOMS.map(r=>{const ks=kids.filter(k=>k.classroom===r);return ks.length?`<div class="cnt" style="margin-top:6px">${esc(r)} Class</div><div class="chips">${ks.map(k=>`<button class="chip ${sel.has(k.id)?"on":""}" data-gkid="${esc(k.id)}">${esc(kidName(k))}</button>`).join("")}</div>`:""}).join("")}
+    ${gardenNote(p)}</section>`}
 function focusCard(p){
   // the plan's own Class's groups show, and Show other Classes is there for an educator who leads a group in another
+  if(isGardenPlan(p))return gardenFocusCard(p);
   const sg=p.focus!=="area";const room=p.classroom;const sel=p.groups||[];const other=GROUPS.filter(g=>room&&g.room!==room);
   const wide=!room||focusAll.has(p.id)||other.some(g=>sel.includes(g.name));const gs=[...GROUPS.filter(g=>!room||g.room===room),...(wide?other:[])];
   return `<section class="card"><div class="lbl">Focus this week</div>
-    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button></div>
+    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button>${holdsGarden()?`<button data-focus="garden" aria-pressed="false">${esc(gardenGroupName())}</button>`:""}</div>
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
       ${room&&other.length&&!wide?`<button class="linkbtn" data-fshowall="${esc(p.id)}">Show other Classes</button>`:""}
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
@@ -1790,8 +1813,8 @@ function focusCard(p){
 }
 // the garden is always one adult for every six children, so a group set there with more shows a gentle note
 const gardenAdults=a=>a===1?"one adult":["","","two","three","four","five","six"][a]+" adults";
-function gardenState(p){if(!/garden/i.test(String(p.where||""))||!(p.groups||[]).length)return null;
-  const n=kidsAt().filter(c=>(p.groups||[]).includes(c.group)&&(!p.classroom||!c.classroom||c.classroom===p.classroom)).length;const adults=Math.max(1,+p.adults||1);const over=n>adults*6;
+function gardenState(p){if(isGardenPlan(p)?!(p.children||[]).length:(!/garden/i.test(String(p.where||""))||!(p.groups||[]).length))return null;
+  const n=isGardenPlan(p)?(p.children||[]).length:kidsAt().filter(c=>(p.groups||[]).includes(c.group)&&(!p.classroom||!c.classroom||c.classroom===p.classroom)).length;const adults=Math.max(1,+p.adults||1);const over=n>adults*6;
   return {over,text:over?`<b>A note for the garden.</b> The garden is always one adult for every six children, and this group has ${n} children with ${gardenAdults(adults)}. ${Math.ceil(n/6)===2?"A second adult, such as a co-educator, a parent volunteer or an apprentice,":Math.ceil(n/6)+" adults"} would keep it at one to six.`
     :`The garden is one adult for every six children. With ${gardenAdults(adults)} and ${n} ${n===1?"child":"children"}, this group keeps it there.`}}
 function gardenNote(p){const g=gardenState(p);return `<div id="gardennote" class="${g&&g.over?"talknote":"cnt"}" role="note" style="margin-top:6px;${g?"":"display:none"}"><span id="gardentext">${g?g.text:""}</span> <label class="cnt" style="white-space:nowrap">Adults with the group <input type="number" min="1" max="6" id="f-adults" value="${Math.max(1,+p.adults||1)}" style="width:56px"></label></div>`}
@@ -4260,7 +4283,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0508d806b6","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4270,7 +4293,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=0508d806b6","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["kitchen","Kitchen"]],
@@ -5168,7 +5191,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-walk
 /* ---------- Plans, the week ---------- */
 function boardRoom(){if(roomFilter&&roomFilter!=="All")return roomFilter;return myRoom()||CLASSROOMS[0]}
 function renderWeekBoard(){
-  const room=boardRoom();const ps=[...plans.values()].filter(p=>p.weekOf===week&&p.classroom===room&&p.id!=="example");
+  const room=boardRoom();const ps=[...plans.values()].filter(p=>p.weekOf===week&&planInRoom(p,room)&&p.id!=="example");
   const groups=GROUPS.filter(g=>g.room===room);
   const planFor=g=>ps.find(p=>(p.type==="individual"&&(p.groups||[]).includes(g.name))||(p.type==="smallgroup"&&p.group===g.name));
   const usedIds=new Set(groups.map(planFor).filter(Boolean).map(p=>p.id));
@@ -5323,7 +5346,9 @@ document.addEventListener("click",async e=>{
   if(t.id==="dupok"){p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Marked as not a duplicate.");return}
   if(t.id==="sendplan"){sendPlan(p);return}
   if(t.dataset.status){if(sendable(p)&&!isDirector())return;if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}if(t.dataset.status==="reviewed"&&p.status!=="reviewed"){p.reviewedAt=Date.now();p.reviewedBy=myName()||"the director"}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
-  if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
+  if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area"||p.focus==="garden")p.groups=[];if(p.focus==="garden"){p.children=p.children||[];p.gardenGroup=gardenGroupName()}else{delete p.children;delete p.gardenGroup}persist(p);renderList();renderMain();return}
+  if(p&&t.dataset.gspace!=null){p.where=t.dataset.gspace;persist(p);renderMain();return}
+  if(p&&t.dataset.gkid){const s2=new Set(p.children||[]);if(s2.has(t.dataset.gkid))s2.delete(t.dataset.gkid);else s2.add(t.dataset.gkid);p.children=[...s2];persist(p);renderMain();return}
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
     if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
   if(t.dataset.session){p.session=t.dataset.session;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
@@ -5656,7 +5681,7 @@ function planBlocks0(p){
     sec("Curriculum brainstorm",f.brainstorm,.8),{t:"web",web:p.web||blankWeb(),blank:B},
     cols([{label:"Languages of expression",text:(p.web?.languages||[]).join("\n")},{label:"Open questions",text:p.web?.questions},{label:"Notes for the environment",text:p.web?.environment}],1)];
   if(p.type==="individual"){
-    const focus=B?"Small group or classroom area":(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
+    const focus=B?"Small group or classroom area":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any Class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
     const join=(a,label,list)=>[a||"",(list||[]).length?label+". "+list.join(", "):""].filter(Boolean).join("\n");
     return [cols([{label:"Focus",text:focus,w:.5},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
       sec("Possible activities and materials",join(f.materials,"Documentation",p.docplan),1.05),sec("Questions and languages",join(f.questions,"Languages to keep open",p.languages),.9),sec("Final remarks",f.remarks,1.15)];
@@ -12533,7 +12558,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0508d806b6","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bb876533a6","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
@@ -12583,7 +12608,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 // the Settings card left open, which another page or a link may set before Settings has loaded
 let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","75125aec24").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","0a8f21ebf9").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

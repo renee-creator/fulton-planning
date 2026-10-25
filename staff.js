@@ -710,6 +710,8 @@ module.exports = function staffModule(o) {
       const doc = person(who); const b = body.profile || {};
       doc.profile = Object.assign({}, doc.profile);
       if ('role' in b) doc.profile.role = ['educator', 'apprentice', 'atelierista', 'staff'].includes(b.role) ? b.role : 'educator';
+      // Garden educator is held alongside the person's own role, never in place of it
+      if ('garden' in b) { if (b.garden && b.garden !== '0') doc.profile.garden = true; else delete doc.profile.garden; }
       if ('planHour' in b) doc.profile.planHour = /^\d{2}:\d{2}$/.test(b.planHour || '') ? b.planHour : '';
       if ('checkin' in b) doc.profile.checkin = ['slot', 'second', 'asneeded'].includes(b.checkin) ? b.checkin : '';
       if ('journalEvery' in b) doc.profile.journalEvery = +b.journalEvery === 2 ? 2 : 1;
@@ -1032,5 +1034,7 @@ module.exports = function staffModule(o) {
     // a change that could not be made is tried again at the next start, and the changes already made stay as they are
     if (failed) return false;
   }
-  return { wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  // who holds the Garden educator role. Until someone does, the director holds it, which the pages read as an empty list.
+  const gardenEducators = () => S.ready ? staffNames().filter(n => profileOf(n).garden && !isFormerEducator(n)).sort() : [];
+  return { gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

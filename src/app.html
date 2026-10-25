@@ -1239,7 +1239,18 @@ function renderDue(){
     list.slice(0,6).map(p=>`<button class="item" data-open="${esc(p.id)}" data-jump="${AFTER_KEY[p.type]}"><span class="nm">${esc(label(p))} · ${FORMS[p.type].short}<br><span class="cnt">week of ${fmtDate(p.weekOf)}${p.classroom?", "+esc(p.classroom):""}</span></span><span class="status" style="color:var(--clay);border-color:var(--clay)">Due</span></button>`).join("")+
     (list.length>6?`<button class="linkbtn" data-view="all" data-astatus="due">See all ${list.length}</button>`:"")+(mineOnly&&total>list.length?`<div class="cnt">${total-list.length} more for other educators</div>`:"");
 }
-function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||p.classroom===roomFilter))}
+/* The Garden group. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any
+   Class. It belongs to the Garden group and shows on each Class whose children are in it, without counting as that
+   Class's plan for reminders. The Garden educator leads it, a role held beside the person's own, and until someone holds
+   it the director does. */
+const gardenGroupName=()=>String(((PROGRAM_DOC||{}).gardenGroup||{}).name||"Garden");
+const gardeners=()=>Array.isArray(window.FP_GARDENERS)?window.FP_GARDENERS:[];
+function holdsGarden(){if(VIEW_AS)return gardeners().some(n=>n.toLowerCase()===String(VIEW_AS.name||"").toLowerCase());const m=me().toLowerCase();return gardeners().length?gardeners().some(n=>n.toLowerCase()===m)||isDirector():isDirector()}
+const isGardenPlan=p=>!!p&&p.type==="individual"&&p.focus==="garden";
+const gardenRooms=p=>[...new Set((p.children||[]).map(id=>(children.get(id)||{}).classroom).filter(Boolean))];
+function planInRoom(p,room){return p.classroom===room||(isGardenPlan(p)&&gardenRooms(p).includes(room))}
+const GARDEN_SPACE=/garden|yard|orchard|bed|goat|chicken|farm|pollinator|compost|green ?house|field|meadow/i;
+function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||planInRoom(p,roomFilter)))}
 function renderList(){
   pruneEmpty();renderDue();renderFeedbackPanel();
   const ps=weekPlans();
@@ -1448,12 +1459,24 @@ function refCard(prev){
 }
 const focusAll=new Set();
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-fshowall]");if(!t)return;focusAll.add(t.dataset.fshowall);renderMain()});
+// a garden plan's focus, a garden or yard space and children from any Class
+function gardenFocusCard(p){const sp=PLACES.filter(x=>GARDEN_SPACE.test(x));const spaces=sp.length?sp:PLACES;const sel=new Set(p.children||[]);
+  const kids=kidsAt().sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||(a.first||"").localeCompare(b.first||""));
+  return `<section class="card"><div class="lbl">Focus this week</div>
+    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="false">Small group</button><button data-focus="area" aria-pressed="false">Classroom area</button><button data-focus="garden" aria-pressed="true">${esc(gardenGroupName())}</button></div>
+    <div class="hint">A garden plan belongs to the ${esc(gardenGroupName())} group. It shows on each Class whose children are in it, and it never counts as that Class's plan for reminders.</div>
+    <label class="fld-label">The garden or yard space<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
+    <div class="chips">${spaces.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-gspace="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    <div class="chiprow-label">Children, from any Class</div>
+    ${CLASSROOMS.map(r=>{const ks=kids.filter(k=>k.classroom===r);return ks.length?`<div class="cnt" style="margin-top:6px">${esc(r)} Class</div><div class="chips">${ks.map(k=>`<button class="chip ${sel.has(k.id)?"on":""}" data-gkid="${esc(k.id)}">${esc(kidName(k))}</button>`).join("")}</div>`:""}).join("")}
+    ${gardenNote(p)}</section>`}
 function focusCard(p){
   // the plan's own Class's groups show, and Show other Classes is there for an educator who leads a group in another
+  if(isGardenPlan(p))return gardenFocusCard(p);
   const sg=p.focus!=="area";const room=p.classroom;const sel=p.groups||[];const other=GROUPS.filter(g=>room&&g.room!==room);
   const wide=!room||focusAll.has(p.id)||other.some(g=>sel.includes(g.name));const gs=[...GROUPS.filter(g=>!room||g.room===room),...(wide?other:[])];
   return `<section class="card"><div class="lbl">Focus this week</div>
-    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button></div>
+    <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button>${holdsGarden()?`<button data-focus="garden" aria-pressed="false">${esc(gardenGroupName())}</button>`:""}</div>
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
       ${room&&other.length&&!wide?`<button class="linkbtn" data-fshowall="${esc(p.id)}">Show other Classes</button>`:""}
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
@@ -1464,8 +1487,8 @@ function focusCard(p){
 }
 // the garden is always one adult for every six children, so a group set there with more shows a gentle note
 const gardenAdults=a=>a===1?"one adult":["","","two","three","four","five","six"][a]+" adults";
-function gardenState(p){if(!/garden/i.test(String(p.where||""))||!(p.groups||[]).length)return null;
-  const n=kidsAt().filter(c=>(p.groups||[]).includes(c.group)&&(!p.classroom||!c.classroom||c.classroom===p.classroom)).length;const adults=Math.max(1,+p.adults||1);const over=n>adults*6;
+function gardenState(p){if(isGardenPlan(p)?!(p.children||[]).length:(!/garden/i.test(String(p.where||""))||!(p.groups||[]).length))return null;
+  const n=isGardenPlan(p)?(p.children||[]).length:kidsAt().filter(c=>(p.groups||[]).includes(c.group)&&(!p.classroom||!c.classroom||c.classroom===p.classroom)).length;const adults=Math.max(1,+p.adults||1);const over=n>adults*6;
   return {over,text:over?`<b>A note for the garden.</b> The garden is always one adult for every six children, and this group has ${n} children with ${gardenAdults(adults)}. ${Math.ceil(n/6)===2?"A second adult, such as a co-educator, a parent volunteer or an apprentice,":Math.ceil(n/6)+" adults"} would keep it at one to six.`
     :`The garden is one adult for every six children. With ${gardenAdults(adults)} and ${n} ${n===1?"child":"children"}, this group keeps it there.`}}
 function gardenNote(p){const g=gardenState(p);return `<div id="gardennote" class="${g&&g.over?"talknote":"cnt"}" role="note" style="margin-top:6px;${g?"":"display:none"}"><span id="gardentext">${g?g.text:""}</span> <label class="cnt" style="white-space:nowrap">Adults with the group <input type="number" min="1" max="6" id="f-adults" value="${Math.max(1,+p.adults||1)}" style="width:56px"></label></div>`}
@@ -4638,7 +4661,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-walk
 /* ---------- Plans, the week ---------- */
 function boardRoom(){if(roomFilter&&roomFilter!=="All")return roomFilter;return myRoom()||CLASSROOMS[0]}
 function renderWeekBoard(){
-  const room=boardRoom();const ps=[...plans.values()].filter(p=>p.weekOf===week&&p.classroom===room&&p.id!=="example");
+  const room=boardRoom();const ps=[...plans.values()].filter(p=>p.weekOf===week&&planInRoom(p,room)&&p.id!=="example");
   const groups=GROUPS.filter(g=>g.room===room);
   const planFor=g=>ps.find(p=>(p.type==="individual"&&(p.groups||[]).includes(g.name))||(p.type==="smallgroup"&&p.group===g.name));
   const usedIds=new Set(groups.map(planFor).filter(Boolean).map(p=>p.id));
@@ -5315,7 +5338,9 @@ document.addEventListener("click",async e=>{
   if(t.id==="dupok"){p.notDupOf=p.dupOf||"";delete p.dupOf;delete p.importDup;persist(p);renderMain();toast("Marked as not a duplicate.");return}
   if(t.id==="sendplan"){sendPlan(p);return}
   if(t.dataset.status){if(sendable(p)&&!isDirector())return;if(t.dataset.status!=="draft"&&!p.educator&&needName())return;if(!p.educator&&me()){p.educator=me()}if(t.dataset.status==="reviewed"&&p.status!=="reviewed"){p.reviewedAt=Date.now();p.reviewedBy=myName()||"the director"}p.status=t.dataset.status;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));renderList();return}
-  if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area")p.groups=[];persist(p);renderList();renderMain();return}
+  if(t.dataset.focus){p.focus=t.dataset.focus;if(p.focus==="area"||p.focus==="garden")p.groups=[];if(p.focus==="garden"){p.children=p.children||[];p.gardenGroup=gardenGroupName()}else{delete p.children;delete p.gardenGroup}persist(p);renderList();renderMain();return}
+  if(p&&t.dataset.gspace!=null){p.where=t.dataset.gspace;persist(p);renderMain();return}
+  if(p&&t.dataset.gkid){const s2=new Set(p.children||[]);if(s2.has(t.dataset.gkid))s2.delete(t.dataset.gkid);else s2.add(t.dataset.gkid);p.children=[...s2];persist(p);renderMain();return}
   if(t.dataset.fgroup){const n=t.dataset.fgroup;p.groups=p.groups||[];const i=p.groups.indexOf(n);i>=0?p.groups.splice(i,1):p.groups.push(n);const g=GROUPS.find(g=>g.name===n);if(i<0&&g&&!p.classroom)p.classroom=g.room;
     if(i<0&&g&&!p.educator&&g.educator)p.educator=g.educator;persist(p);renderList();renderMain();return}
   if(t.dataset.session){p.session=t.dataset.session;persist(p);t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));return}
@@ -5648,7 +5673,7 @@ function planBlocks0(p){
     sec("Curriculum brainstorm",f.brainstorm,.8),{t:"web",web:p.web||blankWeb(),blank:B},
     cols([{label:"Languages of expression",text:(p.web?.languages||[]).join("\n")},{label:"Open questions",text:p.web?.questions},{label:"Notes for the environment",text:p.web?.environment}],1)];
   if(p.type==="individual"){
-    const focus=B?"Small group or classroom area":(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
+    const focus=B?"Small group or classroom area":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any Class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
     const join=(a,label,list)=>[a||"",(list||[]).length?label+". "+list.join(", "):""].filter(Boolean).join("\n");
     return [cols([{label:"Focus",text:focus,w:.5},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
       sec("Possible activities and materials",join(f.materials,"Documentation",p.docplan),1.05),sec("Questions and languages",join(f.questions,"Languages to keep open",p.languages),.9),sec("Final remarks",f.remarks,1.15)];
@@ -13104,7 +13129,7 @@ let setOpen="";
 /*__LAZY_BEGIN settings renderSettings__*/
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
-const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Small groups","Staff birthdays","Names on plans"]],
+const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
@@ -13116,6 +13141,7 @@ function setStatus(t,x){try{
   if(t==="Educators")return plural(rosterNames().length,"educator");
   if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
   if(t==="Small groups")return plural(GROUPS.length,"group");
+  if(t==="Garden group")return gardenGroupName()+(gardeners().length?", "+gardeners().join(", "):", held by you");
   if(t==="Classes")return CLASSROOMS.join(", ");
   if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
   if(t==="Names on plans")return plural(rosterNames().length,"name");
@@ -13191,6 +13217,9 @@ function renderSettings(){
   <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of Classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
     <div class="actions"><input type="text" id="c-new" placeholder="A new Class" style="width:200px"><button class="btn small" id="c-add">Add a Class</button></div>${oneListsNote()}</section>
+  <section class="card"><div class="lbl">Garden group</div><div class="hint">Beside the Classes. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any Class. It shows on each Class whose children are in it, and never counts as that Class's plan for reminders. The Garden educator leads it, a role you give in Educators beside the person's own role.</div>
+    <label class="sgf"><span>Name</span><input type="text" id="gg-name" value="${esc(gardenGroupName())}" aria-label="Garden group name" style="flex:1"></label>
+    <div class="cnt">${gardeners().length?`Garden educator: ${esc(gardeners().join(", "))}.`:"No one holds the Garden educator role yet, so you hold it."}</div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
     <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
       <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
@@ -13252,6 +13281,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
 });
 document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;
   if(t.dataset.gname!=null){const n=t.value.trim();if(n){GROUPS[+t.dataset.gname].name=n;saveProgram()}return}
+  if(t.id==="gg-name"){const n=t.value.trim().slice(0,40);if(n){PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{gardenGroup:{name:n}});saveProgram()}return}
   if(t.dataset.groom!=null){GROUPS[+t.dataset.groom].room=t.value;saveProgram();return}
   if(t.dataset.ged!=null){GROUPS[+t.dataset.ged].educator=t.value;saveProgram();return}
 });
