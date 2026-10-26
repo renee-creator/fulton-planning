@@ -4741,7 +4741,7 @@ let guideList=null,guideBusy=false,guideSel="",guidePrev="today";
 /* The libraries for plans, read from the server: recipes, the song book, read-alouds and the bank of provocations and
    curiosity prompts, each a page in the private records the director edits in place with its history. */
 let libData=null,libBusy=false;
-async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","settings"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();return libData}
+async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","settings"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();return libData}
 const libLines=t=>String(t||"").split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].trim());
 // the bank, under a plan's questions, as wonderings an educator can tap in or ignore
 function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libData.provocations;if(!pv)return "";
@@ -4750,7 +4750,7 @@ function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libD
     ${sets.map(([h,l])=>`<details style="margin-top:4px"><summary class="cnt" style="cursor:pointer">${esc(h)}</summary><div class="chips" style="margin-top:4px">${l.map(x=>`<button class="chip" data-insert="${esc(x)} " data-field="${k}">${esc(x)}</button>`).join("")}</div></details>`).join("")}
     ${(pv.parts||[]).filter(p=>/^Where /i.test(p.key)).map(p=>`<div class="cnt" style="margin-top:6px">${guideMd(p.text)}</div>`).join("")}</details>`}
 async function loadGuides(force){if(!window.FP_API||guideBusy||(guideList&&!force))return;guideBusy=true;
-  try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain()}
+  try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain();if(view==="search"&&typeof gsResults==="function")gsResults()}
 const guideBy=(k,v)=>{if(guideList===null)loadGuides();return (guideList||[]).find(g=>v&&String(g[k]||"").toLowerCase()===String(v).toLowerCase())||null};
 const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-guide="${esc(g.slug)}">${esc(label||g.title)}</button>${g.waiting?` <span class="cnt">Draft</span>`:""}`:"";
 function guideMd(t){const L=String(t||"").split("\n");let h="",ul=false;const inl=x=>esc(x).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\[([^\]]+)\]\((https:\/\/[^)\s"]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
@@ -9319,7 +9319,7 @@ function evResults(p){const box=$("#evres");if(!box)return;const q=evQuery.trim(
    One search for observations, photos, plans, threads, projects, slides, walls and stories. It finds words, children's
    names and educators, and narrows by child, small group and when. Photos are found by their words and the children in them. */
 let gs={q:LS.get("tree.gq",""),kid:"",group:"",when:"any",kind:"all"},gsTimer=null;
-const GS_KINDS=[["all","Everything"],["obs","Observations"],["photo","Photos"],["plan","Plans"],["thread","Threads"],["project","Projects"],["slide","Slides"],["wall","Walls"],["story","Stories"]];
+const GS_KINDS=[["all","Everything"],["obs","Observations"],["photo","Photos"],["plan","Plans"],["thread","Threads"],["project","Projects"],["slide","Slides"],["wall","Walls"],["story","Stories"],["garden","Garden"],["library","Libraries"]];
 function gsText(o,depth){depth=depth||0;if(o==null||depth>4)return "";if(typeof o==="string")return o.length>1&&o.length<6000&&!/^(data:|https?:|[A-Za-z0-9_-]{20,}$)/.test(o)?o:"";
   if(Array.isArray(o))return o.map(x=>gsText(x,depth+1)).filter(Boolean).join("\n");
   if(typeof o==="object")return Object.entries(o).filter(([k])=>!/^(id|photo|thumb|data|url|sha|at|createdAt|updatedAt|savedAt|by|updatedBy|updatedByName|kaymbu|children|group|src)$/.test(k)).map(([,v])=>gsText(v,depth+1)).filter(Boolean).join("\n");return ""}
@@ -9348,7 +9348,18 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
     if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"slide",at,text,title:"Slide, "+slideTitle(s),open:`data-slide="${esc(s.id)}"`})}
   for(const st of stories.values()){const text=gsText(st);const at=st.updatedAt||st.at||0;const ids=st.children||[];
     if((gs.when==="any"||inTime(at))&&okKid(ids,text)&&okGrp(ids,[])&&(!terms.length||evMatch(text+"\n"+names(ids),terms)))out.push({kind:"story",at,text,title:"Story, "+stTitle(st),open:`data-story="${esc(st.id)}"`})}
+  if(terms.length&&!kid&&!grp)out.push(...gsLibHits(terms));
   return out.sort((a,b)=>b.at-a.at)}
+/* every plant, animal, wild neighbor and sign in the Garden, and every recipe, song, read-aloud, provocation, artist and
+   materials guide in our libraries, found by typing its name. Each opens in one tap in the sheet over the page. */
+function gsLibHits(terms){const out=[];
+  if(typeof gdn!=="undefined"){if(gdn===null)loadGarden();else if(gdnOk()){
+    for(const [list,lbl] of [[gdn.plants,"Plant"],[gdn.animals,"Animal"],[gdn.wild,"Who lives near us"],[gdn.signs,"Sign"]])for(const x of (list||[])){if(!x||!x.id||(lbl==="Plant"&&x.planned&&!isDirector()))continue;
+      const name=gdnName(x),text=gsText(x);if(!evMatch(name+"\n"+text,terms))continue;
+      out.push({kind:"garden",at:0,text:evMatch(name,terms)?name+(x.latin?", "+x.latin:""):text,title:lbl+", "+name,open:`data-libopen="${esc("garden|"+x.id)}"`})}}}
+  for(const a of attachPool()){if(!evMatch(a.title+"\n"+a.text,terms))continue;
+    out.push({kind:"library",at:0,text:a.title,title:(ATT_KIND[a.kind]||"")+(a.kind==="prompt"?", "+a.id.slice(0,a.id.lastIndexOf("|")):""),open:`data-libopen="${esc(a.kind+"|"+a.id)}"`})}
+  return out}
 /* ---------- Help inside TREE ----------
    Short how-to answers from the records, staff/help.json, each for the roles that can do it, shown at the top of Search
    and as the whole of Search for the kitchen and a new educator. Each prints as a one-page card, as PDF and Word, and the
@@ -9369,7 +9380,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-help
 function renderSearchAll(){
   if(helpOnly()){$("#main").innerHTML=`<div class="head"><h2>Help</h2><div class="sub">How to do things in TREE, in a few short steps.</div></div><section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="Ask how, ex. record a harvest" aria-label="Search Help" autocomplete="off"></section><div id="gres"></div>`;gsResults();return}
   const kids=kidsAt().sort((a,b)=>(a.first||"").localeCompare(b.first||""));
-  $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story.</div></div>
+  $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story, every plant and animal in the Garden, and every recipe, song, read-aloud and artist in our libraries.</div></div>
     <section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="A word, a child's name or an educator, ex. water or Maya" aria-label="Search TREE" autocomplete="off">
       <div class="gsrow"><label>Child<select id="gkid"><option value="">Any child</option>${kids.map(c=>`<option value="${esc(c.id)}" ${gs.kid===c.id?"selected":""}>${esc([c.first,c.last].filter(Boolean).join(" "))}</option>`).join("")}</select></label>
       <label>Small group<select id="ggroup"><option value="">Any group</option>${GROUPS.map(g=>`<option ${gs.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>
@@ -9377,7 +9388,7 @@ function renderSearchAll(){
       <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.filter(([k])=>k!=="wall"||isDirector()).map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
     <div id="gres"></div>`;
   gsResults();if(window.innerWidth>760)$("#gq")?.focus({preventScroll:true})}
-function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);if(helpOnly()){box.innerHTML=hh;return}const all=gsRun();
+function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);if(helpOnly()){const t0=evTerms(gs.q),lh=t0.length?gsLibHits(t0).slice(0,12):[];box.innerHTML=hh+(lh.length?`<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">In the Garden and our libraries</h3><span class="cnt">${lh.length}</span></div><div class="tlist">${lh.map(r=>`<button class="gshit" ${r.open}><span class="cnt">${esc(r.title)}</span><span class="gssnip">${evSnip(r.text,t0)}</span></button>`).join("")}</div></section>`:"");return}const all=gsRun();
   if(!all){box.innerHTML=hh+`<div class="empty">Type a word or choose a child or group to search.</div>`;return}
   const terms=evTerms(gs.q);const rs=gs.kind==="all"?all:all.filter(r=>r.kind===gs.kind);
   if(!rs.length){box.innerHTML=hh+`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}

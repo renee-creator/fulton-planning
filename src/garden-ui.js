@@ -6,6 +6,7 @@
 let gdn=null,gdnAt=0,gdnBusy=false,gdnOpen=LS.get("tree.gdnopen",{})||{},gdnEdit=null,gdnSpaces=null,gdnGuide="children",gdnPlace="";
 async function loadGarden(force){if(gdnBusy||!window.FP_API)return;if(!force&&gdn!==null&&Date.now()-gdnAt<3*60000)return;gdnBusy=true;
   try{gdn=await window.FP_API("/api/staff/garden",{})}catch(e){gdn=false}finally{gdnAt=Date.now();gdnBusy=false}
+  if(view==="search"&&typeof gsResults==="function")gsResults();
   if(!gdnSpaces)try{const d=iso(new Date());const j=await calView(d,d);gdnSpaces=(j.settings&&j.settings.spaces)||[];gdnProgram=j.settings||null}catch(e){gdnSpaces=[]}
   if(["garden","today","kitchen","grant"].includes(view))renderMain()}
 let gdnProgram=null,gdnASeason="";
