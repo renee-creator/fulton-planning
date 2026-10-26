@@ -24,7 +24,17 @@ function start(dir, port, opt) {
       const m = u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)?$/);
       // with opt.gql the mock answers GraphQL requests for files by their ids, the way educator records are read in batches
       if (u.pathname === '/graphql' && opt.gql && /object\(oid:/.test(body.query || '')) { const bs = blobs(); const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(oid:"([a-f0-9]+)"\)/g)) { const b = bs.get(mm[2]); repo[mm[1]] = b ? { text: b.toString('utf8'), isTruncated: false } : null; } opt.gqlCalls = (opt.gqlCalls || 0) + 1; return send(200, { data: { repository: repo } }); }
+      // folders by their path, to four levels, for the GraphQL listing used when the hourly allowance is spent
+      if (u.pathname === '/graphql' && opt.gql && /object\(expression:/.test(body.query || '')) {
+        const tree = (rel, n) => { const full = path.join(dir, rel); if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return null;
+          return { entries: fs.readdirSync(full, { withFileTypes: true }).filter(e => e.name !== '.git').map(e => e.isDirectory() ? { name: e.name, oid: 't', type: 'tree', object: n > 0 ? tree(path.join(rel, e.name), n - 1) : {} } : { name: e.name, oid: blobSha(fs.readFileSync(path.join(full, e.name))), type: 'blob' }) }; };
+        const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(expression:"[^:"]+:([^"]+)"\)/g)) repo[mm[1]] = tree(mm[2], 4);
+        if (/defaultBranchRef/.test(body.query)) repo.defaultBranchRef = { name: 'main' };
+        return send(200, { data: { repository: repo } }); }
+      if (u.pathname === '/graphql' && opt.gql && /defaultBranchRef/.test(body.query || '')) return send(200, { data: { repository: { defaultBranchRef: { name: 'main' } } } });
       if (u.pathname === '/graphql') return send(502, { message: 'not in the mock' });
+      // with opt.spent the REST allowance is spent, so reading anything through REST is refused the way GitHub refuses it
+      if (opt.spent && req.method === 'GET') return send(403, { message: 'API rate limit exceeded' });
       if (!m) return send(404, { message: 'Not Found' });
       const rest = m[1] || '';
       if (!rest) return send(200, { default_branch: 'main', size: 1000 });

@@ -4807,12 +4807,13 @@ const GTH_GARDEN_MONTHS={"12":"winter","03":"spring","06":"summer","09":"fall"};
 let gthForm=null,gthPg=null,gthPgAsked=false;
 const gthEdit=()=>isOffice()&&!VIEW_AS;
 // educators see the page once the director releases it, or one of its gatherings, in Settings, Releases
-const gthPageOpen=()=>(isOffice()&&!VIEW_AS)||!!(window.FP_GATHERINGS&&window.FP_GATHERINGS.open);
+// seen as an educator, the page opens only as it would for that educator, once the director has released it
+const gthPageOpen=()=>{if(isOffice()&&!VIEW_AS)return true;const G=window.FP_GATHERINGS;if(!G)return false;if(VIEW_AS)return !!G.page||(G.list||[]).some(x=>x.released);return !!G.open};
 function gthConf(){const c=participation.get("gatherings")||{};return Object.assign({id:"gatherings",kind:"gatherings",toolkits:{}},c,{toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},c.toolkits||{})})}
 // one list for everyone. The director and the office read the participation items themselves, educators the summary TREE sent
 function gthList(){if(gthEdit()){const jobs=ptItems().filter(x=>x.gatheringId);
     return ptItems().filter(x=>GTH_NAMES[x.gathering]).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999")).map(x=>Object.assign({},x,{ready:x.open!==false,jobsFull:jobs.filter(j=>j.gatheringId===x.id)}))}
-  const G=window.FP_GATHERINGS||{};return (G.list||[]).map(x=>Object.assign({},x,{jobsFull:null}))}
+  const G=window.FP_GATHERINGS||{};return (G.list||[]).filter(x=>!VIEW_AS||G.page||x.released).map(x=>Object.assign({},x,{jobsFull:null}))}
 function gthToolkits(){return gthEdit()?gthConf().toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},(window.FP_GATHERINGS||{}).toolkits||{})}
 // the garden day for a season, the Second Saturday in its first month
 function gthForSeason(key){const mm=Object.keys(GTH_GARDEN_MONTHS).find(m=>GTH_GARDEN_MONTHS[m]===key);const today=iso(new Date());
@@ -4982,16 +4983,20 @@ function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML
         <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, keep only its title, songwriter and recording</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
     :`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
 const readText=x=>((x.parts||[]).find(p=>/^text$/i.test(p.key))||{}).text||"";
+// a story's pages, from its Page headings, each page's lines kept as written
+const readPages=t=>{const out=[];let cur=null;for(const l of String(t||"").split("\n")){const m=l.match(/^#{1,6}\s*(.+)$/);if(m){cur={h:m[1].trim(),lines:[]};out.push(cur);continue}if(!cur){cur={h:"",lines:[]};out.push(cur)}cur.lines.push(l)}
+  return out.map(p=>({h:p.h,text:p.lines.join("\n").replace(/\*\*/g,"").trim()})).filter(p=>p.text)};
+const readPagesHtml=t=>readPages(t).map(p=>`${p.h?`<div class="lbl" style="margin-top:10px">${esc(p.h)}</div>`:""}<div style="white-space:pre-line;margin:4px 0 8px;font-size:17px">${esc(p.text)}</div>`).join("");
 const readGuideParts=x=>(x.parts||[]).filter(p=>!/^text$/i.test(p.key)&&!/^about$/i.test(p.key)&&String(p.text||"").trim());
 function readRow(x){const dir=isDirector()&&!VIEW_AS,t=readText(x);
   return `<details class="strow" data-readrow="${esc(x.id)}" ${songOpen==="r:"+x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> ${x.draft?`<span class="pill" style="pointer-events:none">Draft</span> `:""}<span class="cnt">${esc((x.meta||{}).origin?String(x.meta.origin).charAt(0).toUpperCase()+String(x.meta.origin).slice(1):"")}</span></summary>${x.lead?`<p>${esc(x.lead)}</p>`:""}
     ${readGuideParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
-    ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}
+    ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary>${readPagesHtml(t)}</details>`:""}
     <div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide")}${t?printBtns("readtext",esc(x.id),"The story"):""}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Mark it ready</button>`:""}</div></details>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-readready]");if(!t)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   try{libData=await window.FP_API("/api/staff/library/ready",{path:t.dataset.readready,on:true});toast("Ready. Educators see it now.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 function readGuideDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud, reading guide"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...readGuideParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text))]}}
-function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",readText(x))]}}
+function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:readPages(readText(x)).map(p=>dText(p.h,p.text))}}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
   if(d.songadd!=null){songAdd=d.songadd==="1";renderMain();return}
@@ -5076,7 +5081,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
       ${w?`<div style="white-space:pre-line;margin:8px 0;font-size:17px">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.</div>`:""}${parts(songParts(x),/^$/)}`}
   if(kind==="readaloud"){const t=readText(x);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The story"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
-      ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}`}
+      ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary>${readPagesHtml(t)}</details>`:""}`}
   if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
@@ -13234,8 +13239,17 @@ const yearLabel=y=>{const a=+y.slice(0,4);return a+" to "+(a+1)};
 /* ---------- Children's names on display documentation ---------- */
 const NAME_MODES=[["first","First names"],["full","First name and last initial"],["initials","Initials"],["none","No names"]];
 function shownName(first,last,mode){if(mode==="none")return"";if(mode==="initials")return first[0]+".";if(mode==="full"&&last)return first+" "+last[0]+".";return first}
+// how many letters apart two words are
+function editGap(a,b){a=a.toLowerCase();b=b.toLowerCase();const d=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let prev=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,prev+(a[i-1]===b[j-1]?0:1));prev=t}}return d[b.length]}
+// a name spelled a little differently from the roster, such as Allison for Alisin, is still that child's name
+const NEAR_SKIP=new Set("The They Then There These Those This That When What Where Which While With Will Would Could Should After Before Again Also Another Every Everyone Garden Class Today Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December".split(" "));
+function nearNames(text,names){const out=new Set();const roster=[...names].filter(n=>n&&n.length>=4);
+  for(const w of new Set(String(text||"").match(/\b[A-Z][a-z]{3,}\b/g)||[])){if(names.has(w)||NEAR_SKIP.has(w))continue;
+    if(roster.some(n=>n[0]===w[0]&&Math.abs(n.length-w.length)<=2&&editGap(n,w)<=(Math.min(n.length,w.length)>=6?2:1)))out.add(w)}
+  return out}
 function displayNames(text){
   const named=new Set(kidList().map(c=>c.first));
+  for(const w of nearNames(text,named))named.add(w);
   for(const line of String(text||"").split("\n")){const m=line.match(/^([A-Z][a-z]+)(?: \[\?\])? - /);if(m)named.add(m[1])}
   return [...named].filter(Boolean).sort((a,b)=>b.length-a.length);
 }

@@ -55,6 +55,7 @@ const NOT_NAMES = new Set(['We', 'She', 'He', 'Her', 'His', 'They', 'Them', 'The
 // names that are also the school's own words are never changed, and names that are also everyday words are changed only
 // inside a sentence, so May I help? and Green beans stay as written
 const NEVER_NAMES = new Set(['Fulton', 'Farm', 'School', 'Community', 'Class', 'West', 'North', 'South', 'Garden', 'Piazza']);
+const NEAR_SKIP = new Set('The They Then There These Those This That When What Where Which While With Will Would Could Should After Before Again Also Another Every Everyone Today Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December'.split(' '));
 const EVERYDAY = new Set(('may june april august will grace hope joy rose lily daisy iris ivy sky river rain sunny star green brown white black gray grey bean berry hunter mason taylor cook baker miller wood stone hill rivers summer winter autumn faith bell love max sage olive pearl ruby jade dawn eve art bill frank mark rob sue pat dash').split(' '));
 const shareFamily = (a, b) => { const em = c => new Set(((c && c.parents) || []).map(x => String((x && x.email) || '').trim().toLowerCase()).filter(Boolean)); const x = em(a); return [...em(b)].some(e => x.has(e)); };
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -78,6 +79,11 @@ function withoutOthers(text, child, all) {
     const of = String(child.first || ' ').trim()[0] || ' ', ol = String(child.last || ' ').trim()[0] || ' ';
     if (f) { if (f.toUpperCase() !== of.toUpperCase()) inits.add(f.toUpperCase() + '\\.'); if (l && !(f.toUpperCase() === of.toUpperCase() && l.toUpperCase() === ol.toUpperCase())) inits.add(f.toUpperCase() + '\\.\\s?' + l.toUpperCase() + '\\.'); }
   }
+  // a name spelled a little differently from the roster, such as Allison for Alisin, reads as a friend too
+  const gap = (a, b) => { a = a.toLowerCase(); b = b.toLowerCase(); const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let prev = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const tt = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = tt; } } return d[b.length]; };
+  const roster = [...words].filter(n => n.length >= 4 && /^[A-Z][a-z]+$/.test(n));
+  for (const w of new Set(String(t).match(/\b[A-Z][a-z]{3,}\b/g) || [])) { if (words.has(w) || own.has(w.toLowerCase()) || NEVER_NAMES.has(w) || EVERYDAY.has(w.toLowerCase()) || NEAR_SKIP.has(w)) continue;
+    if (roster.some(n => n[0] === w[0] && Math.abs(n.length - w.length) <= 2 && gap(n, w) <= (Math.min(n.length, w.length) >= 6 ? 2 : 1))) words.add(w); }
   // full names first, then single names, each with a possessive
   const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
   if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos, at, all) => {

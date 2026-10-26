@@ -332,7 +332,7 @@ function readPhoto(sha) {
   return job;
 }
 // the calendar keeps its own part of the records, under calendar/
-const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, token: githubToken, oneLists: () => oneLists(), extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
+const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: branch => gqlDeep(branch, ['calendar']), gqlBranch: async () => { const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`); return ((d.repository || {}).defaultBranchRef || {}).name || 'main'; }, token: githubToken, oneLists: () => oneLists(), extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
 function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
@@ -812,7 +812,9 @@ function familySummaryDraft(cf, child) {
 async function familySummarySentences(fs, child) {
   if (!fs || !fs.parts || !anthropicKey()) return fs;
   const P = fs.parts; const first = String(child.first || 'your child');
-  const parts = { returns: P.returns, friends: P.friends, strengths: P.strengths, goals: P.goals, nextSteps: P.nextSteps, ...Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => ['area_' + k, v])) };
+  // the group line TREE writes itself stays as it is, ahead of the friends the educators named
+  const groupLine = (String(P.friends || '').match(/^[^.]* is in the [^.]* group[^.]*\./) || [''])[0];
+  const parts = { returns: P.returns, friends: String(P.friends || '').slice(groupLine.length).trim(), strengths: P.strengths, goals: P.goals, nextSteps: P.nextSteps, ...Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => ['area_' + k, v])) };
   const keys = Object.keys(parts).filter(k => String(parts[k] || '').trim()); if (!keys.length) return fs;
   const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child, and never name a developmental level. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
 ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
@@ -824,9 +826,8 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
   const tidy = t => fam.withoutOthers(fam.withoutRatings(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()))), child, all);
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
   const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
-  // the group line TREE writes itself stays as it is, ahead of the friends the educators named
-  const groupLine = String(P.friends || '').match(/^[^.]* is in the [^.]* group[^.]*\./); const fr = got('friends');
-  return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: groupLine && !fr.includes(groupLine[0].slice(0, 20)) ? groupLine[0] + ' ' + fr.replace(groupLine[0], '').trim() : fr, strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
+  const fr = String(parts.friends || '').trim() ? got('friends') : '';
+  return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: [groupLine, fr].filter(Boolean).join(' '), strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
 }
 async function draftFamilySummary(cf, child) { const d = familySummaryDraft(cf, child); try { return await familySummarySentences(d, child); } catch (e) { return d; } }
 // each morning and when TREE starts, a conference tomorrow or today with no Family Summary gets its draft

@@ -43,6 +43,14 @@ async function doLoad() {
   if (!githubToken()) { store.error = 'No GITHUB_TOKEN is saved on Render. Add it under Environment.'; log(store.error); return; }
   try {
     const repo = await gh('GET', `/repos/${RECORDS_REPO}`);
+    // when GitHub's hourly allowance is spent, the calendar's records are read through GraphQL, which has its own
+    if ((repo.status === 403 || repo.status === 429) && opts.gqlList && opts.gqlTexts) {
+      store.branch = await opts.gqlBranch(); const files = await opts.gqlList(store.branch);
+      const jobs = files.filter(f => f.path === PROGRAM_PATH || f.path === FEEDS_PATH || /^calendar\/bookings\/\d{4}-\d{2}\.json$/.test(f.path));
+      const tx = await opts.gqlTexts(jobs.map(j => j.sha)); const docs = new Map();
+      for (const j of jobs) { const t = tx.get(j.sha); if (t == null) throw new Error('GitHub could not give ' + j.path); store.shas.set(j.path, j.sha); try { docs.set(j.path, JSON.parse(t)); } catch (e) { log('Skipped unreadable record', j.path); } }
+      setUp(docs); log('Calendar read through GraphQL'); return;
+    }
     if (repo.status === 404) throw new Error(`The records repository ${RECORDS_REPO} was not found, or the GitHub token cannot see it. Check RECORDS_REPO and give the token access to that repository.`);
     if (repo.status === 401) throw new Error('GitHub rejected the token. Make a new fine-grained token with Contents read and write on the records repository.');
     if (repo.status !== 200) throw new Error('GitHub answered ' + repo.status + ' when opening the records repository.');
@@ -63,6 +71,10 @@ async function doLoad() {
       }
     };
     await Promise.all(Array.from({ length: 6 }, worker));
+    setUp(docs);
+  } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
+}
+function setUp(docs) {
     const bookings = [];
     for (const [p, d] of docs) if (p.startsWith('calendar/bookings/') && d && d.items) for (const b of Object.values(d.items)) bookings.push(b);
     const f = docs.get(FEEDS_PATH); feedAddresses = {};
@@ -72,7 +84,6 @@ async function doLoad() {
       onProgram: (by, goneCalendars) => { rev++; lastBy.set(PROGRAM_PATH, by); scheduleSave(PROGRAM_PATH); let changed = false; for (const id of goneCalendars || []) if (feedAddresses[id]) { delete feedAddresses[id]; feeds.delete(id); changed = true; } if (changed) { lastBy.set(FEEDS_PATH, by); scheduleSave(FEEDS_PATH); } } });
     store.ready = true; store.error = '';
     log(`Loaded ${core.count()} sign-ups, ${core.program.spaces.length} spaces, ${Object.keys(feedAddresses).length} calendar addresses`);
-  } catch (e) { store.error = e.message; log('Could not load records.', e.message); }
 }
 function docFor(path) {
   if (path === PROGRAM_PATH) return core.program;
