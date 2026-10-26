@@ -9407,7 +9407,7 @@ function gsLibHits(terms){const out=[];
 let helpData=null,helpBusy=false;
 async function loadHelp(force){if(!window.FP_API||helpBusy||(helpData&&!force))return;helpBusy=true;try{helpData=await window.FP_API("/api/staff/help",{})}catch(e){helpData={list:[]}}finally{helpBusy=false}if(view==="search")gsResults()}
 const helpOnly=()=>isKitchenUser()||isNewHire();
-function helpMatch(q){const L=(helpData&&helpData.list)||[];const terms=String(q||"").toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["how","the","and","for","what","can","does"].includes(w));
+function helpMatch(q){const L=((helpData&&helpData.list)||[]).filter(x=>x.go!=="gatherings"||isDirector()||gthPageOpen());const terms=String(q||"").toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["how","the","and","for","what","can","does"].includes(w));
   if(!terms.length)return L.filter(x=>x.quick);return L.map(x=>{const hay=(x.q+" "+x.words+" "+x.label+" "+(x.a||[]).join(" ")).toLowerCase();const n=terms.filter(w=>hay.includes(w)||hay.includes(w.replace(/s$/,""))).length;return [n,x]}).filter(([n])=>n>=Math.min(terms.length,2)||n===terms.length).sort((a,b)=>b[0]-a[0]).map(([,x])=>x).slice(0,6)}
 const helpCard=x=>`<div class="strow helpans"><b>${esc(x.q)}</b><ol style="margin:4px 0;padding-left:20px">${(x.a||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol><div class="actions" style="margin:2px 0 0">${x.go?`<button class="btn small ghost" data-tview="${esc(x.go)}">Open ${esc(x.label||"the page")}</button>`:""}${printBtns("helpcard",esc(x.id),"PDF")}${pageEditBtn("staff/help.json","Edit",x.id)}</div></div>`;
 function helpHtml(q){if(helpData===null){loadHelp();return ""}const hits=helpMatch(q);const H=helpData||{};
