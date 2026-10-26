@@ -806,12 +806,37 @@ function familySummaryDraft(cf, child) {
     parts: { returns: short(f.interests, 2), friends: [g ? `${child.first} is in the ${g.name} group${g.educator ? ' with ' + g.educator : ''}.` : '', short(f.friends, 2)].filter(Boolean).join(' '),
       areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, short(f[k], 2)])), strengths: short(f.strengths, 2), goals: clean(f.goals), nextSteps: clean(f.nextSteps) } };
 }
+/* the draft reads in complete sentences for the family. The quick model rewrites each part from the educators' own words
+   only, in short warm sentences, with nothing added, no rating and no other child's name. What it gives back is cleaned
+   again the same way, and a part it cannot rewrite keeps the draft's words for the educator to finish. */
+async function familySummarySentences(fs, child) {
+  if (!fs || !fs.parts || !anthropicKey()) return fs;
+  const P = fs.parts; const first = String(child.first || 'your child');
+  const parts = { returns: P.returns, friends: P.friends, strengths: P.strengths, goals: P.goals, nextSteps: P.nextSteps, ...Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => ['area_' + k, v])) };
+  const keys = Object.keys(parts).filter(k => String(parts[k] || '').trim()); if (!keys.length) return fs;
+  const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child, and never name a developmental level. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
+${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
+  let out = null;
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 }); if (res.status !== 200) return fs;
+    const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
+  const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
+  const tidy = t => fam.withoutOthers(fam.withoutRatings(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()))), child, all);
+  const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
+  const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
+  // the group line TREE writes itself stays as it is, ahead of the friends the educators named
+  const groupLine = String(P.friends || '').match(/^[^.]* is in the [^.]* group[^.]*\./); const fr = got('friends');
+  return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: groupLine && !fr.includes(groupLine[0].slice(0, 20)) ? groupLine[0] + ' ' + fr.replace(groupLine[0], '').trim() : fr, strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
+}
+async function draftFamilySummary(cf, child) { const d = familySummaryDraft(cf, child); try { return await familySummarySentences(d, child); } catch (e) { return d; } }
 // each morning and when TREE starts, a conference tomorrow or today with no Family Summary gets its draft
 function draftFamilySummaries() {
   if (!store.ready) return; const t = laDayOf(Date.now()), t1 = laDayOf(Date.now() + 864e5); let n = 0;
   for (const [id, r] of store.recs.conferences) { const cf = r && !r.deleted && r.doc; if (!cf || !cf.confDate || (cf.confDate !== t && cf.confDate !== t1) || cf.familySummary || cf.status === 'complete') continue;
     const k = store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc; if (!child || child.status === 'withdrawn') continue;
-    cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id); n++; }
+    cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id); n++;
+    // then set in complete sentences, unless an educator has read or changed it in the meantime
+    const drafted = cf.familySummary; draftFamilySummary(cf, Object.assign({ id: cf.childId }, child)).then(d => { const r2 = store.recs.conferences.get(id); if (!r2 || !r2.doc || r2.doc.familySummary !== drafted || drafted.readAt) return; r2.doc.familySummary = d; r2.local = true; noteChange('conferences', id); scheduleSave('conferences', id); }).catch(() => {}); }
   if (n) log('Family Summaries drafted for tomorrow\'s conferences,', n);
 }
 setInterval(() => { try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); } }, 60 * 60e3).unref();
@@ -1999,7 +2024,7 @@ async function handle(req, res) {
     const r = store.recs.conferences.get(String(body.id || '')); const cf = r && !r.deleted && r.doc; const k = cf && store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc;
     if (!cf || !child) { err(req, res, 404, 'That conference is not here.'); return; }
     if (cf.familySummary && cf.familySummary.readAt && !body.again) { json(req, res, 200, { familySummary: cf.familySummary }); return; }
-    cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', r.doc.id || String(body.id)); scheduleSave('conferences', String(body.id));
+    cf.familySummary = await draftFamilySummary(cf, Object.assign({ id: cf.childId }, child)); cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', r.doc.id || String(body.id)); scheduleSave('conferences', String(body.id));
     json(req, res, 200, { familySummary: cf.familySummary }); return;
   }
   // what goes home from a conference, kept on the conference by the server itself, so a draft TREE made a moment ago and
