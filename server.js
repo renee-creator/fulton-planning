@@ -656,6 +656,8 @@ async function doLoadGraph() {
   runOnce();
   try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); }
   try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
+  // the educator records load the same way, through GraphQL when the allowance is spent
+  staff.load().then(() => runOnce(), e => log('Educator records could not be read', e.message));
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
 }
 async function doLoad() {
