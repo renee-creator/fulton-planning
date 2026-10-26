@@ -4787,8 +4787,8 @@ const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
 const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
 const SENSORY_NOTE="Sensory recipes use pantry staples only, such as flour, salt, cornstarch and oil, never fresh food or produce. We color with garden plants and use no glitter.";
 function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key));const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
-  return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).source||"")}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
-    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
+  return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
+    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.meta||{}).allergens?`<div class="gsafe"><b>Contains ${esc(x.meta.allergens)}.</b> Check each child's food notes first.</div>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
     ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
     ${parts.map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     ${recPhotoFor===x.id?recPhotoPick(x):""}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>
@@ -4902,7 +4902,23 @@ function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHT
     <div class="tseg" role="group" aria-label="Kind" style="margin-bottom:10px"><button data-reckind="food" aria-pressed="${recKind==="food"}">Food recipes</button><button data-reckind="sensory" aria-pressed="${recKind==="sensory"}">Sensory recipes</button></div>
     ${drafts.length&&(isDirector()||isKitchenUser())?`<section class="card"><div class="lbl">Drafts waiting</div><div class="cnt">${drafts.length} recipe${drafts.length===1?"":"s"} from educators or families, waiting for you below.</div></section>`:""}
     <section class="card">${list.map(recipeCard).join("")||`<div class="empty">No ${recKind} recipes yet.</div>`}</section>
-    <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>`}
+    <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>
+    ${recPicturesHtml()}`}
+/* Pictures still needed. Every ingredient, tool and measuring cup or spoon the recipes name that has no realistic picture
+   yet, so the director or an educator can add a realistic image or a photo from the piazza, which passes the face check
+   first. Every sheet using the item updates. The director can replace any picture with her own photo. */
+let recPicOpen=false;
+function recPicturesHtml(){if(typeof demoItemsAll!=="function"||!libData)return "";const P=libData.pictures||{};const all=demoItemsAll().sort((a,b)=>b.recipes.size-a.recipes.size||a.name.localeCompare(b.name));
+  const need=all.filter(x=>!P[x.key]),have=all.filter(x=>P[x.key]);const dir=isDirector()&&!VIEW_AS;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Pictures still needed</h3><span class="cnt">${need.length} of ${all.length}</span></div>
+    <div class="hint">The demonstration sheets show a realistic picture for each ingredient and tool, on white, and the words alone until there is one. A photo from the piazza can stand for an item once the face check on this device finds no face.</div>
+    <details ${recPicOpen?"open":""} data-recpicfold="1"><summary class="linkbtn">${need.length} items still need a picture</summary>${need.map(x=>`<div class="prow"><div><b>${esc(x.name)}</b> <span class="cnt">${esc(x.kind)}, in ${x.recipes.size} recipe${x.recipes.size===1?"":"s"}</span></div><button class="btn small ghost" data-recpic="${esc(x.key)}">Add a picture</button></div>`).join("")}</details>
+    ${have.length?`<details><summary class="linkbtn">${have.length} items with a picture</summary>${have.map(x=>`<div class="prow"><div><b>${esc(x.name)}</b> <span class="cnt">${P[x.key].from==="photo"?"our photo":"from the picture library"}</span></div>${dir?`<button class="linkbtn" data-recpic="${esc(x.key)}">Replace with our photo</button>`:""}</div>`).join("")}</details>`:""}</section>`}
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.recpicfold)recPicOpen=d.open},true);
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-recpic]");if(!t||view!=="recipes")return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const f=await new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()});if(!f)return;
+  try{progress("Checking the photo for faces");const blob=await shrinkImage(f);if(!(await gdnFaceFree(blob))){toast("A face may show in this photo, so it is not used. Choose another.");return}
+    const id=await window.FP_KEEP_ORIGINAL(blob,"recipe-picture.jpg");libData=await window.FP_API("/api/staff/library/picture",{name:t.dataset.recpic,id,noFace:true});toast("The picture is kept, and every sheet using it shows it now.");renderMain()}catch(er){toast(er&&er.message||"The picture could not be kept.")}});
 function recipeForm(){return `<div class="lbl">${recCanEdit()?"A new recipe":"A recipe for the director"}</div>${recCanEdit()?"":`<div class="hint">It waits as a draft until the director adds it to the library.</div>`}
   <div class="kfields"><label>Name<input type="text" id="rc-title"></label><label>Kind<select id="rc-kind"><option value="food" ${recKind==="food"?"selected":""}>Food</option><option value="sensory" ${recKind==="sensory"?"selected":""}>Sensory</option></select></label><label>Where it comes from<input type="text" id="rc-source" placeholder="Ex. Ours, or a family's"></label></div>
   <label class="fld-label">Ingredients, one on each line<textarea id="rc-ing" rows="5" placeholder="2 cups flour"></textarea></label>
@@ -4994,8 +5010,8 @@ let attachOpen="",attachQ="";
 const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",prompt:"Provocation",guide:"Materials guide"};
 const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
 function attachPool(){if(!libData){loadLibrary();return []}const out=[];
-  for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients")].join(" ")});
-  for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:x.title});
+  for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients"),(x.meta||{}).produce,(x.meta||{}).season].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
+  for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:[x.title,recPart(x,"When we sing it"),recPart(x,"Connections")].join(" ")});
   for(const x of (libData.readalouds||[]))out.push({kind:"readaloud",id:x.id,title:x.title,text:[x.title,x.lead].join(" ")});
   const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
   if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});

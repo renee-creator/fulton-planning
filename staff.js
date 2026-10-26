@@ -115,7 +115,7 @@ module.exports = function staffModule(o) {
       // the Family Handbook's editions are read here too, beside the Teacher Policies and Procedures
       const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
       // the pictures in the policies are read only when someone opens them
-      for (const f of all) if (/^(staff\/policies|family\/handbook)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
+      for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
       const seen = new Set(want.map(f => f.path));
       for (const p of [...S.files.keys()]) if (/\.md$/.test(p) && !seen.has(p)) S.files.delete(p);
       // a file already read at this version is kept as it is, and the rest are read six at a time
@@ -414,8 +414,8 @@ module.exports = function staffModule(o) {
     // a kitchen sign-in reaches its own records page and nothing else here
     // the kitchen also adds and edits recipes in the recipe library
     const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''));
-    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
-    if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err }); return; }
+    if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo', 'library/img', 'library/picture'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
+    if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
@@ -896,7 +896,7 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
-  const LIB = require('./library.js')({ S, get, putText, log, isDirector, isKitchen });
+  const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p) });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,

@@ -5469,8 +5469,8 @@ const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
 const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
 const SENSORY_NOTE="Sensory recipes use pantry staples only, such as flour, salt, cornstarch and oil, never fresh food or produce. We color with garden plants and use no glitter.";
 function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key));const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
-  return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).source||"")}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
-    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
+  return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
+    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.meta||{}).allergens?`<div class="gsafe"><b>Contains ${esc(x.meta.allergens)}.</b> Check each child's food notes first.</div>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
     ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
     ${parts.map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     ${recPhotoFor===x.id?recPhotoPick(x):""}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}</div>
@@ -5584,7 +5584,23 @@ function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHT
     <div class="tseg" role="group" aria-label="Kind" style="margin-bottom:10px"><button data-reckind="food" aria-pressed="${recKind==="food"}">Food recipes</button><button data-reckind="sensory" aria-pressed="${recKind==="sensory"}">Sensory recipes</button></div>
     ${drafts.length&&(isDirector()||isKitchenUser())?`<section class="card"><div class="lbl">Drafts waiting</div><div class="cnt">${drafts.length} recipe${drafts.length===1?"":"s"} from educators or families, waiting for you below.</div></section>`:""}
     <section class="card">${list.map(recipeCard).join("")||`<div class="empty">No ${recKind} recipes yet.</div>`}</section>
-    <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>`}
+    <section class="card">${recAdd?recipeForm():`<button class="btn small ghost" data-recadd="1">${recCanEdit()?"Add a recipe":"Send a recipe to the director"}</button>`}</section>
+    ${recPicturesHtml()}`}
+/* Pictures still needed. Every ingredient, tool and measuring cup or spoon the recipes name that has no realistic picture
+   yet, so the director or an educator can add a realistic image or a photo from the piazza, which passes the face check
+   first. Every sheet using the item updates. The director can replace any picture with her own photo. */
+let recPicOpen=false;
+function recPicturesHtml(){if(typeof demoItemsAll!=="function"||!libData)return "";const P=libData.pictures||{};const all=demoItemsAll().sort((a,b)=>b.recipes.size-a.recipes.size||a.name.localeCompare(b.name));
+  const need=all.filter(x=>!P[x.key]),have=all.filter(x=>P[x.key]);const dir=isDirector()&&!VIEW_AS;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Pictures still needed</h3><span class="cnt">${need.length} of ${all.length}</span></div>
+    <div class="hint">The demonstration sheets show a realistic picture for each ingredient and tool, on white, and the words alone until there is one. A photo from the piazza can stand for an item once the face check on this device finds no face.</div>
+    <details ${recPicOpen?"open":""} data-recpicfold="1"><summary class="linkbtn">${need.length} items still need a picture</summary>${need.map(x=>`<div class="prow"><div><b>${esc(x.name)}</b> <span class="cnt">${esc(x.kind)}, in ${x.recipes.size} recipe${x.recipes.size===1?"":"s"}</span></div><button class="btn small ghost" data-recpic="${esc(x.key)}">Add a picture</button></div>`).join("")}</details>
+    ${have.length?`<details><summary class="linkbtn">${have.length} items with a picture</summary>${have.map(x=>`<div class="prow"><div><b>${esc(x.name)}</b> <span class="cnt">${P[x.key].from==="photo"?"our photo":"from the picture library"}</span></div>${dir?`<button class="linkbtn" data-recpic="${esc(x.key)}">Replace with our photo</button>`:""}</div>`).join("")}</details>`:""}</section>`}
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.recpicfold)recPicOpen=d.open},true);
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-recpic]");if(!t||view!=="recipes")return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const f=await new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()});if(!f)return;
+  try{progress("Checking the photo for faces");const blob=await shrinkImage(f);if(!(await gdnFaceFree(blob))){toast("A face may show in this photo, so it is not used. Choose another.");return}
+    const id=await window.FP_KEEP_ORIGINAL(blob,"recipe-picture.jpg");libData=await window.FP_API("/api/staff/library/picture",{name:t.dataset.recpic,id,noFace:true});toast("The picture is kept, and every sheet using it shows it now.");renderMain()}catch(er){toast(er&&er.message||"The picture could not be kept.")}});
 function recipeForm(){return `<div class="lbl">${recCanEdit()?"A new recipe":"A recipe for the director"}</div>${recCanEdit()?"":`<div class="hint">It waits as a draft until the director adds it to the library.</div>`}
   <div class="kfields"><label>Name<input type="text" id="rc-title"></label><label>Kind<select id="rc-kind"><option value="food" ${recKind==="food"?"selected":""}>Food</option><option value="sensory" ${recKind==="sensory"?"selected":""}>Sensory</option></select></label><label>Where it comes from<input type="text" id="rc-source" placeholder="Ex. Ours, or a family's"></label></div>
   <label class="fld-label">Ingredients, one on each line<textarea id="rc-ing" rows="5" placeholder="2 cups flour"></textarea></label>
@@ -5607,11 +5623,13 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.datas
 /* ---------- Demonstration recipe sheets ----------
    Every food and sensory recipe also prints as a step by step demonstration set for the piazza, through the one print
    kit. Washing our hands is always the first step. Each step has its own large sheet with one action and very few words,
-   in Andika. Each measurement is drawn, a measuring cup or spoon at its true size beside the others, filled to its level
-   and repeated for how many to add, so 2 cups shows two full cups and 1/2 teaspoon shows a half full teaspoon. Each
-   ingredient and tool has a simple drawing, waiting and cooking times show a clock, and a step only an adult does, such
-   as the oven, the griddle or a knife, carries the adult hand. A photo from our own observations can stand on a step once
-   the face check finds no faces. One overview sheet lists the ingredients and tools for setting up. Letter and poster. */
+   in Andika. Ingredients and tools show realistic pictures from our picture library, one per item, each on white in one
+   consistent style, with the item's name in large type beside it, so sugar and salt are never mistaken. A step shows the
+   picture for exactly the item it names. An item with no picture yet shows its words only, never a drawing, and waits on
+   the recipe library's Pictures still needed list. A measurement shows the real photo of the right measuring cup or spoon
+   when the library has one, repeated for how many are needed, with the amount in large type beside it. Waiting and
+   cooking times show a clock, and a step only an adult does carries the adult hand. A photo from our own observations
+   can stand on a step once the face check finds no faces. One overview sheet lists the ingredients and tools. */
 const DEMO_INK="#2f3b2f",DEMO_SOFT="#e9efe2",DEMO_WARM="#f4e2c2",DEMO_LINE=6;
 // a measure read from an ingredient line, such as 2 1/2 cups milk or 1/4 teaspoon salt
 const DEMO_UNITS=[["cup",/^(cups?|c\.?)\b/i],["tablespoon",/^(tablespoons?|tbsp\.?|tbs\.?|T)\b/],["teaspoon",/^(teaspoons?|tsp\.?|t)\b/]];
@@ -5625,43 +5643,26 @@ const demoFracText=n=>{const w=Math.floor(n+1e-9),f=n-w,F=[[.25,"1/4"],[1/3,"1/3
 // a canvas, drawn at a set size in pixels, as a picture for both the PDF and the Word file
 function demoCanvas(w,h,draw){const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");g.lineCap="round";g.lineJoin="round";g.strokeStyle=DEMO_INK;g.fillStyle=DEMO_SOFT;g.lineWidth=DEMO_LINE;draw(g,w,h);return c.toDataURL("image/png")}
 const demoRR=(g,x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
-// a measuring cup or spoon at its true size beside the others, filled to its level. A cup holds 16 tablespoons and a
-// tablespoon 3 teaspoons, so each is drawn by the cube root of what it holds.
-const DEMO_SCALE={cup:1,tablespoon:Math.cbrt(1/16),teaspoon:Math.cbrt(1/48)};
-function demoMeasure(unit,fill){const S=DEMO_SCALE[unit]||1,W=360,H=300;return demoCanvas(W,H,(g)=>{
-  if(unit==="cup"){const w=200*S,h=170*S,x=40,y=H-30-h;
-    g.save();demoRR(g,x,y,w,h,18*S);g.clip();g.fillStyle=DEMO_WARM;g.fillRect(x,y+h*(1-fill),w,h*fill);g.restore();
-    demoRR(g,x,y,w,h,18*S);g.stroke();g.beginPath();g.moveTo(x+w,y+h*.25);g.lineTo(x+w+110*S,y+h*.2);g.lineTo(x+w+110*S,y+h*.42);g.lineTo(x+w,y+h*.45);g.stroke();
-    if(fill<1){g.setLineDash([10,10]);g.beginPath();g.moveTo(x,y+h*(1-fill));g.lineTo(x+w,y+h*(1-fill));g.stroke();g.setLineDash([])}}
-  else{const r=110*S,cx=40+r,cy=H-40-r*.6;g.save();g.beginPath();g.ellipse(cx,cy,r,r*.6,0,0,Math.PI*2);g.clip();g.fillStyle=DEMO_WARM;g.fillRect(cx-r,cy+r*.6-r*1.2*fill,2*r,r*1.2*fill);g.restore();
-    g.beginPath();g.ellipse(cx,cy,r,r*.6,0,0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(cx+r,cy);g.lineTo(cx+r+220*Math.max(.5,S),cy-30);g.stroke();
-    if(fill<1){g.setLineDash([8,8]);g.beginPath();g.moveTo(cx-r,cy+r*.6-r*1.2*fill);g.lineTo(cx+r,cy+r*.6-r*1.2*fill);g.stroke();g.setLineDash([])}}})}
-// a simple drawing for an ingredient or a tool, chosen by its words
-const DEMO_ICONS=[["egg",/\begg/i],["banana",/banana/i],["milk",/milk/i],["bottle",/\b(oil|vanilla|vinegar|glue)\b/i],["butter",/butter|spread/i],["water",/\bwater\b/i],["bread",/bread|toast/i],
-  ["sack",/flour|oats|rice|noodle|pasta/i],["shaker",/\bsalt\b|pepper|seasoning|cinnamon|sugar|powder|soda|tartar|thyme|parsley|herb|spice|borax/i],["veg",/carrot|celery|onion|garlic|tomato|bean|pear|apple|fruit|squash|chicken|berr/i],
-  ["paint",/colou?r/i],["bowl",/bowl/i],["whisk",/whisk/i],["spoon",/spoon|spatula|fork/i],["pan",/griddle|pan|pot|kettle|waffle|tin|oven/i],["knife",/knife|cutting board|food processor/i],["brush",/brush/i],["plate",/plate|tray/i]];
-function demoIconKind(t){const x=DEMO_ICONS.find(([,re])=>re.test(t||""));return x?x[0]:"dot"}
-function demoIcon(kind){return demoCanvas(300,300,(g,W,H)=>{const c=W/2;g.fillStyle=DEMO_SOFT;
-  const circ=(x,y,r,f)=>{g.beginPath();g.arc(x,y,r,0,Math.PI*2);if(f)g.fill();g.stroke()};
-  if(kind==="egg"){g.beginPath();g.ellipse(c,c+10,80,105,0,0,Math.PI*2);g.fill();g.stroke()}
-  else if(kind==="banana"){g.fillStyle="#f6e08a";g.beginPath();g.moveTo(50,110);g.quadraticCurveTo(150,290,260,110);g.quadraticCurveTo(150,220,50,110);g.fill();g.stroke()}
-  else if(kind==="milk"){demoRR(g,95,90,110,180,10);g.fill();g.stroke();g.beginPath();g.moveTo(95,90);g.lineTo(150,40);g.lineTo(205,90);g.stroke()}
-  else if(kind==="bottle"){demoRR(g,105,110,90,160,20);g.fill();g.stroke();demoRR(g,130,50,40,60,8);g.stroke()}
-  else if(kind==="butter"){demoRR(g,60,120,180,90,8);g.fillStyle="#fbefb0";g.fill();g.stroke()}
-  else if(kind==="water"){g.fillStyle="#cfe5f2";g.beginPath();g.moveTo(c,50);g.quadraticCurveTo(250,200,c,250);g.quadraticCurveTo(50,200,c,50);g.fill();g.stroke()}
-  else if(kind==="bread"){g.fillStyle=DEMO_WARM;g.beginPath();g.moveTo(70,250);g.lineTo(70,140);g.arc(c,140,80,Math.PI,0);g.lineTo(230,250);g.closePath();g.fill();g.stroke()}
-  else if(kind==="sack"){g.beginPath();g.moveTo(80,260);g.lineTo(90,100);g.lineTo(210,100);g.lineTo(220,260);g.closePath();g.fill();g.stroke();g.beginPath();g.moveTo(100,100);g.lineTo(150,70);g.lineTo(200,100);g.stroke()}
-  else if(kind==="shaker"){demoRR(g,100,110,100,150,16);g.fill();g.stroke();demoRR(g,100,70,100,40,10);g.stroke();for(const x of [125,150,175])circ(x,90,4,false)}
-  else if(kind==="veg"){g.fillStyle="#f2b880";circ(c,170,80,true);g.beginPath();g.moveTo(c,90);g.quadraticCurveTo(c+40,40,c+70,60);g.stroke()}
-  else if(kind==="paint"){g.fillStyle="#e8c25a";g.beginPath();g.moveTo(c,60);g.quadraticCurveTo(240,200,c,250);g.quadraticCurveTo(60,200,c,60);g.fill();g.stroke()}
-  else if(kind==="bowl"){g.beginPath();g.moveTo(50,140);g.lineTo(250,140);g.quadraticCurveTo(250,250,c,250);g.quadraticCurveTo(50,250,50,140);g.fill();g.stroke()}
-  else if(kind==="whisk"){g.beginPath();g.moveTo(c,270);g.lineTo(c,170);g.stroke();for(const d of [-40,-15,15,40]){g.beginPath();g.moveTo(c,170);g.quadraticCurveTo(c+d*2,90,c,40);g.stroke()}}
-  else if(kind==="spoon"){g.beginPath();g.ellipse(c,90,40,55,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.moveTo(c,145);g.lineTo(c,270);g.stroke()}
-  else if(kind==="pan"){g.beginPath();g.ellipse(130,170,90,40,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.moveTo(220,170);g.lineTo(285,150);g.stroke()}
-  else if(kind==="knife"){g.beginPath();g.moveTo(60,200);g.lineTo(200,120);g.lineTo(215,140);g.lineTo(80,215);g.closePath();g.fill();g.stroke();g.beginPath();g.moveTo(205,128);g.lineTo(260,95);g.stroke()}
-  else if(kind==="brush"){demoRR(g,120,40,60,80,8);g.fill();g.stroke();g.beginPath();g.moveTo(c,120);g.lineTo(c,270);g.stroke()}
-  else if(kind==="plate"){g.beginPath();g.ellipse(c,170,120,55,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.ellipse(c,170,70,30,0,0,Math.PI*2);g.stroke()}
-  else circ(c,c,70,true)})}
+// the picture library's key for an item, such as whole_wheat_flour for 2 3/4 cups whole wheat flour, or banana for 5 bananas, mashed
+const demoKey=t=>{let x=String(t||"").toLowerCase().replace(/\(.*?\)/g,"").split(",")[0].replace(/^(a|an|the|some|our)\s+/,"").replace(/[^a-z\s]/g," ").trim().replace(/\s+/g," ");
+  x=x.replace(/\b(large|small|medium|fresh|dried|ripe|chopped|mashed|sliced|grated|softened|melted|warm|cold|boiling|ground|raw|cooked|about|plus|more|for|the|to|taste)\b/g," ").replace(/\s+/g," ").trim();
+  const w=x.split(" ");const last=w.pop()||"";const sing=/(ss|us)$/.test(last)?last:last.replace(/(ches|shes|sses|xes)$/,m=>m.slice(0,-2)).replace(/ies$/,"y").replace(/oes$/,"o").replace(/s$/,"");return [...w,sing].filter(Boolean).join("_")};
+const demoPicOf=key=>{const P=(libData&&libData.pictures)||{};if(P[key])return Object.assign({key},P[key]);const parts=key.split("_");for(let i=1;i<parts.length;i++){const k=parts.slice(i).join("_");if(P[k]&&P[k].from==="photo"&&false)return Object.assign({key:k},P[k])}return null};
+const demoPicCache=new Map();
+// a picture as a data address for the PDF and the Word file, read once
+async function demoPicData(pic){if(!pic)return null;const ck=pic.from+"|"+(pic.id||pic.path);if(demoPicCache.has(ck))return demoPicCache.get(ck);let blob=null;
+  try{if(pic.from==="photo"&&window.FP_ORIGINAL_URL)blob=await (await fetch(window.FP_ORIGINAL_URL(pic.id))).blob();
+    else{const r=await fetch(window.FP_SERVER+"/api/staff/library/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({name:pic.key})});if(r.ok)blob=await r.blob()}}catch(e){blob=null}
+  if(!blob||!blob.size){demoPicCache.set(ck,null);return null}
+  // drawn onto white as a JPEG, so the PDF and Word file stay small and every picture sits on the same white
+  const url=await new Promise(ok=>{const im=new Image();const u=URL.createObjectURL(blob);im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({data:c.toDataURL("image/jpeg",.86),w:c.width,h:c.height})};im.onerror=()=>{URL.revokeObjectURL(u);ok(null)};im.src=u});
+  demoPicCache.set(ck,url);return url}
+// every item the recipes name, ingredients and tools, by key, for the Pictures still needed list
+function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){
+    for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
+    for(const l of libLines(recPart(x,"Tools"))){const k=demoKey(l);if(k&&!out.has(k))out.set(k,{key:k,name:k.replace(/_/g," "),kind:"tool",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
+    for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);if(q&&q.unit){const k=q.unit==="cup"?"measuring_cup":q.unit;if(!out.has(k))out.set(k,{key:k,name:q.unit==="cup"?"measuring cup":q.unit,kind:"measure",recipes:new Set()});out.get(k).recipes.add(x.title)}}}
+  return [...out.values()]}
 // the adult hand, for a step only an adult does
 function demoHand(){return demoCanvas(300,300,(g)=>{g.fillStyle="#f3d7c7";g.beginPath();g.moveTo(90,280);g.lineTo(90,150);for(const [x,h] of [[90,90],[125,60],[160,55],[195,75]]){g.lineTo(x,h);g.arc(x+17,h,17,Math.PI,0);g.lineTo(x+34,150)}
   g.lineTo(229,150);g.quadraticCurveTo(275,120,262,180);g.lineTo(229,260);g.lineTo(210,280);g.closePath();g.fill();g.stroke()})}
@@ -5670,42 +5671,53 @@ function demoClock(){return demoCanvas(300,300,(g)=>{g.beginPath();g.arc(150,150
 // hands under running water, for the first step
 function demoWash(){return demoCanvas(300,300,(g)=>{g.fillStyle="#cfe5f2";for(const x of [120,150,180]){g.beginPath();g.moveTo(x,30);g.quadraticCurveTo(x+14,70,x,90);g.quadraticCurveTo(x-14,70,x,30);g.fill();g.stroke()}
   g.fillStyle="#f3d7c7";demoRR(g,70,140,160,110,50);g.fill();g.stroke()})}
-// the sheets of a recipe, each with its words and pictures, drawn the same way on paper and in Word
-function demoPlan(x){const ings=libLines(recPart(x,"Ingredients")),tools=libLines(recPart(x,"Tools")),steps=libLines(recPart(x,"Steps"));
+// the sheets of a recipe, each with its words and pictures, laid out the same way on paper and in Word
+async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(recPart(x,"Ingredients")),tools=libLines(recPart(x,"Tools"));let steps=libLines(recPart(x,"Steps"));
+  // the washing sheet is always first, so a recipe's own first step about washing is not shown twice
+  if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
   const qs=ings.map(l=>({line:l,q:demoQty(l)}));const photos={};String((x.meta||{}).photos||"").split(/[;,]\s*/).forEach(p=>{const m=p.match(/^(\d+)=(.+)$/);if(m)photos[+m[1]]=m[2].trim()});
-  const sheets=[{n:1,text:"Wash our hands.",pics:[{img:demoWash(),w:1.2}],adult:false}];
-  // an ingredient's measure is drawn the first time a step names it, and later steps show only its picture
+  const sheets=[{n:1,text:"Wash our hands.",pics:[{img:demoWash(),w:1.2,drawn:true}],words:[],adult:false}];
   const measured=new Set();
-  steps.forEach((s,i)=>{const adult=/^an adult\b/i.test(s);const text=s;const pics=[];
-    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|whole|wheat|large|small|fresh|dried|ground|white|boiling|warm|school)$/i.test(w));if(!keys.some(k=>new RegExp("\\b"+k.replace(/(es|s)$/,"")+"(e?s)?\\b","i").test(s)))continue;
-      const first=!measured.has(line);measured.add(line);const fills=first?demoFills(q):[];fills.forEach(f=>pics.push({img:demoMeasure(q.unit,f),w:.8,cap:demoFracText(f)+" "+q.unit}));
-      pics.push({img:demoIcon(demoIconKind(name)),w:.7,cap:(first&&q&&q.n&&!fills.length?demoFracText(q.n)+" ":"")+name.replace(/\s*\(.*\)$/,"")});if(pics.length>12)break}
-    if(!pics.length)for(const t of tools)if(new RegExp("\\b"+(t.split(/\s+/).slice(-1)[0]||"").replace(/s$/,"")+"\\b","i").test(s))pics.push({img:demoIcon(demoIconKind(t)),w:.8,cap:t.replace(/^(a|an|the)\s+/i,"")});
-    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.8,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes"});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.8,cap:"wait"});
-    sheets.push({n:i+2,text,adult,pics,photo:photos[i+2]||photos[String(i+2)]||""})});
-  const overview={title:x.title,ings:qs.map(({line,q})=>({text:line,img:demoIcon(demoIconKind(q?q.item:line))})),tools:tools.map(t=>({text:t,img:demoIcon(demoIconKind(t))}))};
+  for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
+    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
+      if(!keys.length||!keys.every(k=>new RegExp("\\b"+k.replace(/(es|s)$/,"")+"(e?s)?\\b","i").test(s)))continue;
+      const first=!measured.has(line);measured.add(line);const key=demoKey(q?q.item:line);const label=name.replace(/\s*\(.*\)$/,"");
+      // the measure first, the right cup or spoon repeated for how many, with the amount in large type
+      const amount=first&&q&&q.n?demoFracText(q.n)+(q.unit?" "+q.unit+(q.n>1?"s":""):""):"";
+      if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
+      const pd=await demoPicData(demoPicOf(key));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
+    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
+    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.7,cap:"wait",drawn:true});
+    sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
+  const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t)));return {text:t,img:pd?pd.data:null}};
+  const overview={title:x.title,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
   return {overview,sheets,hand:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
-async function demoPdf(x,size){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
+const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
+async function demoPdf(x,size){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
-  // the overview, for setting up
+  // the overview, for setting up, with a picture where the library has one and the words always
   font(true);doc.setFontSize(34*k);doc.text(P.overview.title,M,M+30*k);doc.setFontSize(20*k);doc.text("What we need",M,M+70*k);
-  let y=M+86*k;const row=(it)=>{doc.addImage(it.img,"PNG",M,y,44*k,44*k);font(false);doc.setFontSize(16*k);doc.text(doc.splitTextToSize(it.text,S.w-M*2-60*k),M+56*k,y+27*k);y+=50*k;if(y>S.h-M-50*k){doc.addPage([S.w,S.h]);y=M}};
+  let y=M+86*k;const row=(it)=>{if(it.img)doc.addImage(it.img,demoFmt(it.img),M,y,44*k,44*k);font(false);doc.setFontSize(16*k);doc.text(doc.splitTextToSize(it.text,S.w-M*2-60*k),M+(it.img?56*k:0),y+27*k);y+=50*k;if(y>S.h-M-50*k){doc.addPage([S.w,S.h]);y=M}};
   P.overview.ings.forEach(row);if(P.overview.tools.length){font(true);doc.setFontSize(20*k);doc.text("Tools",M,y+20*k);y+=34*k;P.overview.tools.forEach(row)}
   for(const sh of P.sheets){doc.addPage([S.w,S.h]);font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
     doc.setFontSize(44*k);const lines=doc.splitTextToSize(sh.text,S.w-M*2-(sh.adult?130*k:0));doc.text(lines,M,M+110*k);let top=M+110*k+lines.length*50*k;
     if(sh.adult){doc.addImage(P.hand,"PNG",S.w-M-90*k,M,90*k,90*k);font(false);doc.setFontSize(14*k);doc.text("An adult does this step",S.w-M,M+104*k,{align:"right"})}
     if(sh.photo&&window.FP_ORIGINAL_URL){try{const b=await (await fetch(window.FP_ORIGINAL_URL(sh.photo))).blob();const u=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});doc.addImage(u,"JPEG",M,top,S.w-M*2,(S.w-M*2)*.6);top+=(S.w-M*2)*.6+16*k}catch(e){}}
-    let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+30*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,"PNG",x0,top,w,h);if(p.cap){font(false);doc.setFontSize(15*k);doc.text(p.cap,x0+w/2,top+h+16*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}}
+    // the amounts and the items with no picture yet, in large type
+    for(const w of sh.words){if(top>S.h-M-60*k)break;font(true);doc.setFontSize(30*k);const wl=doc.splitTextToSize(w.big,S.w-M*2);doc.text(wl,M,top+30*k);top+=wl.length*36*k+6*k}
+    if(sh.words.length)top+=10*k;
+    let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+(p.big?44:30)*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,demoFmt(p.img),x0,top,w,h);if(p.cap){font(!!p.big);doc.setFontSize((p.big?24:15)*k);doc.text(doc.splitTextToSize(p.cap,w+10*k),x0+w/2,top+h+(p.big?26:16)*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}}
   return doc.output("blob")}
 // the same set as a Word file, one page for each sheet
-async function demoWord(x,size){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
-  const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:"png",transformation:{width:Math.round(w),height:Math.round(w)}});
+async function demoWord(x,size){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
+  const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:/^data:image\/png/.test(data)?"png":"jpg",transformation:{width:Math.round(w),height:Math.round(w)}});
   const run=(t,pt,b)=>new D.TextRun({text:t,size:Math.round(pt*2*k),bold:!!b,font:"Andika"});
   const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,30,true)]}),new D.Paragraph({children:[run("What we need",18,true)]}),
-    ...P.overview.ings.map(it=>new D.Paragraph({children:[img(it.img,44*k),run("  "+it.text,15)]})),...(P.overview.tools.length?[new D.Paragraph({children:[run("Tools",18,true)]}),...P.overview.tools.map(it=>new D.Paragraph({children:[img(it.img,44*k),run("  "+it.text,15)]}))]:[])]}];
+    ...P.overview.ings.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]})),...(P.overview.tools.length?[new D.Paragraph({children:[run("Tools",18,true)]}),...P.overview.tools.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]}))]:[])]}];
   for(const sh of P.sheets)sections.push({children:[new D.Paragraph({children:[run(String(sh.n),28,true),...(sh.adult?[run("     ",12),img(P.hand,70*k),run("  An adult does this step",13)]:[])]}),new D.Paragraph({spacing:{before:300,after:300},children:[run(sh.text,40,true)]}),
-    new D.Paragraph({children:sh.pics.flatMap(p=>[img(p.img,120*k*p.w),run("  ",10)])}),...(sh.pics.some(p=>p.cap)?[new D.Paragraph({children:[run(sh.pics.map(p=>p.cap).filter(Boolean).join(",  "),14)]})]:[])]});
+    ...sh.words.map(w=>new D.Paragraph({children:[run(w.big,32,true)]})),
+    new D.Paragraph({children:sh.pics.flatMap(p=>[img(p.img,120*k*p.w),run("  ",10)])}),...(sh.pics.some(p=>p.cap)?[new D.Paragraph({children:[run(sh.pics.map(p=>p.cap).filter(Boolean).join(",  "),20,true)]})]:[])]});
   const docx=TREE_KIT.wordFile(D,{size,sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
 
 // a photo from our own observations on one step of the demonstration set, kept only once the face check finds no faces
@@ -5779,8 +5791,8 @@ let attachOpen="",attachQ="";
 const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",prompt:"Provocation",guide:"Materials guide"};
 const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
 function attachPool(){if(!libData){loadLibrary();return []}const out=[];
-  for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients")].join(" ")});
-  for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:x.title});
+  for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients"),(x.meta||{}).produce,(x.meta||{}).season].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
+  for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:[x.title,recPart(x,"When we sing it"),recPart(x,"Connections")].join(" ")});
   for(const x of (libData.readalouds||[]))out.push({kind:"readaloud",id:x.id,title:x.title,text:[x.title,x.lead].join(" ")});
   const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
   if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});

@@ -8,7 +8,16 @@
    A song marked copyright shows its title, its songwriter and a link to a recording, and its words are never kept or
    sent. Recipes come from the director and the kitchen, and drafts from educators and families wait for the director. */
 module.exports = function library(o) {
-  const { S, get, putText, log, isDirector, isKitchen } = o;
+  const { S, get, put, putText, log, isDirector, isKitchen } = o;
+  /* The picture library for the demonstration sheets, realistic pictures named by ingredient or tool, one consistent
+     style on white, kept in the records under staff/library/images, such as banana.png or whole_wheat_flour.png. A
+     photo from the piazza, kept once the face check on the device finds no face, stands for an item with no picture, or
+     in place of one when the director chooses, and every sheet using it updates. staff/library/pictures.json keeps them. */
+  const PICS = 'staff/library/pictures.json';
+  const pictures = () => { const out = {};
+    for (const p of S.imgs.keys()) { const m = p.match(/^staff\/library\/images\/([a-z0-9_]+)\.(png|jpe?g|webp)$/i); if (m) out[m[1].toLowerCase()] = { from: 'library', path: p }; }
+    for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
+    return out; };
   const WD = require('./wording.js');
   const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud' };
   const META = text => { const m = String(text || '').match(/^\s*<!--([\s\S]*?)-->/); const out = {}; if (m) for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.*?)\s*$/i); if (kv) out[kv[1].toLowerCase()] = kv[2]; } return out; };
@@ -32,7 +41,7 @@ module.exports = function library(o) {
   function list(me) {
     const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
     const pr = item('staff/library/prompts/provocations.md');
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: all('readalouds'), provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: all('readalouds'), provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -66,9 +75,20 @@ module.exports = function library(o) {
     if (value !== null) lines.splice(lines.length - (lines[lines.length - 1] === '' ? 1 : 0), 0, `${key}: ${value}`);
     putText(path, guard(path, r.text.replace(m[0], `<!--${lines.join('\n')}-->`))); return true;
   }
-  async function handle(P, body, me, req, res, { json, err }) {
+  async function handle(P, body, me, req, res, { json, err, send }) {
     const dir = isDirector(me), kit = isKitchen(me);
     if (P === 'library') { json(req, res, 200, list(me)); return; }
+    // a picture from the picture library, read from the records the first time it is asked for
+    if (P === 'library/img') { const k = String(body.name || '').toLowerCase(); const x = pictures()[k]; if (!x || x.from !== 'library') { err(req, res, 404, 'That picture is not here.'); return; }
+      try { const buf = await o.readImage(x.path); send(req, res, 200, { 'Content-Type': /\.png$/i.test(x.path) ? 'image/png' : /\.webp$/i.test(x.path) ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } return; }
+    // a photo from the piazza for an item, kept once the face check on the device found no face. An educator adds one for an
+    // item with no picture, and only the director replaces a picture already there.
+    if (P === 'library/picture') { const k = String(body.name || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60); const id = String(body.id || '');
+      if (!k) { err(req, res, 400, 'Name the ingredient or tool.'); return; }
+      if (body.remove) { if (!isDirector(me)) { err(req, res, 403, 'The director takes a picture away.'); return; } const all = Object.assign({ list: {} }, get(PICS) || {}); delete all.list[k]; put(PICS, all); json(req, res, 200, list(me)); return; }
+      if (!/^[a-z0-9][a-z0-9._-]{0,150}$/i.test(id) || body.noFace !== true) { err(req, res, 400, 'A photo is kept only once the face check finds no face.'); return; }
+      if (pictures()[k] && !isDirector(me)) { err(req, res, 403, 'This item has a picture. The director chooses to replace it.'); return; }
+      const all = Object.assign({ list: {} }, get(PICS) || {}); all.list = Object.assign({}, all.list, { [k]: { id, by: me, at: Date.now() } }); put(PICS, all); log('Recipe picture kept for', k, 'by', me); json(req, res, 200, list(me)); return; }
     if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); return; }
     const x = item(String(body.path || '')); if (!x) { err(req, res, 404, 'That is not in the library.'); return; }
     // the director marks a draft recipe ready, or takes it out
