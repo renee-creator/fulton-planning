@@ -4,6 +4,7 @@
 const RULES = [
   [/[—–]/, 'A dash. Use a comma or a full stop.'],
   [/\btoddlers?\b/i, 'Say Class.'],
+  [/\b(bug (box|boxes|catchers?|jars?|houses?|viewers?)|insect (cages?|boxes|jars?)|butterfly nets?|critter (cages?|keepers?)|terrariums?)\b|\b(collect|catch|capture|trap|keep|bring)(s|ing|ed)? (the |some |a few )?(bugs|insects|worms|snails|slugs|caterpillars|ladybugs|beetles|spiders|lizards|frogs|tadpoles|butterflies|creatures|critters|roly polies|pill bugs)\b|\b(bugs|insects|worms|snails|caterpillars|ladybugs|creatures|critters|tadpoles) in (a |the )?(jars?|containers?|boxes|cups?)\b/i, 'Leave them be. Children observe creatures where they live.', /\b(never|not|no|without)\b/i],
   [/\b(Claude|Anthropic|ChatGPT|OpenAI|GPT-\d)\b/, 'No AI model or its maker is named.'],
   [/\b(sorry|apologi[sz]e|apologies)\b/i, 'No apologies.'],
   [/\b(Responding|Exploring|Building|Integrating) (Earlier|Middle|Later)\b/, 'No DRDP rating language.'],
@@ -24,7 +25,8 @@ function notThisButThat(text) { const t = String(text || ''); return NOT_THAT.so
 const TEACHER_OK = /Role of the Teacher|Environment as the Third Teacher|Teacher Policies and Procedures|Teacher's Role|\bLIC\s*\d+[A-Z]?[^.\n]*/g;
 function lineFindings(l) {
   const out = [];
-  for (const [re, why] of RULES) if (re.test(l)) out.push(why);
+  // a rule with an exception, such as leave them be, is quiet in a sentence that says never to do it
+  for (const [re, why, unless] of RULES) if (re.test(l) && !(unless && unless.test(l))) out.push(why);
   if (notThisButThat(l)) out.push('Say what it is, without first saying what it is not.');
   // a link's words and a quoted or set-off title stay as their source wrote them
   const plain = l.replace(/\[[^\]]*\]\([^)]*\)/g, '').replace(/\*[^*]+\*/g, '').replace(/"[^"]*"/g, '').replace(TEACHER_OK, '');

@@ -503,6 +503,7 @@ Every screen, print, Word file, Help answer, reminder and adapted piece follows 
 - No apologies, no analogies and no not this but that framing.
 - Say educator, never teacher, except in Role of the Teacher, Environment as the Third Teacher, Teacher Policies and Procedures, LIC form names and the titles of cited outside sources. Say Class.
 - Never the word toddler in our own writing.
+- Leave them be. Children observe creatures where they live. Nothing we write suggests collecting insects or creatures in jars, bug boxes or containers, keeping or feeding a wild creature, or bringing one inside. The writing check flags such a sentence, and stays quiet in a sentence that says never to do it. A suggestion like this already in a plan, the idea bank or one of our pages is offered to the director as a proposed rewrite, under Teacher Policies and Procedures, Proposed rewrites to our plans and pages. Accepting replaces only that passage.
 - No DRDP rating language for families.
 - Licensing content only from CCLD or CDSS.
 - Every print also comes as a Word file.

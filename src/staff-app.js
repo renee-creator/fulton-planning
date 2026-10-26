@@ -524,7 +524,15 @@ async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){retu
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
   const [slug,on]=t.dataset.fpready.split("|");try{await api("familypieces/ready",{slug,on:on==="1"});toast(on==="1"?"Marked ready. Families see it now.":"Taken off the Family page.");redraw()}catch(er){fail(er)}});
 async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
-  const all=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));if(!all.length)return "";
+  const all=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));
+  // rewrites of a passage in a plan, the idea bank or one of our pages, such as one that would have children collect
+  // creatures, show with the Teacher Policies and Procedures
+  const recs=k==="teacher"?(r.list||[]).filter(x=>x.doc==="record"&&x.kind==="replace"):[];
+  const recCard=recs.length?card("Proposed rewrites to our plans and pages",`<div class="hint">Leave them be. Children observe creatures where they live, so each rewrite takes out a suggestion to collect, keep or feed a creature. Nothing changes until you accept one, and accepting replaces only that passage.</div>`+recs.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.path)}</b> ${x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Kept as it is"):chip("soonish","Waiting for you")}</summary>
+    <div class="cnt">${H(x.note||"")}</div><div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
+    <div class="lbl" style="margin-top:6px">${x.status==="accepted"?"Accepted":"Rewrite"}</div>${x.status==="accepted"?`<div class="stmd">${md(x.accepted||x.to||"")}</div>`:`<textarea rows="3" data-propto="${H(x.id)}" aria-label="Rewrite for ${H(x.sectionTitle||x.path)}">${H(x.to||"")}</textarea>`}
+    ${x.status==="accepted"?"":`<div class="actions"><button class="btn small" data-propaccept="${H(x.id)}" data-replace="1">Accept the rewrite</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Keep the wording as it is</button>`}</div>`}</details>`).join(""),`${recs.filter(x=>!x.status||x.status==="proposed").length} waiting`):"";
+  if(!all.length)return recCard;
   const st2=x=>x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Kept as it is"):chip("soonish","Waiting for you");
   const mine=all.filter(x=>x.kind!=="replace"),rw=all.filter(x=>x.kind==="replace");
   // a rewrite replaces one passage in a section already there. She accepts it, changes the new wording first, or keeps
@@ -533,15 +541,15 @@ async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){r
     <div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
     <div class="lbl" style="margin-top:6px">${x.status==="accepted"?"Accepted":"Rewrite"}</div>${x.status==="accepted"?`<div class="stmd">${md(x.accepted||x.to||"")}</div>`:`<textarea rows="3" data-propto="${H(x.id)}" aria-label="Rewrite for ${H(x.sectionTitle||x.section)}">${H(x.to||"")}</textarea>`}
     <div class="actions">${x.status==="accepted"?`<button class="linkbtn" data-stpol="${H(x.section||"")}">Open the section</button>`:`<button class="btn small" data-propaccept="${H(x.id)}" data-replace="1">Accept the rewrite</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Keep the wording as it is</button>`}`}</div></details>`).join(""),`${rw.filter(x=>!x.status||x.status==="proposed").length} waiting`):"";
-  if(!mine.length)return rewrites;
-  return rewrites+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
+  if(!mine.length)return rewrites+recCard;
+  return rewrites+recCard+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
     <div class="cnt">${H(x.note||"")}</div>${md(x.body||"")}
     ${(x.links||[]).length?`<div class="actions">${x.links.map(l=>`<button class="btn small ghost" data-${l.doc==="family"?"fhopen":"hbopen"}="${H(l.id)}">${H(l.label)}</button>`).join("")}</div>`:""}
     ${(x.differences||[]).length?`<div class="lbl" style="margin-top:8px">Differences for you to decide</div><ul style="margin:4px 0;padding-left:20px">${x.differences.map(t=>`<li>${H(t)}</li>`).join("")}</ul>`:""}
     <div class="actions">${x.status==="accepted"?`<button class="linkbtn" data-stpol="${H(x.section||"")}">Open the section</button>`:`<button class="btn small" data-propaccept="${H(x.id)}">Accept it as a new section</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Set it aside</button>`}`}</div></details>`).join(""))}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-propaccept],[data-propaside],[data-propback]");if(!t)return;
   if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
-  try{if(t.dataset.propaccept&&t.dataset.replace){const ta=document.querySelector(`[data-propto="${CSS.escape(t.dataset.propaccept)}"]`);if(!confirm("Replace this passage in the section?"))return;await api("proposals/accept",{id:t.dataset.propaccept,to:ta?ta.value:undefined});toast("Replaced. The earlier wording is kept in the section's history.")}
+  try{if(t.dataset.propaccept&&t.dataset.replace){const ta=document.querySelector(`[data-propto="${CSS.escape(t.dataset.propaccept)}"]`);if(!confirm("Replace this passage?"))return;await api("proposals/accept",{id:t.dataset.propaccept,to:ta?ta.value:undefined});toast("Replaced. The earlier wording is kept in its history.")}
     else if(t.dataset.propaccept){if(!confirm("Add this as a new section?"))return;await api("proposals/accept",{id:t.dataset.propaccept});toast("Added as a new section.")}
     else await api("proposals/aside",{id:t.dataset.propaside||t.dataset.propback,back:!!t.dataset.propback});
     st.pol={};redraw()}catch(er){fail(er)}});

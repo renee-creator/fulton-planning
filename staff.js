@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const NOTICES = require('./notices.js');
 
 module.exports = function staffModule(o) {
+  let RECS_EDIT = null;
   // the Classes, from Program settings, the one list
   const classrooms = () => (o.classrooms ? o.classrooms() : []);
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
@@ -537,6 +538,22 @@ module.exports = function staffModule(o) {
         if (pr.status === 'accepted') { json(req, res, 200, { list: proposals() }); return; }
         // a rewrite replaces one passage in a section already there, saved as any edit is, with the earlier wording in
         // the section's history. The director may change the new wording first.
+        /* a rewrite of a passage in a plan, the idea bank or a page of ours (doc "record"), such as a suggestion that would
+           have children collect creatures. It replaces the passage in one field of the record, or in the page's words. */
+        if (pr.kind === 'replace' && pr.doc === 'record') {
+          const from = String(pr.from || ''), to = String(body.to != null ? body.to : pr.to || '').replace(/\r/g, '').trim(), rp = String(pr.path || '');
+          if (!from || !to) { err(req, res, 400, 'The new wording is empty.'); return; }
+          const swap = v => { const t = String(v == null ? '' : v); const i = t.indexOf(from); return i < 0 ? null : t.slice(0, i) + to + t.slice(i + from.length); };
+          let done = false;
+          if (/^staff\/(library|guides|garden)\/[a-z0-9/_.-]+\.md$/i.test(rp)) { const r = S.files.get(rp); const next = r && swap(r.text); if (next != null) { const h = Object.assign({ path: rp, history: [] }, get(PAGE_HIST(rp)) || {}); h.history = [...(h.history || []), { text: r.text, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100); Object.assign(h, { note: ('Accepted from a proposal, ' + pr.title).slice(0, 300), updatedAt: Date.now(), updatedBy: me }); put(PAGE_HIST(rp), h); putText(rp, next); pieceCache = null; done = true; } }
+          else if (/^(plans|bins|threads|projects)\/[a-z0-9_-]+\.json$/i.test(rp) && RECS_EDIT) {
+            const keys = String(pr.field || '').split('.').filter(Boolean);
+            done = RECS_EDIT(rp, d => { const c = JSON.parse(JSON.stringify(d)); let o = c; for (const k of keys.slice(0, -1)) { o = o && o[k]; } const k = keys[keys.length - 1]; if (!o || !k) return d; const next = swap(o[k]); if (next == null) return d; o[k] = next; c.updatedAt = Date.now(); return c; });
+          }
+          if (!done) { err(req, res, 409, 'This passage has changed since the rewrite was drafted, so nothing was changed. Open the record to edit it.'); return; }
+          put(path, Object.assign({}, get(path), { status: 'accepted', accepted: to, decidedAt: Date.now(), decidedBy: me }));
+          log('Proposal accepted', pr.id, 'by', me); json(req, res, 200, { list: proposals() }); return;
+        }
         if (pr.kind === 'replace') {
           const cur = pr.doc === 'family' ? POL.fhSection(String(pr.edition || ''), pr.section) : (() => { const e = POL.entries().find(x => x.id === pr.section); return e ? POL.tpSection(e) : null; })();
           if (!cur || cur.removed) { err(req, res, 404, 'That section is not here any more.'); return; }
@@ -1077,5 +1094,5 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };
