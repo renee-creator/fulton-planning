@@ -1133,7 +1133,7 @@ function viewConf(id){
           </ul>
         </details>
       </div>
-      ${ro?"":`<div class="panel stack" style="gap:8px"><button class="btn sm" data-act="conf-move">Move to another child or season</button><button class="btn sm danger" data-act="conf-delete">Delete this conference record</button></div>`}
+      ${ro||!isDirector()?"":`<div class="panel stack" style="gap:8px"><button class="btn sm" data-act="conf-move">Move to another child or season</button><button class="btn sm danger" data-act="conf-delete">Delete this conference record</button></div>`}
     </aside>
   </div></div>`;
 }

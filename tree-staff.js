@@ -1524,6 +1524,9 @@ function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[
   const scored=(extra||exPool()).map(x=>{const ws=exWords(x.raw);const hits=ws.filter(w=>tset.has(w));let sc=hits.length+(x.boost||0);for(const re of areaRes)if(re.test(x.raw))sc+=2;return Object.assign({},x,{sc,hits})}).filter(x=>x.sc>=(extra?1:3)).sort((a,b)=>b.sc-a.sc||b.at-a.at);
   const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
   return [...written,...sugg].filter(x=>!out.has(x.id)&&!kept.has(x.id))}
+function drdpEvPool(){const kids=typeof children!=="undefined"?[...children.values()]:[];const best={};
+  for(const c of kids){if(typeof kidDrdpItems!=="function")break;for(const x of kidDrdpItems(c))if((x.status==="accepted"||x.status==="changed")&&x.level&&x.src){const raw=[x.evidence,x.src.title].filter(Boolean).join(". ");const at=x.src.at||x.at||0;if(!best[x.code]||at>best[x.code].at)best[x.code]={kind:"drdp",id:"drdp:"+x.id,raw,at,label:"Accepted evidence",boost:3,why:`Accepted evidence for ${x.code}${typeof drdpName==="function"?", "+drdpName(x.code):""}, ${typeof drdpLevelText==="function"?drdpLevelText(x.level,x.emerging):x.level}.`}}}
+  return Object.values(best).sort((a,b)=>b.at-a.at)}
 function exPicker(slug,ex,sugg){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
   const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
   const row=(x,acts)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt">${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
@@ -1568,7 +1571,8 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   const draftCard=dir&&m.draft?card(m.waiting?"Draft":"Ready",`<div class="hint">${m.waiting?"Only you see this module. Educators see it once you mark it ready.":"Educators see this module."}</div><div class="actions"><button class="btn small${m.waiting?"":" ghost"}" data-gmready="${H(slug)}|${m.waiting?1:0}">${m.waiting?"Mark it ready":"Hide it again"}</button></div>`):"";
   const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
-  if(dir){exBody=exPicker(slug,ex,exSuggest(m,slug,own))}
+  // the DRDP module's examples come from accepted DRDP evidence, one for each measure, so each example shows a measure read from our own documentation
+  if(dir){exBody=exPicker(slug,ex,/drdp/i.test(slug)?exSuggest(m,slug,own,drdpEvPool()):exSuggest(m,slug,own))}
   else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):""}${leadBtn}</div>${draftCard}

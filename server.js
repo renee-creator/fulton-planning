@@ -1874,6 +1874,8 @@ async function handle(req, res) {
     if (askOk) body.data = Object.assign({}, body.data, { requestedBy: me.name, test: false });
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
     if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
+    // a conference record is removed only by the director
+    if (kind === 'conferences' && op === 'delete' && !isDirector(me.name)) { err(req, res, 403, 'Only the director removes a conference record.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
     // a gathering and its volunteer jobs reach families only when the director marks them ready, so the office's saves
     // keep whether one is open as it was, and anything the office starts for a gathering starts closed
