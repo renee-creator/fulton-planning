@@ -2446,18 +2446,18 @@ boot();
 #conf-editor.tree-locked select:disabled,#conf-editor.tree-locked input:disabled:not([type=checkbox]):not([type=radio]){opacity:1;color:inherit;background:transparent;border-color:transparent;-webkit-appearance:none;appearance:none}#conf-editor.tree-locked input[type=checkbox],#conf-editor.tree-locked input[type=radio],#conf-editor.tree-locked .sc-opt{cursor:default}#conf-editor.tree-locked input[type=checkbox]:disabled+*,#conf-editor.tree-locked label:has(input:disabled){opacity:1;color:inherit;cursor:default}
 #conf-editor.tree-locked button:disabled{opacity:.55}</style>
 <script>(()=>{let seen="",unlocked="",busy=false;
-const keep=b=>/print|pdf|word|download|back|close|open|copy/i.test(b.textContent||"")||b.dataset.go;
+const keep=b=>/print|pdf|word|download|back|close|open|copy|summary|tick/i.test(b.textContent||"")||b.dataset.go||!!b.closest(".tree-nolock");
 function lock(){const ed=document.getElementById("conf-editor");if(!ed){seen="";unlocked="";return}const id=ed.dataset.id;
   if(id!==seen){seen=id;unlocked="";const filled=[...ed.querySelectorAll("textarea,input[type=text],input[type=date],input[type=time]")].some(x=>String(x.value||"").trim());if(!filled)unlocked=id}
   const on=unlocked!==id;ed.classList.toggle("tree-locked",on);
   let bar=ed.querySelector(".tree-lockbar");
   if(!on){if(bar)bar.remove();ed.querySelectorAll("[data-tree-locked]").forEach(x=>{x.readOnly=false;x.disabled=false;delete x.dataset.treeLocked});return}
   ed.querySelectorAll("textarea,input,select,button").forEach(x=>{if(x.dataset.treeLocked||x.closest(".tree-lockbar"))return;
-    if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(/checkbox|radio/.test(x.type))return;else if(x.tagName==="SELECT"||/file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
+    if(x.closest(".tree-nolock"))return;if(x.tagName==="BUTTON"){if(keep(x)||x.disabled)return;x.disabled=true}else if(/checkbox|radio/.test(x.type))return;else if(x.tagName==="SELECT"||/file|date|time/.test(x.type))x.disabled=true;else x.readOnly=true;x.dataset.treeLocked="1"});
   if(!bar){bar=document.createElement("div");bar.className="tree-lockbar";bar.innerHTML='<span>Saved</span><button type="button" class="btn small primary">Edit</button>';
     bar.querySelector("button").onclick=()=>{unlocked=id;lock();const f=ed.querySelector("textarea,input[type=text]");if(f)f.focus({preventScroll:true})};ed.prepend(bar)}}
 // a saved form shows its ticks in full colour, and a tick cannot change until Edit is pressed
-document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest("#conf-editor.tree-locked input[type=checkbox],#conf-editor.tree-locked input[type=radio],#conf-editor.tree-locked label");if(!x)return;const inp=x.matches("input")?x:x.querySelector("input[type=checkbox],input[type=radio]");if(inp){e.preventDefault();e.stopPropagation()}},true);
+document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest("#conf-editor.tree-locked input[type=checkbox],#conf-editor.tree-locked input[type=radio],#conf-editor.tree-locked label");if(!x||x.closest(".tree-nolock"))return;const inp=x.matches("input")?x:x.querySelector("input[type=checkbox],input[type=radio]");if(inp){e.preventDefault();e.stopPropagation()}},true);
 const go=()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{lock()}catch(e){}})};
 new MutationObserver(go).observe(document.body,{childList:true,subtree:true});go();})();</script>
 <style>.tree-bring{margin-top:6px;border:1px solid #c6d0c3;border-radius:10px;background:#f6f9f4;padding:8px 10px;font-size:13.5px}
@@ -2528,6 +2528,26 @@ async function pagesNow(){const ed=document.getElementById("conf-editor");if(!ed
   note.hidden=n<=2;note.textContent=n>2?"This form now prints on "+n+" pages instead of 2. Every word still prints. Shortening a long section brings it back to 2.":""}
 document.addEventListener("input",e=>{if(e.target.closest&&e.target.closest("#conf-editor"))pagesSoon()});
 document.addEventListener("click",e=>{const a=e.target.closest("[data-treedoc]");if(!a)return;e.preventDefault();const [k,i]=a.dataset.treedoc.split("|");if(P.TREE_OPEN_DOC)P.TREE_OPEN_DOC(k,i)});
+/* Each piece listed in Documentation Shared has a Print tick. It starts unticked, up to 6 are ticked, and Tick the
+   suggested ticks the pieces TREE suggests, which the educator can then change. An unticked piece stays listed and leaves
+   out its photo page. The rail holds what goes home with the family, the Family Summary and the family copy. */
+function ticks(ed,cf){const wrap=ed.querySelector('[data-wrap="fields.documentation"]');if(!wrap)return;const ids=attached(cf,cf.childId);let box=wrap.querySelector(".tree-ticks");
+  const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,"",""):[];const on=new Set((cf.printPieces||[]).filter(x=>ids.includes(x)));const key=ids.join(",")+"|"+[...on].join(",");
+  if(box&&box.dataset.key===key)return;if(!box){box=document.createElement("div");box.className="tree-bring tree-ticks tree-nolock";wrap.append(box)}box.dataset.key=key;
+  if(!ids.length){box.innerHTML='<b>Printing the documentation</b><div class="muted">Pieces added to this section can be ticked to print after the form, up to 6.</div>';return}
+  const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  box.innerHTML='<b>Print</b> <span class="muted">'+on.size+' of up to 6 ticked. An unticked piece stays listed and its photo page is left out.</span><div class="tb-list">'+ids.map(k=>{const d=docs.find(x=>x.kind+"|"+x.id===k)||{};
+    return '<label class="tb-row"><input type="checkbox" data-tick="'+esc(k)+'"'+(on.has(k)?" checked":"")+(!on.has(k)&&on.size>=6?" disabled":"")+'>'+(d.thumb?'<img src="'+esc(d.thumb)+'" alt="" loading="lazy">':"")+"<span>"+esc(d.title||"A piece")+(d.at?", "+esc(long(iso(d.at))):"")+"</span></label>"}).join("")+'</div>';
+  const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Tick the suggested";b.onclick=()=>save(cf,P.TREE_CONF_SUGGEST?P.TREE_CONF_SUGGEST(cf.id,ids):ids.slice(0,6));box.append(b);
+  box.onchange=e=>{const t=e.target;if(!t.dataset.tick)return;const cur=new Set((cf.printPieces||[]).filter(x=>ids.includes(x)));if(t.checked){if(cur.size>=6){t.checked=false;return}cur.add(t.dataset.tick)}else cur.delete(t.dataset.tick);save(cf,[...cur])}}
+async function save(cf,list){cf.printPieces=list.slice(0,6);if(P.TREE_CONF_PUT)P.TREE_CONF_PUT(cf.id,cf);try{if(P.TREE_CONF_SET)await P.TREE_CONF_SET(cf.id,{printPieces:cf.printPieces});else await S.db.doc("conferences/"+cf.id).update({printPieces:cf.printPieces,updatedAt:new Date().toISOString()})}catch(e){toast("That did not save. Check your connection.")}const ed=document.getElementById("conf-editor");if(ed)ticks(ed,cf);fam(ed,cf)}
+function fam(ed,cf){if(!ed)return;const rail=ed.closest(".wrap,body").querySelector(".rail");if(!rail)return;let p=rail.querySelector(".tree-fampanel");if(!p){p=document.createElement("div");p.className="panel tree-fampanel tree-nolock";rail.prepend(p)}
+  const lst=attached(cf,cf.childId);const n=(cf.printPieces||[]).filter(x=>lst.includes(x)).length;p.innerHTML='<h3>For the family</h3><p class="small muted" style="margin:0 0 8px">What goes home is the one page Family Summary and the '+n+' piece'+(n===1?"":"s")+' ticked to print. The full form below stays the educators\' copy for the child\'s file, with Family Reflections.</p><div class="stack" style="gap:8px"><button class="btn primary" type="button" data-famsum="1">Family Summary</button><button class="btn" type="button" data-famcopy="pdf">Family copy, PDF</button><button class="btn" type="button" data-famcopy="word">Family copy, Word</button></div>';
+  p.onclick=e=>{const b=e.target.closest("button");if(!b)return;if(P.TREE_CONF_PUT)P.TREE_CONF_PUT(cf.id,cf);if(b.dataset.famsum&&P.TREE_FAMSUM_OPEN)P.TREE_FAMSUM_OPEN(cf.id);if(b.dataset.famcopy&&P.TREE_FAMILY_COPY)P.TREE_FAMILY_COPY(cf.id,{word:b.dataset.famcopy==="word"})}}
+function tickDraw(){const ed=document.getElementById("conf-editor");if(!ed)return;const cf=S.confs&&S.confs[ed.dataset.id];if(!cf)return;ticks(ed,cf);fam(ed,cf)}
+let tbusy=false;new MutationObserver(()=>{if(tbusy)return;tbusy=true;requestAnimationFrame(()=>{tbusy=false;try{tickDraw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true});
+// the printed form never carries a sentence written for the educator
+const printable=cf=>{const F=P.TREE_FOR_PRINT;if(!F)return cf;const o=JSON.parse(JSON.stringify(cf));for(const k of Object.keys(o.fields||{}))if(typeof o.fields[k]==="string")o.fields[k]=F(o.fields[k]);return o};
 // a conference's documentation prints after its form, and only the pieces listed in its Documentation Shared section,
 // so a line taken out of that section is left out of the printout. The PDF holds both. Word saves the documentation as a
 // second file beside the form.
@@ -2535,13 +2555,13 @@ const attached=(cf,id)=>{const text=String((cf&&cf.fields&&cf.fields.documentati
   return P.TREE_DOCS_FOR(id,"","").filter(d=>text.includes(d.title+", "+long(iso(d.at)))).map(d=>d.kind+"|"+d.id)};
 if(typeof downloadPdf==="function"&&P.TREE_CONF_DOCS_FILE){const pdf0=downloadPdf,docx0=downloadDocx;
   window.downloadPdf=async function(items,filename){if(!items||items.length!==1)return pdf0(items,filename);
-    try{toast("Preparing the PDF…");const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const cid=it.cf.childId||(it.child&&it.child.id);const ids=attached(it.cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",false,ids,window.__treeCapture?"quiet":""):null;
+    try{toast("Preparing the PDF…");items=[Object.assign({},items[0],{cf:printable(items[0].cf)})];const form=await buildFormsPdf(items);const it=items[0];const w=windowOf(it.cf);const cid=it.cf.childId||(it.child&&it.child.id);const ids=attached(it.cf,cid).filter(k=>(it.cf.printPieces||[]).includes(k));const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",false,ids,window.__treeCapture?"quiet":""):null;
       if(!extra){await saveFile(filename,form);return}
       const L=window.PDFLib;const out=await L.PDFDocument.load(await form.arrayBuffer());const add=await L.PDFDocument.load(new Uint8Array(await extra.arrayBuffer()));
       (await out.copyPages(add,add.getPageIndices())).forEach(pg=>out.addPage(pg));await saveFile(filename,new Blob([await out.save()],{type:"application/pdf"}))}
     catch(e){console.error(e);return pdf0(items,filename)}};
-  window.downloadDocx=async function(list,child){await docx0(list,child);if(!list||list.length!==1)return;
-    try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid);const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids,window.__treeCapture?"quiet":""):null;
+  window.downloadDocx=async function(list,child){if(list&&list.length===1)list=[printable(list[0])];await docx0(list,child);if(!list||list.length!==1)return;
+    try{const cf=list[0];const w=windowOf(cf);const cid=cf.childId||(child&&child.id);const ids=attached(cf,cid).filter(k=>(cf.printPieces||[]).includes(k));const extra=ids.length?await P.TREE_CONF_DOCS_FILE(cid,"","",true,ids,window.__treeCapture?"quiet":""):null;
       if(extra)await saveFile(slug(childName(child))+"-conference-documentation-"+String(cf.term||"").toLowerCase()+"-"+(cf.schoolYear||"")+".docx",new Blob([new Uint8Array(await extra.arrayBuffer())],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}))}catch(e){console.error(e)}};}
 let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{busy=false;try{draw()}catch(e){}})}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["readonly","disabled"]});})();</script>
 

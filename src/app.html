@@ -2161,7 +2161,7 @@ function drdpSummaryDoc(s,mode){
   const its=(d.items||[]).slice().sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}));const items=[];
   for(const x of its){const st=drdpStatusOf("slides",s.id,x);if(st.cls==="muted")continue;const c=children.get(x.childId);
     const lvl=st.level!==undefined?st.level:x.level,em=st.emerging!==undefined?st.emerging:x.emerging;
-    items.push(dItem(drdpName(x.code),x.evidence||"",st.cls==="ok"?"Reviewed by "+st.label.replace(/^(Accepted|Changed) by /,""):"Awaiting educator review",[c?credit(c.first,mode)||"A child":"A child",lvl?lvl+(em?", emerging":""):"No level"]))}
+    items.push(dItem(drdpName(x.code),forPrint(x.evidence||""),st.cls==="ok"?"Reviewed by "+st.label.replace(/^(Accepted|Changed) by /,""):"Awaiting educator review",[c?credit(c.first,mode)||"A child":"A child",lvl?lvl+(em?", emerging":""):"No level"]))}
   if(!items.length)return null;
   blocks.push(dSub("Measures and evidence"),...items);
   const meta=[...(String(s.title||"").trim()?[["Slide",s.title]]:[]),["Class",s.classroom||"All classes"],["Date",longDate(iso(new Date(s.at)))]];
@@ -2191,6 +2191,128 @@ window.TREE_CONF_DOCS_FILE=async(childId,from,to,word,only,quiet)=>{const c=chil
   return word?await makeDocx(docs,"documentation.docx",quiet?"quiet":true):await makePdf(docs,"documentation.pdf",quiet?"quiet":true)};
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pfdrdp)LS.set("tree.pfdrdp",t.value);
   if(t&&t.dataset&&t.dataset.pftick){const [id,yr,m]=t.dataset.pftick.split("|");const c=children.get(id);if(c){kidDrdpPatch(c,{portfolio:{[yr]:{[m]:t.checked}}});const cell=t.closest(".pfm");if(cell)cell.classList.toggle("late",!t.checked&&pfMonthTimes(yr,PF_MONTHS.indexOf(m))[1]<Date.now())}}});
+/* ---------- What goes home from a family conference ----------
+   A conference is 20 minutes. What goes home is one page, the Family Summary, and the pieces of documentation the
+   educator ticked to print, up to 6, in the layout she chose, One per page, Two per page or Booklet. The full form stays
+   the educators' copy for the child's file, with Family Reflections. DRDP levels stay off the family copy unless she
+   shows them, and then each photo page that is that evidence carries the Learning seen here band. A sentence written for
+   the educator, such as one saying what the documentation does not show, never prints. */
+const FOR_EDUCATOR=/\b(does not|doesn't|did not|do not) (say|show|tell)\b|\bnot clear (whether|if)\b|\bunclear (whether|if)\b|\bto confirm\b|\bneeds? confirming\b|\b(an|the) educators? (could|might|may|should) (check|confirm|add|note|look)\b|\bcheck with\b|\bwould (show|confirm|need)\b|\bmore evidence\b|\bnext (level|step) (would|could)\b/i;
+const forPrint=t=>String(t||"").split("\n").map(l=>l.split(/(?<=[.!?])\s+/).filter(x=>!FOR_EDUCATOR.test(x)).join(" ")).join("\n").replace(/\n{3,}/g,"\n\n").trim();
+window.TREE_FOR_PRINT=forPrint;
+const FAM_AREAS=[["approaches","Curiosity and staying with what matters to them"],["social","Friends, feelings and getting along"],["language","Talking, listening and stories"],["cognition","Wondering, counting and solving problems"],["physical","Moving, growing and caring for their body"]];
+const FAM_LAYOUTS=[["one","One per page"],["two","Two per page"],["booklet","Booklet"]];
+const famLayout=cf=>{const v=(cf&&cf.evidenceLayout)||LS.get("tree.famlayout","two");return FAM_LAYOUTS.some(([k])=>k===v)?v:"two"};
+// the pieces ticked to print, in date order, each the child's own portfolio piece
+function confPrintItems(cf){const c=children.get(cf.childId);if(!c)return [];const want=new Set((cf.printPieces||[]).slice(0,6));return portfolioItems(c).filter(x=>want.has(x.kind+"|"+pfItemId(x)))}
+// what TREE suggests printing. Pieces with accepted DRDP evidence first, a photo, and a spread across the months, up to 6
+function confSuggest(cf,listed){const c=children.get(cf.childId);if(!c)return [];const ok=new Set(listed||[]);
+  const its=portfolioItems(c).filter(x=>!ok.size||ok.has(x.kind+"|"+pfItemId(x)));
+  const ev=new Set(kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.src&&x.src.id).map(x=>x.src.kind+"|"+x.src.id));
+  const photo=x=>x.kind==="slides"||x.kind==="stories"||!!(x.n&&x.n.photo);
+  const score=x=>(ev.has((x.kind==="notices"?"notices":x.kind)+"|"+pfItemId(x))?4:0)+(photo(x)?2:0)+(x.kind==="slides"?1:0)+x.at/1e14;
+  const out=[],months=new Set();for(const x of its.slice().sort((a,b)=>score(b)-score(a))){const m=new Date(x.at).getMonth();if(out.length<6&&(!months.has(m)||its.length<=6)){out.push(x);months.add(m)}}
+  for(const x of its.slice().sort((a,b)=>score(b)-score(a)))if(out.length<6&&!out.includes(x))out.push(x);
+  return out.sort((a,b)=>a.at-b.at).map(x=>x.kind+"|"+pfItemId(x))}
+window.TREE_CONF_SUGGEST=(confId,listed)=>{const cf=conferences.get(confId);return cf?confSuggest(cf,listed):[]};
+// the levels accepted from a piece, for its Learning seen here band
+function confBand(c,x){const keys=x.kind==="stories"?["stories|"+x.st.id]:x.kind==="slides"?["slides|"+x.s.id,...slideSources(x.s).map(n=>"notices|"+n.id)]:[x.n,...(x.more||[])].map(n=>"notices|"+n.id);
+  const latest={};for(const d of kidDrdpItems(c))if((d.status==="accepted"||d.status==="changed")&&d.level&&d.src&&keys.includes(d.src.kind+"|"+d.src.id)){const t=d.reviewedAt||d.at||0;if(!latest[d.code]||t>(latest[d.code].reviewedAt||latest[d.code].at||0))latest[d.code]=d}
+  const ls=Object.values(latest).map(d=>`${drdpName(d.code)}  ·  ${drdpLevelText(d.level,d.emerging)}`);return ls.length?{t:"small",label:"Learning seen here",lines:ls}:null}
+function confPieceDoc(c,x,drdp){const mode=PRINT.names;const d=x.kind==="stories"?storyPortfolioDoc(x.st,mode,c):x.kind==="slides"?slideDoc(Object.assign({},x.s,{names:mode,focus:c})):momentDoc(x.n,mode,c);
+  if(x.kind==="notices"&&(x.more||[]).length)d.photos=[x.n,...x.more].flatMap(momentPhotos).slice(0,3);
+  d.blocks=(d.blocks||[]).filter(b=>!(b.t==="small"&&/DRDP/.test(b.label||"")));
+  const a=kidAgeAt(c,x.at);d.details=[longDate(iso(new Date(x.at))),a?"Age "+a:""];
+  if(drdp){const b=confBand(c,x);if(b)d.blocks.push(b)}return d}
+// two pieces to a letter sheet, each with its photo, title, date, age and words
+function confPairDoc(c,xs,drdp,ph0,wl){ph0=ph0||200;wl=wl||420;const blocks=[];xs.forEach((x,i)=>{const d=confPieceDoc(c,x,drdp);if(i)blocks.push({t:"rule"});
+  blocks.push(dSub(d.title||"Documentation"),dText("",(d.details||[]).filter(Boolean).join(" · ")));
+  const ph=(d.photos||[])[0];if(ph)blocks.push(Object.assign({t:"photo",maxH:ph0,full:false},ph));
+  const words=(d.blocks||[]).filter(b=>b.t==="para"||b.t==="quote").map(b=>b.t==="quote"?`"${b.words}" ${b.by||""}`.trim():b.text).join(" ");
+  if(words)blocks.push(dText("",sentCut(forPrint(words),wl)));const band=drdp?(d.blocks||[]).find(b=>b.t==="small"&&b.label==="Learning seen here"):null;if(band)blocks.push(band)});
+  return {display:true,type:"report",acc:"story",title:"",meta:[],blocks,noTitle:true}}
+// the one page a family keeps
+function famSummaryDoc(cf,max,compact){const c=children.get(cf.childId)||{};const fs=cf.familySummary||{};const cut=(t,n)=>max&&String(t||"").length>n*max?sentCut(String(t),Math.round(n*max)):String(t||"");
+  const P0=fs.parts||{};const P={returns:cut(P0.returns,320),friends:cut(P0.friends,240),strengths:cut(P0.strengths,280),goals:cut(P0.goals,260),nextSteps:cut(P0.nextSteps,260)};const A=Object.fromEntries(Object.entries(P0.areas||{}).map(([k,v])=>[k,cut(v,220)]));
+  const g0=GROUPS.find(g=>g.name===c.group&&(!g.room||g.room===c.classroom));const eds=[cf.teacher,g0&&g0.educator].filter(Boolean);const lines="_______________________________________________________________";
+  const blocks=[];if(compact){const top=[has(P.returns)&&`What ${c.first||"your child"} keeps returning to. `+P.returns,has(P.friends)&&"Friends and small group. "+P.friends,has(P.strengths)&&"Strengths. "+P.strengths].filter(Boolean);if(top.length)blocks.push(dList(`About ${c.first||"your child"}`,top))}
+  else{if(has(P.returns))blocks.push(dText(`What ${c.first||"your child"} keeps returning to`,P.returns));
+  if(has(P.friends))blocks.push(dText("Friends and small group",P.friends))}
+  const ar=FAM_AREAS.filter(([k])=>has(A[k]));if(ar.length){if(compact)blocks.push(dList("Growing and learning",ar.map(([k,l])=>l+". "+A[k])));else{blocks.push(dSub("Growing and learning"));for(const [k,l] of ar)blocks.push(dText(l,A[k]))}}
+  if(has(P.strengths)&&!compact)blocks.push(dText("Strengths",P.strengths));
+  blocks.push(dText("Shared Goals and Next Steps",[P.goals,P.nextSteps].filter(has).join("\n")+"\n"+(compact?[lines,lines]:[lines,lines,lines]).join("\n")));
+  return {display:true,type:"report",acc:"story",title:`${c.first||"Your child"}'s Family Summary`,meta:[["Child",[c.first,c.last].filter(Boolean).join(" ")],["Class",c.classroom?c.classroom+" Class":""],["Educators",[...new Set(eds)].join(", ")],["Date",cf.confDate?longDate(cf.confDate):""]].filter(x=>x[1]),blocks}}
+// the family copy, the Family Summary then the ticked pieces in the layout chosen, as a PDF or a Word file
+window.TREE_FAMILY_COPY=async(confId,opt)=>{opt=opt||{};const cf=conferences.get(confId);const c=cf&&children.get(cf.childId);if(!cf||!c)return null;
+  const fs=cf.familySummary;if(!fs||!fs.readAt){if(!opt.quiet)toast("Read the Family Summary and mark it read before it prints.");return null}
+  const lay=opt.layout||famLayout(cf),drdp=!!cf.familyDrdp,its=confPrintItems(cf);
+  // the summary fits one page, each part set shorter at a sentence until it does
+  // the summary fits one page and each sheet of two pieces fits its sheet, each part set shorter at a sentence until it
+  // does. Word sets type a little larger, so the Word file takes the next step shorter.
+  const MX=[0,1.4,1.1,.85,.65,.5,.4,.32,.25],PAIR=[[200,420],[170,320],[150,240],[130,170],[110,120],[100,80]];
+  let L=null;try{L=await TREE_KIT.pdfLib()}catch(e){}const one=async d=>{if(!L)return true;const b=await makePdf([d],"x.pdf","quiet");return !b||(await L.PDFDocument.load(await b.arrayBuffer())).getPageCount()<=1};
+  const pre=[...its.map(x=>confPieceDoc(c,x,drdp))];if(pre.some(d=>(d.photos||[]).length))await loadPhotos(pre,!!opt.quiet);
+  let si=0;for(;si<MX.length-1;si++)if(await one(famSummaryDoc(cf,MX[si])))break;
+  const sum=famSummaryDoc(cf,MX[Math.min(MX.length-1,si+(opt.word?4:0))],!!opt.word);
+  const pieces=[];if(lay==="two")for(let i=0;i<its.length;i+=2){const xs=its.slice(i,i+2);let k=0;for(;k<PAIR.length-1;k++)if(await one(confPairDoc(c,xs,drdp,...PAIR[k])))break;pieces.push(confPairDoc(c,xs,drdp,...PAIR[Math.min(PAIR.length-1,k+(opt.word?1:0))]))}
+  else pieces.push(...its.map(x=>confPieceDoc(c,x,drdp)));
+  const docs=[sum,...pieces];if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,!!opt.quiet);
+  const name=safeFile(`Family copy ${c.first}${c.last?" "+c.last:""} ${cf.confDate||""}`);
+  if(opt.word){const b=await makeDocx(docs,name+".docx",opt.ret||true);if(opt.ret)return b;if(b)await saveFile(b,name+".docx");return b}
+  let blob;if(lay==="booklet"&&pieces.length){const a=await makePdf([sum],"x.pdf","quiet"),bk=await makePdf(pieces,"x.pdf","quiet");blob=await confBooklet(a,bk)}else blob=await makePdf(docs,name+".pdf","quiet");
+  if(opt.ret)return blob;await saveFile(blob,name+".pdf");return blob};
+// the pieces on half-letter pages, two to each side of a sheet turned sideways, ordered to fold and staple, after the summary
+async function confBooklet(sumBlob,piecesBlob){const L=await TREE_KIT.pdfLib();const out=await L.PDFDocument.create();
+  const s=await L.PDFDocument.load(await sumBlob.arrayBuffer());(await out.copyPages(s,s.getPageIndices())).forEach(p=>out.addPage(p));
+  const src=await L.PDFDocument.load(await piecesBlob.arrayBuffer());const pages=await out.embedPages(src.getPages());let n=pages.length;const m=Math.ceil(n/4)*4;
+  const k=Math.min(396/612,612/792),pw=612*k,ph=792*k,oy=(612-ph)/2,ox=(396-pw)/2;
+  for(const [a,b] of bookletOrder(m)){const sh=out.addPage([792,612]);if(a<n)sh.drawPage(pages[a],{x:ox,y:oy,width:pw,height:ph});if(b<n)sh.drawPage(pages[b],{x:396+ox,y:oy,width:pw,height:ph})}
+  out.setTitle("Family copy");out.setCreator("Fulton Community School");return new Blob([await out.save()],{type:"application/pdf"})}
+// the Family Summary, read and changed by the educator before it prints, in a sheet over the page
+let famSumOpen="";
+// saved by the server itself, so TREE's own draft and the educator's changes never cross
+async function famSumSave(cf,patch){if(patch.familySummary)cf.familySummary=Object.assign({},cf.familySummary||{},patch.familySummary);for(const k of ["printPieces","evidenceLayout","familyDrdp"])if(k in patch)cf[k]=patch[k];if(VIEW_AS)return;
+  try{const j=await window.FP_API("/api/conf/summary/set",{id:cf.id,patch});const cur=conferences.get(cf.id)||cf;Object.assign(cur,{familySummary:j.familySummary,printPieces:j.printPieces,evidenceLayout:j.evidenceLayout,familyDrdp:j.familyDrdp});if(cur!==cf)Object.assign(cf,{familySummary:j.familySummary,printPieces:j.printPieces})}catch(e){toast(e&&e.message||"That did not save. Check your connection.")}}
+window.TREE_CONF_SET=(id,patch)=>{const cf=conferences.get(id);return cf?famSumSave(cf,patch):null};
+function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){if(el)el.remove();return}const cf=conferences.get(famSumOpen);const c=cf&&children.get(cf.childId);if(!cf||!c){famSumOpen="";if(el)el.remove();return}
+  if(!el){el=document.createElement("div");el.id="famsum";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
+  const fs=cf.familySummary,P=(fs&&fs.parts)||{},A=P.areas||{};const ta=(k,l,v,r)=>`<label class="fld-label">${esc(l)}<textarea rows="${r||3}" data-famsum="${esc(k)}">${esc(v||"")}</textarea></label>`;
+  el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">Family Summary</span><button class="btn small ghost" data-famsumclose="1">Close</button></div>
+    <h2>${esc(c.first)}'s Family Summary</h2><div class="cnt">${esc([c.classroom?c.classroom+" Class":"",cf.confDate?longDate(cf.confDate):""].filter(Boolean).join(" · "))}</div>
+    ${!fs?`<div class="hint">TREE drafts it the day before the conference from the form's own words. It can be drafted now.</div><div class="actions"><button class="btn small" data-famsumdraft="0">Draft it now</button></div>`
+    :`<div class="hint">Drafted from the form's own words. Another child reads as a friend, and DRDP levels and notes written for educators are left out. Read it and change anything, then mark it read so it can print.</div>
+      ${ta("returns",`What ${c.first} keeps returning to`,P.returns)}${ta("friends","Friends and small group",P.friends,2)}
+      <div class="lbl">Growing and learning</div>${FAM_AREAS.map(([k,l])=>ta("areas."+k,l,A[k],2)).join("")}
+      ${ta("strengths","Strengths",P.strengths)}${ta("goals","Shared Goals",P.goals,2)}${ta("nextSteps","Next Steps",P.nextSteps,2)}
+      <div class="kfields"><label>The photo pages<select data-famlayout="1">${FAM_LAYOUTS.map(([k,l])=>`<option value="${k}" ${famLayout(cf)===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+      <label class="radio"><input type="checkbox" data-famdrdp="1" ${cf.familyDrdp?"checked":""}><span>Show DRDP levels, each on the photo page of its evidence</span></label>
+      <div class="cnt">${(cf.printPieces||[]).length} of up to 6 pieces ticked to print, on the conference form under Documentation Shared.</div>
+      <div class="actions" style="flex-wrap:wrap">${fs.readAt?`<span class="cnt">Read by ${esc(fs.readBy||"an educator")}</span><button class="btn small" data-famcopy="pdf">Family copy, PDF</button><button class="linkbtn" data-famcopy="word">Word</button>`:`<button class="btn small" data-famsumread="1">I have read it, ready to print</button>`}<button class="linkbtn" data-famsumdraft="1">Draft it again</button></div>`}</div>`}
+window.TREE_FAMSUM_OPEN=id=>{famSumOpen=id;famSumPaint()};
+// the Conferences page hands TREE its own copy of a conference before the family copy is made, so the ticks just made are the ones printed
+window.TREE_CONF_PUT=(id,doc)=>{if(!id||!doc)return;const cur=conferences.get(id);const d=JSON.parse(JSON.stringify(doc));if(!cur){conferences.set(id,Object.assign(d,{id}));return}
+  for(const k of ["printPieces","fields","confDate","confTime","teacher","status"])if(k in d)cur[k]=d[k];if(!cur.familySummary&&d.familySummary)cur.familySummary=d.familySummary};
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-famsumclose],[data-famsumdraft],[data-famsumread],[data-famcopy],[data-famsumopen]");if(!t)return;e.preventDefault();e.stopPropagation();const d=t.dataset;
+  if(d.famsumopen){window.TREE_FAMSUM_OPEN(d.famsumopen);return}
+  if(d.famsumclose){famSumOpen="";famSumPaint();return}const cf=conferences.get(famSumOpen);if(!cf)return;
+  if(d.famcopy){await window.TREE_FAMILY_COPY(cf.id,{word:d.famcopy==="word"});return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.famsumdraft!=null){if(d.famsumdraft==="1"&&!confirm("Draft it again from the form? The words written here are replaced."))return;
+    try{const j=await window.FP_API("/api/conf/summary/draft",{id:cf.id,again:d.famsumdraft==="1"});cf.familySummary=j.familySummary;famSumPaint();toast("Drafted. Read it before it prints.")}catch(er){toast(er&&er.message||"It could not be drafted. Check your connection.")}return}
+  if(d.famsumread){await famSumSave(cf,{read:true});famSumPaint();toast("Ready to print.")}},true);
+document.addEventListener("change",e=>{const t=e.target;if(!famSumOpen||!t.closest||!t.closest("#famsum"))return;const cf=conferences.get(famSumOpen);if(!cf||VIEW_AS)return;
+  if(t.dataset.famsum){const fs=JSON.parse(JSON.stringify(cf.familySummary||{parts:{}}));fs.parts=fs.parts||{};const [a,b]=t.dataset.famsum.split(".");if(b){fs.parts[a]=fs.parts[a]||{};fs.parts[a][b]=t.value}else fs.parts[a]=t.value;famSumSave(cf,{familySummary:fs});return}
+  if(t.dataset.famlayout){LS.set("tree.famlayout",t.value);famSumSave(cf,{evidenceLayout:t.value});return}
+  if(t.dataset.famdrdp){famSumSave(cf,{familyDrdp:t.checked});return}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&famSumOpen){famSumOpen="";famSumPaint()}});
+// Today, the conferences of today and tomorrow, each with its Family Summary and family copy one tap away
+function todayConfHtml(){if(isKitchenUser())return "";const t=iso(new Date()),t1=iso(new Date(Date.now()+864e5)),room=myRoom();
+  const list=[...conferences.values()].filter(cf=>cf&&(cf.confDate===t||cf.confDate===t1)&&cf.status!=="complete"&&children.has(cf.childId)&&(!room||(children.get(cf.childId).classroom===room))).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
+  if(!list.length)return "";
+  return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Family conferences</h3></div>${list.map(cf=>{const c=children.get(cf.childId);const fs=cf.familySummary;
+    return `<div class="prow"><div style="min-width:0"><b>${esc(c.first)}</b> <span class="cnt">${esc(cf.confDate===t?"Today":"Tomorrow")}${cf.confTime?", "+esc(tlabel(cf.confTime)):""}</span><div class="cnt">${!fs?"The Family Summary is drafted the day before.":fs.readAt?"Family Summary read, ready to print":"Family Summary drafted, to read"}</div></div>
+      <span class="actions" style="margin:0"><button class="btn small ghost" data-famsumopen="${esc(cf.id)}">Family Summary</button>${fs&&fs.readAt?`<button class="btn small" data-famcopynow="${esc(cf.id)}">Print the family copy</button>`:""}</span></div>`}).join("")}</section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-famcopynow]");if(!t)return;e.preventDefault();await window.TREE_FAMILY_COPY(t.dataset.famcopynow,{})},true);
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
 // what TREE already knows that belongs on a child's conference form. Only facts from the records, never a judgement.
@@ -3760,7 +3882,7 @@ function portfolioDrdpDoc(c,mode,view){
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
-    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),focusText(x.evidence||"",c),x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",[drdpLevelText(x.level,x.emerging)]))}}
+    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),forPrint(focusText(x.evidence||"",c)),x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",[drdpLevelText(x.level,x.emerging)]))}}
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-"," to ")]],blocks};
 }
@@ -4555,7 +4677,7 @@ function renderToday(){
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}${dirPlanAsk?dirPlanHtml():""}
-  ${keepTodayHtml()}${todayAttachedHtml()}${tidyTodayHtml()}
+  ${keepTodayHtml()}${todayConfHtml()}${todayAttachedHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}

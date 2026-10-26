@@ -486,3 +486,6 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
 
   return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
+// the family copy's two rules, shared with the Family Summary a conference sends home
+module.exports.withoutOthers = withoutOthers;
+module.exports.withoutRatings = withoutRatings;

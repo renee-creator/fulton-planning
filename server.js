@@ -644,6 +644,7 @@ async function doLoadGraph() {
   try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
   runOnce();
+  try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); }
   try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
   log(`Loaded through GraphQL ${store.recs.plans.size} plans, ${store.recs.notices.size} notices, ${store.recs.posts.size} posts`);
 }
@@ -693,6 +694,7 @@ async function doLoad() {
     // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
     runOnce();
+    try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); }
     try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
     staff.load().then(() => runOnce(), e => log('Educator records could not be read', e.message));
     kaymbuInbox.repair().catch(e => log('Kaymbu moments could not be put right', e.message)).finally(() => { try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); } });
@@ -767,6 +769,38 @@ function linkPlansToObservations() {
   if (n) log('Plans linked to the observations written in them,', n);
 }
 
+/* The Family Summary, the one page a family keeps from a conference. TREE drafts it the day before the conference from
+   the educators' own words on the form, as the Transition summary's family copy is written. Another child is a friend,
+   a sentence that names the DRDP, a level or a measure is left out, and a sentence written for the educator, such as
+   one saying what the documentation does not show, is left out too. The educator reads and changes it before it prints. */
+const FOR_EDUCATOR = /\b(does not|doesn't|did not|do not) (say|show|tell)\b|\bnot clear (whether|if)\b|\bunclear (whether|if)\b|\bto confirm\b|\bneeds? confirming\b|\b(an|the) educators? (could|might|may|should) (check|confirm|add|note|look)\b|\bcheck with\b|\bwould (show|confirm|need)\b|\bmore evidence\b|\bnext (level|step) (would|could)\b/i;
+const forPrint = t => String(t || '').split('\n').map(l => l.split(/(?<=[.!?])\s+/).filter(x => !FOR_EDUCATOR.test(x)).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+const FAM_AREAS = [['approaches', 'Curiosity and staying with what matters to them'], ['social', 'Friends, feelings and getting along'], ['language', 'Talking, listening and stories'], ['cognition', 'Wondering, counting and solving problems'], ['physical', 'Moving, growing and caring for their body']];
+function familySummaryDraft(cf, child) {
+  const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
+  const f = cf.fields || {};
+  // a short form of another child's name, such as the first letters of it, reads as a friend too, and TREE's own count of
+  // who a child is seen with, such as a friend S (18), is left for the educators
+  const others = all.filter(c => c && c.id !== child.id && c.first).map(c => String(c.first));
+  const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{2,})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]\s*$/.test(str.slice(0, at)); if (start || w === child.first) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
+  const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
+  const clean = t => prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(t))), child, all));
+  // a short highlight is the first two sentences of the educators' own words
+  const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(Boolean); return ss.slice(0, n || 2).join(' '); };
+  const g = oneLists().groups.find(x => x.name === child.group) || null;
+  return { draftedAt: Date.now(), draftedBy: 'TREE', readAt: 0, readBy: '',
+    parts: { returns: short(f.interests, 2), friends: [g ? `${child.first} is in the ${g.name} group${g.educator ? ' with ' + g.educator : ''}.` : '', short(f.friends, 2)].filter(Boolean).join(' '),
+      areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, short(f[k], 2)])), strengths: short(f.strengths, 2), goals: clean(f.goals), nextSteps: clean(f.nextSteps) } };
+}
+// each morning and when TREE starts, a conference tomorrow or today with no Family Summary gets its draft
+function draftFamilySummaries() {
+  if (!store.ready) return; const t = laDayOf(Date.now()), t1 = laDayOf(Date.now() + 864e5); let n = 0;
+  for (const [id, r] of store.recs.conferences) { const cf = r && !r.deleted && r.doc; if (!cf || !cf.confDate || (cf.confDate !== t && cf.confDate !== t1) || cf.familySummary || cf.status === 'complete') continue;
+    const k = store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc; if (!child || child.status === 'withdrawn') continue;
+    cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id); n++; }
+  if (n) log('Family Summaries drafted for tomorrow\'s conferences,', n);
+}
+setInterval(() => { try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); } }, 60 * 60e3).unref();
 // what the director's Records to tidy holds, worked out from the records the server has, kept a few minutes
 let tidyCache = null;
 const planOrObs = id => [store.recs.plans.get(id), store.recs.notices.get(id)].some(r => r && !r.deleted && r.doc);
@@ -1944,6 +1978,32 @@ async function handle(req, res) {
   // answered unknown, and the device sends it again.
   // the transition summary's Copy for the next school leaves out other children's names, nicknames and initials the way
   // the family copy does, and holds no photos. The staff copy stays as written.
+  // the Family Summary drafted now, for a conference whose draft is wanted before the day before, or drafted again
+  if (path === '/api/conf/summary/draft') {
+    if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; }
+    const r = store.recs.conferences.get(String(body.id || '')); const cf = r && !r.deleted && r.doc; const k = cf && store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc;
+    if (!cf || !child) { err(req, res, 404, 'That conference is not here.'); return; }
+    if (cf.familySummary && cf.familySummary.readAt && !body.again) { json(req, res, 200, { familySummary: cf.familySummary }); return; }
+    cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', r.doc.id || String(body.id)); scheduleSave('conferences', String(body.id));
+    json(req, res, 200, { familySummary: cf.familySummary }); return;
+  }
+  // what goes home from a conference, kept on the conference by the server itself, so a draft TREE made a moment ago and
+  // the educator's changes to it never cross. The Family Summary's words, the pieces ticked to print, the layout and
+  // whether DRDP levels show, and that it was read.
+  if (path === '/api/conf/summary/set') {
+    if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; }
+    const id = String(body.id || ''); const r = store.recs.conferences.get(id); const cf = r && !r.deleted && r.doc;
+    if (!cf) { err(req, res, 404, 'That conference is not here.'); return; }
+    const p = body.patch || {}; const t = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
+    if (p.familySummary && typeof p.familySummary === 'object') { const P = p.familySummary.parts || {}; const A = P.areas || {};
+      cf.familySummary = Object.assign({}, cf.familySummary || {}, { parts: { returns: t(P.returns), friends: t(P.friends), strengths: t(P.strengths), goals: t(P.goals), nextSteps: t(P.nextSteps), areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, t(A[k])])) }, editedAt: Date.now(), editedBy: me.name }); }
+    if (p.read === true && cf.familySummary) cf.familySummary = Object.assign({}, cf.familySummary, { readAt: Date.now(), readBy: me.name });
+    if (Array.isArray(p.printPieces)) cf.printPieces = p.printPieces.map(x => t(x, 120)).filter(x => /^(notices|slides|stories)\|[A-Za-z0-9._-]+$/.test(x)).slice(0, 6);
+    if (['one', 'two', 'booklet'].includes(p.evidenceLayout)) cf.evidenceLayout = p.evidenceLayout;
+    if (typeof p.familyDrdp === 'boolean') cf.familyDrdp = p.familyDrdp;
+    cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
+    json(req, res, 200, { familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }); return;
+  }
   if (path === '/api/transition/nextschool') {
     const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;
     const ts = k && k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary[String(body.year || '')] : null;
