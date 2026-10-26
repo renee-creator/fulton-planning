@@ -5007,12 +5007,13 @@ function songDoc(x,wordsOnly){const w=songWords(x);const more=wordsOnly?[]:songP
    produce bin and the garden season, with no outside call, so they are instant. Nothing is attached unless an educator
    chooses it, and whatever is attached prints with the plan. A plan with nothing attached prints as it always has. */
 let attachOpen="",attachQ="";
-const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",prompt:"Provocation",guide:"Materials guide"};
+const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",exploration:"Food exploration",prompt:"Provocation",guide:"Materials guide"};
 const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
 function attachPool(){if(!libData){loadLibrary();return []}const out=[];
   for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients"),(x.meta||{}).produce,(x.meta||{}).season].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
   for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:[x.title,recPart(x,"When we sing it"),recPart(x,"Connections")].join(" ")});
   for(const x of (libData.readalouds||[]))out.push({kind:"readaloud",id:x.id,title:x.title,text:[x.title,x.lead].join(" ")});
+  for(const x of (libData.explorations||[]).filter(x=>!x.draft))out.push({kind:"exploration",id:x.id,title:x.title,text:[x.title,x.lead,(x.meta||{}).produce].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
   const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
   if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});
   return out}
@@ -5037,12 +5038,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-attopen],[
     p.attached=[...(p.attached||[]),{kind,id,title:x.title}];persist(p);renderMain();return}
   if(d.attrm!=null){p.attached=(p.attached||[]).filter((_,i)=>i!==+d.attrm);if(!p.attached.length)delete p.attached;persist(p);renderMain()}});
 document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#att-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
+// a food exploration as a page to print, its wonderings and steps in our words
+function explDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["Food exploration"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>{const ls=libLines(p.text);return ls.length?dList(p.key,ls):dText(p.key,String(p.text).replace(/[#*]/g,""))}),dText("","We only taste what an adult has named edible. We are nut free.")]}}
 // what is attached, as pages printed after the plan. A © song prints only its title and songwriter.
 async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null)await loadGuides();const docs=[],recipes=[];
   for(const a of p.attached||[]){
     if(a.kind==="recipe"){const x=libRecipe(a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
     else if(a.kind==="song"){const x=(libData.songs||[]).find(y=>y.id===a.id);if(x)docs.push(songDoc(x))}
     else if(a.kind==="readaloud"){const x=(libData.readalouds||[]).find(y=>y.id===a.id);if(x)docs.push(readGuideDoc(x))}
+    else if(a.kind==="exploration"){const x=(libData.explorations||[]).find(y=>y.id===a.id);if(x)docs.push(explDoc(x))}
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
     else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
   return {docs,recipes}}
@@ -5053,7 +5057,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
 const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</button>`).join("");
 let libSheetOn=null;
 function libItemOf(kind,id){if(!libData)return null;
-  if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;
+  if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
   if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
   if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}
   if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;return null}
@@ -5070,6 +5074,8 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
   if(kind==="readaloud"){const t=readText(x);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The book, for educators"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
       ${t?`<details style="margin-top:8px"><summary class="linkbtn">The words of the book, for educators only</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}`}
+  if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
   if(kind==="prompt")return `<div class="lbl">${esc(x.set)}</div><p style="font-size:18px">${esc(x.title)}</p><div class="hint">A wondering to carry into the day, ready to set aside whenever the children lead somewhere else.</div>`;
   if(kind==="garden")return typeof gdnEntrySheet==="function"?gdnEntrySheet(x):"";
@@ -7408,7 +7414,7 @@ function gLinesAll(from,to){const out=[];
 // the grant counts California farms and food hubs only
 const gLines=(from,to)=>gLinesAll(from,to).filter(x=>x.ca);
 // how far the food travels, straight line from each producer's town to the school, and the county it comes from
-const G_TOWN_LL={"Nicasio":[38.0613,-122.6983,"Marin","CA"],"Occidental":[38.4074,-122.9483,"Sonoma","CA"],"Geyserville":[38.7074,-122.9044,"Sonoma","CA"],"Petaluma":[38.2324,-122.6367,"Sonoma","CA"],"Penngrove":[38.2996,-122.6667,"Sonoma","CA"],"Sebastopol":[38.4021,-122.8239,"Sonoma","CA"],"Bodega":[38.3457,-122.9733,"Sonoma","CA"],"Boonville":[39.009,-123.3661,"Mendocino","CA"],"Santa Rosa":[38.4405,-122.7144,"Sonoma","CA"],"Healdsburg":[38.6105,-122.8692,"Sonoma","CA"],"Windsor":[38.5471,-122.8164,"Sonoma","CA"],"Sonoma":[38.2919,-122.458,"Sonoma","CA"],"Kenwood":[38.4135,-122.5461,"Sonoma","CA"],"Glen Ellen":[38.3641,-122.5244,"Sonoma","CA"],"Guinda":[38.8291,-122.1925,"Yolo","CA"],"Forestville":[38.4735,-122.8903,"Sonoma","CA"],"Salinas":[36.6777,-121.6555,"Monterey","CA"],"West Sacramento":[38.5805,-121.5302,"Yolo","CA"],"Parlier":[36.6116,-119.5271,"Fresno","CA"],"Reedley":[36.5963,-119.4504,"Fresno","CA"],"Rumsey":[38.8889,-122.2372,"Yolo","CA"],"Pescadero":[37.2552,-122.3833,"San Mateo","CA"],"Brentwood":[37.9319,-121.6958,"Contra Costa","CA"],"Esparto":[38.6924,-122.0172,"Yolo","CA"],"Royal Oaks":[36.8794,-121.7444,"Monterey","CA"],"Laytonville":[39.6882,-123.4828,"Mendocino","CA"],"Newcastle":[38.874,-121.1333,"Placer","CA"],"Caruthers":[36.5427,-119.8332,"Fresno","CA"],"Logan":[41.737,-111.8338,"Cache","UT"],"Santa Cruz":[36.9741,-122.0308,"Santa Cruz","CA"]};
+const G_TOWN_LL={"Nicasio":[38.0613,-122.6983,"Marin","CA"],"Occidental":[38.4074,-122.9483,"Sonoma","CA"],"Geyserville":[38.7074,-122.9044,"Sonoma","CA"],"Petaluma":[38.2324,-122.6367,"Sonoma","CA"],"Penngrove":[38.2996,-122.6667,"Sonoma","CA"],"Sebastopol":[38.4021,-122.8239,"Sonoma","CA"],"Bodega":[38.3457,-122.9733,"Sonoma","CA"],"Boonville":[39.009,-123.3661,"Mendocino","CA"],"Santa Rosa":[38.4405,-122.7144,"Sonoma","CA"],"Healdsburg":[38.6105,-122.8692,"Sonoma","CA"],"Windsor":[38.5471,-122.8164,"Sonoma","CA"],"Sonoma":[38.2919,-122.458,"Sonoma","CA"],"Kenwood":[38.4135,-122.5461,"Sonoma","CA"],"Glen Ellen":[38.3641,-122.5244,"Sonoma","CA"],"Guinda":[38.8291,-122.1925,"Yolo","CA"],"Santa Rosa":[38.4405,-122.7141,"Sonoma","CA"],"Forestville":[38.4735,-122.8903,"Sonoma","CA"],"Salinas":[36.6777,-121.6555,"Monterey","CA"],"West Sacramento":[38.5805,-121.5302,"Yolo","CA"],"Parlier":[36.6116,-119.5271,"Fresno","CA"],"Reedley":[36.5963,-119.4504,"Fresno","CA"],"Rumsey":[38.8889,-122.2372,"Yolo","CA"],"Pescadero":[37.2552,-122.3833,"San Mateo","CA"],"Brentwood":[37.9319,-121.6958,"Contra Costa","CA"],"Esparto":[38.6924,-122.0172,"Yolo","CA"],"Royal Oaks":[36.8794,-121.7444,"Monterey","CA"],"Laytonville":[39.6882,-123.4828,"Mendocino","CA"],"Newcastle":[38.874,-121.1333,"Placer","CA"],"Caruthers":[36.5427,-119.8332,"Fresno","CA"],"Logan":[41.737,-111.8338,"Cache","UT"],"Santa Cruz":[36.9741,-122.0308,"Santa Cruz","CA"]};
 const G_SCHOOL_LL=[38.4706,-122.779];
 function gTownInfo(town){const t=String(town||"").trim();const v=G_TOWN_LL[t]||Object.entries(G_TOWN_LL).find(([k])=>k.toLowerCase()===t.toLowerCase())?.[1];return v?{lat:v[0],lng:v[1],county:v[2],state:v[3]}:null}
 function gMilesTo(lat,lng){const R=3958.8,r=x=>x*Math.PI/180;const [a,b]=G_SCHOOL_LL;const h=Math.sin(r(lat-a)/2)**2+Math.cos(r(a))*Math.cos(r(lat))*Math.sin(r(lng-b)/2)**2;return Math.round(2*R*Math.asin(Math.sqrt(h)))}
@@ -8657,7 +8663,7 @@ function renderBin(){
   // the questions this Class is bringing to the table this week
   const held=binHeld(b,room);
   {const km=mondayOf(parseIso(b.date));h+=kitchenCardHtml(km,false,`<div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div>`)}
-  h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held);
+  h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held)+binExplHtml(b);
   // the ideas the class is using this week print for the table on the bin sheet
   {const n=binIdeas().filter(i=>held[i.id]).length;if(n)h+=`<div class="actions" style="margin:-4px 0 14px">${printBtns("bin",b.id,`Print for the table, ${n} idea${n===1?"":"s"}`,true)}</div>`}
   h+=binFarmsHtml(b);
@@ -8700,10 +8706,32 @@ function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
     ${!all.length?`<div class="empty">${K.empty}</div>`:""}
     ${binAdd&&binAdd.kind===kind?binAddHtml(b):`<div class="actions" style="margin-top:10px"><button class="btn small ghost" data-binact="add" data-kind="${kind}">${K.add}</button><button class="btn small ghost" data-binact="suggest" ${binBusy?"disabled":""}>${binBusy?"Thinking":"Suggest some"}</button></div>`}
     ${sug&&(sug.length||binSugg.none)?binSuggHtml(kind,sug):""}</section>`}
-function binFarmsHtml(b){const farms=[...new Set((b.items||[]).flatMap(it=>it.farms||[]))];if(!farms.length)return"";
+/* the food explorations for this week's produce, our guided tastings, each opening in one tap with its recipe */
+function binExplHtml(b){if(!libData){loadLibrary();return ""}const L=(libData.explorations||[]).filter(x=>!x.draft);if(!L.length)return "";
+  const keys=new Set((b.items||[]).map(it=>binKey(it.name)));const pk=x=>String((x.meta||{}).produce||"").split(/,\s*/).map(binKey).filter(Boolean);
+  const fit=L.filter(x=>pk(x).some(k=>keys.has(k)||[...keys].some(q=>q.includes(k)||k.includes(q)))),rest=L.filter(x=>!fit.includes(x));
+  const row=x=>`<button class="libchip" data-libopen="${esc("exploration|"+x.id)}">${esc(x.title)}</button>`;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Food explorations</h3><span class="cnt">${fit.length?fit.length+" for this week's produce":""}</span></div>
+    <div class="cnt" style="margin-bottom:8px">Guided tastings in our own words, each beginning with what we wonder. A tasting's recipe opens from it.</div>
+    ${fit.length?`<div class="chiprow">${fit.map(row).join("")}</div>`:`<div class="cnt">None explores this week's produce.</div>`}
+    ${rest.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">Every food exploration, ${L.length}</summary><div class="chiprow">${rest.map(row).join("")}</div></details>`:""}</section>`}
+/* where the farms are, with our list of Sonoma County farms and the food miles map. The miles are a straight line from
+   each farm's town to our school, the way the Farm to School page counts them. */
+function foodMilesSvg(towns){const pts=towns.map(t=>Object.assign({},t,gTownInfo(t.town)||{})).filter(t=>t.lat!=null);if(!pts.length)return "";
+  const all=[...pts,{lat:G_SCHOOL_LL[0],lng:G_SCHOOL_LL[1]}];const la=all.map(p=>p.lat),ln=all.map(p=>p.lng);
+  const pad=.04,minLa=Math.min(...la)-pad,maxLa=Math.max(...la)+pad,minLn=Math.min(...ln)-pad,maxLn=Math.max(...ln)+pad;const W=360,H=Math.max(220,Math.min(420,Math.round(W*(maxLa-minLa)/((maxLn-minLn)*0.79))));
+  const X=g=>Math.round((g-minLn)/(maxLn-minLn)*(W-120)+10),Y=a=>Math.round((maxLa-a)/(maxLa-minLa)*(H-30)+15);const sx=X(G_SCHOOL_LL[1]),sy=Y(G_SCHOOL_LL[0]);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="How far our food travels to our school" style="width:100%;max-width:520px;height:auto;display:block;margin:8px 0;background:var(--paper,#fbfaf6);border-radius:10px">
+    ${pts.map(p=>`<line x1="${sx}" y1="${sy}" x2="${X(p.lng)}" y2="${Y(p.lat)}" stroke="#9aa79a" stroke-dasharray="3 3"/>`).join("")}
+    ${pts.map(p=>`<circle cx="${X(p.lng)}" cy="${Y(p.lat)}" r="${p.bin?6:4}" fill="${p.bin?"#b5532a":"#4a6b4a"}"/><text x="${X(p.lng)+8}" y="${Y(p.lat)+4}" font-size="11" fill="#2f3b2f">${esc(p.town)}, ${gTownMiles(p.town)} mi</text>`).join("")}
+    <rect x="${sx-6}" y="${sy-6}" width="12" height="12" fill="#2f3b2f"/><text x="${sx}" y="${sy+19}" text-anchor="middle" font-size="11" font-weight="700" fill="#2f3b2f">Our school</text></svg>`}
+function binFarmsHtml(b){const farms=[...new Set((b.items||[]).flatMap(it=>it.farms||[]))];const local=(libData&&libData.farms)||[];if(!libData)loadLibrary();if(!farms.length&&!local.length)return"";
+  const towns=new Map();for(const f of farms){const t=farmTown(f);if(t)towns.set(t,{town:t,bin:true})}for(const f of local)if(f.town&&!towns.has(f.town))towns.set(f.town,{town:f.town,bin:false});
   return `<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Where the farms are</summary>
-    <div class="cnt" style="margin:8px 0">Change a town here and it changes everywhere the farm appears.</div>
-    ${farms.map(f=>`<label class="cnt" style="display:flex;gap:10px;align-items:center;margin:6px 0"><span style="min-width:180px">${esc(f)}</span><input type="text" data-farmtown="${esc(farmKey(f))}" value="${esc(farmTown(f))}" placeholder="Town" style="max-width:220px"></label>`).join("")}</details>`}
+    ${farms.length?`<div class="cnt" style="margin:8px 0">Change a town here and it changes everywhere the farm appears.</div>
+    ${farms.map(f=>`<label class="cnt" style="display:flex;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap"><span style="min-width:180px">${esc(f)}${gTownMiles(farmTown(f))!=null?`, ${gTownMiles(farmTown(f))} miles`:""}</span><input type="text" data-farmtown="${esc(farmKey(f))}" value="${esc(farmTown(f))}" placeholder="Town" style="max-width:220px"></label>`).join("")}`:""}
+    <div class="lbl" style="margin-top:10px">Food miles</div><div class="cnt">How far our food travels, in a straight line from each farm's town to our school. ${farms.length?"This week's farms are the larger dots.":""}</div>${foodMilesSvg([...towns.values()])}
+    ${local.length?`<div class="lbl" style="margin-top:10px">Sonoma County farms we know, ${local.length}</div>${local.map(f=>`<div class="strow"><b>${f.link?`<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.name)}</a>`:esc(f.name)}</b> <span class="cnt">${esc(f.town)}${gTownMiles(f.town)!=null?", "+gTownMiles(f.town)+" miles":""}</span><div class="cnt">${esc(f.products||"")}${f.csa?". CSA, "+esc(f.csa.charAt(0).toLowerCase()+f.csa.slice(1)):""}${f.note?". "+esc(f.note):""}</div></div>`).join("")}`:""}</details>`}
 function binAddHtml(b){const f=binAdd;
   return `<div class="binadd"><label class="fld-label">${BIN_KIND[f.kind||"question"].say}<textarea id="bin-idea" rows="2" placeholder="${BIN_KIND[f.kind||"question"].ph}">${esc(f.text||"")}</textarea></label>
     <div class="cnt" style="margin:6px 0 4px">It goes with (optional)</div><div class="chiprow">${(b.items||[]).map(it=>{const k=binKey(it.name);return `<button class="chip-btn" data-binpk="${esc(k)}" aria-pressed="${(f.produce||[]).includes(k)}">${esc(binName(it))}</button>`}).join("")}</div>
@@ -11258,6 +11286,7 @@ async function printsClick(t){
   if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
+  if(kind==="exploration"){if(!libData)await loadLibrary();const x=(libData.explorations||[]).find(r=>r.id===t.dataset.id);if(x)await out([explDoc(x)],x.title.replace(/[?]/g,""));return true}
   if(kind==="songwords"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x,true)],x.title);return true}
   if(kind==="song"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x)],x.title);return true}
   if(kind==="recipe"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}

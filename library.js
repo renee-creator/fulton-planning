@@ -19,7 +19,7 @@ module.exports = function library(o) {
     for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
     return out; };
   const WD = require('./wording.js');
-  const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud' };
+  const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud', explorations: 'exploration' };
   const META = text => { const m = String(text || '').match(/^\s*<!--([\s\S]*?)-->/); const out = {}; if (m) for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.*?)\s*$/i); if (kv) out[kv[1].toLowerCase()] = kv[2]; } return out; };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'item';
   const isCopyright = meta => /^(yes|true|©)$/i.test(String(meta.copyright || ''));
@@ -41,12 +41,14 @@ module.exports = function library(o) {
   function list(me) {
     const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
     const pr = item('staff/library/prompts/provocations.md');
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: all('readalouds'), provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
+    const fm = get('staff/library/farms.json');
+    // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: all('readalouds'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
   function add(me, b, from) {
-    const kind = b.kind; const dir = Object.keys(DIRS).find(k => DIRS[k] === kind); if (!dir) return { error: 'Choose what to add.' };
+    const kind = b.kind; const dir = kind === 'exploration' ? '' : Object.keys(DIRS).find(k => DIRS[k] === kind); if (!dir) return { error: 'Choose what to add.' };
     const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 120); if (!title) return { error: 'Give it a name.' };
     const boss = from !== 'family' && isDirector(me), kit = from !== 'family' && isKitchen(me);
     if (kind !== 'recipe' && !boss) return { error: 'Only the director adds to the song book and the read-alouds.' };
