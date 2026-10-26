@@ -5177,8 +5177,9 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   // the plant guide, two versions
   h+=gdnFold("guide","The Fulton Community School plant guide","Plant cards and full plant pages, on screen, as PDF and as Word",
     `<div class="tseg" role="group" aria-label="Version"><button data-gguide="children" aria-pressed="${gdnGuide==="children"}">Plant card</button><button data-gguide="adults" aria-pressed="${gdnGuide==="adults"}">Full plant page</button></div>
-    <div class="actions">${printBtns(gdnGuide==="children"?"gguidekids":"gguideadults","",gdnGuide==="children"?"Every plant card, PDF":"Every full plant page, PDF")}</div>
-    <div class="gguide">${plants.map(p=>gdnGuide==="children"?`<div class="gcard">${gdnPhotoOf(p.id)?`<img src="${esc(gdnPhotoOf(p.id))}" alt="">`:""}<b>${esc(p.common)}</b><div>${esc((p.words||{}).child||"")}</div><div>${gdnMark(p)}</div></div>`:`<div class="strow"><b>${esc(p.common)}</b> <i class="cnt">${esc(p.botanical||"")}</i><div class="cnt">${esc(gdnAdultLine(p))}</div></div>`).join("")}</div>`);
+    ${(()=>{const tk=plants.filter(p=>gdnPrintSel.has(p.id));const word=gdnGuide==="children"?"plant card":"full plant page";
+      return `<div class="actions" style="flex-wrap:wrap">${tk.length?printBtns("gguidesel",tk.map(p=>p.id).join(","),`The ${tk.length} ticked ${word}${tk.length===1?"":"s"}, PDF`,true):""}${printBtns(gdnGuide==="children"?"gguidekids":"gguideadults","",gdnGuide==="children"?"Every plant card, PDF":"Every full plant page, PDF")}<button class="linkbtn" data-gguideall="1">Tick every plant</button>${tk.length?`<button class="linkbtn" data-gguideall="0">Clear the ticks</button>`:""}</div><div class="hint">Tick one plant or a few to print only those, or print every plant.</div>`})()}
+    <div class="gguide">${plants.map(p=>gdnGuide==="children"?`<div class="gcard"><label class="radio" style="margin:0 0 4px"><input type="checkbox" data-gpsel="${esc(p.id)}" ${gdnPrintSel.has(p.id)?"checked":""}><span>Print</span></label>${gdnPhotoOf(p.id)?`<img src="${esc(gdnPhotoOf(p.id))}" alt="">`:""}<b>${esc(p.common)}</b><div>${esc((p.words||{}).child||"")}</div><div>${gdnMark(p)}</div></div>`:`<div class="strow"><label class="radio" style="display:inline-flex;margin:0 6px 0 0"><input type="checkbox" data-gpsel="${esc(p.id)}" ${gdnPrintSel.has(p.id)?"checked":""} aria-label="Print ${esc(p.common)}"></label><b>${esc(p.common)}</b> <i class="cnt">${esc(p.botanical||"")}</i><div class="cnt">${esc(gdnAdultLine(p))}</div></div>`).join("")}</div>`);
   // the year plan by month
   const seedsFit=m=>(g.seeds||[]).filter(s=>(s.months||[]).includes(m));
   const monthHtml=m=>{const M=(g.plan.months||{})[m]||{tasks:[]};return `<details class="gmonth" ${m===mm?"open":""}><summary><b>${esc(M.name||GDN_MONTHS[+m-1])}</b> <span class="cnt">${M.tasks.length} task${M.tasks.length===1?"":"s"}</span></summary>
@@ -5340,13 +5341,14 @@ function gdnPrintFold(){const sets=gdnSets();if(!sets.length)return "";
   return gdnFold("gprints","Cards and signs to print",`${sets.reduce((n,x)=>n+x[2].length,0)} in ${sets.length} sets, one, some or all`,`<div class="hint">Each set prints one card, a chosen few or the whole set, as PDF and Word, with our own photo once there is one and the stand-in's credit until then.</div>
     ${sets.map(([k,l,items])=>{const n=items.filter(x=>gdnPrintSel.has(x.id)).length;return `<details class="strow"><summary><b>${esc(l)}</b> <span class="cnt">${items.length}${n?`, ${n} ticked`:""}</span></summary><div class="gprint">${items.map(x=>`<label class="radio"><input type="checkbox" data-gpsel="${esc(x.id)}" ${gdnPrintSel.has(x.id)?"checked":""}><span>${esc(gdnName(x)||x.title||"")}</span></label>`).join("")}</div>
       <div class="actions" style="flex-wrap:wrap">${n?printBtns("gset",k+"|ticked",`The ${n} ticked, PDF`):""}${printBtns("gset",k+"|all","The whole set, PDF")}</div></details>`}).join("")}`)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gguideall]");if(!t)return;const ps=((gdn&&gdn.plants)||[]).filter(p=>!p.planned||isDirector());ps.forEach(p=>t.dataset.gguideall==="1"?gdnPrintSel.add(p.id):gdnPrintSel.delete(p.id));renderMain()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.gpsel)return;if(t.checked)gdnPrintSel.add(t.dataset.gpsel);else gdnPrintSel.delete(t.dataset.gpsel);renderMain()});
 function gdnSetDocs(key){const [k,which]=key.split("|");const set=gdnSets().find(x=>x[0]===k);if(!set)return [];const items=set[2].filter(x=>which==="all"||gdnPrintSel.has(x.id));
   return items.map(x=>x.field?gdnFieldDoc(x.field.space||x.field.title):gdnEntryDoc(x)).filter(Boolean)}
 window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=gdnFieldDoc;window.gdnSets=gdnSets;
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
-function gdnGuideDoc(kind,id){const ps=(gdn.plants||[]).filter(p=>!id||p.id===id);
+function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
   if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
 // one clean sheet for a season, for the staff room or a wall
@@ -5698,7 +5700,39 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   return {overview,sheets,hand:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
 const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
-async function demoPdf(x,size){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
+/* the poster is one sheet for the wall, 18 by 24 inches. The recipe's name and what we need across the top, then every
+   step in order in numbered panels, each with its words, its picture or its amounts, so children follow the whole recipe
+   at a glance. The letter set keeps one step to a sheet for the table. */
+async function demoPosterPdf(x){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES.poster;const doc=TREE_KIT.pdf({size:"poster",orientation:"portrait"});
+  const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};const M=54,W=S.w-M*2;
+  font(true);doc.setTextColor(47,59,47);doc.setFontSize(72);doc.text(doc.splitTextToSize(P.overview.title,W)[0],M,M+64);
+  // what we need, in one band of pictures or words
+  let y=M+110;font(true);doc.setFontSize(30);doc.text("What we need",M,y);y+=18;
+  const need=[...P.overview.ings,...P.overview.tools];const cell=Math.min(150,W/Math.max(6,Math.ceil(need.length/2)));let nx=M;
+  for(const it of need){if(nx+cell>M+W){nx=M;y+=cell+44}if(it.img)doc.addImage(it.img,demoFmt(it.img),nx+10,y+6,cell-20,cell-20);font(false);doc.setFontSize(17);doc.text(doc.splitTextToSize(it.text,cell-6).slice(0,it.img?2:5),nx+4,y+(it.img?cell+8:24));nx+=cell}
+  y+=cell+60;doc.setDrawColor(200,190,170);doc.setLineWidth(2);doc.line(M,y-24,M+W,y-24);
+  // the steps in panels, two or three across
+  const st=P.sheets;const cols=st.length<=4?2:3;const rows=Math.ceil(st.length/cols);const gap=24;const pw=(W-gap*(cols-1))/cols,ph=Math.min(520,(S.h-M-y-gap*(rows-1))/rows);
+  st.forEach((sh,i)=>{const cx=M+(i%cols)*(pw+gap),cy=y+Math.floor(i/cols)*(ph+gap);doc.setFillColor(248,245,238);doc.roundedRect(cx,cy,pw,ph,18,18,"F");
+    doc.setFillColor(47,59,47);doc.circle(cx+40,cy+40,26,"F");font(true);doc.setTextColor(255,255,255);doc.setFontSize(30);doc.text(String(sh.n),cx+40,cy+51,{align:"center"});doc.setTextColor(47,59,47);
+    if(sh.adult)doc.addImage(P.hand,"PNG",cx+pw-74,cy+12,60,60);
+    const fs=ph>360?30:24;doc.setFontSize(fs);const tl=doc.splitTextToSize(sh.text,pw-40).slice(0,3);doc.text(tl,cx+20,cy+96);let ty=cy+96+tl.length*fs*1.2+8;
+    const room=cy+ph-ty-16;const pics=sh.pics.slice(0,4);
+    if(pics.length){const n=pics.length,w=Math.min(room-(pics.some(p=>p.cap)?34:0),(pw-40-(n-1)*12)/n);let px=cx+20+(pw-40-(n*w+(n-1)*12))/2;
+      for(const pc of pics){if(w>30)doc.addImage(pc.img,demoFmt(pc.img),px,ty,w,w);if(pc.cap){font(!!pc.big);doc.setFontSize(18);doc.text(doc.splitTextToSize(pc.cap,Math.max(w+10,120)).slice(0,2),px+w/2,ty+w+22,{align:"center"})}px+=w+12}}
+    else if(sh.words.length){font(true);doc.setFontSize(Math.min(28,fs));for(const wd of sh.words.slice(0,4)){doc.text(doc.splitTextToSize(wd.big,pw-40)[0],cx+20,ty+24);ty+=34}}});
+  return doc.output("blob")}
+async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);
+  const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:/^data:image\/png/.test(data)?"png":"jpg",transformation:{width:Math.round(w),height:Math.round(w)}});
+  const run=(t,pt,b)=>new D.TextRun({text:t,size:Math.round(pt*2),bold:!!b,font:"Andika"});const cols=P.sheets.length<=4?2:3;const tw=25920-2880;
+  const cellOf=sh=>new D.TableCell({width:{size:Math.floor(tw/cols),type:D.WidthType.DXA},margins:{top:160,bottom:160,left:160,right:160},children:[new D.Paragraph({children:[run(String(sh.n)+"  ",40,true),...(sh.adult?[img(P.hand,50)]:[])]}),new D.Paragraph({spacing:{after:120},children:[run(sh.text,28,true)]}),
+    ...(sh.pics.length?[new D.Paragraph({children:sh.pics.slice(0,4).flatMap(pc=>[img(pc.img,cols===2?150:110),run(" ",10)])}),new D.Paragraph({children:[run(sh.pics.map(pc=>pc.cap).filter(Boolean).join(",  "),18,true)]})]:sh.words.map(w=>new D.Paragraph({children:[run(w.big,24,true)]})))]});
+  const rows=[];for(let i=0;i<P.sheets.length;i+=cols){const cs=P.sheets.slice(i,i+cols).map(cellOf);while(cs.length<cols)cs.push(new D.TableCell({width:{size:Math.floor(tw/cols),type:D.WidthType.DXA},children:[new D.Paragraph("")]}));rows.push(new D.TableRow({cantSplit:true,children:cs}))}
+  const need=[...P.overview.ings,...P.overview.tools];
+  const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,60,true)]}),new D.Paragraph({children:[run("What we need",26,true)]}),new D.Paragraph({children:need.map(it=>run(it.text+"     ",18))}),
+    new D.Table({width:{size:tw,type:D.WidthType.DXA},columnWidths:Array(cols).fill(Math.floor(tw/cols)),rows})]}];
+  const docx=TREE_KIT.wordFile(D,{size:"poster",sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
+async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
   // the overview, for setting up, with a picture where the library has one and the words always
   font(true);doc.setFontSize(34*k);doc.text(P.overview.title,M,M+30*k);doc.setFontSize(20*k);doc.text("What we need",M,M+70*k);
@@ -5714,7 +5748,7 @@ async function demoPdf(x,size){if(!window.jspdf)await TREE_KIT.loadScript(TREE_K
     let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+(p.big?44:30)*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,demoFmt(p.img),x0,top,w,h);if(p.cap){font(!!p.big);doc.setFontSize((p.big?24:15)*k);doc.text(doc.splitTextToSize(p.cap,w+10*k),x0+w/2,top+h+(p.big?26:16)*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}}
   return doc.output("blob")}
 // the same set as a Word file, one page for each sheet
-async function demoWord(x,size){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
+async function demoWord(x,size){if(size==="poster")return demoPosterWord(x);const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
   const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:/^data:image\/png/.test(data)?"png":"jpg",transformation:{width:Math.round(w),height:Math.round(w)}});
   const run=(t,pt,b)=>new D.TextRun({text:t,size:Math.round(pt*2*k),bold:!!b,font:"Andika"});
   const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,30,true)]}),new D.Paragraph({children:[run("What we need",18,true)]}),
@@ -11021,6 +11055,7 @@ async function printsClick(t){
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
+  if(kind==="gguidesel"){if(!gdnOk())return true;const docs=gdnGuideDoc(gdnGuide,t.dataset.id);if(docs.length)await out(docs,gdnGuide==="children"?"Plant cards":"Full plant pages");return true}
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?gdnGuide:"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
   if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
