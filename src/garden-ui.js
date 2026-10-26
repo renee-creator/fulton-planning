@@ -294,7 +294,7 @@ window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=g
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const ps=(gdn.plants||[]).filter(p=>!id||p.id===id);
-  if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
+  if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
 // one clean sheet for a season, for the staff room or a wall
 function gdnSeasonDoc(S){const D=gdnSeason(S);const blocks=[];if(D.lead)blocks.push(dText("",D.lead));

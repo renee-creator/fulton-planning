@@ -92,7 +92,7 @@ module.exports = function growthModule(c) {
   const libReady = () => !!((get(READY) || {}).library);
   // Session 12 made one list, staff/readings.json. An entry with a citation or a kind is a library entry, a book or an
   // article, and still waits for the director's Ready, as the library did when it was its own file.
-  const isLibEntry = x => !!x && (!!x.cite || x.kind === 'book' || x.kind === 'article' || /^r[la]/.test(String(x.id || '')));
+  const isLibEntry = x => !!x && (!!x.cite || x.kind === 'book' || x.kind === 'article');
   const readingsFor = me => { const dir = isDirector(me); const all = (get(READ) || {}).list || [];
     const base = all.filter(x => x && !isLibEntry(x));
     const lib = [...all.filter(isLibEntry), ...((get(LIB) || {}).list || [])]; const on = libReady();

@@ -4824,7 +4824,7 @@ function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gth
   const jobRow=j=>{const ss=j.signups||[];const taken=j.signups?ss.length:(j.taken||0);
     return `<li><b>${esc(j.title)}</b>${j.spots?` <span class="muted">${taken} of ${j.spots}</span>`:taken?` <span class="muted">${taken} signed up</span>`:""}${ed&&ss.length?`<div class="cnt">${esc(ss.map(s=>s.who||s.family||s.email).join(", "))}</div>`:""}${ed?` <button class="linkbtn" data-gthjobdel="${esc(j.id)}">Take it off</button>`:""}</li>`};
   return `<section class="card" id="gth-${esc(g.id)}"><div class="secthead"><div style="min-width:0"><div class="lbl">${esc(GTH_NAMES[g.gathering]||"Gathering")}${g.gardenDay?", the season's garden day":""}</div><h3 style="font-size:18px;margin:2px 0">${esc(g.title||GTH_NAMES[g.gathering])}</h3><div class="cnt">${esc(when)}</div></div>
-    <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"With the staff, never on the Family page":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
+    <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"For the staff only":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
     ${ed?`<label class="fld-label">The plan<textarea rows="4" data-gthf="plan" data-gthid="${esc(g.id)}">${esc(g.plan||"")}</textarea></label>
       ${gv?"":`<label class="fld-label">A note for families, shown with it once it is ready<textarea rows="2" data-gthf="note" data-gthid="${esc(g.id)}">${esc(g.note||"")}</textarea></label>`}
       <label class="fld-label">Its toolkit, a link<input type="url" data-gthf="toolkit" data-gthid="${esc(g.id)}" value="${esc(g.toolkit||"")}" placeholder="https://"></label>`
@@ -5056,7 +5056,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
    educator reaches the song or the recipe sheet before a small group without opening the plan. */
 const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</button>`).join("");
 let libSheetOn=null;
-function libItemOf(kind,id){if(!libData)return null;
+function libItemOf(kind,id){if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;if(!libData)return null;
   if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
   if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
   if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}

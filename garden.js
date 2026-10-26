@@ -155,7 +155,7 @@ module.exports = function garden(o) {
     // a plant photo, kept only after the face check found no face, never showing children
     if (P === 'garden/photo') {
       // a photo of our own for any Garden entry, a plant, an animal, wildlife or a sign, takes the stand-in photo's place everywhere
-      const p = entryOf(s, body.plant); if (!p || !/^[a-z0-9-]+\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
+      const p = entryOf(s, body.plant); if (!p || !/^[a-z0-9]{12}-garden-(entry|photo|plant)[a-z0-9-]*\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
       if (body.noFace !== true) { err(req, res, 400, 'A plant photo is kept only once the face check finds no face.'); return; }
       saveL(L => { L.photos.push({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }); }); return back();
     }

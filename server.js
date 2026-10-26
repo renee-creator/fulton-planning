@@ -783,12 +783,14 @@ function familySummaryDraft(cf, child) {
   // a short form of another child's name, such as the first letters of it, reads as a friend too, and TREE's own count of
   // who a child is seen with, such as a friend S (18), is left for the educators
   const others = all.filter(c => c && c.id !== child.id && c.first).map(c => String(c.first));
-  const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{2,})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]\s*$/.test(str.slice(0, at)); if (start || w === child.first) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
+  // only a short form, two to four letters, that is no everyday word, month, Class, group or educator's name
+  const L = oneLists(); const keep = new Set([...(L.classrooms || []), ...(L.groups || []).flatMap(g => [g.name, g.educator]), ...(L.educators || []).map(e => e && (e.name || e)), 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'The', 'They', 'She', 'Her', 'His', 'And', 'But', 'Then', 'When', 'With'].filter(Boolean).flatMap(x => String(x).split(/\s+/)));
+  const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{1,3})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(str.slice(0, at)); if (start || w === child.first || keep.has(w) || fam.EVERYDAY.has(w.toLowerCase()) || fam.NEVER_NAMES.has(w)) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
   const clean = t => prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(t))), child, all));
   // a short highlight is the first two sentences of the educators' own words
   const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(Boolean); return ss.slice(0, n || 2).join(' '); };
-  const g = oneLists().groups.find(x => x.name === child.group) || null;
+  const g = oneLists().groups.find(x => x.name === child.group && (!x.room || !child.classroom || x.room === child.classroom)) || null;
   return { draftedAt: Date.now(), draftedBy: 'TREE', readAt: 0, readBy: '',
     parts: { returns: short(f.interests, 2), friends: [g ? `${child.first} is in the ${g.name} group${g.educator ? ' with ' + g.educator : ''}.` : '', short(f.friends, 2)].filter(Boolean).join(' '),
       areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, short(f[k], 2)])), strengths: short(f.strengths, 2), goals: clean(f.goals), nextSteps: clean(f.nextSteps) } };

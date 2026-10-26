@@ -5345,7 +5345,7 @@ window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=g
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const ps=(gdn.plants||[]).filter(p=>!id||p.id===id);
-  if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
+  if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
 // one clean sheet for a season, for the staff room or a wall
 function gdnSeasonDoc(S){const D=gdnSeason(S);const blocks=[];if(D.lead)blocks.push(dText("",D.lead));
@@ -5507,7 +5507,7 @@ function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gth
   const jobRow=j=>{const ss=j.signups||[];const taken=j.signups?ss.length:(j.taken||0);
     return `<li><b>${esc(j.title)}</b>${j.spots?` <span class="muted">${taken} of ${j.spots}</span>`:taken?` <span class="muted">${taken} signed up</span>`:""}${ed&&ss.length?`<div class="cnt">${esc(ss.map(s=>s.who||s.family||s.email).join(", "))}</div>`:""}${ed?` <button class="linkbtn" data-gthjobdel="${esc(j.id)}">Take it off</button>`:""}</li>`};
   return `<section class="card" id="gth-${esc(g.id)}"><div class="secthead"><div style="min-width:0"><div class="lbl">${esc(GTH_NAMES[g.gathering]||"Gathering")}${g.gardenDay?", the season's garden day":""}</div><h3 style="font-size:18px;margin:2px 0">${esc(g.title||GTH_NAMES[g.gathering])}</h3><div class="cnt">${esc(when)}</div></div>
-    <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"With the staff, never on the Family page":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
+    <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"For the staff only":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
     ${ed?`<label class="fld-label">The plan<textarea rows="4" data-gthf="plan" data-gthid="${esc(g.id)}">${esc(g.plan||"")}</textarea></label>
       ${gv?"":`<label class="fld-label">A note for families, shown with it once it is ready<textarea rows="2" data-gthf="note" data-gthid="${esc(g.id)}">${esc(g.note||"")}</textarea></label>`}
       <label class="fld-label">Its toolkit, a link<input type="url" data-gthf="toolkit" data-gthid="${esc(g.id)}" value="${esc(g.toolkit||"")}" placeholder="https://"></label>`
@@ -5680,14 +5680,14 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   const sheets=[{n:1,text:"Wash our hands.",pics:[{img:demoWash(),w:1.2,drawn:true}],words:[],adult:false}];
   const measured=new Set();
   for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
-    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
+    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).map(w=>w.replace(/[^A-Za-z-]/g,"")).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
       if(!keys.length||!keys.every(k=>new RegExp("\\b"+k.replace(/(es|s)$/,"")+"(e?s)?\\b","i").test(s)))continue;
       const first=!measured.has(line);measured.add(line);const key=demoKey(q?q.item:line);const label=name.replace(/\s*\(.*\)$/,"");
       // the measure first, the right cup or spoon repeated for how many, with the amount in large type
       const amount=first&&q&&q.n?demoFracText(q.n)+(q.unit?" "+q.unit+(q.n>1?"s":""):""):"";
       if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
       const pd=await demoPicData(demoPicOf(key));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
-    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
+    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
     const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.7,cap:"wait",drawn:true});
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t)));return {text:t,img:pd?pd.data:null}};
@@ -5838,7 +5838,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
    educator reaches the song or the recipe sheet before a small group without opening the plan. */
 const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</button>`).join("");
 let libSheetOn=null;
-function libItemOf(kind,id){if(!libData)return null;
+function libItemOf(kind,id){if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;if(!libData)return null;
   if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
   if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
   if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}

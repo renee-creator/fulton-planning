@@ -81,7 +81,7 @@ function withoutOthers(text, child, all) {
   // full names first, then single names, each with a possessive
   const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
   if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos, at, all) => {
-    const first = m.split(/\\s+/)[0].replace(/(\'s|’s)$/, ''); const start = !all.slice(0, at).trim() || /[.!?]["”]?\\s*$|\\n\\s*$/.test(all.slice(0, at));
+    const first = m.split(/\s+/)[0].replace(/(\'s|’s)$/, ''); const start = !all.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(all.slice(0, at));
     return EVERYDAY.has(first.toLowerCase()) && start ? m : 'a friend' + (pos ? '\'s' : ''); });
   if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), '$1a friend');
   // two friends named together read as friends, and a sentence that starts with one starts with a capital
@@ -195,7 +195,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   const listOf = test => [...recs().entries()].filter(([, r]) => !r.deleted && r.doc && test(r.doc)).map(([id, r]) => (r.doc.id === id ? r.doc : Object.assign(r.doc, { id })));
   // a gathering and its jobs reach families only once the director has released them in Settings, and marked them ready
   // a garden visit, a visiting group in our garden, stays with the staff and never reaches families
-  const items = () => listOf(d => d.kind === 'item' && d.gathering !== 'garden-visit' && (!o.released || !(d.gathering || d.gatheringId) || o.released(d)));
+  const visits = () => new Set(listOf(d => d.gathering === 'garden-visit').map(d => d.id));
+  const items = () => { const gv = visits(); return listOf(d => d.kind === 'item' && d.gathering !== 'garden-visit' && !(d.gatheringId && gv.has(d.gatheringId)) && (!o.released || !(d.gathering || d.gatheringId) || o.released(d))); };
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {
@@ -489,4 +490,6 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;
+module.exports.EVERYDAY = EVERYDAY;
+module.exports.NEVER_NAMES = NEVER_NAMES;
 module.exports.withoutRatings = withoutRatings;

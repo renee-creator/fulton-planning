@@ -416,6 +416,7 @@ module.exports = function staffModule(o) {
     // the kitchen also adds and edits recipes in the recipe library
     const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''));
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo', 'library/img', 'library/picture'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
+    if (P === 'library/picture' && isNewHire(me)) return deny('A new educator reads the libraries.');
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
@@ -1040,7 +1041,7 @@ module.exports = function staffModule(o) {
         if (typeof c.create === 'string' && /\.md$/.test(c.path)) { if (!S.files.has(c.path)) putText(c.path, c.create); hit.add(c); continue; }
         if (c.doc && typeof c.doc === 'object' && /\.json$/.test(c.path)) { if (!S.files.has(c.path)) put(c.path, JSON.parse(JSON.stringify(c.doc))); hit.add(c); continue; }
         if (c.remove === true) { const r = S.files.get(c.path); if (!r) { hit.add(c); continue; }
-          if (typeof c.expect === 'string' && r.text !== c.expect) continue;
+          if (typeof c.expect === 'string' && (typeof r.text === 'string' ? r.text !== c.expect : (() => { try { return JSON.stringify(r.doc) !== JSON.stringify(JSON.parse(c.expect)); } catch (e) { return true; } })())) continue;
           if (r.sha) { const res = await gh('DELETE', `/repos/${repo}/contents/${c.path}`, { message: 'Remove ' + c.path.replace(/^staff\//, 'educator records ') + ', ' + note, sha: r.sha, branch: store.branch }); if (res.status !== 200 && res.status !== 404) throw new Error('GitHub answered ' + res.status); }
           S.files.delete(c.path); hit.add(c); continue; }
       } catch (er) { failed++; log('One-time step', name, 'could not change', c.path, er.message); }

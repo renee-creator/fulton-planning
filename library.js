@@ -88,7 +88,8 @@ module.exports = function library(o) {
     if (P === 'library/picture') { const k = String(body.name || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60); const id = String(body.id || '');
       if (!k) { err(req, res, 400, 'Name the ingredient or tool.'); return; }
       if (body.remove) { if (!isDirector(me)) { err(req, res, 403, 'The director takes a picture away.'); return; } const all = Object.assign({ list: {} }, get(PICS) || {}); delete all.list[k]; put(PICS, all); json(req, res, 200, list(me)); return; }
-      if (!/^[a-z0-9][a-z0-9._-]{0,150}$/i.test(id) || body.noFace !== true) { err(req, res, 400, 'A photo is kept only once the face check finds no face.'); return; }
+      // only a photo kept from this page, never an observation's photo, which may show a child
+      if (!/^[a-z0-9]{12}-recipe-picture\.(jpe?g|png)$/i.test(id) || body.noFace !== true) { err(req, res, 400, 'A photo is kept only once the face check finds no face.'); return; }
       if (pictures()[k] && !isDirector(me)) { err(req, res, 403, 'This item has a picture. The director chooses to replace it.'); return; }
       const all = Object.assign({ list: {} }, get(PICS) || {}); all.list = Object.assign({}, all.list, { [k]: { id, by: me, at: Date.now() } }); put(PICS, all); log('Recipe picture kept for', k, 'by', me); json(req, res, 200, list(me)); return; }
     if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); return; }

@@ -57,14 +57,14 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   const sheets=[{n:1,text:"Wash our hands.",pics:[{img:demoWash(),w:1.2,drawn:true}],words:[],adult:false}];
   const measured=new Set();
   for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
-    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
+    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).map(w=>w.replace(/[^A-Za-z-]/g,"")).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
       if(!keys.length||!keys.every(k=>new RegExp("\\b"+k.replace(/(es|s)$/,"")+"(e?s)?\\b","i").test(s)))continue;
       const first=!measured.has(line);measured.add(line);const key=demoKey(q?q.item:line);const label=name.replace(/\s*\(.*\)$/,"");
       // the measure first, the right cup or spoon repeated for how many, with the amount in large type
       const amount=first&&q&&q.n?demoFracText(q.n)+(q.unit?" "+q.unit+(q.n>1?"s":""):""):"";
       if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
       const pd=await demoPicData(demoPicOf(key));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
-    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
+    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
     const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.7,cap:"wait",drawn:true});
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t)));return {text:t,img:pd?pd.data:null}};
