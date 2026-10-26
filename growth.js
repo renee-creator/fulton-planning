@@ -571,7 +571,7 @@ module.exports = function growthModule(c) {
     if (P === 'moments/remove') { const m = momentsAll().find(x => x.id === body.id); if (!m) return err(req, res, 404, 'That moment is not here.'); if (!dir && nameKey(m.by) !== nameKey(me)) return deny(); put(MOMENTS, { list: momentsAll().filter(x => x.id !== m.id) }); json(req, res, 200, { ok: true }); return; }
 
     /* the PD library's modules */
-    if (P === 'modules') { json(req, res, 200, { modules: modulesFor(me), examples: Object.fromEntries(Object.entries(get(MODS) || {}).map(([k, v]) => [k, dir ? v : (v && v.shown ? { examples: v.examples || [], shown: true } : { examples: [], shown: false })])) }); return; }
+    if (P === 'modules') { json(req, res, 200, { modules: modulesFor(me), examples: Object.fromEntries(Object.entries(get(MODS) || {}).map(([k, v]) => [k, dir ? v : { examples: ((v && v.examples) || []).filter(x => x && (x.kept || (v.shown && x.kept === undefined))).map(x => ({ kind: x.kind, text: x.text, why: x.why || '' })), shown: true }])) }); return; }
     if (P === 'module/progress') {
       const slug = String(body.slug || ''); const md = modules()[slug]; if (!md || (!dir && !published(slug))) return err(req, res, 404, 'That module is not here.');
       const g = growth(me); const cur = Object.assign({}, (g.modules || {})[slug]); const b = body.progress || {};
@@ -598,9 +598,12 @@ module.exports = function growthModule(c) {
       json(req, res, 200, { carry: g.carry }); return;
     }
     if (P === 'module/examples') {
-      if (!dir) return deny('The director chooses the examples.'); const slug = String(body.slug || ''); if (!modules()[slug]) return err(req, res, 404, 'That module is not here.');
-      const all = Object.assign({}, get(MODS) || {});
-      all[slug] = { examples: (Array.isArray(body.examples) ? body.examples : []).slice(0, 3).map(x => ({ kind: String(x.kind || '').slice(0, 12), id: String(x.id || '').slice(0, 60), text: txt(x.text, 900), label: txt(x.label, 200), photo: x.photo && typeof x.photo === 'string' ? x.photo.slice(0, 80) : '' })), shown: !!body.shown, at: Date.now() };
+      // a module's examples, or a DRDP measure's in the DRDP reference, drdp: and the measure. Each example the director keeps
+      // shows to educators, and one she takes out is never suggested again for that module or measure.
+      if (!dir) return deny('The director chooses the examples.'); const slug = String(body.slug || ''); if (!modules()[slug] && !/^drdp:[A-Z]{2,5} ?\d{1,2}$/.test(slug)) return err(req, res, 404, 'That module is not here.');
+      const all = Object.assign({}, get(MODS) || {}); const was = all[slug] || {};
+      all[slug] = { examples: (Array.isArray(body.examples) ? body.examples : []).slice(0, 5).map(x => ({ kind: String(x.kind || '').slice(0, 12), id: String(x.id || '').slice(0, 80), text: txt(x.text, 900), why: txt(x.why, 300), label: txt(x.label, 200), kept: x.kept !== false, photo: '' })),
+        out: Array.isArray(body.out) ? body.out.map(x => String(x).slice(0, 80)).slice(-300) : (was.out || []), shown: true, at: Date.now() };
       put(MODS, all); json(req, res, 200, { ok: true }); return;
     }
 

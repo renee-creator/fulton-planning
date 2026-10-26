@@ -1463,7 +1463,7 @@ Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await 
   const ready=b.modules.filter(x=>x.ready);
   const stat=x=>x.slug==="licensing"||x.slug==="howto"?((pcs[x.slug]||[]).length&&(pcs[x.slug]||[]).every(p=>dn[p.id])?chip("ok","Finished"):(pcs[x.slug]||[]).some(p=>dn[p.id])?chip("soonish","Started"):""):m[x.slug]&&m[x.slug].done?chip("ok","Finished "+fms(m[x.slug].done)):m[x.slug]&&m[x.slug].opened?chip("soonish","Started"):"";
   return card("Modules",`<div class="hint">You choose the order you take modules in.${fit?` TREE suggests ${H(fit.title)}, which fits your Focus Until Next Time.`:""} Each module ends with a practice to try in your own Class and a few minutes of sharing at a staff meeting.</div>
-    <div class="stgrid" style="margin-top:8px">${ready.map(x=>`<div class="stmod"><b>${H(x.title)}</b><div class="cnt">${H(x.desc)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${x.slug==="licensing"||x.slug==="howto"?x.slug:"m:"+x.slug}">Open</button>${x.waiting?chip("soonish","Draft, only you see it"):""}${stat(x)}${fit&&fit.slug===x.slug?chip("soonish","Fits your focus"):""}</div></div>`).join("")}</div>
+    <div class="stgrid" style="margin-top:8px"><div class="stmod"><b>DRDP reference</b><div class="cnt">Every measure by domain, its definition and every level in the official wording, with examples from our own documentation.</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="m:drdpref">Open</button></div></div>${ready.map(x=>`<div class="stmod"><b>${H(x.title)}</b><div class="cnt">${H(x.desc)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${x.slug==="licensing"||x.slug==="howto"?x.slug:"m:"+x.slug}">Open</button>${x.waiting?chip("soonish","Draft, only you see it"):""}${stat(x)}${fit&&fit.slug===x.slug?chip("soonish","Fits your focus"):""}</div></div>`).join("")}</div>
 `)};
 /* the readings library, grouped by area of practice, each a link to its publisher. The library added since waits for the director. */
 async function loadReadings(force){if(!st.rlib||force){try{st.rlib=await ga("readings")}catch(e){st.rlib={list:[]}}}return st.rlib}
@@ -1488,7 +1488,67 @@ Gr.readingsHtml=async function(){const r=await loadReadings();const all=r.list||
     ${dir&&r.library?`<div class="actions" style="margin:0 0 6px"><button class="btn small ghost" data-grledit="new-book">Add a book</button><button class="btn small ghost" data-grledit="new-article">Add an article</button></div>${String(st.rlEdit||"").startsWith("new-")?readingForm(null):""}`:""}
     ${onSite&&!L.length?`<div class="empty">No book is marked In our library yet.</div>`:""}
     ${groups.map(([k,g])=>`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">${H(areaName(k))}, ${g.length}</summary>${g.map(readingRow).join("")}</details>`).join("")}${other.length?`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">More, ${other.length}</summary>${other.map(readingRow).join("")}</details>`:""}`,`${all.length} readings`)};
-Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();const m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
+/* ---------- Examples from our own documentation, suggested ----------
+   On every module, TREE suggests three to five examples that fit it, drawn from the whole school year of observations,
+   slides, stories and plans, each matched to the module's topic and areas of practice, and for the DRDP its measures,
+   with one line on why it fits. The examples written into a module come first. The director keeps, swaps or takes out
+   each one in one tap and can search for her own. Nothing shows to educators until she keeps it. An example names no
+   child and no educator, gives a child's words with initials, and shows no photo, so no face. */
+const EX_STOP=new Set("about after again also because before being between both could does doing each every from have here into just like made make many more most much other over same some such than that their them then there these they this those through very what when where which while with would your children child educator educators class school".split(" "));
+const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>4&&!EX_STOP.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,"")))];
+function exAnon(t){let x=String(t||"");const kids=typeof children!=="undefined"?[...children.values()]:[];const staffN=((B()||{}).people||[]).map(p=>p.name).filter(Boolean);
+  for(const c of kids){if(!c||!c.first)continue;const ini=c.first[0].toUpperCase()+".";if(c.last)x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s+"+c.last.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"),ini);x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b(?!\\.)","g"),ini)}
+  for(const n of staffN){const f=String(n).split(" ")[0];if(f.length>2)x=x.replace(new RegExp("\\b"+f.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(\\s+[A-Z]\\.?)?\\b","g"),"an educator")}
+  return x}
+function exPool(){const y0=Date.parse((typeof schoolYearStart==="function"?schoolYearStart():new Date().getFullYear()+"-08-01")+"T00:00:00");const out=[];
+  if(typeof notices!=="undefined")for(const n of notices.values())if(n&&!n.deleted&&(n.at||0)>=y0&&String(n.noticed||"").length>40&&!(typeof inqHolds==="function"&&inqHolds(n.id)))out.push({kind:"obs",id:"obs:"+n.id,raw:[n.noticed,n.wonder].filter(Boolean).join(" "),at:n.at||0,label:"Observation"});
+  if(typeof slides!=="undefined")for(const x of slides.values())if(x&&(x.at||0)>=y0&&String(x.text||x.title||"").length>20)out.push({kind:"slide",id:"slide:"+x.id,raw:[x.title,x.text].filter(Boolean).join(". "),at:x.at||0,label:"Slide"});
+  if(typeof stories!=="undefined")for(const x of stories.values())if(x&&(x.at||0)>=y0&&typeof stReviewed==="function"&&stReviewed(x))out.push({kind:"story",id:"story:"+x.id,raw:[x.title,...((x.pages||[]).map(p=>(p.lines||[]).join(" ")))].filter(Boolean).join(". "),at:x.at||0,label:"Story"});
+  if(typeof plans!=="undefined")for(const p of plans.values())if(p&&p.id!=="example"&&(p.updatedAt||0)>=y0){const f=p.fields||{};const t=[f.remarks,f.observation,f.intent].filter(Boolean).join(" ");if(t.length>60)out.push({kind:"plan",id:"plan:"+p.id,raw:t,at:p.updatedAt||0,label:"Plan"})}
+  return out}
+// the examples a module or a DRDP measure might hold, written ones first, then the school year's documentation that fits
+function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[slug]||{};const out=new Set(ex.out||[]);const kept=new Set((ex.examples||[]).map(x=>x.id));
+  const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
+  const topic=exWords([m.title,m.desc,...(m.sections||[]).filter(x=>/reading|why it matters/i.test(x.heading)).map(x=>x.body.slice(0,4000))].join(" "));const tset=new Set(topic);
+  const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);
+  const scored=(extra||exPool()).map(x=>{const ws=exWords(x.raw);const hits=ws.filter(w=>tset.has(w));let sc=hits.length+(x.boost||0);for(const re of areaRes)if(re.test(x.raw))sc+=2;return Object.assign({},x,{sc,hits})}).filter(x=>x.sc>=(extra?1:3)).sort((a,b)=>b.sc-a.sc||b.at-a.at);
+  const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${x.hits.slice(0,3).join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
+  return [...written,...sugg].filter(x=>!out.has(x.id)&&!kept.has(x.id))}
+function exPicker(slug,ex,sugg){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
+  const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
+  const row=(x,acts)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt">${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
+  st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
+  return `<div class="hint">Educators see an example only once you keep it. Examples name no child or educator, give a child's words with initials and show no photo.</div>
+    ${kept.length?`<div class="lbl">Kept, shown to educators</div>${kept.map((x,i)=>row(x,`<button class="linkbtn" data-gexout="${H(slug)}|${i}">Take it out</button>`)).join("")}`:""}
+    ${room?`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`)).join("")||`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`}
+      <label class="fld-label">Search for your own<input type="search" data-gexq="${H(slug)}" value="${H(q)}" placeholder="A word from an observation, slide, story or plan"></label>${found.map(x=>row(x,`<button class="btn small ghost" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button>`)).join("")}`:`<div class="cnt">Five examples are kept. Take one out to keep another.</div>`}`}
+async function exSave(slug,examples,out){await ga("module/examples",{slug,examples,out});st.mods=null}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gexkeep],[data-gexnot],[data-gexout]");if(!t)return;e.preventDefault();e.stopPropagation();if(window.TREE_VIEW_AS){toast("Nothing is saved while you see TREE as an educator.");return}
+  const [slug,rest]=(t.dataset.gexkeep||t.dataset.gexnot||t.dataset.gexout).split(/\|(.*)/s);const ex=((st.mods&&st.mods.examples)||{})[slug]||{examples:[],out:[]};const list=(ex.examples||[]).slice(),out=(ex.out||[]).slice();
+  if(t.dataset.gexkeep){const x=((st._exSugg||{})[slug]||[]).find(y=>y.id===rest);if(!x)return;list.push({kind:x.kind,id:x.id,text:x.text,why:x.why,kept:true});await exSave(slug,list.slice(0,5),out);toast("Kept. Educators see it now.")}
+  else if(t.dataset.gexnot){out.push(rest);await exSave(slug,list,out);toast("Taken out. Here is another.")}
+  else{const x=list.splice(+rest,1)[0];if(x)out.push(x.id);await exSave(slug,list,out);toast("Taken out. Educators no longer see it.")}
+  st.exQ=null;redraw()},true);
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.gexq)return;st.exQ={slug:t.dataset.gexq,q:t.value.trim()};redraw()});
+/* ---------- The DRDP reference ----------
+   Every measure of the DRDP (2025) by domain, its official definition and every level in the official wording, with a
+   few examples from our own documentation under each, drawn from accepted DRDP evidence and kept by the director. Each
+   measure opens the same one tap view as everywhere else in TREE. */
+async function drdpRefPage(my){const ms=await loadMods();const dir=isDir();let L=null;try{L=(await window.FP_API("/api/drdp-levels",{})).levels}catch(e){L=null}
+  const v=st.drefView||"ptk";const M=(typeof DRDP_M!=="undefined"&&DRDP_M[v])||{};const doms=[...new Set(Object.values(M).map(x=>x.d))];
+  const kids=typeof children!=="undefined"?[...children.values()]:[];
+  const evFor=code=>{const out=[];for(const c of kids){if(typeof kidDrdpItems!=="function")break;for(const x of kidDrdpItems(c))if(x.code===code&&(x.status==="accepted"||x.status==="changed")&&x.level&&x.src){const raw=[x.evidence,x.src.title].filter(Boolean).join(". ");out.push({kind:"drdp",id:"drdp:"+x.id,raw,at:x.src.at||x.at||0,label:"Accepted evidence",boost:3,why:`Accepted evidence for ${code}, ${typeof drdpLevelText==="function"?drdpLevelText(x.level,x.emerging):x.level}.`})}}return out};
+  const mBlock=code=>{const m=M[code];const t=L&&L[v]&&L[v][code];const slug="drdp:"+code;const ex=(ms.examples||{})[slug]||{examples:[]};
+    const body=dir?exPicker(slug,ex,exSuggest({title:m.n,desc:t?t.def:"",sections:[],serves:[]},slug,null,evFor(code))):(ex.examples||[]).map(x=>`<div class="gq">${H(x.text)}</div>`).join("");
+    return `<details class="gq" style="margin:6px 0"><summary><b>${H(code)}</b> ${H(m.n)}</summary>${t&&t.def?`<p>${H(t.def)}</p>`:""}<ol style="margin:4px 0 8px;padding-left:20px">${(m.l||"").split(" ").filter(Boolean).map(k=>`<li><b>${H((typeof DRDP_LV!=="undefined"&&DRDP_LV[k])||k)}</b> ${H(t&&t.levels?t.levels[k]||"":"")}</li>`).join("")}</ol>
+      <div class="actions" style="margin:0 0 6px"><button class="linkbtn" data-drdef="${H(code+"||"+v+"||")}">Open it as educators see it on a child's page</button></div>${body?`<div class="lbl">From our own documentation</div>${body}`:""}</details>`};
+  draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">DRDP reference</h2><div class="sub">Every measure of the DRDP (2025) by domain, with its definition and every level in the official wording, and examples from our own documentation.</div></div></div>
+    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button></div>
+    <div class="tseg" role="group" aria-label="View" style="margin-bottom:10px"><button data-drefview="ptk" aria-pressed="${v==="ptk"}">Preschool Transitional Kindergarten View</button><button data-drefview="it" aria-pressed="${v==="it"}">Infant and Toddler View</button></div>
+    ${!L?card("The official wording",`<div class="hint">The official wording could not be read just now. Try again in a moment.</div>`):""}
+    ${doms.map(d=>card((typeof DRDP_DOM!=="undefined"&&DRDP_DOM[d])||d,Object.keys(M).filter(k=>M[k].d===d).map(mBlock).join(""))).join("")}`)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-drefview]");if(!t)return;st.drefView=t.dataset.drefview;redraw()});
+Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();const m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
   const d=await doc(meName(),true);const pr=(d.modules||{})[slug]||{};const dir=isDir();const ex=(ms.examples||{})[slug]||{examples:[]};
   const sec=h=>m.sections.find(s=>s.heading.toLowerCase().startsWith(h));
   const why=sec("why it matters"),reading=sec("reading"),own=sec("from fulton")||sec("from our own"),tr=sec("try this week"),rf=sec("reflect"),sh=sec("share at"),rd=sec("readings");
@@ -1498,13 +1558,8 @@ Gr.module=async function(my,slug){await Gr.ready();const ms=await loadMods();con
   const draftCard=dir&&m.draft?card(m.waiting?"Draft":"Ready",`<div class="hint">${m.waiting?"Only you see this module. Educators see it once you mark it ready.":"Educators see this module."}</div><div class="actions"><button class="btn small${m.waiting?"":" ghost"}" data-gmready="${H(slug)}|${m.waiting?1:0}">${m.waiting?"Mark it ready":"Hide it again"}</button></div>`):"";
   const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
-  if(dir){const pick=st.examplesPick&&st.examplesPick.slug===slug?st.examplesPick:{slug,list:(ex.examples||[]).slice(),shown:!!ex.shown};st.examplesPick=pick;
-    const pool=[...[...notices.values()].filter(n=>n&&String(n.noticed||"").length>60).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,30).map(n=>({kind:"obs",id:n.id,label:clip(n.noticed,120)+" ("+(n.by||"")+")",text:clip(n.noticed,600)})),...[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,12).map(x=>({kind:"slide",id:x.id,label:"Slide, "+clip(x.title,80)+" ("+(x.by||"")+")",text:clip([x.title,x.text].filter(Boolean).join(". "),600)}))];
-    exBody=`<div class="hint">Choose two or three examples from our observations and documentation. They stay hidden from educators until you show them.</div>${pick.list.map((x,i)=>`<div class="gq"><div>${H(x.text)}</div><button class="linkbtn" data-gexrm="${i}">Take it out</button></div>`).join("")}
-      ${pick.list.length<3?`<label class="fld-label">Add an example<select id="gex-add"><option value="">Choose from recent observations and slides</option>${pool.filter(p=>!pick.list.some(x=>x.id===p.id)).map(p=>`<option value="${H(p.kind+"|"+p.id)}">${H(p.label)}</option>`).join("")}</select></label>`:""}
-      <label class="radio"><input type="checkbox" id="gex-shown" ${pick.shown?"checked":""}><span>Show these to educators</span></label><div class="actions"><button class="btn small" data-gexsave="${H(slug)}">Save the examples</button></div>`;
-    st._exPool=pool}
-  else exBody=ex.shown&&(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}</div>`).join(""):"";
+  if(dir){exBody=exPicker(slug,ex,exSuggest(m,slug,own))}
+  else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):""}${leadBtn}</div>${draftCard}
     ${why?card("Why it matters",md(why.body)):""}${reading?card("Reading",md(reading.body)):""}
