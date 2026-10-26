@@ -1160,7 +1160,7 @@ function showGate(){
 async function start(){
   wire();
   if(PREVIEW){ PREVIEW.mount($("preview-bar"), ()=>{ S.stamp=""; refresh(true); }); }
-  else if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return; } await showGate(); }
+  else if(!Auth.token){ if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} return; } await showGate(); }
   else if(window.parent!==window){ /* inside TREE, which is already connected */ }
   else { const g=$("gate"); g.hidden=false; $("gate-form").style.display="none"; const note=h("p",{style:"color:var(--muted)"}); g.append(note);
     const t=setTimeout(()=>{ note.textContent="Connecting to TREE…"; },2500);

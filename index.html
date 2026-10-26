@@ -839,7 +839,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_OFFICE=()=>!!Auth.office;
 
   function gateMsg(t,bad){ const m=document.getElementById("gate-msg"); if(m){ m.textContent=t||""; m.className="msg "+(bad?"bad":"muted"); } const w=document.getElementById("gate-wait"); if(w&&t){ w.textContent=t; if(bad) w.style.color="var(--danger)"; } }
-  function signOut(){ const was=!!Auth.token||!!LS.get("fp-token"); Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); LS.set("fp-newhire",null); if(was) location.reload(); }
+  function signOut(){ const was=!!Auth.token||!!LS.get("fp-token"); Auth.token=null; Auth.name=null; LS.set("fp-token",null); LS.set("fp-name",null); LS.set("fp-director",null); LS.set("fp-kitchen",null); LS.set("fp-newhire",null); LS.set("fps.view",null); if(was) location.reload(); }
   window.FP_SIGN_OUT=signOut;
 
   async function api(path, body, signal, retried){

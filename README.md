@@ -279,6 +279,7 @@ Both are in TREE in full, every section, table and picture, brought in word for 
 
 - **Web page** `index.html`, published with GitHub Pages at https://renee-creator.github.io/fulton-planning/
 - **Server** `server.js`, running on Render at https://fulton-planning.onrender.com. Open that address in a browser to see whether every part is working. The page shows no counts. The director sees each part in full in TREE, in Settings, Server status.
+- **Signing out.** Signing out returns TREE to the sign-in screen and forgets the page that was open, so the next person on a shared Class computer starts on Today. The Conferences and Calendar pages inside TREE never reload TREE themselves. When they find no sign-in, they ask TREE to check its own, and TREE stays on its sign-in screen.
 - **Generated files.** tree.html, index.html, tree-staff.js, tree-calendar.html, tree-conferences.html and public.html are made by `python3 tools/build.py` and each says so at its top. Change the files in src and build again. index.html and tree.html are the same page, and both stay, since GitHub Pages serves each as it is and has no build step to make one from the other. tree-calendar.html and tree-conferences.html opened on their own send a person to TREE.
 - **Plans**, followed threads and projects are kept as files in the private repository `fulton-planning-records`. Every change is saved there with the educator's name, so earlier versions can always be recovered from GitHub's history.
 

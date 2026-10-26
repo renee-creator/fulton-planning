@@ -36,7 +36,7 @@ shim = rep(shim, '''  const DEFAULT_SERVER="https://fulton-conferences.onrender.
 shim = shim.replace('"fc-token"', '"fp-token"').replace('"fc-name"', '"fp-name"')
 # signed out inside TREE, TREE's own sign-in takes over
 shim = rep(shim, 'const write=async(op,extra)=>{ const r=await api("/api/write",{op,kind,id,...extra});', 'const write=async(op,extra)=>{ if(window.TREE_VA){ if(!window.__vaSaid){ window.__vaSaid=1; try{ toast("Nothing is saved while you see TREE as "+window.TREE_VA.name+"."); }catch(e){} } return (extra&&extra.data)||Store.data[kind]?.[id]||null; } const viaTree=(()=>{try{return window.parent!==window&&window.parent.TREE_SAVE||null}catch(e){return null}})(); const r=viaTree? {doc:await viaTree(op,kind,id,extra)} : await api("/api/write",{op,kind,id,...extra});')
-shim = rep(shim, "if(!Auth.token) await showGate();", "if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return new Promise(()=>{}); } await showGate(); }")
+shim = rep(shim, "if(!Auth.token) await showGate();", "if(!Auth.token){ if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} return new Promise(()=>{}); } await showGate(); }")
 shim = shim.replace("Fulton conference server", "TREE server").replace("conference server", "TREE server")
 # TREE's colours and typefaces, and no second header inside TREE
 app = rep(app, '</style>\n\n<header class="top">', '''/* inside TREE */
@@ -221,7 +221,7 @@ cal = (E / "calendar-app.html").read_text()
 cal = rep(cal, '''const DEFAULT_SERVER = "https://fulton-calendar.onrender.com";''', '''const DEFAULT_SERVER = "https://fulton-planning.onrender.com";''')
 cal = cal.replace('LS.get("fc-token")', 'LS.get("fp-token")').replace('LS.get("fc-name")', 'LS.get("fp-name")')
 cal = cal.replace('LS.set("fc-token"', 'LS.set("fp-token"').replace('LS.set("fc-name"', 'LS.set("fp-name"')
-cal = rep(cal, "else if(!Auth.token) await showGate();", "else if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return; } await showGate(); }")
+cal = rep(cal, "else if(!Auth.token) await showGate();", "else if(!Auth.token){ if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} return; } await showGate(); }")
 cal = cal.replace("Fulton Calendar server", "TREE server")
 cal = rep(cal, '<div class="wrap" id="app">\n  <header class="top">', '''<style>/* inside TREE */
 #app>header.top .brand,#app>header.top .spacer,#who-name,#btn-signout{display:none!important}

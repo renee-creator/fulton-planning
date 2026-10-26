@@ -357,7 +357,7 @@ header.top{position:static!important;border-bottom:0!important;background:transp
     });
   }
   async function start(){
-    if(!Auth.token){ if(window.parent!==window){ window.parent.location.reload(); return new Promise(()=>{}); } await showGate(); }
+    if(!Auth.token){ if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} return new Promise(()=>{}); } await showGate(); }
     else if(window.parent!==window){ /* inside TREE, which is already connected */ }
     else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);
       const t=setTimeout(()=>{ note.textContent="Connecting to TREE…"; },2500);
