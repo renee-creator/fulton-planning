@@ -136,7 +136,11 @@ module.exports = function staffModule(o) {
       const put1 = (f, text) => { const cur = S.files.get(f.path); if (cur && cur.local) return; if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); return; } try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); } };
       let rest = todo;
       if (o.gqlTexts && todo.length > 6) { try { const tx = await o.gqlTexts(todo.map(f => f.sha)); rest = []; for (const f of todo) { const t = tx.get(f.sha); if (typeof t === 'string') put1(f, t); else rest.push(f); } } catch (e) { log('Educator records could not be read through GraphQL', e.message); } }
-      for (let i = 0; i < rest.length; i += 6) await Promise.all(rest.slice(i, i + 6).map(readOne));
+      // a one-time list already run, or a page's history, too large for GraphQL waits for the next start when GitHub
+      // cannot give it now, so the educator records still load
+      const later = f => /^staff\/(once|pd\/history)\//.test(f.path);
+      const readOr = async f => { try { await readOne(f); } catch (e) { if (!later(f)) throw e; log('Left for the next start', f.path, e.message); } };
+      for (let i = 0; i < rest.length; i += 6) await Promise.all(rest.slice(i, i + 6).map(readOr));
       seed(); pieceCache = null; G.invalidate(); S.ready = true;
       try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
       // the two starting Presenting entries, made once
