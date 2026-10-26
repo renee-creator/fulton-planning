@@ -217,6 +217,10 @@ details summary{cursor:pointer;font-weight:600}
 <script>
 "use strict";
 /* ---------- constants from the 2026-27 Family Conference template ---------- */
+/* the printed form reads in full. An observation noted with its date, such as "seeds that he found..., Oct 14, 2026",
+   prints as a short title and its date, with no cut-off marks, and a stop is never followed by a comma */
+const MON_RE="(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\\.? \\d{1,2},? \\d{4}";
+function printFull(t){ return String(t??"").replace(new RegExp("\\s*(?:\\.{2,}|\u2026)\\.?\\s*,(\\s*"+MON_RE+")","g"),",$1").replace(/([a-z]{2,}[.!?])[ \t]*,+/g,"$1"); }
 const FIELDS = [
   {k:"interests", label:"Main Interests", hint:"What the child returns to again and again"},
   {k:"friends", label:"Friends", hint:"Who the child seeks out and how they play together"},
@@ -1219,7 +1223,7 @@ async function downloadDocx(list, child0, setName){
   const GREEN="E4ECE6";
   const border={style:D.BorderStyle.SINGLE,size:4,color:"9AA79E"};
   const borders={top:border,bottom:border,left:border,right:border};
-  const paras=(t,opts={})=>{ const lines=String(t||"").split(/\n/); return lines.map(l=>new D.Paragraph({spacing:{after:20},children:[new D.TextRun({text:l,size:18,...opts})]})); };
+  const paras=(t,opts={})=>{ const lines=printFull(t).split(/\n/); return lines.map(l=>new D.Paragraph({spacing:{after:20},children:[new D.TextRun({text:l,size:18,...opts})]})); };
   const labelCell=(label,hint,span=1)=>new D.TableCell({borders,columnSpan:span,shading:{type:D.ShadingType.CLEAR,color:"auto",fill:GREEN},width:{size:20,type:D.WidthType.PERCENTAGE},margins:{top:FF?50:80,bottom:FF?50:80,left:100,right:100},
     children:[new D.Paragraph({children:[new D.TextRun({text:label,bold:true,size:FF?17:20})]}), ...(hint?[new D.Paragraph({children:[new D.TextRun({text:hint,italics:true,size:FF?12:16,color:"55625A"})]})]:[])]});
   const valCell=(t,span=1,w=30)=>new D.TableCell({borders,columnSpan:span,width:{size:w,type:D.WidthType.PERCENTAGE},margins:{top:80,bottom:80,left:100,right:100},children:paras(t)});
@@ -1292,7 +1296,7 @@ async function buildFormsPdf(items){
       const r=await doc.embedFont(FF.r,NOLIG), b=await doc.embedFont(FF.s,NOLIG), t=await doc.embedFont(FF.b,NOLIG); F={r,b,i:r,t}; }catch(e){ F=null; } }
   if(!F) F={r:await doc.embedFont(StandardFonts.Helvetica), b:await doc.embedFont(StandardFonts.HelveticaBold), i:await doc.embedFont(StandardFonts.HelveticaOblique), t:await doc.embedFont(StandardFonts.TimesRomanBold)};
   const charset=new Set(F.r.getCharacterSet());
-  const clean=s=>String(s??"").replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\s*[\u2013\u2014]\s*/g,", ").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
+  const clean=s=>printFull(s).replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\s*[\u2013\u2014]\s*/g,", ").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
   const INK=rgb(.13,.16,.14), GRAY=rgb(.36,.4,.37), LINE=rgb(.6,.65,.62), GREEN=rgb(.894,.925,.902), GOLD=rgb(.79,.59,.16), CREAM=rgb(.992,.953,.847);
   const W=612,H=792,M=36,TW=W-2*M;
   const wrap=(text,font,size,width)=>{ const out=[]; for(const para of clean(text).split("\n")){ if(!para.trim()){ out.push(""); continue; } let line="";

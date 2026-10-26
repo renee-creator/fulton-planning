@@ -786,6 +786,15 @@ function linkPlansToObservations() {
    a sentence that names the DRDP, a level or a measure is left out, and a sentence written for the educator, such as
    one saying what the documentation does not show, is left out too. The educator reads and changes it before it prints. */
 const FOR_EDUCATOR = /\b(does not|doesn't|did not|do not) (say|show|tell)\b|\bnot clear (whether|if)\b|\bunclear (whether|if)\b|\bto confirm\b|\bneeds? confirming\b|\b(an|the) educators? (could|might|may|should) (check|confirm|add|note|look)\b|\bcheck with\b|\bwould (show|confirm|need)\b|\bmore evidence\b|\bnext (level|step) (would|could)\b/i;
+// the family's copy reads as plain sentences. TREE's evidence notes, such as (a friend took..., Oct 14, 2026) or a line
+// ending in a date, are for the educators and are left out, a bullet becomes its own sentence, an ellipsis ends one, and
+// a stop is never followed by a comma
+const MONTHS_RE = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\\.? \\d{1,2},? \\d{4}';
+const famPlain = t => String(t || '')
+  .replace(new RegExp('\\s*\\([^()]*,\\s*' + MONTHS_RE + '\\)', 'g'), '')
+  .split('\n').map(l => l.replace(/^\s*(?:[-•*·]|\d+[.)])\s+/, '').trim()).filter(l => l && !new RegExp('(?:\\.\\.\\.|…),\\s*' + MONTHS_RE + '\\s*$').test(l))
+  .map(l => /[.!?"”)]$/.test(l) ? l : l + '.').join('\n')
+  .replace(/(?:\.{2,}|…)/g, '.').replace(/([a-z]{2,}[.!?])\s*,+/g, '$1').replace(/,\s*([.!?])/g, '$1').replace(/([.!?])\1+/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()).trim();
 const forPrint = t => String(t || '').split('\n').map(l => l.split(/(?<=[.!?])\s+/).filter(x => !FOR_EDUCATOR.test(x)).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
 const FAM_AREAS = [['approaches', 'Curiosity and staying with what matters to them'], ['social', 'Friends, feelings and getting along'], ['language', 'Talking, listening and stories'], ['cognition', 'Wondering, counting and solving problems'], ['physical', 'Moving, growing and caring for their body']];
 function familySummaryDraft(cf, child) {
@@ -800,11 +809,11 @@ function familySummaryDraft(cf, child) {
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
   // our words for families, educator for teacher, and sentences joined with stops in place of dashes and colons
   const ours = t => String(t || '').replace(/\b([Tt])eachers?\b/g, m => (m[0] === 'T' ? 'E' : 'e') + 'ducator' + (/s$/.test(m) ? 's' : '')).replace(/\s*[—–]\s*|\s+-\s+/g, ', ').replace(/(\w):\s+/g, '$1. ').replace(/;\s*/g, '. ');
-  const clean = t => prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(ours(t)))), child, all));
+  const clean = t => famPlain(prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(ours(famPlain(t))))), child, all)));
   // a short highlight is the first two sentences of the educators' own words
   const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(x => x && x.trim().split(/\s+/).length > 1); return ss.slice(0, n || 2).join(' '); };
   const g = oneLists().groups.find(x => x.name === child.group && (!x.room || !child.classroom || x.room === child.classroom)) || null;
-  return { draftedAt: Date.now(), draftedBy: 'TREE', readAt: 0, readBy: '',
+  return { draftedAt: Date.now(), draftedBy: 'TREE', readAt: 0, readBy: '', plain: true,
     parts: { returns: short(f.interests, 2), friends: [g ? `${child.first} is in the ${g.name} group${g.educator ? ' with ' + g.educator : ''}.` : '', short(f.friends, 2)].filter(Boolean).join(' '),
       areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, short(f[k], 2)])), strengths: short(f.strengths, 2), goals: clean(f.goals), nextSteps: clean(f.nextSteps) } };
 }
@@ -825,21 +834,51 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
-  const tidy = t => fam.withoutOthers(fam.withoutRatings(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()))), child, all);
+  const tidy = t => famPlain(fam.withoutOthers(fam.withoutRatings(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()))), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
   const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
   const fr = String(parts.friends || '').trim() ? got('friends') : '';
   return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: [groupLine, fr].filter(Boolean).join(' '), strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
 }
-async function draftFamilySummary(cf, child) { const d = familySummaryDraft(cf, child); try { return await familySummarySentences(d, child); } catch (e) { return d; } }
+// setting a draft in sentences is tried a few times, since a busy moment can turn one request away
+async function sentencesOf(d, child) { for (let i = 0; i < 3; i++) { try { const out = await familySummarySentences(d, child); if (out && out.sentences) return out; } catch (e) {} if (!anthropicKey()) break; await new Promise(ok => setTimeout(ok, 4000 * (i + 1))); } return d; }
+async function draftFamilySummary(cf, child) { return sentencesOf(familySummaryDraft(cf, child), child); }
+/* every Family Summary is set in full sentences. Drafts wait in a line and are rewritten one at a time, so a morning of
+   conferences never asks all at once, and a draft no educator has read or changed yet that is still in note form is
+   set in sentences on the next round */
+const sentenceLine = []; let sentenceBusy = false;
+function queueSentences(id) { if (!sentenceLine.includes(id)) sentenceLine.push(id); runSentences(); }
+async function runSentences() {
+  if (sentenceBusy) return; sentenceBusy = true;
+  try { while (sentenceLine.length) { const id = sentenceLine.shift(); const r = store.recs.conferences.get(id); const cf = r && !r.deleted && r.doc; const fs = cf && cf.familySummary;
+      if (!fs || fs.sentences || fs.readAt || fs.editedAt) continue;
+      const k = store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc; if (!child) continue;
+      const d = await sentencesOf(fs, Object.assign({ id: cf.childId }, child)); const r2 = store.recs.conferences.get(id);
+      if (!d.sentences || !r2 || !r2.doc || r2.doc.familySummary !== fs) continue;
+      r2.doc.familySummary = d; r2.doc.updatedAt = new Date().toISOString(); r2.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
+      await new Promise(ok => setTimeout(ok, 1500)); } }
+  finally { sentenceBusy = false; }
+}
 // each morning and when TREE starts, a conference tomorrow or today with no Family Summary gets its draft
+// a Family Summary drafted before its sentences were kept plain is tidied once, the educator's own changes included,
+// since the tidy only takes out evidence notes, bullet marks and a comma after a stop
+function tidyFamilySummaries() {
+  let n = 0;
+  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (!fs || !fs.parts || fs.plain) continue;
+    const P = fs.parts; const fix = v => typeof v === 'string' ? famPlain(v) : v;
+    r.doc.familySummary = Object.assign({}, fs, { plain: true, parts: Object.assign({}, P, { returns: fix(P.returns), friends: fix(P.friends), strengths: fix(P.strengths), goals: fix(P.goals), nextSteps: fix(P.nextSteps), areas: Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => [k, fix(v)])) }) });
+    r.local = true; noteChange('conferences', id); scheduleSave('conferences', id); n++; }
+  if (n) log('Family Summaries tidied,', n);
+}
 function draftFamilySummaries() {
-  if (!store.ready) return; const t = laDayOf(Date.now()), t1 = laDayOf(Date.now() + 864e5); let n = 0;
+  if (!store.ready) return; try { tidyFamilySummaries(); } catch (e) { log('Family Summaries could not be tidied', e.message); } const t = laDayOf(Date.now()), t1 = laDayOf(Date.now() + 864e5); let n = 0;
   for (const [id, r] of store.recs.conferences) { const cf = r && !r.deleted && r.doc; if (!cf || !cf.confDate || (cf.confDate !== t && cf.confDate !== t1) || cf.familySummary || cf.status === 'complete') continue;
     const k = store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc; if (!child || child.status === 'withdrawn') continue;
     cf.familySummary = familySummaryDraft(cf, Object.assign({ id: cf.childId }, child)); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id); n++;
     // then set in complete sentences, unless an educator has read or changed it in the meantime
-    const drafted = cf.familySummary; draftFamilySummary(cf, Object.assign({ id: cf.childId }, child)).then(d => { const r2 = store.recs.conferences.get(id); if (!r2 || !r2.doc || r2.doc.familySummary !== drafted || drafted.readAt) return; r2.doc.familySummary = d; r2.local = true; noteChange('conferences', id); scheduleSave('conferences', id); }).catch(() => {}); }
+    queueSentences(id); }
+  // a draft still in note form, not yet read or changed, waits its turn to be set in sentences
+  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (fs && fs.parts && !fs.sentences && !fs.readAt && !fs.editedAt && r.doc.status !== 'complete') queueSentences(id); }
   if (n) log('Family Summaries drafted for tomorrow\'s conferences,', n);
 }
 setInterval(() => { try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); } }, 60 * 60e3).unref();
