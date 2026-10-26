@@ -413,19 +413,20 @@ test('the recipe library: food and sensory apart, drafts for the director, the k
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
 
-test('demonstration sheets: handwashing first, a step a sheet, measures drawn, adult steps marked, times shown', async t => {
+test('demonstration sheets: handwashing first, a step a sheet, words where no picture is kept, adult steps marked, times shown', async t => {
   const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
   const fx = await start({ more: put => put('staff/library/recipes/flatbread.md', RECIPE('Flatbread', 'food')) });
   const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
   const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
   await s.p.evaluate(() => goView('recipes')); await s.p.waitForFunction(() => libData, null, { timeout: 15000 });
-  const P = await s.p.evaluate(() => { const P = demoPlan(libData.recipes[0]); return { ings: P.overview.ings.map(x => x.text), sheets: P.sheets.map(x => [x.n, x.text, x.adult, x.pics.map(p => p.cap)]) }; });
+  const P = await s.p.evaluate(async () => { const P = await demoPlan(libData.recipes[0]); return { ings: P.overview.ings.map(x => x.text), sheets: P.sheets.map(x => [x.n, x.text, x.adult, x.pics.map(p => p.cap), (x.words || []).map(w => w.big)]) }; });
   assert.deepStrictEqual(P.ings, ['2 cups flour', '1/2 teaspoon salt']);
   assert.deepStrictEqual(P.sheets[0].slice(0, 3), [1, 'Wash our hands.', false]);
-  assert.deepStrictEqual(P.sheets[1], [2, 'Mix the flour and salt.', false, ['1 cup', '1 cup', 'flour', '1/2 teaspoon', 'salt']]);
-  assert.deepStrictEqual(P.sheets[2], [3, 'An adult bakes it for 20 minutes.', true, ['20 minutes']]);
-  // a measure is drawn to its level, and a teaspoon is drawn smaller than a cup
-  assert.ok(await s.p.evaluate(() => DEMO_SCALE.teaspoon < DEMO_SCALE.tablespoon && DEMO_SCALE.tablespoon < DEMO_SCALE.cup && JSON.stringify(demoFills(demoQty('2 1/2 cups milk'))) === '[1,1,0.5]'));
+  // with no picture in our picture library, each ingredient shows as its amount and name in large type
+  assert.deepStrictEqual(P.sheets[1], [2, 'Mix the flour and salt.', false, [], ['2 cups flour', '1/2 teaspoon salt']]);
+  assert.deepStrictEqual(P.sheets[2], [3, 'An adult bakes it for 20 minutes.', true, ['20 minutes'], []]);
+  // a measure repeats its cup or spoon for how many, from our own pictures of the measures when the library has them
+  assert.ok(await s.p.evaluate(() => JSON.stringify(demoFills(demoQty('2 1/2 cups milk'))) === '[1,1,0.5]'));
   assert.deepStrictEqual(s.errors, []); await s.close();
 });
 

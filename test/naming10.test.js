@@ -26,7 +26,7 @@ test('naming the school, once', async () => {
   const main = { 'children/kit-test.json': { first: 'Kit', treeHistory: [{ what: 'Left Oakvale' }] } };
   const saved = [];
   const recs = (p, fn) => { if (!main[p]) return false; const n = fn(main[p]); if (JSON.stringify(n) === JSON.stringify(main[p])) return false; main[p] = n; saved.push(p); return true; };
-  h.staff.once.edits('schoolName', recs);
+  await h.staff.once.edits('schoolName', recs);
   const d = h.staff.dump();
   const piece = d['staff/pd/licensing/16-sun.md'];
   assert.match(piece, /^Our own procedure$/m); assert.match(piece, /^### How we do it$/m); assert.match(piece, /We keep hats\./); assert.match(piece, /shade at our school\?/);
@@ -39,11 +39,11 @@ test('naming the school, once', async () => {
   assert.deepStrictEqual(d['staff/help.json'].history, ['Welcome to Oakvale'], 'a record\'s own history keeps its words');
   assert.deepStrictEqual(saved, ['children/kit-test.json']); assert.strictEqual(main['children/kit-test.json'].treeHistory[0].what, 'Left our school');
   // a second run finds nothing left to change
-  const again = JSON.stringify(h.staff.dump()); h.staff.once.edits('schoolName', recs);
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('schoolName', recs);
   assert.strictEqual(JSON.stringify(h.staff.dump()), again); assert.deepStrictEqual(saved, ['children/kit-test.json']);
   // the step waits until its list is in the records
   const h2 = make([{ name: 'Dir', director: true }]); await h2.staff.load();
-  assert.strictEqual(h2.staff.once.edits('schoolName', recs), false);
+  assert.strictEqual(await h2.staff.once.edits('schoolName', recs), false);
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(src, /for \(const name of \['schoolName', 'helpCurrent'/);
 });
@@ -60,7 +60,7 @@ test('a one-time step sets a value only while it is still what the change expect
   await h.staff.load();
   const main = { 'plans/p1.json': { fields: { remarks: '' } }, 'plans/p2.json': { fields: { remarks: 'Written since.' } } };
   const recs = (p, fn) => { const n = fn(main[p]); if (JSON.stringify(n) === JSON.stringify(main[p])) return false; main[p] = n; return true; };
-  h.staff.once.edits('schoolName', recs);
+  await h.staff.once.edits('schoolName', recs);
   const l = h.staff.dump()['staff/readings-library.json'].list;
   assert.deepStrictEqual(l[0], { id: 'rl1', cite: 'New.', check: false }); assert.strictEqual(l[1].cite, 'Keep.');
   assert.strictEqual(main['plans/p1.json'].fields.remarks, 'Our words.'); assert.strictEqual(main['plans/p2.json'].fields.remarks, 'Written since.', 'newer words are never replaced');
@@ -82,7 +82,7 @@ test('a one-time step on a page with the Edit button keeps the wording before it
   h.files.set('staff/newed/welcome.md', { text: '<!--\nplace: pdlibrary\n-->\n# A Letter to Oakvale Educators\n\nDear all.\n\n## Why\n\nWords.\n\nThe director\n', sha: 'x' });
   h.files.set('staff/once/letter-title.json', { doc: { changes: [{ path: 'staff/newed/welcome.md', from: '# A Letter to Oakvale Educators', to: '# A Letter to Our Educators' }, { path: 'staff/newed/welcome.md', from: 'Words.\n\nThe director', to: 'Words.\n\nAda Lane, Director' }] }, sha: 'x' });
   await h.staff.load();
-  h.staff.once.edits('letterTitle', () => false);
+  await h.staff.once.edits('letterTitle', () => false);
   const d = h.staff.dump();
   assert.match(d['staff/newed/welcome.md'], /^# A Letter to Our Educators$/m); assert.match(d['staff/newed/welcome.md'], /Ada Lane, Director\n$/);
   const hist = d['staff/pd/history/newed--welcome.json'];
@@ -95,10 +95,10 @@ test('a one-time step that runs again changes nothing, and one that could not fi
   h.files.set('staff/once/help-new.json', { doc: { changes: [{ path: 'staff/help.json', from: 'Community School', to: 'Oakvale Community School' }, { path: 'plans/p1.json', set: 'fields.remarks', value: 'x' }] }, sha: 'x' });
   await h.staff.load();
   let boom = true; const recs = () => { if (boom) throw new Error('not saved'); return false; };
-  assert.strictEqual(h.staff.once.edits('helpNew', recs), false, 'it waits to run again');
+  assert.strictEqual(await h.staff.once.edits('helpNew', recs), false, 'it waits to run again');
   const a = () => h.staff.dump()['staff/help.json'].list[0].a;
   assert.deepStrictEqual(a(), ['Open the Oakvale Community School page.', 'Oakvale Community School is here.']);
-  boom = false; assert.notStrictEqual(h.staff.once.edits('helpNew', recs), false);
+  boom = false; assert.notStrictEqual(await h.staff.once.edits('helpNew', recs), false);
   assert.deepStrictEqual(a(), ['Open the Oakvale Community School page.', 'Oakvale Community School is here.'], 'nothing doubled');
   assert.ok(!('hit' in h.staff.dump()['staff/once/help-new.json'].changes[0]), 'the list itself is never marked');
 });
