@@ -281,6 +281,15 @@ async function gqlFiles(branch) {
   dirs.forEach((k, i) => { for (const e of ((repo['d' + i] || {}).entries || [])) if (e.type === 'blob') files.push({ type: 'blob', path: k + '/' + e.name, sha: e.oid }); });
   return files;
 }
+// every file under a folder, its folders included to four levels, for the educator records when the allowance is spent
+async function gqlDeep(branch, dirs) {
+  const lvl = n => n ? `entries{name oid type object{...on Tree{${lvl(n - 1)}}}}` : 'entries{name oid type}';
+  const d = await gql(`query{${gqlRepo()}{${dirs.map((k, i) => `d${i}:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{${lvl(4)}}}`).join(' ')}}}`);
+  const repo = d.repository || {}, files = [];
+  const walk = (base, t) => { for (const e of (t && t.entries) || []) { const pth = base + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') walk(pth, e.object); } };
+  dirs.forEach((k, i) => walk(k, repo['d' + i]));
+  return files;
+}
 // the text of many files at once, by their ids
 async function gqlTexts(shas) {
   const out = new Map();
@@ -598,7 +607,7 @@ function keepingDue() {
 const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
-const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();

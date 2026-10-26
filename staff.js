@@ -109,10 +109,13 @@ module.exports = function staffModule(o) {
     if (S.loading) return S.loading;
     S.loading = (async () => {
       const tree = await gh('GET', `/repos/${repo}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
-      if (tree.status !== 200 && tree.status !== 409) throw new Error('GitHub answered ' + tree.status + ' when listing educator records');
+      // when the hourly allowance is spent, the list comes through GraphQL, which has an allowance of its own
+      let listed = null;
+      if ((tree.status === 403 || tree.status === 429) && o.gqlList) { listed = await o.gqlList(); log('Educator records listed through GraphQL'); }
+      else if (tree.status !== 200 && tree.status !== 409) throw new Error('GitHub answered ' + tree.status + ' when listing educator records');
       // the records hold the people, the handbook and the school's settings as JSON, and the PD library's pieces as
       // Markdown files, one piece each, so a new piece is added as a file with no change to TREE
-      const all = ((tree.json && tree.json.tree) || []).filter(f => f.type === 'blob');
+      const all = (listed || (tree.json && tree.json.tree) || []).filter(f => f.type === 'blob');
       // the Family Handbook's editions are read here too, beside the Teacher Policies and Procedures
       const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
       // the pictures in the policies are read only when someone opens them
@@ -128,7 +131,12 @@ module.exports = function staffModule(o) {
         if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); return; }
         try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); }
       };
-      for (let i = 0; i < todo.length; i += 6) await Promise.all(todo.slice(i, i + 6).map(readOne));
+      // the files are read through GraphQL, ninety to a request, so a start spends little of the hourly allowance. A
+      // file GraphQL cannot give in full is read on its own.
+      const put1 = (f, text) => { const cur = S.files.get(f.path); if (cur && cur.local) return; if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); return; } try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); } };
+      let rest = todo;
+      if (o.gqlTexts && todo.length > 6) { try { const tx = await o.gqlTexts(todo.map(f => f.sha)); rest = []; for (const f of todo) { const t = tx.get(f.sha); if (typeof t === 'string') put1(f, t); else rest.push(f); } } catch (e) { log('Educator records could not be read through GraphQL', e.message); } }
+      for (let i = 0; i < rest.length; i += 6) await Promise.all(rest.slice(i, i + 6).map(readOne));
       seed(); pieceCache = null; G.invalidate(); S.ready = true;
       try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
       // the two starting Presenting entries, made once

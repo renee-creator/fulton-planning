@@ -22,6 +22,8 @@ function start(dir, port, opt) {
       const u = new URL(req.url, 'http://x'); const send = (st, j) => { res.writeHead(st, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j)); };
       let body = {}; try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch (e) {}
       const m = u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)?$/);
+      // with opt.gql the mock answers GraphQL requests for files by their ids, the way educator records are read in batches
+      if (u.pathname === '/graphql' && opt.gql && /object\(oid:/.test(body.query || '')) { const bs = blobs(); const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(oid:"([a-f0-9]+)"\)/g)) { const b = bs.get(mm[2]); repo[mm[1]] = b ? { text: b.toString('utf8'), isTruncated: false } : null; } opt.gqlCalls = (opt.gqlCalls || 0) + 1; return send(200, { data: { repository: repo } }); }
       if (u.pathname === '/graphql') return send(502, { message: 'not in the mock' });
       if (!m) return send(404, { message: 'Not Found' });
       const rest = m[1] || '';
