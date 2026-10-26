@@ -679,7 +679,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .nlph.on{border-color:var(--moss);opacity:1}.nlph img,.nlphs img{width:96px;height:96px;object-fit:cover;border-radius:6px;display:block}
 .nlphs{display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start}
 .nlres{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
-.nlres a{font-weight:600}
+.nlres a{font-weight:600}#main a:not(.btn):not(.linkbtn),.libsheet a:not(.btn){color:var(--moss,#2f4a33);text-decoration-color:rgba(47,74,51,.35);text-underline-offset:2px}
 .nlwarn{background:color-mix(in srgb,var(--clay) 12%,var(--paper));border-left:3px solid var(--clay);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
 .nldraft{font-size:13px;color:var(--marigold);font-weight:600;margin:4px 0}
 .talknote{font-size:13px;line-height:1.45;background:var(--marigold-soft,#fbf0dc);border-radius:8px;padding:8px 10px;margin:6px 0;display:grid;gap:4px;overflow-wrap:anywhere}
@@ -1667,6 +1667,8 @@ function renderMain(){
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
   if(prev)h+=refCard(prev);
+  // what is attached sits at the top too, so a song or a recipe sheet is one tap from opening the plan
+  if((p.attached||[]).length&&p.id!=="example")h+=`<section class="card" style="padding:10px 14px"><div class="lbl">Attached</div><div class="libchips">${libChips(p.attached)}</div></section>`;
   h+=threadsNoteHtml(p);
   if(p.type==="classroom")h+=teamSourcesHtml(p);
   if(isDirector())h+=dupHtml(p);
@@ -2620,7 +2622,7 @@ function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){
 window.TREE_FAMSUM_OPEN=id=>{famSumOpen=id;famSumPaint()};
 // the Conferences page hands TREE its own copy of a conference before the family copy is made, so the ticks just made are the ones printed
 window.TREE_CONF_PUT=(id,doc)=>{if(!id||!doc)return;const cur=conferences.get(id);const d=JSON.parse(JSON.stringify(doc));if(!cur){conferences.set(id,Object.assign(d,{id}));return}
-  for(const k of ["printPieces","fields","confDate","confTime","teacher","status"])if(k in d)cur[k]=d[k];if(!cur.familySummary&&d.familySummary)cur.familySummary=d.familySummary};
+  for(const k of ["printPieces","fields","confDate","confTime","teacher","status","evidenceLayout"])if(k in d)cur[k]=d[k];if(!cur.familySummary&&d.familySummary)cur.familySummary=d.familySummary};
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-famsumclose],[data-famsumdraft],[data-famsumread],[data-famcopy],[data-famsumopen]");if(!t)return;e.preventDefault();e.stopPropagation();const d=t.dataset;
   if(d.famsumopen){window.TREE_FAMSUM_OPEN(d.famsumopen);return}
   if(d.famsumclose){famSumOpen="";famSumPaint();return}const cf=conferences.get(famSumOpen);if(!cf)return;
@@ -4240,7 +4242,14 @@ function portfolioDrdpDoc(c,mode,view){
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
     for(const k of codes){const x=latest[k];const mean=drdpLevelDesc(v,k,x.level);const seen=forPrint(focusText(x.evidence||"",c));
-      blocks.push(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]))}}
+      // the observation itself, its photo and its words, beside the level it shows
+      const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;
+      blocks.push(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]));
+      if(ph)blocks.push(Object.assign({t:"photo",maxH:170,full:false},ph));
+      const words=ob?forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)):"";if(words)blocks.push({t:"text",label:"The observation",text:sentCut(words,420)});
+      // every level of the measure in the official wording, so the accepted level is read beside the rest
+      const all=(String((DRDP_M[v][k]||{}).l||"").split(" ").filter(Boolean)).map(lk=>{const nm=DRDP_LV[lk]||lk,d=drdpLevelDesc(v,k,nm);return d?`${nm}${nm===x.level?" (this level)":""}. ${d}`:""}).filter(Boolean);
+      if(all.length)blocks.push({t:"small",label:"Compare every level",lines:all})}}
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-"," to ")]],blocks};
 }
@@ -4446,7 +4455,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=51f2f532c1","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=d82a0fd414","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4456,7 +4465,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=51f2f532c1","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=d82a0fd414","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -8486,7 +8495,7 @@ function binExplHtml(b){if(!libData){loadLibrary();return ""}const L=(libData.ex
   const row=x=>`<button class="libchip" data-libopen="${esc("exploration|"+x.id)}">${esc(x.title)}</button>`;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">Food explorations</h3><span class="cnt">${fit.length?fit.length+" for this week's produce":""}</span></div>
     <div class="cnt" style="margin-bottom:8px">Guided tastings in our own words, each beginning with what we wonder. A tasting's recipe opens from it.</div>
-    ${fit.length?`<div class="chiprow">${fit.map(row).join("")}</div>`:`<div class="cnt">None explores this week's produce.</div>`}
+    ${fit.length?`<div class="chiprow">${fit.map(row).join("")}</div>`:`<div class="cnt">No food exploration is written for this week's produce yet.</div>`}
     ${rest.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">Every food exploration, ${L.length}</summary><div class="chiprow">${rest.map(row).join("")}</div></details>`:""}</section>`}
 /* where the farms are, with our list of Sonoma County farms and the food miles map. The miles are a straight line from
    each farm's town to our school, the way the Farm to School page counts them. */
@@ -9170,6 +9179,8 @@ function gsLibHits(terms){const out=[];
     for(const [list,lbl] of [[gdn.plants,"Plant"],[gdn.animals,"Animal"],[gdn.wild,"Who lives near us"],[gdn.signs,"Sign"]])for(const x of (list||[])){if(!x||!x.id||(lbl==="Plant"&&x.planned&&!isDirector()))continue;
       const name=gdnName(x),text=gsText(x);if(!evMatch(name+"\n"+text,terms))continue;
       out.push({kind:"garden",at:0,text:evMatch(name,terms)?name+(x.latin?", "+x.latin:""):text,title:lbl+", "+name,open:`data-libopen="${esc("garden|"+x.id)}"`})}}}
+  // our Sonoma County farms, opening Where the farms are on the Weekly bin
+  for(const f of ((libData&&libData.farms)||[])){if(!evMatch([f.name,f.town,f.products].join("\n"),terms))continue;out.push({kind:"library",at:0,text:[f.name,f.town,f.products].filter(Boolean).join(", "),title:"Farm",open:`data-tview="bin"`})}
   for(const a of attachPool()){if(!evMatch(a.title+"\n"+a.text,terms))continue;
     out.push({kind:"library",at:0,text:a.title,title:(ATT_KIND[a.kind]||"")+(a.kind==="prompt"?", "+a.id.slice(0,a.id.lastIndexOf("|")):""),open:`data-libopen="${esc(a.kind+"|"+a.id)}"`})}
   return out}
@@ -9207,7 +9218,7 @@ function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q)
   if(!rs.length){box.innerHTML=hh+`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}
   const counts=Object.fromEntries(GS_KINDS.map(([k])=>[k,all.filter(r=>r.kind===k).length]));
   const order=GS_KINDS.slice(1).map(k=>k[0]).filter(k=>gs.kind==="all"||k===gs.kind);
-  box.innerHTML=hh+`<div class="cnt" style="margin:4px 2px 10px">${all.length} found${gs.kind==="all"?". "+order.filter(k=>counts[k]).map(k=>{const l=GS_KINDS.find(x=>x[0]===k)[1].toLowerCase();return counts[k]+" "+(counts[k]===1?(l==="stories"?"story":l.replace(/s$/,"")):l)}).join(", "):""}</div>`+
+  box.innerHTML=hh+`<div class="cnt" style="margin:4px 2px 10px">${all.length} found${gs.kind==="all"?". "+order.filter(k=>counts[k]).map(k=>{const l=GS_KINDS.find(x=>x[0]===k)[1].toLowerCase();return counts[k]+" "+(counts[k]===1?(l==="stories"?"story":l==="libraries"?"library":l==="garden"?"garden entry":l.replace(/s$/,"")):l==="garden"?"garden entries":l)}).join(", "):""}</div>`+
     order.filter(k=>rs.some(r=>r.kind===k)).map(k=>{const list=rs.filter(r=>r.kind===k);const shown=list.slice(0,gs.kind==="all"?6:80);
       return `<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">${GS_KINDS.find(x=>x[0]===k)[1]}</h3><span class="cnt">${list.length}</span></div>
       ${k==="photo"?`<div class="gsphotos">${shown.map(r=>`<button class="gsph" ${r.open}><img src="${esc(photoThumb(r.ph))}" alt="${esc(firstLine(r.text,80))}" loading="lazy"><span class="cnt">${esc(shortDate(r.at))}</span><span class="gssnip">${evSnip(r.text,terms)}</span></button>`).join("")}</div>`
@@ -11045,6 +11056,8 @@ async function onePage(make,from,to){
 }
 async function printsClick(t){
   if(t.dataset.word!=="1")pvLast=t;
+  // the official wording of each DRDP level, for any print that carries a level
+  if(/drdp|portfolio|conf|fam|slide/i.test(t.dataset.print||""))try{await loadDrdpTxt()}catch(e){}
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
   const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
@@ -13440,7 +13453,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=51f2f532c1","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=d82a0fd414","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

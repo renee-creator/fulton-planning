@@ -534,7 +534,7 @@ ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEd
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
 // Session 12's changes to records already there, each from its own list in the private records
-for (const name of ['s12Library', 's12Songs', 's12Pd', 's12Family', 's12Proposals', 's12Readings', 's12Garden', 's12Help', 's12NoSlowCooker', 's12ReadAlouds'])
+for (const name of ['s12Library', 's12Songs', 's12Pd', 's12Family', 's12Proposals', 's12Readings', 's12Garden', 's12Help', 's12NoSlowCooker', 's12ReadAlouds', 's12Review'])
   ONCE.push([name, () => staff.once.edits(name, recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
@@ -798,9 +798,11 @@ function familySummaryDraft(cf, child) {
   const L = oneLists(); const keep = new Set([...(L.classrooms || []), ...(L.groups || []).flatMap(g => [g.name, g.educator]), ...(L.educators || []).map(e => e && (e.name || e)), 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'The', 'They', 'She', 'Her', 'His', 'And', 'But', 'Then', 'When', 'With'].filter(Boolean).flatMap(x => String(x).split(/\s+/)));
   const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{1,3})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(str.slice(0, at)); if (start || w === child.first || keep.has(w) || fam.EVERYDAY.has(w.toLowerCase()) || fam.NEVER_NAMES.has(w)) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
-  const clean = t => prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(t))), child, all));
+  // our words for families, educator for teacher, and sentences joined with stops in place of dashes and colons
+  const ours = t => String(t || '').replace(/\b([Tt])eachers?\b/g, m => (m[0] === 'T' ? 'E' : 'e') + 'ducator' + (/s$/.test(m) ? 's' : '')).replace(/\s*[—–]\s*|\s+-\s+/g, ', ').replace(/(\w):\s+/g, '$1. ').replace(/;\s*/g, '. ');
+  const clean = t => prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(ours(t)))), child, all));
   // a short highlight is the first two sentences of the educators' own words
-  const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(Boolean); return ss.slice(0, n || 2).join(' '); };
+  const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(x => x && x.trim().split(/\s+/).length > 1); return ss.slice(0, n || 2).join(' '); };
   const g = oneLists().groups.find(x => x.name === child.group && (!x.room || !child.classroom || x.room === child.classroom)) || null;
   return { draftedAt: Date.now(), draftedBy: 'TREE', readAt: 0, readBy: '',
     parts: { returns: short(f.interests, 2), friends: [g ? `${child.first} is in the ${g.name} group${g.educator ? ' with ' + g.educator : ''}.` : '', short(f.friends, 2)].filter(Boolean).join(' '),

@@ -393,8 +393,10 @@ const EX_STOP=new Set("about after again also because before being between both 
 const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>4&&!EX_STOP.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,"")))];
 function exAnon(t){let x=String(t||"");const kids=typeof children!=="undefined"?[...children.values()]:[];const staffN=((B()||{}).people||[]).map(p=>p.name).filter(Boolean);
   for(const c of kids){if(!c||!c.first)continue;const ini=c.first[0].toUpperCase()+".";if(c.last)x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s+"+c.last.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"),ini);x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b(?!\\.)","g"),ini)}
-  for(const n of staffN){const f=String(n).split(" ")[0];if(f.length>2)x=x.replace(new RegExp("\\b"+f.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(\\s+[A-Z]\\.?)?\\b","g"),"an educator")}
-  return x}
+  const me=typeof window.FP_NAME==="function"?window.FP_NAME():"";const dirs=[...((B()||{}).directors||[]),me].filter(Boolean);
+  for(const n of [...staffN,...dirs]){const f=String(n).split(" ")[0];if(f.length>2)x=x.replace(new RegExp("\\b"+f.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(\\s+[A-Z]\\.?)?\\b","g"),"an educator")}
+  // our words, educator for teacher, and no doubled stops
+  return x.replace(/\b([Tt])eachers?\b/g,m=>(m[0]==="T"?"E":"e")+"ducator"+(/s$/.test(m)?"s":"")).replace(/(^|[.!?]\s+)an educator/g,(m,a)=>a+"An educator").replace(/\.{2,}/g,".").replace(/\.,/g,",").replace(/\s+([.,])/g,"$1")}
 function exPool(){const y0=Date.parse((typeof schoolYearStart==="function"?schoolYearStart():new Date().getFullYear()+"-08-01")+"T00:00:00");const out=[];
   if(typeof notices!=="undefined")for(const n of notices.values())if(n&&!n.deleted&&(n.at||0)>=y0&&String(n.noticed||"").length>40&&!(typeof inqHolds==="function"&&inqHolds(n.id)))out.push({kind:"obs",id:"obs:"+n.id,raw:[n.noticed,n.wonder].filter(Boolean).join(" "),at:n.at||0,label:"Observation"});
   if(typeof slides!=="undefined")for(const x of slides.values())if(x&&(x.at||0)>=y0&&String(x.text||x.title||"").length>20)out.push({kind:"slide",id:"slide:"+x.id,raw:[x.title,x.text].filter(Boolean).join(". "),at:x.at||0,label:"Slide"});
@@ -403,11 +405,11 @@ function exPool(){const y0=Date.parse((typeof schoolYearStart==="function"?schoo
   return out}
 // the examples a module or a DRDP measure might hold, written ones first, then the school year's documentation that fits
 function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[slug]||{};const out=new Set(ex.out||[]);const kept=new Set((ex.examples||[]).map(x=>x.id));
-  const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
+  const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30&&!/appears? here once the director|once the director chooses them/i.test(t)).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
   const topic=exWords([m.title,m.desc,...(m.sections||[]).filter(x=>/reading|why it matters/i.test(x.heading)).map(x=>x.body.slice(0,4000))].join(" "));const tset=new Set(topic);
   const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);
   const scored=(extra||exPool()).map(x=>{const ws=exWords(x.raw);const hits=ws.filter(w=>tset.has(w));let sc=hits.length+(x.boost||0);for(const re of areaRes)if(re.test(x.raw))sc+=2;return Object.assign({},x,{sc,hits})}).filter(x=>x.sc>=(extra?1:3)).sort((a,b)=>b.sc-a.sc||b.at-a.at);
-  const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${x.hits.slice(0,3).join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
+  const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
   return [...written,...sugg].filter(x=>!out.has(x.id)&&!kept.has(x.id))}
 function exPicker(slug,ex,sugg){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
   const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
