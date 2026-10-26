@@ -43,7 +43,9 @@ module.exports = function library(o) {
     const pr = item('staff/library/prompts/provocations.md');
     const fm = get('staff/library/farms.json');
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: all('readalouds'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
+    // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
+    const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.

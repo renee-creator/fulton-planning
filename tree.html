@@ -5743,7 +5743,7 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
    A song marked © shows its title, its songwriter and a link to a recording, with the © sign beside the title, and its
    words never appear in TREE. A traditional song shows its words and prints them. The words come from our own song
    books. The director adds songs and changes a song's mark: marking it © removes any words, and taking the mark off
-   leaves a place for them. The read-alouds sit beside the songs, their text kept in the director's Drive. */
+   leaves a place for them. The read-alouds sit beside the songs, with their reading guides and their words for educators only. */
 let songTab="songs",songOpen="",songAdd=false;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>songCopy(x)?"":recPart(x,"Words");
