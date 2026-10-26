@@ -1387,7 +1387,7 @@ function inquiryShows(x, notices) { if (x.display === true) return true; if (x.d
 /* Gatherings, Second Saturday and Play Garden, are participation items marked with the gathering they belong to. The
    director and the office keep them on the Gatherings page. Every educator reads their plans, toolkits and documentation
    there too, with how many signed up for each volunteer job and never which families. */
-const GATHERING_KINDS = ['second-saturday', 'play-garden'];
+const GATHERING_KINDS = ['second-saturday', 'play-garden', 'garden-visit'];
 /* Gatherings stay hidden from educators until the director releases them, the whole page or one gathering at a time,
    with the switches in Settings, Releases. Families see nothing of a gathering until it is released either. The
    director and the office, who plan them, always see them. */
@@ -1403,7 +1403,7 @@ function gatheringsFor(who) {
   const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering) && (planner || gthReleased(x, conf))).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
     .map(x => ({ id: x.id, gathering: x.gathering, title: x.title || '', date: x.date || '', start: x.start || '', end: x.end || '', gardenDay: !!x.gardenDay, ready: x.open !== false, plan: x.plan || '', toolkit: x.toolkit || '', documentation: x.documentation || '', docLink: x.docLink || '',
       coming: (x.signups || []).length, released: gthReleased(x, conf), jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length })) }));
-  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
+  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '', 'garden-visit': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
 }
 async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };

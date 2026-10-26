@@ -4800,41 +4800,41 @@ function gdnFoodRuleText(){return (wordsOf("food-rule").rule||"").trim()}
    use on the Family page, shows on the Calendar and the staff room display, and its volunteer jobs are participation
    items that belong to it. Everything made here stays closed to families until the director marks the gathering ready.
    The director and the office plan them. Every educator reads the plans, toolkits and documentation. */
-const GTH_NAMES={"second-saturday":"Second Saturday","play-garden":"Play Garden"};
+const GTH_NAMES={"second-saturday":"Second Saturday","play-garden":"Play Garden","garden-visit":"Garden visits"};
 // the months whose Second Saturday is also the season's garden day
 const GTH_GARDEN_MONTHS={"12":"winter","03":"spring","06":"summer","09":"fall"};
 let gthForm=null,gthPg=null,gthPgAsked=false;
 const gthEdit=()=>isOffice()&&!VIEW_AS;
 // educators see the page once the director releases it, or one of its gatherings, in Settings, Releases
 const gthPageOpen=()=>(isOffice()&&!VIEW_AS)||!!(window.FP_GATHERINGS&&window.FP_GATHERINGS.open);
-function gthConf(){const c=participation.get("gatherings")||{};return Object.assign({id:"gatherings",kind:"gatherings",toolkits:{}},c,{toolkits:Object.assign({"second-saturday":"","play-garden":""},c.toolkits||{})})}
+function gthConf(){const c=participation.get("gatherings")||{};return Object.assign({id:"gatherings",kind:"gatherings",toolkits:{}},c,{toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},c.toolkits||{})})}
 // one list for everyone. The director and the office read the participation items themselves, educators the summary TREE sent
 function gthList(){if(gthEdit()){const jobs=ptItems().filter(x=>x.gatheringId);
     return ptItems().filter(x=>GTH_NAMES[x.gathering]).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999")).map(x=>Object.assign({},x,{ready:x.open!==false,jobsFull:jobs.filter(j=>j.gatheringId===x.id)}))}
   const G=window.FP_GATHERINGS||{};return (G.list||[]).map(x=>Object.assign({},x,{jobsFull:null}))}
-function gthToolkits(){return gthEdit()?gthConf().toolkits:Object.assign({"second-saturday":"","play-garden":""},(window.FP_GATHERINGS||{}).toolkits||{})}
+function gthToolkits(){return gthEdit()?gthConf().toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},(window.FP_GATHERINGS||{}).toolkits||{})}
 // the garden day for a season, the Second Saturday in its first month
 function gthForSeason(key){const mm=Object.keys(GTH_GARDEN_MONTHS).find(m=>GTH_GARDEN_MONTHS[m]===key);const today=iso(new Date());
   const all=gthList().filter(g=>g.gathering==="second-saturday"&&g.date&&g.date.slice(5,7)===mm);return all.find(g=>g.date>=today)||all[all.length-1]||null}
 const gthIsReleased=g=>!!(gthConf().release||{}).page||!!g.released;
 function gthSave(x){const doc=Object.assign({},x);delete doc.ready;delete doc.jobsFull;return ptSave(doc.id,doc)}
 function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gthEdit(),dir=isDirector()&&!VIEW_AS;
-  const jobs=g.jobsFull||g.jobs||[];
+  const jobs=g.jobsFull||g.jobs||[],gv=g.gathering==="garden-visit";
   const when=[g.date?fmtDate(g.date):"No date set yet",g.start?tlabel(g.start)+(g.end?" to "+tlabel(g.end):""):""].filter(Boolean).join(" · ");
   const jobRow=j=>{const ss=j.signups||[];const taken=j.signups?ss.length:(j.taken||0);
     return `<li><b>${esc(j.title)}</b>${j.spots?` <span class="muted">${taken} of ${j.spots}</span>`:taken?` <span class="muted">${taken} signed up</span>`:""}${ed&&ss.length?`<div class="cnt">${esc(ss.map(s=>s.who||s.family||s.email).join(", "))}</div>`:""}${ed?` <button class="linkbtn" data-gthjobdel="${esc(j.id)}">Take it off</button>`:""}</li>`};
   return `<section class="card" id="gth-${esc(g.id)}"><div class="secthead"><div style="min-width:0"><div class="lbl">${esc(GTH_NAMES[g.gathering]||"Gathering")}${g.gardenDay?", the season's garden day":""}</div><h3 style="font-size:18px;margin:2px 0">${esc(g.title||GTH_NAMES[g.gathering])}</h3><div class="cnt">${esc(when)}</div></div>
-    <span class="status ${g.ready&&gthIsReleased(g)?"done":"ready"}">${!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
+    <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"With the staff, never on the Family page":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
     ${ed?`<label class="fld-label">The plan<textarea rows="4" data-gthf="plan" data-gthid="${esc(g.id)}">${esc(g.plan||"")}</textarea></label>
-      <label class="fld-label">A note for families, shown with it once it is ready<textarea rows="2" data-gthf="note" data-gthid="${esc(g.id)}">${esc(g.note||"")}</textarea></label>
+      ${gv?"":`<label class="fld-label">A note for families, shown with it once it is ready<textarea rows="2" data-gthf="note" data-gthid="${esc(g.id)}">${esc(g.note||"")}</textarea></label>`}
       <label class="fld-label">Its toolkit, a link<input type="url" data-gthf="toolkit" data-gthid="${esc(g.id)}" value="${esc(g.toolkit||"")}" placeholder="https://"></label>`
       :`${g.plan?`<div class="lbl">The plan</div><div style="white-space:pre-line">${esc(g.plan)}</div>`:`<div class="cnt">The plan is still to come.</div>`}${g.toolkit?`<div><a href="${esc(g.toolkit)}" target="_blank" rel="noopener">Its toolkit</a></div>`:""}`}
-    <div class="lbl" style="margin-top:8px">Volunteer jobs</div>${jobs.length?`<ul style="margin:4px 0;padding-left:18px">${jobs.map(jobRow).join("")}</ul>`:`<div class="cnt">No volunteer jobs yet.</div>`}
-    ${ed?`<div class="gsrow"><label>A job<input type="text" id="gthj-t-${esc(g.id)}" placeholder="Ex. Second Saturday helper"></label><label>Spots<input type="number" min="0" id="gthj-s-${esc(g.id)}" value="4"></label><label>Hours it counts for<input type="number" min="1" max="12" id="gthj-h-${esc(g.id)}" value="3"></label></div><div class="actions"><button class="btn small ghost" data-gthjob="${esc(g.id)}">Add the job</button></div><div class="cnt">Families sign up for a job on the Family page and log their hours after the day, never at sign up.</div>`:""}
+    ${gv?`<div class="actions">${printBtns("gthintake","","Intake form")}</div>`:`<div class="lbl" style="margin-top:8px">Volunteer jobs</div>${jobs.length?`<ul style="margin:4px 0;padding-left:18px">${jobs.map(jobRow).join("")}</ul>`:`<div class="cnt">No volunteer jobs yet.</div>`}
+    ${ed?`<div class="gsrow"><label>A job<input type="text" id="gthj-t-${esc(g.id)}" placeholder="Ex. Second Saturday helper"></label><label>Spots<input type="number" min="0" id="gthj-s-${esc(g.id)}" value="4"></label><label>Hours it counts for<input type="number" min="1" max="12" id="gthj-h-${esc(g.id)}" value="3"></label></div><div class="actions"><button class="btn small ghost" data-gthjob="${esc(g.id)}">Add the job</button></div><div class="cnt">Families sign up for a job on the Family page and log their hours after the day, never at sign up.</div>`:""}`}
     ${ed&&g.signups&&g.signups.length?`<div class="cnt">Coming, ${esc(g.signups.map(s=>s.who||s.family||s.email).join(", "))}</div>`:!ed&&g.coming?`<div class="cnt">${g.coming} ${g.coming==1?"family":"families"} coming</div>`:""}
     ${past||g.documentation||g.docLink?`<div class="lbl" style="margin-top:8px">Afterward</div>${ed?`<label class="fld-label">What happened, in our words<textarea rows="3" data-gthf="documentation" data-gthid="${esc(g.id)}">${esc(g.documentation||"")}</textarea></label><label class="fld-label">Photos or documentation, a link<input type="url" data-gthf="docLink" data-gthid="${esc(g.id)}" value="${esc(g.docLink||"")}" placeholder="https://"></label>${dir?`<div class="actions"><button class="linkbtn" data-gthoffer="${esc(g.id)}">Offer it for objective 8 on the Farm to School page</button></div>`:""}`
       :`${g.documentation?`<div style="white-space:pre-line">${esc(g.documentation)}</div>`:""}${g.docLink?`<div><a href="${esc(g.docLink)}" target="_blank" rel="noopener">Photos and documentation</a></div>`:""}`}`:""}
-    ${ed?`<div class="actions">${dir?`<button class="btn small" data-gthready="${esc(g.id)}">${g.ready?"Take it back from families":"Mark it ready for families"}</button>`:`<span class="cnt">${g.ready?"":"The director marks it ready for families."}</span>`}<button class="linkbtn" data-gthdate="${esc(g.id)}">Change the date or time</button><button class="linkbtn" data-gthdel="${esc(g.id)}">Remove it</button></div>`:""}</section>`}
+    ${ed?`<div class="actions">${gv?"":dir?`<button class="btn small" data-gthready="${esc(g.id)}">${g.ready?"Take it back from families":"Mark it ready for families"}</button>`:`<span class="cnt">${g.ready?"":"The director marks it ready for families."}</span>`}<button class="linkbtn" data-gthdate="${esc(g.id)}">Change the date or time</button><button class="linkbtn" data-gthdel="${esc(g.id)}">Remove it</button></div>`:""}</section>`}
 function gthPgHtml(){if(!isDirector()||VIEW_AS||!window.FP_API)return"";if(!gthPgAsked){gthPgAsked=true;window.FP_API("/api/staff/playgarden",{}).then(r=>{gthPg=r;if(view==="gatherings"||view==="settings")renderMain()}).catch(()=>{})}
   const p=gthPg,on=p&&p.settings&&p.settings.on,link=new URL("playgarden.html",location.href).href;
   return `<div class="strow"><div class="lbl">The Play Garden application</div><div class="hint">A public page for any family, from Fulton or beyond, with a parent or caregiver staying with each child. It asks the questions in our wording and shows our garden family agreements, and nothing else of TREE. Each application is kept in our records, read only here.</div>
@@ -4848,7 +4848,7 @@ function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!V
   if(!ed&&window.FP_API&&Date.now()-gthAt>30000){gthAt=Date.now();window.FP_API("/api/gatherings",{}).then(r=>{window.FP_GATHERINGS=r;if(view==="gatherings")renderMain()}).catch(()=>{})}
   const list=gthList(),tk=gthToolkits();
   const up=list.filter(g=>!g.date||g.date>=today),past=list.filter(g=>g.date&&g.date<today).reverse();
-  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>
+  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":k==="garden-visit"?"A Class or group from another school visiting our garden. Their educator fills in the intake form before the first visit, and the form stays on paper with the visiting school. A garden visit stays with the staff and never reaches families.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>${k==="garden-visit"?`<div class="actions">${printBtns("gthintake","","Visiting educator intake form")}</div>`:""}
     ${tk[k]?`<div><a href="${esc(tk[k])}" target="_blank" rel="noopener">The ${esc(GTH_NAMES[k])} toolkit</a></div>`:`<div class="cnt">A place for the ${esc(GTH_NAMES[k])} toolkit, once there is one.</div>`}
     ${ed?`<label class="fld-label">The toolkit, a link<input type="url" data-gthtk="${k}" value="${esc(tk[k]||"")}" placeholder="https://"></label>`:""}${k==="play-garden"&&isDirector()&&!VIEW_AS?`<div class="cnt">The Play Garden application is turned on and off in Settings, Releases, beside the Gatherings release.</div>`:""}</div>`;
   const F=gthForm;
@@ -4859,7 +4859,7 @@ function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!V
     <div class="hint">The director sets every date. It stays with the staff, on the Calendar and the staff room display, until the director marks it ready for families.</div>
     <div class="actions"><button class="btn small" data-gthsave="1">Add it</button><button class="linkbtn" data-gthcancel="1">Cancel</button></div></section>`
     :`<div class="actions"><button class="btn small" data-gthnew="1">Plan a gathering</button></div>`):"";
-  m.innerHTML=`<section class="card"><div class="lbl">Gatherings</div><div class="hint">Second Saturday and Play Garden, each with its plan, its toolkit, its volunteer jobs and what happened afterward. Families sign up on the Family page once the director marks a gathering ready. The dates show on the Calendar.</div>
+  m.innerHTML=`<section class="card"><div class="lbl">Gatherings</div><div class="hint">Second Saturday, Play Garden and garden visits, each with its plan, its toolkit, its volunteer jobs and what happened afterward. Families sign up on the Family page once the director marks a gathering ready. The dates show on the Calendar.</div>
     ${Object.keys(GTH_NAMES).map(series).join("")}</section>${form}
     ${up.map(gthCard).join("")||`<section class="card"><div class="empty">No gatherings are planned yet.</div></section>`}
     ${past.length?`<details class="card"><summary><b>Past gatherings</b> <span class="cnt">${past.length}</span></summary>${past.map(gthCard).join("")}</details>`:""}`}
@@ -4871,10 +4871,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthn
   const keep=()=>{if(!gthForm)return;const v=id=>(document.getElementById(id)||{}).value||"";Object.assign(gthForm,{title:v("gth-title"),date:v("gth-date"),start:v("gth-start"),end:v("gth-end"),spots:v("gth-spots")})};
   if(d.gthnew){gthForm={gathering:"second-saturday",title:"Second Saturday",start:"09:00",end:"12:00"};renderMain();return}
   if(d.gthcancel){gthForm=null;renderMain();return}
-  if(d.gthkind){keep();const was=GTH_NAMES[gthForm.gathering];gthForm.gathering=d.gthkind;if(!gthForm.title||gthForm.title===was)gthForm.title=GTH_NAMES[d.gthkind];renderMain();return}
-  if(d.gthsave){keep();const F=gthForm;if(!F.title.trim()){toast("Give it a name.");return}if(F.gathering==="second-saturday"&&!F.date){toast("Choose the day.");return}
+  if(d.gthkind){keep();const one=k=>k==="garden-visit"?"Garden visit":GTH_NAMES[k];const was=one(gthForm.gathering);gthForm.gathering=d.gthkind;if(!gthForm.title||gthForm.title===was)gthForm.title=one(d.gthkind);renderMain();return}
+  if(d.gthsave){keep();const F=gthForm;if(!F.title.trim()){toast("Give it a name.");return}if((F.gathering==="second-saturday"||F.gathering==="garden-visit")&&!F.date){toast("Choose the day.");return}
     const gd=F.gathering==="second-saturday"&&!!GTH_GARDEN_MONTHS[(F.date||"").slice(5,7)];
-    const id=ptNewId("it");await ptSave(id,{kind:"item",type:"event",gathering:F.gathering,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[F.date.slice(5,7)]:"",garden:F.gathering==="play-garden"||gd,onCalendar:true,title:F.title.trim().slice(0,120),date:F.date||"",start:F.start||"",end:F.end||"",spots:Number(F.spots)||0,classroom:"",hours:0,counts:true,plan:"",toolkit:"",documentation:"",docLink:"",note:"",signups:[],open:false,test:!!ptCfg().test,createdAt:Date.now(),createdBy:myName()||""});
+    const id=ptNewId("it");await ptSave(id,{kind:"item",type:"event",gathering:F.gathering,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[F.date.slice(5,7)]:"",garden:F.gathering==="play-garden"||F.gathering==="garden-visit"||gd,onCalendar:true,title:F.title.trim().slice(0,120),date:F.date||"",start:F.start||"",end:F.end||"",spots:Number(F.spots)||0,classroom:"",hours:0,counts:true,plan:"",toolkit:"",documentation:"",docLink:"",note:"",signups:[],open:false,test:!!ptCfg().test,createdAt:Date.now(),createdBy:myName()||""});
     gthForm=null;toast("Added. Families do not see it until the director marks it ready.");renderMain();return}
   if(d.gthready){if(!isDirector())return;const x=participation.get(d.gthready);if(!x)return;const on=x.open===false;
     if(on&&!x.date&&!confirm("It has no date yet. Mark it ready anyway?"))return;
@@ -5116,6 +5116,18 @@ function walkTodayHtml(){if(isKitchenUser())return "";if(walkInfo===null)loadWal
   return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Before we walk</h3>${!walkInfo.ready?`<span class="cnt">A draft, only you see it</span>`:""}</div>
     <div class="cnt">${esc(what)}. Every child in a safety vest, the emergency backpack, a partner for every child, counts before we leave, at each stop and on return, and ratio the whole time.</div>
     <div class="actions"><button class="btn small" data-tview="walks">Open the checklist</button>${printBtns("walkcheck","","Print PDF")}</div></section>`}
+// the intake form a visiting educator fills in before a group's first garden visit, from the director's June 2025 form.
+// It is printed blank and kept with the visiting school, so no child from another school is kept in TREE.
+function gthIntakeDoc(){const line="______________________________";
+  return {display:true,type:"report",acc:"story",title:"Garden visit intake form",meta:[["For","The visiting educator, one form for each child"]],
+    blocks:[dText("","Please fill in this form for each child before the first garden visit. It tells us what each child needs while they are with us in the garden."),
+      dList("The child",["Child's name "+line,"Pronouns "+line,"Today's date "+line,"Date of birth "+line,"Class "+line]),
+      dList("Who we contact",["Parent or guardian names "+line,"Primary phone number "+line,"Primary email address "+line,"Emergency contact other than a parent or guardian, with a phone number "+line]),
+      dList("Health",["Food or body allergies, sensitivities or restrictions "+line,"Medications or medical conditions we should know "+line,"Medical form on file and up to date?   Yes   No"]),
+      dList("What to bring, everything labeled",["Water bottle","Change of clothes","Closed toe shoes","Swim clothes","Boots and dry clothes for winter"]),
+      dList("Daily routines",["Eating and bathroom habits "+line,"What helps this child with transitions "+line,"Who to contact with questions, the school number or the Class email "+line]),
+      dList("Rest time",["Rest time items, such as a pillow, blanket or stuffed animal "+line,"Cot labeled?   Yes   No","Sickness and licensed characters policies acknowledged?   Yes   No"]),
+      dList("Interests and schedule",["What this child loves to explore "+line,"Visit days and times "+line])]}}
 function walkCheckDoc(){const w=walkInfo||{};const bp=w.backpack||{};
   return {display:true,type:"report",acc:"story",title:"Before we walk",meta:[["Date",longDate(iso(new Date()))]],
     blocks:[dList("Safety comes first on every walk",w.checklist||[]),dList(`The emergency backpack, from ${bp.title||"the Teacher Policies and Procedures"}`,bp.items||[]),dText("Safety comes first",(w.rule||[]).join(" "))]}}
@@ -11257,6 +11269,7 @@ async function printsClick(t){
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
   if(kind==="helpquick"){if(!helpData)await loadHelp(true);const L=((helpData||{}).list||[]).filter(h=>h.quick);if(L.length)await out(L.map(helpDoc),"TREE quick cards");return true}
   if(kind==="guide"){if(!guideList)await loadGuides(true);const g=(guideList||[]).find(x=>x.slug===t.dataset.id);if(g)await out([guideDoc(g)],g.title);return true}
+  if(kind==="gthintake"){await out([gthIntakeDoc()],"Garden visit intake form");return true}
   if(kind==="walkcheck"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCheckDoc()],`Before we walk ${iso(new Date())}`);return true}
   if(kind==="walkcard"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCardDoc()],"Our walk agreements");return true}
   if(kind==="transitionnext"){const c=children.get(t.dataset.id);if(!c)return true;tsFlush(c.id);let j;try{j=await window.FP_API("/api/transition/nextschool",{id:c.id,year:tsYear()})}catch(e){toast(e&&e.message||"The copy for the next school could not be made. Check your connection.");return true}

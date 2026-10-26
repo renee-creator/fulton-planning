@@ -194,7 +194,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   // every record carries its id, whichever side made it
   const listOf = test => [...recs().entries()].filter(([, r]) => !r.deleted && r.doc && test(r.doc)).map(([id, r]) => (r.doc.id === id ? r.doc : Object.assign(r.doc, { id })));
   // a gathering and its jobs reach families only once the director has released them in Settings, and marked them ready
-  const items = () => listOf(d => d.kind === 'item' && (!o.released || !(d.gathering || d.gatheringId) || o.released(d)));
+  // a garden visit, a visiting group in our garden, stays with the staff and never reaches families
+  const items = () => listOf(d => d.kind === 'item' && d.gathering !== 'garden-visit' && (!o.released || !(d.gathering || d.gatheringId) || o.released(d)));
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {
