@@ -1011,7 +1011,8 @@ module.exports = function staffModule(o) {
     s12Readings: ['staff/once/s12-readings.json', 'One readings list, with a line on why each matters to our practice'],
     s12Garden: ['staff/once/s12-garden.json', 'The Garden\'s plants, animals with Sheldon, wildlife, tracks and scat, mushrooms and plants to keep away from'],
     s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'],
-    s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'] };
+    s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
+    s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;

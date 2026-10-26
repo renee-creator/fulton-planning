@@ -525,7 +525,7 @@ ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEd
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
 // Session 12's changes to records already there, each from its own list in the private records
-for (const name of ['s12Library', 's12Songs', 's12Pd', 's12Family', 's12Proposals', 's12Readings', 's12Garden', 's12Help', 's12NoSlowCooker'])
+for (const name of ['s12Library', 's12Songs', 's12Pd', 's12Family', 's12Proposals', 's12Readings', 's12Garden', 's12Help', 's12NoSlowCooker', 's12ReadAlouds'])
   ONCE.push([name, () => staff.once.edits(name, recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in

@@ -4961,7 +4961,7 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
    A song marked © shows its title, its songwriter and a link to a recording, with the © sign beside the title, and its
    words never appear in TREE. A traditional song shows its words and prints them. The words come from our own song
    books. The director adds songs and changes a song's mark: marking it © removes any words, and taking the mark off
-   leaves a place for them. The read-alouds sit beside the songs, with their reading guides and their words for educators only. */
+   leaves a place for them. The read-alouds sit beside the songs, our own stories and traditional tales, each with its reading guide. */
 let songTab="songs",songOpen="",songAdd=false;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>songCopy(x)?"":recPart(x,"Words");
@@ -4979,16 +4979,18 @@ function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML
     ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows its title, songwriter and a recording. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
       ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
         <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, keep only its title, songwriter and recording</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
-    :`<section class="card"><div class="hint">Read-alouds for meeting time, each with a reading guide. The words of our own books are for educators only, since the books are headed for publication. They never go to families, posts, newsletters or readable copies.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
+    :`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
 const readText=x=>((x.parts||[]).find(p=>/^text$/i.test(p.key))||{}).text||"";
 const readGuideParts=x=>(x.parts||[]).filter(p=>!/^text$/i.test(p.key)&&!/^about$/i.test(p.key)&&String(p.text||"").trim());
 function readRow(x){const dir=isDirector()&&!VIEW_AS,t=readText(x);
-  return `<details class="strow" data-readrow="${esc(x.id)}" ${songOpen==="r:"+x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).series||"")}</span></summary>${x.lead?`<p>${esc(x.lead)}</p>`:""}
+  return `<details class="strow" data-readrow="${esc(x.id)}" ${songOpen==="r:"+x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> ${x.draft?`<span class="pill" style="pointer-events:none">Draft</span> `:""}<span class="cnt">${esc((x.meta||{}).origin?String(x.meta.origin).charAt(0).toUpperCase()+String(x.meta.origin).slice(1):"")}</span></summary>${x.lead?`<p>${esc(x.lead)}</p>`:""}
     ${readGuideParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
-    ${t?`<details style="margin-top:8px"><summary class="linkbtn">The words of the book, for educators only</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}
-    <div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide")}${t?printBtns("readtext",esc(x.id),"The book, for educators"):""}${dir?pageEditBtn(x.path,"Edit"):""}</div></details>`}
+    ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}
+    <div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide")}${t?printBtns("readtext",esc(x.id),"The story"):""}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Mark it ready</button>`:""}</div></details>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-readready]");if(!t)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  try{libData=await window.FP_API("/api/staff/library/ready",{path:t.dataset.readready,on:true});toast("Ready. Educators see it now.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 function readGuideDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud, reading guide"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...readGuideParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text))]}}
-function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["For educators only"],blocks:[dText("",readText(x))]}}
+function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",readText(x))]}}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
   if(d.songadd!=null){songAdd=d.songadd==="1";renderMain();return}
@@ -5072,8 +5074,8 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("songwords",esc(x.id),c?"Title card":"Words",true)}${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}</div><h2>${c?"© ":""}${esc(x.title)}</h2><div class="cnt">${esc((x.meta||{}).songwriter||"")}</div>
       ${w?`<div style="white-space:pre-line;margin:8px 0;font-size:17px">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.</div>`:""}${parts(songParts(x),/^$/)}`}
   if(kind==="readaloud"){const t=readText(x);
-    return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The book, for educators"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
-      ${t?`<details style="margin-top:8px"><summary class="linkbtn">The words of the book, for educators only</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}`}
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The story"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
+      ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary><div style="white-space:pre-line;margin:6px 0">${esc(t)}</div></details>`:""}`}
   if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
