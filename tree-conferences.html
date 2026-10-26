@@ -2498,7 +2498,7 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
     draw1();wrap.append(box)};
   // each measure once, its most recent piece at the highest level educators accepted, in full
   for(const [k,doms] of Object.entries(MAP)){const list=items.filter(x=>doms.includes(x.dom));if(!list.length)continue;
-    pick("fields."+k,"DRDP evidence, "+span,list.map(x=>({line:line(x),html:"<b>"+esc(x.code+" "+x.name)+", "+esc(x.level)+(x.emerging?", emerging":"")+"</b>"+(x.evidence?" "+esc(x.evidence):"")+(x.title?' <span class="muted">'+esc(x.title+", "+long(iso(x.at)))+"</span>":"")})),"Each measure's most recent evidence at its highest level. Tick the ones to add.")}
+    pick("fields."+k,"DRDP evidence, "+span,list.map(x=>({line:line(x),html:'<a href="#" data-treedrdp="'+esc([x.code,x.level,x.view||""].join("|"))+'"><b>'+esc(x.code+" "+x.name)+", "+esc(x.level)+(x.emerging?", emerging":"")+"</b></a>"+(x.evidence?" "+esc(x.evidence):"")+(x.title?' <span class="muted">'+esc(x.title+", "+long(iso(x.at)))+"</span>":"")})),"Each measure's most recent evidence at its highest level. Tick the ones to add.")}
   if(docs.length)pick("fields.documentation","Documentation "+span,docs.map(d=>({line:d.title+", "+long(iso(d.at)),thumb:d.thumb||"",html:'<a href="#" data-treedoc="'+d.kind+"|"+d.id+'">'+esc(d.title)+"</a>, "+esc(long(iso(d.at)))})),"Tick the pieces to share. Only the pieces on the form print after it, in the PDF and as a second Word file.");
   // what TREE knows about the child's small group, friends and interests. An empty section fills itself once. A section already written offers it to choose from.
   const facts=P.TREE_CONF_FACTS?P.TREE_CONF_FACTS(cf.childId,w.from,w.to)||{}:{};const factKeys=Object.keys(facts).filter(k=>facts[k]);
@@ -2527,6 +2527,7 @@ async function pagesNow(){const ed=document.getElementById("conf-editor");if(!ed
   let note=ed.querySelector(".tree-pages");if(!note){note=document.createElement("div");note.className="tree-pages";const bar=ed.querySelector(".tree-bringall");bar?bar.after(note):ed.prepend(note)}
   note.hidden=n<=2;note.textContent=n>2?"This form now prints on "+n+" pages instead of 2. Every word still prints. Shortening a long section brings it back to 2.":""}
 document.addEventListener("input",e=>{if(e.target.closest&&e.target.closest("#conf-editor"))pagesSoon()});
+document.addEventListener("click",e=>{const d=e.target.closest("[data-treedrdp]");if(d){e.preventDefault();e.stopPropagation();const [c,l,v]=d.dataset.treedrdp.split("|");if(P.TREE_DRDP_OPEN)P.TREE_DRDP_OPEN(c,l,v);return}},true);
 document.addEventListener("click",e=>{const a=e.target.closest("[data-treedoc]");if(!a)return;e.preventDefault();const [k,i]=a.dataset.treedoc.split("|");if(P.TREE_OPEN_DOC)P.TREE_OPEN_DOC(k,i)});
 /* Each piece listed in Documentation Shared has a Print tick. It starts unticked, up to 6 are ticked, and Tick the
    suggested ticks the pieces TREE suggests, which the educator can then change. An unticked piece stays listed and leaves

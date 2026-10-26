@@ -447,6 +447,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .csheets{display:flex;flex-wrap:wrap;gap:12px}
 .csheet{position:relative;flex:1 1 260px;max-width:360px;border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);background:#fff}
 .csheet svg{display:block;width:100%;height:auto}
+.drcmpl{margin:4px 0 8px;padding-left:20px;display:grid;gap:4px}.drcmpl li.on{font-weight:600;background:var(--marigold-soft,#fff3cf);border-radius:6px;padding:2px 4px}.drtx.all{white-space:pre-line}
 .libsheet{position:fixed;inset:0;z-index:120;background:rgba(18,24,20,.45);display:flex;justify-content:flex-end}.libsheet .lsp{background:var(--paper);width:min(560px,100vw);height:100%;overflow:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:-4px 0 18px rgba(27,41,32,.18);overflow-wrap:anywhere}.libsheet .lsp h2{font-size:21px;margin:6px 0}.libchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.libchip{border:1px solid var(--line);border-radius:999px;background:var(--paper);padding:5px 12px;font-size:14px;cursor:pointer;max-width:100%;text-align:left}.libchip .cnt{margin-right:4px}
 .prow{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
 .prow .seg{flex-wrap:wrap}
@@ -2134,7 +2135,7 @@ function drdpPanelHtml(kind,rec){
       ${has(d.summary)?`<div class="ref"><b>What it shows</b><div>${esc(d.summary)}</div></div>`:""}
       ${has(d.photo)?`<div class="ref"><b>The photos</b><div>${esc(d.photo)}</div></div>`:""}
       ${(d.items||[]).length?(d.items||[]).map(x=>{const st=drdpStatusOf(kind,rec.id,x);const c=children.get(x.childId);
-        return `<div class="dritem"><div><b>${esc(c?c.first:"A child")}</b> · <b>${esc(x.code)}</b> ${esc(DRDP[x.code]||"")}</div>
+        return `<div class="dritem"><div><b>${esc(c?c.first:"A child")}</b> · <button class="linkbtn" data-drdef="${esc([x.code,x.level||"",x.view||"",kind,rec.id].join("|"))}"><b>${esc(x.code)}</b></button> ${esc(DRDP[x.code]||"")}</div>
           <div class="cnt">${esc(drdpLevelText(st.level!==undefined?st.level:x.level,st.emerging!==undefined?st.emerging:x.emerging))} · <span class="drst ${st.cls}">${esc(st.label)}</span>${c?` · <button class="linkbtn" data-kid="${esc(c.id)}" data-drdpfocus="1">Review on ${esc(c.first)}'s page</button>`:""}</div>
           ${has(x.evidence)?`<div class="cnt">${esc(x.evidence)}</div>`:""}</div>`}).join(""):`<div class="cnt">No measure was clear enough from this documentation.</div>`}
     </div>`:""}
@@ -2143,7 +2144,7 @@ function drdpPanelHtml(kind,rec){
 let nwDrdp={};
 function momentDrdpHtml(n){
   if(!nwDrdp[n.id]){const its=(n.drdp&&n.drdp.items)||[];const codes=[...new Set([...its.map(x=>x.code),...(n.measures||[]).filter(m=>m.kept).map(m=>m.code)])];
-    return codes.length?`<div class="cnt">DRDP ${codes.map(k=>`<span class="chip on" style="cursor:default" title="${esc(DRDP[k]||"")}">${esc(k)}</span>`).join(" ")}</div>`:""}
+    return codes.length?`<div class="cnt">DRDP ${codes.map(k=>{const it=its.find(x=>x.code===k&&x.level);return `<button class="chip on" data-drdef="${esc([k,it?it.level:"","",it?"notices":"",it?n.id:""].join("|"))}" title="${esc(DRDP[k]||"")}">${esc(k)}</button>`}).join(" ")}</div>`:""}
   return `<div class="pdir"><div class="secthead"><b>DRDP (2025)</b><button class="linkbtn" data-nwdrdp="${esc(n.id)}">Close</button></div>${drdpPanelHtml("notices",n)}</div>`;
 }
 // the measures a slide prints in its strip, codes and names only. Levels never go on a wall.
@@ -2380,6 +2381,28 @@ function drSourceHtml(x){const src=x&&x.src;if(!src)return"";let ns=[],tx="";
   return `<div class="drsrc">${ph.length?`<div class="drph">${ph.map(n=>`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" data-drzoom="${esc(n.id)}">`).join("")}</div>`:""}${tx?`<div class="drtx" data-drmore="1" title="Tap to read all">${esc(tx)}</div>`:""}</div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drmore]");if(t){t.classList.toggle("all");return}
   const z=e.target.closest("[data-drzoom]");if(z){const n=notices.get(z.dataset.drzoom);if(!n)return;const w=document.createElement("div");w.className="drzoom";w.innerHTML=`<img src="${esc(photoSrc(n))}" alt="">`;w.onclick=()=>w.remove();document.body.appendChild(w)}});
+/* ---------- One view of a DRDP measure ----------
+   Every measure and level in TREE opens the same view with one tap, the view the staff room's DRDP in practice screens
+   show, with the observation beside the measure, its official definition and the official wording of its level, and
+   every level to compare. It says the evidence comes from our documentation and is never a DRDP rating on its own. */
+let drdefOn=null;
+function drdefSrc(kind,id){if(kind==="slides"){const sl=slides.get(id);if(!sl)return null;const ph=slidePhotos(sl).map(x=>notices.get(x)).filter(n=>n&&n.photo)[0];return {title:slideTitle(sl),at:sl.at,text:String(sl.text||"").trim(),photo:ph}}
+  const n=notices.get(id);if(!n)return null;return {title:momentHeading(n)||"An observation",at:n.at,text:[String(n.noticed||"").trim(),String(n.wonder||"").trim()].filter(Boolean).join("\n"),photo:n.photo?n:null}}
+function drdefHtml(code,level,v,kind,id){v=v||(Object.keys(DRDP_M.ptk).includes(code)?"ptk":"it");const m=DRDP_M[v]&&DRDP_M[v][code];const t=DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][code];
+  if(!m)return `<div class="empty">This measure is not in the DRDP (2025).</div>`;const src=kind&&id?drdefSrc(kind,id):null;
+  return `<div class="cnt">${esc(DRDP_DOM[m.d]||m.d)}, DRDP (2025) ${esc(DRDP_VIEW[v])} View</div><h2>${esc(code)} ${esc(m.n)}</h2>
+    ${t&&t.def?`<p>${esc(t.def)}</p>`:!DRDP_TXT?`<div class="cnt"><span class="spin"></span> Opening the official wording</div>`:""}
+    ${src?`<div class="drsrc" style="margin:10px 0">${src.photo?`<div class="drph"><img src="${esc(photoThumb(src.photo))}" alt="" data-drzoom="${esc(src.photo.id)}"></div>`:""}<div class="drtx all"><b>${esc(src.title)}</b>, ${esc(longDate(iso(new Date(src.at||Date.now()))))}\n${esc(src.text)}</div></div>`:""}
+    ${level?`<div class="drmean"><span class="ml">${esc(level)} means</span><div>${esc(drdpLevelDesc(v,code,level)||"")}</div></div>`:""}
+    <div class="lbl" style="margin-top:10px">Every level of ${esc(code)}</div><ol class="drcmpl">${drdpLevels(v,code).map(l=>`<li class="${l===level?"on":""}"><b>${esc(l)}</b> ${esc(drdpLevelDesc(v,code,l))}</li>`).join("")}</ol>
+    <div class="hint">The evidence comes from our documentation, read by an educator. It is never a DRDP rating on its own.</div>`}
+function drdefPaint(){let el=document.getElementById("drdef");if(!drdefOn){if(el)el.remove();return}
+  if(!el){el=document.createElement("div");el.id="drdef";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
+  el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">What it means</span><button class="btn small ghost" data-drdefclose="1">Close</button></div>${drdefHtml(...drdefOn)}</div>`}
+window.TREE_DRDP_OPEN=(code,level,v,kind,id)=>{drdefOn=[code,level||"",v||"",kind||"",id||""];drdefPaint();if(!DRDP_TXT){drdpTxtAsked=false;loadDrdpTxt().then(()=>{if(drdefOn)drdefPaint()})}};
+document.addEventListener("click",e=>{const t=e.target.closest("[data-drdef],[data-drdefclose]");if(!t){if(e.target.id==="drdef"){drdefOn=null;drdefPaint()}return}e.preventDefault();e.stopPropagation();
+  if(t.dataset.drdefclose){drdefOn=null;drdefPaint();return}const [code,level,v,kind,id]=t.dataset.drdef.split("|");window.TREE_DRDP_OPEN(code,level,v,kind,id)},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&drdefOn){drdefOn=null;drdefPaint()}});
 function kidDrdpHtml(c){
   loadDrdpTxt();
   const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
@@ -2395,7 +2418,7 @@ function kidDrdpHtml(c){
   const curHtml=x=>{const l=latest(x.code);if(!l||l.id===x.id)return "";const vv=x.view||v;const lower=x.level&&drdpRank(vv,x.code,x.level)+(x.emerging?.5:0)<drdpRank(l.view||vv,x.code,l.level)+(l.emerging?.5:0);
     return `<div class="cnt">Currently <b>${esc(drdpLevelText(l.level,l.emerging))}</b>, from ${esc(shortDate(l.src?.at||l.at))}.${lower?` <span class="drlow">Lower than what is already accepted.</span>`:""}</div>`};
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
-      <div class="drlvl">${esc(drdpLevelText(x.level,x.emerging))}</div>${curHtml(x)}
+      <div class="drlvl"><button class="linkbtn" data-drdef="${esc([x.code,x.level,x.view||v,x.src?x.src.kind:"",x.src?x.src.id:""].join("|"))}">${esc(drdpLevelText(x.level,x.emerging))}</button></div>${curHtml(x)}
       <div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
       ${drSourceHtml(x)}
       ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}
@@ -2406,9 +2429,15 @@ function kidDrdpHtml(c){
   const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoThumb(n))}" alt="" loading="lazy">`:""};
   const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${levelSel(x)}<div class="actions"><label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${esc(x.id)}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${esc(x.id)}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
     :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${esc(x.id)}">Change</button><button class="linkbtn" data-draside="${esc(x.id)}">Set aside</button></div>`;
-  const evLine=x=>`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
+  // an accepted level shows the same detail as one waiting for review, what it means, the photo and words, What was seen,
+  // the source and date, who accepted it, and every level to compare
+  const accRow=x=>`<div class="dritem drok" id="dr-${x.id}"><div class="drlvl"><button class="linkbtn" data-drdef="${esc([x.code,x.level,x.view||v,x.src?x.src.kind:"",x.src?x.src.id:""].join("|"))}">${esc(drdpLevelText(x.level,x.emerging))}</button> <span class="cnt">${x.status==="changed"?"changed":"accepted"} by ${esc(x.reviewedBy||"an educator")}${x.reviewedAt?", "+esc(shortDate(x.reviewedAt)):""}</span></div>
+      ${drdpEdit===x.id?"":`<div>${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>`}${drSourceHtml(x)}
+      ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>
+      ${drdpEdit===x.id?"":drdpCompareHtml(x.view||v,x.code,x.level,false)}${evEdit(x)}</div>`;
+  const evLine=x=>x.status!=="suggested"&&x.level?accRow(x):`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
-    return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><b>${esc(code)}</b> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
+    return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><button class="linkbtn" data-drdef="${esc([code,l?l.level:"",v,l&&l.src?l.src.kind:"",l&&l.src?l.src.id:""].join("|"))}" aria-label="What ${esc(code)} means"><b>${esc(code)}</b></button> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
         <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
       <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
@@ -3882,7 +3911,8 @@ function portfolioDrdpDoc(c,mode,view){
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
-    for(const k of codes){const x=latest[k];blocks.push(dItem(drdpName(k),forPrint(focusText(x.evidence||"",c)),x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",[drdpLevelText(x.level,x.emerging)]))}}
+    for(const k of codes){const x=latest[k];const mean=drdpLevelDesc(v,k,x.level);const seen=forPrint(focusText(x.evidence||"",c));
+      blocks.push(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]))}}
   const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-"," to ")]],blocks};
 }
