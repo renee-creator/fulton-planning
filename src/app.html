@@ -2229,10 +2229,11 @@ function confPieceDoc(c,x,drdp){const mode=PRINT.names;const d=x.kind==="stories
 // two pieces to a letter sheet, each with its photo, title, date, age and words
 function confPairDoc(c,xs,drdp,ph0,wl){ph0=ph0||200;wl=wl||420;const blocks=[];xs.forEach((x,i)=>{const d=confPieceDoc(c,x,drdp);if(i)blocks.push({t:"rule"});
   blocks.push(dSub(d.title||"Documentation"),dText("",(d.details||[]).filter(Boolean).join(" · ")));
-  const ph=(d.photos||[])[0];if(ph)blocks.push(Object.assign({t:"photo",maxH:ph0,full:false},ph));
+  const ph=(d.photos||[])[0];if(ph)blocks.push(Object.assign({t:"photo",maxH:ph0,full:true},ph));
   const words=(d.blocks||[]).filter(b=>b.t==="para"||b.t==="quote").map(b=>b.t==="quote"?`"${b.words}" ${b.by||""}`.trim():b.text).join(" ");
   if(words)blocks.push(dText("",sentCut(forPrint(words),wl)));const band=drdp?(d.blocks||[]).find(b=>b.t==="small"&&b.label==="Learning seen here"):null;if(band)blocks.push(band)});
-  return {display:true,type:"report",acc:"story",title:"",meta:[],blocks,noTitle:true}}
+  // the type stays the same size on every sheet, and the photos grow to fill it instead
+  return {display:true,type:"report",acc:"story",title:"",meta:[],blocks,noTitle:true,noScale:true}}
 // the one page a family keeps
 function famSummaryDoc(cf,max,compact){const c=children.get(cf.childId)||{};const fs=cf.familySummary||{};const cut=(t,n)=>max&&String(t||"").length>n*max?sentCut(String(t),Math.round(n*max)):String(t||"");
   const P0=fs.parts||{};const P={returns:cut(P0.returns,320),friends:cut(P0.friends,240),strengths:cut(P0.strengths,280),goals:cut(P0.goals,260),nextSteps:cut(P0.nextSteps,260)};const A=Object.fromEntries(Object.entries(P0.areas||{}).map(([k,v])=>[k,cut(v,220)]));
@@ -2251,12 +2252,12 @@ window.TREE_FAMILY_COPY=async(confId,opt)=>{opt=opt||{};const cf=conferences.get
   // the summary fits one page, each part set shorter at a sentence until it does
   // the summary fits one page and each sheet of two pieces fits its sheet, each part set shorter at a sentence until it
   // does. Word sets type a little larger, so the Word file takes the next step shorter.
-  const MX=[0,1.4,1.1,.85,.65,.5,.4,.32,.25],PAIR=[[200,420],[170,320],[150,240],[130,170],[110,120],[100,80]];
+  const MX=[0,1.4,1.1,.85,.65,.5,.4,.32,.25],PAIR=[[380,420],[330,420],[290,420],[255,420],[225,360],[200,300],[170,240],[150,180],[130,140],[110,100],[100,80]];
   let L=null;try{L=await TREE_KIT.pdfLib()}catch(e){}const one=async d=>{if(!L)return true;const b=await makePdf([d],"x.pdf","quiet");return !b||(await L.PDFDocument.load(await b.arrayBuffer())).getPageCount()<=1};
   const pre=[...its.map(x=>confPieceDoc(c,x,drdp))];if(pre.some(d=>(d.photos||[]).length))await loadPhotos(pre,!!opt.quiet);
   let si=0;for(;si<MX.length-1;si++)if(await one(famSummaryDoc(cf,MX[si])))break;
   const sum=famSummaryDoc(cf,MX[Math.min(MX.length-1,si+(opt.word?4:0))],!!opt.word);
-  const pieces=[];if(lay==="two")for(let i=0;i<its.length;i+=2){const xs=its.slice(i,i+2);let k=0;for(;k<PAIR.length-1;k++)if(await one(confPairDoc(c,xs,drdp,...PAIR[k])))break;pieces.push(confPairDoc(c,xs,drdp,...PAIR[Math.min(PAIR.length-1,k+(opt.word?1:0))]))}
+  const pieces=[];if(lay==="two")for(let i=0;i<its.length;i+=2){const xs=its.slice(i,i+2);let k=0;for(;k<PAIR.length-1;k++)if(await one(confPairDoc(c,xs,drdp,...PAIR[k])))break;let kw=k;if(opt.word)while(kw<PAIR.length-1&&(PAIR[kw][0]>PAIR[k][0]*.68||PAIR[kw][1]>PAIR[k][1]*.75))kw++;pieces.push(confPairDoc(c,xs,drdp,...PAIR[kw]))}
   else pieces.push(...its.map(x=>confPieceDoc(c,x,drdp)));
   const docs=[sum,...pieces];if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,!!opt.quiet);
   const name=safeFile(`Family copy ${c.first}${c.last?" "+c.last:""} ${cf.confDate||""}`);
@@ -10920,7 +10921,7 @@ function displayFlow(doc,p,A,s){
 // a short page is set larger so it fills the sheet, and a page that runs a few lines over is set a little smaller so it stays on one
 function displayFit(doc,p,A){
   let s=1,F=displayFlow(doc,p,A,1);
-  if(F.pages.length===1){const room=DG.bottom-F.top1;for(const t of p.fill?[2,1.85,1.7,1.58,1.46,1.36,1.3,1.24,1.18,1.12,1.06]:[1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
+  if(F.pages.length===1&&!p.noScale){const room=DG.bottom-F.top1;for(const t of p.fill?[2,1.85,1.7,1.58,1.46,1.36,1.3,1.24,1.18,1.12,1.06]:[1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
   // a sheet made to be one page, such as the farm sheet for families, may be set a little smaller still
   else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73,.7,.67,.64]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
   return {s,F};
