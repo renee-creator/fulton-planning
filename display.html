@@ -143,7 +143,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" Class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" Classes";
   const weekText=iso=>/^\d{4}-\d{2}-\d{2}$/.test(iso||"")?"Week of "+new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"}):"";
   const names=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a.slice(-1);
-  const img=p=>p&&p.src?`<img src="${esc(SERVER+p.src)}" alt="">`:"";
+  const img=p=>p&&p.src?`<img src="${esc(/^https:\/\//.test(p.src)?p.src:SERVER+p.src)}" alt="">`:"";
 
   /* each screen */
   // a moment with only a line of words gives the photo more of the screen and sets the words larger
@@ -207,7 +207,9 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   // a staff birthday on its day, with the name alone, and a note the director sent to all staff today
   function birthdayHtml(n){return `<div class="body quiet"><div class="kind">Today</div><h1>Happy birthday, ${esc(n)}</h1></div>`}
   // one plant from the children's plant guide, a quiet slide of its own
-  function plantHtml(x){return `<div class="body quiet"><div class="kind">From our garden</div><h1>${esc(x.common)}</h1><div class="words" style="max-width:40ch">${esc(x.words)}</div><div class="small">${x.eat==="food"?"Food":"Look, don't eat"}${x.gather?". Gather with an educator":""}</div></div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
+  function plantHtml(x){const K={plant:"From our garden",animal:"Our animals",wildlife:"Who lives near us",track:"Tracks and scat",mushroom:"Mushrooms, for looking",hazard:"Know it and keep away"};
+    const tag=x.kind==="plant"||!x.kind?(x.eat==="food"?"Food":x.eat==="partly"?"Partly edible, ask an adult which part":"Look, don't eat"):x.kind==="hazard"?"Look. Do not touch. Tell an adult.":x.kind==="animal"?"":"We leave them be";
+    return `<div class="body quiet"><div class="kind">${esc(K[x.kind]||K.plant)}</div><h1>${esc(x.common)}</h1>${x.botanical?`<div class="small"><i>${esc(x.botanical)}</i></div>`:""}<div class="words" style="max-width:40ch">${esc(x.words)}</div>${x.wonder?`<div class="words" style="max-width:40ch">${esc(x.wonder)}</div>`:""}<div class="small">${esc(tag)}${x.photo&&x.photo.credit?`. Photo ${esc(x.photo.credit)}`:""}</div></div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
   // the gatherings coming up, Second Saturday and Play Garden, with the jobs still looking for help
   function gatheringsHtml(G){const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden"};
     return `<div class="body"><div class="kind">Gatherings with families</div><h1>Coming up</h1><div class="days">${G.map(g=>`<div class="day"><h2>${esc(dayName(g.date))}${g.start?", "+esc(new Date("2000-01-01T"+g.start).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}).replace(/\s?([AP])M$/,(m,x)=>" "+x.toLowerCase()+"m")):""}</h2><div class="small"><b>${esc(g.title||GN[g.gathering]||"A gathering")}</b>${g.gardenDay?", a seasonal garden day":""}${g.ready?"":", still being planned"}</div>${g.jobs.length?`<div class="small">${esc(g.jobs.map(j=>j.title+(j.open!=null?(j.open?", "+j.open+" open":", full"):"")).join(" · "))}</div>`:""}</div>`).join("")}</div></div>`}
@@ -245,7 +247,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     (feed.birthdays||[]).forEach((n,i)=>O.unshift({k:"birthday",id:"b"+i,cls:"t",html:()=>birthdayHtml(n)}));
     (feed.notes||[]).forEach(x=>O.unshift({k:"note",id:"n"+x.id,cls:"t",html:()=>noteHtml(x)}));
     if((feed.gatherings||[]).length)O.push({k:"week",id:"gath",cls:"t",html:()=>gatheringsHtml(feed.gatherings)});
-    if(feed.plant)O.push({k:"plant",id:"pl"+feed.plant.id,cls:"t",html:()=>plantHtml(feed.plant),src:feed.plant.photo&&feed.plant.photo.src});
+    if(feed.plant)O.push({k:"plant",id:"pl"+feed.plant.id,cls:"t",html:()=>plantHtml(feed.plant),src:feed.plant.photo&&feed.plant.photo.src&&!/^https:/.test(feed.plant.photo.src)?feed.plant.photo.src:""});
     if((feed.menu)||(feed.bin&&feed.bin.items.length))O.push({k:"food",id:"food",cls:"t",html:()=>foodHtml(feed.menu,feed.bin)});
     // children with food, in the educators' words, beside the bin
     if(feed.foodMoment)O.push({k:"food",id:"fm"+feed.foodMoment.id,cls:"m",html:()=>momentHtml(feed.foodMoment).replace('<div class="where">','<div class="where">Food education, '),src:feed.foodMoment.photo&&feed.foodMoment.photo.src});

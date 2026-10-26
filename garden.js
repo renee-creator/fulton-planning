@@ -16,7 +16,7 @@ module.exports = function garden(o) {
   const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n || 300);
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
-  const USES = ['Food', 'Dye', 'Art materials', 'Pollinator', 'Look, don\'t eat'];
+  const USES = ['Food', 'Partly edible', 'Dye', 'Art materials', 'Pollinator', 'Habitat', 'Look, don\'t eat'];
   const PRESERVE = ['dry', 'herbs', 'tea', 'freeze', 'pickle', 'salt', 'seed'];
   const STAGES = ['plan', 'plant', 'tend', 'harvest', 'preserve', 'seeds', 'compost', 'rest'];
   /* The garden year in four seasons, which organize the garden's work only and never belong on plans, threads or
@@ -35,7 +35,10 @@ module.exports = function garden(o) {
   // words that suggest a chemical, which no task, tip or plan here may carry
   const CHEM = /\b(herbicides?|pesticides?|insecticides?|fungicides?|roundup|glyphosate|weed ?killer|bug ?spray|spray(ed|ing)? (for|with) (bugs|pests|weeds)|neem|copper spray|sevin|malathion|diazinon)\b/i;
   const clean = s => CHEM.test(String(s || '')) ? '' : s;
-  const isFood = p => !!p && p.eat === 'food';
+  // a plant grown as food, or partly edible, such as strawberry leaves or honeysuckle flowers, whose safe part is named on it
+  const isFood = p => !!p && (p.eat === 'food' || p.eat === 'partly');
+  // every Garden entry, a plant, an animal, a wildlife entry, tracks and scat, a mushroom or a plant or creature to keep away from, or a sign
+  const entryOf = (s, id) => (s.plants || []).find(x => x.id === id) || (s.animals || []).find(x => x.id === id) || (s.wild || []).find(x => x.id === id) || (s.signs || []).find(x => x.id === id) || null;
 
   /* ---------- who tends what ---------- */
   // a bed is tended by its home Class all year, or by the Classes and small groups a rotation names, turn by turn
@@ -92,10 +95,10 @@ module.exports = function garden(o) {
     if (!s.ready) return sh.season || sh.recipes.length ? Object.assign({ seedLibrary: [], agreements: null, guiding: [], guide: [] }, sh) : null;
     // the family seed library, the seeds we share with families, by name only
     const seedLibrary = (glog().seeds || []).filter(x => x && x.share && x.name).map(x => ({ name: x.name, variety: x.variety || '', from: x.from === 'donated' ? 'donated' : x.from === 'bought' ? 'bought' : 'saved' }));
-    return { season: sh.season, recipes: sh.recipes, seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden).map(p => ({ id: p.id, common: p.common, eat: p.eat, gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
+    return { season: sh.season, recipes: sh.recipes, seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden && !p.planned).map(p => ({ id: p.id, common: p.common, eat: p.eat, taste: p.taste || '', gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
-    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
+    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
@@ -151,7 +154,8 @@ module.exports = function garden(o) {
     }
     // a plant photo, kept only after the face check found no face, never showing children
     if (P === 'garden/photo') {
-      const p = plantOf(s, body.plant); if (!p || !/^[a-z0-9-]+\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
+      // a photo of our own for any Garden entry, a plant, an animal, wildlife or a sign, takes the stand-in photo's place everywhere
+      const p = entryOf(s, body.plant); if (!p || !/^[a-z0-9-]+\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
       if (body.noFace !== true) { err(req, res, 400, 'A plant photo is kept only once the face check finds no face.'); return; }
       saveL(L => { L.photos.push({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }); }); return back();
     }
@@ -168,6 +172,8 @@ module.exports = function garden(o) {
     }
     if (!dir) { err(req, res, 403, 'Only the director changes the Garden.'); return; }
     if (P === 'garden/ready') { saveS({ ready: !!body.on }); return back(); }
+    // our site project on iNaturalist, where every observation from our yards gathers, with locations obscured
+    if (P === 'garden/inat') { const u = String(body.url || '').trim(); if (u && !/^https:\/\/(www\.)?inaturalist\.org\/projects\/[A-Za-z0-9_-]+\/?$/.test(u)) { err(req, res, 400, 'Paste the project\'s address from iNaturalist.'); return; } saveS({ inat: Object.assign({}, s.inat || {}, { url: u.slice(0, 200) }) }); return back(); }
     // the director chooses one season sheet and some recipes from the library to share with families
     if (P === 'garden/familyshare') { const fs = Object.assign({ season: '', recipes: [] }, s.familyShare || {});
       if (body.season !== undefined) fs.season = SEASONS.some(x => x[0] === body.season) ? body.season : '';
@@ -186,13 +192,15 @@ module.exports = function garden(o) {
       if (!p) { p = { id: rid('p'), care: [] }; list.push(p); }
       const b = body.plant || {};
       if ('common' in b) p.common = txt(b.common, 80); if ('botanical' in b) p.botanical = txt(b.botanical, 120); if ('bed' in b) p.bed = bedOf(s, b.bed) ? b.bed : '';
-      if (Array.isArray(b.uses)) p.uses = b.uses.filter(u => USES.includes(u)); if ('eat' in b) p.eat = b.eat === 'food' ? 'food' : 'look';
+      if (Array.isArray(b.uses)) p.uses = b.uses.filter(u => USES.includes(u)); if ('eat' in b) p.eat = b.eat === 'food' ? 'food' : b.eat === 'partly' ? 'partly' : 'look';
+      if ('taste' in b) p.taste = txt(b.taste, 300); if ('variety' in b) { p.variety = txt(b.variety, 120); p.varietyConfirm = !p.variety; }
       if ('gather' in b) p.gather = !!b.gather; if ('permanent' in b) p.permanent = !!b.permanent;
       if (Array.isArray(b.ready)) p.ready = b.ready.filter(m => /^(0[1-9]|1[0-2])$/.test(m));
       if (b.words && typeof b.words === 'object') p.words = { child: txt(b.words.child, 400), adult: txt(b.words.adult, 1200) };
       if (Array.isArray(b.care)) p.care = b.care.filter(c => c && /^(0[1-9]|1[0-2])$/.test(c.month) && clean(c.text)).map(c => ({ id: c.id || rid('k'), month: c.month, text: txt(c.text, 160), stage: STAGES.includes(c.stage) ? c.stage : 'tend' }));
       if (Array.isArray(b.wildlife)) p.wildlife = b.wildlife.map(x => txt(x, 80)).filter(Boolean);
       if (p.eat !== 'food') p.uses = (p.uses || []).filter(u => u !== 'Food');
+      if (p.eat !== 'partly') p.uses = (p.uses || []).filter(u => u !== 'Partly edible'); else if (!(p.uses || []).includes('Partly edible')) p.uses = [...(p.uses || []), 'Partly edible'];
       saveS({ plants: list }); return back();
     }
     if (P === 'garden/bed') {
@@ -219,7 +227,7 @@ module.exports = function garden(o) {
     }
     if (P === 'garden/animal') {
       const list = JSON.parse(JSON.stringify(s.animals || [])); let a = list.find(x => x.id === body.id); if (!a) { err(req, res, 404, 'That animal group is not here.'); return; }
-      const v = body.animal || {}; if (Array.isArray(v.names)) a.names = v.names.map(x => txt(x, 40)).filter(Boolean).slice(0, 40);
+      const v = body.animal || {}; if (Array.isArray(v.names)) a.names = v.names.map(x => x && typeof x === 'object' ? { name: txt(x.name, 40), breed: txt(x.breed, 60) } : txt(x, 40)).filter(x => x && (x.name || typeof x === 'string')).slice(0, 60);
       if (Array.isArray(v.care)) a.care = v.care.filter(c => c && txt(c.text, 120)).map(c => ({ id: c.id || rid('a'), text: txt(c.text, 120), every: c.every === 'week' ? 'week' : 'day', weekday: Math.max(1, Math.min(5, +c.weekday || 1)) }));
       if (v.rotation) a.rotation = { who: (v.rotation.who || []).map(String).filter(w => ROOMS().includes(w.split('|')[0])), every: v.rotation.every === 'month' ? 'month' : 'week', weeks: Math.max(1, Math.min(8, +v.rotation.weeks || 1)), start: ISO.test(v.rotation.start || '') ? v.rotation.start : today() };
       saveS({ animals: list }); return back();
@@ -263,5 +271,11 @@ module.exports = function garden(o) {
   // marks it ready, and never anything but the map photo, the spaces and their names.
   const siteMap = (names, dir) => { const s = setup(); if (!s || !s.mapPhoto || (!dir && !s.mapReady)) return null;
     const pos = s.mapSpots || {}; return { ready: !!s.mapReady, photo: s.mapPhoto, spots: names.map(x => Object.assign({ id: x.id, name: x.name }, pos[x.id] ? { x: pos[x.id].x, y: pos[x.id].y } : {})) }; };
-  return { handle, view, forFamily, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, CHEM };
+    // one Garden entry a day for the staff room display, every plant, animal and wildlife entry in turn, never a planned plant
+  function ofTheDay(day) { const s = setup(); if (!s || !s.ready) return null; const L = glog();
+    const all = [...(s.plants || []).filter(p => !p.planned && !p.hidden).map(p => ({ kind: 'plant', x: p })), ...(s.animals || []).map(a => ({ kind: 'animal', x: a })), ...(s.wild || []).map(w => ({ kind: w.kind || 'wildlife', x: w }))];
+    if (!all.length) return null; const n = Math.floor(Date.parse(day + 'T12:00:00Z') / 864e5) % all.length; const { kind, x } = all[n];
+    const own = (L.photos || []).filter(p => p.plant === x.id && p.ok).slice(-1)[0];
+    return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || x.card || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
+  return { handle, view, forFamily, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
 };
