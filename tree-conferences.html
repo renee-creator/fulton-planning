@@ -2488,14 +2488,14 @@ function draw(){const ed=document.getElementById("conf-editor");if(!ed)return;co
   ed.dataset.bringKey=key;const items=P.TREE_DRDP_FOR(cf.childId,w.from,w.to);const docs=P.TREE_DOCS_FOR?P.TREE_DOCS_FOR(cf.childId,w.from,w.to):[];
   const span="from "+long(w.from)+" to "+long(w.to);const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   // a list to choose from. Nothing is ticked at first, and only the lines ticked are added
-  const pick=(k,title,rows,note)=>{const wrap=ed.querySelector('[data-wrap="'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring"))return;const ta=wrap.querySelector("textarea");
+  const pick=(k,title,rows,note)=>{const wrap=ed.querySelector('[data-wrap="'+k+'"]');if(!wrap||wrap.querySelector(".tree-bring:not(.tree-ticks)"))return;const ta=wrap.querySelector("textarea");
     const box=document.createElement("div");box.className="tree-bring";
     const draw1=()=>{const have=ta?ta.value:"";box.innerHTML="<b>"+esc(title)+"</b>"+(note?'<div class="muted">'+esc(note)+"</div>":"")+'<div class="tb-list">'+rows.map((r,i)=>{const on=have.includes(r.line);
         return '<label class="tb-row'+(on?" on":"")+'"><input type="checkbox" data-tb="'+i+'"'+(on?" disabled checked":"")+'>'+(r.thumb?'<img src="'+esc(r.thumb)+'" alt="" loading="lazy">':"")+"<span>"+r.html+(on?' <span class="tb-have">On the form</span>':"")+"</span></label>"}).join("")+"</div>";
       const b=document.createElement("button");b.type="button";b.className="btn sm";b.textContent="Add the ones ticked";b.disabled=true;
       box.onchange=()=>{b.disabled=!box.querySelector("[data-tb]:checked:not(:disabled)")};
       b.onclick=()=>{const ls=[...box.querySelectorAll("[data-tb]:checked:not(:disabled)")].map(x=>rows[+x.dataset.tb].line);if(ls.length)addTo(k,ls);draw1()};box.append(b)};
-    draw1();wrap.append(box)};
+    draw1();const tk=wrap.querySelector(".tree-ticks");tk?wrap.insertBefore(box,tk):wrap.append(box)};
   // each measure once, its most recent piece at the highest level educators accepted, in full
   for(const [k,doms] of Object.entries(MAP)){const list=items.filter(x=>doms.includes(x.dom));if(!list.length)continue;
     pick("fields."+k,"DRDP evidence, "+span,list.map(x=>({line:line(x),html:'<a href="#" data-treedrdp="'+esc([x.code,x.level,x.view||""].join("|"))+'"><b>'+esc(x.code+" "+x.name)+", "+esc(x.level)+(x.emerging?", emerging":"")+"</b></a>"+(x.evidence?" "+esc(x.evidence):"")+(x.title?' <span class="muted">'+esc(x.title+", "+long(iso(x.at)))+"</span>":"")})),"Each measure's most recent evidence at its highest level. Tick the ones to add.")}
