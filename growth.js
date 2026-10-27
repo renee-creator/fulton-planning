@@ -238,7 +238,8 @@ module.exports = function growthModule(c) {
           x.time ? { allDay: false, start: x.date + 'T' + x.time, end: x.date + 'T' + hhmm(toMin(x.time) + x.minutes) } : { allDay: true, start: x.date, end: x.date })); } }
     // a new educator's starting-point conversation, two months from their start date, for the director and that educator.
     // Until it is held, a date already past shows on today, with the day it was due.
-    for (const n of people()) { const st = (profileOf(n) || {}).startDate || ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(st)) continue; const g = growth(n); if (g.starting && g.starting.done) continue;
+    // none show, for anyone, the director included, until she turns Growth on in Settings
+    if (opened().growth) for (const n of people()) { const st = (profileOf(n) || {}).startDate || ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(st)) continue; const g = growth(n); if (g.starting && g.starting.done) continue;
       if (!dir && nameKey(n) !== nameKey(name)) continue; const due = addMonths(st, 2); const t0 = today(); const day = due < t0 ? t0 : due; if (day < from || day > to) continue;
       const late = due < t0 ? ', due ' + new Date(due + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric' }) : '';
       out.push({ id: `tgrow.sp.${pidOf(n)}`, cal: 'tgrow', title: dir ? `Starting-point conversation, ${n}${late}` : `Your starting-point conversation with the director${late}`, desc: dir ? 'Two months after the start date, a conversation with no scores. Open it in Educators, Growth.' : 'Two months after you started, a conversation with the director about how it is going. Nothing needs to be prepared.', allDay: true, start: day, end: day }); }
