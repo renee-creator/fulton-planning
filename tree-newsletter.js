@@ -204,7 +204,8 @@ async function nlLoadComing(k){
   try{const j=await calView(from,to);
     const cals=new Map(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c.name||""]));
     const by=new Map();
-    for(const e of (j.events||[])){const eid=String(e.id||"");if(e.cal==="tbday"||e.cal==="tmenu"||/^t(bday|menu)\./.test(eid))continue;const cn=cals.get(e.cal)||"";if(/internal|staff|birthday|menu|snack|lunch/i.test(cn))continue;
+    for(const e of (j.events||[])){const eid=String(e.id||"");// TREE's own staff and garden entries, check-ins, staff meetings, PD days and garden chores, stay out, so families see events and closures only
+      if(e.cal==="tbday"||e.cal==="tmenu"||e.cal==="tgrow"||e.cal==="tgarden"||/^t(bday|menu|grow|garden)\./.test(eid))continue;const cn=cals.get(e.cal)||"";if(/internal|staff|birthday|menu|snack|lunch/i.test(cn))continue;
       if(/birthday|^((morning |afternoon )?snack|lunch),/i.test(String(e.title||e.summary||"").trim()))continue;
       const day=String(e.start||"").slice(0,10);if(!day)continue;
       const title=e.cal==="tconf"||/conference/i.test(cn)?"Family conferences":String(e.title||e.summary||"").trim();if(!title)continue;

@@ -367,7 +367,7 @@ function conferenceEvents(from, to, me) {
       const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
       const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
       if (day < from || day > to) continue;
-      events.push({ id: 'tbday.' + hid(id) + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
+      events.push({ id: 'tbday.' + hid(id) + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' Class' : ''}`, allDay: true, start: day, end: day });
     }
   }
   // staff birthdays, kept by the director in Settings with the month and day only, so no age is shown
@@ -796,7 +796,7 @@ function linkPlansToObservations() {
 
 /* The Family Summary, the one page a family keeps from a conference. TREE drafts it the day before the conference from
    the educators' own words on the form, as the Transition summary's family copy is written. Another child is a friend,
-   a sentence that names the DRDP, a level or a measure is left out, and a sentence written for the educator, such as
+   the educators' DRDP words stay, since they make learning visible, and a sentence written for the educator, such as
    one saying what the documentation does not show, is left out too. The educator reads and changes it before it prints. */
 const FOR_EDUCATOR = /\b(does not|doesn't|did not|do not) (say|show|tell)\b|\bnot clear (whether|if)\b|\bunclear (whether|if)\b|\bto confirm\b|\bneeds? confirming\b|\b(an|the) educators? (could|might|may|should) (check|confirm|add|note|look)\b|\bcheck with\b|\bwould (show|confirm|need)\b|\bmore evidence\b|\bnext (level|step) (would|could)\b/i;
 // the family's copy reads as plain sentences. TREE's evidence notes, such as (a friend took..., Oct 14, 2026) or a line
@@ -822,7 +822,7 @@ function familySummaryDraft(cf, child) {
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
   // our words for families, educator for teacher, and sentences joined with stops in place of dashes and colons
   const ours = t => String(t || '').replace(/\b([Tt])eachers?\b/g, m => (m[0] === 'T' ? 'E' : 'e') + 'ducator' + (/s$/.test(m) ? 's' : '')).replace(/\s*[—–]\s*|\s+-\s+/g, ', ').replace(/(\w):\s+/g, '$1. ').replace(/;\s*/g, '. ');
-  const clean = t => famPlain(prefix(fam.withoutOthers(fam.withoutRatings(forPrint(counts(ours(famPlain(t))))), child, all)));
+  const clean = t => famPlain(prefix(fam.withoutOthers(forPrint(counts(ours(famPlain(t)))), child, all)));
   // a short highlight is the first two sentences of the educators' own words
   const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(x => x && x.trim().split(/\s+/).length > 1); return ss.slice(0, n || 2).join(' '); };
   const g = oneLists().groups.find(x => x.name === child.group && (!x.room || !child.classroom || x.room === child.classroom)) || null;
@@ -840,14 +840,14 @@ async function familySummarySentences(fs, child) {
   const groupLine = (String(P.friends || '').match(/^[^.]* is in the [^.]* group[^.]*\./) || [''])[0];
   const parts = { returns: P.returns, friends: String(P.friends || '').slice(groupLine.length).trim(), strengths: P.strengths, goals: P.goals, nextSteps: P.nextSteps, ...Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => ['area_' + k, v])) };
   const keys = Object.keys(parts).filter(k => String(parts[k] || '').trim()); if (!keys.length) return fs;
-  const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child, and never name a developmental level. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
+  const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child. Keep any DRDP measure or level the notes name, in their words, and never add one. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
 ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 }); if (res.status !== 200) return fs;
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
-  const tidy = t => famPlain(fam.withoutOthers(fam.withoutRatings(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()))), child, all));
+  const tidy = t => famPlain(fam.withoutOthers(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
   const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
   const fr = String(parts.friends || '').trim() ? got('friends') : '';
