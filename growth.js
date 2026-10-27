@@ -144,8 +144,17 @@ module.exports = function growthModule(c) {
   const published = slug => { const m = modules()[slug]; return !!m && (m.draft ? readyOn(slug) : !hiddenOn(slug)); };
   const waitingOf = slug => { const m = modules()[slug]; return !!m && !published(slug); };
   // what a reader receives. The director sees every module, drafts marked, with the source note. Others see published ones only.
+  /* A module's printables, one file a module in staff/pd/printables, each ## a card, sheet or sign with its kind line.
+     They stay beside the module, so accepting a restored draft keeps them, and the director edits them like any page. */
+  const PRINT_PRE = 'staff/pd/printables/';
+  const printablesOf = slug => { const p = PRINT_PRE + slug + '.md'; const r = S.files.get(p); if (!r || !r.text) return null;
+    const text = r.text.replace(/^\s*<!--[\s\S]*?-->/, ''); const parts = text.split(/^##\s+/m).slice(1);
+    const list = parts.map((x, i) => { const n = x.indexOf('\n'); const title = (n < 0 ? x : x.slice(0, n)).trim(); let body = n < 0 ? '' : x.slice(n + 1);
+      const k = body.match(/^\s*kind\s*:\s*(card|sheet|sign)\s*$/mi); if (k) body = body.replace(k[0], '');
+      return { id: 'p' + i, title, kind: k ? k[1].toLowerCase() : 'card', body: body.trim() }; }).filter(x => x.title);
+    return list.length ? { path: p, list } : null; };
   const modulesFor = me => { const dir = isDirector(me); const out = {};
-    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: waitingOf(k), restored: !!restoredAll()[k] }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
+    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: waitingOf(k), restored: !!restoredAll()[k], printables: printablesOf(k) }); else if (published(k)) { const c = Object.assign({}, m, { printables: printablesOf(k) }); if (c.printables) c.printables = { list: c.printables.list }; delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
     return out; };
   // the library's list, the design's modules in order, then modules written since, in their own order
   const libraryList = me => { const dir = isDirector(me); const m = modules();

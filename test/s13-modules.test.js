@@ -7,7 +7,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const REST = '<!--\nserves: obs\nstatus: draft\ndesc: Restored.\nsource: A workshop, 2026\n-->\n# Documentation\n\nServes Observation and Documentation\n\n## What changed in this draft\n\n- Restored the studio.\n\n## Why it matters\n\nRestored words.\n\n## Three ways in\n\n- **On my own.** Read.\n- **Staff meeting.** Talk.\n- **PD day.** Do.\n\n## Reading\n\n### A part\n\nText.\n\n## With families\n\nFamily words.\n\n## Into our program\n\nProgram words.\n\n## Reflect\n\n- A question?\n\n## Presenting this module\n\nDirector words.\n\n## Printables\n\n- A card.\n';
 
 test('restored drafts, three ways in and layers', async t => {
-  const fx = await start({ more: put => { put('staff/pd/restored/documentation.md', REST); put('staff/pd/originals.json', { modules: { documentation: [{ id: 'pdorig-documentation-guide.pdf', title: 'A guide', kind: 'guide', type: 'application/pdf' }] } }); put('originals/pdorig-documentation-guide.pdf', '%PDF-1.4 made up'); put('staff/pd/template.json', { id: 'template', sections: [{ title: 'Opening', minutes: 10, do: 'Begin.' }] }); } });
+  const fx = await start({ more: put => { put('staff/pd/restored/documentation.md', REST); put('staff/pd/originals.json', { modules: { documentation: [{ id: 'pdorig-documentation-guide.pdf', title: 'A guide', kind: 'guide', type: 'application/pdf' }] } }); put('originals/pdorig-documentation-guide.pdf', '%PDF-1.4 made up'); put('staff/pd/printables/documentation.md', '<!--\nmodule: documentation\n-->\n# Printables for Documentation\n\n## I notice, I wonder\nkind: card\nWhat do you notice?\n\n- One.\n- Two.\n\n## Our photo guidelines\nkind: sheet\n1. First.\n2. Second.\n\n| A | B |\n| --- | --- |\n| x | y |\n'); put('staff/pd/template.json', { id: 'template', sections: [{ title: 'Opening', minutes: 10, do: 'Begin.' }] }); } });
   t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
   const G = (tok, p, b) => fx.as(tok, '/api/staff/g/' + p, b || {});
@@ -45,6 +45,13 @@ test('restored drafts, three ways in and layers', async t => {
     assert.ok(!(await G(ann, 'modules')).body.modules.documentation);
     await G(dee, 'module/ready', { slug: 'documentation', on: true });
     assert.ok((await G(ann, 'modules')).body.modules.documentation);
+  });
+
+  await t.test('a module carries its printables for educators, and the director edits them as a page', async () => {
+    const m = (await G(ann, 'modules')).body.modules.documentation; assert.strictEqual(m.printables.list.length, 2);
+    assert.strictEqual(m.printables.list[1].kind, 'sheet'); assert.ok(!m.printables.path);
+    assert.ok((await G(dee, 'modules')).body.modules.documentation.printables.path);
+    const pg = await fx.as(dee, '/api/staff/page', { path: 'staff/pd/printables/documentation.md' }); assert.strictEqual(pg.status, 200);
   });
 
   await t.test('a PD day that used a module records its layer for each attendee once', async () => {
@@ -100,7 +107,7 @@ test('restored drafts, three ways in and layers', async t => {
     const s = await signedIn(fx, b, 'Ann', '1357', 390);
     await s.p.evaluate(() => goView('stpd')); await wait(1200);
     await s.p.evaluate(() => { const x = document.querySelector('[data-stmod="m:documentation"]'); if (x) x.click(); }); await wait(1500);
-    const txt = await s.p.evaluate(() => document.getElementById('main').innerText);
+    const txt = await s.p.evaluate(() => document.getElementById('main').textContent);
     await s.p.evaluate(() => goView('songs')); await wait(1500);
     await s.p.evaluate(() => { const b = document.querySelector('[data-songtab="collection"]'); if (b) b.click(); }); await wait(800);
     const bk = await s.p.evaluate(() => document.getElementById('main').innerText);
@@ -115,6 +122,9 @@ test('restored drafts, three ways in and layers', async t => {
     await sd.p.evaluate(() => document.querySelector('button[data-gmslides]:not([data-word])').click()); await wait(1500);
     const made = await sd.p.evaluate(() => __made.map(x => ({ name: x.name, titles: x.list.map(d => d.title) })));
     assert.ok(made.length === 1 && /slides\.pdf$/.test(made[0].name)); assert.ok(made[0].titles.includes('Why it matters')); assert.ok(made[0].titles.includes('A part')); assert.ok(made[0].titles.includes('Plus and delta'));
+    await sd.p.evaluate(() => { window.__made = []; document.querySelector('button[data-gmprint$="|all"]:not([data-word])').click(); }); await wait(1500);
+    const pm = await sd.p.evaluate(() => __made.map(x => ({ name: x.name, titles: x.list.map(d => d.title), kinds: x.list[1] && x.list[1].blocks.map(b => b.t) })));
+    assert.ok(pm.length === 1 && pm[0].titles.length === 2 && pm[0].titles[0] === 'I notice, I wonder'); assert.deepStrictEqual(pm[0].kinds, ['list', 'table']);
     const dtxt = await sd.p.evaluate(() => document.getElementById('main').innerText);
     assert.match(dtxt, /Original materials/); assert.match(dtxt, /Remove/); assert.match(dtxt, /Presenting this module/);
     assert.match(txt, /Three ways in/); assert.match(txt, /With families/); assert.match(txt, /PD day, /); assert.doesNotMatch(txt, /Presenting this module/);

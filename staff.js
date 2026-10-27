@@ -270,7 +270,7 @@ module.exports = function staffModule(o) {
   // every page of the school's own writing kept in the records as Markdown: PD modules, How To guides, the licensing
   // pieces, the New Educator pieces and letter, the materials guides, the Family page pieces, the wording the director
   // edits in place and the libraries for plans, such as recipes and the song book
-  const editable = p => /^staff\/(pd\/(modules|howto|licensing)|newed|guides|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
+  const editable = p => /^staff\/(pd\/(modules|howto|licensing|printables)|newed|guides|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
   // the school's own wording the director edits in place, one page for each piece, such as the Family Questionnaire
   const WD = require('./wording.js');
   function wordingDoc(id) { const r = S.files.get('staff/wording/' + id + '.md'); return WD.parse(r ? r.text : ''); }
@@ -287,7 +287,7 @@ module.exports = function staffModule(o) {
   const pageText = pp => pp.meta + pp.pre + '#'.repeat(pp.level) + ' ' + pp.title + '\n\n' + (pp.lead ? pp.lead + '\n\n' : '') +
     pp.parts.map(x => '#'.repeat(pp.level + 1) + ' ' + x.heading + '\n\n' + (x.body ? x.body + '\n' : '')).join('\n');
   const pageKind = p => p === 'staff/newed/welcome.md' ? 'letter' : p.includes('/howto/') ? 'howto' : p.startsWith('staff/wording/') ? 'wording' : p.includes('/licensing/') ? 'licensing' :
-    p.startsWith('staff/newed/') ? 'newed' : p.startsWith('staff/guides/') ? 'guide' : p.startsWith('staff/familypieces/') ? 'familypiece' : p.startsWith('staff/library/') ? 'library' : 'module';
+    p.startsWith('staff/newed/') ? 'newed' : p.startsWith('staff/guides/') ? 'guide' : p.startsWith('staff/familypieces/') ? 'familypiece' : p.startsWith('staff/library/') ? 'library' : p.startsWith('staff/pd/printables/') ? 'printables' : 'module';
   function pageOut(p) {
     const r = S.files.get(p); const pp = r && pageParts(r.text); if (!pp) return null; const h = get(PAGE_HIST(p)) || {};
     return { path: p, stamp: stampOf(r.text), kind: pageKind(p), title: pp.title, lead: pp.lead, parts: pp.parts, note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '', history: h.history || [] };

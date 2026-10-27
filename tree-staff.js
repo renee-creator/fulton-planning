@@ -1687,7 +1687,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
     ${sh?card("Share at a staff meeting",`${md(sh.body)}<label class="fld-label">What I will share, if I want a note<textarea rows="2" id="gmod-share">${H(pr.share||"")}</textarea></label>`):""}
     ${rd?card("Readings",md(rd.body)):""}${await (async()=>{const R2=((await loadReadings()).list||[]).filter(x=>(x.modules||[]).includes(slug));const bk=R2.filter(x=>x.kind!=="article"),ar=R2.filter(x=>x.kind==="article");
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
-    ${other.map(x=>card(x.heading,md(x.body))).join("")}${prints?card("Printables",md(prints.body)):""}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
+    ${other.map(x=>card(x.heading,md(x.body))).join("")}${printCard(m,prints,dir)}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
     ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);window.scrollTo(0,0)};
 /* Slides from a module, in our own print style. A title slide with the module's question, why it matters, one slide for
@@ -1695,6 +1695,22 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
    the module as it stands, so a change to the module changes the slides. */
 const plainLines=t=>String(t||"").replace(/\*\*/g,"").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").split("\n").map(l=>l.replace(/^\s*([-*]|\d+\.)\s+/,"").trim()).filter(l=>l&&!/^\|/.test(l)&&!/^#/.test(l));
 const firstSentences=(t,n)=>{const s2=String(t||"").replace(/\s+/g," ").match(/[^.!?]+[.!?]+/g)||[];return s2.slice(0,n).join(" ").trim()||String(t||"").slice(0,240)};
+/* ---------- a module's printables, each a card, sheet or sign, printed one, some or all, as PDF and Word ---------- */
+function printCard(m,prints,dir){const P=m.printables;if(!P||!(P.list||[]).length)return prints?card("Printables",md(prints.body)):"";
+  const KIND={card:"Card",sheet:"Sheet",sign:"Sign"};
+  return card("Printables",`<div class="hint">Tick the ones you want, or print them all. Each prints on its own page.</div>${P.list.map(x=>`<details class="strow"><summary style="cursor:pointer"><label style="display:inline-flex;gap:8px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-gmprpick="${H(x.id)}"> <b>${H(x.title)}</b></label> <span class="cnt">${KIND[x.kind]||"Card"}</span></summary><div class="stmd">${md(x.body)}</div><div class="actions"><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}">PDF</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}" data-word="1">Word</button></div></details>`).join("")}
+    <div class="actions"><button class="btn small" data-gmprint="${H(m.slug)}|chosen">Print the ones ticked</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|chosen" data-word="1">Word</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all">Print all</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all" data-word="1">All as Word</button>${dir&&P.path&&typeof peBtn==="function"?peBtn(P.path,"Edit the printables"):""}</div>`)}
+// the Markdown of a printable as print blocks, paragraphs, lists, numbered steps and a simple table
+function printBlocks(body){const out=[];const lines=String(body||"").split("\n");const strip=t=>String(t).replace(/\*\*([^*]+)\*\*/g,"$1").replace(/\*([^*]+)\*/g,"$1").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").trim();
+  let i=0;while(i<lines.length){const l=lines[i];
+    if(/^\s*\|/.test(l)){const rows=[];while(i<lines.length&&/^\s*\|/.test(lines[i])){const r=lines[i].trim().replace(/^\||\|$/g,"").split("|").map(c=>strip(c));if(!r.every(c=>/^:?-{2,}:?$/.test(c)))rows.push(r);i++}if(rows.length)out.push({t:"table",label:"",head:rows[0],rows:rows.slice(1)});continue}
+    if(/^\s*[-*]\s+/.test(l)){const items=[];while(i<lines.length&&/^\s*[-*]\s+/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*[-*]\s+/,"")));i++}out.push({t:"list",label:"",items});continue}
+    if(/^\s*\d+\.\s+/.test(l)){const items=[];while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*\d+\.\s+/,"")));i++}out.push({t:"list",label:"",items,numbered:true});continue}
+    if(/^\s*#{3,}\s+/.test(l)){out.push({t:"sub",text:strip(l.replace(/^\s*#+\s+/,""))});i++;continue}
+    if(!l.trim()){i++;continue}
+    const para=[];while(i<lines.length&&lines[i].trim()&&!/^\s*([-*]|\d+\.|\||#{3,})\s*/.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
+  return out}
+const printDoc=(m,x)=>({display:true,type:"report",acc:"story",centered:x.kind==="sign",title:x.title,meta:x.kind==="sign"?[]:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)});
 function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:true,display:true,type:"report",acc:"story",title,details:[],photos:[],blocks:lines.filter(Boolean).map(l=>({t:"para",text:l}))},o||{});
   const sec=h=>m.sections.find(x=>x.heading.toLowerCase().startsWith(h));const why=sec("why it matters"),rd=sec("reading"),tr=sec("try this week"),rf=sec("reflect");
   const q=(String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"";
@@ -1707,7 +1723,11 @@ function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:tr
   if(rf)out.push(slide("Reflect",plainLines(rf.body).slice(0,5)));
   out.push(slide("Plus and delta",["What went well today?","What would we change?"]));
   return out}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept],[data-gmorig],[data-gmslides],[data-gmorigrm],[data-gmorigback]");if(!t)return;e.preventDefault();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept],[data-gmorig],[data-gmslides],[data-gmorigrm],[data-gmorigback],[data-gmprint]");if(!t)return;e.preventDefault();const d=t.dataset;
+  if(d.gmprint){const [slug,which]=d.gmprint.split("|");const ms=await loadMods();const m=ms.modules[slug];if(!m||!m.printables)return;const L=m.printables.list;
+    const pick=which==="all"?L:which==="chosen"?L.filter(x=>{const c=document.querySelector(`[data-gmprpick="${x.id}"]`);return c&&c.checked}):L.filter(x=>x.id===which);
+    if(!pick.length){toast("Tick one or more first, or print all.");return}progress("Making the file");
+    await out(d.word?"word":"pdf",pick.map(x=>printDoc(m,x)),m.title+(pick.length===1?", "+pick[0].title:" printables"));return}
   if(d.gmorigrm||d.gmorigback){const [slug,id]=(d.gmorigrm||d.gmorigback).split("|");try{await api(d.gmorigrm?"pd/original/remove":"pd/original/restore",{slug,id});toast(d.gmorigrm?"Taken off this module's list. Put back brings it back.":"Back on this module's list.");redraw()}catch(er){toast(er.message||"That could not be changed.")}return}
   if(d.gmslides){const ms=await loadMods();const m=ms.modules[d.gmslides];if(!m)return;progress("Making the slides");await out(d.word?"word":"pdf",moduleSlides(m),m.title+" slides");return}
   if(d.gmorig){const [slug,id]=d.gmorig.split("|");progress("Opening the file");try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/original",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug,id})});if(!r.ok){toast("The file could not be opened.");return}

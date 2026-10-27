@@ -268,6 +268,10 @@ A module page shows each part it has. Three ways in follows Why it matters, then
 
 A module's original materials, the director's own decks, facilitator guides, agendas and handouts, are listed in staff/pd/originals.json by module, each with its title, kind and type. The files are kept like photos. A file added to the records under originals/ moves to the TREE photos folder in the tree@ Drive on the server's next pass, and leaves a marker in the records. The director sees Original materials on the module page, and the presenters of a Presenting entry made from that module see it on the module and under Original materials in the entry. Each file downloads to open in its own program. No one else receives the list or a file, and the server enforces it. The Garden as Teacher entries and Serving Two-Year-Olds carry their module, so their presenters see the same files. The director's Remove beside a file takes it off the module's list, keeping it under removed in staff/pd/originals.json and in the Drive, and Taken off this list holds Put back. Original files never open through a photo link.
 
+### Printables
+
+A module's printables are in staff/pd/printables, one file a module named for it, each ## a printable with a kind line, card, sheet or sign, and its words. The module page lists them under Printables with a tick on each, and prints one, the ones ticked or all, each on its own page, as PDF and Word. The director edits them with the one editor and its history. A module with no printables file shows its Printables list as written.
+
 ### Slides from a module
 
 Slides from this module, on the director's module page, makes a slide set in our own print style from the module as it stands, a title slide with the module's question, Why it matters, one slide for each part of the Reading with its first lines, Try this week, the reflection questions and Plus and delta, as PDF and Word. A change to the module changes the slides. The original deck stays under Original materials.
