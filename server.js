@@ -367,7 +367,7 @@ function conferenceEvents(from, to, me) {
       const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
       const day = y + '-' + (md === '02-29' && !leap ? '02-28' : md);
       if (day < from || day > to) continue;
-      events.push({ id: 'tbday.' + hid(id) + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' Class' : ''}`, allDay: true, start: day, end: day });
+      events.push({ id: 'tbday.' + hid(id) + '.' + y, cal: 'tbday', title: `${k.first}'s birthday`, desc: `${k.first} turns ${y - by}${k.classroom ? ', ' + k.classroom + ' class' : ''}`, allDay: true, start: day, end: day });
     }
   }
   // staff birthdays, kept by the director in Settings with the month and day only, so no age is shown

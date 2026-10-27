@@ -52,7 +52,7 @@ function renderSettings(){
     <section class="card" id="mypass"><div class="lbl">Change my passcode</div><div class="hint">Type the four numbers you use now, then four new ones twice.</div>
       <div class="kfields"><label>Passcode now<input type="password" inputmode="numeric" maxlength="4" id="mp-old" autocomplete="current-password"></label><label>New passcode<input type="password" inputmode="numeric" maxlength="4" id="mp-new" autocomplete="new-password"></label><label>New passcode again<input type="password" inputmode="numeric" maxlength="4" id="mp-again" autocomplete="new-password"></label></div>
       <div class="actions"><button class="btn small" id="mp-save">Save my new passcode</button><span class="cnt" id="mp-msg"></span></div></section>
-    <section class="card"><div class="lbl">My class</div><div class="hint">Lists open on ${rm?esc(rm):"all Classes"}. Choosing another class on a list is remembered on this device.</div>
+    <section class="card"><div class="lbl">My class</div><div class="hint">Lists open on ${rm?esc(rm):"all classes"}. Choosing another class on a list is remembered on this device.</div>
       <div class="actions"><button class="btn small ghost" id="mp-roomreset">Open every list on ${rm?esc(rm):"my class"} again</button></div></section>`;return}
   const names=rosterNames();
   let h=`<div class="head"><div><span class="eyebrow">For the director</span><h2 style="margin-top:4px">Program settings</h2>
