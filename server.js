@@ -516,6 +516,7 @@ ONCE.push(['planDefaults', () => {
 }]);
 // Session 9's two changes to records already there. The mandated reporter link points to the California page, and each
 // current employee has the 2026 Know Your Rights notice on file outside TREE. Each waits until the educator records load.
+ONCE.push(['schoolWords', () => staff.once.schoolWords({ welcome: require('./family.js').DEFAULT_WELCOME })]);
 ONCE.push(['trainingLinks', () => staff.once.trainingLinks()]);
 ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 // steps that change records already there from a list of changes kept in the private records. A record in the main
@@ -1881,7 +1882,9 @@ async function handle(req, res) {
     if (!key || !sameText(given, key)) { noteWrong(ip); log('Display refused,', key ? 'the key is not right' : 'the display is turned off'); err(req, res, 403, key ? 'This display link is no longer in use. Open the new link from TREE Settings.' : 'The staff room display is turned off in TREE Settings.'); return; }
     if (!displaySeen.at || Date.now() - displaySeen.at > 6 * 36e5) log('Staff room display checked in');
     displaySeen.at = Date.now();
-    json(req, res, 200, await displayFeed()); return;
+    // the rest hours and the nightly reload come from School words, which the director edits in place
+    { const w = require('./wording.js').map(staff.wordingDoc('school-words')); const hm = v => /^\d{1,2}:\d{2}$/.test(String(v || '').trim()) ? String(v).trim().padStart(5, '0') : '';
+      json(req, res, 200, Object.assign(await displayFeed(), { rest: { from: hm(w['Staff room display rests from']) || '19:00', to: hm(w['Staff room display wakes at']) || '06:00', reload: hm(w['Staff room display reloads at']) || '03:00' } })); } return;
   }
   // sign-ins are read with the records, so a server just woken never mistakes an educator for a stranger
   if (!accounts.loaded) { await loadAll(); if (!accounts.loaded) { err(req, res, 503, store.error || 'TREE is still starting. Try again in a moment.'); return; } }

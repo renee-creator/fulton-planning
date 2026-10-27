@@ -775,7 +775,7 @@ module.exports = function staffModule(o) {
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
       const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
-      json(req, res, 200, { ok: true }); return;
+      json(req, res, 200, { ok: true, start: (accountFor(name) || {}).start || '' }); return;
     }
     if (P === 'access') {
       if (!dir) return deny('Only the director turns on full access.');
@@ -918,7 +918,7 @@ module.exports = function staffModule(o) {
         let reached = false;
         if (!isDirector(n)) { const r = await reminders.sendTo(n, { title: 'TREE, your records', body: items.map(i => i.text).join('\n'), url: 'tree.html?go=records', tag: 'tree-records' }); reached = !!(r && r.sent); }
         if (reached) markSent(items.map(i => i.k)); else marks.push(...items.map(i => i.k));
-        summary.push(`${n}, ${items.map(i => i.text).join('; ').toLowerCase()}`);
+        summary.push(`${n}. ${items.map(i => i.text + (/[.!?]$/.test(i.text) ? '' : '.')).join(' ')}`);
       }
       // each January, from 2027, the director hears once to check the posters for updates and to give the yearly Workplace
       // Know Your Rights notice by February 1. Nothing goes out in any other month.
@@ -990,6 +990,17 @@ module.exports = function staffModule(o) {
   const handbook = { ready: async () => { await ready(); }, current: () => POL.current(), forFamily: y => POL.forFamily(y), forPublic: () => POL.forPublic(), image: async (p, isPublic) => { const q = POL.familyImage(p, isPublic); if (!q) throw new Error('not here'); return readImage(q); } };
   /* ---------- one-time steps, run by server.js once each through the save queue ---------- */
   // the mandated reporter link in the Licensing at Fulton piece on official trainings points to the California page
+  // School words, a wording page the director edits in place, for lines that were fixed in code
+  function onceSchoolWords(defaults) {
+    if (!S.ready) return false; const p = 'staff/wording/school-words.md'; if (S.files.get(p)) return;
+    putText(p, ['<!-- The school\'s own words for a few lines TREE shows. Change the words under each heading. Keep the headings as they are. -->', '# School words', '',
+      '## Nut free line', 'We are a nut free school.', '',
+      '## Family welcome letter', defaults.welcome || '', '',
+      '## Staff room display rests from', '19:00', '',
+      '## Staff room display wakes at', '06:00', '',
+      '## Staff room display reloads at', '03:00', ''].join('\n'));
+    log('School words page made');
+  }
   function onceTrainingLinks() {
     if (!S.ready) return false; const p = 'staff/pd/licensing/22-official-trainings.md'; const r = S.files.get(p); if (!r || typeof r.text !== 'string') return false;
     const next = r.text.replace(/\(https:\/\/mandatedreportertraining\.com\/?\)/g, '(https://mandatedreportertraining.com/california/)');
@@ -1131,5 +1142,5 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
 };

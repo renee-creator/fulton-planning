@@ -116,6 +116,8 @@
     });
   }
   async function start(){
+    // Conferences lives inside TREE. Opened on its own, it goes to TREE, which signs in and opens it there.
+    if(window.parent===window){ location.replace("tree.html?go=conferences"); return new Promise(()=>{}); }
     if(!Auth.token) await showGate();
     else if(window.parent!==window){ /* inside TREE, which is already connected */ }
     else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);

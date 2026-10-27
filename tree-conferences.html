@@ -359,6 +359,8 @@ header.top{position:static!important;border-bottom:0!important;background:transp
     });
   }
   async function start(){
+    // Conferences lives inside TREE. Opened on its own, it goes to TREE, which signs in and opens it there.
+    if(window.parent===window){ location.replace("tree.html?go=conferences"); return new Promise(()=>{}); }
     if(!Auth.token){ if(window.parent!==window){ try{ window.parent.postMessage({treeAuthCheck:1},location.origin); }catch(e){} return new Promise(()=>{}); } await showGate(); }
     else if(window.parent!==window){ /* inside TREE, which is already connected */ }
     else { const g=document.getElementById("gate"); g.hidden=false; document.getElementById("gate-form").style.display="none"; const note=document.createElement("p"); note.className="muted"; note.id="gate-wait"; g.append(note);
@@ -2555,7 +2557,7 @@ function ticks(ed,cf){const wrap=ed.querySelector('[data-wrap="fields.documentat
   box.onchange=e=>{const t=e.target;if(!t.dataset.tick)return;const cur=new Set((cf.printPieces||[]).filter(x=>ids.includes(x)));if(t.checked){if(cur.size>=6){t.checked=false;return}cur.add(t.dataset.tick)}else cur.delete(t.dataset.tick);save(cf,[...cur])}}
 async function save(cf,list){cf.printPieces=list.slice(0,6);if(P.TREE_CONF_PUT)P.TREE_CONF_PUT(cf.id,cf);try{if(P.TREE_CONF_SET)await P.TREE_CONF_SET(cf.id,{printPieces:cf.printPieces});else await S.db.doc("conferences/"+cf.id).update({printPieces:cf.printPieces,updatedAt:new Date().toISOString()})}catch(e){toast("That did not save. Check your connection.")}const ed=document.getElementById("conf-editor");if(ed)ticks(ed,cf);fam(ed,cf)}
 function fam(ed,cf){if(!ed)return;const rail=ed.closest(".wrap,body").querySelector(".rail");if(!rail)return;let p=rail.querySelector(".tree-fampanel");if(!p){p=document.createElement("div");p.className="panel tree-fampanel tree-nolock";rail.prepend(p)}
-  const n=(cf.printPieces||[]).slice(0,6).length;const lay=cf.evidenceLayout||"two";
+  const n=(cf.printPieces||[]).slice(0,6).length;const lay=(P.TREE_FAM_LAYOUT?P.TREE_FAM_LAYOUT(cf.id,cf):cf.evidenceLayout)||"two";
   // the panel is drawn again only when what it shows changes, so a button is never replaced under a finger mid-tap
   // whether the Family Summary has been read shows here, and until it is, the family copy buttons open it to read
   const fsum=cf.familySummary||null,rd=!!(fsum&&fsum.readAt);

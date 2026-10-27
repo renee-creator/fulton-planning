@@ -84,7 +84,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}, ${o.date}${o.photos.length?", wit
         drdp:(Array.isArray(t.drdp)?t.drdp:[]).map(String).filter(c=>(DRDP_M.ptk||{})[c]||(DRDP_M.it||{})[c]).slice(0,3),ages:nlClean(t.ages)}}).filter(t=>t.title&&t.notices.length);
     x=nlDoc(x.month)||x;x.suggestions=ts;x.suggestedAt=Date.now();nlSave(x,true);
     toast(ts.length?`${ts.length} topics from ${nlMonthOnly(x.month)}'s observations.`:"No topics came back. Try again in a moment.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   nlBusy.topics=false;if(view==="newsletter")renderNewsletter();
 }
 
@@ -117,7 +117,7 @@ ${words.join("\n")}`;
     const photos=[];if(!s.behavior)for(const id of s.photos){const cap=nlCaption(notices.get(id));if(photos.some(p=>p.cap===cap))continue;photos.push({notice:id,cap});if(photos.length>=2)break}
     x.topics=(x.topics||[]).concat([{id:"t"+Date.now().toString(36),from:s.id,title:nlClean(out?.title)||s.title,happening:nlClean(out?.happening),why:nlClean(out?.why),grows,bonus:nlClean(out?.bonus),tips:[],tipsDraft:false,photos,offer:s.photos,behavior:s.behavior,drdp:s.drdp,notices:s.notices}]);
     nlSave(x,true);toast("Written in plain words for families. Read it and make it yours.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 // a photo's caption starts from the educator's own words
@@ -142,7 +142,7 @@ Return a JSON object with one key "tips", an array of objects with "lead", a sho
   try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
     const tips=(Array.isArray(out?.tips)?out.tips:[]).slice(0,6).map(p=>({lead:nlClean(p?.lead),text:nlClean(p?.text)})).filter(p=>p.lead||p.text);
     x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.tips=tips;tt.tipsDraft=true}nlSave(x,true);toast("Draft tips are in. Rewrite them in your own voice.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 
@@ -192,7 +192,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""
     x=nlDoc(x.month)||x;x.school=(x.school||[]).filter(s=>s.text.trim()).concat(items.map(i=>({text:i.text})));
     const ph=items.map(i=>i.notice).filter(Boolean);x.schoolOffer=[...new Set(ph)];if(!(x.schoolPhotos||[]).length)x.schoolPhotos=ph.slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
     nlSave(x,true);
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 

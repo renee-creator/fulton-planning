@@ -900,7 +900,7 @@ function openEventInfo(e, cal){
   const agenda = e.agenda || (/\bP\.?D\.?\b|professional development|staff development|in.?service|staff meeting/i.test(e.title||"") ? String(e.start||"").slice(0,10) : "");
   // a conference shows only Conference, the child's name and Class, and when
   if(e.conf){ showInfo({ tag:"Family conference", locked:true, title:e.title, rows:[["When",when]] }); return; }
-  showInfo({ tag:"School calendar, view only", locked:true, agenda, story:{id:e.id,title:e.title,when:when.replace(/\n/g,", "),where:e.location||"",desc:e.desc||""}, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
+  showInfo({ tag:/^t(conf|bday|menu|grow|fam|garden)$/.test(String(cal.id||""))?"From TREE, view only":"School calendar, view only", locked:true, agenda, story:{id:e.id,title:e.title,when:when.replace(/\n/g,", "),where:e.location||"",desc:e.desc||""}, title:e.title, rows:[["When",when],["Calendar",cal.name],e.location?["Where",e.location]:null,e.desc?["Details",e.desc]:null], links:(e.print||[]).map(x=>({text:"Print the "+String(x.label||"menu").toLowerCase(),href:SERVER+x.url})), note:/^t(conf|bday|menu|grow|fam|garden)$/.test(String(cal.id||""))?"TREE adds this from its own records, such as the menus, birthdays, garden tasks and check-ins, and it changes here as soon as they change.":"This comes from "+cal.name+". Changes are made where that calendar is kept and show up here within about ten minutes." });
 }
 function showInfo(o){
   const tag=$("info-tag"); tag.textContent=""; if(o.locked) tag.append(lock()); tag.append(o.tag);
@@ -1088,6 +1088,8 @@ function showGate(){
 }
 async function start(){
   wire();
+  // the Calendar lives inside TREE. Opened on its own, it goes to TREE, which signs in and opens it there.
+  if(!PREVIEW&&window.parent===window){ location.replace("tree.html?go=calendar"); return new Promise(()=>{}); }
   if(PREVIEW){ PREVIEW.mount($("preview-bar"), ()=>{ S.stamp=""; refresh(true); }); }
   else if(!Auth.token) await showGate();
   else if(window.parent!==window){ /* inside TREE, which is already connected */ }

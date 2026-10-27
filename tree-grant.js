@@ -264,7 +264,7 @@ Write in plain, warm, professional language, in the first person plural, a short
 Return a JSON object with keys "progress", "successes" and "challenges".`;
   try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"grant"});const c=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();
     await gWrite("q-"+q,{checkin:{progress:c(out?.progress),successes:c(out?.successes),challenges:c(out?.challenges),draftedAt:Date.now()}},{id:"q-"+q,checkin:{}});toast("Drafted. Rewrite it in your own voice.")}
-  catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   gBusy=false;if(view==="grant")renderGrant()}
 
 document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")return;

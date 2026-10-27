@@ -774,6 +774,8 @@ let CLASSROOMS=[],CLASSES_MAIN=[],snapMain=null;
 // the school's own wording the director edits in place, from staff/wording in the records, sent with the records
 const wordsDoc=id=>(window.FP_WORDS&&window.FP_WORDS[id])||{title:"",parts:[]};
 const wordsOf=id=>window.TREE_WORDS?TREE_WORDS.map(wordsDoc(id)):{};
+// the nut free line, from School words, which the director edits in place
+const nutLine=()=>String(wordsOf("school-words")["Nut free line"]||"").trim()||"We are a nut free school.";
 // printing: the school's name on display documentation and on plans and records, and how children's names appear on display pieces
 let PRINT={schoolDocs:false,schoolRecords:true,names:"first",by:true};
 // Proofread before save, for every educator, set by the director in Settings
@@ -1458,7 +1460,7 @@ Return only the section text, with no preface.
 ${cur?"What the team already wrote.\n"+cur+"\n\n":""}This week's Individual and small group plans.
 ${teamSourceText(src)}${lastWeekAftersText(p)}${threadsForClaude(p)}`;
   try{const r=await sample(prompt,{modelTier:"complex",cache:false});const out=(r.text||"").trim().replace(/\s*[\u2014\u2013]\s*/g,", ");suggest[key]=out?{status:"ready",text:out,from:"ind"}:{status:"error",error:assistError("empty_completion","Your text is unchanged."),from:"ind"}}
-  catch(err){suggest[key]={status:"error",error:assistError(err?.code||"unknown","Your text is unchanged."),from:"ind"}}
+  catch(err){suggest[key]={status:"error",error:assistError(err||"unknown","Your text is unchanged."),from:"ind"}}
   if(currentId===p.id)rerenderCard(p,"interests");
 }
 function refCard(prev){
@@ -1635,7 +1637,7 @@ ${ctx}${teamSources(p).length?"\n\nThis week's Individual and small group plans.
     if(!c(out?.focus)&&!br.length)throw {code:"empty_completion"};
     const conn=(Array.isArray(out?.connections)?out.connections:[]).filter(x=>Array.isArray(x)&&x.length===2).map(x=>[+x[0],+x[1]]).filter(([a,b])=>a!==b&&a>=0&&b>=0&&a<br.length&&b<br.length);
     webSug[p.id]={status:"ready",why:c(out?.why),web:{focus:c(out?.focus),branches:br,connections:conn,languages:langPick(out?.languages),questions:c(out?.questions),environment:c(out?.environment)}};
-  }catch(err){webSug[p.id]={status:"error",error:assistError(err?.code||"unknown","Your web is unchanged.")}}
+  }catch(err){webSug[p.id]={status:"error",error:assistError(err||"unknown","Your web is unchanged.")}}
   if(currentId===p.id)renderMain();
 }
 function webLayout(n,cx,cy,rx,ry){const pts=[];for(let i=0;i<n;i++){const a=(-90+i*360/n)*Math.PI/180;pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return pts}
@@ -1830,7 +1832,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="calendar"||REM_GO.go==="conferences"){view=REM_GO.go;currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -2098,7 +2100,7 @@ async function drdpAnalyze(kind,id,mode,quiet){
       for(const x of byKid[cid]||[])patch[x.id]={code:x.code,view:x.view,level:x.level,emerging:x.emerging,evidence:x.evidence,src:{kind,id,title:S.title,at:rec.at||Date.now()},at:Date.now(),by:useKw?"keywords":"reading",status:"suggested",suggested:{level:x.level,emerging:x.emerging}};
       if(Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}})}
     if(!quiet)toast(items.length?`${items.length} suggestion${items.length===1?"":"s"} now wait${items.length===1?"s":""} on ${Object.keys(byKid).length===1?children.get(Object.keys(byKid)[0])?.first+"'s page":"the children's pages"} for review.`:"No measure was clear enough from this documentation.");
-  }catch(e){if(!quiet)toast(assistError(e?.code||"unknown","Nothing changed."))}
+  }catch(e){if(!quiet)toast(assistError(e||"unknown","Nothing changed."))}
   finally{delete drdpBusy[key];drdpRefresh()}
 }
 // every observation with its children tagged, from Kaymbu or kept in TREE, with a photo or a few words, is read for DRDP
@@ -2234,6 +2236,8 @@ window.TREE_FOR_PRINT=forPrint;
 const FAM_AREAS=[["approaches","Curiosity and staying with what matters to them"],["social","Friends, feelings and getting along"],["language","Talking, listening and stories"],["cognition","Wondering, counting and solving problems"],["physical","Moving, growing and caring for their body"]];
 const FAM_LAYOUTS=[["one","One per page"],["two","Two per page"],["booklet","Booklet"]];
 const famLayout=cf=>{const v=(cf&&cf.evidenceLayout)||LS.get("tree.famlayout","two");return FAM_LAYOUTS.some(([k])=>k===v)?v:"two"};
+// the Conferences panel shows the layout that will actually print
+window.TREE_FAM_LAYOUT=(id,cf)=>famLayout(conferences.get(id)||cf);
 // the pieces ticked to print, in date order, each the child's own portfolio piece
 function confPrintItems(cf){const c=children.get(cf.childId);if(!c)return [];const want=new Set((cf.printPieces||[]).slice(0,6));return portfolioItems(c).filter(x=>want.has(x.kind+"|"+pfItemId(x)))}
 // what TREE suggests printing. Pieces with accepted DRDP evidence first, a photo, and a spread across the months, up to 6
@@ -3488,7 +3492,7 @@ async function storyDraftRun(st){
     if(!pages.length){toast("No pages came back. Try again in a moment.");return}
     const qs=(Array.isArray(out?.questions)?out.questions:[]).map(clean).filter(Boolean).slice(0,4);
     storyDraft={id:st.id,title:clean(out?.title),cover:clean(out?.cover),pages,questions:qs,families:clean(out?.families)};
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   finally{stBusy=false;if(view==="story")renderStory()}
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
@@ -3887,7 +3891,7 @@ Return only the sentences.
 What the educators wrote.
 ${src.map(n=>`Kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`).join("\n")}`;
   try{const r=await sample(prompt,{modelTier:"default",cache:false});slideSug[s.id]=String(r.text||"").replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[—–]\s*/g,", ").trim()||undefined;if(!slideSug[s.id])toast("No draft this time. Nothing changed.")}
-  catch(e){delete slideSug[s.id];toast(assistError(e?.code||"unknown","The slide is unchanged."))}
+  catch(e){delete slideSug[s.id];toast(assistError(e||"unknown","The slide is unchanged."))}
   if(view==="slide")renderSlide();
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
@@ -5451,7 +5455,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}, ${o.date}${o.photos.length?", wit
         drdp:(Array.isArray(t.drdp)?t.drdp:[]).map(String).filter(c=>(DRDP_M.ptk||{})[c]||(DRDP_M.it||{})[c]).slice(0,3),ages:nlClean(t.ages)}}).filter(t=>t.title&&t.notices.length);
     x=nlDoc(x.month)||x;x.suggestions=ts;x.suggestedAt=Date.now();nlSave(x,true);
     toast(ts.length?`${ts.length} topics from ${nlMonthOnly(x.month)}'s observations.`:"No topics came back. Try again in a moment.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   nlBusy.topics=false;if(view==="newsletter")renderNewsletter();
 }
 
@@ -5484,7 +5488,7 @@ ${words.join("\n")}`;
     const photos=[];if(!s.behavior)for(const id of s.photos){const cap=nlCaption(notices.get(id));if(photos.some(p=>p.cap===cap))continue;photos.push({notice:id,cap});if(photos.length>=2)break}
     x.topics=(x.topics||[]).concat([{id:"t"+Date.now().toString(36),from:s.id,title:nlClean(out?.title)||s.title,happening:nlClean(out?.happening),why:nlClean(out?.why),grows,bonus:nlClean(out?.bonus),tips:[],tipsDraft:false,photos,offer:s.photos,behavior:s.behavior,drdp:s.drdp,notices:s.notices}]);
     nlSave(x,true);toast("Written in plain words for families. Read it and make it yours.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 // a photo's caption starts from the educator's own words
@@ -5509,7 +5513,7 @@ Return a JSON object with one key "tips", an array of objects with "lead", a sho
   try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"});
     const tips=(Array.isArray(out?.tips)?out.tips:[]).slice(0,6).map(p=>({lead:nlClean(p?.lead),text:nlClean(p?.text)})).filter(p=>p.lead||p.text);
     x=nlDoc(x.month)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.tips=tips;tt.tipsDraft=true}nlSave(x,true);toast("Draft tips are in. Rewrite them in your own voice.");
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 
@@ -5559,7 +5563,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.photos.length?", with photo":""
     x=nlDoc(x.month)||x;x.school=(x.school||[]).filter(s=>s.text.trim()).concat(items.map(i=>({text:i.text})));
     const ph=items.map(i=>i.notice).filter(Boolean);x.schoolOffer=[...new Set(ph)];if(!(x.schoolPhotos||[]).length)x.schoolPhotos=ph.slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
     nlSave(x,true);
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   if(view==="newsletter")renderNewsletter();
 }
 
@@ -6202,9 +6206,11 @@ ${cur}`;
   suggest[key]=out?{status:"ready",text:out,base:cur}:{status:"error",error:assistError(code||"empty_completion","Your text is unchanged.")};
   if(currentId===P.id)rerenderCard(P,k);
 }
-function assistError(code,tail){
-  const m={rate_limited:"TREE is busy right now. Wait a minute and try again.",not_granted:"Reading help was not allowed. Use the page's Permissions menu to allow it, then try again.",sampling_disabled:"Reading help is turned off for this account or organization.",session_expired:"Your TREE session expired. Reload the page and try again.",refused:"TREE declined this one. Try rewording the entry.",empty_completion:"TREE returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"Only the director can do that.",cancelled:"Stopped.",invalid_json:"The answer came back garbled. Try again.",truncated:"TREE's answer was too long and got cut off. Choose a shorter range or one class, then try again."};
-  return (m[code]||`That did not work (${code}). Try again in a moment.`)+(tail?" "+tail:"");
+// what went wrong, in plain words. A refusal from the server already says who can do it, so its own words are shown.
+function assistError(code,tail){const msg=code&&typeof code==="object"?String(code.message||""):"";if(code&&typeof code==="object")code=code.code||"unknown";
+  if(code==="not_allowed"&&msg)return msg+(tail?" "+tail:"");
+  const m={rate_limited:"TREE is busy right now. Wait a minute and try again.",not_granted:"Writing help is not open to this sign-in. The director can say why.",sampling_disabled:"Reading help is turned off for this account or organization.",session_expired:"Your TREE session expired. Reload the page and try again.",refused:"TREE declined this one. Try rewording the entry.",empty_completion:"TREE returned nothing. Try again.",prompt_too_large:"This plan is too long to send. Shorten a section and try again.",unavailable:"The TREE server could not be reached. Check the internet connection and try again.",not_allowed:"This sign-in cannot do that here.",cancelled:"Stopped.",invalid_json:"The answer came back garbled. Try again.",truncated:"TREE's answer was too long and got cut off. Choose a shorter range or one class, then try again."};
+  return (m[code]||(code==="server_error"?"TREE could not finish that just now. Try again in a moment.":"That did not work. Try again in a moment."))+(tail?" "+tail:"");
 }
 async function draftFromNotes(p,btn){
   const notes=$("#notes").value.trim();if(!notes){toast("Add your notes first.");return}
@@ -6229,7 +6235,7 @@ ${notes}`;
     for(const f of empty){const v=out?.[f.k];if(typeof v==="string"&&v.trim()){p.fields[f.k]=v.trim().replace(/\s*[—–]\s*/g,", ");n++}}
     if(wantWeb&&out?.web&&typeof out.web==="object"){const w=out.web;p.web.focus=String(w.focus||"");const br=Array.isArray(w.branches)?w.branches.slice(0,6).map(b=>({name:String(b?.name||""),materials:String(b?.materials||"")})).filter(b=>b.name):[];if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=langPick(w.languages);p.web.questions=String(w.questions||"");p.web.environment=String(w.environment||"");n++}
     persist(p);renderMain();toast(n?`Filled ${n} section${n>1?"s":""}. Read each one and make it yours.`:"Your notes did not match any empty section.");
-  }catch(err){btn.disabled=false;$("#draftstate").textContent="";toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){btn.disabled=false;$("#draftstate").textContent="";toast(assistError(err||"unknown","Nothing was changed."))}
 }
 
 /* ---------- Printable PDF ---------- */
@@ -7285,7 +7291,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     saveScan({room:"moments-"+room,kind:"moments",range:mRange,createdAt:Date.now(),by:whoAmI(),count:d.length,
       summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)});
     rToast(patterns.length?`Read ${d.length} observations and named ${patterns.length} pattern${patterns.length>1?"s":""}${joined?`, ${joined} already a thread you follow`:""}.`:`Read ${d.length} observations.`);
-  }catch(err){rToast(assistError(err?.code||"unknown"))}
+  }catch(err){rToast(assistError(err||"unknown"))}
   mBusy=false;renderMain();
 }
 function momentsDocs(long,cap){
@@ -7956,7 +7962,7 @@ Write in plain, warm, professional language, in the first person plural, a short
 Return a JSON object with keys "progress", "successes" and "challenges".`;
   try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"grant"});const c=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();
     await gWrite("q-"+q,{checkin:{progress:c(out?.progress),successes:c(out?.successes),challenges:c(out?.challenges),draftedAt:Date.now()}},{id:"q-"+q,checkin:{}});toast("Drafted. Rewrite it in your own voice.")}
-  catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   gBusy=false;if(view==="grant")renderGrant()}
 
 document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")return;
@@ -8225,7 +8231,7 @@ Write four to six warm, plain sentences a parent reads in a minute. Name what is
 Return only JSON {"note":"the note"}`}
 async function binNoteDraft(b,quiet){if(!sample||!b||!isDirector())return;
   try{const out=await askRead(binNotePrompt(b),{purpose:"binnote",modelTier:"fast",cache:false});const t=String(out?.note||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,". ").trim();if(!t)return;
-    await gWrite("binnote-"+b.id,{id:"binnote-"+b.id,week:b.date,text:t,status:"draft",at:Date.now()});if(!quiet)toast("The bin note is ready to read.");if(view==="today"||view==="grant")renderMain()}catch(e){if(!quiet)toast(assistError(e?.code||"unknown","The note could not be written just now."))}}
+    await gWrite("binnote-"+b.id,{id:"binnote-"+b.id,week:b.date,text:t,status:"draft",at:Date.now()});if(!quiet)toast("The bin note is ready to read.");if(view==="today"||view==="grant")renderMain()}catch(e){if(!quiet)toast(assistError(e||"unknown","The note could not be written just now."))}}
 // once a week, as the list arrives, the director's TREE writes the note by itself
 let binNoteBusy=false;
 // the bin note is tried three times, ten minutes apart, and then waits for the director to draft it herself
@@ -8697,7 +8703,7 @@ function menuMerge(r){const o=r.out||{};const kind=o.kind==="both"?"both":o.kind
   menuDraft.files=menuDraft.files||{};menuDraft.files[kind]=r.name;menuDraft.read=[...(menuDraft.read||[]),r.name];return true}
 document.addEventListener("change",async e=>{const t=e.target;
   if(t.id==="menu-files"){const fs=[...t.files];t.value="";if(!fs.length)return;menuBusy+=fs.length;renderSettings();
-    for(const f of fs){try{const r=await menuRead(f);if(!menuMerge(r))toast(`TREE could not tell which month ${f.name} is for.`)}catch(err){toast(`${f.name} could not be read. ${assistError(err?.code||"unknown","")}`.trim())}
+    for(const f of fs){try{const r=await menuRead(f);if(!menuMerge(r))toast(`TREE could not tell which month ${f.name} is for.`)}catch(err){toast(`${f.name} could not be read. ${assistError(err||"unknown","")}`.trim())}
       menuBusy--;if(view==="settings")renderSettings()}
     document.getElementById("menus-card")?.scrollIntoView({block:"start"});return}
   if(t.dataset&&t.dataset.menuday&&menuDraft){const x=menuDraft.days[t.dataset.menuday]=menuDraft.days[t.dataset.menuday]||{};
@@ -8922,7 +8928,7 @@ Return a JSON object with two keys. "questions" is an array of objects with "tex
   try{const out=await sample.json(prompt,{modelTier:"default",cache:false,purpose:"bin"});
     const clean=arr=>(Array.isArray(arr)?arr:[]).slice(0,6).map(x=>({text:String(x?.text||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").replace(/\s+/g," ").trim(),produce:(Array.isArray(x?.produce)?x.produce:[]).map(binKey).filter(k=>(b.items||[]).some(it=>binKey(it.name)===k))})).filter(x=>x.text);
     binSugg={id:b.id,room,question:clean(out?.questions||out?.ideas),prep:clean(out?.prep)};binSugg.none=!binSugg.question.length&&!binSugg.prep.length;
-  }catch(err){toast(assistError(err?.code||"unknown","Nothing was changed."))}
+  }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   binBusy=false;if(view==="bin")renderBin();
 }
 
@@ -9726,7 +9732,7 @@ function renderParticipation(){
       <div class="actions">${[["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
-      <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||"")}</textarea>
+      <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||String(wordsOf("school-words")["Family welcome letter"]||""))}</textarea>
       <div class="actions"><button class="btn small" data-ptwelcome="1">Save the letter</button>${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
       ${c.welcome?"":`<div class="cnt">Empty means the Family page shows the letter made from our Welcome Letter and Logistics.</div>`}</details></section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Admission agreement dates</h3> <span class="cnt">${c.aa&&c.aa.start?esc(fmtDate(c.aa.start))+" to "+esc(fmtDate(c.aa.end||"")):"Not set, so the agreement prints blank lines"}</span></summary>
@@ -10091,7 +10097,7 @@ Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.ques
     const br=(Array.isArray(out?.branches)?out.branches:[]).map(b=>({name:lab(b?.name,44),materials:lab(b?.materials,64)})).filter(b=>b.name).slice(0,6);
     if(!br.length)throw {code:"empty_completion"};
     projSug[x.id]={status:"ready",why:c(out?.why),branches:br};
-  }catch(err){projSug[x.id]={status:"error",error:assistError(err?.code||"unknown","Your directions are unchanged.")}}
+  }catch(err){projSug[x.id]={status:"error",error:assistError(err||"unknown","Your directions are unchanged.")}}
   if(view==="projects"&&projId===x.id)renderMain();
 }
 async function writeProjectStory(x,label){
@@ -10113,7 +10119,7 @@ Plans, oldest first.
 ${d.map(o=>JSON.stringify(o)).join("\n")}`;
   try{const out=await sample.json(prompt,{modelTier:"complex",cache:false});const fields={};STORY.forEach(([k])=>fields[k]=String(out?.[k]||"").replace(/\s*[—–]\s*/g,", "));
     const cur=projects.get(x.id)||x;const s={id:uid(),label:label||"",at:Date.now(),by:whoAmI(),fields};cur.stories=[...(cur.stories||[]),s];projOpenStory=s.id;saveProject(cur);toast("Project story written. It is kept below with today's date.")}
-  catch(err){toast(assistError(err?.code||"unknown"))}
+  catch(err){toast(assistError(err||"unknown"))}
   delete projBusy[x.id];renderMain();
 }
 async function projectsClick(t){
@@ -10398,7 +10404,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     const strs=(a,k)=>(Array.isArray(a)?a:[]).map(c2).filter(Boolean).slice(0,k);
     saveScan({room:lensKey(room),kind:"lens",range,createdAt:Date.now(),by:whoAmI(),lensId,lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)});
     rToast(moments.length?`Read ${d.length} plans and found ${moments.length} moment${moments.length>1?"s":""}.`:"No moments with enough in the plans yet.");
-  }catch(err){rToast(assistError(err?.code||"unknown"))}
+  }catch(err){rToast(assistError(err||"unknown"))}
   lensBusy=false;renderMain();
 }
 function lensClick(t){
@@ -10462,7 +10468,7 @@ Return JSON {"description":"","questions":[],"languages":[],"words":[]}`;
     const w=[...new Set(list(out?.words,70).map(x=>x.toLowerCase().replace(/[^a-z' -]/g,"")).filter(x=>x.length>1))].slice(0,60);
     if(!w.length&&!c(out?.description))throw {code:"empty_completion"};
     lensSug[L.id]={status:"ready",description:c(out?.description),questions:list(out?.questions,8),languages:langPick(out?.languages),words:w};
-  }catch(err){lensSug[L.id]={status:"error",error:assistError(err?.code||"unknown","The lens is unchanged.")}}
+  }catch(err){lensSug[L.id]={status:"error",error:assistError(err||"unknown","The lens is unchanged.")}}
   if(view==="settings")renderSettings();
 }
 function lensDraftHtml(L){
@@ -12011,7 +12017,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined});
     const nNew=ths.filter(x=>!x.trackedId).length;
     rToast(nNew||joined.length?[nNew?`Found ${nNew} new thread${nNew>1?"s":""}`:"",joined.length?`added to ${joined.length} thread${joined.length>1?"s":""} you follow`:""].filter(Boolean).join(" and ").replace(/^./,c=>c.toUpperCase())+".":"No new threads with enough evidence yet.");
-  }catch(err){rToast(assistError(err?.code||"unknown"))}
+  }catch(err){rToast(assistError(err||"unknown"))}
   scanBusy=false;renderMain();
 }
 async function writeStory(th){
@@ -12030,7 +12036,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     // the earlier story is kept, so a rewrite never loses what the team edited
     if(th.story)th.storyEarlier=[...(th.storyEarlier||[]),{story:th.story,at:th.storyAt||0}].slice(-3);
     th.story=st;th.storyAt=Date.now();th.storyRecs=threadRecIds(th).size;saveThread(th);toast("Project story written. Open it below the thread to edit.")}
-  catch(err){toast(assistError(err?.code||"unknown"))}
+  catch(err){toast(assistError(err||"unknown"))}
   delete storyBusy[th.id];renderMain();
 }
 async function familyUpdate(p,btn){
@@ -12042,7 +12048,7 @@ Return only the note.
 
 ${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+p.web.branches.map(b=>b.name).filter(Boolean).join(", "):""}`;
   try{const r=await sample(prompt,{modelTier:"default",cache:false});p=plans.get(p.id)||p;p.familyUpdate=(r.text||"").trim().replace(/\s*[—–]\s*/g,", ");persist(p);const ta=$("#family");if(ta){ta.value=p.familyUpdate;autoGrow(ta)}}
-  catch(err){toast(assistError(err?.code||"unknown"))}
+  catch(err){toast(assistError(err||"unknown"))}
   btn.disabled=false;btn.textContent="Draft family update";
 }
 async function copyText(ta){if(!ta||!ta.value.trim()){toast("Nothing to copy yet.");return}
@@ -12261,7 +12267,7 @@ async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=pr
     const fixes=proofFixes(out,F).map(x=>Object.assign(x,{label:by.get(x.k).label}));
     if(!fixes.length)proofClean=hash;
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
-    proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e?.code||"unknown","Try again in a minute.")}}
+    proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e||"unknown","Try again in a minute.")}}
   proofPaint()}
 function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=proofFind(proofSels[+f.k]);const cur=el?el.value:"";
   if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
@@ -12340,7 +12346,7 @@ async function pfRun(){if(!pfWants())return;pf.running=true;
     pfPaint();if(!F.length)continue;
     let out;try{out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",quick:true})}
     catch(e){for(const x of batch)if(x.status==="reading")x.status="waiting";
-      pf.error=e&&(e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited")?"The proofreading service could not be reached just now. The observations below are kept, and nothing has changed. Try again in a minute.":"The proofreading did not work this time. "+assistError(e?.code||"unknown","Try again in a minute.");
+      pf.error=e&&(e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited")?"The proofreading service could not be reached just now. The observations below are kept, and nothing has changed. Try again in a minute.":"The proofreading did not work this time. "+assistError(e||"unknown","Try again in a minute.");
       pf.paused=true;break}
     const fixes=proofFixes(out,F);
     for(const x of batch){if(x.status!=="reading")continue;const mine=k=>fixes.filter(f=>f.k===x.id+"|"+k);
@@ -13171,12 +13177,12 @@ function kDietHtml(){if(kDiets&&Date.now()-kDietAt>60e3){kDietAt=Date.now();kDie
   if(!kDiets){if(!kDietAt){kDietAt=Date.now();kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()})}return `<section class="card" id="kdietcard"><div class="lbl">Allergies and dietary needs</div><div class="cnt">Loading…</div></section>`}
   const by=[...new Set(kDiets.map(x=>x.room||""))];
   return `<section class="card" id="kdietcard"><div class="secthead"><div class="lbl">Allergies and dietary needs</div><div class="actions">${kDiets.length?printBtns("kdiet","","Print the list"):""}</div></div>
-    ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" Class":"No Class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. We are a nut free school.</div>`}</section>`}
-function kDietDoc(){const L=kDiets||[];return {type:"report",acc:"smallgroup",title:"Allergies and dietary needs",meta:[longDate(iso(new Date())),"We are a nut free school."],
+    ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" Class":"No Class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. ${esc(nutLine())}</div>`}</section>`}
+function kDietDoc(){const L=kDiets||[];return {type:"report",acc:"smallgroup",title:"Allergies and dietary needs",meta:[longDate(iso(new Date())),nutLine()],
   blocks:[...new Set(L.map(x=>x.room||""))].map(r=>dTable(r?r+" Class":"No Class",L.filter(x=>(x.room||"")===r).map(x=>[x.name,x.line]),{head:["Child","Allergy or dietary need"],widths:[.3,.7]}))}}
 // a Class list for a substitute, each child with their small group and their allergy or dietary line
 function classListDoc(room){const rs=kidList().filter(c=>kidAt(c)&&(room==="All"||c.classroom===room));const rooms=room==="All"?[...new Set(rs.map(c=>c.classroom||""))]:[room];
-  return {type:"report",acc:"smallgroup",title:room==="All"?"Class lists":room+" Class list",meta:[longDate(iso(new Date())),"We are a nut free school."],
+  return {type:"report",acc:"smallgroup",title:room==="All"?"Class lists":room+" Class list",meta:[longDate(iso(new Date())),nutLine()],
     blocks:rooms.map(r=>dTable(rooms.length>1?(r?r+" Class":"No Class"):"",rs.filter(c=>(c.classroom||"")===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first)).map(c=>[kidName(c),c.group||"",dietLine(c)]),{head:["Child","Small group","Allergy or dietary need"],widths:[.32,.2,.48]}))}}
 function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&v!=null&&v!==false);
   return `<div class="kgrid" style="margin-top:8px">${rows.map(([k,v])=>`<div><span class="lbl">${esc(ENROLL_LABELS[k]||k.replace(/_/g," "))}</span><div style="white-space:pre-line">${esc(v===true?"Yes":v)}</div></div>`).join("")}</div>`}
@@ -13398,7 +13404,7 @@ async function tsDraft(c){if(!sample){toast("Writing help is not available here.
     if(nf){patch.sections=fill;if(x&&x.status==="ready")patch.status="draft"}if(!x)Object.assign(patch,{status:"draft",createdAt:Date.now(),createdBy:whoAmI()});
     tsPatch(c,patch);
     toast(nw?"The draft waits beside the parts already written.":nf?"Drafted. Read it through and change anything.":"The notes did not give enough to draft from.")}
-  catch(e){toast(assistError(e?.code||"unknown","Try again in a minute."))}
+  catch(e){toast(assistError(e||"unknown","Try again in a minute."))}
   finally{tsBusy[c.id]=false;tsRender()}}
 function tsStateText(x){if(!tsAny(x))return "Not started";const ch=tsChanged(x);return x.status==="ready"?(x.shared?(ch?"Ready, changed since it was shared":"Ready and shared with the family"):"Ready"):(x.shared?"Draft, changed since it was shared":"Draft")}
 function tsWarn(s){const bad=TS_SECTIONS.filter(([k])=>TS_RATING.test((s||{})[k]||"")).map(x=>x[1]);
@@ -13660,9 +13666,9 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.cla
 // Add educator here adds a new hire, the same way as adding from Educators. Each sees only the New Educator section
 // until the director turns on school and children's work access.
 async function sgNewHires(list){if(!list.length)return;signins.busy=true;if(view==="settings")renderSettings();const added=[];
-  try{for(const x of list){await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator"});added.push(x.name)}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
+  const codes={};try{for(const x of list){const r=await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator"});added.push(x.name);if(r&&r.start)codes[x.name]=r.start}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
   try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||signins.list}catch(e){}
-  signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name and choose a passcode. ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
+  signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name and start code, then choose four numbers. ${added.map(n=>codes[n]?n+"\u2019s start code is "+codes[n]+".":"").filter(Boolean).join(" ")} ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
 async function signinCall(path,body,msg){signins.busy=true;try{const j=await window.FP_API(path,body);signins.list=j.accounts||signins.list;if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}signins.busy=false;if(view==="settings")renderSettings()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
@@ -13947,7 +13953,7 @@ async function displayCall(action){try{displayInfo=await window.FP_API("/api/dis
    educators, the calendar, Today, the staff room display and families until she releases them here, and the Play
    Garden application is turned on and off here too. */
 function releasesHtml(){if(!isDirector()||VIEW_AS)return"";const c=gthConf(),page=!!(c.release||{}).page;const list=ptItems().filter(x=>GTH_NAMES[x.gathering]).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
-  return `<section class="card" id="releases-card"><div class="lbl">Releases</div><div class="hint">Educators see nothing of Gatherings, on the Gatherings page, Today, the calendar or the staff room display, until it is released here. Families see a gathering only once it is released and marked ready.</div>
+  return `<section class="card" id="schoolwords-card"><div class="lbl">School words</div><div class="hint">A few lines TREE shows, in your words. The nut free line, the family welcome letter, and when the staff room display rests and reloads each night.</div><div class="actions"><button class="btn small ghost" data-pageedit="staff/wording/school-words.md">Edit School words</button></div></section><section class="card" id="releases-card"><div class="lbl">Releases</div><div class="hint">Educators see nothing of Gatherings, on the Gatherings page, Today, the calendar or the staff room display, until it is released here. Families see a gathering only once it is released and marked ready.</div>
     <label class="radio"><input type="checkbox" data-relpage="1" ${page?"checked":""}><span>The whole Gatherings page, with every gathering in it</span></label>
     ${list.length?`<div class="lbl" style="margin-top:8px">One gathering at a time</div>${list.map(g=>`<label class="radio"><input type="checkbox" data-relone="${esc(g.id)}" ${g.released||page?"checked":""} ${page?"disabled":""}><span>${esc(g.title||GTH_NAMES[g.gathering])}${g.date?", "+esc(fmtDate(g.date)):""}</span></label>`).join("")}`:`<div class="cnt">No gatherings are planned yet.</div>`}
     <div style="margin-top:10px">${gthPgHtml()}</div><div class="cnt">The Play Garden application stays off until the licensing office answers on capacity.</div></section>`}

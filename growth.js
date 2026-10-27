@@ -187,6 +187,12 @@ module.exports = function growthModule(c) {
       for (const x of s.list) { if (x.date < from || x.date > to) continue; if (!name || (!dir && nameKey(x.name) !== nameKey(name))) continue; if (!dir && !allowed(name)) continue;
         out.push(Object.assign({ id: `tgrow.ci.${pidOf(x.name)}.${x.date}`, cal: 'tgrow', title: dir ? `Check-in, ${x.name}` : 'Check-in with the director', desc: dir ? 'Monthly check-in, about twenty minutes' : 'Your monthly check-in, about twenty minutes. Nothing needs to be prepared.' },
           x.time ? { allDay: false, start: x.date + 'T' + x.time, end: x.date + 'T' + hhmm(toMin(x.time) + x.minutes) } : { allDay: true, start: x.date, end: x.date })); } }
+    // a new educator's starting-point conversation, two months from their start date, for the director and that educator.
+    // Until it is held, a date already past shows on today, with the day it was due.
+    for (const n of people()) { const st = (profileOf(n) || {}).startDate || ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(st)) continue; const g = growth(n); if (g.starting && g.starting.done) continue;
+      if (!dir && nameKey(n) !== nameKey(name)) continue; const due = addMonths(st, 2); const t0 = today(); const day = due < t0 ? t0 : due; if (day < from || day > to) continue;
+      const late = due < t0 ? ', due ' + new Date(due + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric' }) : '';
+      out.push({ id: `tgrow.sp.${pidOf(n)}`, cal: 'tgrow', title: dir ? `Starting-point conversation, ${n}${late}` : `Your starting-point conversation with the director${late}`, desc: dir ? 'Two months after the start date, a conversation with no scores. Open it in Educators, Growth.' : 'Two months after you started, a conversation with the director about how it is going. Nothing needs to be prepared.', allDay: true, start: day, end: day }); }
     // the monthly PD staff meeting on its first Monday, or the day the director chose, for everyone, and each Class's team
     // meetings for the director and that Class's educators
     for (const [ym] of cal.months) {
@@ -474,7 +480,7 @@ module.exports = function growthModule(c) {
     if (P === 'journal/open') {
       if (!canSee(me, who)) return deny('The journal is seen only by the educator and the director.');
       if (nameBlocked(me)) return err(req, res, 429, 'Wait a little before trying your passcode again.');
-      if (!checkPasscode(me, body.passcode)) return err(req, res, 403, 'That passcode is not right. Use the four numbers you sign in to TREE with.');
+      if (!checkPasscode(me, body.passcode)) return err(req, res, 403, 'That passcode is not right. Use the passcode you sign in to TREE with.');
       const j = journal(who); const p = periodOf(who, today());
       json(req, res, 200, { key: openKey(me, who), entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0)), period: p, wrote: wroteIn(who, p), carry: growth(who).carry || null }); return;
     }

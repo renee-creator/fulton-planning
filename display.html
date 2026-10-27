@@ -281,9 +281,11 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const el=document.createElement("div");el.className="slide note "+(cls||"");el.innerHTML=`<div class="big">${esc(big)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:""}`;stage.appendChild(el);
     requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);setTimeout(()=>old.forEach(c=>c.remove()),1600)})}
 
-  /* evening rest, from seven at night to six in the morning, a slow clock so the screen is not holding one picture all night */
+  /* evening rest, at the hours set in School words (seven at night to six in the morning unless changed), a slow clock so the screen is not holding one picture all night */
   let wokeUntil=0;
-  const resting=()=>{if(PREVIEW||Date.now()<wokeUntil)return false;const h=new Date().getHours();return h>=19||h<6};
+  // the rest hours and the nightly reload come from School words, sent with the feed
+  let REST={from:"19:00",to:"06:00",reload:"03:00"};const mins=t=>{const [a,b]=String(t).split(":").map(Number);return a*60+(b||0)};
+  const resting=()=>{if(PREVIEW||Date.now()<wokeUntil)return false;const d=new Date(),m=d.getHours()*60+d.getMinutes(),f=mins(REST.from),t=mins(REST.to);return f>t?(m>=f||m<t):(m>=f&&m<t)};
   let restEl=null;
   function quiet(){if(stopped)return;if(!resting()){restEl=null;foot.classList.remove("away");pos=-1;return next()}
     foot.classList.add("away");
@@ -298,7 +300,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       let j={};try{j=await r.json()}catch(e){}
       if(r.status===403){stopped="key";note("This display link is no longer in use","In TREE, open Settings, then Staff room display, and open the current link on this computer.");return}
       if(!r.ok)throw new Error(j.error||String(r.status));
-      const first=!feed;feed=j;lastOk=Date.now();dot.style.display="none";stopped="";
+      const first=!feed;feed=j;if(j&&j.rest)REST=Object.assign({},REST,j.rest);lastOk=Date.now();dot.style.display="none";stopped="";
       const cur=list[pos];list=build();
       // keep going from where the screen was, so a refresh never restarts the turn
       if(first){pos=-1;next()}else if(cur){const at=list.findIndex(x=>x.id===cur.id);pos=at>=0?at:Math.min(pos,list.length-1)}
@@ -320,7 +322,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
 
   load();setInterval(()=>{if(stopped!=="key")load()},FETCH_MS);
   // a fresh start each night picks up any change to the display itself
-  setInterval(()=>{const d=new Date();if(d.getHours()===3&&d.getMinutes()<10)location.reload()},5*60000);
+  setInterval(()=>{const d=new Date(),m=d.getHours()*60+d.getMinutes(),r=mins(REST.reload);if(m>=r&&m<r+10)location.reload()},5*60000);
 })();
 </script>
 </body>

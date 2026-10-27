@@ -234,7 +234,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // the site map, the photo from above and the names of the spaces, never a child's photo or name
     let mapInfo = null; try { const m = siteMap ? siteMap() : null; if (m && m.ready) mapInfo = { src: photoSrc(m.photo), spots: m.spots }; } catch (e) { mapInfo = null; }
     return { pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
-      welcome: anyNew ? (c.welcome || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
+      welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 
   function save(id, doc) { const cur = recs().get(id); recs().set(id, { doc, sha: cur && cur.sha, path: `${KIND}/${id}.json`, local: true }); noteChange(KIND, id); scheduleSave(KIND, id); }
@@ -386,8 +386,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   // a step or a packed item the family ticks off on their checklist
   function check(f, childId, key, on) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
-    // the wording comes from the school's records, and a page that reads empty saves nothing
-    if (!CHECKS().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
+    // the wording comes from the school's records, and a page that reads empty saves nothing. Reading the Family Handbook
+    // and the notices does not depend on that wording, so a family can always tick those.
+    if (key !== 'handbook' && key !== 'notices' && !CHECKS().length) return { error: 'This part of the Family page is being updated. Please try again later.' };
     if (![...CHECKS().map(c => c[0]), ...PACK().map(c => 'pack_' + c[0]), 'notices', 'handbook'].includes(key)) return { error: 'That step is not on the list.' };
     remember(f, 'children', childId); const kd = getRec('children', childId); const ch = Object.assign({}, kd.familyChecks || {}); if (on) ch[key] = nowIso(); else delete ch[key];
     const extra = {};
@@ -507,3 +508,4 @@ module.exports.withoutOthers = withoutOthers;
 module.exports.EVERYDAY = EVERYDAY;
 module.exports.NEVER_NAMES = NEVER_NAMES;
 module.exports.withoutRatings = withoutRatings;
+module.exports.DEFAULT_WELCOME = DEFAULT_WELCOME;

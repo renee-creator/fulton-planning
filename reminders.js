@@ -239,7 +239,7 @@ module.exports = function reminders(o) {
     }
     if (kind === 'evening' && when.dow === 1 && S.types.summary) {
       const open = educators().map(e => ({ e, items: openFor(e, when, S).filter(i => i.t !== 'obs' && i.t !== 'conf' && i.t !== 'confform') })).filter(x => x.items.length);
-      const body = open.length ? open.map(x => `${x.e.name}, ${x.items.map(i => i.text.replace(/^Finish /, '').replace(/^This week's /, '').toLowerCase()).join('; ')}`).join('\n') : 'Every educator\'s planning is done for this week.';
+      const body = open.length ? open.map(x => `${x.e.name}. ${x.items.map(i => { const t = i.text.replace(/^Finish /, '').replace(/^This week's /, ''); return t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? '' : '.'); }).join(' ')}`).join('\n') : 'Every educator\'s planning is done for this week.';
       const dirs = [...accounts.list].filter(a => isDirector(a.name)).map(a => a.name);
       for (const d of dirs) await sendTo(d, { title: open.length ? `TREE, ${open.length} educator${open.length > 1 ? 's' : ''} still planning` : 'TREE, planning is done', body, url: 'tree.html?go=reminders', tag: 'tree-summary' });
     }
