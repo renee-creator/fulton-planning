@@ -986,7 +986,8 @@ module.exports = function staffModule(o) {
   // the growth part, kept in growth.js, shares these records and the server's rules
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
-  const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p) });
+  // the library asks whether a PD module is shown to educators, so a link to a module waiting as a draft stays with the director
+  const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,

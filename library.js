@@ -9,7 +9,7 @@
    A song marked copyright shows its title, its songwriter and a link to a recording, and its words are never kept or
    sent. Recipes come from the director and the kitchen, and drafts from educators and families wait for the director. */
 module.exports = function library(o) {
-  const { S, get, put, putText, log, isDirector, isKitchen } = o;
+  const { S, get, put, putText, log, isDirector, isKitchen } = o; const pdShown = typeof o.pdShown === 'function' ? o.pdShown : () => false;
   /* The picture library for the demonstration sheets, realistic pictures named by ingredient or tool, one consistent
      style on white, kept in the records under staff/library/images, such as banana.png or whole_wheat_flour.png. A
      photo from the piazza, kept once the face check on the device finds no face, stands for an item with no picture, or
@@ -49,7 +49,7 @@ module.exports = function library(o) {
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, pictures: pictures() };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.

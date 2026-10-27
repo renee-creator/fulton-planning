@@ -4863,21 +4863,48 @@ function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libD
    says so. The full list of our prompts stays in its closed dropdown. */
 const QS_FIELD={individual:"questions",classroom:"intentions"};
 const QS_MIN=12;
-let qsSug={};const qsWait=new Set();
+/* Each set of suggestions is kept under the exact words TREE read, so an answer that arrives late only ever fills its own
+   version, going back to earlier words shows what was already found without asking again, and the box the questions go
+   into is never part of what is read, so adding a question or typing in it costs nothing. A version is asked for once,
+   and when nothing is on its way for the words now written, it is asked for, so the reading never waits forever. */
+const qsDone=new Map(),qsFlight=new Set(),qsPend=new Map();
 const qsObs=p=>String((p.fields||{}).observation||"").trim();
-const qsKey=p=>{const f=p.fields||{},s=[qsObs(p),f.intent||f.intentions||""].join("|");let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)};
+const qsKey=p=>{const f=p.fields||{},ths=typeof planThreads==="function"?planThreads(p).map(c=>c.t&&c.t.id).filter(Boolean).sort().join(","):"";
+  const s=[qsObs(p),p.type==="individual"?String(f.intent||"").trim():"",ths].join("|");let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)};
+const qsGot=p=>qsDone.get(p.id+"|"+qsKey(p));
+// the suggestion area alone is drawn again, so the box an educator is typing in keeps its cursor
+function qsRefresh(p){const k=QS_FIELD[p.type],box=document.querySelector(`[data-qsbox="${CSS.escape(p.id)}"]`);if(!k||!box||currentId!==p.id)return;
+  const f=FORMS[p.type].fields.find(x=>x.k===k);if(f)box.innerHTML=qsHtml(p,f,true)}
 function qsBank(){const pv=libData&&libData.provocations;if(!pv)return [];const out=[];
   for(const p2 of (pv.parts||[]).filter(x=>!/^Where /i.test(x.key)))libLines(p2.text).forEach((l,i)=>out.push({id:p2.key+"|"+i,set:p2.key,text:l}));return out}
 const qsClean=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").replace(/\s+/g," ").trim();
-// a new wondering keeps our rules, or it is left out. The educators' voice, about the children, open, and our agreements kept.
+// the wording TREE writes keeps our rules, in a question and in its reason alike. First person, a teacher, a classroom,
+// students, TK as a next step, our name cut short, and comparisons or analogies are each left out.
+const QS_FOOD=/\b(apples?|pumpkins?|squash(es)?|fruits?|vegetables?|veggies?|potato(es)?|beans?|pasta|noodles?|macaroni|rice|carrots?|corn|lemons?|oranges?|limes?|berr(y|ies)|strawberr(y|ies)|grapes?|peas|lentils?|grains?|cereal|flour|oats|produce|food|bread|crackers?|cheese|eggs?|kale|lettuce|cabbage|peppers?|tomato(es)?|onions?|herbs? from the bin|figs?|plums?|pears?|peaches|nectarines?|zucchini|cucumbers?|beets?|radish(es)?)\b/i;
+const QS_ART=/\b(paint\w*|print\w*|stamp\w*|build\w*|glue\w*|sculpt\w*|collage\w*|craft\w*|mosaic\w*|string\w*|thread\w*|necklaces?|decorat\w*|art(work)?s?|design\w*|draw\w* with|make art)\b/i;
+const QS_CREATURE=/\b(snails?|slugs?|bugs?|insects?|worms?|lizards?|caterpillars?|butterfl(y|ies)|moths?|beetles?|spiders?|ladybugs?|frogs?|toads?|tadpoles?|birds?|bees?|ants?|crickets?|grasshoppers?|creatures?|critters?|pill ?bugs?|roly[ -]?polys?|fish|crabs?|chicks?)\b/i;
+const QS_HOLD=/\b(keep\w*|kept|box(es)?|containers?|cages?|buckets?|jars?|cups?|tanks?|habitats? (for|in) the class|take \w+ home|bring \w+ inside|bring (it|them) in|pick \w+ up|hold\w*|carry\w*|pet\w*)\b/i;
+function qsWordsOk(t){t=String(t||"");
+  if(/\b(i|i'm|i've|i'd|i'll|me|my|mine|myself)\b/i.test(t))return false;
+  if(/[—–:]/.test(t))return false;
+  if(/\bteachers?\b|\bstudents?\b|\bpupils?\b|\bclassrooms?\b|\bTK\b|transitional kindergarten|\bkindergarten\b|\bClaude\b(?! Monet)|\bFulton\b(?! Community School)/i.test(t))return false;
+  if(/\b(like an?|are like|is like|just like|as if|as though|not \w+ but)\b/i.test(t))return false;
+  return true}
+// a new wondering keeps our rules, or it is left out, never rewritten. The educators' voice, about the children, open, with
+// no single answer, and our agreements kept. Food is never a material, children never copy a work, and creatures stay where they live.
 function qsOk(t){t=String(t||"").trim();if(t.length<15||t.length>260)return false;
-  if(/\b(I|me|my|mine|I'm|I've)\b/.test(t))return false;
+  if(!qsWordsOk(t))return false;
   if(!/child/i.test(t))return false;
   if(!/\?$/.test(t)&&!/^we wonder\b/i.test(t))return false;
-  if(/\bteachers?\b|\bTK\b|transitional kindergarten|\bkindergarten\b|\bjars?\b|\b(catch|capture|collect|trap)\w*\b|\bClaude\b|\bFulton\b(?! Community School)|\bclassroom\b/i.test(t))return false;
-  if(/\bpaint\w*\b[^.?]*\b(apples?|pumpkins?|squash|fruits?|vegetables?|potato\w*|food)\b|\b(apples?|pumpkins?|squash|fruits?|vegetables?|potato\w*|food)\b[^.?]*\b(paint\w*|stamp\w*|print\w*)\b/i.test(t))return false;
+  if(/^children\b\s*,|,\s*children\s*\?$|\byou(r|rs|'re|'ll|'ve)?\b/i.test(t))return false;
+  if(/^(do|does|did|is|are|was|were|can|could|will|would|should|has|have|had|shall)\b/i.test(t))return false;
+  if(/^(what colou?r|what shape|what is the name|what's the name|how many legs|how old)\b|^how many\b[^?]*\b(does|do) (a|an|the) \w+ have\b/i.test(t))return false;
+  if(/\b(catch|capture|collect|trap)\w*\b/i.test(t))return false;
+  if(QS_CREATURE.test(t)&&QS_HOLD.test(t))return false;
+  if(QS_FOOD.test(t)&&QS_ART.test(t))return false;
+  if(/\b(cop(y|ies|ying|ied)|trac(e|es|ing|ed)|recreat\w*|replicat\w*|reproduc\w*|imitat\w*)\b|\bin the style of\b|\bmake (one|it|them|a \w+) (just )?like\b|\bthe same as (the|his|her|their) (painting|work|picture|sculpture)\b/i.test(t))return false;
   return true}
-async function qsAsk(p){if(!sample||!QS_FIELD[p.type])return;const key=qsKey(p),k=QS_FIELD[p.type];qsSug[p.id]={status:"working",key};if(currentId===p.id)rerenderCard(p,k);
+async function qsAsk(p){if(!sample||!QS_FIELD[p.type])return;const key=qsKey(p),slot=p.id+"|"+key;if(qsFlight.has(slot))return;qsFlight.add(slot);qsDone.delete(slot);qsRefresh(p);
   if(!libData)await loadLibrary();const bank=qsBank();const f=p.fields||{};
   const season=(typeof gdn!=="undefined"&&gdn&&gdn.season)||"";const bin=typeof binCurrent==="function"?binCurrent():null;const prod=((bin&&bin.items)||[]).map(it=>it.name).filter(Boolean).slice(0,12).join(", ");
   const ths=planThreads(p).map(c=>c.t).filter(Boolean);
@@ -4895,29 +4922,34 @@ ${f.intent||f.intentions?"\nIntent.\n"+String(f.intent||f.intentions).slice(0,80
 Our prompts, each as id, then => and its words.
 ${bank.map(b=>b.id+" => "+b.text).join("\n")}`;
   try{const out=await sample.json(prompt,{cache:false});const items=[],seen=new Set();
-    for(const x of Array.isArray(out&&out.items)?out.items:[]){if(items.length>=3)break;const why=qsClean(x&&x.why).slice(0,200);
+    for(const x of Array.isArray(out&&out.items)?out.items:[]){if(items.length>=3)break;const w=qsClean(x&&x.why).slice(0,200),why=w&&qsWordsOk(w)?w:"";
       if(x&&x.from==="prompt"){const b=bank.find(y=>y.id===String(x.id||""));if(!b||seen.has(b.id))continue;seen.add(b.id);const art=/^artists$/i.test(b.set)?artForLine(b.text):null;items.push({from:"prompt",id:b.id,text:b.text,why,artist:art?art.id:""})}
       else if(x&&x.from==="observation"){const t=qsClean(x.text);if(!qsOk(t)||items.some(i=>i.text===t))continue;items.push({from:"observation",text:t,why})}}
-    qsSug[p.id]={status:"ready",key,thin:!!(out&&out.thin),items}}
-  catch(err){qsSug[p.id]={status:"error",key,error:assistError(err||"unknown","Your plan is unchanged.")}}
-  if(currentId===p.id)rerenderCard(p,k)}
-function qsHtml(p,f){if(!sample||!p||p.id==="example"||QS_FIELD[p.type]!==f.k)return "";
+    qsDone.set(slot,{status:"ready",key,thin:!!(out&&out.thin),items})}
+  catch(err){qsDone.set(slot,{status:"error",key,error:assistError(err||"unknown","Your plan is unchanged.")})}
+  finally{qsFlight.delete(slot)}
+  qsRefresh(p)}
+function qsHtml(p,f,inner){if(!sample||!p||p.id==="example"||QS_FIELD[p.type]!==f.k)return "";
+  if(!inner)return `<div data-qsbox="${esc(p.id)}">${qsHtml(p,f,true)}</div>`;
   const n=qsObs(p).split(/\s+/).filter(Boolean).length;
   if(n<QS_MIN)return `<div class="cnt" style="margin-top:6px">${n?"Write a little more in the observation, and TREE can suggest questions from it.":"Once the observation is written, TREE suggests questions here."}</div>`;
-  const sg=qsSug[p.id],key=qsKey(p);
-  if(!sg||sg.key!==key){if(!qsWait.has(p.id+key)){qsWait.add(p.id+key);setTimeout(()=>{if(currentId===p.id)qsAsk(p)},300)}}
-  if(!sg||sg.key!==key||sg.status==="working")return `<div class="sugg"><b>TREE is reading the observation</b><div class="muted">Looking for questions in our prompts and in your words.</div></div>`;
+  const key=qsKey(p),slot=p.id+"|"+key,sg=qsDone.get(slot);
+  // nothing found yet for these words and nothing on its way, so it is asked for once the educator pauses
+  if(!sg&&!qsFlight.has(slot)&&qsPend.get(p.id)!==key){qsPend.set(p.id,key);setTimeout(()=>{if(qsPend.get(p.id)===key)qsPend.delete(p.id);
+    if(currentId!==p.id)return;if(qsKey(p)===key)qsAsk(p);else qsRefresh(p)},300)}
+  if(!sg)return `<div class="sugg"><b>TREE is reading the observation</b><div class="muted">Looking for questions in our prompts and in your words.</div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">The suggestions did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="linkbtn" data-qsagain="1">Try again</button></div></div>`;
   if(!sg.items.length)return `<div class="cnt" style="margin-top:6px">${sg.thin?"TREE did not find enough in the observation to suggest a question.":"TREE found no question that fits this observation well, so it offers none."} Your own question is always the best one. <button class="linkbtn" data-qsagain="1">Look again</button></div>`;
-  const taken=new Set((p.qsTaken||[]).map(x=>x.text));
+  // an offer shows as added only while its words are still in the box
+  const inBox=String((p.fields||{})[f.k]||""),taken=new Set((p.qsTaken||[]).map(x=>x.text).filter(t=>inBox.includes(t)));
   return `<div class="sugg" id="qs-${esc(p.id)}"><b>Suggested questions</b><div class="cnt">Tap Add to put one in your plan, then change it or delete it as you like. Each is optional.</div>
     ${sg.items.map((x,i)=>{const c=x.artist&&artCard(x.artist);return `<div class="prow" style="align-items:flex-start"><div style="display:grid;gap:3px;min-width:0"><span class="pill" style="justify-self:start;pointer-events:none">${x.from==="prompt"?"From our prompts":"From your observation"}</span><span>${esc(x.text)}</span>${c?`<span class="cnt">Brings the card for ${esc(c.name)}</span>`:""}<details><summary class="linkbtn" style="font-size:13px">Why</summary><div class="cnt">${esc(x.why||"It matches the observation.")}</div></details></div>${taken.has(x.text)?`<span class="cnt">Added</span>`:`<button class="btn small ghost" data-qsadd="${i}">Add</button>`}</div>`}).join("")}
     <div class="actions"><button class="linkbtn" data-qsagain="1">Suggest others</button></div></div>`}
-document.addEventListener("change",e=>{const t=e.target;if(!t||t.id!=="f-observation")return;const p=currentId&&plans.get(currentId);if(p&&QS_FIELD[p.type])rerenderCard(p,QS_FIELD[p.type])});
+document.addEventListener("change",e=>{const t=e.target;if(!t||!/^f-(observation|intent|intentions|questions)$/.test(t.id))return;const p=currentId&&plans.get(currentId);if(p&&QS_FIELD[p.type])qsRefresh(p)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-qsadd],[data-qsagain]");if(!t)return;const p=currentId&&plans.get(currentId);if(!p||!QS_FIELD[p.type])return;
-  if(t.dataset.qsagain!=null){delete qsSug[p.id];qsAsk(p);return}
+  if(t.dataset.qsagain!=null){qsDone.delete(p.id+"|"+qsKey(p));qsAsk(p);return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
-  const sg=qsSug[p.id],x=sg&&sg.items[+t.dataset.qsadd];if(!x)return;const k=QS_FIELD[p.type];
+  const sg=qsGot(p),x=sg&&sg.items[+t.dataset.qsadd];if(!x)return;const k=QS_FIELD[p.type];
   const ta=$("#f-"+k),cur=String(ta?ta.value:p.fields[k]||"").replace(/\s+$/,"");p.fields[k]=(cur?cur+"\n":"")+x.text;
   p.qsTaken=[...(p.qsTaken||[]),{text:x.text,from:x.from,why:x.why||"",id:x.id||"",artist:x.artist||"",at:Date.now(),by:myName()}];
   const c=x.artist&&artCard(x.artist);if(c&&!(p.attached||[]).some(a=>a.kind==="artist"&&a.id===c.id))p.attached=[...(p.attached||[]),{kind:"artist",id:c.id,title:c.name}];
@@ -5251,10 +5283,10 @@ function renderArtists(){const m=$("#main");if(!libData){loadLibrary();m.innerHT
   const a=libData.artists,dir=isDirector()&&!VIEW_AS,list=artShown();
   m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Artists</h2><div class="sub">Artworks to set beside real materials, each with its wondering. Children look together and make their own work beside it.</div></div>
     <section class="card"><div class="lbl">Leading a looking conversation</div>${a&&a.lead?guideMd(a.lead):`<div class="cnt">The Artists page is not in the records yet.</div>`}
-      <div class="actions" style="flex-wrap:wrap"><button class="linkbtn" data-artmod="1">The PD module Looking Together</button>${dir&&a?pageEditBtn(a.path,"Edit the Artists page, with its history"):""}</div></section>
+      ${dir||(libData.modules||{})["looking-together"]||(a&&dir)?`<div class="actions" style="flex-wrap:wrap">${dir||(libData.modules||{})["looking-together"]?`<button class="linkbtn" data-artmod="1">The PD module Looking Together</button>`:""}${dir&&a?pageEditBtn(a.path,"Edit the Artists page, with its history"):""}</div>`:""}</section>
     <section class="card"><div class="tseg" role="group" aria-label="Which artists" style="margin-bottom:8px">${["All",...ART_SETS].map(s=>`<button data-artset="${esc(s)}" aria-pressed="${artSet===s}">${esc(s)}</button>`).join("")}</div>
       <label class="fld-label">Find an artist<input type="search" id="art-q" value="${esc(artQ)}" placeholder="An artist, a material or a place on our site" data-noproof="1"></label>
-      ${list.length?`<div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-artprint="some" ${artPick.size?"":"disabled"}>Print the cards I chose${artPick.size?" ("+artPick.size+")":""}</button><button class="linkbtn" data-artprint="all">Print every card shown</button><button class="linkbtn" data-artprint="some" data-word="1" ${artPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
+      ${list.length?`<div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-artprint="some" ${artPick.size?"":"disabled"}>Print the cards I chose${artPick.size?" ("+artPick.size+")":""}</button><button class="linkbtn" data-artprint="all">Print every card shown</button><button class="linkbtn" data-artprint="all" data-word="1">Word, every card shown</button><button class="linkbtn" data-artprint="some" data-word="1" ${artPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
       ${list.map(artRow).join("")||`<div class="empty">${artCards().length?"No artist matches.":"No artists yet."}</div>`}</section>`}
 // an artist as a card for a table. A public domain work prints large with its name and our routine. Any other card names
 // where to see the work, what it sits beside and the wondering. The note for the educator never prints.
@@ -6151,7 +6183,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="sample"){makePdf([EXAMPLE],"Fulton Community School sample classroom plan.pdf");return}
   if(!p)return;
   if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);
-    (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];const ph=[...(ev?[ev]:[]),...att.docs.filter(d=>(d.blocks||[]).some(b=>b.t==="photo"))];if(ph.length)await loadPhotos(ph);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
+    (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];const ph=[...(ev?[ev]:[]),...att.docs.filter(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))];if(ph.length)await loadPhotos(ph);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
       // a recipe attached to the plan prints its demonstration sheets beside it
       for(const x of att.recipes){try{const n=safeFile("Demonstration "+x.title);if(t.id==="dl")await saveFile(await demoPdf(x,"letter"),n+".pdf",true);else await saveFile(await demoWord(x,"letter"),n+".docx")}catch(er){}}})();return}
   if(t.id==="carry"){carryForward(p);return}
@@ -11189,7 +11221,7 @@ function displayWeb(doc,x,y,w,h,web,A){
 }
 function displayAtoms(doc,p,A,s){
   const atoms=[];const {m,w}=DG;const cx=m,cw=w;
-  const Z={body:12*s,blh:18.4*s,quote:14.5*s,qlh:20.4*s,small:9.4*s,slh:13.6*s,head:12.5*s,item:14.5*s,ilh:19*s,sub:16.5*s,cell:10.2*s,clh:13.8*s};
+  const Z={body:12*s,blh:(D_TIGHT?16.8:18.4)*s,quote:14.5*s,qlh:(D_TIGHT?19.6:20.4)*s,small:9.4*s,slh:(D_TIGHT?12.8:13.6)*s,head:12.5*s,item:14.5*s,ilh:19*s,sub:16.5*s,cell:10.2*s,clh:13.8*s};
   const wrap=(text,k,fs,width,quoted)=>{pfont(doc,k,fs);const t=clean(text).trim();if(quoted)return doc.splitTextToSize(dq(doc,t.replace(/^"+|"+$/g,"").replace(/\s*\n+\s*/g," ")),width);return t.split(/\n+/).flatMap(par=>par.trim()?doc.splitTextToSize(par.trim(),width):[])};
   const AT=deep(A.c);
   const base=(lh,fs)=>(lh-fs)/2+fs*.8;
@@ -11197,7 +11229,7 @@ function displayAtoms(doc,p,A,s){
   const gap=h=>push({h:h*s,gap:true,draw(){}});
   const line=(l,k,fs,lh,x,color,keep)=>push({h:lh,base:base(lh,fs),keep:!!keep,draw(y){pfont(doc,k,fs);doc.setTextColor(...color);doc.text(l,x,y+base(lh,fs))}});
   const lines=(ls,k,fs,lh,x,color,keepAll)=>ls.forEach((l,i)=>line(l,k,fs,lh,x,color,keepAll||(ls.length<=3&&i<ls.length-1)));
-  const hair=()=>{if(!atoms.length)return;gap(12);push({h:9*s,keep:true,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}})};
+  const hair=()=>{if(!atoms.length)return;gap(D_TIGHT?9:12);push({h:9*s,keep:true,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}})};
   // a section heading sits on its own line, and stays with the first two lines under it
   const heading=t=>{hair();if(!has(t))return;wrap(t,"bs",Z.head,w).forEach(l=>line(l,"bs",Z.head,Z.head*1.38,m,AT,true));push({h:3*s,keep:true,draw(){}})};
   const holdFirst=i0=>{if(atoms[i0]&&atoms[i0+1])atoms[i0].keep=true};
@@ -11212,7 +11244,7 @@ function displayAtoms(doc,p,A,s){
         if(lab){pfont(doc,"fs",10);doc.setTextColor(...AT);doc.text(clean(b.label),m+pad,y+pad+7)}
         pfont(doc,"bm",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,m+pad,y+pad+lab+i*lh+fs*.86))}});gap(8);
       if(lrest){lines(wrap(lrest,"fr",Z.body,w),"fr",Z.body,Z.blh,m,D_INK);gap(6)}}
-    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(7);const i0=atoms.length;lines(wrap(b.text,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
+    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(D_TIGHT?4:7);const i0=atoms.length;lines(wrap(b.text,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else gap(6);const i0=atoms.length;(b.lines||[b.text]).filter(has).forEach(t=>lines(wrap(t,"fr",Z.small,cw),"fr",Z.small,Z.slh,cx,D_MUTED));holdFirst(i0)}
     else if(b.t==="list"){heading(b.label);const i0=atoms.length;(b.items||[]).filter(has).forEach((it,i)=>{const ls=wrap(it,"fr",Z.body,cw-18);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
         if(k===0){if(b.numbered){pfont(doc,"fs",Z.body);doc.setTextColor(...AT);doc.text(String(i+1),cx,by)}else{doc.setFillColor(...A.c);doc.circle(cx+3,by-Z.body*.3,2*s,"F")}}
@@ -11320,7 +11352,16 @@ function displayFlow(doc,p,A,s){
   return F;
 }
 // a short page is set larger so it fills the sheet, and a page that runs a few lines over is set a little smaller so it stays on one
+/* Pages have more room between lines and parts, but never at the cost of a page. Each page is laid out with the roomier
+   spacing and with the closer spacing it had before, and when the roomier one needs another sheet, or has to be set smaller
+   to stay on the same sheets, the closer one is used for that page. */
+let D_TIGHT=false;
 function displayFit(doc,p,A){
+  D_TIGHT=false;let R;try{R=displayFitAt(doc,p,A)}finally{D_TIGHT=false}
+  let T;D_TIGHT=true;try{T=displayFitAt(doc,p,A)}finally{D_TIGHT=false}
+  const rn=R.F.pages.length,tn=T.F.pages.length;
+  return rn>tn||(rn===tn&&R.s<1&&R.s<T.s)?T:R}
+function displayFitAt(doc,p,A){
   let s=1,F=displayFlow(doc,p,A,1);
   if(F.pages.length===1&&!p.noScale){const room=DG.bottom-F.top1;for(const t of p.fill?[2,1.85,1.7,1.58,1.46,1.36,1.3,1.24,1.18,1.12,1.06]:[1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
   // a sheet made to be one page, such as the farm sheet for families, may be set a little smaller still
