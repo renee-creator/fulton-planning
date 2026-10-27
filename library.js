@@ -2,7 +2,8 @@
 /* The libraries for plans, kept in the private records as one Markdown page each under staff/library, and edited with
    the one editor and its history: the recipe library (staff/library/recipes), food and sensory kept apart, the song book
    (staff/library/songs), the read-alouds (staff/library/readalouds) and the bank of provocations and curiosity prompts
-   (staff/library/prompts/provocations.md). Each page opens with a note of its own, such as kind: sensory or
+   (staff/library/prompts/provocations.md) and the Artists page (staff/library/prompts/artists.md), one card for each artist
+   with what the work sits beside on our site, its wondering and a note for the educator. Each page opens with a note of its own, such as kind: sensory or
    copyright: yes, and its parts are its sections, such as Ingredients and Steps, or a song's Words.
 
    A song marked copyright shows its title, its songwriter and a link to a recording, and its words are never kept or
@@ -43,11 +44,12 @@ module.exports = function library(o) {
   function list(me) {
     const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
     const pr = item('staff/library/prompts/provocations.md');
+    const ar = item('staff/library/prompts/artists.md');
     const fm = get('staff/library/farms.json');
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, pictures: pictures() };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
