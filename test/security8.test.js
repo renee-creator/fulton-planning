@@ -37,20 +37,14 @@ test('audit leftovers on the server', async t => {
     assert.strictEqual(await get(a.body.id, keyFor(fk.replace(/^[^.]+/, (Date.now() - 1000).toString(36)), a.body.id)), 403, 'an expired key opens nothing');
   });
 
-  await t.test('only the director or the office shares conference notes with a family', async () => {
+  await t.test('conference notes are never shared with a family, by anyone', async () => {
     const id = 'lark-1--2026-27-fall';
     await fx.as(ann, '/api/write', { op: 'update', kind: 'conferences', id, patch: { sharedWithFamily: true, sharedAt: 'now', fields: { strengths: 'Counts ducks and geese' } } });
     let d = (await fx.as(dee, '/api/data', {})).body.data.conferences[id];
     assert.strictEqual(d.sharedWithFamily, undefined); assert.strictEqual(d.fields.strengths, 'Counts ducks and geese');
-    await fx.as(ann, '/api/write', { op: 'set', kind: 'conferences', id, data: Object.assign({}, d, { sharedWithFamily: true }) });
-    d = (await fx.as(dee, '/api/data', {})).body.data.conferences[id];
-    assert.strictEqual(d.sharedWithFamily, undefined);
     await fx.as(dee, '/api/write', { op: 'update', kind: 'conferences', id, patch: { sharedWithFamily: true } });
     d = (await fx.as(dee, '/api/data', {})).body.data.conferences[id];
-    assert.strictEqual(d.sharedWithFamily, true);
-    // an educator's later save keeps it shared
-    await fx.as(ann, '/api/write', { op: 'set', kind: 'conferences', id, data: Object.assign({}, d, { sharedWithFamily: false }) });
-    assert.strictEqual((await fx.as(dee, '/api/data', {})).body.data.conferences[id].sharedWithFamily, true);
+    assert.strictEqual(d.sharedWithFamily, undefined, 'the director cannot share them either, the Family Summary is what goes home');
   });
 
   await t.test('an educator cannot change a child\'s Class', async () => {

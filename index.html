@@ -1384,7 +1384,7 @@ async function boot(){
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
-    db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("participation").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});participation=m;if(view==="participation"&&!document.activeElement?.closest?.("#main input,#main textarea,#main select"))renderMain()});
     db.collection("posts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=posts.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});
@@ -2433,13 +2433,15 @@ async function drdpAutoKaymbu(){
   if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden)return;
   const rm=myRoom(),dir=isDirector()||isOffice(),since=parseIso(schoolYearStart()).getTime(),seen=new Set(),now=Date.now();
   const when=n=>(n.kaymbu&&n.kaymbu.keptAt)||n.at||0;
-  const next=[...notices.values()].filter(n=>{if(!(n.children||[]).length||n.drdp||n.drdpAuto||when(n)<since)return false;
+  // a reading that did not finish is tried again after an hour, up to three times, so a failed one is never stuck
+  const busyMark=x=>x.drdpAuto&&now-x.drdpAuto<3600e3;
+  const next=[...notices.values()].filter(n=>{if(!(n.children||[]).length||n.drdp||busyMark(n)||(n.drdpTries||0)>=3||when(n)<since)return false;
     if(typeof noticeForm!=="undefined"&&noticeForm&&noticeForm.id===n.id)return false;if(now-(n.updatedAt||n.at||0)<120000)return false;
     if(!dir&&rm&&!momentIn(n,rm))return false;return !!n.photo||String(n.noticed||"").trim().length>=15})
     .sort((a,b)=>when(b)-when(a))
-    .filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return !noteGroup(n).some(x=>x.drdp||x.drdpAuto)})[0];
+    .filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return !noteGroup(n).some(x=>x.drdp||busyMark(x))})[0];
   if(!next)return;drdpAutoBusy=true;
-  try{patchNotice(next.id,{drdpAuto:Date.now()});await drdpAnalyze("notices",next.id,"",true)}finally{drdpAutoBusy=false}}
+  try{patchNotice(next.id,{drdpAuto:Date.now(),drdpTries:(next.drdpTries||0)+1});await drdpAnalyze("notices",next.id,"",true)}finally{drdpAutoBusy=false}}
 setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
 /* What a photo shows, for an observation the DRDP reading does not describe, such as one with no children tagged. Read
    once, a few minutes after the observation is kept, from the educator's photo. It describes only what is visible and
@@ -2452,7 +2454,7 @@ async function photoNoteAuto(){
   const next=[...notices.values()].filter(n=>{if(!n.photo||(n.at||0)<since||n.photoNoteAt||photoNoteOf(n))return false;
       if(now-(n.updatedAt||n.at||0)<180000)return false;if(!dir&&rm&&!momentIn(n,rm))return false;
       // one with children tagged waits for its DRDP reading, which describes the photos, unless that reading has passed without one
-      if((n.children||[]).length&&!noteGroup(n).some(x=>x.drdp))return false;return true})
+      if((n.children||[]).length&&!noteGroup(n).some(x=>x.drdp||(x.drdpTries||0)>=3))return false;return true})
     .sort((a,b)=>(b.at||0)-(a.at||0)).filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return true})[0];
   if(!next)return;photoNoteBusy=true;
   try{patchNotice(next.id,{photoNoteAt:Date.now()});const u=photoSrc(next);if(!u)return;const b=await (await fetchPhoto(u)).blob();if(!b||!b.size)return;
@@ -2626,7 +2628,7 @@ async function confBooklet(sumBlob,piecesBlob){const L=await TREE_KIT.pdfLib();c
 let famSumOpen="";
 // saved by the server itself, so TREE's own draft and the educator's changes never cross
 async function famSumSave(cf,patch){if(patch.familySummary)cf.familySummary=Object.assign({},cf.familySummary||{},patch.familySummary);for(const k of ["printPieces","evidenceLayout","familyDrdp"])if(k in patch)cf[k]=patch[k];if(VIEW_AS)return;
-  try{const j=await window.FP_API("/api/conf/summary/set",{id:cf.id,patch});const cur=conferences.get(cf.id)||cf;Object.assign(cur,{familySummary:j.familySummary,printPieces:j.printPieces,evidenceLayout:j.evidenceLayout,familyDrdp:j.familyDrdp});if(cur!==cf)Object.assign(cf,{familySummary:j.familySummary,printPieces:j.printPieces})}catch(e){toast(e&&e.message||"That did not save. Check your connection.")}}
+  try{const j=await window.FP_API("/api/conf/summary/set",{id:cf.id,patch});const cur=conferences.get(cf.id)||cf;Object.assign(cur,{familySummary:j.familySummary,printPieces:j.printPieces,evidenceLayout:j.evidenceLayout,familyDrdp:j.familyDrdp});if(cur!==cf)Object.assign(cf,{familySummary:j.familySummary,printPieces:j.printPieces});return j}catch(e){toast(e&&e.message||"That did not save. Check your connection.")}}
 window.TREE_CONF_SET=(id,patch)=>{const cf=conferences.get(id);return cf?famSumSave(cf,patch):null};
 function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){if(el)el.remove();return}const cf=conferences.get(famSumOpen);const c=cf&&children.get(cf.childId);if(!cf||!c){famSumOpen="";if(el)el.remove();return}
   if(!el){el=document.createElement("div");el.id="famsum";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
@@ -2641,8 +2643,13 @@ function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){
       <div class="kfields"><label>The photo pages<select data-famlayout="1">${FAM_LAYOUTS.map(([k,l])=>`<option value="${k}" ${famLayout(cf)===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
       <label class="radio"><input type="checkbox" data-famdrdp="1" ${cf.familyDrdp?"checked":""}><span>Show DRDP levels, each on the photo page of its evidence</span></label>
       <div class="cnt">${(cf.printPieces||[]).length} of up to 6 pieces ticked to print, on the conference form under Documentation Shared.</div>
-      <div class="actions" style="flex-wrap:wrap">${fs.readAt?`<span class="cnt">Read by ${esc(fs.readBy||"an educator")}</span><button class="btn small" data-famcopy="pdf">Family copy, PDF</button><button class="linkbtn" data-famcopy="word">Word</button>`:`<button class="btn small" data-famsumread="1">I have read it, ready to print</button>`}<button class="btn small ghost" data-famsumproof="1">Proofread</button><button class="linkbtn" data-famsumdraft="1">Draft it again</button></div>`}</div>`}
+      <div class="actions" style="flex-wrap:wrap">${fs.readAt?`<span class="cnt">Read by ${esc(fs.readBy||"an educator")}</span><button class="btn small" data-famcopy="pdf">Family copy, PDF</button><button class="linkbtn" data-famcopy="word">Word</button>`:`<button class="btn small" data-famsumread="1">I have read it, ready to print</button>`}<button class="btn small ghost" data-famsumproof="1">Proofread</button><button class="linkbtn" data-famsumdraft="1">Draft it again</button></div>`}</div>`;el._words=famSumWords(cf)}
 window.TREE_FAMSUM_OPEN=id=>{famSumOpen=id;famSumPaint()};
+// the words a sheet shows, so new words arriving while it is open, such as the full-sentence version, are drawn, and
+// "I have read it" marks only the words that were on the screen
+const famSumWords=cf=>JSON.stringify((cf&&cf.familySummary&&cf.familySummary.parts)||null);
+function famSumFresh(){if(!famSumOpen)return;const el=document.getElementById("famsum"),cf=conferences.get(famSumOpen);if(!el||!cf)return;
+  if(el._words===famSumWords(cf))return;const a=document.activeElement;if(a&&a.closest&&a.closest("#famsum")&&a.matches("textarea"))return;famSumPaint()}
 // the Conferences page hands TREE its own copy of a conference before the family copy is made, so the ticks just made are the ones printed
 window.TREE_CONF_PUT=(id,doc)=>{if(!id||!doc)return;const cur=conferences.get(id);const d=JSON.parse(JSON.stringify(doc));if(!cur){conferences.set(id,Object.assign(d,{id}));return}
   for(const k of ["printPieces","fields","confDate","confTime","teacher","status","evidenceLayout"])if(k in d)cur[k]=d[k];if(!cur.familySummary&&d.familySummary)cur.familySummary=d.familySummary};
@@ -2655,13 +2662,13 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-fams
     try{const j=await window.FP_API("/api/conf/summary/draft",{id:cf.id,again:d.famsumdraft==="1"});cf.familySummary=j.familySummary;famSumPaint();toast("Drafted. Read it before it prints.")}catch(er){toast(er&&er.message||"It could not be drafted. Check your connection.")}return}
   // the Family Summary is proofread like every form, from its own Proofread button and before it is marked read
   if(d.famsumproof){const root=document.querySelector("#famsum .lsp");if(!root||(proof&&proof.busy))return;proofRoot=root;proofRun();return}
-  if(d.famsumread){const go=async()=>{const c2=conferences.get(famSumOpen)||cf;await famSumSave(c2,{read:true});famSumPaint();toast("Ready to print.")};
+  if(d.famsumread){const shown=(document.getElementById("famsum")||{})._words;const go=async()=>{const c2=conferences.get(famSumOpen)||cf;const j=await famSumSave(c2,{read:true,readOf:shown?JSON.parse(shown):null});famSumPaint();if(j&&j.changed)toast("The summary changed while it was open. Read the new words, then mark it read.");else if(j)toast("Ready to print.")};
     if(window.TREE_PROOF(document.querySelector("#famsum .lsp"),"Mark it read",go))return;await go()}},true);
 document.addEventListener("change",e=>{const t=e.target;if(!famSumOpen||!t.closest||!t.closest("#famsum"))return;const cf=conferences.get(famSumOpen);if(!cf||VIEW_AS)return;
-  if(t.dataset.famsum){const fs=JSON.parse(JSON.stringify(cf.familySummary||{parts:{}}));fs.parts=fs.parts||{};const [a,b]=t.dataset.famsum.split(".");if(b){fs.parts[a]=fs.parts[a]||{};fs.parts[a][b]=t.value}else fs.parts[a]=t.value;famSumSave(cf,{familySummary:fs});return}
+  if(t.dataset.famsum){const fs=JSON.parse(JSON.stringify(cf.familySummary||{parts:{}}));fs.parts=fs.parts||{};const [a,b]=t.dataset.famsum.split(".");if(b){fs.parts[a]=fs.parts[a]||{};fs.parts[a][b]=t.value}else fs.parts[a]=t.value;famSumSave(cf,{familySummary:fs});{const el=document.getElementById("famsum");if(el)el._words=famSumWords(cf)}return}
   if(t.dataset.famlayout){LS.set("tree.famlayout",t.value);famSumSave(cf,{evidenceLayout:t.value});return}
   if(t.dataset.famdrdp){famSumSave(cf,{familyDrdp:t.checked});return}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&famSumOpen){famSumOpen="";famSumPaint()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&famSumOpen){const a=document.activeElement;if(a&&a.closest&&a.closest("#famsum")&&a.dataset&&a.dataset.famsum)a.dispatchEvent(new Event("change",{bubbles:true}));famSumOpen="";famSumPaint()}});
 // Today, the conferences of today and tomorrow, each with its Family Summary and family copy one tap away
 function todayConfHtml(){if(isKitchenUser())return "";const t=iso(new Date()),t1=iso(new Date(Date.now()+864e5)),room=myRoom();
   const list=[...conferences.values()].filter(cf=>cf&&(cf.confDate===t||cf.confDate===t1)&&cf.status!=="complete"&&children.has(cf.childId)&&(!room||(children.get(cf.childId).classroom===room))).sort((a,b)=>(a.confDate+(a.confTime||"")).localeCompare(b.confDate+(b.confTime||"")));
@@ -4481,7 +4488,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4fe3b029c2","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4b748263c6","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4491,7 +4498,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=4fe3b029c2","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=4b748263c6","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -6404,7 +6411,8 @@ function talkClosed(text){
 function talkNoteHtml(text){const f=talkClosed(text);if(!f.length)return "";
   return `<div class="talknote" role="note"><b>${f.length>1?"These may be closed questions":"This may be a closed question"}.</b> ${f.slice(0,3).map(x=>`<div>“${esc(x.q)}” <span class="muted">One open way to say it.</span> ${esc(x.alt)}</div>`).join("")}<div class="muted">Our language favors describing, noticing and inviting, like Tell me about this. Nothing is changed unless you change it.</div></div>`}
 function talkScan(root){for(const el of (root||document).querySelectorAll("[data-talk]")){let n=el.nextElementSibling;if(!(n&&n.classList.contains("talkslot"))){n=document.createElement("div");n.className="talkslot";el.after(n)}
-  const h=talkNoteHtml(el.value);if(n.innerHTML!==h)n.innerHTML=h}}
+  // compared with the last note drawn, since the page reads an apostrophe back differently from how it was written
+  const h=talkNoteHtml(el.value);if(n._talkH!==h){n._talkH=h;n.innerHTML=h}}}
 document.addEventListener("input",e=>{const el=e.target;if(el&&el.matches&&el.matches("[data-talk]")){clearTimeout(el._talkT);el._talkT=setTimeout(()=>talkScan(el.parentElement),400)}});
 new MutationObserver(()=>{clearTimeout(window.__talkT);window.__talkT=setTimeout(()=>talkScan(),150)}).observe(document.documentElement,{childList:true,subtree:true});
 /* How Fulton talks with children and families, from Fulton's own guide, Effective Responses to Children's Aesthetic
@@ -7190,7 +7198,7 @@ function nfKidsHtml(n,ph){
   const kids=all.filter(c=>!n.classroom||c.classroom===n.classroom||on.has(c.id));const others=n.classroom?all.filter(c=>c.classroom!==n.classroom&&!on.has(c.id)):[];
   const chip=c=>`<button class="chip ${on.has(c.id)?"on":""}" data-nfkid="${esc(c.id)}"${ph!=null?` data-nfph="${ph}"`:""} type="button">${esc(c.first)}${c.last?" "+esc(c.last[0])+".":""}</button>`;
   // photos that came from Kaymbu with one shared note offer the children it names, to keep only those in this photo
-  const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>children.get(id)).filter(Boolean).map((c,i)=>Object.assign({},c,{id:n.kaymbu.suggest[i]})):[];
+  const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>{const c=children.get(id);return c?Object.assign({},c,{id}):null}).filter(Boolean):[];
   if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
   const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
   const sg=n.smallGroup||(noticeForm&&formPhotos(noticeForm).includes(n)&&noticeForm.smallGroup)||"";
@@ -12066,7 +12074,9 @@ function pfItemHtml(x){const n=notices.get(x.id);if(!n)return "";
     <div class="actions"><button class="btn small" data-pfok="${esc(x.id)}">Approve</button>${x.edit?"":`<button class="btn small ghost" data-pfedit1="${esc(x.id)}">Edit</button>`}<button class="linkbtn" data-pfskip="${esc(x.id)}">Skip</button></div></section>`}
 function renderProofObs(){
   if(!isDirector()||VIEW_AS){view="moments";LS.set("fps.view",view);renderMain();return}
-  if(!pf)pfStart();
+  // the list is built once the observations have loaded, and again whenever it came up empty while some still wait
+  if(!pf||(!pf.order.length&&!pf.running&&pfLeft()))pfStart();
+  else{const have=new Set(pf.order);const add=pfGather().filter(x=>!have.has(x.id));for(const x of add){pf.items.set(x.id,Object.assign(x,{status:"waiting"}));pf.order.push(x.id)}if(add.length&&!pf.running&&!pf.paused)pfRun()}
   const left=pfLeft(),items=pf.order.map(id=>pf.items.get(id)).filter(x=>x.status!=="done"&&x.status!=="skipped"&&x.status!=="gone");
   const ready=items.filter(x=>x.status==="ready"),reading=items.some(x=>x.status==="reading"),shown=items.slice(0,PF_AHEAD+PF_BATCH);
   const total=pf.order.length,doneN=total-items.length;
@@ -12734,7 +12744,7 @@ function renderChild(){
   else if(kidTab==="transition"){body=tsHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
-      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}${x.sharedWithFamily?" · Shared with the family":""}</div></div></button>${isOffice()&&x.term!=="Historical"?`<div class="actions" style="margin:-4px 0 8px 12px"><button class="linkbtn" data-confshare="${esc(x.id)}">${x.sharedWithFamily?"Stop sharing the notes":"Share the notes with the family"}</button></div>`:""}`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
+      ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
   }else{
     body=kidInfoEdit===c.id?kidInfoForm(c):`<section class="card" data-keep="1"><div class="secthead"><h3 style="font-size:17px">${esc(kidName(c))}</h3><button class="btn small ghost" data-kinfoedit="${esc(c.id)}">Change</button></div><div class="kgrid">
         <div><span class="lbl">Class</span><div>${esc(c.classroom||"Not set")}</div></div><div><span class="lbl">Small group</span><div>${esc(c.group||"None")}</div></div>
@@ -12889,11 +12899,10 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-agreopen]"
   const prev=(c.familyAgreementHistory||[]).concat([c.familyAgreement]);const ag=Object.assign({},c.familyAgreement,{done:false,signedAt:null,sign1:{name:""},sign2:{name:""},esign:false,reopenedAt:new Date().toISOString()});
   c.familyAgreement=ag;c.familyAgreementHistory=prev;db.doc("children/"+c.id).update({familyAgreement:ag,familyAgreementHistory:prev}).then(()=>{toast("Reopened. The family sees it on the Family page.");renderMain()}).catch(er=>toast(er&&er.message||"Could not save."))});
 document.addEventListener("change",e=>{const t=e.target.closest("[data-kwelcome]");if(!t)return;if(VIEW_AS){t.checked=!t.checked;toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const c=children.get(t.dataset.kwelcome);if(!c)return;c.welcomeOn=t.checked;db.doc("children/"+c.id).update({welcomeOn:t.checked}).then(()=>toast(t.checked?"The family now sees the Welcome tab.":"The Welcome tab is back to showing around the first day.")).catch(er=>toast(er&&er.message||"Could not save."))});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-kpacket],[data-kpaper],[data-kshareport],[data-kunshare],[data-confshare]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-kpacket],[data-kpaper],[data-kshareport],[data-kunshare]");if(!t)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.kpacket){const c=children.get(d.kpacket);if(!c)return;enrollPacket(c).catch(er=>{toast("The forms could not be filled. "+(er&&er.message||""))});return}
   if(d.kpaper){const c=children.get(d.kpaper);if(!c)return;const on=!(c.onboarding||{}).paperwork;c.onboarding=Object.assign({},c.onboarding||{},{paperwork:on});kidNote(c,on?"Enrollment forms signed and complete":"Enrollment forms marked not signed");saveKid(c);renderMain();return}
-  if(d.confshare){const x=conferences.get(d.confshare);if(!x)return;const on=!x.sharedWithFamily;x.sharedWithFamily=on;db.doc("conferences/"+x.id).update({sharedWithFamily:on,sharedAt:on?new Date().toISOString():""}).then(()=>{renderMain();toast(on?"The notes are on the Family page.":"The notes are no longer shared.")}).catch(er=>toast(er&&er.message||"Could not save."));return}
   if(d.kunshare){const [id,i]=d.kunshare.split("|");const c=children.get(id);if(!c)return;c.sharedFiles=(c.sharedFiles||[]).filter((x,j)=>j!==+i);db.doc("children/"+c.id).update({sharedFiles:c.sharedFiles}).then(()=>{renderMain();toast("No longer shared.")});return}
   if(d.kshareport){const c=children.get(d.kshareport);if(!c)return;if(!portfolioItems(c).length){toast(`There is nothing in ${c.first}'s portfolio yet.`);return}
     t.disabled=true;t.textContent="Making the portfolio…";
@@ -13342,7 +13351,7 @@ function signinsHtml(){
         <label class="sgf"><span>Class</span><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
         <label class="radio"><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""}><span>Director</span></label>
         <label class="radio"><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""}><span>Kitchen sign-in</span></label>
-        <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. Give it to ${esc(a.name)} for their first sign-in.</span>`}</div>
+        <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. ${String(a.name).toLowerCase()===String(myName()||"").toLowerCase()?"This is your own TREE sign-in, so reminders can reach you. Open TREE from its Home Screen icon on your phone and allow reminders when it asks. To sign in with four numbers of your own, sign out and sign in with your name and this code. Your Render passcode keeps working as a backup.":`Give it to ${esc(a.name)} for their first sign-in.`}</span>`}</div>
         <span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at our school</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving our school</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span>
       </div></details>`).join("")}</div>`:`<div class="empty">No one has a sign-in yet.</div>`}
     ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left our school. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
@@ -13606,7 +13615,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4fe3b029c2","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4b748263c6","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

@@ -543,6 +543,17 @@ function checkPasscode(name, given) {
   if (a && a.code) ok = sameText(given, a.code); else { const t = matchPasscode(given); ok = !!t && nameKey(t.name) === nameKey(name); }
   if (!ok) nameWrong(name); return ok;
 }
+/* The director has a TREE sign-in like every educator, so reminders reach her phone. A director named on Render or in
+   the roles list with no sign-in gets one, waiting with a six-number start code she sees in Settings, Sign-ins. Her Render
+   passcode keeps working as a backup, and the sign-in she already has stays signed in. */
+function ensureDirectorSignIns() {
+  if (!accounts.loaded) return;
+  const names = [...new Set([...TEACHERS.filter(t => isDirector(t.name)).map(t => t.name), ...roles.directors].map(cleanName).filter(okName))];
+  const add = names.filter(n => !accountFor(n));
+  if (!add.length) return;
+  for (const n of add) { accounts.list.push({ name: n, room: '', director: true, newHire: false, addedBy: 'TREE', addedAt: Date.now(), code: '', start: newStart(), v: 0 }); log('TREE sign-in made for the director', n); }
+  saveAccounts('TREE');
+}
 /* once an educator's last day has passed, they come off the names offered on plans, the Class lists and the small group
    leads. What was taken is kept on the account, so bringing them back puts it back where nothing else took its place. */
 function settleFormer() {
@@ -653,6 +664,7 @@ async function doLoadGraph() {
   store.ready = true; store.error = ''; store.loadedAt = Date.now();
   try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
+  try { ensureDirectorSignIns(); } catch (e) { log('The director sign-in could not be made', e.message); }
   runOnce();
   try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); }
   try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
@@ -705,6 +717,7 @@ async function doLoad() {
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
     // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
+    try { ensureDirectorSignIns(); } catch (e) { log('The director sign-in could not be made', e.message); }
     runOnce();
     try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); }
     try { if (onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
@@ -1812,6 +1825,8 @@ async function handle(req, res) {
       // an educator who has left Fulton gets the same answer as a wrong passcode
       if (a && isFormerAccount(a)) { noteWrong(ip); nameWrong(name); log('Sign-in refused,', a.name, 'left Fulton', a.leaveOn); err(req, res, 403, NOPE); return; }
       if (a) {
+        // a passcode set on Render for this same name still signs in, as a backup to the TREE sign-in
+        if (given.length >= 6 && /[^0-9]/.test(given) && !isFormerAccount(a)) { const t0 = matchPasscode(given); if (t0 && nameKey(t0.name) === nameKey(a.name)) { nameTries.delete(nameKey(name)); log('Signed in with the Render passcode', t0.name); json(req, res, 200, { token: makeSession(t0.name), name: t0.name, director: isDirector(t0.name), teachers: teacherNames() }); return; } }
         if (!a.code) {
           // the first sign-in sets the educator's own four numbers, as the director wants, and only with the six-number
           // start code she handed them, checked both when it is typed and again when the new passcode is saved
@@ -1933,7 +1948,8 @@ async function handle(req, res) {
     const dev = typeof body.dev === 'string' && /^[A-Za-z0-9]{6,32}$/.test(body.dev) ? body.dev : '';
     // conference notes reach a family only when the director or the office shares them, the same check the Family page
     // makes, so an educator's save never shares notes or takes them away
-    if (kind === 'conferences' && !isOffice(me.name)) {
+    // conference notes are never shared with families, so nobody's save can mark them shared
+    if (kind === 'conferences') {
       const SH = ['sharedWithFamily', 'sharedAt'];
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of SH) delete body.patch[k]; }
       if (body.data && typeof body.data === 'object') { body.data = Object.assign({}, body.data); for (const k of SH) { if (cur && !cur.deleted && cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } }
@@ -2083,12 +2099,20 @@ async function handle(req, res) {
     const p = body.patch || {}; const t = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
     if (p.familySummary && typeof p.familySummary === 'object') { const P = p.familySummary.parts || {}; const A = P.areas || {};
       cf.familySummary = Object.assign({}, cf.familySummary || {}, { parts: { returns: t(P.returns), friends: t(P.friends), strengths: t(P.strengths), goals: t(P.goals), nextSteps: t(P.nextSteps), areas: Object.fromEntries(FAM_AREAS.map(([k]) => [k, t(A[k])])) }, editedAt: Date.now(), editedBy: me.name }); }
-    if (p.read === true && cf.familySummary) cf.familySummary = Object.assign({}, cf.familySummary, { readAt: Date.now(), readBy: me.name });
+    // a read mark belongs to the words that were on the screen. When the words changed while the sheet was open, such as the
+    // full-sentence version arriving, nothing is marked and the new words come back to be read.
+    let changed = false;
+    if (p.read === true && cf.familySummary) {
+      const same = (a, b) => { const A = (a && typeof a === 'object') ? a : {}, B = (b && typeof b === 'object') ? b : {}; const k = ['returns', 'friends', 'strengths', 'goals', 'nextSteps'];
+        return k.every(x => t(A[x]).trim() === t(B[x]).trim()) && FAM_AREAS.every(([x]) => t((A.areas || {})[x]).trim() === t((B.areas || {})[x]).trim()); };
+      if (p.readOf && !same(p.readOf, cf.familySummary.parts)) changed = true;
+      else cf.familySummary = Object.assign({}, cf.familySummary, { readAt: Date.now(), readBy: me.name });
+    }
     if (Array.isArray(p.printPieces)) cf.printPieces = p.printPieces.map(x => t(x, 120)).filter(x => /^(notices|slides|stories)\|[A-Za-z0-9._-]+$/.test(x)).slice(0, 6);
     if (['one', 'two', 'booklet'].includes(p.evidenceLayout)) cf.evidenceLayout = p.evidenceLayout;
     if (typeof p.familyDrdp === 'boolean') cf.familyDrdp = p.familyDrdp;
     cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
-    json(req, res, 200, { familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }); return;
+    json(req, res, 200, Object.assign({ familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }, changed ? { changed: true } : {})); return;
   }
   if (path === '/api/transition/nextschool') {
     const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;

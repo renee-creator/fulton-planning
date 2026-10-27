@@ -224,7 +224,16 @@ module.exports = function growthModule(c) {
   /* ---------- the journal, opened with the reader's own passcode each time ---------- */
   const keys = new Map();
   function openKey(me, who) { const k = crypto.randomBytes(18).toString('hex'); keys.set(k, { me: nameKey(me), who: nameKey(who), until: Date.now() + 30 * 60e3 }); for (const [x, v] of keys) if (v.until < Date.now()) keys.delete(x); return k; }
-  const keyOk = (k, me, who) => { const v = keys.get(String(k || '')); return !!v && v.until > Date.now() && v.me === nameKey(me) && v.who === nameKey(who); };
+  // each save keeps the journal open another thirty minutes, so an educator writing slowly is never shut out mid-entry
+  const keyOk = (k, me, who) => { const v = keys.get(String(k || '')); const ok = !!v && v.until > Date.now() && v.me === nameKey(me) && v.who === nameKey(who); if (ok) v.until = Date.now() + 30 * 60e3; return ok; };
+  /* When the journal's thirty minutes have passed, or the server restarted after an update, a save asks for the passcode
+     again in the journal itself and keeps what was written. It never signs the educator out of TREE. */
+  const LOCKED = 'Type your TREE passcode to save. What you wrote is kept.';
+  function journalKey(me, who, body) {
+    if (keyOk(body.key, me, who)) return { key: String(body.key) };
+    if (body.passcode != null) { if (nameBlocked(me)) return { status: 429, error: 'Wait a little before trying your passcode again.' }; if (checkPasscode(me, body.passcode)) return { key: openKey(me, who), fresh: true }; return { status: 409, error: 'That passcode is not right. ' + LOCKED, locked: true }; }
+    return { status: 409, error: LOCKED, locked: true };
+  }
   // the period a journal entry belongs to, a week, or two weeks for those who write every other week
   function periodOf(name, iso) {
     const every = +profileOf(name).journalEvery === 2 ? 2 : 1; const mon = mondayOf(iso);
@@ -464,22 +473,24 @@ module.exports = function growthModule(c) {
       json(req, res, 200, { key: openKey(me, who), entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0)), period: p, wrote: wroteIn(who, p), carry: growth(who).carry || null }); return;
     }
     if (P === 'journal/save') {
-      if (!canSee(me, who) || !keyOk(body.key, me, who)) return err(req, res, 401, 'Open the journal again with your passcode.');
+      if (!canSee(me, who)) return deny('The journal is seen only by the educator and the director.');
       if (nameKey(me) !== nameKey(who)) return deny('Only the educator writes in their journal.');
+      const jk = journalKey(me, who, body); if (!jk.key) return err(req, res, jk.status, jk.error);
       const j = journal(who); const e = body.entry || {}; const id = String(e.id || '') || rid('j');
       const was = j.entries.find(x => x.id === id);
       const carry = growth(who).carry || null;
       const entry = Object.assign({}, was || { id, date: today(), at: Date.now() }, { joy: txt(e.joy), challenge: txt(e.challenge), connection: txt(e.connection), language: txt(e.language), updatedAt: Date.now() });
       if ('module' in e) { entry.module = txt(e.module); if (entry.module && carry && !(was && was.modulePrompt)) entry.modulePrompt = txt(carry.prompt, 600); }
       j.entries = [entry, ...j.entries.filter(x => x.id !== id)]; put(jPath(who), j);
-      json(req, res, 200, { entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date)), period: periodOf(who, today()), wrote: wroteIn(who, periodOf(who, today())) }); return;
+      json(req, res, 200, Object.assign({ entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date)), period: periodOf(who, today()), wrote: wroteIn(who, periodOf(who, today())) }, jk.fresh ? { key: jk.key } : {})); return;
     }
     if (P === 'journal/bring') {
       // the educator chooses an entry to bring into a check-in or the self-assessment
-      if (nameKey(me) !== nameKey(who) || !keyOk(body.key, me, who)) return err(req, res, 401, 'Open the journal again with your passcode.');
+      if (nameKey(me) !== nameKey(who)) return deny('Only the educator chooses what to bring from their journal.');
+      const jk = journalKey(me, who, body); if (!jk.key) return err(req, res, jk.status, jk.error);
       const j = journal(who); const e = j.entries.find(x => x.id === body.id); if (!e) return err(req, res, 404, 'That entry is not here.');
       const to = body.to === 'self' ? 'self' : 'checkin'; e.bring = Object.assign({}, e.bring, { [to]: e.bring && e.bring[to] ? 0 : Date.now() }); put(jPath(who), j);
-      json(req, res, 200, { entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date)) }); return;
+      json(req, res, 200, Object.assign({ entries: j.entries.slice().sort((a, b) => b.date.localeCompare(a.date)) }, jk.fresh ? { key: jk.key } : {})); return;
     }
 
     /* the monthly check-in */

@@ -1383,6 +1383,7 @@ async function journalPage(my){const boss=isDir();if(boss&&!st.sel)st.sel=(B().p
   const J=st.jr;const p=J.period;const cur=J.entries.find(e=>e.date>=p.start&&e.date<=p.end&&!dir)||null;const draft=st.jDraft||(cur?Object.assign({},cur):{});
   h+=card("A no judgment space",`<div class="cnt">${dir?"What is written here is never scored and never used to judge the educator. They can choose to bring an entry into a check-in or the self-assessment.":(boss?"What you write in your own journal is for you. Only you read it, behind your passcode, and it never enters an evaluation, a check-in, a count, a reminder or the staff room display.":"What you write in the journal is never scored and never used in your evaluation. It is seen only by you and the director, never by colleagues. You can choose to bring an entry into a check-in or your self-assessment.")}</div><div class="actions"><button class="btn small ghost" data-gjclose="1">Close the journal</button></div>`);
   if(!dir)h+=card(p.every===2?"These two weeks":"This week",`<div class="cnt" style="margin-bottom:6px">${J.wrote?`You have written ${p.every===2?"in these two weeks":"this week"}. You can add to it or change it.`:`${fd(p.start)} to ${fd(p.end)}.`}</div>${PROMPTS.map(([k,l,q])=>`<label class="fld-label"><b>${H(l)}.</b> ${H(q)}<textarea rows="3" data-gjf="${k}">${H(draft[k]||"")}</textarea></label>`).join("")}${J.carry&&J.carry.prompt?`<label class="fld-label"><b>From ${H(J.carry.title)}.</b> ${H(J.carry.prompt)}<textarea rows="3" data-gjf="module">${H(draft.module||"")}</textarea></label>`:""}
+    ${st.jLocked?`<div class="gq"><div class="cnt">${H(st.jLocked)}</div><div class="kfields"><label>Your TREE passcode<input type="password" inputmode="numeric" autocomplete="current-password" id="gj-repass" maxlength="40"></label></div></div>`:""}
     <div class="actions"><button class="btn" data-gjsave="${H(cur?cur.id:"")}">Save</button></div>`);
   const earlier=J.entries.filter(e=>dir||!cur||e.id!==cur.id);
   h+=card(dir?"Entries":"Earlier entries",earlier.length?earlier.map(e=>`<div class="garea"><b>${H(fd(e.date))}</b>${PROMPTS.filter(([k])=>e[k]).map(([k,l])=>`<div class="gq"><div class="cnt">${H(l)}</div><div style="white-space:pre-line">${H(e[k])}</div></div>`).join("")}${e.module?`<div class="gq"><div class="cnt">${H(e.modulePrompt||"From a module")}</div><div style="white-space:pre-line">${H(e.module)}</div></div>`:""}
@@ -1754,11 +1755,18 @@ async function gTap(e,t){const d=t.dataset;
     const r=await ga("plan",{name:who(),plan:body});setDoc(who(),r);st.planDraft=null;toast("Saved.");redraw();return}
   if(d.gfjopen){const pass=val("#gfj-pass");if(!pass){toast("Type your TREE passcode.");return}const r=await ga("journal/open",{name:d.gfjopen,passcode:pass});st.fj={who:d.gfjopen,entries:r.entries||[]};if(typeof foldOpen!=="undefined")foldOpen.add("sf:"+d.gfjopen.toLowerCase().replace(/[^a-z0-9]+/g,"-")+":jour");redraw();return}
   if(d.gjself){st.jself=true;st.jr=null;st.jDraft=null;redraw();return}
-  if(d.gjopen){const pass=val("#gj-pass");if(!pass){toast("Type your TREE passcode.");return}const r=await ga("journal/open",{name:jWho(),passcode:pass});st.jr=r;st.jrWho=jWho();st.jDraft=null;redraw();return}
+  if(d.gjopen){const pass=val("#gj-pass");if(!pass){toast("Type your TREE passcode.");return}const r=await ga("journal/open",{name:jWho(),passcode:pass});st.jLocked="";st.jr=r;st.jrWho=jWho();st.jDraft=null;redraw();return}
   if(d.gjclose){st.jr=null;st.jDraft=null;redraw();return}
   if(d.gjsave!=null){const entry={id:d.gjsave||""};document.querySelectorAll("[data-gjf]").forEach(x=>entry[x.dataset.gjf]=x.value);if(![...PROMPTS.map(([k])=>k),"module"].some(k=>String(entry[k]||"").trim())){toast("Write a few honest sentences first.");return}
-    const r=await ga("journal/save",{name:jWho(),key:st.jr.key,entry});Object.assign(st.jr,r);st.jDraft=null;toast(isDir()?"Saved. Only you read it.":"Saved. Only you and the director see it.");redraw();return}
-  if(d.gjbring){const [id,to]=d.gjbring.split("|");const r=await ga("journal/bring",{name:jWho(),key:st.jr.key,id,to});st.jr.entries=r.entries;redraw();return}
+    // the journal's thirty minutes may have passed. Then the passcode is asked for here, and the writing waits on the page.
+    const rp=val("#gj-repass");let r;
+    try{r=await ga("journal/save",Object.assign({name:jWho(),key:st.jr.key,entry},rp?{passcode:rp}:{}))}
+    catch(er){if(er&&er.status===409){st.jDraft=entry;st.jLocked=er.message||"Type your TREE passcode to save. What you wrote is kept.";redraw();setTimeout(()=>{const i=$("#gj-repass");if(i)i.focus()},50);return}throw er}
+    if(r.key)st.jr.key=r.key;delete r.key;st.jLocked="";Object.assign(st.jr,r);st.jDraft=null;toast(isDir()?"Saved. Only you read it.":"Saved. Only you and the director see it.");redraw();return}
+  if(d.gjbring){const [id,to]=d.gjbring.split("|");const rp=val("#gj-repass");let r;
+    try{r=await ga("journal/bring",Object.assign({name:jWho(),key:st.jr.key,id,to},rp?{passcode:rp}:{}))}
+    catch(er){if(er&&er.status===409){st.jLocked=er.message||"Type your TREE passcode to save.";redraw();return}throw er}
+    if(r.key)st.jr.key=r.key;st.jLocked="";st.jr.entries=r.entries;redraw();return}
   if(d.gcpre){const r=await ga("checkin/pre",{focus:val("#gc-pre")});setDoc(meName(),r);toast("Saved. You can talk it through at your check-in.");redraw();return}
   if(d.gcfollow){const r=await ga("checkin/followed",{id:d.gcfollow});setDoc(meName(),r);redraw();return}
   if(d.gci){st.ciWho=d.gci;st.ciDate=d.gcidate||"";st.ci=null;redraw();window.scrollTo(0,0);return}

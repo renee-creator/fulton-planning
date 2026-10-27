@@ -378,10 +378,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
-      // photos kept from a newsletter part with no words, such as The Faces of North Class, are removed once, unless someone has worked on them
-      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.newsletter && !d0.kaymbu.words && !String(d0.noticed || '').includes('\n') && !(d0.children || []).length && !d0.kaymbu.checkedBy && !d0.editedBy) {
-        r.deleted = true; r.local = true; noteChange('notices', id); scheduleSave('notices', id); n++; continue;
-      }
+      // Photos from a newsletter part with no words, such as The Faces of North Class, were removed by an earlier clean up,
+      // and a newsletter part with no words is no longer kept at all. That clean up no longer runs, since a Moment kept from
+      // its own email and then seen again in a newsletter looks the same and must never be removed.
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;
       if (d.kaymbu.v === 2) {
         const twins = live('notices').filter(o => o !== d && o.kaymbu && (o.noticed || '').trim() === (d.noticed || '').trim() && o.classroom === d.classroom).length;

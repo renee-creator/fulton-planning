@@ -164,9 +164,12 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const code = String(crypto.randomInt(0, 1e6)).padStart(6, '0');
     if (kids.length) codes.set(e, { hash: crypto.createHash('sha256').update(code).digest('hex'), until: Date.now() + 15 * 60000, n: 0 });
     if (test) {
-      // test mode emails no one. A tester sees the code here, and anyone else is told plainly the page is not open yet
+      // in test mode only a tester is sent a code, by email the same as a family, and anyone else is told plainly the page
+      // is not open yet. The code shows on screen only on a test server, never to whoever types a tester's email.
       if (!kids.length) return { error: 'The Family page is not open yet.' };
-      return { ok: true, test: true, code };
+      if (process.env.FAMILY_SHOW_CODE === '1') return { ok: true, test: true, code };
+      try { await mailCode(e, code); } catch (er) { log('Family test code not sent,', er.message); return { error: 'The code could not be sent just now. Try again in a few minutes.' }; }
+      return { ok: true, test: true };
     }
     if (kids.length) { try { await mailCode(e, code); } catch (er) { log('Family code not sent,', er.message); return { error: 'The code could not be sent just now. Try again in a few minutes.' }; } }
     // the same answer whether or not the email is on file, so the page never tells a stranger who is enrolled
@@ -240,9 +243,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const p = season(); const cf = getRec('conferences', confIdOf(k.id, p));
     const conference = cf && cf.confDate ? { date: cf.confDate, time: cf.confTime || '', with: cf.teacher || '', format: cf.format || '', season: p.term + ' ' + p.year, complete: cf.status === 'complete' } : null;
     const reflections = cf && cf.status !== 'complete' ? Object.fromEntries(REFLECTIONS().map(([key]) => [key, (cf.familyReflections || {})[key] || ''])) : null;
-    const shared = []; for (const [id, r] of store.recs.conferences) { const d = r.doc; if (r.deleted || !d || d.childId !== k.id || !d.sharedWithFamily) continue;
-      shared.push({ id, label: d.term === 'Historical' ? 'An earlier conference' : `${d.term} ${d.schoolYear}`, date: d.confDate || '', sections: CONF_FIELDS.map(([key, l]) => [l, withoutRatings((d.fields || {})[key])]).filter(([, v]) => v) }); }
-    shared.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    // conference notes are never shared with families. The Family Summary is what goes home from a conference.
+    const shared = [];
     const files = (k.sharedFiles || []).filter(x => x && x.id).map(x => ({ id: x.id, title: x.title || 'A document', at: x.at || '' }));
     // a transition summary for kindergarten or TK, only once the director has shared it, as it read when she shared it
     const tsAll = k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary : {};

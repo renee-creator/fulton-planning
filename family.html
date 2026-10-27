@@ -127,7 +127,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   function showGate(){$("#main").hidden=true;$("#gate").hidden=false;$("#f1").hidden=false;$("#f2").hidden=true;$("#email").value=LS.get("fam-email")||""}
   $("#f1").onsubmit=async e=>{e.preventDefault();const b=$("#b1");b.disabled=true;$("#e1").textContent="";
     try{const em=$("#email").value.trim();const j=await api("/family/code",{email:em});LS.set("fam-email",em);
-      $("#f1").hidden=true;$("#f2").hidden=false;$("#testcode").hidden=!j.test;$("#tc").textContent=j.code||"";$("#sent").textContent=j.test?"Type the code below to sign in.":"If that email is on file, a six-digit code is on its way. It works for 15 minutes.";$("#code").focus()}
+      $("#f1").hidden=true;$("#f2").hidden=false;$("#testcode").hidden=!j.code;$("#tc").textContent=j.code||"";$("#sent").textContent=j.code?"Type the code below to sign in.":"If that email is on file, a six-digit code is on its way. It works for 15 minutes.";$("#code").focus()}
     catch(er){$("#e1").textContent=er.message}finally{b.disabled=false}};
   $("#f2").onsubmit=async e=>{e.preventDefault();const b=$("#b2");b.disabled=true;$("#e2").textContent="";
     try{const j=await api("/family/login",{email:LS.get("fam-email"),code:$("#code").value.trim()});token=j.token;LS.set("fam-token",token);$("#code").value="";await load()}

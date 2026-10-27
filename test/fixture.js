@@ -39,7 +39,7 @@ async function start(opt) {
     put('calendar/settings/feeds.json', { addresses: { cal3: `http://127.0.0.1:${web}/feeds/conf.ics` } }); }
   const gh = await mock.start(dir, 0, opt.gh);
   const srv = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_TOKEN: 't', PORT: String(port),
-    TEACHER_PASSCODES: 'Dee=director-pass-1,Shared=shared-pass-1', ALLOWED_ORIGINS: 'http://localhost:' + web, FLUSH_DELAY_MS: '500', WRITE_GAP_MS: '20', FEED_TEST_BASE: `http://127.0.0.1:${web}/feeds` }, opt.env || {}), stdio: 'ignore' });
+    TEACHER_PASSCODES: 'Dee=director-pass-1,Shared=shared-pass-1', ALLOWED_ORIGINS: 'http://localhost:' + web, FLUSH_DELAY_MS: '500', WRITE_GAP_MS: '20', FAMILY_SHOW_CODE: '1', FEED_TEST_BASE: `http://127.0.0.1:${web}/feeds` }, opt.env || {}), stdio: 'ignore' });
   const files = http.createServer((q, r) => { if (opt.feed && q.url.startsWith('/feeds/conf.ics')) { r.writeHead(200, { 'Content-Type': 'text/calendar' }); r.end(opt.feed()); return; }
     const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'tree.html');
     if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }

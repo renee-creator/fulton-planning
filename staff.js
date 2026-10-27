@@ -766,7 +766,7 @@ module.exports = function staffModule(o) {
       const name = String(body.newName || '').normalize('NFKC').trim().replace(/\s+/g, ' ');
       if (!/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(name)) { err(req, res, 400, 'Type the new educator\'s first name, letters only.'); return; }
       if (accountFor(name)) { err(req, res, 409, name + ' already has a sign-in.'); return; }
-      accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: crypto.randomBytes(3).toString('hex'), v: 0 });
+      accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: String(crypto.randomInt(100000, 1000000)), v: 0 });
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
       const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
@@ -843,19 +843,24 @@ module.exports = function staffModule(o) {
 
   /* ---------- reminders, always on, through TREE's own reminders. The director sets how far ahead, and only she ---------- */
   const sentDoc = () => get(SENT) || {};
-  const once = (k) => { const s = sentDoc(); if (s[k]) return false; put(SENT, Object.assign({}, s, { [k]: today() })); return true; };
+  // reminders marked sent before this change never reached anyone, since records pages were closed and the director had no
+  // TREE sign-in, so they are freed once to come again when records open
+  function freeUnsent() { const s = sentDoc(); if (s.heldV2) return; const o = { heldV2: today() }; if (s.day) o.day = s.day; put(SENT, o); log('Records reminders marked sent before they reached anyone are freed'); }
   const expiryOf = (item, rec) => !rec || !rec.date ? '' : rec.expires || (item.months ? addMonths(rec.date, item.months) : '');
   const longDay = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' });
   const fluSeason = iso => { const y = +iso.slice(0, 4), m = +iso.slice(5, 7); return String(m >= 8 ? y : y - 1); };
   function semesterOf(iso) { const y = iso.slice(0, 4), m = +iso.slice(5, 7); return m >= 8 ? y + '-fall' : m <= 5 ? y + '-spring' : ''; }
+  /* What is due for one educator, each item with the key that marks it sent. Nothing is marked here. An item is marked sent
+     only once it reaches someone, so a reminder held while records pages are closed, or one no phone received, is not used up. */
   function dueFor(name, day) {
     const sc = school(), on = k => !sc.remind || sc.remind[k] !== false, lead = sc.remindDays || 30, doc = person(name), out = [];
+    const sent = sentDoc(); const fresh = k => !sent[k]; const add = (k, text) => out.push({ k, text });
     if (on('expiry') || on('hsa')) for (const it of ITEMS) {
       if (it.k === 'hsa' ? !on('hsa') : !on('expiry')) continue;
       if (!needsItem(doc, it)) continue;
       const ex = expiryOf(it, (doc.items || {})[it.k]); if (!ex) continue; const left = daysBetween(day, ex);
-      if (left <= lead && left > 0 && once(`${pidOf(name)}|${it.k}|${ex}|soon`)) out.push(`${it.label} expires ${longDay(ex)}`);
-      else if (left <= 0 && once(`${pidOf(name)}|${it.k}|${ex}|out`)) out.push(`${it.label} expired ${longDay(ex)}`);
+      if (left <= lead && left > 0 && fresh(`${pidOf(name)}|${it.k}|${ex}|soon`)) add(`${pidOf(name)}|${it.k}|${ex}|soon`, `${it.label} expires ${longDay(ex)}`);
+      else if (left <= 0 && fresh(`${pidOf(name)}|${it.k}|${ex}|out`)) add(`${pidOf(name)}|${it.k}|${ex}|out`, `${it.label} expired ${longDay(ex)}`);
     }
     if (on('flu')) {
       const st = (doc.profile || {}).startDate || ''; const m = day.slice(5, 7), md = day.slice(5);
@@ -863,15 +868,15 @@ module.exports = function staffModule(o) {
       const season = md >= '07-15' && md < '08-01' ? day.slice(0, 4) : fluSeason(day);
       const firstYear = st && st > season + '-12-01' && st < (+season + 1) + '-08-01';
       const has = (doc.flu || {})[season];
-      if (!has && !firstYear && md >= '07-15' && md < '08-01' && once(`${pidOf(name)}|flu|${season}|before`)) out.push('The flu shot is due between August 1 and December 1');
-      if (!has && !firstYear && (m === '11') && once(`${pidOf(name)}|flu|${season}|nov`)) out.push('The flu shot, or a written exemption, is due by December 1');
+      if (!has && !firstYear && md >= '07-15' && md < '08-01' && fresh(`${pidOf(name)}|flu|${season}|before`)) add(`${pidOf(name)}|flu|${season}|before`, 'The flu shot is due between August 1 and December 1');
+      if (!has && !firstYear && (m === '11') && fresh(`${pidOf(name)}|flu|${season}|nov`)) add(`${pidOf(name)}|flu|${season}|nov`, 'The flu shot, or a written exemption, is due by December 1');
     }
     if (on('semester')) {
       const u = doc.units || {}; const sem = semesterOf(day);
       if (sem && Number(u.completed) < 12 && (u.completed !== undefined && u.completed !== '') && !((u.semesters || {})[sem] || {}).files?.length) {
         const start = sem.endsWith('fall') ? day.slice(0, 4) + '-08-20' : day.slice(0, 4) + '-01-20';
         // once each semester, from the day it starts
-        if (day >= start && once(`${pidOf(name)}|sem|${sem}`)) out.push('Proof of enrollment for this semester, until you reach twelve units');
+        if (day >= start && fresh(`${pidOf(name)}|sem|${sem}`)) add(`${pidOf(name)}|sem|${sem}`, 'Proof of enrollment for this semester, until you reach twelve units');
       }
     }
     return out;
@@ -893,21 +898,28 @@ module.exports = function staffModule(o) {
   async function tick() {
     if (busy || !S.ready || !accounts.loaded || !reminders.keys()) return; busy = true;
     try {
+      freeUnsent();
       const now = new Date(); const day = today(); const hr = +now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', hour12: false }) % 24; const dow = new Date(day + 'T12:00:00Z').getUTCDay();
       if (dow < 1 || dow > 5 || hr < 8 || hr >= 11 || sentDoc().day === day) return;
       put(SENT, Object.assign({}, sentDoc(), { day }));
-      const dirs = accounts.list.filter(a => isDirector(a.name)).map(a => a.name); const summary = [];
+      const dirs = accounts.list.filter(a => isDirector(a.name)).map(a => a.name); const summary = []; const marks = [];
+      const markSent = ks => { if (!ks.length) return; const s = Object.assign({}, sentDoc()); for (const k of ks) s[k] = day; put(SENT, s); };
       for (const n of staffNames()) {
+        // while records pages are closed, an educator's reminders wait and nothing is used up, unless they are a new hire
+        if (!isDirector(n) && !(opened().records || inNewEd(n))) continue;
         const items = dueFor(n, day); if (!items.length) continue;
-        if (!isDirector(n) && (opened().records || inNewEd(n))) await reminders.sendTo(n, { title: 'TREE, your records', body: items.join('\n'), url: 'tree.html?go=records', tag: 'tree-records' });
-        summary.push(`${n}, ${items.join('; ').toLowerCase()}`);
+        let reached = false;
+        if (!isDirector(n)) { const r = await reminders.sendTo(n, { title: 'TREE, your records', body: items.map(i => i.text).join('\n'), url: 'tree.html?go=records', tag: 'tree-records' }); reached = !!(r && r.sent); }
+        if (reached) markSent(items.map(i => i.k)); else marks.push(...items.map(i => i.k));
+        summary.push(`${n}, ${items.map(i => i.text).join('; ').toLowerCase()}`);
       }
       // each January, from 2027, the director hears once to check the posters for updates and to give the yearly Workplace
       // Know Your Rights notice by February 1. Nothing goes out in any other month.
-      { const y = +day.slice(0, 4); if (day.slice(5, 7) === '01' && y >= 2027 && once('notices|jan|' + y)) summary.push(`January. Check the workplace posters for updates, such as the yearly minimum wage poster, and give the California Workplace Know Your Rights notice by February 1, with the chance to name or change an emergency contact. Required notices in TREE lists each person's language and keeps the record.`); }
+      { const y = +day.slice(0, 4); if (day.slice(5, 7) === '01' && y >= 2027 && !sentDoc()['notices|jan|' + y]) marks.push('notices|jan|' + y), summary.push(`January. Check the workplace posters for updates, such as the yearly minimum wage poster, and give the California Workplace Know Your Rights notice by February 1, with the chance to name or change an emergency contact. Required notices in TREE lists each person's language and keeps the record.`); }
       const sc = school(); const drills = (get(DRILLS) || {}).list || [];
-      if (sc.remind?.drill !== false) { const last = drills.map(d => d.date).sort().pop(); if ((!last || daysBetween(last, day) >= 90) && dow === 1 && once('drill|' + (last || 'none'))) summary.push(last ? `No emergency drill since ${longDay(last)}. Drills happen at least every three months.` : 'No emergency drill is in the log yet. Drills happen at least every three months.'); }
-      if (summary.length) for (const d of dirs) await reminders.sendTo(d, { title: 'TREE, educator records', body: summary.join('\n'), url: 'tree.html?go=records', tag: 'tree-records-dir' });
+      if (sc.remind?.drill !== false) { const last = drills.map(d => d.date).sort().pop(); if ((!last || daysBetween(last, day) >= 90) && dow === 1 && !sentDoc()['drill|' + (last || 'none')]) marks.push('drill|' + (last || 'none')), summary.push(last ? `No emergency drill since ${longDay(last)}. Drills happen at least every three months.` : 'No emergency drill is in the log yet. Drills happen at least every three months.'); }
+      // what the director hears is marked sent once it reaches her phone, so a summary no phone received comes again
+      if (summary.length) { let got = 0; for (const d of dirs) { const r = await reminders.sendTo(d, { title: 'TREE, educator records', body: summary.join('\n'), url: 'tree.html?go=records', tag: 'tree-records-dir' }); got += (r && r.sent) || 0; } if (got) markSent(marks); }
     } catch (e) { log('Educator record reminders failed,', e.message); } finally { busy = false; }
   }
   setInterval(tick, 5 * 60e3).unref(); setTimeout(tick, 60e3).unref();
