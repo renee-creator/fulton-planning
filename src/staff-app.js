@@ -200,7 +200,7 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
     const ok=sts.filter(s=>s==="ok").length,due=st0.filter(x=>x.it.fulton&&x.none).length,soon=st0.filter(x=>x.s==="soon"&&!(x.it.fulton&&x.none)).length,outn=sts.filter(s=>s==="out").length;
     return `<tr data-stperson="${H(p.name)}" style="cursor:pointer"><td><b>${H(p.name)}</b>${p.newHire?` ${chip("soonish","New, New Educator section only")}`:p.newEd?` ${chip("soonish","New educator")}`:""}</td><td>${H(p.role)}</td><td>${H(p.room?p.room+" Class":"")}</td>
       <td>${ok} of ${itemsFor(p).length} in place${due?` ${chip("soon",due+" due")}`:""}${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
-  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
+  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
       <div class="hint" style="margin-top:6px">Tap an educator to open their records page.</div>`,printBar("team"))+
@@ -321,7 +321,7 @@ async function pageFiles(my){if(!D())return pageRecords(my);await loadPeople();c
 
 /* the New Educator section */
 /* ---------- Required notices ----------
-   Kept with the Teacher Policies and Procedures, for staff once the director marks them ready. Each notice links to its
+   Kept with the Policies and Procedures, for staff once the director marks them ready. Each notice links to its
    official agency page and its text is never copied. The new hire acknowledges the notices they receive, the yearly
    Workplace Know Your Rights notice is given in each person's language with the record kept here, and each person may
    name an emergency contact. The acknowledgments, the language and the emergency contact are seen only by that person
@@ -356,7 +356,7 @@ async function pageNotices(my){const dir=D();const d=await loadNotices(meName(),
     <div class="kfields"><label>Year<select id="ntc-year">${[y,cur].filter((v,i,a)=>a.indexOf(v)===i).map(v=>`<option>${H(v)}</option>`).join("")}</select></label><label>How it was given<select id="ntc-way">${d.defs.ways.map(([k,l])=>`<option value="${k}">${H(l)}</option>`).join("")}</select></label><label>Date<input type="date" id="ntc-date" value="${today()}"></label></div>
     <div class="actions"><button class="btn small" data-ntcgivesave="1">Record it for the people ticked</button></div>
     <div class="cnt">Each January a reminder asks you to check the posters and give this notice by February 1. <a href="${H(r.notice)}" target="_blank" rel="noopener">The Know Your Rights notice</a>, <a href="${H(r.url)}" target="_blank" rel="noopener">the Labor Commissioner's letter</a> and <a href="${H(r.postings)}" target="_blank" rel="noopener">Workplace Postings</a>, where each other language is listed.</div>`):"";
-  draw(my,head("Teacher Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of our size, each linked to its official page. Notice text is never copied here.")+
+  draw(my,head("Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of our size, each linked to its official page. Notice text is never copied here.")+
     (dir?card("For staff",`<div class="actions" style="margin:0">${d.ready?chip("ok","Ready, staff see it"):chip("soon","A draft, only you see it")}<button class="btn small ghost" data-ntcready="${d.ready?"0":"1"}">${d.ready?"Back to draft":"Mark it ready"}</button></div>`):"")+
     card("Workplace posters",`<div class="hint">The posters still hang in the staff area. This list is for finding and replacing them.</div>${d.defs.posters.map(ntcRow).join("")}`)+
     card("New hire notices",`<div class="hint">Shown in the New Educator section. A filled-in form stays in the paper and QuickBooks Workforce hiring packet.</div>${d.defs.newhire.map(ntcRow).join("")}`)+give)}
@@ -383,7 +383,7 @@ async function pageNew(my){const dir=D();let who=meName();
     const state=x.director?(r.done?chip("ok","Complete"):chip("missing","Not yet")):x.ack?((ackAt||(r.files||[]).length)?chip("ok",ackAt?"Read "+fms(ackAt):"Uploaded"):chip("missing","Not yet")):((r.files||[]).length?chip("ok","Uploaded"):chip("missing","Not yet"));
     return `<div class="strow"><div class="sttop"><b>${H(x.form)}</b><span class="actions" style="margin:0"><span class="cnt">${H(x.num)}</span>${state}</span></div><div class="cnt">${H(x.why)}</div>
       <div class="stfiles">${blank?`<a class="linkbtn" href="${H(blank)}" target="_blank" rel="noopener">Blank form</a>`:""}${x.director?(dir?`<label class="radio"><input type="checkbox" data-stdirpaper="${x.k}" ${r.done?"checked":""}><span>The invitation is complete</span></label>`:`<span class="cnt">The director marks this once your invitation is complete. Payroll and tax forms stay in QuickBooks.</span>`)
-        :x.ack?`<span class="cnt">${dir?"Done":"You do this"} under Teacher Policies and Procedures, before the first day, on this page. It counts here too.</span>${(r.files||[]).length?fileList(p,r.files,who):""}`
+        :x.ack?`<span class="cnt">${dir?"Done":"You do this"} under Policies and Procedures, before the first day, on this page. It counts here too.</span>${(r.files||[]).length?fileList(p,r.files,who):""}`
         :`${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="paper|${x.k}">Upload the completed form</button>${!blank&&!x.director&&x.k!=="immun"?`<span class="cnt">${x.k==="livescan"?"The director arranges Live Scan.":"Ask the director for this form."}</span>`:""}`}</div></div>`};
   const idr=pw.idseen||{};
   const ck=checklist(p,pcs,start);const goTo=p.goTo||B.goTo||"";
@@ -490,7 +490,7 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
     ${D()&&(x.dir==="howto"||x.dir==="licensing")?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-stpieceedit="${H(x.id)}">Edit</button></div>`:""}
     <section class="card"><div class="actions" style="margin:0 0 6px">${x.links.filter(l=>!l.minor).map(l=>`<a class="btn small ghost" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${d?chip("ok","Read "+fms(d.at)):""}</div>${x.links.some(l=>l.minor)||(x.checked&&D())?`<div class="actions" style="margin:0 0 6px">${x.links.filter(l=>l.minor).map(l=>`<a class="linkbtn" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${x.checked&&D()?`<span class="cnt">Links confirmed ${H(fd(x.checked))}</span>`:""}</div>`:""}
       ${x.sections.filter(s=>s!==q).map(s=>`<h3 style="font-size:16px;margin:14px 0 6px">${H(s.heading)}</h3>${md(s.body)}`).join("")}
-      ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Teacher Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
+      ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
     ${x.list==="training"?trainingsCard():""}
     ${q?`<section class="card"><h3 style="font-size:17px">${H(q.heading)}</h3><div class="stq" style="margin:6px 0 10px">${md(q.body)}</div>
       <label class="fld-label">In your own words<textarea id="stp-answer" rows="4" placeholder="Never scored. Only you and the director read it.">${H(d?d.answer:"")}</textarea></label>
@@ -579,12 +579,12 @@ async function paTap(t){const d=t.dataset,r=pa.data;paKeep();
     pa.data=await api("paths/assign",{kind:w.startsWith("m:")?"module":"path",id:w.startsWith("p:")?w.slice(2):"",slug:w.startsWith("m:")?w.slice(2):"",people:A.people,classes:A.classes,ways:A.ways,due:A.due,note:A.note});pa.assign=null;toast("Assigned.");redraw();return}
   if(d.paunassign){if(!confirm("Remove this assignment? Nothing anyone has done is lost."))return;pa.data=await api("paths/unassign",{id:d.paunassign});toast("Removed.");redraw();return}}
 
-/* ---------- the Teacher Policies and Procedures and the Family Handbook ----------
+/* ---------- the Policies and Procedures and the Family Handbook ----------
    Both are read section by section from the records, in the Markdown policy-md.js reads. The director edits any section
    on its own, each change is kept with its day, who and a short note, and an earlier version can be read or restored. */
 const PM=()=>window.PolicyMd;
 const POLV={sthb:"teacher",stfh:"family"};
-const polName=k=>k==="family"?"Family Handbook":"Teacher Policies and Procedures";
+const polName=k=>k==="family"?"Family Handbook":"Policies and Procedures";
 const polKey=k=>k==="family"?"family:"+(st.fhYear||""):"teacher";
 async function loadPol(k,force){const key=polKey(k);if(!st.pol[key]||force){const d=await api("policies/doc",{doc:k,edition:k==="family"?st.fhYear||undefined:undefined});st.pol[key]=d;if(k==="family"&&!st.fhYear)st.pol["family:"+d.edition]=d}return st.pol[key]}
 const polSecs=d=>(d.parts||[]).flatMap(p=>p.sections.map(s=>Object.assign({partId:p.id,partTitle:p.title,partSize:p.sections.length},s)));
@@ -614,7 +614,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpre
 async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
   const all=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));
   // rewrites of a passage in a plan, the idea bank or one of our pages, such as one that would have children collect
-  // creatures, show with the Teacher Policies and Procedures
+  // creatures, show with the Policies and Procedures
   const recs=k==="teacher"?(r.list||[]).filter(x=>x.doc==="record"&&x.kind==="replace"):[];
   const recCard=recs.length?card("Proposed rewrites to our plans and pages",`<div class="hint">Leave them be. Children observe creatures where they live, so each rewrite takes out a suggestion to collect, keep or feed a creature. Nothing changes until you accept one, and accepting replaces only that passage.</div>`+recs.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.path)}</b> ${x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Kept as it is"):chip("soonish","Waiting for you")}</summary>
     <div class="cnt">${H(x.note||"")}</div><div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
@@ -625,12 +625,12 @@ async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){r
   const mine=all.filter(x=>x.kind!=="replace"),rw=all.filter(x=>x.kind==="replace");
   // a rewrite replaces one passage in a section already there. She accepts it, changes the new wording first, or keeps
   // the wording as it is.
-  const rewrites=rw.length?card("Proposed rewrites",`<div class="hint">Each rewrite says the same thing directly, without first saying what something is not. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept one. Accepting replaces only that passage, and the section keeps its earlier wording in its history.</div>`+rw.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.section)}</b>${x.title&&x.title!==x.sectionTitle?` <span class="cnt">${H(String(x.title).replace(/^A direct rewrite in .*$/,""))}</span>`:""} ${st2(x)}</summary>
+  const rewrites=rw.length?card("Proposed rewrites",`<div class="hint">Each rewrite says the same thing directly, without first saying what something is not. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Policies and Procedures"} until you accept one. Accepting replaces only that passage, and the section keeps its earlier wording in its history.</div>`+rw.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.section)}</b>${x.title&&x.title!==x.sectionTitle?` <span class="cnt">${H(String(x.title).replace(/^A direct rewrite in .*$/,""))}</span>`:""} ${st2(x)}</summary>
     <div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
     <div class="lbl" style="margin-top:6px">${x.status==="accepted"?"Accepted":"Rewrite"}</div>${x.status==="accepted"?`<div class="stmd">${md(x.accepted||x.to||"")}</div>`:`<div class="stmd">${md(x.to||"")}</div><details><summary class="linkbtn">Change the new wording first</summary><textarea rows="6" data-propto="${H(x.id)}" aria-label="Rewrite for ${H(x.sectionTitle||x.section)}">${H(x.to||"")}</textarea></details>`}
     <div class="actions">${x.status==="accepted"?`<button class="linkbtn" data-stpol="${H(x.section||"")}">Open the section</button>`:`<button class="btn small" data-propaccept="${H(x.id)}" data-replace="1">Accept the rewrite</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Keep the wording as it is</button>`}`}</div></details>`).join(""),`${rw.filter(x=>!x.status||x.status==="proposed").length} waiting`):"";
   if(!mine.length)return rewrites+recCard;
-  return rewrites+recCard+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
+  return rewrites+recCard+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
     <div class="cnt">${H(x.note||"")}</div>${md(x.body||"")}
     ${(x.links||[]).length?`<div class="actions">${x.links.map(l=>`<button class="btn small ghost" data-${l.doc==="family"?"fhopen":"hbopen"}="${H(l.id)}">${H(l.label)}</button>`).join("")}</div>`:""}
     ${(x.differences||[]).length?`<div class="lbl" style="margin-top:8px">Differences for you to decide</div><ul style="margin:4px 0;padding-left:20px">${x.differences.map(t=>`<li>${H(t)}</li>`).join("")}</ul>`:""}
@@ -676,7 +676,7 @@ function ackCard(a){if(!a)return "";
   return card("Your acknowledgment",ch?`<div class="hint">The director marked ${a.changed.length===1?"a section":"these sections"} as a significant change. Read ${a.changed.length===1?"it":"them"}, then say so.</div>${a.changed.map(c=>`<div class="prow"><button class="linkbtn" data-stpol="${H(c.id)}">${H(c.title)}</button><span class="cnt">Changed ${H(fms(c.changedAt))}</span></div>`).join("")}<div class="actions"><button class="btn small" data-stpolack="1">I have read the changes</button></div>`
     // a new educator says so in one place, the New Educator section, so this page points there
     :a.newHire||a.start>today()?`<div class="hint">A new educator reads the sections chosen for them before their first day and says so in the New Educator section.</div><div class="actions"><button class="btn small" data-tview="stnew">Open the New Educator section</button></div>`
-    :`<div class="hint">Each school year, every educator reads the Teacher Policies and Procedures and says so. This is for the ${H(yearSpan(a.year))} school year.</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button></div>`)}
+    :`<div class="hint">Each school year, every educator reads the Policies and Procedures and says so. This is for the ${H(yearSpan(a.year))} school year.</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Policies and Procedures</button></div>`)}
 function mustReadCard(d){const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));if(!secs.length)return "";
   return card("Before your first day",`<div class="hint">Begin with these sections. The rest are here whenever you need them.</div>${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-stpol="${H(s.id)}">${H(s.title)}</button></div>`).join("")}`)}
 function fhDirCards(d){const draft=!d.live;const pb=d.public||{};const cur=d.current;
@@ -729,14 +729,14 @@ async function fhReview(){const el=$("#stfhrev");if(!el)return;el.innerHTML=`<di
 
 // an educator's acknowledgment, on their records page and the director's view of it
 function polRecordCard(a,mine){const who=mine?"you":"they";
-  return card("Teacher Policies and Procedures",`<div class="actions" style="margin:0">${a.yearAt?chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt)):chip("soon","Not acknowledged for "+yearSpan(a.year)+" yet")}${(a.changed||[]).length?chip("soon",a.changed.length+" changed section"+(a.changed.length===1?"":"s")+" to read"):""}<button class="btn small ghost" data-tview="sthb">Open them</button></div>
-    <div class="hint" style="margin-top:6px">Each school year ${who} read${mine?"":"s"} the Teacher Policies and Procedures and say${mine?"":"s"} so, and again for any section the director marks as a significant change.</div>`)}
+  return card("Policies and Procedures",`<div class="actions" style="margin:0">${a.yearAt?chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt)):chip("soon","Not acknowledged for "+yearSpan(a.year)+" yet")}${(a.changed||[]).length?chip("soon",a.changed.length+" changed section"+(a.changed.length===1?"":"s")+" to read"):""}<button class="btn small ghost" data-tview="sthb">Open them</button></div>
+    <div class="hint" style="margin-top:6px">Each school year ${who} read${mine?"":"s"} the Policies and Procedures and say${mine?"":"s"} so, and again for any section the director marks as a significant change.</div>`)}
 // the policies a new educator reads before their first day, in the New Educator section
 async function newPolCard(p,dir){let d=null;try{d=await loadPol("teacher")}catch(e){return ""}const a=p.policy;const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));
   const mine=!dir&&p.name===meName();
-  return card("Teacher Policies and Procedures, before the first day",`<div class="hint">${dir?"What "+H(p.name)+" reads before their first day. You choose these sections in the Teacher Policies and Procedures.":"Read these sections before your first day, then say so. The rest are there whenever you need them."}</div>
+  return card("Policies and Procedures, before the first day",`<div class="hint">${dir?"What "+H(p.name)+" reads before their first day. You choose these sections in the Policies and Procedures.":"Read these sections before your first day, then say so. The rest are there whenever you need them."}</div>
     ${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-hbopen="${H(s.id)}">${H(s.title)}</button></div>`).join("")}
-    <div class="actions">${a&&a.yearAt?chip("ok","Acknowledged "+fms(a.yearAt)):mine?`<button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button>`:chip("missing","Not acknowledged yet")}<button class="btn small ghost" data-tview="sthb">All of them</button></div>`)}
+    <div class="actions">${a&&a.yearAt?chip("ok","Acknowledged "+fms(a.yearAt)):mine?`<button class="btn small" data-stpolack="1">I have read the Policies and Procedures</button>`:chip("missing","Not acknowledged yet")}<button class="btn small ghost" data-tview="sthb">All of them</button></div>`)}
 async function polTap(d,t){const pk=POLV[view]||"teacher";
   if(d.stpol!=null){st.polSec=d.stpol;st.polEdit=false;st.polHist=-1;if(!POLV[view])goView("sthb");else T.render(view);return true}
   if(d.stfhed){st.fhYear=d.stfhed;st.polSec="";redraw();return true}
@@ -881,7 +881,7 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
   const sw=(k,l,d)=>`<div class="prow"><div><b>${H(l)}</b><div class="cnt">${H(d)}</div></div><div class="seg" role="group" aria-label="${H(l)}"><button data-stsw="${k}|1" aria-pressed="${!!o[k]}">On</button><button data-stsw="${k}|0" aria-pressed="${!o[k]}">Off</button></div></div>`;
   const rm=B.school.remind||{};
   el.innerHTML=`<div class="lbl">Educators</div><div class="hint">Each part shows only to you until you turn it on for educators. A new educator reaches only the New Educator section until you turn on full access.</div>
-    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton Community School and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The whole document, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("family","Family Handbook","The current edition, readable by every staff sign-in but the kitchen")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
+    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton Community School and the TREE How To guides")}${sw("handbook","Policies and Procedures","The whole document, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("family","Family Handbook","The current edition, readable by every staff sign-in but the kitchen")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
     <div class="prow"><div><b>Go-to person</b><div class="cnt">One go-to person for every new educator. The Class team still helps on the floor.</div></div><select id="sts-goto" aria-label="Go-to person"><option value="">None</option>${ps.filter(p=>p.role!=="Director"&&p.role!=="Kitchen"&&!(p.profile||{}).neverGoTo).map(p=>`<option ${B.school.goTo===p.name?"selected":""}>${H(p.name)}</option>`).join("")}</select></div>
     <div class="prow"><div><b>Records reminders</b><div class="cnt">${B.open&&B.open.records?"On for every educator. Only you change them.":"They wait until records pages are open for educators. Nothing is sent or used up before then. New educators hear theirs now."}</div></div><label class="cnt">Days ahead <input type="number" id="sts-days" min="7" max="120" value="${H(B.school.remindDays||30)}" style="width:70px"></label></div>
     <div class="chips" style="margin-top:6px">${Object.entries(B.defs.remind).map(([k,l])=>`<button class="chip ${rm[k]!==false?"on":""}" type="button" data-stremind="${k}">${H(l)}</button>`).join("")}</div>
@@ -1062,7 +1062,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
 });
 
 /* ---------- the director's Edit button on every piece of school writing in the records ----------
-   One editor for all of it, the same way a Teacher Policies and Procedures section is edited: PD modules, How To
+   One editor for all of it, the same way a Policies and Procedures section is edited: PD modules, How To
    guides, letters, New Educator and licensing pieces, materials guides, Family page pieces, the wording moved out of the
    code, the libraries for plans, Help answers, Presenting entries and the Garden's own words. Each part has its own box,
    and the headings stay as they are. Save proofreads first, with each fix accepted or kept. A sentence that may break a

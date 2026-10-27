@@ -1,5 +1,5 @@
 'use strict';
-// the Teacher Policies and Procedures and the Family Handbook, section by section. Made-up names and words only.
+// the Policies and Procedures and the Family Handbook, section by section. Made-up names and words only.
 const test = require('node:test');
 const assert = require('node:assert');
 const { make, call } = require('./harness.js');
@@ -12,7 +12,7 @@ function withPolicies(h) {
   const f = h.files; const put = (p, doc) => f.set(p, { doc, sha: 'x' });
   put('staff/handbook/how-it-works.json', { id: 'how-it-works', title: 'How It Works', body: 'TREE words.' });
   f.set('staff/pd/licensing/16-sun.md', { text: '<!--\nlist: procedure\n-->\n## Sun\n\nFulton procedure\n\n### How Fulton does it\n\nHats on.\n\n### One question\n\nWhat do you do?\n', sha: 'x' });
-  put('staff/policies/teacher.json', { title: 'Teacher Policies and Procedures', edition: '2025', mustRead: ['contacts'], parts: [
+  put('staff/policies/teacher.json', { title: 'Policies and Procedures', edition: '2025', mustRead: ['contacts'], parts: [
     { id: 'contacts', title: 'Contacts', sections: [{ id: 'contacts' }] }, { id: 'codes', title: 'Codes', sections: [{ id: 'codes' }] },
     { id: 'how-it-works', title: 'How It Works', sections: [{ id: 'how-it-works', ref: 'staff/handbook/how-it-works.json' }] }, { id: 'sun', title: 'Sun', sections: [{ id: 'sun', ref: 'staff/pd/licensing/16-sun.md' }] }] });
   put('staff/policies/teacher/contacts.json', { id: 'contacts', title: 'Contacts', body: 'Call the office.', history: [] });
@@ -30,7 +30,7 @@ function withPolicies(h) {
 async function ready(opt) { const h = withPolicies(make(LIST, opt)); await h.staff.load(); return h; }
 const all = d => d.parts.flatMap(p => p.sections);
 
-test('the Teacher Policies and Procedures go to staff sign-ins only, and a section only the director sees stays with her', async () => {
+test('the Policies and Procedures go to staff sign-ins only, and a section only the director sees stays with her', async () => {
   const h = await ready();
   const dir = await call(h.staff, 'Dir', 'policies/doc', { doc: 'teacher' });
   assert.deepStrictEqual(all(dir.body).map(s => s.id), ['contacts', 'codes', 'how-it-works', 'sun']);

@@ -35,7 +35,7 @@ test('Add educator in Settings adds a new hire, the same way as adding from Educ
 
 test('a rewrite proposal replaces one passage in a section, only once the director accepts it', async t => {
   const fx = await start({ more: put => {
-    put('staff/policies/teacher.json', { title: 'Teacher Policies and Procedures', edition: '2025', parts: [{ id: 'about', title: 'About', sections: [{ id: 'talk' }] }] });
+    put('staff/policies/teacher.json', { title: 'Policies and Procedures', edition: '2025', parts: [{ id: 'about', title: 'About', sections: [{ id: 'talk' }] }] });
     put('staff/policies/teacher/talk.json', { id: 'talk', title: 'Talk', body: 'We kneel down.\n\nWords are not just sounds; they are a bridge.\n\nWe listen.', history: [] });
     put('family/handbook/2026/edition.json', { year: '2026', title: 'Family Handbook', published: true, parts: [{ id: 'about', title: 'About', sections: ['play'] }] });
     put('family/handbook/2026/play.json', { id: 'play', title: 'Play', body: 'Play is not only fun but also work.', history: [] });

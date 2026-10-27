@@ -1,5 +1,5 @@
 'use strict';
-// Walk safety. Hidden until the director marks it ready, the backpack list read from the Teacher Policies and Procedures,
+// Walk safety. Hidden until the director marks it ready, the backpack list read from the Policies and Procedures,
 // proposed sections that change nothing until she accepts them, and families invited to a walk through the participation
 // sign-ups, with the walk agreements on the Family page and the invitation on the calendar. Made-up names only.
 const test = require('node:test');

@@ -1100,7 +1100,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 </script>
 
 <script>
-/* ---------- Program data, from the Teacher Policies & Procedures and Small Group Work policy ---------- */
+/* ---------- Program data, from the Policies and Procedures & Procedures and Small Group Work policy ---------- */
 // the Classes, the small groups and the spaces are one list each. The Classes and small groups come from Program
 // settings, and the spaces are the calendar's, read from the server. None is kept in this page.
 let CLASSROOMS=[],CLASSES_MAIN=[],snapMain=null;
@@ -2193,7 +2193,7 @@ function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observ
   setTimeout(()=>show(8),120)}
 /* a reading of our own links to its place in TREE, such as tree:hb/language-parameters for a section of the Teacher
    Policies and Procedures, tree:fh/behavior-and-discipline for the Family Handbook, or tree:stories for a page */
-const TREE_PLACE={hb:"the Teacher Policies and Procedures",fh:"the Family Handbook",stories:"Stories",stpd:"the PD library",stnew:"New Educator"};
+const TREE_PLACE={hb:"the Policies and Procedures",fh:"the Family Handbook",stories:"Stories",stpd:"the PD library",stnew:"New Educator"};
 window.treeReadPlace=u=>{const m=String(u||"").match(/^tree:([a-z0-9]+)/);return m?"in TREE, "+(TREE_PLACE[m[1]]||m[1]):String(u||"")};
 window.treeReadLink=(u,title)=>/^tree:/.test(u||"")?`<button class="linkbtn" data-treelink="${esc(u)}">${esc(title)}</button>`:`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(title)}</a>`;
 document.addEventListener("click",e=>{const t=e.target.closest("[data-treelink]");if(!t)return;e.preventDefault();const m=t.dataset.treelink.match(/^tree:([a-z0-9]+)(?:\/(.+))?$/);if(!m)return;
@@ -4481,7 +4481,7 @@ const SECTIONS=[["today","Today"],["obs","Observations"],["plans","Plans"],["doc
 const isKitchenUser=()=>VIEW_AS?!!VIEW_AS.kitchen:!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 const KITCHEN_VIEWS=["kitchen","today","calendar","settings","strec","garden","search","recipes"];
 const navSections=()=>isKitchenUser()?[["kitchen","Kitchen"],["today","Today"],["calendar","Calendar"],...(staffSubOk("strec")?[["staff","My records"]]:[])]:isNewHire()?[["staff","New Educator"]]:staffNavOn()?[...SECTIONS,["staff","Educators"]]:SECTIONS;
-/* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Teacher Policies and
+/* ---------- Educators. Records, certificates, the New Educator section, the PD library and the Policies and Procedures and
    Procedures live in tree-staff.js, loaded only when someone opens them, so this page stays the same size. The server
    decides what each person receives. Each part shows only to the director until she turns it on for educators. ---------- */
 const isNewHire=()=>!VIEW_AS&&!!(window.FP_NEWHIRE&&window.FP_NEWHIRE());
@@ -4507,7 +4507,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4d6e844b89","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=be6c4929ca","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4517,9 +4517,9 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=4d6e844b89","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=be6c4929ca","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
-const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
+const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
@@ -4529,7 +4529,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="5ce305946e0b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="edbaaee8849a";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5357,7 +5357,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   const A=g.agreements||{};
   h+=gdnFold("agree","Garden agreements",`For children and for families${!g.ready?", drafts":""}`,`<div class="lbl">Our two guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${(A.guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
     ${["children","families"].map(k=>{const s=A[k]||{};return `<div class="strow"><div class="secthead"><b>${esc(s.title||k)}</b><span class="actions" style="margin:0">${printBtns("gagree",k,"PDF")}</span></div>${s.intro?`<div>${esc(s.intro)}</div>`:""}<ul style="margin:4px 0;padding-left:18px">${(s.items||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`}).join("")}
-    ${dir?`<div class="actions"><button class="btn small ghost" data-pageedit="staff/garden/setup.json">Edit the agreements and the Garden's words</button></div>`:""}<div class="cnt">The family agreements and the plant cards show on the Family page once the Garden is ready. Families also find them linked from Garden Visits in the Teacher Policies and Procedures once a proposal is accepted.</div>${dir?`<div class="actions"><button class="linkbtn" data-tview="stfh">Proposed for the 2027 Family Handbook</button><button class="linkbtn" data-tview="sthb">Proposed for the Teacher Policies and Procedures</button></div>`:""}`);
+    ${dir?`<div class="actions"><button class="btn small ghost" data-pageedit="staff/garden/setup.json">Edit the agreements and the Garden's words</button></div>`:""}<div class="cnt">The family agreements and the plant cards show on the Family page once the Garden is ready. Families also find them linked from Garden Visits in the Policies and Procedures once a proposal is accepted.</div>${dir?`<div class="actions"><button class="linkbtn" data-tview="stfh">Proposed for the 2027 Family Handbook</button><button class="linkbtn" data-tview="sthb">Proposed for the Policies and Procedures</button></div>`:""}`);
   // the garden days with families are gatherings now, Second Saturday and Play Garden, on the Gatherings page
   // until the director releases Gatherings, an educator sees nothing of them here either
   if(typeof gthPageOpen==="function"&&gthPageOpen())h+=`<section class="card"><div class="secthead"><div><div class="lbl">Gatherings with families</div><div class="cnt">Second Saturday each month, with the season's garden day in December, March, June and September, and Play Garden. Each has its plan, toolkit, volunteer jobs and documentation.</div></div><button class="btn small ghost" data-tview="gatherings">Gatherings</button></div>
@@ -5551,7 +5551,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset)retu
    Today offers Before we walk, a checklist educators open and print. The children's walk agreements print as one card with
    photos of Fulton's own walks and no children's faces, the safety rule sits beside them, and families invited to a walk
    read the same agreements. Everything here waits for the director to mark walk safety ready. The words live in the
-   records, in staff/walks.json, and the backpack list is read from the Teacher Policies and Procedures. */
+   records, in staff/walks.json, and the backpack list is read from the Policies and Procedures. */
 let walkInfo=null,walkAt=0,walkBusy=false,walkPick=null;
 async function loadWalks(force){if(walkBusy||!window.FP_API)return;if(!force&&walkInfo!==null&&Date.now()-walkAt<5*60000)return;walkBusy=true;
   try{walkInfo=await window.FP_API("/api/staff/walks",{})}catch(e){walkInfo=false}finally{walkAt=Date.now();walkBusy=false}
@@ -6135,7 +6135,7 @@ function gthIntakeDoc(){const line="______________________________";
       dList("Interests and schedule",["What this child loves to explore "+line,"Visit days and times "+line])]}}
 function walkCheckDoc(){const w=walkInfo||{};const bp=w.backpack||{};
   return {display:true,type:"report",acc:"story",title:"Before we walk",meta:[["Date",longDate(iso(new Date()))]],
-    blocks:[dList("Safety comes first on every walk",w.checklist||[]),dList(`The emergency backpack, from ${bp.title||"the Teacher Policies and Procedures"}`,bp.items||[]),dText("Safety comes first",(w.rule||[]).join(" "))]}}
+    blocks:[dList("Safety comes first on every walk",w.checklist||[]),dList(`The emergency backpack, from ${bp.title||"the Policies and Procedures"}`,bp.items||[]),dText("Safety comes first",(w.rule||[]).join(" "))]}}
 // the children's card, with photos of Fulton's own walks that passed the face check on this device and the director's own look
 function walkCardDoc(){const w=walkInfo||{};const ph=(w.photos||[]).map(x=>({t:"photo",key:"walk-"+x.id,src:window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"",maxH:200}));
   return {display:true,type:"report",acc:"story",title:"Our walk agreements",meta:[],blocks:[...ph.slice(0,2),dList("",w.agreements||[]),...ph.slice(2)]}}
@@ -6148,7 +6148,7 @@ function renderWalks(){const m=$("#main");if(walkInfo===null){loadWalks();m.inne
   m.innerHTML=`<div class="head"><span class="eyebrow">Walks</span><h2 style="margin-top:4px">Walk safety</h2><div class="sub">Creek walks and walks to the garden or the farm. Safety comes first on every walk.</div></div>
   ${dir?`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${w.ready?"Ready, educators and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-walkready="${w.ready?"0":"1"}">${w.ready?"Back to draft":"Mark it ready"}</button></div></section>`:""}
   <section class="card"><div class="secthead"><h3 style="font-size:17px">Before we walk</h3><span class="actions" style="margin:0">${printBtns("walkcheck","","PDF")}</span></div>${list(w.checklist)}
-    <div class="lbl" style="margin-top:8px">${esc((w.backpack||{}).title||"The emergency backpack")}</div>${list((w.backpack||{}).items)}<button class="linkbtn" data-hbopen="${esc((w.backpack||{}).id||"")}">In the Teacher Policies and Procedures</button></section>
+    <div class="lbl" style="margin-top:8px">${esc((w.backpack||{}).title||"The emergency backpack")}</div>${list((w.backpack||{}).items)}<button class="linkbtn" data-hbopen="${esc((w.backpack||{}).id||"")}">In the Policies and Procedures</button></section>
   <section class="card"><h3 style="font-size:17px">Safety comes first</h3><div>${esc((w.rule||[]).join(" "))}</div></section>
   <section class="card"><div class="secthead"><h3 style="font-size:17px">Walk agreements for children</h3><span class="actions" style="margin:0">${printBtns("walkcard","","PDF")}</span></div>${list(w.agreements)}
     <div class="cnt">The card prints with photos of our own walks and never a child's face.${(w.photos||[]).length?` ${w.photos.length} photo${w.photos.length>1?"s":""} chosen.`:" No photos chosen yet."}</div>
@@ -6160,7 +6160,7 @@ function renderWalks(){const m=$("#main");if(walkInfo===null){loadWalks();m.inne
     <div class="actions"><button class="linkbtn" data-fhopen="${esc(w.handbook||"walks-off-campus")}">Walks Off Campus in the Family Handbook</button>${isOffice()&&!VIEW_AS?`<button class="btn small ghost" data-walkinvite="1">Invite families to a walk</button>`:""}</div>
     ${walkInviting&&isOffice()?walkInviteHtml():""}</section>
   ${dir&&(w.licensing||[]).length?`<section class="card"><h3 style="font-size:17px">Licensing for walks, for you</h3>${(w.licensing||[]).map(x=>`<div class="strow"><div>${esc(x.text)}</div><div class="cnt">${esc(x.source)}</div></div>`).join("")}</section>`:""}
-  ${dir&&(w.proposals||[]).length?`<section class="card"><h3 style="font-size:17px">Waiting for you</h3>${w.proposals.map(x=>`<div class="ptlog"><span>${esc(x.title)}<span class="cnt"> · proposed for the ${x.doc==="family"?"2027 Family Handbook draft":"Teacher Policies and Procedures"}, ${esc(x.status==="accepted"?"accepted":x.status==="aside"?"set aside":"waiting")}</span></span><button class="linkbtn" data-tview="${x.doc==="family"?"stfh":"sthb"}">Read it there</button></div>`).join("")}</section>`:""}
+  ${dir&&(w.proposals||[]).length?`<section class="card"><h3 style="font-size:17px">Waiting for you</h3>${w.proposals.map(x=>`<div class="ptlog"><span>${esc(x.title)}<span class="cnt"> · proposed for the ${x.doc==="family"?"2027 Family Handbook draft":"Policies and Procedures"}, ${esc(x.status==="accepted"?"accepted":x.status==="aside"?"set aside":"waiting")}</span></span><button class="linkbtn" data-tview="${x.doc==="family"?"stfh":"sthb"}">Read it there</button></div>`).join("")}</section>`:""}
   ${dir&&w.note?`<div class="cnt">${esc(w.note)}</div>`:""}`}
 let walkInviting=false;
 function walkInviteHtml(){const d=iso(new Date());return `<div class="kfields" style="margin-top:8px"><label>Walk<input type="text" id="wk-title" value="Creek walk"></label><label>Date<input type="date" id="wk-date" value="${d}"></label><label>From<input type="time" id="wk-start" value="09:30"></label><label>Until<input type="time" id="wk-end" value="11:00"></label><label>Class<select id="wk-room"><option value="">Any Class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>Family spots<input type="number" id="wk-spots" min="0" value="4"></label></div>
@@ -6928,8 +6928,8 @@ async function makeDocx(list,filename,ret){
   saveFile(blob,filename);overWarn();
 }
 
-/* A filled example built from the strong examples in the Teacher Policies & Procedures */
-const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classroom:"Example",educator:"Sample from the Teacher Policies",status:"draft",setting:[],languages:[],docplan:[],
+/* A filled example built from the strong examples in the Policies and Procedures & Procedures */
+const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classroom:"Example",educator:"Sample from the Policies and Procedures",status:"draft",setting:[],languages:[],docplan:[],
  fields:Object.fromEntries(FORMS.classroom.fields.map(f=>[f.k,f.strong])),
  web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, markers"}],
  connections:[[0,2],[3,4]],languages:["Drawing and mark-making","Building and construction","Movement and body","Dialogue and words","Recording and comparing"],questions:"What makes something go faster? How can we make it stay up? What happens if we change this? How do we work together?",environment:"Expand ramp area. Create space for ongoing structures. Add materials for comparison. Allow work to remain over multiple days."}};
@@ -8884,7 +8884,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Teacher Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
+    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -12138,7 +12138,7 @@ document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.cl
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
 const FAMILY_WORDS=new Set(["newsletter","share","story","binnote","transition"]);
 // names that keep the word Teacher, such as Role of the Teacher, stay as they are
-const KEEP_TEACHER=/(Role of the Teacher|Environment as the Third Teacher|Teacher Policies (?:and|&) Procedures|Child Development Teacher Permit)/gi;
+const KEEP_TEACHER=/(Role of the Teacher|Environment as the Third Teacher|Policies and Procedures (?:and|&) Procedures|Child Development Teacher Permit)/gi;
 function tidyWords(x,key){if(typeof x==="string"){if(/^(url|id|src|code|href|link)$/i.test(key||""))return x;
     const kept=[];x=x.replace(KEEP_TEACHER,m=>{kept.push(m);return "\u0001"+(kept.length-1)+"\u0001"});
     return x.replace(/\b(A|a) (teacher)\b/g,(m,a)=>a==="A"?"An teacher":"an teacher").replace(/\b(T|t)eachers\b/g,(m,a)=>a==="T"?"Educators":"educators").replace(/\b(T|t)eacher\b/g,(m,a)=>a==="T"?"Educator":"educator").replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/([^\d\s]):\s+/g,"$1, ").replace(/\u0001(\d+)\u0001/g,(m,i)=>kept[+i])}
@@ -13749,7 +13749,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=4d6e844b89","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=be6c4929ca","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

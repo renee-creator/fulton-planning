@@ -12,7 +12,7 @@ test('PD paths and assignments', async t => {
     put('staff/newed/01-first.md', part(1, 'Your first day')); put('staff/newed/02-second.md', part(2, 'Your first week'));
     put('staff/newed/03-later.md', part(3, 'A part still a draft', { draft: true })); put('staff/newed/experienced.md', part(4, 'For experienced educators', { audience: 'experienced' }));
     put('staff/newed/welcome.md', part(0, 'A letter', { place: 'pdlibrary' }));
-    put('staff/pd/modules/05-garden.md', '<!--\nstatus: draft\nminutes: 30\n-->\n# The Garden as Teacher\n\nLead.\n\n## Why it matters\n\nWords.\n\n## Reflect\n\nA question.\n');
+    put('staff/pd/modules/05-garden.md', '<!--\nstatus: draft\nminutes: 30\n-->\n# The Garden as Educator\n\nLead.\n\n## Why it matters\n\nWords.\n\n## Reflect\n\nA question.\n');
   } });
   t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token, bea = (await fx.login('Bea', '1357')).token;

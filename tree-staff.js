@@ -293,7 +293,7 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
     const ok=sts.filter(s=>s==="ok").length,due=st0.filter(x=>x.it.fulton&&x.none).length,soon=st0.filter(x=>x.s==="soon"&&!(x.it.fulton&&x.none)).length,outn=sts.filter(s=>s==="out").length;
     return `<tr data-stperson="${H(p.name)}" style="cursor:pointer"><td><b>${H(p.name)}</b>${p.newHire?` ${chip("soonish","New, New Educator section only")}`:p.newEd?` ${chip("soonish","New educator")}`:""}</td><td>${H(p.role)}</td><td>${H(p.room?p.room+" Class":"")}</td>
       <td>${ok} of ${itemsFor(p).length} in place${due?` ${chip("soon",due+" due")}`:""}${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
-  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Teacher Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
+  const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
       <div class="hint" style="margin-top:6px">Tap an educator to open their records page.</div>`,printBar("team"))+
@@ -414,7 +414,7 @@ async function pageFiles(my){if(!D())return pageRecords(my);await loadPeople();c
 
 /* the New Educator section */
 /* ---------- Required notices ----------
-   Kept with the Teacher Policies and Procedures, for staff once the director marks them ready. Each notice links to its
+   Kept with the Policies and Procedures, for staff once the director marks them ready. Each notice links to its
    official agency page and its text is never copied. The new hire acknowledges the notices they receive, the yearly
    Workplace Know Your Rights notice is given in each person's language with the record kept here, and each person may
    name an emergency contact. The acknowledgments, the language and the emergency contact are seen only by that person
@@ -449,7 +449,7 @@ async function pageNotices(my){const dir=D();const d=await loadNotices(meName(),
     <div class="kfields"><label>Year<select id="ntc-year">${[y,cur].filter((v,i,a)=>a.indexOf(v)===i).map(v=>`<option>${H(v)}</option>`).join("")}</select></label><label>How it was given<select id="ntc-way">${d.defs.ways.map(([k,l])=>`<option value="${k}">${H(l)}</option>`).join("")}</select></label><label>Date<input type="date" id="ntc-date" value="${today()}"></label></div>
     <div class="actions"><button class="btn small" data-ntcgivesave="1">Record it for the people ticked</button></div>
     <div class="cnt">Each January a reminder asks you to check the posters and give this notice by February 1. <a href="${H(r.notice)}" target="_blank" rel="noopener">The Know Your Rights notice</a>, <a href="${H(r.url)}" target="_blank" rel="noopener">the Labor Commissioner's letter</a> and <a href="${H(r.postings)}" target="_blank" rel="noopener">Workplace Postings</a>, where each other language is listed.</div>`):"";
-  draw(my,head("Teacher Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of our size, each linked to its official page. Notice text is never copied here.")+
+  draw(my,head("Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of our size, each linked to its official page. Notice text is never copied here.")+
     (dir?card("For staff",`<div class="actions" style="margin:0">${d.ready?chip("ok","Ready, staff see it"):chip("soon","A draft, only you see it")}<button class="btn small ghost" data-ntcready="${d.ready?"0":"1"}">${d.ready?"Back to draft":"Mark it ready"}</button></div>`):"")+
     card("Workplace posters",`<div class="hint">The posters still hang in the staff area. This list is for finding and replacing them.</div>${d.defs.posters.map(ntcRow).join("")}`)+
     card("New hire notices",`<div class="hint">Shown in the New Educator section. A filled-in form stays in the paper and QuickBooks Workforce hiring packet.</div>${d.defs.newhire.map(ntcRow).join("")}`)+give)}
@@ -476,7 +476,7 @@ async function pageNew(my){const dir=D();let who=meName();
     const state=x.director?(r.done?chip("ok","Complete"):chip("missing","Not yet")):x.ack?((ackAt||(r.files||[]).length)?chip("ok",ackAt?"Read "+fms(ackAt):"Uploaded"):chip("missing","Not yet")):((r.files||[]).length?chip("ok","Uploaded"):chip("missing","Not yet"));
     return `<div class="strow"><div class="sttop"><b>${H(x.form)}</b><span class="actions" style="margin:0"><span class="cnt">${H(x.num)}</span>${state}</span></div><div class="cnt">${H(x.why)}</div>
       <div class="stfiles">${blank?`<a class="linkbtn" href="${H(blank)}" target="_blank" rel="noopener">Blank form</a>`:""}${x.director?(dir?`<label class="radio"><input type="checkbox" data-stdirpaper="${x.k}" ${r.done?"checked":""}><span>The invitation is complete</span></label>`:`<span class="cnt">The director marks this once your invitation is complete. Payroll and tax forms stay in QuickBooks.</span>`)
-        :x.ack?`<span class="cnt">${dir?"Done":"You do this"} under Teacher Policies and Procedures, before the first day, on this page. It counts here too.</span>${(r.files||[]).length?fileList(p,r.files,who):""}`
+        :x.ack?`<span class="cnt">${dir?"Done":"You do this"} under Policies and Procedures, before the first day, on this page. It counts here too.</span>${(r.files||[]).length?fileList(p,r.files,who):""}`
         :`${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="paper|${x.k}">Upload the completed form</button>${!blank&&!x.director&&x.k!=="immun"?`<span class="cnt">${x.k==="livescan"?"The director arranges Live Scan.":"Ask the director for this form."}</span>`:""}`}</div></div>`};
   const idr=pw.idseen||{};
   const ck=checklist(p,pcs,start);const goTo=p.goTo||B.goTo||"";
@@ -583,7 +583,7 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
     ${D()&&(x.dir==="howto"||x.dir==="licensing")?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-stpieceedit="${H(x.id)}">Edit</button></div>`:""}
     <section class="card"><div class="actions" style="margin:0 0 6px">${x.links.filter(l=>!l.minor).map(l=>`<a class="btn small ghost" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${d?chip("ok","Read "+fms(d.at)):""}</div>${x.links.some(l=>l.minor)||(x.checked&&D())?`<div class="actions" style="margin:0 0 6px">${x.links.filter(l=>l.minor).map(l=>`<a class="linkbtn" href="${H(l.url)}" target="_blank" rel="noopener">${H(l.text)}</a>`).join("")}${x.checked&&D()?`<span class="cnt">Links confirmed ${H(fd(x.checked))}</span>`:""}</div>`:""}
       ${x.sections.filter(s=>s!==q).map(s=>`<h3 style="font-size:16px;margin:14px 0 6px">${H(s.heading)}</h3>${md(s.body)}`).join("")}
-      ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Teacher Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
+      ${hbs.length?`<div class="actions">${hbs.map(id=>`<button class="btn small ghost" data-hbopen="${H(id)}">In the Policies and Procedures, ${H(hbTitle(id))}</button>`).join("")}</div>`:""}</section>
     ${x.list==="training"?trainingsCard():""}
     ${q?`<section class="card"><h3 style="font-size:17px">${H(q.heading)}</h3><div class="stq" style="margin:6px 0 10px">${md(q.body)}</div>
       <label class="fld-label">In your own words<textarea id="stp-answer" rows="4" placeholder="Never scored. Only you and the director read it.">${H(d?d.answer:"")}</textarea></label>
@@ -672,12 +672,12 @@ async function paTap(t){const d=t.dataset,r=pa.data;paKeep();
     pa.data=await api("paths/assign",{kind:w.startsWith("m:")?"module":"path",id:w.startsWith("p:")?w.slice(2):"",slug:w.startsWith("m:")?w.slice(2):"",people:A.people,classes:A.classes,ways:A.ways,due:A.due,note:A.note});pa.assign=null;toast("Assigned.");redraw();return}
   if(d.paunassign){if(!confirm("Remove this assignment? Nothing anyone has done is lost."))return;pa.data=await api("paths/unassign",{id:d.paunassign});toast("Removed.");redraw();return}}
 
-/* ---------- the Teacher Policies and Procedures and the Family Handbook ----------
+/* ---------- the Policies and Procedures and the Family Handbook ----------
    Both are read section by section from the records, in the Markdown policy-md.js reads. The director edits any section
    on its own, each change is kept with its day, who and a short note, and an earlier version can be read or restored. */
 const PM=()=>window.PolicyMd;
 const POLV={sthb:"teacher",stfh:"family"};
-const polName=k=>k==="family"?"Family Handbook":"Teacher Policies and Procedures";
+const polName=k=>k==="family"?"Family Handbook":"Policies and Procedures";
 const polKey=k=>k==="family"?"family:"+(st.fhYear||""):"teacher";
 async function loadPol(k,force){const key=polKey(k);if(!st.pol[key]||force){const d=await api("policies/doc",{doc:k,edition:k==="family"?st.fhYear||undefined:undefined});st.pol[key]=d;if(k==="family"&&!st.fhYear)st.pol["family:"+d.edition]=d}return st.pol[key]}
 const polSecs=d=>(d.parts||[]).flatMap(p=>p.sections.map(s=>Object.assign({partId:p.id,partTitle:p.title,partSize:p.sections.length},s)));
@@ -707,7 +707,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpre
 async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
   const all=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));
   // rewrites of a passage in a plan, the idea bank or one of our pages, such as one that would have children collect
-  // creatures, show with the Teacher Policies and Procedures
+  // creatures, show with the Policies and Procedures
   const recs=k==="teacher"?(r.list||[]).filter(x=>x.doc==="record"&&x.kind==="replace"):[];
   const recCard=recs.length?card("Proposed rewrites to our plans and pages",`<div class="hint">Leave them be. Children observe creatures where they live, so each rewrite takes out a suggestion to collect, keep or feed a creature. Nothing changes until you accept one, and accepting replaces only that passage.</div>`+recs.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.path)}</b> ${x.status==="accepted"?chip("ok","Accepted"):x.status==="aside"?chip("soon","Kept as it is"):chip("soonish","Waiting for you")}</summary>
     <div class="cnt">${H(x.note||"")}</div><div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
@@ -718,12 +718,12 @@ async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){r
   const mine=all.filter(x=>x.kind!=="replace"),rw=all.filter(x=>x.kind==="replace");
   // a rewrite replaces one passage in a section already there. She accepts it, changes the new wording first, or keeps
   // the wording as it is.
-  const rewrites=rw.length?card("Proposed rewrites",`<div class="hint">Each rewrite says the same thing directly, without first saying what something is not. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept one. Accepting replaces only that passage, and the section keeps its earlier wording in its history.</div>`+rw.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.section)}</b>${x.title&&x.title!==x.sectionTitle?` <span class="cnt">${H(String(x.title).replace(/^A direct rewrite in .*$/,""))}</span>`:""} ${st2(x)}</summary>
+  const rewrites=rw.length?card("Proposed rewrites",`<div class="hint">Each rewrite says the same thing directly, without first saying what something is not. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Policies and Procedures"} until you accept one. Accepting replaces only that passage, and the section keeps its earlier wording in its history.</div>`+rw.map(x=>`<details class="stpart"><summary><b>${H(x.sectionTitle||x.section)}</b>${x.title&&x.title!==x.sectionTitle?` <span class="cnt">${H(String(x.title).replace(/^A direct rewrite in .*$/,""))}</span>`:""} ${st2(x)}</summary>
     <div class="lbl" style="margin-top:6px">Now</div><div class="stmd">${md(x.from||"")}</div>
     <div class="lbl" style="margin-top:6px">${x.status==="accepted"?"Accepted":"Rewrite"}</div>${x.status==="accepted"?`<div class="stmd">${md(x.accepted||x.to||"")}</div>`:`<div class="stmd">${md(x.to||"")}</div><details><summary class="linkbtn">Change the new wording first</summary><textarea rows="6" data-propto="${H(x.id)}" aria-label="Rewrite for ${H(x.sectionTitle||x.section)}">${H(x.to||"")}</textarea></details>`}
     <div class="actions">${x.status==="accepted"?`<button class="linkbtn" data-stpol="${H(x.section||"")}">Open the section</button>`:`<button class="btn small" data-propaccept="${H(x.id)}" data-replace="1">Accept the rewrite</button>${x.status==="aside"?`<button class="linkbtn" data-propback="${H(x.id)}">Back to waiting</button>`:`<button class="linkbtn" data-propaside="${H(x.id)}">Keep the wording as it is</button>`}`}</div></details>`).join(""),`${rw.filter(x=>!x.status||x.status==="proposed").length} waiting`):"";
   if(!mine.length)return rewrites+recCard;
-  return rewrites+recCard+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Teacher Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
+  return rewrites+recCard+card("Proposed sections",`<div class="hint">Each proposal waits for you. Nothing changes in ${k==="family"?"the "+H(ed)+" draft":"the Policies and Procedures"} until you accept it, and accepting adds it as a new section.</div>`+mine.map(x=>`<details class="stpart"><summary><b>${H(x.title)}</b> ${st2(x)}</summary>
     <div class="cnt">${H(x.note||"")}</div>${md(x.body||"")}
     ${(x.links||[]).length?`<div class="actions">${x.links.map(l=>`<button class="btn small ghost" data-${l.doc==="family"?"fhopen":"hbopen"}="${H(l.id)}">${H(l.label)}</button>`).join("")}</div>`:""}
     ${(x.differences||[]).length?`<div class="lbl" style="margin-top:8px">Differences for you to decide</div><ul style="margin:4px 0;padding-left:20px">${x.differences.map(t=>`<li>${H(t)}</li>`).join("")}</ul>`:""}
@@ -769,7 +769,7 @@ function ackCard(a){if(!a)return "";
   return card("Your acknowledgment",ch?`<div class="hint">The director marked ${a.changed.length===1?"a section":"these sections"} as a significant change. Read ${a.changed.length===1?"it":"them"}, then say so.</div>${a.changed.map(c=>`<div class="prow"><button class="linkbtn" data-stpol="${H(c.id)}">${H(c.title)}</button><span class="cnt">Changed ${H(fms(c.changedAt))}</span></div>`).join("")}<div class="actions"><button class="btn small" data-stpolack="1">I have read the changes</button></div>`
     // a new educator says so in one place, the New Educator section, so this page points there
     :a.newHire||a.start>today()?`<div class="hint">A new educator reads the sections chosen for them before their first day and says so in the New Educator section.</div><div class="actions"><button class="btn small" data-tview="stnew">Open the New Educator section</button></div>`
-    :`<div class="hint">Each school year, every educator reads the Teacher Policies and Procedures and says so. This is for the ${H(yearSpan(a.year))} school year.</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button></div>`)}
+    :`<div class="hint">Each school year, every educator reads the Policies and Procedures and says so. This is for the ${H(yearSpan(a.year))} school year.</div><div class="actions"><button class="btn small" data-stpolack="1">I have read the Policies and Procedures</button></div>`)}
 function mustReadCard(d){const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));if(!secs.length)return "";
   return card("Before your first day",`<div class="hint">Begin with these sections. The rest are here whenever you need them.</div>${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-stpol="${H(s.id)}">${H(s.title)}</button></div>`).join("")}`)}
 function fhDirCards(d){const draft=!d.live;const pb=d.public||{};const cur=d.current;
@@ -822,14 +822,14 @@ async function fhReview(){const el=$("#stfhrev");if(!el)return;el.innerHTML=`<di
 
 // an educator's acknowledgment, on their records page and the director's view of it
 function polRecordCard(a,mine){const who=mine?"you":"they";
-  return card("Teacher Policies and Procedures",`<div class="actions" style="margin:0">${a.yearAt?chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt)):chip("soon","Not acknowledged for "+yearSpan(a.year)+" yet")}${(a.changed||[]).length?chip("soon",a.changed.length+" changed section"+(a.changed.length===1?"":"s")+" to read"):""}<button class="btn small ghost" data-tview="sthb">Open them</button></div>
-    <div class="hint" style="margin-top:6px">Each school year ${who} read${mine?"":"s"} the Teacher Policies and Procedures and say${mine?"":"s"} so, and again for any section the director marks as a significant change.</div>`)}
+  return card("Policies and Procedures",`<div class="actions" style="margin:0">${a.yearAt?chip("ok","Acknowledged for "+yearSpan(a.year)+", "+fms(a.yearAt)):chip("soon","Not acknowledged for "+yearSpan(a.year)+" yet")}${(a.changed||[]).length?chip("soon",a.changed.length+" changed section"+(a.changed.length===1?"":"s")+" to read"):""}<button class="btn small ghost" data-tview="sthb">Open them</button></div>
+    <div class="hint" style="margin-top:6px">Each school year ${who} read${mine?"":"s"} the Policies and Procedures and say${mine?"":"s"} so, and again for any section the director marks as a significant change.</div>`)}
 // the policies a new educator reads before their first day, in the New Educator section
 async function newPolCard(p,dir){let d=null;try{d=await loadPol("teacher")}catch(e){return ""}const a=p.policy;const secs=polSecs(d).filter(s=>(d.mustRead||[]).includes(s.id));
   const mine=!dir&&p.name===meName();
-  return card("Teacher Policies and Procedures, before the first day",`<div class="hint">${dir?"What "+H(p.name)+" reads before their first day. You choose these sections in the Teacher Policies and Procedures.":"Read these sections before your first day, then say so. The rest are there whenever you need them."}</div>
+  return card("Policies and Procedures, before the first day",`<div class="hint">${dir?"What "+H(p.name)+" reads before their first day. You choose these sections in the Policies and Procedures.":"Read these sections before your first day, then say so. The rest are there whenever you need them."}</div>
     ${secs.map(s=>`<div class="prow"><button class="linkbtn" style="text-align:left" data-hbopen="${H(s.id)}">${H(s.title)}</button></div>`).join("")}
-    <div class="actions">${a&&a.yearAt?chip("ok","Acknowledged "+fms(a.yearAt)):mine?`<button class="btn small" data-stpolack="1">I have read the Teacher Policies and Procedures</button>`:chip("missing","Not acknowledged yet")}<button class="btn small ghost" data-tview="sthb">All of them</button></div>`)}
+    <div class="actions">${a&&a.yearAt?chip("ok","Acknowledged "+fms(a.yearAt)):mine?`<button class="btn small" data-stpolack="1">I have read the Policies and Procedures</button>`:chip("missing","Not acknowledged yet")}<button class="btn small ghost" data-tview="sthb">All of them</button></div>`)}
 async function polTap(d,t){const pk=POLV[view]||"teacher";
   if(d.stpol!=null){st.polSec=d.stpol;st.polEdit=false;st.polHist=-1;if(!POLV[view])goView("sthb");else T.render(view);return true}
   if(d.stfhed){st.fhYear=d.stfhed;st.polSec="";redraw();return true}
@@ -974,7 +974,7 @@ T.settings=async function(el){try{await boot(true);await loadPeople();if(window.
   const sw=(k,l,d)=>`<div class="prow"><div><b>${H(l)}</b><div class="cnt">${H(d)}</div></div><div class="seg" role="group" aria-label="${H(l)}"><button data-stsw="${k}|1" aria-pressed="${!!o[k]}">On</button><button data-stsw="${k}|0" aria-pressed="${!o[k]}">Off</button></div></div>`;
   const rm=B.school.remind||{};
   el.innerHTML=`<div class="lbl">Educators</div><div class="hint">Each part shows only to you until you turn it on for educators. A new educator reaches only the New Educator section until you turn on full access.</div>
-    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton Community School and the TREE How To guides")}${sw("handbook","Teacher Policies and Procedures","The whole document, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("family","Family Handbook","The current edition, readable by every staff sign-in but the kitchen")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
+    ${sw("records","Records pages","Each educator's own dates, certificates, immunizations, units and hours")}${sw("pd","PD library","The modules, Licensing at Fulton Community School and the TREE How To guides")}${sw("handbook","Policies and Procedures","The whole document, readable by every signed-in educator")}${sw("newed","New Educator section","For new educators, from before their first day through their first two months")}${sw("family","Family Handbook","The current edition, readable by every staff sign-in but the kitchen")}${sw("growth","Growth","The continuum and evaluation, the journal, check-ins, the Growth Plan, Proud Moments and PD days, for educators and apprentices")}
     <div class="prow"><div><b>Go-to person</b><div class="cnt">One go-to person for every new educator. The Class team still helps on the floor.</div></div><select id="sts-goto" aria-label="Go-to person"><option value="">None</option>${ps.filter(p=>p.role!=="Director"&&p.role!=="Kitchen"&&!(p.profile||{}).neverGoTo).map(p=>`<option ${B.school.goTo===p.name?"selected":""}>${H(p.name)}</option>`).join("")}</select></div>
     <div class="prow"><div><b>Records reminders</b><div class="cnt">${B.open&&B.open.records?"On for every educator. Only you change them.":"They wait until records pages are open for educators. Nothing is sent or used up before then. New educators hear theirs now."}</div></div><label class="cnt">Days ahead <input type="number" id="sts-days" min="7" max="120" value="${H(B.school.remindDays||30)}" style="width:70px"></label></div>
     <div class="chips" style="margin-top:6px">${Object.entries(B.defs.remind).map(([k,l])=>`<button class="chip ${rm[k]!==false?"on":""}" type="button" data-stremind="${k}">${H(l)}</button>`).join("")}</div>
@@ -1155,7 +1155,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
 });
 
 /* ---------- the director's Edit button on every piece of school writing in the records ----------
-   One editor for all of it, the same way a Teacher Policies and Procedures section is edited: PD modules, How To
+   One editor for all of it, the same way a Policies and Procedures section is edited: PD modules, How To
    guides, letters, New Educator and licensing pieces, materials guides, Family page pieces, the wording moved out of the
    code, the libraries for plans, Help answers, Presenting entries and the Garden's own words. Each part has its own box,
    and the headings stay as they are. Save proofreads first, with each fix accepted or kept. A sentence that may break a
@@ -1479,8 +1479,8 @@ async function journalPage(my){const boss=isDir();if(boss&&!st.sel)st.sel=(B().p
   draw(my,h)}
 
 /* ---------- the monthly check-in ---------- */
-// each check-in page links to How Check-Ins Work, in the Teacher Policies and Procedures
-const ciLink=()=>staffSubOk("sthb")?` Read <button class="linkbtn" data-hbopen="how-check-ins-work">How Check-Ins Work</button> in the Teacher Policies and Procedures.`:"";
+// each check-in page links to How Check-Ins Work, in the Policies and Procedures
+const ciLink=()=>staffSubOk("sthb")?` Read <button class="linkbtn" data-hbopen="how-check-ins-work">How Check-Ins Work</button> in the Policies and Procedures.`:"";
 // five parts in about twenty minutes, in this order, then what the director writes on her own after the educator leaves
 const Q=[["temp","Professional temperature, about 2 minutes","How has the last month felt? The educator gives their own number from 1 to 5, and you add yours beside it."],
   ["plusdelta","Plus delta, about 7 minutes","What went well this month, and what they would change, side by side. This is the place for strong moments, stretches and challenges."],
@@ -1587,13 +1587,62 @@ Gr.readingsHtml=async function(){const r=await loadReadings();const all=r.list||
     ${onSite&&!L.length?`<div class="empty">No book is marked In our library yet.</div>`:""}
     ${groups.map(([k,g])=>`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">${H(areaName(k))}, ${g.length}</summary>${g.map(readingRow).join("")}</details>`).join("")}${other.length?`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">More, ${other.length}</summary>${other.map(readingRow).join("")}</details>`:""}`,`${all.length} readings`)};
 /* ---------- Examples from our own documentation, suggested ----------
-   On every module, TREE suggests three to five examples that fit it, drawn from the whole school year of observations,
-   slides, stories and plans, each matched to the module's topic and areas of practice, and for the DRDP its measures,
-   with one line on why it fits. The examples written into a module come first. The director keeps, swaps or takes out
-   each one in one tap and can search for her own. Nothing shows to educators until she keeps it. An example names no
-   child and no educator, gives a child's words with initials, and shows no photo, so no face. */
-const EX_STOP=new Set("about after again also because before being between both could does doing each every from have here into just like made make many more most much other over same some such than that their them then there these they this those through very what when where which while with would your children child educator educators class school".split(" "));
-const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>4&&!EX_STOP.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,"")))];
+   On every module, TREE suggests examples that fit it, drawn from the whole school year of observations, slides, stories
+   and plans. Each is matched to the module's key ideas, its title, the headings and bold labels of its reading, Why it
+   matters, Try this week and its description, with each word weighed by how rare it is across the modules, so words every
+   module uses count little. Each suggestion names the key idea it matches. When the director opens Suggested, TREE's
+   writing help reads the best matches against the key ideas, once a day for each module, and those that clearly show an
+   idea come first with a sentence naming it. The rest follow as Possible fits. Without the writing help the word matches
+   show alone. The director keeps, swaps or takes out each one in one tap and can search for her own. Nothing shows to
+   educators until she keeps it. An example names no child and no educator, gives a child's words with initials, and
+   shows no photo, so no face. */
+/* ex-core begin. The matching on its own, with nothing from the page, so the tests can read it. */
+const EX_STOP=new Set("about above after again also always another around because been before being below between both came come could does doing done down each even every from have here into just know like made make many more most much must next only other over really same should show some such than that their them then there these they thing think this those through very want were what when where which while will with would your yours children child educator educators class classes school".split(" "));
+// words every module uses, which say little about any one idea however rare they look among a few modules
+const EX_COMMON=new Set("play time learn work idea group adult morning week notice wonder friend outside inside activity moment experience support help practice program question share year today".split(" "));
+// a word's plain stem, so notice, noticed and notices meet, and a stem keeps four letters
+function exStem(w){if(w.length>4&&/ies$/.test(w))return w.slice(0,-3)+"y";for(const s of ["ings","ing","ed","es","e","s"]){if(!w.endsWith(s)||(s==="s"&&/ss$/.test(w)))continue;const r=w.slice(0,-s.length);if(r.length>=4)return r}return w}
+// the words that carry meaning, with stopwords and numbers dropped
+const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/['’]s\b/g,"").replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!EX_STOP.has(w)).map(exStem).filter(w=>!EX_STOP.has(w)))];
+const exPlain=t=>String(t||"").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[*_`#]/g,"").replace(/[.:,;\s]+$/,"").replace(/\s+/g," ").trim();
+// a module's key ideas, the headings of its reading and the bold labels under them, and the words of its topic
+function exKeyIdeas(m){const S=(m&&m.sections)||[];const sec=h=>S.find(x=>String(x.heading||"").trim().toLowerCase().startsWith(h));
+  const reading=S.find(x=>/^reading(?!s)/i.test(String(x.heading||"").trim()));const ideas=[];let under="";
+  for(const line of String(reading?reading.body:"").split("\n")){const h=line.match(/^\s*###\s+(.+?)\s*#*\s*$/);if(h){under=exPlain(h[1]);ideas.push({label:under,from:""});continue}
+    for(const b of line.matchAll(/\*\*([^*\n]{2,90}?)[.:]\*\*/g)){const label=exPlain(b[1]);if(label)ideas.push({label,from:under})}}
+  const named=ideas.map(i=>Object.assign(i,{words:exWords(i.label)})).filter(i=>i.words.length);const why=sec("why it matters"),tr=sec("try this week");
+  return {ideas:named,words:exWords([m&&m.title,...named.map(i=>i.label),why&&why.body,tr&&tr.body,m&&m.desc].filter(Boolean).join(" "))}}
+// how rare each word is across the modules, the inverse document frequency, so a word in every module weighs almost nothing
+function exIdf(mods){const docs=(mods||[]).filter(Boolean).map(m=>new Set(exWords([m.title,m.desc,...(m.sections||[]).map(s=>(s.heading||"")+" "+(s.body||""))].join(" "))));
+  const N=docs.length,df=new Map();for(const d of docs)for(const w of d)df.set(w,(df.get(w)||0)+1);
+  return w=>Math.max(0.05,Math.log((N+1)/((df.get(w)||0)+0.5)))*(EX_COMMON.has(w)?0.25:1)}
+// the key idea a piece shows most, by the weighed words they share, with a bonus when it holds every word of the idea
+function exIdeaFor(ws,ideas,idf){let best=null,top=0;for(const i of ideas||[]){const hit=i.words.filter(w=>ws.has(w));if(!hit.length)continue;let s=hit.reduce((a,w)=>a+idf(w),0);if(hit.length===i.words.length)s*=1.5;if(s>top){top=s;best=i}}return best}
+const exIdeaLine=i=>i?"Shows "+i.label+(i.from&&i.from!==i.label?", from "+i.from:"")+".":"";
+// each piece scored on the module's key idea words, weighed by rarity, plus the area weight. A piece needs a word of the
+// module's own, two of them or the whole of one key idea, and words weighing about as much as one rare word, before it is
+// suggested. A pool from elsewhere, such as the DRDP's accepted evidence, needs only one word.
+const EX_AREA_W=1;
+function exRank(m,mods,pool,areaRes,loose){const K=exKeyIdeas(m);const idf=exIdf(mods);const tset=new Set(K.words);const need=0.8*Math.log(((mods||[]).length+1)/1.5);
+  return (pool||[]).map(x=>{const ws=new Set(exWords(x.raw));const hits=[...ws].filter(w=>tset.has(w)).sort((a,b)=>idf(b)-idf(a));const words=hits.reduce((a,w)=>a+idf(w),0);
+    const idea=exIdeaFor(ws,K.ideas,idf);const whole=!!idea&&idea.words.every(w=>ws.has(w));let sc=words+(x.boost||0);for(const re of areaRes||[])if(re.test(x.raw))sc+=EX_AREA_W;
+    const ok=loose?(hits.length>0||(x.boost||0)>0):(hits.length>=2||whole)&&words>=need;return Object.assign({},x,{sc,hits,idea,ok})})
+    .filter(x=>x.ok).sort((a,b)=>b.sc-a.sc||(b.at||0)-(a.at||0))}
+// what TREE's writing help is asked, about the best matches. The pieces come already with initials and no photo.
+function exAskText(m,ideas,texts){const K=(ideas||[]).map(i=>"- "+i.label+(i.from&&i.from!==i.label?" (from "+i.from+")":"")).join("\n")||"- "+(m.title||"");
+  return `You help the director of a Reggio-inspired, nature-based preschool choose examples from our own documentation for a professional development module for educators.\n\nModule. ${m.title||""}\n${m.desc?"About it. "+m.desc+"\n":""}\nThe module's key ideas\n${K}\n\nPieces of our documentation, numbered. Children appear only as initials.\n${texts.map((t,i)=>`[${i+1}] ${t}`).join("\n")}\n\nKeep only the pieces that clearly show one of the module's key ideas in what a child or an educator actually did. A shared word or topic alone is not enough, and most pieces may fit none. For each piece you keep, give its number, the key idea exactly as listed, and one short sentence of 10 to 25 words that names that idea and says what the child or educator did. Use only what the piece says. Write children's names as the initials given. Say educator, never teacher. Write class in lowercase. Use no dashes and no colons. Never frame a sentence as not one thing but another.\n\nReply with only JSON like {"fits":[{"n":1,"idea":"","sentence":""}]}, with an empty list when none fits.`}
+// a sentence from the writing help, kept to our writing rules
+const exClean=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/(\D):(?!\d)\s*/g,"$1, ").replace(/\b([Tt])eachers?\b/g,m=>(m[0]==="T"?"E":"e")+"ducator"+(/s$/.test(m)?"s":"")).replace(/\bClass(es)?\b/g,"class$1").replace(/\b([Aa]) educator/g,"$1n educator").replace(/\s+/g," ").trim().slice(0,240).replace(/([^.!?])$/,"$1.");
+// the writing help's answer, kept only where it names a piece that was sent and one of the module's own key ideas
+function exReadAnswer(ans,cands,ideas){const fits=Array.isArray(ans&&ans.fits)?ans.fits:[];const named=(ideas||[]).map(i=>i.label.toLowerCase());const out=[];
+  for(const f of fits){const c=cands[(+(f&&f.n))-1];if(!c||out.some(o=>o.id===c.id))continue;const idea=String(f.idea||"").trim().toLowerCase().replace(/[.\s]+$/,"");
+    if(named.length&&!named.some(n=>n===idea||(idea.length>3&&(n.includes(idea)||idea.includes(n)))))continue;const s=exClean(f.sentence);if(s.split(/\s+/).length<5)continue;out.push({id:c.id,why:s})}
+  return out.slice(0,5)}
+// confirmed ones first with the writing help's sentence, at most five, then the word matches as Possible fits
+function exArrange(ranked,fits,room){const by=new Map((fits||[]).map(f=>[f.id,f.why]));const n=Math.min(Math.max(0,room),5);
+  const sure=(fits||[]).map(f=>ranked.find(x=>x.id===f.id)).filter(Boolean).slice(0,n).map(x=>Object.assign({},x,{why:by.get(x.id),sure:true}));
+  const ids=new Set(sure.map(x=>x.id));return {sure,maybe:ranked.filter(x=>!ids.has(x.id))}}
+/* ex-core end */
 function exAnon(t){let x=String(t||"");const kids=typeof children!=="undefined"?[...children.values()]:[];const staffN=((B()||{}).people||[]).map(p=>p.name).filter(Boolean);
   for(const c of kids){if(!c||!c.first)continue;const ini=c.first[0].toUpperCase()+".";if(c.last)x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s+"+c.last.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"),ini);x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b(?!\\.)","g"),ini)}
   const me=typeof window.FP_NAME==="function"?window.FP_NAME():"";const dirs=[...((B()||{}).directors||[]),me].filter(Boolean);
@@ -1609,21 +1658,50 @@ function exPool(){const y0=Date.parse((typeof schoolYearStart==="function"?schoo
 // the examples a module or a DRDP measure might hold, written ones first, then the school year's documentation that fits
 function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[slug]||{};const out=new Set(ex.out||[]);const kept=new Set((ex.examples||[]).map(x=>x.id));
   const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30&&!/appears? here once the director|once the director chooses them/i.test(t)).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
-  const topic=exWords([m.title,m.desc,...(m.sections||[]).filter(x=>/reading|why it matters/i.test(x.heading)).map(x=>x.body.slice(0,4000))].join(" "));const tset=new Set(topic);
-  const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);
-  const scored=(extra||exPool()).map(x=>{const ws=exWords(x.raw);const hits=ws.filter(w=>tset.has(w));let sc=hits.length+(x.boost||0);for(const re of areaRes)if(re.test(x.raw))sc+=2;return Object.assign({},x,{sc,hits})}).filter(x=>x.sc>=(extra?1:3)).sort((a,b)=>b.sc-a.sc||b.at-a.at);
-  const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
-  return [...written,...sugg].filter(x=>!out.has(x.id)&&!kept.has(x.id))}
+  const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);const mods=Object.values((st.mods&&st.mods.modules)||{});
+  const areas=(m.serves||[]).map(areaName).filter(Boolean).join(" and ");
+  const ranked=exRank(m,mods,(extra||exPool()).filter(x=>!out.has(x.id)&&!kept.has(x.id)),areaRes,!!extra).map(x=>({kind:x.kind,id:x.id,raw:x.raw,sc:x.sc,text:clip(exAnon(x.raw),420),
+    why:x.why||exIdeaLine(x.idea)||(`${x.label} that touches on ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+(areas?", and "+areas:"")+".")}));
+  return [...written.filter(x=>!out.has(x.id)&&!kept.has(x.id)),...ranked]}
+/* TREE's writing help reads the best word matches against the module's key ideas, at most 12, with children as initials
+   and no photo, through the same server request, privacy and hourly limits as all writing help. It runs only once the
+   director opens Suggested, and once a day for each module. Without the writing help the word matches show alone. */
+const exDay=()=>new Date().toLocaleDateString("en-CA");
+function exConfGet(slug){const c=(st.exConf||{})[slug];if(c&&c.day===exDay())return c;
+  try{const j=JSON.parse(localStorage.getItem("tree.exconfirm."+slug)||"null");if(j&&j.day===exDay()&&Array.isArray(j.fits)){(st.exConf=st.exConf||{})[slug]=j;return j}}catch(e){}return null}
+async function exConfirm(m,slug,sugg){if(exConfGet(slug))return;st.exConf=st.exConf||{};const ideas=exKeyIdeas(m).ideas;
+  const cands=sugg.filter(x=>x.kind!=="module"&&x.raw).slice(0,12);const ask=typeof sample!=="undefined"&&sample&&sample.json?sample:null;
+  if(!cands.length||!ask){st.exConf[slug]={day:exDay(),fits:[],off:!ask};return}
+  st.exConf[slug]={day:exDay(),fits:[],pending:true};let fits=[],off=false;
+  try{const ans=await ask.json(exAskText(m,ideas,cands.map(x=>clip(exAnon(x.raw),600))),{purpose:"pd-examples",cache:false});fits=exReadAnswer(ans,cands,ideas).map(f=>({id:f.id,why:exAnon(f.why)}))}catch(e){off=true}
+  const c={day:exDay(),fits,off};st.exConf[slug]=c;if(!off)try{localStorage.setItem("tree.exconfirm."+slug,JSON.stringify(c))}catch(e){}
+  // the page follows only while this module is still open
+  if([...document.querySelectorAll("[data-gexsugg]")].some(x=>x.dataset.gexsugg===slug))redraw()}
+function exOpen(slug,on){st.exOpen=st.exOpen||(()=>{try{return new Set(JSON.parse(localStorage.getItem("tree.exopen")||"[]"))}catch(e){return new Set()}})();
+  if(on!==undefined){if(on)st.exOpen.add(slug);else st.exOpen.delete(slug);try{localStorage.setItem("tree.exopen",JSON.stringify([...st.exOpen]))}catch(e){}}return st.exOpen.has(slug)}
+document.addEventListener("toggle",e=>{const t=e.target;if(!t||!t.dataset||!t.dataset.gexsugg)return;const slug=t.dataset.gexsugg;if(t.open===exOpen(slug))return;exOpen(slug,t.open);
+  const a=(st._exConfArgs||{})[slug];if(t.open&&a&&!exConfGet(slug)){exConfirm(a.m,slug,a.sugg);redraw()}},true);
 function drdpEvPool(){const kids=typeof children!=="undefined"?[...children.values()]:[];const best={};
   for(const c of kids){if(typeof kidDrdpItems!=="function")break;for(const x of kidDrdpItems(c))if((x.status==="accepted"||x.status==="changed")&&x.level&&x.src){const raw=[x.evidence,x.src.title].filter(Boolean).join(". ");const at=x.src.at||x.at||0;if(!best[x.code]||at>best[x.code].at)best[x.code]={kind:"drdp",id:"drdp:"+x.id,raw,at,label:"Accepted evidence",boost:3,why:`Accepted evidence for ${x.code}${typeof drdpName==="function"?", "+drdpName(x.code):""}, ${typeof drdpLevelText==="function"?drdpLevelText(x.level,x.emerging):x.level}.`}}}
   return Object.values(best).sort((a,b)=>b.at-a.at)}
-function exPicker(slug,ex,sugg){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
+// conf, on a module, is the writing help's reading, so Suggested folds and the confirmed ones come first
+function exPicker(slug,ex,sugg,conf){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
   const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
   const row=(x,acts)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt">${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
-  st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
+  const pick=x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`);
+  const none=`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`;
+  let list;
+  if(conf){const written=sugg.filter(x=>x.kind==="module"),rest=sugg.filter(x=>x.kind!=="module");const A=exArrange(rest,conf.fits,room-written.length);
+    const top=[...written.slice(0,room),...A.sure].slice(0,Math.min(room,5));const maybe=A.maybe.slice(0,Math.max(2,Math.min(room,5)-top.length));
+    st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...written,...A.sure,...A.maybe,...found]});
+    const note=conf.pending?`<div class="cnt">Reading the closest matches against this module's key ideas.</div>`:"";
+    list=`<details data-gexsugg="${H(slug)}" ${conf.open?"open":""} style="margin-top:8px"><summary class="lbl" style="cursor:pointer">Suggested</summary>${note}${top.map(pick).join("")}
+      ${maybe.length?`<div class="lbl" style="margin-top:8px">Possible fits</div>${maybe.map(pick).join("")}`:""}${top.length||maybe.length||conf.pending?"":none}</details>`}
+  else{st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
+    list=`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(pick).join("")||none}`}
   return `<div class="hint">Educators see an example only once you keep it. Examples name no child or educator, give a child's words with initials and show no photo.</div>
     ${kept.length?`<div class="lbl">Kept, shown to educators</div>${kept.map((x,i)=>row(x,`<button class="linkbtn" data-gexout="${H(slug)}|${i}">Take it out</button>`)).join("")}`:""}
-    ${room?`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`)).join("")||`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`}
+    ${room?`${list}
       <label class="fld-label">Search for your own<input type="search" data-gexq="${H(slug)}" value="${H(q)}" placeholder="A word from an observation, slide, story or plan"></label>${found.map(x=>row(x,`<button class="btn small ghost" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button>`)).join("")}`:`<div class="cnt">Five examples are kept. Take one out to keep another.</div>`}`}
 async function exSave(slug,examples,out){await ga("module/examples",{slug,examples,out});st.mods=null}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gexkeep],[data-gexnot],[data-gexout]");if(!t)return;e.preventDefault();e.stopPropagation();if(window.TREE_VIEW_AS){toast("Nothing is saved while you see TREE as an educator.");return}
@@ -1675,7 +1753,10 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmslides="${H(slug)}">Slides from this module</button><button class="linkbtn" data-gmslides="${H(slug)}" data-word="1">Word</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
   // the DRDP module's examples come from accepted DRDP evidence, one for each measure, so each example shows a measure read from our own documentation
-  if(dir){exBody=exPicker(slug,ex,/drdp/i.test(slug)?exSuggest(m,slug,own,drdpEvPool()):exSuggest(m,slug,own))}
+  // on any other module, opening Suggested asks the writing help to confirm the closest matches, once a day
+  if(dir&&/drdp/i.test(slug))exBody=exPicker(slug,ex,exSuggest(m,slug,own,drdpEvPool()));
+  else if(dir){const sugg=exSuggest(m,slug,own);st._exConfArgs=Object.assign(st._exConfArgs||{},{[slug]:{m,sugg}});const open=exOpen(slug);if(open&&!viewing&&!exConfGet(slug))exConfirm(m,slug,sugg);
+    exBody=exPicker(slug,ex,sugg,Object.assign({fits:[]},exConfGet(slug)||{},{open}))}
   else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}

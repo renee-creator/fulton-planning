@@ -171,13 +171,13 @@ test('TREE in the browser', async t => {
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
     await s.p.evaluate(() => goView('st27')); await s.p.waitForFunction(() => /Coming October 1, 2027/.test(document.querySelector('#main h2') && document.querySelector('#main h2').textContent), null, { timeout: 10000 });
     const tabs = await s.p.$$eval('#tsubnav .stpages button', bs => bs.map(x => x.textContent.trim()));
-    assert.ok(tabs.includes('Coming October 1, 2027') && tabs.includes('Teacher Policies and Procedures'), tabs.join(', '));
-    await s.p.click('#tsubnav .stpages button[data-tview="sthb"]'); await s.p.waitForFunction(() => /Teacher Policies and Procedures/.test(document.querySelector('#main h2') && document.querySelector('#main h2').textContent), null, { timeout: 10000 });
+    assert.ok(tabs.includes('Coming October 1, 2027') && tabs.includes('Policies and Procedures'), tabs.join(', '));
+    await s.p.click('#tsubnav .stpages button[data-tview="sthb"]'); await s.p.waitForFunction(() => /Policies and Procedures/.test(document.querySelector('#main h2') && document.querySelector('#main h2').textContent), null, { timeout: 10000 });
     await s.close();
     const a = await signedIn(fx, b, 'Ann', '1357');
     await a.p.evaluate(() => goView('sthb')); await a.p.waitForSelector('#tsubnav');
     const mine = await a.p.$$eval('#tsubnav button.sub', bs => bs.map(x => x.textContent.trim()));
-    assert.ok(mine.includes('Teacher Policies and Procedures'), mine.join(', ')); assert.ok(!mine.includes('Policies'));
+    assert.ok(mine.includes('Policies and Procedures'), mine.join(', ')); assert.ok(!mine.includes('Policies'));
     await a.close();
   });
 

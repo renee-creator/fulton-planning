@@ -1,5 +1,5 @@
 'use strict';
-// Session 10's one-time steps, schoolName first. The changes come from a list in the private records. A Teacher Policies and
+// Session 10's one-time steps, schoolName first. The changes come from a list in the private records. A Policies and Procedures and
 // Procedures section keeps its earlier wording in its history, a record's own history is never rewritten, a record in
 // the main records changes through the server's save queue, and running it again changes nothing. Made-up words only.
 const test = require('node:test');
@@ -11,7 +11,7 @@ const { make } = require('./harness.js');
 test('naming the school, once', async () => {
   const h = make([{ name: 'Dir', director: true }, { name: 'Ann', room: 'West' }]);
   h.files.set('staff/pd/licensing/16-sun.md', { text: '<!--\nlist: procedure\n-->\n## Sun\n\nOakvale procedure\n\n### How Oakvale does it\n\nOakvale keeps hats.\n\n### One question\n\nWhere is the shade at Oakvale?\n', sha: 'x' });
-  h.files.set('staff/policies/teacher.json', { doc: { title: 'Teacher Policies and Procedures', parts: [{ id: 'health', title: 'Health', sections: [{ id: 'sun', ref: 'staff/pd/licensing/16-sun.md' }] }] }, sha: 'x' });
+  h.files.set('staff/policies/teacher.json', { doc: { title: 'Policies and Procedures', parts: [{ id: 'health', title: 'Health', sections: [{ id: 'sun', ref: 'staff/pd/licensing/16-sun.md' }] }] }, sha: 'x' });
   h.files.set('staff/help.json', { doc: { answers: [{ label: 'Welcome to Oakvale', steps: ['Open Welcome to Oakvale.'] }, { label: 'Welcome to Oakvale' }], history: ['Welcome to Oakvale'] }, sha: 'x' });
   h.files.set('staff/naming-2026.json', { doc: { changes: [
     { path: 'staff/pd/licensing/16-sun.md', from: 'Oakvale procedure', to: 'Our own procedure' },

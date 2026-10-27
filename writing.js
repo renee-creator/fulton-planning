@@ -22,7 +22,7 @@ const NOT_THAT = [
 ];
 function notThisButThat(text) { const t = String(text || ''); return NOT_THAT.some(re => re.test(t)); }
 // words that may say teacher, from the README
-const TEACHER_OK = /Role of the Teacher|Environment as the Third Teacher|Teacher Policies and Procedures|Teacher's Role|\bLIC\s*\d+[A-Z]?[^.\n]*/g;
+const TEACHER_OK = /Role of the Teacher|Environment as the Third Teacher|Teacher.s Role|\bLIC\s*\d+[A-Z]?[^.\n]*/g;
 function lineFindings(l) {
   const out = [];
   // a rule with an exception, such as leave them be, is quiet in a sentence that says never to do it

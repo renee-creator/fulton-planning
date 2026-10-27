@@ -1,11 +1,11 @@
 'use strict';
-// the Teacher Policies and Procedures and the Family Handbook in a browser, against the made-up school in fixture.js
+// the Policies and Procedures and the Family Handbook in a browser, against the made-up school in fixture.js
 const test = require('node:test');
 const assert = require('node:assert');
 const { start, browser, signedIn } = require('./fixture.js');
 
 const more = put => {
-  put('staff/policies/teacher.json', { title: 'Teacher Policies and Procedures', edition: '2025', mustRead: ['arrival'], parts: [
+  put('staff/policies/teacher.json', { title: 'Policies and Procedures', edition: '2025', mustRead: ['arrival'], parts: [
     { id: 'arrival', title: 'Arrival', sections: [{ id: 'arrival' }] }, { id: 'codes', title: 'Codes', sections: [{ id: 'codes' }] },
     { id: 'routines', title: 'Routines', sections: [{ id: 'lunch' }, { id: 'a-section', ref: 'staff/handbook/a-section.json' }] }] });
   put('staff/policies/teacher/arrival.json', { id: 'arrival', title: 'Arrival', body: 'Greet each family.\n\n- Wash hands\n  - With soap\n\n| Day | Who |\n|---|---|\n| Monday | The greeter |', history: [] });

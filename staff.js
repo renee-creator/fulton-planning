@@ -1,6 +1,6 @@
 'use strict';
 /* Educators at Fulton. Each educator's records page, the New Educator section, the PD library's Licensing at Fulton and
-   TREE How To pieces, the drill log and the Teacher Policies and Procedures.
+   TREE How To pieces, the drill log and the Policies and Procedures.
 
    These are kept in the records under staff/, apart from the records every page of TREE receives, and they travel only
    through the /api/staff/ requests below. An educator's record is sent to that educator and the director and to no one
@@ -11,7 +11,7 @@
    The director keeps each part visible only to her until she turns it on for educators in Settings.
    A new hire signs in before their first day and reaches only the New Educator section, with their own records, the
    PD library and the handbook, until the director turns on full access.
-   The Teacher Policies and Procedures and the Family Handbook, section by section, are in policies.js. */
+   The Policies and Procedures and the Family Handbook, section by section, are in policies.js. */
 const crypto = require('crypto');
 const NOTICES = require('./notices.js');
 
@@ -66,7 +66,7 @@ module.exports = function staffModule(o) {
     { k: 'emergency', form: 'Emergency contact information', num: 'Fulton Community School', why: 'Lets us reach someone for you in an emergency', blank: '' },
     { k: 'mealwaiver', form: 'Meal Break Waiver', num: 'Fulton Community School', why: 'Lets you waive your 30-minute meal break on shifts of six hours or less, as California law allows', blank: '' },
     { k: 'quickbooks', form: 'QuickBooks Workforce invitation, completed', num: 'QuickBooks', why: 'Sets up your pay and tax forms, which stay in QuickBooks', blank: '', director: true },
-    { k: 'tppack', form: 'Teacher Policies and Procedures acknowledgment', num: 'Fulton Community School', why: 'Confirms you have read how we work', blank: '', ack: true },
+    { k: 'tppack', form: 'Policies and Procedures acknowledgment', num: 'Fulton Community School', why: 'Confirms you have read how we work', blank: '', ack: true },
   ];
   // the director's own marks, never an upload
   const DIRECTOR_PAPERS = ['quickbooks', 'idseen'];
@@ -116,7 +116,7 @@ module.exports = function staffModule(o) {
       // the records hold the people, the handbook and the school's settings as JSON, and the PD library's pieces as
       // Markdown files, one piece each, so a new piece is added as a file with no change to TREE
       const all = (listed || (tree.json && tree.json.tree) || []).filter(f => f.type === 'blob');
-      // the Family Handbook's editions are read here too, beside the Teacher Policies and Procedures
+      // the Family Handbook's editions are read here too, beside the Policies and Procedures
       const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
       // the pictures in the policies are read only when someone opens them
       for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
@@ -499,7 +499,7 @@ module.exports = function staffModule(o) {
       const secs = [...S.files].filter(([p]) => p.startsWith('staff/handbook/')).map(([, r]) => r.doc).filter(Boolean).sort((a, b) => (a.order || 0) - (b.order || 0));
       json(req, res, 200, { sections: secs.filter(x => !x.removed || dir), doc: get('staff/handbook-doc.json') || {} }); return;
     }
-    // the Teacher Policies and Procedures and the Family Handbook, each section kept with its earlier versions
+    // the Policies and Procedures and the Family Handbook, each section kept with its earlier versions
     if (P.startsWith('policies/')) { await POL.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'garden' || P.startsWith('garden/')) { await GD.handle(P, body, me, req, res, { json, err }); return; }
     // the site map, for every signed-in page that shows it, a new educator's New Educator section included
@@ -556,7 +556,7 @@ module.exports = function staffModule(o) {
       }
       err(req, res, 404, 'Not found'); return;
     }
-    /* ---------- proposed sections for the Teacher Policies and Procedures and the Family Handbook draft ----------
+    /* ---------- proposed sections for the Policies and Procedures and the Family Handbook draft ----------
        Each waits for the director, and nothing changes in either document until she accepts it. */
     if (P === 'proposals' || P.startsWith('proposals/')) {
       if (!dir) return deny('Only the director reads the proposals.');
@@ -971,7 +971,7 @@ module.exports = function staffModule(o) {
   setInterval(tick, 5 * 60e3).unref(); setTimeout(tick, 60e3).unref();
 
   /* ---------- for the server ---------- */
-  // a shared sign-in reads the PD library and the Teacher Policies and Procedures, and has no records or growth of its own
+  // a shared sign-in reads the PD library and the Policies and Procedures, and has no records or growth of its own
   // the Family Handbook is for every staff sign-in but the kitchen, once the director turns it on
   function canFor(name) { if (!hasOwn(name)) return { records: false, pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: false, growth: false, family: allowed(name, 'family') };
     if (isKitchen(name)) return { records: allowed(name, 'records'), pd: false, handbook: false, newed: false, growth: false, family: false };
@@ -980,7 +980,7 @@ module.exports = function staffModule(o) {
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
     return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current() }; }
   // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
-  // the pictures in the Teacher Policies, the Family Handbook and the recipe library, for the nightly backup
+  // the pictures in the Policies and Procedures, the Family Handbook and the recipe library, for the nightly backup
   async function dumpImages() { const out = {}; for (const p of S.imgs.keys()) { try { out[p] = (await readImage(p)).toString('base64'); } catch (e) { log('A picture could not be added to the backup,', p, e.message); } } return out; }
   const dump = () => Object.fromEntries([...S.files].filter(([, r]) => r && (r.doc || typeof r.text === 'string')).map(([p, r]) => [p, r.doc || r.text]));
   // the growth part, kept in growth.js, shares these records and the server's rules
@@ -1064,7 +1064,7 @@ module.exports = function staffModule(o) {
      wording from the records sits in TREE's public code. Each change names a record by its path and either swaps a
      passage, from and to (with all, a whole value equal to from), or sets one value at a place in the record, such as
      fields.remarks or list[id=rl31].cite, only while the value there is still what the change expects. A section of
-     the Teacher Policies and Procedures or the Family Handbook changes as any edit does, keeping its earlier wording in
+     the Policies and Procedures or the Family Handbook changes as any edit does, keeping its earlier wording in
      its history. Every other record keeps its earlier wording in the records' own history. A record in the main
      records is changed through recs, the server's save queue. A record's own history is never changed. */
   // a change can also add an entry to a list, such as a Help answer or a reading, only while no entry has its id
@@ -1092,7 +1092,7 @@ module.exports = function staffModule(o) {
     s12Songs: ['staff/once/s12-songs.json', 'The song book, interpreted for our school'],
     s12Pd: ['staff/once/s12-pd.json', 'PD modules, How To guides, new educator pages, materials guides and presenting outlines brought in line with the director\'s decisions'],
     s12Family: ['staff/once/s12-family.json', 'Family page pieces, story frames and wording brought in line with the director\'s decisions'],
-    s12Proposals: ['staff/once/s12-proposals.json', 'Proposed sections and rewrites for the Teacher Policies and Procedures and the 2027 Family Handbook draft'],
+    s12Proposals: ['staff/once/s12-proposals.json', 'Proposed sections and rewrites for the Policies and Procedures and the 2027 Family Handbook draft'],
     s12Readings: ['staff/once/s12-readings.json', 'One readings list, with a line on why each matters to our practice'],
     s12Garden: ['staff/once/s12-garden.json', 'The Garden\'s plants, animals with Sheldon, wildlife, tracks and scat, mushrooms and plants to keep away from'],
     s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'],

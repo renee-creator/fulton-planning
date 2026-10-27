@@ -443,7 +443,7 @@ async function readOriginal(id) {
   if (o.drive) return photosDrive.read(o);
   const b = await readPhoto(o.sha); if (b.status !== 200) throw new Error('GitHub answered ' + b.status); return b.buf;
 }
-// educator records, the New Educator section, the PD library pieces and the Teacher Policies and Procedures, in staff.js
+// educator records, the New Educator section, the PD library pieces and the Policies and Procedures, in staff.js
 function lensNow() { const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; const ls = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
   const l = ls.find(x => x && x.year) || ls[0]; return l ? { name: String(l.name || ''), description: String(l.description || '') } : null; }
 /* A note from the director to all staff, or to one person, shows on Today for the day it is sent. Notes are kept in
@@ -1740,7 +1740,7 @@ async function handle(req, res) {
     try { await staff.load(); } catch (e) { log('Educator records could not be loaded for the backup', e.message); }
     const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
     const bundle = backupBundle(saved);
-    // the pictures in the Teacher Policies, the Family Handbook and the recipe library travel with the backup
+    // the pictures in the Policies and Procedures, the Family Handbook and the recipe library travel with the backup
     try { const imgs = await staff.dumpImages(); let n = 0; for (const [p, b64] of Object.entries(imgs)) { bundle.files[p] = { base64: b64 }; n++; } bundle.manifest.counts.pictures = n; bundle.manifest.files = Object.keys(bundle.files).length; } catch (e) { log('The pictures could not be added to the backup', e.message); }
     const gz = zlib.gzipSync(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 9 });
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
@@ -2214,6 +2214,7 @@ async function handle(req, res) {
     if (body.purpose === 'food' && !isDirector(me.name)) { refuse(403, 'Only the director confirms Farm to School records.', 'food education sorting by someone else'); return; }
     if ((body.purpose === 'project-find' || body.purpose === 'inquiry-find') && !isDirector(me.name)) { refuse(403, 'Only the director runs the week\'s reading.', 'weekly reading by an educator'); return; }
     if (body.purpose === 'lens' && !isDirector(me.name)) { refuse(403, 'Only the director can read through the lens.', 'lens reading by an educator'); return; }
+    if (body.purpose === 'pd-examples' && !isDirector(me.name)) { refuse(403, 'The director chooses the examples.', 'PD examples by an educator'); return; }
     if (!anthropicKey()) { refuse(503, 'TREE\'s writing help is not set up yet. The director adds its key on Render.', 'no key'); return; }
     const content = body.content;
     if (!Array.isArray(content) || !content.length || content.length > 12) { refuse(400, 'Nothing to read', 'empty or too many parts'); return; }

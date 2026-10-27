@@ -31,7 +31,7 @@ for (const [rel, doc] of Object.entries(bundle.files)) {
   // a path is always inside the records folder, and never the sign-ins file
   const clean = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
   // records are JSON, and the PD library's pieces under staff/pd are Markdown, kept as written
-  // a picture from the Teacher Policies, the Family Handbook or the recipe library comes back as the image it was
+  // a picture from the Policies and Procedures, the Family Handbook or the recipe library comes back as the image it was
   const pic = /^(staff\/policies|family\/handbook|staff\/library\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(clean.split(path.sep).join('/')) && doc && typeof doc.base64 === 'string';
   if (pic) { const file = path.join(root, clean); if (!file.startsWith(root + path.sep)) { console.error('Skipped', rel); continue; } fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(doc.base64, 'base64')); n++; continue; }
   const md = /^staff\/pd\/[\w.~/-]+\.md$/.test(clean.split(path.sep).join('/')) && typeof doc === 'string';

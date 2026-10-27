@@ -278,8 +278,8 @@ async function journalPage(my){const boss=isDir();if(boss&&!st.sel)st.sel=(B().p
   draw(my,h)}
 
 /* ---------- the monthly check-in ---------- */
-// each check-in page links to How Check-Ins Work, in the Teacher Policies and Procedures
-const ciLink=()=>staffSubOk("sthb")?` Read <button class="linkbtn" data-hbopen="how-check-ins-work">How Check-Ins Work</button> in the Teacher Policies and Procedures.`:"";
+// each check-in page links to How Check-Ins Work, in the Policies and Procedures
+const ciLink=()=>staffSubOk("sthb")?` Read <button class="linkbtn" data-hbopen="how-check-ins-work">How Check-Ins Work</button> in the Policies and Procedures.`:"";
 // five parts in about twenty minutes, in this order, then what the director writes on her own after the educator leaves
 const Q=[["temp","Professional temperature, about 2 minutes","How has the last month felt? The educator gives their own number from 1 to 5, and you add yours beside it."],
   ["plusdelta","Plus delta, about 7 minutes","What went well this month, and what they would change, side by side. This is the place for strong moments, stretches and challenges."],
@@ -386,13 +386,62 @@ Gr.readingsHtml=async function(){const r=await loadReadings();const all=r.list||
     ${onSite&&!L.length?`<div class="empty">No book is marked In our library yet.</div>`:""}
     ${groups.map(([k,g])=>`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">${H(areaName(k))}, ${g.length}</summary>${g.map(readingRow).join("")}</details>`).join("")}${other.length?`<details ${onSite?"open":""}><summary class="chiprow-label" style="cursor:pointer">More, ${other.length}</summary>${other.map(readingRow).join("")}</details>`:""}`,`${all.length} readings`)};
 /* ---------- Examples from our own documentation, suggested ----------
-   On every module, TREE suggests three to five examples that fit it, drawn from the whole school year of observations,
-   slides, stories and plans, each matched to the module's topic and areas of practice, and for the DRDP its measures,
-   with one line on why it fits. The examples written into a module come first. The director keeps, swaps or takes out
-   each one in one tap and can search for her own. Nothing shows to educators until she keeps it. An example names no
-   child and no educator, gives a child's words with initials, and shows no photo, so no face. */
-const EX_STOP=new Set("about after again also because before being between both could does doing each every from have here into just like made make many more most much other over same some such than that their them then there these they this those through very what when where which while with would your children child educator educators class school".split(" "));
-const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>4&&!EX_STOP.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,"")))];
+   On every module, TREE suggests examples that fit it, drawn from the whole school year of observations, slides, stories
+   and plans. Each is matched to the module's key ideas, its title, the headings and bold labels of its reading, Why it
+   matters, Try this week and its description, with each word weighed by how rare it is across the modules, so words every
+   module uses count little. Each suggestion names the key idea it matches. When the director opens Suggested, TREE's
+   writing help reads the best matches against the key ideas, once a day for each module, and those that clearly show an
+   idea come first with a sentence naming it. The rest follow as Possible fits. Without the writing help the word matches
+   show alone. The director keeps, swaps or takes out each one in one tap and can search for her own. Nothing shows to
+   educators until she keeps it. An example names no child and no educator, gives a child's words with initials, and
+   shows no photo, so no face. */
+/* ex-core begin. The matching on its own, with nothing from the page, so the tests can read it. */
+const EX_STOP=new Set("about above after again also always another around because been before being below between both came come could does doing done down each even every from have here into just know like made make many more most much must next only other over really same should show some such than that their them then there these they thing think this those through very want were what when where which while will with would your yours children child educator educators class classes school".split(" "));
+// words every module uses, which say little about any one idea however rare they look among a few modules
+const EX_COMMON=new Set("play time learn work idea group adult morning week notice wonder friend outside inside activity moment experience support help practice program question share year today".split(" "));
+// a word's plain stem, so notice, noticed and notices meet, and a stem keeps four letters
+function exStem(w){if(w.length>4&&/ies$/.test(w))return w.slice(0,-3)+"y";for(const s of ["ings","ing","ed","es","e","s"]){if(!w.endsWith(s)||(s==="s"&&/ss$/.test(w)))continue;const r=w.slice(0,-s.length);if(r.length>=4)return r}return w}
+// the words that carry meaning, with stopwords and numbers dropped
+const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/['’]s\b/g,"").replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!EX_STOP.has(w)).map(exStem).filter(w=>!EX_STOP.has(w)))];
+const exPlain=t=>String(t||"").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[*_`#]/g,"").replace(/[.:,;\s]+$/,"").replace(/\s+/g," ").trim();
+// a module's key ideas, the headings of its reading and the bold labels under them, and the words of its topic
+function exKeyIdeas(m){const S=(m&&m.sections)||[];const sec=h=>S.find(x=>String(x.heading||"").trim().toLowerCase().startsWith(h));
+  const reading=S.find(x=>/^reading(?!s)/i.test(String(x.heading||"").trim()));const ideas=[];let under="";
+  for(const line of String(reading?reading.body:"").split("\n")){const h=line.match(/^\s*###\s+(.+?)\s*#*\s*$/);if(h){under=exPlain(h[1]);ideas.push({label:under,from:""});continue}
+    for(const b of line.matchAll(/\*\*([^*\n]{2,90}?)[.:]\*\*/g)){const label=exPlain(b[1]);if(label)ideas.push({label,from:under})}}
+  const named=ideas.map(i=>Object.assign(i,{words:exWords(i.label)})).filter(i=>i.words.length);const why=sec("why it matters"),tr=sec("try this week");
+  return {ideas:named,words:exWords([m&&m.title,...named.map(i=>i.label),why&&why.body,tr&&tr.body,m&&m.desc].filter(Boolean).join(" "))}}
+// how rare each word is across the modules, the inverse document frequency, so a word in every module weighs almost nothing
+function exIdf(mods){const docs=(mods||[]).filter(Boolean).map(m=>new Set(exWords([m.title,m.desc,...(m.sections||[]).map(s=>(s.heading||"")+" "+(s.body||""))].join(" "))));
+  const N=docs.length,df=new Map();for(const d of docs)for(const w of d)df.set(w,(df.get(w)||0)+1);
+  return w=>Math.max(0.05,Math.log((N+1)/((df.get(w)||0)+0.5)))*(EX_COMMON.has(w)?0.25:1)}
+// the key idea a piece shows most, by the weighed words they share, with a bonus when it holds every word of the idea
+function exIdeaFor(ws,ideas,idf){let best=null,top=0;for(const i of ideas||[]){const hit=i.words.filter(w=>ws.has(w));if(!hit.length)continue;let s=hit.reduce((a,w)=>a+idf(w),0);if(hit.length===i.words.length)s*=1.5;if(s>top){top=s;best=i}}return best}
+const exIdeaLine=i=>i?"Shows "+i.label+(i.from&&i.from!==i.label?", from "+i.from:"")+".":"";
+// each piece scored on the module's key idea words, weighed by rarity, plus the area weight. A piece needs a word of the
+// module's own, two of them or the whole of one key idea, and words weighing about as much as one rare word, before it is
+// suggested. A pool from elsewhere, such as the DRDP's accepted evidence, needs only one word.
+const EX_AREA_W=1;
+function exRank(m,mods,pool,areaRes,loose){const K=exKeyIdeas(m);const idf=exIdf(mods);const tset=new Set(K.words);const need=0.8*Math.log(((mods||[]).length+1)/1.5);
+  return (pool||[]).map(x=>{const ws=new Set(exWords(x.raw));const hits=[...ws].filter(w=>tset.has(w)).sort((a,b)=>idf(b)-idf(a));const words=hits.reduce((a,w)=>a+idf(w),0);
+    const idea=exIdeaFor(ws,K.ideas,idf);const whole=!!idea&&idea.words.every(w=>ws.has(w));let sc=words+(x.boost||0);for(const re of areaRes||[])if(re.test(x.raw))sc+=EX_AREA_W;
+    const ok=loose?(hits.length>0||(x.boost||0)>0):(hits.length>=2||whole)&&words>=need;return Object.assign({},x,{sc,hits,idea,ok})})
+    .filter(x=>x.ok).sort((a,b)=>b.sc-a.sc||(b.at||0)-(a.at||0))}
+// what TREE's writing help is asked, about the best matches. The pieces come already with initials and no photo.
+function exAskText(m,ideas,texts){const K=(ideas||[]).map(i=>"- "+i.label+(i.from&&i.from!==i.label?" (from "+i.from+")":"")).join("\n")||"- "+(m.title||"");
+  return `You help the director of a Reggio-inspired, nature-based preschool choose examples from our own documentation for a professional development module for educators.\n\nModule. ${m.title||""}\n${m.desc?"About it. "+m.desc+"\n":""}\nThe module's key ideas\n${K}\n\nPieces of our documentation, numbered. Children appear only as initials.\n${texts.map((t,i)=>`[${i+1}] ${t}`).join("\n")}\n\nKeep only the pieces that clearly show one of the module's key ideas in what a child or an educator actually did. A shared word or topic alone is not enough, and most pieces may fit none. For each piece you keep, give its number, the key idea exactly as listed, and one short sentence of 10 to 25 words that names that idea and says what the child or educator did. Use only what the piece says. Write children's names as the initials given. Say educator, never teacher. Write class in lowercase. Use no dashes and no colons. Never frame a sentence as not one thing but another.\n\nReply with only JSON like {"fits":[{"n":1,"idea":"","sentence":""}]}, with an empty list when none fits.`}
+// a sentence from the writing help, kept to our writing rules
+const exClean=t=>String(t||"").replace(/\s*[—–]\s*/g,", ").replace(/(\D):(?!\d)\s*/g,"$1, ").replace(/\b([Tt])eachers?\b/g,m=>(m[0]==="T"?"E":"e")+"ducator"+(/s$/.test(m)?"s":"")).replace(/\bClass(es)?\b/g,"class$1").replace(/\b([Aa]) educator/g,"$1n educator").replace(/\s+/g," ").trim().slice(0,240).replace(/([^.!?])$/,"$1.");
+// the writing help's answer, kept only where it names a piece that was sent and one of the module's own key ideas
+function exReadAnswer(ans,cands,ideas){const fits=Array.isArray(ans&&ans.fits)?ans.fits:[];const named=(ideas||[]).map(i=>i.label.toLowerCase());const out=[];
+  for(const f of fits){const c=cands[(+(f&&f.n))-1];if(!c||out.some(o=>o.id===c.id))continue;const idea=String(f.idea||"").trim().toLowerCase().replace(/[.\s]+$/,"");
+    if(named.length&&!named.some(n=>n===idea||(idea.length>3&&(n.includes(idea)||idea.includes(n)))))continue;const s=exClean(f.sentence);if(s.split(/\s+/).length<5)continue;out.push({id:c.id,why:s})}
+  return out.slice(0,5)}
+// confirmed ones first with the writing help's sentence, at most five, then the word matches as Possible fits
+function exArrange(ranked,fits,room){const by=new Map((fits||[]).map(f=>[f.id,f.why]));const n=Math.min(Math.max(0,room),5);
+  const sure=(fits||[]).map(f=>ranked.find(x=>x.id===f.id)).filter(Boolean).slice(0,n).map(x=>Object.assign({},x,{why:by.get(x.id),sure:true}));
+  const ids=new Set(sure.map(x=>x.id));return {sure,maybe:ranked.filter(x=>!ids.has(x.id))}}
+/* ex-core end */
 function exAnon(t){let x=String(t||"");const kids=typeof children!=="undefined"?[...children.values()]:[];const staffN=((B()||{}).people||[]).map(p=>p.name).filter(Boolean);
   for(const c of kids){if(!c||!c.first)continue;const ini=c.first[0].toUpperCase()+".";if(c.last)x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s+"+c.last.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"),ini);x=x.replace(new RegExp("\\b"+c.first.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b(?!\\.)","g"),ini)}
   const me=typeof window.FP_NAME==="function"?window.FP_NAME():"";const dirs=[...((B()||{}).directors||[]),me].filter(Boolean);
@@ -408,21 +457,50 @@ function exPool(){const y0=Date.parse((typeof schoolYearStart==="function"?schoo
 // the examples a module or a DRDP measure might hold, written ones first, then the school year's documentation that fits
 function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[slug]||{};const out=new Set(ex.out||[]);const kept=new Set((ex.examples||[]).map(x=>x.id));
   const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30&&!/appears? here once the director|once the director chooses them/i.test(t)).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
-  const topic=exWords([m.title,m.desc,...(m.sections||[]).filter(x=>/reading|why it matters/i.test(x.heading)).map(x=>x.body.slice(0,4000))].join(" "));const tset=new Set(topic);
-  const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);
-  const scored=(extra||exPool()).map(x=>{const ws=exWords(x.raw);const hits=ws.filter(w=>tset.has(w));let sc=hits.length+(x.boost||0);for(const re of areaRes)if(re.test(x.raw))sc+=2;return Object.assign({},x,{sc,hits})}).filter(x=>x.sc>=(extra?1:3)).sort((a,b)=>b.sc-a.sc||b.at-a.at);
-  const sugg=scored.map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:x.why||(`${x.label} that fits ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+((m.serves||[]).length?", and "+(m.serves||[]).map(areaName).filter(Boolean).join(" and "):""))+"."}));
-  return [...written,...sugg].filter(x=>!out.has(x.id)&&!kept.has(x.id))}
+  const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);const mods=Object.values((st.mods&&st.mods.modules)||{});
+  const areas=(m.serves||[]).map(areaName).filter(Boolean).join(" and ");
+  const ranked=exRank(m,mods,(extra||exPool()).filter(x=>!out.has(x.id)&&!kept.has(x.id)),areaRes,!!extra).map(x=>({kind:x.kind,id:x.id,raw:x.raw,sc:x.sc,text:clip(exAnon(x.raw),420),
+    why:x.why||exIdeaLine(x.idea)||(`${x.label} that touches on ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+(areas?", and "+areas:"")+".")}));
+  return [...written.filter(x=>!out.has(x.id)&&!kept.has(x.id)),...ranked]}
+/* TREE's writing help reads the best word matches against the module's key ideas, at most 12, with children as initials
+   and no photo, through the same server request, privacy and hourly limits as all writing help. It runs only once the
+   director opens Suggested, and once a day for each module. Without the writing help the word matches show alone. */
+const exDay=()=>new Date().toLocaleDateString("en-CA");
+function exConfGet(slug){const c=(st.exConf||{})[slug];if(c&&c.day===exDay())return c;
+  try{const j=JSON.parse(localStorage.getItem("tree.exconfirm."+slug)||"null");if(j&&j.day===exDay()&&Array.isArray(j.fits)){(st.exConf=st.exConf||{})[slug]=j;return j}}catch(e){}return null}
+async function exConfirm(m,slug,sugg){if(exConfGet(slug))return;st.exConf=st.exConf||{};const ideas=exKeyIdeas(m).ideas;
+  const cands=sugg.filter(x=>x.kind!=="module"&&x.raw).slice(0,12);const ask=typeof sample!=="undefined"&&sample&&sample.json?sample:null;
+  if(!cands.length||!ask){st.exConf[slug]={day:exDay(),fits:[],off:!ask};return}
+  st.exConf[slug]={day:exDay(),fits:[],pending:true};let fits=[],off=false;
+  try{const ans=await ask.json(exAskText(m,ideas,cands.map(x=>clip(exAnon(x.raw),600))),{purpose:"pd-examples",cache:false});fits=exReadAnswer(ans,cands,ideas).map(f=>({id:f.id,why:exAnon(f.why)}))}catch(e){off=true}
+  const c={day:exDay(),fits,off};st.exConf[slug]=c;if(!off)try{localStorage.setItem("tree.exconfirm."+slug,JSON.stringify(c))}catch(e){}
+  // the page follows only while this module is still open
+  if([...document.querySelectorAll("[data-gexsugg]")].some(x=>x.dataset.gexsugg===slug))redraw()}
+function exOpen(slug,on){st.exOpen=st.exOpen||(()=>{try{return new Set(JSON.parse(localStorage.getItem("tree.exopen")||"[]"))}catch(e){return new Set()}})();
+  if(on!==undefined){if(on)st.exOpen.add(slug);else st.exOpen.delete(slug);try{localStorage.setItem("tree.exopen",JSON.stringify([...st.exOpen]))}catch(e){}}return st.exOpen.has(slug)}
+document.addEventListener("toggle",e=>{const t=e.target;if(!t||!t.dataset||!t.dataset.gexsugg)return;const slug=t.dataset.gexsugg;if(t.open===exOpen(slug))return;exOpen(slug,t.open);
+  const a=(st._exConfArgs||{})[slug];if(t.open&&a&&!exConfGet(slug)){exConfirm(a.m,slug,a.sugg);redraw()}},true);
 function drdpEvPool(){const kids=typeof children!=="undefined"?[...children.values()]:[];const best={};
   for(const c of kids){if(typeof kidDrdpItems!=="function")break;for(const x of kidDrdpItems(c))if((x.status==="accepted"||x.status==="changed")&&x.level&&x.src){const raw=[x.evidence,x.src.title].filter(Boolean).join(". ");const at=x.src.at||x.at||0;if(!best[x.code]||at>best[x.code].at)best[x.code]={kind:"drdp",id:"drdp:"+x.id,raw,at,label:"Accepted evidence",boost:3,why:`Accepted evidence for ${x.code}${typeof drdpName==="function"?", "+drdpName(x.code):""}, ${typeof drdpLevelText==="function"?drdpLevelText(x.level,x.emerging):x.level}.`}}}
   return Object.values(best).sort((a,b)=>b.at-a.at)}
-function exPicker(slug,ex,sugg){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
+// conf, on a module, is the writing help's reading, so Suggested folds and the confirmed ones come first
+function exPicker(slug,ex,sugg,conf){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
   const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
   const row=(x,acts)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt">${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
-  st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
+  const pick=x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`);
+  const none=`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`;
+  let list;
+  if(conf){const written=sugg.filter(x=>x.kind==="module"),rest=sugg.filter(x=>x.kind!=="module");const A=exArrange(rest,conf.fits,room-written.length);
+    const top=[...written.slice(0,room),...A.sure].slice(0,Math.min(room,5));const maybe=A.maybe.slice(0,Math.max(2,Math.min(room,5)-top.length));
+    st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...written,...A.sure,...A.maybe,...found]});
+    const note=conf.pending?`<div class="cnt">Reading the closest matches against this module's key ideas.</div>`:"";
+    list=`<details data-gexsugg="${H(slug)}" ${conf.open?"open":""} style="margin-top:8px"><summary class="lbl" style="cursor:pointer">Suggested</summary>${note}${top.map(pick).join("")}
+      ${maybe.length?`<div class="lbl" style="margin-top:8px">Possible fits</div>${maybe.map(pick).join("")}`:""}${top.length||maybe.length||conf.pending?"":none}</details>`}
+  else{st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
+    list=`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(pick).join("")||none}`}
   return `<div class="hint">Educators see an example only once you keep it. Examples name no child or educator, give a child's words with initials and show no photo.</div>
     ${kept.length?`<div class="lbl">Kept, shown to educators</div>${kept.map((x,i)=>row(x,`<button class="linkbtn" data-gexout="${H(slug)}|${i}">Take it out</button>`)).join("")}`:""}
-    ${room?`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`)).join("")||`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`}
+    ${room?`${list}
       <label class="fld-label">Search for your own<input type="search" data-gexq="${H(slug)}" value="${H(q)}" placeholder="A word from an observation, slide, story or plan"></label>${found.map(x=>row(x,`<button class="btn small ghost" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button>`)).join("")}`:`<div class="cnt">Five examples are kept. Take one out to keep another.</div>`}`}
 async function exSave(slug,examples,out){await ga("module/examples",{slug,examples,out});st.mods=null}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gexkeep],[data-gexnot],[data-gexout]");if(!t)return;e.preventDefault();e.stopPropagation();if(window.TREE_VIEW_AS){toast("Nothing is saved while you see TREE as an educator.");return}
@@ -474,7 +552,10 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmslides="${H(slug)}">Slides from this module</button><button class="linkbtn" data-gmslides="${H(slug)}" data-word="1">Word</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
   // the DRDP module's examples come from accepted DRDP evidence, one for each measure, so each example shows a measure read from our own documentation
-  if(dir){exBody=exPicker(slug,ex,/drdp/i.test(slug)?exSuggest(m,slug,own,drdpEvPool()):exSuggest(m,slug,own))}
+  // on any other module, opening Suggested asks the writing help to confirm the closest matches, once a day
+  if(dir&&/drdp/i.test(slug))exBody=exPicker(slug,ex,exSuggest(m,slug,own,drdpEvPool()));
+  else if(dir){const sugg=exSuggest(m,slug,own);st._exConfArgs=Object.assign(st._exConfArgs||{},{[slug]:{m,sugg}});const open=exOpen(slug);if(open&&!viewing&&!exConfGet(slug))exConfirm(m,slug,sugg);
+    exBody=exPicker(slug,ex,sugg,Object.assign({fits:[]},exConfGet(slug)||{},{open}))}
   else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}

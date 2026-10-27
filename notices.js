@@ -1,5 +1,5 @@
 'use strict';
-/* Required employment notices for staff, kept with the Teacher Policies and Procedures. Every notice links to its official
+/* Required employment notices for staff, kept with the Policies and Procedures. Every notice links to its official
    agency page and never copies a notice's text. The director opened and checked every link on the date below. */
 const CHECKED = '2026-10-25';
 const DIR_POSTINGS = 'https://www.dir.ca.gov/wpnodb.html';

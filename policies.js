@@ -1,7 +1,7 @@
 'use strict';
-/* The Teacher Policies and Procedures and the Family Handbook, each in full in the records, section by section.
+/* The Policies and Procedures and the Family Handbook, each in full in the records, section by section.
 
-   The Teacher Policies and Procedures live in staff/policies/teacher.json, which holds the order of every part and
+   The Policies and Procedures live in staff/policies/teacher.json, which holds the order of every part and
    section, with each section in staff/policies/teacher/<id>.json. A section TREE already kept elsewhere, such as How
    Check-Ins Work in staff/handbook or a Licensing at Fulton piece in staff/pd/licensing, is shown and edited where it is
    kept, never copied. Its section file holds only where it lives and its earlier versions.
@@ -11,7 +11,7 @@
    becomes current on its publish date, worked out from the date each time it is asked for, so no job has to run.
 
    Every change keeps the earlier wording in the section's own record, with the day, who and the note, so the director
-   can read or restore it in TREE. The Teacher Policies and Procedures go only to staff sign-ins, the Family Handbook to
+   can read or restore it in TREE. The Policies and Procedures go only to staff sign-ins, the Family Handbook to
    staff, to families through the Family page, and to the public link once the director turns it on. */
 const path = require('path');
 
@@ -33,10 +33,10 @@ module.exports = function policies(o) {
   }
   const pieceText = (pp, title, body) => `${pp.meta}${pp.head}## ${title}\n\n${body.trim()}${pp.tail ? '\n\n' + pp.tail : ''}\n`;
 
-  /* ---------- the Teacher Policies and Procedures ---------- */
+  /* ---------- the Policies and Procedures ---------- */
   // records from before the full document came into TREE still read as one, made of the sections in staff/handbook
   const tpDoc = () => get(TP) || (() => { const hs = [...S.files.keys()].filter(p => /^staff\/handbook\/[^/]+\.json$/.test(p)).map(p => Object.assign({ p }, get(p) || {})).filter(h => h.id && h.title).sort((a, b) => (a.order || 0) - (b.order || 0));
-    return hs.length ? { title: 'Teacher Policies and Procedures', edition: '', mustRead: [], parts: hs.map(h => ({ id: h.id, title: h.title, sections: [{ id: h.id, ref: h.p }] })) } : null; })();
+    return hs.length ? { title: 'Policies and Procedures', edition: '', mustRead: [], parts: hs.map(h => ({ id: h.id, title: h.title, sections: [{ id: h.id, ref: h.p }] })) } : null; })();
   const entries = () => { const d = tpDoc(); return d ? (d.parts || []).flatMap(p => (p.sections || []).map(s => Object.assign({ part: p.id }, typeof s === 'string' ? { id: s } : s))) : []; };
   function tpSection(e) {
     const rec = get(TPS(e.id)) || { id: e.id, history: [] }; const ref = rec.ref || e.ref || '';
@@ -97,7 +97,7 @@ module.exports = function policies(o) {
     if (!st.yearAt) a.years = Object.assign({}, a.years, { [st.year]: t });
     a.sections = Object.assign({}, a.sections); for (const c of st.changed) a.sections[c.id] = t;
     doc.tpAck = a;
-    // it is also the Teacher Policies and Procedures acknowledgment on the New Educator paperwork
+    // it is also the Policies and Procedures acknowledgment on the New Educator paperwork
     doc.paperwork = Object.assign({}, doc.paperwork, { tppack: Object.assign({}, (doc.paperwork || {}).tppack, { ack: ((doc.paperwork || {}).tppack || {}).ack || t }) });
     doc.updatedAt = t; put(pPath(me), doc); return ackOf(me);
   }
@@ -139,7 +139,7 @@ module.exports = function policies(o) {
   /* ---------- saving a section, with its earlier wording kept ---------- */
   const earlier = s => ({ title: s.title || '', body: s.body || '', at: s.updatedAt || 0, by: s.updatedBy || '', note: s.note || '' });
   function saveTeacher(me, b) {
-    const d = tpDoc(); if (!d) return { error: 'The Teacher Policies and Procedures are not in the records yet.' }; if (!get(TP)) put(TP, d);
+    const d = tpDoc(); if (!d) return { error: 'The Policies and Procedures are not in the records yet.' }; if (!get(TP)) put(TP, d);
     const title = clip(String(b.title || '').trim(), 160), body = clip(String(b.body == null ? '' : b.body).replace(/\r/g, ''), 120000), note = clip(String(b.note || '').trim(), 300);
     let e = entries().find(x => x.id === b.id);
     if (!e) {
@@ -167,7 +167,7 @@ module.exports = function policies(o) {
     if (cur.kind === 'handbook') { const h = get(cur.ref) || {}; put(cur.ref, Object.assign({}, h, { title, body, updatedAt: t, updatedBy: me })); }
     else if (cur.kind === 'piece') { const r = S.files.get(cur.ref); const pp = r && pieceParts(r.text); if (!pp) return { error: 'That piece could not be read.' }; putText(cur.ref, pieceText(pp, title, body)); piecesChanged(); }
     else { rec.title = title; rec.body = body; }
-    put(TPS(e.id), rec); log('Teacher Policies and Procedures section changed', e.id, 'by', me);
+    put(TPS(e.id), rec); log('Policies and Procedures section changed', e.id, 'by', me);
     return { ok: true, id: e.id };
   }
   function saveFamily(me, b) {
@@ -211,7 +211,7 @@ module.exports = function policies(o) {
     const docOk = d => d === 'family' ? canFamily(me) : canTeacher(me);
     if (P === 'policies/doc') {
       const d = body.doc === 'family' ? 'family' : 'teacher'; if (!docOk(d)) return deny();
-      if (d === 'teacher') { const out = teacherOut(me); if (!out) { err(req, res, 404, 'The Teacher Policies and Procedures are not in the records yet.'); return; }
+      if (d === 'teacher') { const out = teacherOut(me); if (!out) { err(req, res, 404, 'The Policies and Procedures are not in the records yet.'); return; }
         json(req, res, 200, Object.assign(out, { ack: hasOwn(me) && !dir ? ackOf(me) : null })); return; }
       const ys = years(); const cur = current(); let y = String(body.edition || cur);
       // families and educators read the current edition and the ones before it. Only the director reads a draft.
