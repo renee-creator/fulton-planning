@@ -664,9 +664,22 @@ module.exports = function growthModule(c) {
       h.history = [...(h.history || []), { title: m.title, text: cur, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
       Object.assign(h, { note: 'Accepted the restored draft', updatedAt: Date.now(), updatedBy: me }); put(PAGE_HIST(m.path), h);
       putText(m.path, next);
+      // Keep both. The wording being replaced also becomes its own module, for outside audiences, waiting as a draft for
+      // the director, beside the original in the list. Each is edited on its own from then on.
+      let kept = '';
+      if (body.keep) {
+        const kslug = slug + '-outside', kpath = m.path.replace(/\.md$/, '-outside.md');
+        if (!modules()[kslug] && !S.files.get(kpath)) {
+          let t = cur.replace(/^(#\s+)(.+)$/m, (x, h, ti) => h + ti.trim() + ', for outside audiences');
+          const hd = t.match(/^\s*<!--[\s\S]*?-->/);
+          if (hd) t = /^\s*status\s*:/mi.test(hd[0]) ? t.replace(/^(\s*status\s*:).*$/mi, '$1 draft') : t.replace(/-->/, 'status: draft\n-->');
+          else t = '<!--\nstatus: draft\n-->\n' + t;
+          putText(kpath, t); kept = kslug;
+        }
+      }
       const all = Object.assign({ accepted: {} }, get(RESTORED) || {}); all.accepted = Object.assign({}, all.accepted, { [slug]: { at: Date.now(), by: me, stamp: stampOf(r.text) } }); put(RESTORED, all);
-      modCache = null; restCache = null; if (piecesChanged) piecesChanged(); log('Restored module accepted', slug, 'by', me);
-      json(req, res, 200, { modules: modulesFor(me), list: libraryList(me) }); return;
+      modCache = null; restCache = null; if (piecesChanged) piecesChanged(); log('Restored module accepted', slug, kept ? 'and the earlier version kept as ' + kept : '', 'by', me);
+      json(req, res, 200, { modules: modulesFor(me), list: libraryList(me), kept }); return;
     }
     // a reflection prompt the educator chooses to carry into the weekly journal, one at a time
     if (P === 'module/carry') {

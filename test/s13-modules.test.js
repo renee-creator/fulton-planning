@@ -21,7 +21,10 @@ test('restored drafts, three ways in and layers', async t => {
 
   await t.test('accepting keeps the order and history and drops the review note', async () => {
     assert.strictEqual((await G(ann, 'module/accept', { slug: 'documentation' })).status, 403);
-    const r = await G(dee, 'module/accept', { slug: 'documentation' }); assert.strictEqual(r.status, 200);
+    const r = await G(dee, 'module/accept', { slug: 'documentation', keep: true }); assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.kept, 'documentation-outside');
+    const k = r.body.modules['documentation-outside']; assert.ok(k && /for outside audiences$/.test(k.title) && k.draft);
+    assert.ok(!(await G(ann, 'modules')).body.modules['documentation-outside']);
     const m = r.body.modules.documentation; assert.ok(!m.restored); assert.ok(!m.sections.some(s => /what changed/i.test(s.heading)));
     assert.strictEqual(m.minutes, 90);
     await wait(1400);
