@@ -38,6 +38,15 @@ test('restored drafts, three ways in and layers', async t => {
     assert.ok(!m.sections.some(s => /presenting this module/i.test(s.heading))); assert.ok(m.sections.some(s => /with families/i.test(s.heading)));
   });
 
+  await t.test('the director hides a module educators already see, and shows it again', async () => {
+    assert.ok((await G(ann, 'modules')).body.modules.documentation);
+    assert.strictEqual((await G(ann, 'module/ready', { slug: 'documentation', on: false })).status, 403);
+    const h = await G(dee, 'module/ready', { slug: 'documentation', on: false }); assert.strictEqual(h.status, 200); assert.ok(h.body.modules.documentation.waiting);
+    assert.ok(!(await G(ann, 'modules')).body.modules.documentation);
+    await G(dee, 'module/ready', { slug: 'documentation', on: true });
+    assert.ok((await G(ann, 'modules')).body.modules.documentation);
+  });
+
   await t.test('a PD day that used a module records its layer for each attendee once', async () => {
     const date = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
     const s = await G(dee, 'pd/save', { agenda: { date, kind: 'pdday', start: '09:00', end: '12:00', blocks: [{ title: 'Documentation studio', module: 'documentation' }] } });

@@ -139,16 +139,19 @@ module.exports = function growthModule(c) {
   const libFile = id => { const r = (get(READ) || {}).list || []; return r.some(y => y && y.id === id && isLibEntry(y)) ? READ : LIB; };
   const hasLib = () => !!get(LIB) || ((get(READ) || {}).list || []).some(isLibEntry);
   const readyOn = slug => !!(((get(READY) || {}).modules || {})[slug]);
-  const published = slug => { const m = modules()[slug]; return !!m && (!m.draft || readyOn(slug)); };
+  // a module already in use can be hidden again by the director, kept under hidden in the same file
+  const hiddenOn = slug => !!(((get(READY) || {}).hidden || {})[slug]);
+  const published = slug => { const m = modules()[slug]; return !!m && (m.draft ? readyOn(slug) : !hiddenOn(slug)); };
+  const waitingOf = slug => { const m = modules()[slug]; return !!m && !published(slug); };
   // what a reader receives. The director sees every module, drafts marked, with the source note. Others see published ones only.
   const modulesFor = me => { const dir = isDirector(me); const out = {};
-    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: m.draft && !readyOn(k), restored: !!restoredAll()[k] }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
+    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: waitingOf(k), restored: !!restoredAll()[k] }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
     return out; };
   // the library's list, the design's modules in order, then modules written since, in their own order
   const libraryList = me => { const dir = isDirector(me); const m = modules();
-    const base = MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: m[k] && (dir || published(k)) ? m[k].title : t, desc: m[k] && m[k].desc && (dir || published(k)) ? m[k].desc : d, areas: a, ready: k === 'licensing' || k === 'howto' || (dir ? !!m[k] : published(k)), waiting: !!(dir && m[k] && m[k].draft && !readyOn(k)), minutes: (m[k] || {}).minutes || 0 }));
+    const base = MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: m[k] && (dir || published(k)) ? m[k].title : t, desc: m[k] && m[k].desc && (dir || published(k)) ? m[k].desc : d, areas: a, ready: k === 'licensing' || k === 'howto' || (dir ? !!m[k] : published(k)), waiting: !!(dir && m[k] && waitingOf(k)), minutes: (m[k] || {}).minutes || 0 }));
     const more = Object.values(m).filter(x => !MODULE_LIST.some(l => l[0] === x.slug) && (dir || published(x.slug))).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
-      .map(x => ({ slug: x.slug, title: x.title, desc: x.desc, areas: x.serves, ready: true, waiting: !!(dir && x.draft && !readyOn(x.slug)), minutes: x.minutes }));
+      .map(x => ({ slug: x.slug, title: x.title, desc: x.desc, areas: x.serves, ready: true, waiting: !!(dir && waitingOf(x.slug)), minutes: x.minutes }));
     return [...base, ...more]; };
   // a published module's own title, as the director last wrote it, then the list's
   const moduleTitle = slug => (published(slug) && (modules()[slug] || {}).title) || (MODULE_LIST.find(m => m[0] === slug) || [])[1] || (modules()[slug] || {}).title || slug;
@@ -648,7 +651,9 @@ module.exports = function growthModule(c) {
     }
     if (P === 'module/ready') {
       if (!dir) return deny('The director marks a module ready.'); const slug = String(body.slug || ''); if (!modules()[slug]) return err(req, res, 404, 'That module is not here.');
-      const all = Object.assign({ modules: {} }, get(READY) || {}); all.modules = Object.assign({}, all.modules); if (body.on) all.modules[slug] = { on: today(), by: me }; else delete all.modules[slug];
+      const all = Object.assign({ modules: {}, hidden: {} }, get(READY) || {}); all.modules = Object.assign({}, all.modules); all.hidden = Object.assign({}, all.hidden);
+      if (modules()[slug].draft) { if (body.on) all.modules[slug] = { on: today(), by: me }; else delete all.modules[slug]; }
+      else { if (body.on) delete all.hidden[slug]; else all.hidden[slug] = { on: today(), by: me }; }
       put(READY, all); json(req, res, 200, { modules: modulesFor(me), list: libraryList(me) }); return;
     }
     // a restored draft, read by the director beside the module educators know, and accepted in its place
