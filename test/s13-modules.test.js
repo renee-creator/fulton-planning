@@ -48,6 +48,10 @@ test('restored drafts, three ways in and layers', async t => {
   await t.test('original materials open for the director and presenters only', async () => {
     const l = await fx.as(dee, '/api/staff/pd/originals', { slug: 'documentation' }); assert.strictEqual(l.status, 200); assert.strictEqual(l.body.list[0].title, 'A guide');
     assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 403);
+    // a photo link made with the file key never opens an original PD file
+    { const crypto = require('crypto'); const fk = (await fx.as(ann, '/api/file-key', {})).body.fileKey; const [e36, secret] = fk.split('.'); const id = 'pdorig-documentation-guide.pdf';
+      const mac = crypto.createHmac('sha256', Buffer.from(secret, 'utf8')).update(id, 'utf8').digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').slice(0, 32);
+      assert.strictEqual((await fetch(fx.api + '/original/' + id + '?t=' + e36 + '.' + mac)).status, 403); }
     const r = await fetch(fx.api + '/api/staff/pd/original', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + fx.web, Authorization: 'Bearer ' + dee }, body: JSON.stringify({ slug: 'documentation', id: 'pdorig-documentation-guide.pdf' }) });
     assert.strictEqual(r.status, 200); assert.match(await r.text(), /PDF/);
     const e = (await fx.as(dee, '/api/staff/pres/new', { title: 'Documentation', template: false })).body;

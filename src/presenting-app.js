@@ -205,7 +205,7 @@ function printsFold(e){const dir=D();const nm=e.names||"none";
 const nmOf=e=>e.names||"none";
 const words=(x,e)=>displayText(x.text||"",nmOf(e),x.wonder||"");
 const photoOf=x=>{const s=picOf(x,true);return s&&x.photo&&x.photo.w?[{key:"pr:"+x.id,src:s,w:x.photo.w,h:x.photo.h}]:[]};
-const metaOf=e=>[["Audience",e.audience||"Not yet set"],["Audience type",PR_AUD[e.audienceType]||"Not yet set"],["Offered",PR_MODE[e.mode]||""],["Date",e.date?fd(e.date):""],["Length",dur(e.minutes)],["Presenters",kList(e.presenters||[])]];
+const metaOf=e=>[["Audience",e.audience||"Not yet set"],["Audience type",PR_AUD[e.audienceType]||"Not yet set"],["Offered",PR_MODE[e.mode]||""],["Date",e.date?fd(e.date):""],["Length",dur(e.minutes)],...(e._outside?[]:[["Presenters",kList(e.presenters||[])]])];
 function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":"")+(x.note?". "+x.note:"");
   return report(e.title+", facilitator guide",metaOf(e),[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,e.format?{t:"text",label:"How it is offered",text:e.format}:null,
     ...(e.plan||[]).map((s,i)=>({t:"text",label:(s.title||"Section "+(i+1))+(s.minutes?", "+dur(+s.minutes):""),text:[s.do,s.script?"Facilitator script. "+s.script:"",...(s.moments||[]).map(id=>C.find(x=>x.id===id)).filter(Boolean).map(x=>"Moment "+(C.indexOf(x)+1)+". "+clip(words(x,e),400)+(where(x)?" ("+where(x)+")":"")),...(s.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(rd)].filter(Boolean).join("\n\n")})),
@@ -238,8 +238,11 @@ function slideDocs(e){const C=e.chosen||[];const land=(o,ph)=>ph.length?sheet(Ob
 // slides shown during the presentation itself may keep children's faces. Everything participants take away, and every
 // Word file, is made with faces softened.
 // prints for outside audiences, the default for an entry marked external, carry only cleared moments and name the school
-const outsideOn=e=>st.outsideP&&e.id in st.outsideP?st.outsideP[e.id]:e.audienceType==="external";
-const forOutside=e=>{const ok=new Set((e.chosen||[]).filter(x=>x.outside).map(x=>x.id));return Object.assign({},e,{names:"none",chosen:(e.chosen||[]).filter(x=>ok.has(x.id)),plan:(e.plan||[]).map(s=>Object.assign({},s,{moments:(s.moments||[]).filter(id=>ok.has(id))}))})};
+const outsideOn=e=>st.outsideP&&e.id in st.outsideP?st.outsideP[e.id]:(e.audienceType==="external"||e.audienceType==="both");
+// outside prints carry no names at all, no presenters, no names in the plan's own words and no Drive files
+const forOutside=e=>{const ok=new Set((e.chosen||[]).filter(x=>x.outside).map(x=>x.id));const nn=t=>t?displayText(String(t),"none"):t;
+  return Object.assign({},e,{_outside:true,names:"none",subtitle:nn(e.subtitle),question:nn(e.question),format:nn(e.format),readings:(e.readings||[]).filter(x=>x.kind!=="drive"),chosen:(e.chosen||[]).filter(x=>ok.has(x.id)),
+    plan:(e.plan||[]).map(s=>Object.assign({},s,{title:nn(s.title),do:nn(s.do),script:nn(s.script),handout:nn(s.handout),moments:(s.moments||[]).filter(id=>ok.has(id)),readings:(s.readings||[]).filter(id=>(e.readings||[]).some(r=>r.id===id&&r.kind!=="drive"))}))})};
 const creditDocs=docs=>{const c="Fulton Community School & Farm";for(const d of docs){if(d.meta)d.meta=[...d.meta,["From",c]];else d.details=[...(d.details||[]),c]}return docs};
 async function print(k,word,toShow){const out0=outsideOn(E());const e=out0?forOutside(E()):E();const kind=word?"word":"pdf";progress("Making the file");
   const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(Object.assign({},e,{_map:await handoutMap()}))]:k==="panels"?panelDocs(e):slideDocs(e);

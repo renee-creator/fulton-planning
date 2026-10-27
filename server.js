@@ -1689,7 +1689,8 @@ async function handle(req, res) {
     let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
     if (!checkPhotoKey(url.searchParams.get('t') || '', id)) { log('Photo refused, the key has expired or is for another photo'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     // an educator's certificates and forms open only through their records, for them and the director
-    if (/^staff-/.test(id)) { log('Educator record file refused through a photo link'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Open this from the records page in TREE.'); return; }
+    // original PD materials open only through the PD library, for the director and the module's presenters
+    if (/^staff-|^pdorig-/.test(id)) { log('Educator record file refused through a photo link'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Open this from the records page in TREE.'); return; }
     let o = store.originals.get(id);
     // a photo saved while the list of records was being read can be missing from it, so the records are asked directly
     if (!o && ID_RE.test(id) && store.ready) {

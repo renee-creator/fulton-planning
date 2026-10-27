@@ -5193,6 +5193,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
     else if(a.kind==="song"){const x=(libData.songs||[]).find(y=>y.id===a.id);if(x)docs.push(songDoc(x))}
     else if(a.kind==="readaloud"){const x=(libData.readalouds||[]).find(y=>y.id===a.id);if(x)docs.push(readGuideDoc(x))}
     else if(a.kind==="exploration"){const x=(libData.explorations||[]).find(y=>y.id===a.id);if(x)docs.push(explDoc(x))}
+    else if(a.kind==="book"){const x=(libData.books||[]).find(y=>y.id===a.id);if(x)docs.push(bookCardDoc(x))}
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
     else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
   return {docs,recipes}}
