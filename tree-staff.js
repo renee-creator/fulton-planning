@@ -198,7 +198,9 @@ const careFor=p=>!["Office","Kitchen","Staff","Director"].includes(p.role||whoRo
 // an office member who also works as an educator supervises children, so Fulton's own training is hers too
 const itemsFor=p=>ITEMS().filter(i=>(!i.fulton||careFor(p)||!!(p.profile||{}).supervises)&&(!i.chosen||!!((p.profile||{}).needs||{})[i.k]));
 // each training links to the regulation it meets and to where it is taken. A link still to be checked says so to the director.
-const toCheck=x=>x&&x.check&&D()?` <span class="warnline">Link to check.</span>`:"";
+const toCheck=x=>x&&x.check&&D()?` <span class="warnline">Link to check.</span> <button class="linkbtn" data-stlinkok="${H(x.url)}">Confirmed</button>`:x&&x.confirmed&&D()?` <span class="cnt">Confirmed ${H(x.confirmed)}</span>`:"";
+// the director opens a link, sees it is right and confirms it, and it stops saying Link to check
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-stlinkok]");if(!t||!D())return;e.preventDefault();e.stopPropagation();try{const r=await api("links/ok",{url:t.dataset.stlinkok});if(B&&B.defs)B.defs.items=r.items;toast("Confirmed.");redraw()}catch(er){toast(er&&er.message||"That did not save.")}},true);
 const itemLinks=it=>[it.law?`<a href="${H(it.law.url)}" target="_blank" rel="noopener">The regulation, ${H(it.law.text)}</a>${toCheck(it.law)}`:"",it.course?`<a href="${H(it.course.url)}" target="_blank" rel="noopener">Take the training, ${H(it.course.text)}</a>${toCheck(it.course)}`:""].filter(Boolean).join(`<br>`);
 // on the Official trainings piece, every training on the records list with its regulation and where it is taken
 const trainingsCard=()=>{const its=((B.defs||{}).items||[]).filter(i=>i.course||i.law&&i.fulton);if(!its.length)return "";

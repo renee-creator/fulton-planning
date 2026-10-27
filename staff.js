@@ -156,6 +156,8 @@ module.exports = function staffModule(o) {
   }
   async function ready() { if (!S.ready) await load(); }
   const school = () => get(SCHOOL) || {};
+  // a link the director has confirmed no longer says Link to check, and shows the day she confirmed it
+  const itemsChecked = () => { const ok = school().linksOk || {}; const fix = l => l && l.check && ok[l.url] ? Object.assign({}, l, { check: false, confirmed: ok[l.url].on }) : l; return ITEMS.map(it => Object.assign({}, it, it.law ? { law: fix(it.law) } : {}, it.course ? { course: fix(it.course) } : {})); };
   const opened = () => Object.assign({ records: false, pd: false, handbook: false, newed: false, growth: false, family: false }, school().open || {});
 
   /* ---------- the New Educator sequence and the welcome letter ---------- */
@@ -444,12 +446,15 @@ module.exports = function staffModule(o) {
       const mine = person(me); const o = opened();
       json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {}, takesPart: G.takesPart(me), kitchen: isKitchen(me), goTo: goToOf(me) },
         open: o, can: canFor(me), goTo: goToName(), activeSupervision: school().activeSupervision || null,
-        defs: { items: ITEMS, papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
+        defs: { items: itemsChecked(), papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
         school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName(), ...(dir ? { teamMeetings: school().teamMeetings || {}, quietMonths: school().quietMonths || [] } : {}) },
         whosWho: whosWho(), lens: lensNow(), paired: pairedWith(me), today: today(), people: dir ? staffNames().sort() : [] });
       return;
     }
     // a piece added to the records is read without restarting TREE
+    // the director confirms a training or regulation link once she has opened it and it is right
+    if (P === 'links/ok') { if (!dir) return deny(); const url = String(body.url || ''); const known = ITEMS.some(it => [it.law, it.course].some(l => l && l.url === url)); if (!known) { err(req, res, 400, 'That link is not one TREE keeps.'); return; }
+      const sc = school(); put(SCHOOL, Object.assign({}, sc, { linksOk: Object.assign({}, sc.linksOk || {}, { [url]: { on: today(), by: me } }) })); json(req, res, 200, { items: itemsChecked() }); return; }
     if (P === 'reload') { if (!dir) return deny(); S.loading = null; try { await load(); } catch (e) { err(req, res, 502, e.message); return; } json(req, res, 200, { ok: true, pieces: (pieces().licensing || []).length + (pieces().howto || []).length }); return; }
     if (P === 'pd') { if (!allowed(me, 'pd') && !allowed(me, 'newed')) return deny(); json(req, res, 200, piecesFor(me)); return; }
     if (P === 'pd/ready') { if (!dir) return deny(); const id = String(body.id || ''); if (!Object.values(pieces()).some(l => l.some(x => x.id === id))) { err(req, res, 404, 'That piece is not here.'); return; }

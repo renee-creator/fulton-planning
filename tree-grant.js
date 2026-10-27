@@ -293,7 +293,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
     try{await db.doc("grant/"+id).update({items});toast(d.gv==="education"?"Counted for student education.":"Counted for meals.")}catch(err){toast("Could not save that.")}renderGrant();return}
   if(d.grevkeep){if(db)try{await db.doc("grant/"+d.grevkeep).update({revision:{__delete__:true}});toast("Kept as it was.")}catch(err){toast("Could not save that.")}renderGrant();return}
   if(d.gdel){if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Take it out?";return}if(db)try{await db.doc("grant/"+d.gdel).delete();grantRecs.delete(d.gdel)}catch(err){toast("Could not take it out.")}renderGrant();return}
-  if(d.gq){gQuarter=d.gq;LS.set("fps.gq",gQuarter);renderGrant();return}
+  if(d.gq){gQuarter=d.gq;renderGrant();return}
   if(d.gpf){const cur=gProducer(d.gpn);await gWrite("producers",{list:{[d.gpk]:{name:d.gpn,[d.gpf]:!cur[d.gpf]}}},{id:"producers",list:{}});renderGrant();return}
   if(d.gfdel){await gWrite("families",{list:{[d.gfdel]:{__delete__:true}}});renderGrant();return}
   const a=d.gact;

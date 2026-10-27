@@ -474,7 +474,7 @@ async function nlWord(x){
 // tips drafted with markdown keep their words and lose the asterisks
 const nlTxt=t=>String(t??"").replace(/\*+/g,"").replace(/ +([.,])/g,"$1");
 async function nlPdf(x){
-  if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load. Check your connection and reload.");return}
   toast("Preparing the PDF");await nlPhotos(x);await loadPrintFonts();
   // set at full size, then a little smaller when that saves a page with only a few lines on it
   const build=sc=>{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});

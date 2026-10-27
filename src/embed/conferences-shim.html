@@ -72,7 +72,9 @@
   }
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Records can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; window.FP_WORDS=j.wording||{}; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
+  const SHARED=(()=>{ try{ return window.parent!==window && window.parent.TREE_SHARED ? window.parent.TREE_SHARED : null; }catch(e){ return null; } })();
+  function takeShared(){ const j=SHARED.get(); if(j.fileKey) Store.fileKey=j.fileKey; window.FP_WORDS=j.wording||{}; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=j.director; Store.rev=j.rev; Store.bootId=j.bootId; }
+  async function loadAll(){ if(SHARED){ try{ await SHARED.ready(); }catch(e){} takeShared(); notify(); return; } const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); if(j.fileKey) Store.fileKey=j.fileKey; window.FP_WORDS=j.wording||{}; Store.data={children:{},conferences:{},settings:{},...j.data}; Store.director=!!j.director; Store.rev=j.rev; Store.bootId=j.bootId; notify(); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -121,7 +123,12 @@
       const ok=await wake(); clearTimeout(t); if(!ok){ note.textContent="The conference server could not be reached. Reload the page to try again."; note.style.color="var(--danger)"; throw new Error("down"); }
       g.hidden=true; document.getElementById("gate-form").style.display=""; note.remove(); }
     await loadAll();
-    setInterval(poll, 15000);
+    // inside TREE, a change TREE hears is passed on here, keeping what this page saved a moment ago
+    if(SHARED){ let t=null; SHARED.on(()=>{ clearTimeout(t); t=setTimeout(()=>{ const j=SHARED.get(); const now=Date.now(); let any=false;
+        for(const kind of ["children","conferences","settings"]){ const cur=Store.data[kind]||{}, nx=j.data[kind]||{};
+          for(const id of new Set([...Object.keys(cur),...Object.keys(nx)])){ if(now-(Store.wroteAt[kind+"/"+id]||0)<20000) continue; if(JSON.stringify(cur[id])!==JSON.stringify(nx[id])){ any=true; if(nx[id]) cur[id]=nx[id]; else delete cur[id]; } } Store.data[kind]=cur; }
+        if(j.rev>Store.rev) Store.rev=j.rev; if(j.fileKey) Store.fileKey=j.fileKey; if(any) notify(); },300); }); }
+    else setInterval(poll, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) noteActive(); });
     const top=document.querySelector(".top-actions");
     if(top){ const w=document.createElement("div"); w.className="who-chip"; w.innerHTML=`<span></span><button class="btn sm ghost" type="button">Sign out</button>`; w.firstChild.textContent=Auth.name||""; w.lastChild.onclick=signOut; top.prepend(w); }

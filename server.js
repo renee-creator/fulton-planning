@@ -865,7 +865,9 @@ async function draftFamilySummary(cf, child) { return sentencesOf(familySummaryD
    conferences never asks all at once, and a draft no educator has read or changed yet that is still in note form is
    set in sentences on the next round */
 const sentenceLine = []; let sentenceBusy = false;
-function queueSentences(id) { if (!sentenceLine.includes(id)) sentenceLine.push(id); runSentences(); }
+// a summary that will not set into sentences is tried three times, a few hours apart, and never again after that
+const sentenceTries = new Map();
+function queueSentences(id) { const t = sentenceTries.get(id) || { n: 0, at: 0 }; if (t.n >= 3 || Date.now() - t.at < 3 * 3600e3) return; if (!sentenceLine.includes(id)) { sentenceTries.set(id, { n: t.n + 1, at: Date.now() }); sentenceLine.push(id); } runSentences(); }
 async function runSentences() {
   if (sentenceBusy) return; sentenceBusy = true;
   try { while (sentenceLine.length) { const id = sentenceLine.shift(); const r = store.recs.conferences.get(id); const cf = r && !r.deleted && r.doc; const fs = cf && cf.familySummary;
@@ -896,7 +898,8 @@ function draftFamilySummaries() {
     // then set in complete sentences, unless an educator has read or changed it in the meantime
     queueSentences(id); }
   // a draft still in note form, not yet read or changed, waits its turn to be set in sentences
-  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (fs && fs.parts && !fs.sentences && !fs.readAt && !fs.editedAt && r.doc.status !== 'complete') queueSentences(id); }
+  // only for a conference still to come, so an old one is never retried
+  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (fs && fs.parts && !fs.sentences && !fs.readAt && !fs.editedAt && r.doc.status !== 'complete' && (!r.doc.confDate || r.doc.confDate >= t)) queueSentences(id); }
   if (n) log('Family Summaries drafted for tomorrow\'s conferences,', n);
 }
 setInterval(() => { try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); } }, 60 * 60e3).unref();
@@ -1125,13 +1128,17 @@ function drdpBlock(view, codes) {
 // Saving to GitHub. Each file is saved by one chain at a time, and quick edits are gathered.
 const chains = new Map(); const timers = new Map(); const dirtyPaths = new Map(); const failingSince = new Map();
 function saveWarn() { const now = Date.now(); for (const t of failingSince.values()) if (now - t > 90000) return SAVE_WAIT; return ''; }
+// a record still changing is saved at least once a minute, since the quiet seconds may never come
+const firstDirty = new Map(); const LONGEST_WAIT_MS = Math.max(FLUSH_DELAY_MS, 60000);
 function scheduleSave(kind, id) {
   const path = `${kind}/${id}.json`; dirtyPaths.set(path, { kind, id });
+  if (!firstDirty.has(path)) firstDirty.set(path, Date.now());
   clearTimeout(timers.get(path));
-  timers.set(path, setTimeout(() => flushPath(path), FLUSH_DELAY_MS));
+  const wait = Math.max(0, Math.min(FLUSH_DELAY_MS, firstDirty.get(path) + LONGEST_WAIT_MS - Date.now()));
+  timers.set(path, setTimeout(() => flushPath(path), wait));
 }
 function flushPath(path) {
-  clearTimeout(timers.get(path)); timers.delete(path);
+  clearTimeout(timers.get(path)); timers.delete(path); firstDirty.delete(path);
   const item = dirtyPaths.get(path); if (!item) return chains.get(path) || Promise.resolve();
   dirtyPaths.delete(path);
   const run = (chains.get(path) || Promise.resolve()).then(() => writeFile(item.kind, item.id)).then(() => { failingSince.delete(path); }, e => {

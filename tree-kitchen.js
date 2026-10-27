@@ -5,7 +5,8 @@
    record in the same form as before, so the calendar, Today, the farm sheets and the grant read it as they always have.
    Past dishes are one tap away, the same week last year sits beside the month, and Fill this month drafts the month
    from past menus for the kitchen to change and save. Fruit and vegetables are left to the kitchen to choose by season. */
-let kMonth=LS.get("tree.kmonth","")||"",kSel=null,kDraft=null,kLibQ="",kClosed={};
+// the Kitchen month and the Farm to School quarter open on the current period each time TREE opens
+let kMonth="",kSel=null,kDraft=null,kLibQ="",kClosed={};
 const kMonthNow=()=>/^\d{4}-\d{2}$/.test(kMonth)?kMonth:iso(new Date()).slice(0,7);
 const kMonthShift=(m,n)=>{const [y,mo]=m.split("-").map(Number);return iso(new Date(y,mo-1+n,1)).slice(0,7)};
 const kMealsOf=d=>parseIso(d).getDay()===1?["am","lunch"]:["am","lunch","pm"];
@@ -108,7 +109,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="kitchen
     if(t.dataset.krecipecard){await kWrite(month,{recipeCard:t.value.trim()});setConn("Recipe saved");return}}catch(err){toast((err&&err.message)||"Could not save the menu.")}});
 function kPut(dish,day,k){const el=document.querySelector(`[data-kday="${day}"][data-kk="${k}"]`);if(!el)return;el.value=dish;el.classList.remove("kdraft");kSaveSoon(kMonthNow(),day,k,dish);el.focus()}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-kmon],[data-kfill],[data-kdraftsave],[data-kdraftclear],[data-kput]");if(!t||view!=="kitchen")return;e.stopImmediatePropagation();const month=kMonthNow();
-  if(t.dataset.kmon){kMonth=kMonthShift(month,+t.dataset.kmon);LS.set("tree.kmonth",kMonth);kSel=null;renderKitchen();return}
+  if(t.dataset.kmon){kMonth=kMonthShift(month,+t.dataset.kmon);kSel=null;renderKitchen();return}
   if(t.dataset.kfill){kFill(month);const n=Object.keys(kDraft.days).length;toast(n?`A draft for ${n} day${n===1?"":"s"}, from past menus. Save it when it looks right.`:"Every school day already has a menu.");renderKitchen();return}
   if(t.dataset.kdraftclear){kDraft=null;renderKitchen();return}
   if(t.dataset.kdraftsave&&kDraft){const days={};for(const [d,x] of Object.entries(kDraft.days)){const have=(((menus.get(month)||{}).days)||{})[d]||{};const add={};for(const [k,v] of Object.entries(x))if(!has(have[k]))add[k]=v;if(Object.keys(add).length)days[d]=add}
@@ -139,7 +140,7 @@ async function kMonthMenu(month,which,word){which=which||"all";const D=kMenuData
   const foot=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean);
   const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?(late?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:`Last month our food came from ${farms} local farm${farms===1?"":"s"}.`):""].filter(Boolean);
   if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
-async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
+async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
   const doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"});
   const W=792,H=612,m=30,gw=W-2*m,gap=4,cw=(gw-4*gap)/5,INK=[28,42,34],MUT=[96,110,101],MOSS=[47,90,67],CREAM=[250,246,234],SOFT=[234,242,236];
   const name=MENU_MONTH(month),tx=13,tw=cw-tx-6,numW=15;

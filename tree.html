@@ -17,7 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- the PDF tool loads beside TREE instead of before it, so TREE opens without waiting for it -->
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="print-kit.js"></script>
 <script src="wording.js"></script>
 <script src="sitemap.js"></script>
@@ -870,6 +871,10 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
+  /* the Conferences page inside TREE reads the records TREE already holds, and hears when they change, instead of
+     downloading every record in the school again and asking every fifteen seconds */
+  window.TREE_SHARED={ get:()=>({ data:{ children:JSON.parse(JSON.stringify(Store.data.children||{})), conferences:JSON.parse(JSON.stringify(Store.data.conferences||{})), settings:JSON.parse(JSON.stringify(Store.data.settings||{})) }, rev:Store.rev, bootId:Store.bootId, fileKey:Store.fileKey, director:!!Auth.director, wording:window.FP_WORDS||{} }),
+    on:fn=>{ Store.listeners.add(fn); return ()=>Store.listeners.delete(fn); }, ready:()=>Store.ready };
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
   async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; window.FP_WORDS=j.wording||{};window.FP_GARDENERS=Array.isArray(j.gardenEducators)?j.gardenEducators:[];window.FP_GATHERINGS=j.gatherings||null; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
     /* a new educator reaches only the New Educator section until the director turns on full access */
@@ -2632,7 +2637,7 @@ async function confBooklet(sumBlob,piecesBlob){const L=await TREE_KIT.pdfLib();c
   for(const [a,b] of bookletOrder(m)){const sh=out.addPage([792,612]);if(a<n)sh.drawPage(pages[a],{x:ox,y:oy,width:pw,height:ph});if(b<n)sh.drawPage(pages[b],{x:396+ox,y:oy,width:pw,height:ph})}
   out.setTitle("Family copy");out.setCreator("Fulton Community School");return new Blob([await out.save()],{type:"application/pdf"})}
 // the Family Summary, read and changed by the educator before it prints, in a sheet over the page
-let famSumOpen="";
+let famSumOpen="",famSumBusy=false;
 // saved by the server itself, so TREE's own draft and the educator's changes never cross
 async function famSumSave(cf,patch){if(patch.familySummary)cf.familySummary=Object.assign({},cf.familySummary||{},patch.familySummary);for(const k of ["printPieces","evidenceLayout","familyDrdp"])if(k in patch)cf[k]=patch[k];if(VIEW_AS)return;
   try{const j=await window.FP_API("/api/conf/summary/set",{id:cf.id,patch});const cur=conferences.get(cf.id)||cf;Object.assign(cur,{familySummary:j.familySummary,printPieces:j.printPieces,evidenceLayout:j.evidenceLayout,familyDrdp:j.familyDrdp});if(cur!==cf)Object.assign(cf,{familySummary:j.familySummary,printPieces:j.printPieces});return j}catch(e){toast(e&&e.message||"That did not save. Check your connection.")}}
@@ -2642,7 +2647,7 @@ function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){
   const fs=cf.familySummary,P=(fs&&fs.parts)||{},A=P.areas||{};const ta=(k,l,v,r)=>`<label class="fld-label">${esc(l)}<textarea rows="${r||3}" data-famsum="${esc(k)}">${esc(v||"")}</textarea></label>`;
   el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">Family Summary</span><button class="btn small ghost" data-famsumclose="1">Close</button></div>
     <h2>${esc(c.first)}'s Family Summary</h2><div class="cnt">${esc([c.classroom?c.classroom+" Class":"",cf.confDate?longDate(cf.confDate):""].filter(Boolean).join(" · "))}</div>
-    ${!fs?`<div class="hint">TREE drafts it the day before the conference from the form's own words. It can be drafted now.</div><div class="actions"><button class="btn small" data-famsumdraft="0">Draft it now</button></div>`
+    ${!fs?`<div class="hint">TREE drafts it the day before the conference from the form's own words. It can be drafted now.</div><div class="actions"><button class="btn small" data-famsumdraft="0" ${famSumBusy?"disabled":""}>${famSumBusy?'<span class="spin"></span> Drafting':"Draft it now"}</button></div>`
     :`<div class="hint">Drafted from the form's own words. Another child reads as a friend, the educators' DRDP words stay, and notes written for educators are left out. Read it and change anything, then mark it read so it can print.</div>
       ${ta("returns",`What ${c.first} keeps returning to`,P.returns)}${ta("friends","Friends and small group",P.friends,2)}
       <div class="lbl">Growing and learning</div>${FAM_AREAS.map(([k,l])=>ta("areas."+k,l,A[k],2)).join("")}
@@ -2665,8 +2670,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-fams
   if(d.famsumclose){famSumOpen="";famSumPaint();return}const cf=conferences.get(famSumOpen);if(!cf)return;
   if(d.famcopy){await window.TREE_FAMILY_COPY(cf.id,{word:d.famcopy==="word"});return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
-  if(d.famsumdraft!=null){if(d.famsumdraft==="1"&&!confirm("Draft it again from the form? The words written here are replaced."))return;
-    try{const j=await window.FP_API("/api/conf/summary/draft",{id:cf.id,again:d.famsumdraft==="1"});cf.familySummary=j.familySummary;famSumPaint();toast("Drafted. Read it before it prints.")}catch(er){toast(er&&er.message||"It could not be drafted. Check your connection.")}return}
+  // drafting can take up to a minute, so the button says so and a second tap never starts a second draft
+  if(d.famsumdraft!=null){if(famSumBusy)return;if(d.famsumdraft==="1"&&!confirm("Draft it again from the form? The words written here are replaced."))return;
+    famSumBusy=true;t.disabled=true;t.innerHTML='<span class="spin"></span> Drafting';
+    try{const j=await window.FP_API("/api/conf/summary/draft",{id:cf.id,again:d.famsumdraft==="1"});cf.familySummary=j.familySummary;famSumBusy=false;famSumPaint();toast("Drafted. Read it before it prints.")}catch(er){famSumBusy=false;famSumPaint();toast(er&&er.message||"It could not be drafted. Check your connection.")}return}
   // the Family Summary is proofread like every form, from its own Proofread button and before it is marked read
   if(d.famsumproof){const root=document.querySelector("#famsum .lsp");if(!root||(proof&&proof.busy))return;proofRoot=root;proofRun();return}
   if(d.famsumread){const shown=(document.getElementById("famsum")||{})._words;const go=async()=>{const c2=conferences.get(famSumOpen)||cf;const j=await famSumSave(c2,{read:true,readOf:shown?JSON.parse(shown):null});famSumPaint();if(j&&j.changed)toast("The summary changed while it was open. Read the new words, then mark it read.");else if(j)toast("Ready to print.")};
@@ -2682,8 +2689,8 @@ function todayConfHtml(){if(isKitchenUser())return "";const t=iso(new Date()),t1
   if(!list.length)return "";
   return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Family conferences</h3></div>${list.map(cf=>{const c=children.get(cf.childId);const fs=cf.familySummary;
     return `<div class="prow"><div style="min-width:0"><b>${esc(c.first)}</b> <span class="cnt">${esc(cf.confDate===t?"Today":"Tomorrow")}${cf.confTime?", "+esc(tlabel(cf.confTime)):""}</span><div class="cnt">${!fs?"The Family Summary is drafted the day before.":fs.readAt?"Family Summary read, ready to print":"Family Summary drafted, to read"}</div></div>
-      <span class="actions" style="margin:0"><button class="btn small ghost" data-famsumopen="${esc(cf.id)}">Family Summary</button>${fs&&fs.readAt?`<button class="btn small" data-famcopynow="${esc(cf.id)}">Print the family copy</button>`:""}</span></div>`}).join("")}</section>`}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-famcopynow]");if(!t)return;e.preventDefault();await window.TREE_FAMILY_COPY(t.dataset.famcopynow,{})},true);
+      <span class="actions" style="margin:0"><button class="btn small ghost" data-famsumopen="${esc(cf.id)}">Family Summary</button>${fs&&fs.readAt?`<button class="btn small" data-famcopynow="${esc(cf.id)}">Family copy, PDF</button><button class="linkbtn" data-famcopynow="${esc(cf.id)}" data-word="1">Word</button>`:""}</span></div>`}).join("")}</section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-famcopynow]");if(!t)return;e.preventDefault();await window.TREE_FAMILY_COPY(t.dataset.famcopynow,{word:!!t.dataset.word})},true);
 // the Conferences page opens a child's documentation in TREE
 window.TREE_OPEN_CHILD=id=>{if(!children.has(id))return;kidOpen=id;LS.set("tree.kid",id);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child")};
 // what TREE already knows that belongs on a child's conference form. Only facts from the records, never a judgement.
@@ -3947,7 +3954,7 @@ function stLetterTile(first,A){A=A||ACC.story;const c=document.createElement("ca
 async function stSquaresReady(pages){const ids=pages.filter(p=>p.kind==="community").flatMap(p=>p.kids.map(k=>k.photo)).filter(Boolean);
   await Promise.all(ids.map(id=>new Promise(ok=>{const ph=photoCache.get(id);if(!ph||!ph.url)return ok();const im=new Image();im.onload=()=>{stSquare(id);ok()};im.onerror=()=>ok();im.src=ph.url})))}
 async function storyPdf(st){
-  if(!window.jspdf){toast("The PDF tool did not load.");return}
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"});
@@ -4029,7 +4036,7 @@ async function storyDocx(st){
 }
 /* the small book, a half-letter page for each page of the story, for a family to keep at home or a child to hold */
 async function storySmallPdf(st){
-  if(!window.jspdf){toast("The PDF tool did not load.");return}
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
   const doc=TREE_KIT.pdf({unit:"pt",format:[396,612],orientation:"portrait"});
@@ -4496,7 +4503,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bef1830567","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ce7961c251","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4506,7 +4513,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=bef1830567","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=ce7961c251","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -4518,7 +4525,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="ea88f11d9d44";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="e1c425421303";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5587,7 +5594,7 @@ function gdnFoodRuleText(){return (wordsOf("food-rule").rule||"").trim()}
 const GTH_NAMES={"second-saturday":"Second Saturday","play-garden":"Play Garden","garden-visit":"Garden visits"};
 // the months whose Second Saturday is also the season's garden day
 const GTH_GARDEN_MONTHS={"12":"winter","03":"spring","06":"summer","09":"fall"};
-let gthForm=null,gthPg=null,gthPgAsked=false;
+let gthForm=null,gthPg=null,gthPgAsked=false,gthDateEdit="";
 const gthEdit=()=>isOffice()&&!VIEW_AS;
 // educators see the page once the director releases it, or one of its gatherings, in Settings, Releases
 // seen as an educator, the page opens only as it would for that educator, once the director has released it
@@ -5619,7 +5626,7 @@ function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gth
     ${ed&&g.signups&&g.signups.length?`<div class="cnt">Coming, ${esc(g.signups.map(s=>s.who||s.family||s.email).join(", "))}</div>`:!ed&&g.coming?`<div class="cnt">${g.coming} ${g.coming==1?"family":"families"} coming</div>`:""}
     ${past||g.documentation||g.docLink?`<div class="lbl" style="margin-top:8px">Afterward</div>${ed?`<label class="fld-label">What happened, in our words<textarea rows="3" data-gthf="documentation" data-gthid="${esc(g.id)}">${esc(g.documentation||"")}</textarea></label><label class="fld-label">Photos or documentation, a link<input type="url" data-gthf="docLink" data-gthid="${esc(g.id)}" value="${esc(g.docLink||"")}" placeholder="https://"></label>${dir?`<div class="actions"><button class="linkbtn" data-gthoffer="${esc(g.id)}">Offer it for objective 8 on the Farm to School page</button></div>`:""}`
       :`${g.documentation?`<div style="white-space:pre-line">${esc(g.documentation)}</div>`:""}${g.docLink?`<div><a href="${esc(g.docLink)}" target="_blank" rel="noopener">Photos and documentation</a></div>`:""}`}`:""}
-    ${ed?`<div class="actions">${gv?"":dir?`<button class="btn small" data-gthready="${esc(g.id)}">${g.ready?"Take it back from families":"Mark it ready for families"}</button>`:`<span class="cnt">${g.ready?"":"The director marks it ready for families."}</span>`}<button class="linkbtn" data-gthdate="${esc(g.id)}">Change the date or time</button><button class="linkbtn" data-gthdel="${esc(g.id)}">Remove it</button></div>`:""}</section>`}
+    ${ed?`<div class="actions">${gv?"":dir?`<button class="btn small" data-gthready="${esc(g.id)}">${g.ready?"Take it back from families":"Mark it ready for families"}</button>`:`<span class="cnt">${g.ready?"":"The director marks it ready for families."}</span>`}<button class="linkbtn" data-gthdate="${esc(g.id)}">Change the date or time</button><button class="linkbtn" data-gthdel="${esc(g.id)}">Remove it</button></div>${gthDateEdit===g.id?`<div class="gsrow" style="margin-top:8px"><label>Day<input type="date" id="gthe-date" value="${esc(g.date||"")}"></label><label>Starts<input type="time" id="gthe-start" value="${esc(g.start||"")}"></label><label>Ends<input type="time" id="gthe-end" value="${esc(g.end||"")}"></label></div><div class="actions"><button class="btn small" data-gthdatesave="${esc(g.id)}">Save the date</button><button class="linkbtn" data-gthdatecancel="1">Cancel</button></div>`:""}`:""}</section>`}
 function gthPgHtml(){if(!isDirector()||VIEW_AS||!window.FP_API)return"";if(!gthPgAsked){gthPgAsked=true;window.FP_API("/api/staff/playgarden",{}).then(r=>{gthPg=r;if(view==="gatherings"||view==="settings")renderMain()}).catch(()=>{})}
   const p=gthPg,on=p&&p.settings&&p.settings.on,link=new URL("playgarden.html",location.href).href;
   return `<div class="strow"><div class="lbl">The Play Garden application</div><div class="hint">A public page for any family, from our school or beyond, with a parent or caregiver staying with each child. It asks the questions in our wording and shows our garden family agreements, and nothing else of TREE. Each application is kept in our records, read only here.</div>
@@ -5652,7 +5659,7 @@ document.addEventListener("change",e=>{if(view!=="gatherings")return;const t=e.t
   if(t.dataset.gthf){const x=participation.get(t.dataset.gthid);if(!x)return;const v=t.value.trim();if((t.dataset.gthf==="toolkit"||t.dataset.gthf==="docLink")&&v&&!/^https:\/\//.test(v)){toast("A link starts with https://");return}
     gthSave(Object.assign({},x,{[t.dataset.gthf]:v.slice(0,t.dataset.gthf==="plan"||t.dataset.gthf==="documentation"?6000:600),updatedAt:Date.now()})).then(()=>toast("Saved."));return}
   if(t.dataset.gthtk){const v=t.value.trim();if(v&&!/^https:\/\//.test(v)){toast("A link starts with https://");return}const c=gthConf();c.toolkits[t.dataset.gthtk]=v.slice(0,600);ptSave("gatherings",c).then(()=>{toast("Saved.");renderMain()})}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthnew],[data-gthcancel],[data-gthkind],[data-gthsave],[data-gthready],[data-gthjob],[data-gthjobdel],[data-gthdel],[data-gthdate],[data-gthoffer],[data-gthpg],[data-gthpgst]");if(!t||view!=="gatherings")return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthnew],[data-gthcancel],[data-gthkind],[data-gthsave],[data-gthready],[data-gthjob],[data-gthjobdel],[data-gthdel],[data-gthdate],[data-gthdatesave],[data-gthdatecancel],[data-gthoffer],[data-gthpg],[data-gthpgst]");if(!t||view!=="gatherings")return;const d=t.dataset;
   const keep=()=>{if(!gthForm)return;const v=id=>(document.getElementById(id)||{}).value||"";Object.assign(gthForm,{title:v("gth-title"),date:v("gth-date"),start:v("gth-start"),end:v("gth-end"),spots:v("gth-spots")})};
   if(d.gthnew){gthForm={gathering:"second-saturday",title:"Second Saturday",start:"09:00",end:"12:00"};renderMain();return}
   if(d.gthcancel){gthForm=null;renderMain();return}
@@ -5672,8 +5679,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthn
   if(d.gthjobdel){const j=participation.get(d.gthjobdel);if(!j)return;if((j.signups||[]).length&&!confirm("Families signed up for this job. Take it off anyway?"))return;await ptSave(j.id,Object.assign({},j,{open:false,gatheringId:"",removedFrom:j.gatheringId,updatedAt:Date.now()}));renderMain();return}
   if(d.gthdel){const x=participation.get(d.gthdel);if(!x)return;if(!confirm("Remove this gathering and its jobs? Families who signed up no longer see it."))return;
     await ptSave(x.id,Object.assign({},x,{open:false,gathering:"",removedGathering:x.gathering,onCalendar:false,updatedAt:Date.now()}));for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{open:false,gatheringId:"",removedFrom:x.id,updatedAt:Date.now()}));renderMain();return}
-  if(d.gthdate){const x=participation.get(d.gthdate);if(!x)return;const nd=prompt("The day, as year-month-day",x.date||"");if(nd===null)return;if(nd&&!/^\d{4}-\d{2}-\d{2}$/.test(nd)){toast("Write the day as 2026-12-12.");return}
-    const ns=prompt("Starts, as 09:00",x.start||"");if(ns===null)return;const ne=prompt("Ends, as 12:00",x.end||"");if(ne===null)return;const okT=s=>!s||/^\d{2}:\d{2}$/.test(s);if(!okT(ns)||!okT(ne)){toast("Write a time as 09:00.");return}
+  // the date and times change with the same pickers as Plan a gathering, right under the gathering
+  if(d.gthdate){gthDateEdit=gthDateEdit===d.gthdate?"":d.gthdate;renderMain();return}
+  if(d.gthdatecancel){gthDateEdit="";renderMain();return}
+  if(d.gthdatesave){const x=participation.get(d.gthdatesave);if(!x)return;const nd=$("#gthe-date")?.value||"",ns=$("#gthe-start")?.value||"",ne=$("#gthe-end")?.value||"";
+    if(!nd){toast("Choose the day.");return}if(ns&&ne&&ne<=ns){toast("The end comes after the start.");return}gthDateEdit="";
     const gd=x.gathering==="second-saturday"&&!!GTH_GARDEN_MONTHS[nd.slice(5,7)];
     await gthSave(Object.assign({},x,{date:nd,start:ns,end:ne,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[nd.slice(5,7)]:"",updatedAt:Date.now()}));
     for(const j of ptItems().filter(j=>j.gatheringId===x.id))await ptSave(j.id,Object.assign({},j,{date:nd,start:ns,end:ne,note:(x.title||GTH_NAMES[x.gathering])+(nd?", "+fmtDate(nd):""),updatedAt:Date.now()}));renderMain();return}
@@ -6135,6 +6145,14 @@ function renderWeekBoard(){
       <div class="actions" style="margin-top:6px"><button class="btn small ghost" id="packet">Week packet PDF</button><button class="btn small ghost" id="packetw">Word</button><button class="linkbtn" id="blanks">Blank forms PDF</button><button class="linkbtn" id="blanksw">Word</button><button class="linkbtn" id="sample">A sample filled plan</button></div></section>
   </div>`;
 }
+/* An Individual plan started on Monday picks up where last week's left off. Last week's Final remarks for the same
+   educator and group, or the same area, open the Observation rationale and the two plans are joined, as Carry forward does. */
+function fromLastWeek(np){if(!np||np.type!=="individual"||String((np.fields||{}).observation||"").trim())return np;
+  const lw=addDays(np.weekOf,-7),same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase(),gs=new Set(np.groups||[]);
+  const last=[...plans.values()].filter(p=>p.id!=="example"&&!p.deleted&&p.type==="individual"&&p.weekOf===lw&&same(p.educator,np.educator)&&String((p.fields||{}).remarks||"").trim()&&(gs.size?(p.groups||[]).some(g=>gs.has(g)):!(p.groups||[]).length))
+    .filter(p=>![...plans.values()].some(x=>x.prevId===p.id)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+  if(!last)return np;const fr=String(last.fields.remarks).trim();np.fields=np.fields||{};np.fields.observation=fr;np.obsFrom=fr;np.prevId=last.id;
+  if(!gs.size&&last.fields.area&&!np.fields.area)np.fields.area=last.fields.area;return np}
 function startIndividual(groupName,room){
   if(needName())return;room=room||boardRoom();
   const g=GROUPS.find(x=>x.name===groupName);
@@ -6143,6 +6161,7 @@ function startIndividual(groupName,room){
   if(had){currentId=had.id;view="plans";LS.set("fps.view",view);renderNav();renderList();renderMain();jumpTop();return}
   const np=newPlan("individual");np.classroom=room;
   if(g){np.groups=[g.name];np.focus="";if(g.educator&&!np.educator)np.educator=g.educator}else{np.groups=[];np.focus="area"}
+  fromLastWeek(np);
   plans.set(np.id,np);currentId=np.id;persist(np);view="plans";LS.set("fps.view",view);renderNav();renderList();renderMain();jumpTop();
 }
 
@@ -6172,7 +6191,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","57ae0ebd52").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","307c6eec49").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -6244,7 +6263,7 @@ document.addEventListener("click",async e=>{
     if(t.dataset.new==="classroom"){const room=t.dataset.room||myRoom()||boardRoom();const had=[...plans.values()].find(p=>p.type==="classroom"&&p.weekOf===week&&p.classroom===room&&p.id!=="example");
       if(had){view="plans";LS.set("fps.view",view);renderNav();currentId=had.id;renderList();renderMain();jumpTop();return}
       view="plans";LS.set("fps.view",view);renderNav();const np=newPlan("classroom",{classroom:room});plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
-    view="plans";LS.set("fps.view",view);renderNav();const np=newPlan(t.dataset.new);plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+    view="plans";LS.set("fps.view",view);renderNav();const np=fromLastWeek(newPlan(t.dataset.new));plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
   if(t.dataset.open&&notices.has(t.dataset.open)){const n=notices.get(t.dataset.open);noticeForm=null;view="plans";LS.set("fps.view",view);currentId=null;nRoom=n.classroom||"All";renderNav();noticeForm=Object.assign({},n);renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
   if(t.dataset.jump&&!t.dataset.open){const ta=t.dataset.jump==="web"?$("#w-focus"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return}
@@ -6535,7 +6554,7 @@ const PG=Object.assign({},PG0);
 function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=PG0.padB*z;PG.gap=PG0.gap*z;PG.strip=PG0.strip*Math.max(z,.92)}
 // with ret the file comes back rather than opening, and "quiet" also keeps every message off the screen
 async function makePdf(list,filename,ret){
-  if(!window.jspdf){if(ret!=="quiet")toast("The PDF tool did not load. Check your connection and reload.");return}
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){if(ret!=="quiet")toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);await loadPrintFonts();
   const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
   const fmt=p=>p&&p.centered&&p.sq?[PW,PW]:"letter";
@@ -7790,7 +7809,7 @@ const threadNotices=t=>{if(!t)return [];const ix=obsIndex();if(!ix.byT){ix.byT=n
 const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
   for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
-let noticesSeen=false, grantLoaded=false, grantRecs=new Map(), gQuarter=LS.get("fps.gq",""), gBusy=false, gAdd=null;
+let noticesSeen=false, grantLoaded=false, grantRecs=new Map(), gQuarter="", gBusy=false, gAdd=null;
 const G_DEFAULT={agreement:"24-0887-000-SG",end:"2027-06-30",start:"",award:200000,b1a:80000,b1b:10000};
 const gSet=()=>Object.assign({},G_DEFAULT,grantRecs.get("settings")||{});
 const gList=id=>Object.values((grantRecs.get(id)||{}).list||{}).filter(Boolean);
@@ -7972,7 +7991,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","c1929ae9de").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","1f42ffadbc").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -8198,7 +8217,9 @@ async function binNoteDraft(b,quiet){if(!sample||!b||!isDirector())return;
     await gWrite("binnote-"+b.id,{id:"binnote-"+b.id,week:b.date,text:t,status:"draft",at:Date.now()});if(!quiet)toast("The bin note is ready to read.");if(view==="today"||view==="grant")renderMain()}catch(e){if(!quiet)toast(assistError(e?.code||"unknown","The note could not be written just now."))}}
 // once a week, as the list arrives, the director's TREE writes the note by itself
 let binNoteBusy=false;
-setInterval(()=>{if(binNoteBusy||!isDirector()||VIEW_AS||document.hidden||!db||!sample)return;const b=binCurrent();if(!b||binNoteRec(b))return;binNoteBusy=true;binNoteDraft(b,true).finally(()=>{binNoteBusy=false})},60000);
+// the bin note is tried three times, ten minutes apart, and then waits for the director to draft it herself
+const binNoteTries={};
+setInterval(()=>{if(binNoteBusy||!isDirector()||VIEW_AS||document.hidden||!db||!sample)return;const b=binCurrent();if(!b||binNoteRec(b))return;const tr=binNoteTries[b.id]||{n:0,at:0};if(tr.n>=3||Date.now()-tr.at<10*60e3)return;binNoteTries[b.id]={n:tr.n+1,at:Date.now()};binNoteBusy=true;binNoteDraft(b,true).finally(()=>{binNoteBusy=false})},60000);
 
 /* the farm of the month, a post started in Share with the farm, its foods and the school's numbers */
 function farmPostStart(month){const {F,best}=farmOfMonth(month);if(!best){toast("No farm is in the orders for that month yet.");return}
@@ -8340,9 +8361,9 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
 const kCanEdit=()=>isDirector()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","5050bbb54e").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","5050bbb54e").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function kMonthMenu(...a){return lazyLoad("kitchen","5050bbb54e").then(()=>kMonthMenu(...a))}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","3b9595d021").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","3b9595d021").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","3b9595d021").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -11024,7 +11045,7 @@ function drawCentered(doc,p,pageAcc){
 }
 // how a sheet prints, drawn on the page before anything is printed
 function cPreview(md){
-  if(!window.jspdf)return `<div class="empty">The preview is loading.</div>`;
+  if(!window.jspdf){TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});return `<div class="empty">The preview is loading.</div>`}
   try{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});const A=accOf(md.acc)||ACC.story;const F=cFlow(doc,md,A);
     const rgb=c=>`rgb(${c.join(",")})`,fam=k=>k[0]==="T"?"'Times New Roman', Times, serif":k[0]==="H"?"Helvetica, Arial, sans-serif":PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>(k[0]==="T"||k[0]==="H")?(k[1]==="s"?"bold":"normal"):PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
     const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover);
@@ -13658,7 +13679,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=bef1830567","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ce7961c251","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
