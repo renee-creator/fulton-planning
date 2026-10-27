@@ -1577,12 +1577,15 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   const L=pr.layers||{};const lay=(k,label)=>L[k]?chip("ok",label+", "+fd(L[k])):chip("out",label);
   const waysCard=ways?card("Three ways in",`${md(ways.body)}<div class="actions" style="margin:8px 0 0">${L.own||!pr.done?lay("own","On my own"):chip("ok","On my own, "+fms(pr.done))}${lay("meeting","Staff meeting")}${lay("pdday","PD day")}</div><div class="cnt">On my own is marked when you finish the module below. Staff meeting and PD day are marked when the director logs the hours for a meeting or PD day that used this module.</div>`):"";
   const restCard=dir&&m.restored&&!viewing?card("A restored draft is waiting",`<div class="hint">This draft puts back what was lost from the original workshop and adds material from our files. Read it here, then accept it or leave the current module as it is.</div><div class="actions"><button class="btn small" data-gmrest="${H(slug)}">Read the restored draft</button></div>`):"";
+  // the module's original materials, the director's own decks, guides and handouts, for the director and the module's presenters
+  let origs=[];if(!viewing){try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/originals",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug})});if(r.ok)origs=(await r.json()).list||[]}catch(er){}}
+  const origCard=origs.length?card(dir?"Original materials, seen by you and this module's presenters":"Original materials, for presenters",`<div class="hint">The original decks, guides, agendas and handouts this module grew from. Each opens in its own program to present or print.</div>${origs.map(x=>`<div class="prow"><span>${H(x.title)}</span><button class="btn small ghost" data-gmorig="${H(slug)}|${H(x.id)}">Download</button></div>`).join("")}`):"";
   const restBar=viewing?card("Restored draft, only you see it",`${changed?md(changed.body):""}<div class="actions"><button class="btn small" data-gmaccept="${H(slug)}">Accept it in place of the current module</button><button class="btn small ghost" data-gmrestback="${H(slug)}">Back to the current module</button></div><div class="cnt">The current wording is kept in the page's history, so Restore this version brings it back.</div>`):"";
   const serves=(m.serves||[]).map(areaName).filter(Boolean);
   // the reflection prompts, one per line or list item, each one can be carried into the weekly journal
   const prompts=rf?String(rf.body).split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean):[];const carry=(d.carry||{}).prompt||"";
   const draftCard=dir&&m.draft?card(m.waiting?"Draft":"Ready",`<div class="hint">${m.waiting?"Only you see this module. Educators see it once you mark it ready.":"Educators see this module."}</div><div class="actions"><button class="btn small${m.waiting?"":" ghost"}" data-gmready="${H(slug)}|${m.waiting?1:0}">${m.waiting?"Mark it ready":"Hide it again"}</button></div>`):"";
-  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
+  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmslides="${H(slug)}">Slides from this module</button><button class="linkbtn" data-gmslides="${H(slug)}" data-word="1">Word</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
   // the DRDP module's examples come from accepted DRDP evidence, one for each measure, so each example shows a measure read from our own documentation
   if(dir){exBody=exPicker(slug,ex,/drdp/i.test(slug)?exSuggest(m,slug,own,drdpEvPool()):exSuggest(m,slug,own))}
@@ -1597,10 +1600,30 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
     ${sh?card("Share at a staff meeting",`${md(sh.body)}<label class="fld-label">What I will share, if I want a note<textarea rows="2" id="gmod-share">${H(pr.share||"")}</textarea></label>`):""}
     ${rd?card("Readings",md(rd.body)):""}${await (async()=>{const R2=((await loadReadings()).list||[]).filter(x=>(x.modules||[]).includes(slug));const bk=R2.filter(x=>x.kind!=="article"),ar=R2.filter(x=>x.kind==="article");
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
-    ${other.map(x=>card(x.heading,md(x.body))).join("")}${prints?card("Printables",md(prints.body)):""}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}
+    ${other.map(x=>card(x.heading,md(x.body))).join("")}${prints?card("Printables",md(prints.body)):""}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
     ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);window.scrollTo(0,0)};
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept]");if(!t)return;e.preventDefault();const d=t.dataset;
+/* Slides from a module, in our own print style. A title slide with the module's question, why it matters, one slide for
+   each part of the Reading with its first lines, Try this week, the reflection questions and plus delta. They follow
+   the module as it stands, so a change to the module changes the slides. */
+const plainLines=t=>String(t||"").replace(/\*\*/g,"").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").split("\n").map(l=>l.replace(/^\s*([-*]|\d+\.)\s+/,"").trim()).filter(l=>l&&!/^\|/.test(l)&&!/^#/.test(l));
+const firstSentences=(t,n)=>{const s2=String(t||"").replace(/\s+/g," ").match(/[^.!?]+[.!?]+/g)||[];return s2.slice(0,n).join(" ").trim()||String(t||"").slice(0,240)};
+function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:true,display:true,type:"report",acc:"story",title,details:[],photos:[],blocks:lines.filter(Boolean).map(l=>({t:"para",text:l}))},o||{});
+  const sec=h=>m.sections.find(x=>x.heading.toLowerCase().startsWith(h));const why=sec("why it matters"),rd=sec("reading"),tr=sec("try this week"),rf=sec("reflect");
+  const q=(String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"";
+  const out=[slide(m.title,[(m.serves||[]).length?"Serves "+(m.serves||[]).map(areaName).filter(Boolean).join(" and ")+".":"",q],{bare:false})];
+  if(why)out.push(slide("Why it matters",[firstSentences(String(why.body).split(/\n\s*\n/)[0],3)]));
+  if(rd){const parts=String(rd.body).split(/^###\s+/m).slice(1);for(const p2 of parts){const i=p2.indexOf("\n");const h=p2.slice(0,i<0?p2.length:i).trim();const body=i<0?"":p2.slice(i+1);
+      const items=body.split(/\n/).filter(l=>/^\s*([-*]|\d+\.)\s+/.test(l));const lines=items.length?plainLines(items.join("\n")).slice(0,5).map(l=>firstSentences(l,1)):[firstSentences(plainLines(body).join(" "),3)];
+      if(h)out.push(slide(h,lines))}}
+  if(tr)out.push(slide("Try this week",[firstSentences(plainLines(tr.body).join(" "),3)]));
+  if(rf)out.push(slide("Reflect",plainLines(rf.body).slice(0,5)));
+  out.push(slide("Plus and delta",["What went well today?","What would we change?"]));
+  return out}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept],[data-gmorig],[data-gmslides]");if(!t)return;e.preventDefault();const d=t.dataset;
+  if(d.gmslides){const ms=await loadMods();const m=ms.modules[d.gmslides];if(!m)return;progress("Making the slides");await out(d.word?"word":"pdf",moduleSlides(m),m.title+" slides");return}
+  if(d.gmorig){const [slug,id]=d.gmorig.split("|");progress("Opening the file");try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/original",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug,id})});if(!r.ok){toast("The file could not be opened.");return}
+    const u=URL.createObjectURL(await r.blob());const a=document.createElement("a");a.href=u;a.download=id;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(er){toast("The file could not be opened.")}return}
   if(d.gmrest){st.restView=d.gmrest;redraw();return}
   if(d.gmrestback){st.restView="";redraw();return}
   if(d.gmaccept){if(!confirm("Accept the restored draft in place of the current module? The current wording stays in the page's history."))return;const r=await ga("module/accept",{slug:d.gmaccept});st.mods.modules=r.modules;if(B())B().modules=r.list;st.restView="";toast("Accepted. The earlier wording is kept in the page's history.");redraw();return}});
@@ -1945,8 +1968,11 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
   const back=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-prsel="">‹ Presenting</button>${e.status==="presented"?chip("ok","Presented "+fd(e.presentedOn)):chip("soonish","Being planned")}</div>`;
+  // an entry made from a PD module carries that module's original materials, for the director and the presenters
+  let origs=[];if(ed&&e.module){try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/originals",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug:e.module})});if(r.ok)origs=(await r.json()).list||[]}catch(er){}}
+  const origFold=origs.length?fold("originals","Original materials",origs.length+(origs.length===1?" file":" files"),`<div class="hint">The original decks, guides, agendas and handouts from the module this entry was made from. Each opens in its own program to present or print.</div>${origs.map(x=>`<div class="prow"><span>${H(x.title)}</span><button class="btn small ghost" data-gmorig="${H(e.module)}|${H(x.id)}">Download</button></div>`).join("")}`):"";
   const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+(dir?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-pageedit="staff/presenting/${H(e.id)}.json">Edit the wording, with its history</button></div>`:"")+aboutCard(e)+creditCard(e)+
-    (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
+    (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+origFold+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 
 /* the entry's own details, which every reader sees. The day reads with its times, such as Saturday, May 22, 2027,
@@ -2028,6 +2054,7 @@ function chosenFold(e){const ed=edit();const L=e.chosen||[];
   const m=(x,i)=>{const src=picOf(x);return `<div class="prmom ${src?"":"nophoto"}" data-prchosen="${H(x.id)}">${src?`<img src="${H(src)}" alt="" loading="lazy">`:""}<div style="min-width:0;display:grid;gap:4px">
     <div class="cnt"><b>${i+1}.</b> ${H(where(x)||x.label||"")}${x.by?", "+H(x.by):""}</div><div style="white-space:pre-line">${H(clipL(x.text,600))}</div>${x.wonder?`<div class="cnt">${H(clip(x.wonder,240))}</div>`:""}
     ${ed?`<div class="actions" style="margin:0;flex-wrap:wrap"><span class="prdrag" data-prdrag="${H(x.id)}" aria-hidden="true">Drag</span><button class="linkbtn" data-prmv="chosen|${H(x.id)}|-1" ${i===0?"disabled":""}>Move up</button><button class="linkbtn" data-prmv="chosen|${H(x.id)}|1" ${i===L.length-1?"disabled":""}>Move down</button>
+      ${D()?`<label class="radio cnt"><input type="checkbox" data-proutside="${H(x.id)}" ${x.outside?"checked":""}><span>Cleared for outside audiences</span></label>`:x.outside?`<span class="cnt">Cleared for outside audiences</span>`:""}
       <label class="cnt">Language <select data-prlang="${H(x.id)}"><option value="">Not named</option>${[...new Set([...LANGUAGES,...(x.language?[x.language]:[])])].map(l=>`<option ${l===x.language?"selected":""}>${H(l)}</option>`).join("")}</select></label><button class="linkbtn" data-prrmi="chosen|${H(x.id)}">Take it out</button></div>`:""}</div></div>`};
   return fold("chosen","Chosen moments",L.length?L.length+(L.length===1?" moment":" moments"):"",`<div data-prlist="chosen">${L.length?L.map(m).join(""):empty("Photos and educators' words chosen from Evidence, a lens or any observation, each with its date, Class and language."+(ed?" Drag them, or move them up and down, into the order you want.":""))}</div>${ed?pickHtml(e):""}`)}
 // any observation, or the ones a lens finds, can be chosen
@@ -2078,6 +2105,8 @@ function printsFold(e){const dir=D();const nm=e.names||"none";
   const row=(k,l,d)=>`<div class="prow"><span><b>${l}</b><div class="cnt">${d}</div></span><span class="actions" style="margin:0"><button class="btn small ghost" data-prprint="${k}">PDF</button><button class="linkbtn" data-prword="${k}">Word</button></span></div>`;
   return fold("prints","Prints",NM[nm]||"No names",`<div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on these prints</span>${dir?`<div class="tseg" role="group" aria-label="Children's names on these prints">${NAME_MODES.map(([k,l])=>`<button data-prnames="${k}" aria-pressed="${nm===k}">${l}</button>`).join("")}</div>`:`<b>${H(NM[nm]||"No names")}</b>`}</div>
     <div class="cnt">No names unless the director changes it for this entry, since many audiences are from other schools.</div>
+    <div class="prow"><span class="cnt">Who these prints are for</span><div class="tseg" role="group" aria-label="Who these prints are for"><button data-proutsidep="0" aria-pressed="${!outsideOn(e)}">Our team</button><button data-proutsidep="1" aria-pressed="${outsideOn(e)}">Outside audiences</button></div></div>
+    <div class="cnt">${outsideOn(e)?`For outside audiences, prints carry only the moments cleared for outside audiences, ${(e.chosen||[]).filter(x=>x.outside).length} of ${(e.chosen||[]).length}, with no names, and name Fulton Community School & Farm as the source.`:"For our team, prints carry every chosen moment."}</div>
     ${row("guide","Facilitator guide","The session plan, section by section, with its moments, readings and files.")}${row("panels","Panels","Printed panels, one idea to a page, clean and uncrowded.")}${row("handout","Handout","For participants, with the guiding question, readings, reflection prompts and the brief check.")}${row("slides","Slide set","A large photo and the words, one moment to a slide. Faces are softened, so it can be shared.")}
     <div class="prow"><span><b>Slide set to show</b><div class="cnt">For showing on the screen during the session only. Children's faces are kept, so it is never handed out or shared.</div></span><span class="actions" style="margin:0"><button class="btn small ghost" data-prprint="slides" data-prshow="1">PDF</button></span></div>
     <div class="cnt">Every print and Word file people take away is made with children's faces softened, checked on this device.</div>`)}
@@ -2118,8 +2147,13 @@ function slideDocs(e){const C=e.chosen||[];const land=(o,ph)=>ph.length?sheet(Ob
     ...(e.question?[land({title:"",bare:true,blocks:[{t:"quote",words:e.question,by:""}]},last)]:[])]}
 // slides shown during the presentation itself may keep children's faces. Everything participants take away, and every
 // Word file, is made with faces softened.
-async function print(k,word,toShow){const e=E();const kind=word?"word":"pdf";progress("Making the file");
+// prints for outside audiences, the default for an entry marked external, carry only cleared moments and name the school
+const outsideOn=e=>st.outsideP&&e.id in st.outsideP?st.outsideP[e.id]:e.audienceType==="external";
+const forOutside=e=>{const ok=new Set((e.chosen||[]).filter(x=>x.outside).map(x=>x.id));return Object.assign({},e,{names:"none",chosen:(e.chosen||[]).filter(x=>ok.has(x.id)),plan:(e.plan||[]).map(s=>Object.assign({},s,{moments:(s.moments||[]).filter(id=>ok.has(id))}))})};
+const creditDocs=docs=>{const c="Fulton Community School & Farm";for(const d of docs){if(d.meta)d.meta=[...d.meta,["From",c]];else d.details=[...(d.details||[]),c]}return docs};
+async function print(k,word,toShow){const out0=outsideOn(E());const e=out0?forOutside(E()):E();const kind=word?"word":"pdf";progress("Making the file");
   const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(Object.assign({},e,{_map:await handoutMap()}))]:k==="panels"?panelDocs(e):slideDocs(e);
+  if(out0)creditDocs(docs);
   if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs);if(!(toShow&&k==="slides"&&!word))await softenDocPhotos(docs)}
   return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:toShow&&!word?"slides to show":"slides"}[k])}
 
@@ -2143,12 +2177,13 @@ const said=t=>{const s=$("#pr-saved");if(s)s.textContent=t};
 /* ---------- taps ---------- */
 const val=s=>{const e=$(s);return e?e.value:""};
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.help=null},true);
-document.addEventListener("click",e=>{const t=e.target.closest("[data-praud],[data-praudsort],[data-prsel],[data-prnew],[data-prpres],[data-prnames],[data-prdone],[data-prundo],[data-prcopy],[data-prrm],[data-pradd],[data-prrmi],[data-prmv],[data-prkeep],[data-prevg],[data-prlooksave],[data-prfind],[data-prlens],[data-prchoose],[data-pruse],[data-prfur],[data-prhelp],[data-prhelpuse],[data-prhelpno],[data-prprint],[data-prword],[data-prmoment],[data-prmomentno],[data-pragenda]");
+document.addEventListener("click",e=>{const t=e.target.closest("[data-proutsidep],[data-praud],[data-praudsort],[data-prsel],[data-prnew],[data-prpres],[data-prnames],[data-prdone],[data-prundo],[data-prcopy],[data-prrm],[data-pradd],[data-prrmi],[data-prmv],[data-prkeep],[data-prevg],[data-prlooksave],[data-prfind],[data-prlens],[data-prchoose],[data-pruse],[data-prfur],[data-prhelp],[data-prhelpuse],[data-prhelpno],[data-prprint],[data-prword],[data-prmoment],[data-prmomentno],[data-pragenda]");
   if(!t)return;X.tapOnce(t,()=>prTap(e,t))},true);
 async function prTap(e,t){const d=t.dataset;const en=E();
   if(VIEW_AS&&d.prsel==null){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.prsel!=null){Pr.open(d.prsel);T.render("stpres");window.scrollTo(0,0);return}
   if(d.pragenda){if(window.TreeGrowth)TreeGrowth.openAgenda(d.pragenda);goView("stpdd");return}
+  if(d.proutsidep!=null){st.outsideP=Object.assign({},st.outsideP,{[E().id]:d.proutsidep==="1"});X.redraw();return}
   if(d.prprint||d.prword){return print(d.prprint||d.prword,!!d.prword,!!d.prshow)}
   if(d.prnew){const title=val("#prn-title").trim();if(!title){toast("Give the entry a title.");return}const r=await pa("new",{title,template:d.prnew==="template"});Pr.open(r.id);toast("Started.");T.render("stpres");return}
   if(d.prpres){const cur=new Set(en.presenters||[]);cur.has(d.prpres)?cur.delete(d.prpres):cur.add(d.prpres);set(await pa("save",{id:en.id,fields:{presenters:[...cur]}}));toast(cur.has(d.prpres)?`${d.prpres} can see and work on this entry now.`:`${d.prpres} is no longer a presenter.`);X.redraw();return}
@@ -2196,6 +2231,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
     if(d.pri){const [list,id,f]=d.pri.split("|");const x=(st.e[list]||[]).find(y=>y.id===id);if(!x)return;x[f]=t.value;await saveItem(list,x);return}
     if(d.prpl){const [id]=d.prpl.split("|");const s=(st.e.plan||[]).find(y=>y.id===id);if(!s)return;collectPlan(s);await saveItem("plan",s);return}
     if(d.prlang){const x=(st.e.chosen||[]).find(y=>y.id===d.prlang);if(!x)return;await saveItem("chosen",{id:x.id,language:t.value});X.redraw();return}
+    if(d.proutside){const x=(st.e.chosen||[]).find(y=>y.id===d.proutside);if(!x)return;await saveItem("chosen",{id:x.id,language:x.language||"",outside:t.checked});X.redraw();return}
     if(t.id==="pr-fu"){set(await pa("save",{id:st.e.id,fields:{followupOn:t.checked}}));X.redraw();return}
   }catch(er){fail(er)}});
 // Evidence is read when its dropdown opens

@@ -252,6 +252,22 @@ A restored draft of a module waits in the records under staff/pd/restored, one f
 
 A module page shows each part it has. Three ways in follows Why it matters, then the Reading, From our own documentation, Try this week, With families, Into our program, Reflect, Share at a staff meeting, Readings, any other part the module holds and Printables. Presenting this module and any part headed For the director show only to the director, and the server never sends them to anyone else. The Three ways in card shows On my own, Staff meeting and PD day with the day each was done. On my own is marked when the educator taps Finish On my own. Staff meeting and PD day are marked for each person when the director logs the hours for a meeting or PD day whose agenda opened the module, once each. Any module in the library, including the ones written since the design's list, can open from an agenda block or be linked to a reading.
 
+### Original materials
+
+A module's original materials, the director's own decks, facilitator guides, agendas and handouts, are listed in staff/pd/originals.json by module, each with its title, kind and type. The files are kept like photos. A file added to the records under originals/ moves to the TREE photos folder in the tree@ Drive on the server's next pass, and leaves a marker in the records. The director sees Original materials on the module page, and the presenters of a Presenting entry made from that module see it on the module and under Original materials in the entry. Each file downloads to open in its own program. No one else receives the list or a file, and the server enforces it. The Garden as Teacher entries and Serving Two-Year-Olds carry their module, so their presenters see the same files.
+
+### Slides from a module
+
+Slides from this module, on the director's module page, makes a slide set in our own print style from the module as it stands, a title slide with the module's question, Why it matters, one slide for each part of the Reading with its first lines, Try this week, the reflection questions and Plus and delta, as PDF and Word. A change to the module changes the slides. The original deck stays under Original materials.
+
+### Prints for outside audiences
+
+Each Presenting entry's Prints choose who they are for, Our team or Outside audiences. An entry marked external starts on Outside audiences. The director clears each chosen moment for outside audiences with its own tick, apart from what educators see, and prints for outside audiences carry only cleared moments, with no names, and name Fulton Community School & Farm as the source. Faces are softened on everything handed out, as before.
+
+### The book collection
+
+Songs, stories and books holds the song book, the read-alouds and our book collection, staff/library/books, one page a book. Each book keeps its author, illustrator, year, languages and a link to find it, and its parts, Why we chose it, Kind of reading, Reading guide, Vetting notes, Where it lives and Connections. Anyone on staff suggests a book, and a suggestion waits as a draft that only the director and the person who suggested it see, until the director approves it after vetting with the Book Vetting Tool, which opens from every book. Books join Attach on a plan with the other libraries, and each prints as a card, one, some or all, as PDF and Word. The kitchen does not receive the books. The director edits any book with the one editor and its history.
+
 ### Training links
 
 Each Licensing at Fulton Community School page links the official CDSS regulation document that holds the sections it cites, a Word file from CDSS, labeled with its sections, such as Title 22 sections 101229 and 101230, CDSS Article 6, Word file. A page citing sections in two documents has a link for each. All CDSS child care regulations, the general page, is a second, smaller link. Pages with a CDSS Community Care Licensing training video have Watch the training, with the video's title as CDSS wrote it. The director sees the date the links were confirmed, from linkschecked in the page's opening note. Health and Safety Code links go to the Legislature's site.

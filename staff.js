@@ -705,6 +705,18 @@ module.exports = function staffModule(o) {
       const doc = person(who); doc.files = Object.assign({}, doc.files, { [fid]: { name: String(body.label || 'Certificate in Drive').slice(0, 120), link: url, at: Date.now(), by: me } }); put(pPath(who), doc);
       json(req, res, 200, { fid, doc }); return;
     }
+    /* The original materials of a PD module, the director's own decks, guides, agendas and handouts, kept in the tree@
+       Drive through the same keeping as photos and listed in staff/pd/originals.json. The director and the presenters
+       of an entry made from that module open them. No one else receives the list or a file. */
+    if (P === 'pd/originals' || P === 'pd/original') {
+      const slug = String(body.slug || ''); const list = (((get('staff/pd/originals.json') || {}).modules || {})[slug] || []).filter(x => x && x.id);
+      if (!dir && !PR.presentsModule(me, slug)) return deny('The director and this module\'s presenters open its original materials.');
+      if (P === 'pd/originals') { json(req, res, 200, { list: list.map(x => ({ id: x.id, title: x.title || x.id, kind: x.kind || '', type: x.type || '' })) }); return; }
+      const x = list.find(y => y.id === String(body.id || '')); if (!x) return err(req, res, 404, 'That file is not here.');
+      try { const buf = await readOriginal(x.id); send(req, res, 200, { 'Content-Type': x.type || 'application/octet-stream', 'Content-Disposition': 'attachment; filename="' + x.id.replace(/[^a-z0-9._-]/gi, '') + '"', 'Cache-Control': 'private, no-store' }, buf); }
+      catch (e) { err(req, res, 502, 'The file could not be read. ' + e.message); }
+      return;
+    }
     if (P === 'file') {
       const fid = String(body.fid || '');
       const mine = person(who), sc = school();

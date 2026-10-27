@@ -19,7 +19,7 @@ module.exports = function library(o) {
     for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
     return out; };
   const WD = require('./wording.js');
-  const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud', explorations: 'exploration' };
+  const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud', explorations: 'exploration', books: 'book' };
   const META = text => { const m = String(text || '').match(/^\s*<!--([\s\S]*?)-->/); const out = {}; if (m) for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.*?)\s*$/i); if (kv) out[kv[1].toLowerCase()] = kv[2]; } return out; };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'item';
   const isCopyright = meta => /^(yes|true|©)$/i.test(String(meta.copyright || ''));
@@ -38,6 +38,8 @@ module.exports = function library(o) {
   const paths = dir => [...S.files.keys()].filter(p => p.startsWith('staff/library/' + dir + '/') && /\.md$/.test(p)).sort();
   // who sees a draft: the director, the kitchen for a recipe, and the person who wrote it
   const sees = (x, me) => !x.draft || isDirector(me) || (x.kind === 'recipe' && isKitchen(me)) || (x.meta.by && x.meta.by === me);
+  // the book collection, our vetted books, each with why we chose it, its reading guide and its vetting notes. Anyone on
+  // staff suggests a book, and a suggestion waits as a draft until the director approves it after vetting.
   function list(me) {
     const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
     const pr = item('staff/library/prompts/provocations.md');
@@ -45,7 +47,7 @@ module.exports = function library(o) {
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, pictures: pictures() };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -53,9 +55,10 @@ module.exports = function library(o) {
     const kind = b.kind; const dir = kind === 'exploration' ? '' : Object.keys(DIRS).find(k => DIRS[k] === kind); if (!dir) return { error: 'Choose what to add.' };
     const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 120); if (!title) return { error: 'Give it a name.' };
     const boss = from !== 'family' && isDirector(me), kit = from !== 'family' && isKitchen(me);
-    if (kind !== 'recipe' && !boss) return { error: 'Only the director adds to the song book and the read-alouds.' };
+    if (kind !== 'recipe' && kind !== 'book' && !boss) return { error: 'Only the director adds to the song book and the read-alouds.' };
+    if (kind === 'book' && !boss && from !== 'family' && kit) return { error: 'Books are suggested by educators, families and the director.' };
     let id = slug(title); while (S.files.has(`staff/library/${dir}/${id}.md`)) id += '-2';
-    const draft = kind === 'recipe' && !boss && !kit;
+    const draft = (kind === 'recipe' && !boss && !kit) || (kind === 'book' && !boss);
     const meta = [`library: ${kind}`];
     if (kind === 'recipe') meta.push(`kind: ${b.sensory ? 'sensory' : 'food'}`, `source: ${String(b.source || (from === 'family' ? 'A family' : 'Ours')).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
     if (kind === 'song') { meta.push(`copyright: ${b.copyright ? 'yes' : 'no'}`, `songwriter: ${String(b.songwriter || '').replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`); if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`); }
@@ -67,6 +70,14 @@ module.exports = function library(o) {
     if (kind === 'recipe') body = sec('Ingredients', b.ingredients) + sec('Tools', b.tools) + sec('Steps', b.steps) + (b.dairyFree ? sec('Dairy free', b.dairyFree) : '') + (b.glutenFree ? sec('Gluten free', b.glutenFree) : '') + (b.notes ? sec('Notes', b.notes) : '');
     if (kind === 'song' && !b.copyright) body = sec('Words', b.words);
     if (kind === 'readaloud') body = sec('About', b.about);
+    if (kind === 'book') {
+      const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
+      for (const k of ['author', 'illustrator', 'year', 'languages']) if (one(b[k])) meta.push(`${k}: ${one(b[k])}`);
+      if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`);
+      const KINDS = { story: 'Reading for the story', understand: 'Reading to understand', information: 'Reading for information', wordless: 'A wordless book', reference: 'A reference book', coffee: 'A coffee table book', childmade: 'A book children made' };
+      body = sec('Why we chose it', b.why) + sec('Kind of reading', (Array.isArray(b.kinds) ? b.kinds : [b.kinds]).map(k => KINDS[k]).filter(Boolean).join('\n')) +
+        sec('Reading guide', b.guide || '- I notice\n- I wonder') + sec('Vetting notes', b.vetting) + sec('Where it lives', b.where) + sec('Connections', b.connections);
+    }
     const path = `staff/library/${dir}/${id}.md`;
     putText(path, guard(path, `<!--\n${meta.join('\n')}\n-->\n# ${title}\n\n${String(b.lead || '').trim() ? String(b.lead).trim().slice(0, 600) + '\n\n' : ''}${body}`.trimEnd() + '\n'));
     log('Library page added', path, 'by', from === 'family' ? 'a family' : me);

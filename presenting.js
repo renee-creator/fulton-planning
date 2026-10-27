@@ -167,7 +167,8 @@ module.exports = function presentingModule(c) {
     if (list === 'notes') return { id, date: ISO.test(x.date || '') ? x.date : today(), text: txt(x.text, 4000), by: x.by || me, at: x.at || Date.now() };
     if (list === 'meetings') return { id, date: ISO.test(x.date || '') ? x.date : today(), fulton: txt(x.fulton, 6000), others: txt(x.others, 6000), questions: txt(x.questions, 4000), by: x.by || me };
     // a chosen moment keeps the record's own words. Only its language can be named.
-    if (list === 'chosen') return Object.assign({}, was, { language: txt(x.language, 160) });
+    // the director clears a moment for outside audiences. Prints made for outside audiences carry only cleared moments.
+    if (list === 'chosen') return Object.assign({}, was, { language: txt(x.language, 160), outside: isDirector(me) ? !!x.outside : !!(was && was.outside) });
     if (list === 'plan') return { id, title: txt(x.title, 200), minutes: Math.max(0, Math.min(600, Math.round(+x.minutes || 0))), do: txt(x.do, 6000), script: txt(x.script, 6000), handout: txt(x.handout, 1200), moments: (Array.isArray(x.moments) ? x.moments : []).map(String).slice(0, 12), readings: (Array.isArray(x.readings) ? x.readings : []).map(String).slice(0, 12) };
     if (list === 'prompts' || list === 'checks') return { id, text: txt(x.text, 1200) };
     if (list === 'readings') {
@@ -311,5 +312,7 @@ module.exports = function presentingModule(c) {
   const visibleTitle = (me, id) => { const e = one(id); return e && canRead(me, e) ? e.title : ''; };
   /* The presenting details the director gave in October 2026, the times, places, dates and notes of the two starting
      entries, were written into the records once on October 25, 2026 and live only there now, so no copy stays here. */
-  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID };
+  // a presenter on an entry made from a module may open that module's original materials, as the director can
+  const presentsModule = (me, slug) => !!slug && all().some(e => e.module === slug && presents(e, me));
+  return { handle, seed, anyFor, ledBy, visibleTitle, agendasUsing, evidence, ID, presentsModule };
 };

@@ -113,7 +113,7 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
         try {
           const b = await readPhoto(o.sha); if (b.status !== 200) throw new Error('the records answered ' + b.status);
           const ext = id.split('.').pop().toLowerCase();
-          const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
+          const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }[ext] || 'application/octet-stream';
           const j = await call({ op: 'put', name: id, type, data: b.buf.toString('base64') });
           if (!j.id) throw new Error('no file id came back');
           const ref = await mark(id, j.id, b.buf.length);

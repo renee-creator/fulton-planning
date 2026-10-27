@@ -4507,7 +4507,7 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=755099bd9f","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=acb3dd968a","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4517,7 +4517,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=755099bd9f","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=acb3dd968a","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Teacher Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["kitchen","Kitchen"]],
@@ -4529,7 +4529,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="e3f1af7575da";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="b613296ea26c";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5919,7 +5919,7 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
    words never appear in TREE. A traditional song shows its words and prints them. The words come from our own song
    books. The director adds songs and changes a song's mark: marking it © removes any words, and taking the mark off
    leaves a place for them. The read-alouds sit beside the songs, our own stories and traditional tales, each with its reading guide. */
-let songTab="songs",songOpen="",songAdd=false;
+let songTab="songs",songOpen="",songAdd=false,bookAdd=false;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>songCopy(x)?"":recPart(x,"Words");
 const songParts=x=>(x.parts||[]).filter(p=>!/^words$/i.test(p.key)&&String(p.text||"").trim());
@@ -5931,12 +5931,44 @@ function songRow(x){const c=songCopy(x),w=songWords(x),dir=isDirector()&&!VIEW_A
       ${dir?`${c||!w?"":pageEditBtn(x.path,"Edit the words")}${!c&&!w?`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`:""}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©, which removes its words"}</button>`:""}</div></details>`}
 function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the song book</div></section>`;return}
   const dir=isDirector()&&!VIEW_AS,songs=(libData.songs||[]).slice().sort((a,b)=>a.title.replace(/^The /,"").localeCompare(b.title.replace(/^The /,""))),books=(libData.readalouds||[]);
-  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Songs and stories</h2><div class="sub">Our song book and read-alouds for meeting time.</div></div>
-    <div class="tseg" role="group" aria-label="Songs or stories" style="margin-bottom:10px"><button data-songtab="songs" aria-pressed="${songTab==="songs"}">Song book</button><button data-songtab="books" aria-pressed="${songTab==="books"}">Read-alouds</button></div>
+  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Songs, stories and books</h2><div class="sub">Our song book, our read-alouds for meeting time and our book collection.</div></div>
+    <div class="tseg" role="group" aria-label="Songs or stories" style="margin-bottom:10px"><button data-songtab="songs" aria-pressed="${songTab==="songs"}">Song book</button><button data-songtab="books" aria-pressed="${songTab==="books"}">Read-alouds</button><button data-songtab="collection" aria-pressed="${songTab==="collection"}">Books</button></div>
     ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows its title, songwriter and a recording. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
       ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
         <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, keep only its title, songwriter and recording</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
-    :`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
+    :songTab==="collection"?bookCollectionHtml():`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
+/* ---------- The book collection ----------
+   Our vetted books, each with why we chose it, the kind of reading it suits, a reading guide with I notice and I wonder,
+   its vetting notes, where it lives and what it connects to. Anyone on staff suggests a book, and a suggestion waits as a
+   draft until the director approves it after vetting with the Book Vetting Tool. Each book prints as a card, one, some or all. */
+const BOOK_KINDS=[["story","For the story"],["understand","To understand"],["information","For information"],["wordless","Wordless"],["reference","Reference"],["coffee","Coffee table"],["childmade","Made by children"]];
+let bookPick=new Set(),bookQ="";
+const bookPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase())||{}).text||"";
+function bookRow(x){const dir=isDirector()&&!VIEW_AS,m=x.meta||{};
+  return `<details class="strow" data-readrow="b-${esc(x.id)}" ${songOpen==="r:b-"+x.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-bookpick="${esc(x.id)}" ${bookPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.title)} to print"></label><b>${esc(x.title)}</b> ${x.draft?`<span class="pill" style="pointer-events:none">Waiting for the director</span> `:""}<span class="cnt">${esc([m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", "))}</span></summary>
+    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
+    <div class="actions" style="flex-wrap:wrap">${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Find the book</a>`:""}${printBtns("bookcard",esc(x.id),"Card")}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Approve it after vetting</button>`:""}<button class="linkbtn" data-bookvet="1">The Book Vetting Tool</button></div></details>`}
+function bookCollectionHtml(){const all=(libData.books||[]),q=bookQ.trim().toLowerCase();
+  const list=all.filter(x=>!q||[x.title,(x.meta||{}).author,x.lead,...(x.parts||[]).map(p=>p.text)].join(" ").toLowerCase().includes(q)).sort((a,b)=>(a.draft?0:1)-(b.draft?0:1)||a.title.replace(/^(The|A) /,"").localeCompare(b.title.replace(/^(The|A) /,"")));
+  return `<section class="card"><div class="hint">Our book collection, each book vetted with the Book Vetting Tool. Anyone can suggest a book, and the director approves it after vetting.</div>
+    <label class="fld-label">Find a book<input type="search" id="bk-q" value="${esc(bookQ)}" placeholder="A title, an author or a topic"></label>
+    ${list.length?`<div class="actions" style="margin:6px 0"><button class="btn small ghost" data-bookprint="some" ${bookPick.size?"":"disabled"}>Print the cards I chose${bookPick.size?" ("+bookPick.size+")":""}</button><button class="linkbtn" data-bookprint="all">Print every card</button><button class="linkbtn" data-bookprint="some" data-word="1" ${bookPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
+    ${list.map(bookRow).join("")||`<div class="empty">${all.length?"No book matches.":"No books yet. Suggest the first one below."}</div>`}</section>
+    <section class="card">${bookAdd?`<div class="lbl">Suggest a book</div><div class="kfields"><label>Title<input type="text" id="bk-t"></label><label>Author<input type="text" id="bk-a"></label><label>Illustrator<input type="text" id="bk-i"></label><label>Year<input type="text" id="bk-y" inputmode="numeric"></label><label>Languages<input type="text" id="bk-l" placeholder="Ex. English and Spanish"></label><label>A link to the book<input type="url" id="bk-u" placeholder="https://"></label></div>
+      <div class="cnt">Kind of reading</div><div class="chips">${BOOK_KINDS.map(([k,l])=>`<label class="chip"><input type="checkbox" data-bkkind="${k}"> ${esc(l)}</label>`).join("")}</div>
+      <label class="fld-label">Why we would choose it<textarea rows="3" id="bk-w"></textarea></label><label class="fld-label">Where it would live<input type="text" id="bk-wh" placeholder="Ex. North class, the garden basket"></label>
+      <div class="actions"><button class="btn small" data-booksave="1">${isDirector()?"Add the book":"Suggest the book"}</button><button class="linkbtn" data-bookadd="0">Cancel</button></div><div class="cnt">${isDirector()?"":"Your suggestion waits for the director, who vets it with the Book Vetting Tool before it joins the collection."}</div>`:`<button class="btn small ghost" data-bookadd="1">Suggest a book</button>`}</section>`}
+function bookCardDoc(x){const m=x.meta||{};return {display:true,type:"report",acc:"story",title:x.title,meta:[[m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", ")].filter(Boolean),
+  blocks:[...(x.lead?[dText("",x.lead)]:[]),...["Why we chose it","Kind of reading","Reading guide","Where it lives"].map(k=>[k,bookPart(x,k)]).filter(([,t])=>String(t).trim()).map(([k,t])=>libLines(t).length>1?dList(k,libLines(t)):dText(k,t))]}}
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="bk-q"){bookQ=e.target.value;const c=e.target.selectionStart;renderMain();const i=$("#bk-q");if(i){i.focus();try{i.setSelectionRange(c,c)}catch(er){}}}});
+document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.bookpick){if(t.checked)bookPick.add(t.dataset.bookpick);else bookPick.delete(t.dataset.bookpick);renderMain()}});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-bookadd],[data-booksave],[data-bookprint],[data-bookvet]");if(!t)return;const d=t.dataset;
+  if(d.bookvet){if(typeof goView==="function"){goView("stpd");setTimeout(()=>{const b=document.querySelector('[data-stmod="m:book-vetting-tool"]');if(b)b.click()},800)}return}
+  if(d.bookadd!=null){bookAdd=d.bookadd==="1";renderMain();return}
+  if(d.bookprint){const all=libData.books||[];const L=d.bookprint==="all"?all.filter(x=>!x.draft):all.filter(x=>bookPick.has(x.id));if(!L.length){toast("Choose a book first.");return}const docs=L.map(bookCardDoc),n=safeFile(L.length===1?L[0].title+" card":"Book cards");if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf");return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.booksave){const v=id=>($("#"+id)?.value||"").trim();const title=v("bk-t");if(!title){toast("Give the book its title.");return}
+    try{libData=await window.FP_API("/api/staff/library/add",{kind:"book",title,author:v("bk-a"),illustrator:v("bk-i"),year:v("bk-y"),languages:v("bk-l"),link:v("bk-u"),why:v("bk-w"),where:v("bk-wh"),kinds:[...document.querySelectorAll("[data-bkkind]:checked")].map(x=>x.dataset.bkkind)});bookAdd=false;toast(isDirector()?"Added to the collection.":"Suggested. It waits for the director.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}});
 const readText=x=>((x.parts||[]).find(p=>/^text$/i.test(p.key))||{}).text||"";
 // a story's pages, from its Page headings, each page's lines kept as written
 const readPages=t=>{const out=[];let cur=null;for(const l of String(t||"").split("\n")){const m=l.match(/^#{1,6}\s*(.+)$/);if(m){const h=m[1].trim(),pg=/^page\s*\d+\s*$/i.test(h);cur={h:pg?"":h,page:pg,lines:[]};out.push(cur);continue}if(!cur){cur={h:"",lines:[]};out.push(cur)}cur.lines.push(l)}
@@ -5971,12 +6003,13 @@ function songDoc(x,wordsOnly){const w=songWords(x);const more=wordsOnly?[]:songP
    produce bin and the garden season, with no outside call, so they are instant. Nothing is attached unless an educator
    chooses it, and whatever is attached prints with the plan. A plan with nothing attached prints as it always has. */
 let attachOpen="",attachQ="";
-const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",exploration:"Food exploration",prompt:"Provocation",guide:"Materials guide"};
+const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",book:"Book",exploration:"Food exploration",prompt:"Provocation",guide:"Materials guide"};
 const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
 function attachPool(){if(!libData){loadLibrary();return []}const out=[];
   for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients"),(x.meta||{}).produce,(x.meta||{}).season].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
   for(const x of (libData.songs||[]))out.push({kind:"song",id:x.id,title:(songCopy(x)?"© ":"")+x.title,text:[x.title,recPart(x,"When we sing it"),recPart(x,"Connections")].join(" ")});
   for(const x of (libData.readalouds||[]))out.push({kind:"readaloud",id:x.id,title:x.title,text:[x.title,x.lead].join(" ")});
+  for(const x of (libData.books||[]).filter(x=>!x.draft))out.push({kind:"book",id:x.id,title:x.title,text:[x.title,x.lead,(x.meta||{}).author,bookPart(x,"Why we chose it"),bookPart(x,"Connections")].join(" ")});
   for(const x of (libData.explorations||[]).filter(x=>!x.draft))out.push({kind:"exploration",id:x.id,title:x.title,text:[x.title,x.lead,(x.meta||{}).produce].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
   const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
   if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});
@@ -6021,7 +6054,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
 const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</button>`).join("");
 let libSheetOn=null;
 function libItemOf(kind,id){if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;if(!libData)return null;
-  if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
+  if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="book")return (libData.books||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
   if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
   if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}
   if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;return null}
@@ -6038,6 +6071,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
   if(kind==="readaloud"){const t=readText(x);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The story"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
       ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary>${readPagesHtml(t)}</details>`:""}`}
+  if(kind==="book"){const m=x.meta||{};return `<div class="actions" style="flex-wrap:wrap">${printBtns("bookcard",esc(x.id),"Card",true)}${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Find the book</a>`:""}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([m.author,m.year].filter(Boolean).join(", "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^vetting notes$/i)}`}
   if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
@@ -11301,6 +11335,7 @@ async function printsClick(t){
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?(gdnGuide==="children"?"children":"adults"):"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
   if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
+  if(kind==="bookcard"){if(!libData)await loadLibrary();const x=(libData.books||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([bookCardDoc(x)],x.title+" card");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
   if(kind==="exploration"){if(!libData)await loadLibrary();const x=(libData.explorations||[]).find(r=>r.id===t.dataset.id);if(x)await out([explDoc(x)],x.title.replace(/[?]/g,""));return true}
   if(kind==="songwords"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x,true)],x.title);return true}
@@ -13713,7 +13748,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=755099bd9f","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=acb3dd968a","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
