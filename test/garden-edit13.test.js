@@ -55,3 +55,21 @@ test('the page code', () => {
   assert.match(g, />The list<\/button>.*>Plant cards<\/button>.*>Full plant pages<\/button>/s);
   assert.match(a, /pg=\/\^page\\s\*\\d\+\\s\*\$\/i/, 'Page 1 and the like never show in a story');
 });
+
+test('the free classic stories come in once as drafts, whole, with no page heading shown and nothing kept twice', async t => {
+  const list = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 'free-stories.json'), 'utf8')).changes;
+  assert.strictEqual(list.length, 8);
+  for (const c of list) {
+    assert.match(c.path, /^staff\/library\/readalouds\/[a-z0-9-]+\.md$/);
+    assert.match(c.create, /status: draft/); assert.match(c.create, /origin: .*(19(0|1)\d)/, 'each names its author and year');
+    const guide = c.create.split('## Text')[0].split('-->')[1];
+    assert.doesNotMatch(guide, /[—:]/, 'our own words use no em dash or colon');
+  }
+  const fx = await start(); t.after(() => fx.stop());
+  await new Promise(r => setTimeout(r, 3000));
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const mine = (await fx.as(dee, '/api/staff/library', {})).body.readalouds.filter(x => /free to share/.test((x.meta || {}).origin || ''));
+  assert.strictEqual(mine.length, 8); assert.ok(mine.every(x => x.draft));
+  const theirs = (await fx.as(ann, '/api/staff/library', {})).body.readalouds.filter(x => /free to share/.test((x.meta || {}).origin || ''));
+  assert.strictEqual(theirs.length, 0, 'educators see them once the director marks each ready');
+});

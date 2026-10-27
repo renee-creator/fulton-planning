@@ -1056,6 +1056,7 @@ module.exports = function staffModule(o) {
     s12Garden: ['staff/once/s12-garden.json', 'The Garden\'s plants, animals with Sheldon, wildlife, tracks and scat, mushrooms and plants to keep away from'],
     s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'],
     s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
+    freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
     s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'],
     s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
@@ -1076,7 +1077,9 @@ module.exports = function staffModule(o) {
   }
   async function onceEdits(name, recs) {
     const [listPath, note] = ONCE_LISTS[name] || [];
-    if (!S.ready) return false; const m = get(listPath); if (!m || !Array.isArray(m.changes)) return false;
+    if (!S.ready || !listPath) return false;
+    // a list kept in the code itself, for words free to share such as classic stories, is read from the code's own folder
+    const m = listPath.startsWith('code:') ? (() => { try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, listPath.slice(5)), 'utf8')); } catch (e) { return null; } })() : get(listPath); if (!m || !Array.isArray(m.changes)) return false;
     const by = new Map();
     const hit = new Set(); let failed = 0;
     /* Session 12's lists also make a new page or record, only while nothing is kept at its path (create, the text of a

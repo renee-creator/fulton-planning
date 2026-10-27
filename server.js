@@ -534,6 +534,7 @@ for (const name of ['schoolName', 'helpCurrent', 'regLinks', 'trainingVideos', '
 // Session 11's change to the late pick-up email link in Educator Duties & Procedures, from its list in the private records
 ONCE.push(['dutiesEmail', () => staff.once.edits('dutiesEmail', recsEdit)]);
 ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
+ONCE.push(['freeStories', () => staff.once.edits('freeStories', recsEdit)]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
