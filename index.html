@@ -2441,6 +2441,28 @@ async function drdpAutoKaymbu(){
   if(!next)return;drdpAutoBusy=true;
   try{patchNotice(next.id,{drdpAuto:Date.now()});await drdpAnalyze("notices",next.id,"",true)}finally{drdpAutoBusy=false}}
 setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
+/* What a photo shows, for an observation the DRDP reading does not describe, such as one with no children tagged. Read
+   once, a few minutes after the observation is kept, from the educator's photo. It describes only what is visible and
+   stays with the observation as context for TREE's readings, never shown as the educator's words. */
+const PHOTO_NOTE_PROMPT=`This photo was taken by an educator at a Reggio-inspired, nature-based preschool as documentation of a moment with children. In two plain sentences, say what is visible, the actions, materials, places and interactions, and any marks, drawings, writing or constructions children made. Describe only what can be seen. Never guess feelings, intentions or ages, never rate or praise, and never name anyone. Never use em dashes or colons. Return only JSON {"photo":"the two sentences"}`;
+let photoNoteBusy=false;
+async function photoNoteAuto(){
+  if(photoNoteBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden)return;
+  const rm=myRoom(),dir=isDirector()||isOffice(),since=Date.now()-60*864e5,now=Date.now(),seen=new Set();
+  const next=[...notices.values()].filter(n=>{if(!n.photo||(n.at||0)<since||n.photoNoteAt||photoNoteOf(n))return false;
+      if(now-(n.updatedAt||n.at||0)<180000)return false;if(!dir&&rm&&!momentIn(n,rm))return false;
+      // one with children tagged waits for its DRDP reading, which describes the photos, unless that reading has passed without one
+      if((n.children||[]).length&&!noteGroup(n).some(x=>x.drdp))return false;return true})
+    .sort((a,b)=>(b.at||0)-(a.at||0)).filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return true})[0];
+  if(!next)return;photoNoteBusy=true;
+  try{patchNotice(next.id,{photoNoteAt:Date.now()});const u=photoSrc(next);if(!u)return;const b=await (await fetchPhoto(u)).blob();if(!b||!b.size)return;
+    const out=await askRead(PHOTO_NOTE_PROMPT,{images:[b],purpose:"photo-note",maxSide:1400});
+    const t=String((out&&out.photo)||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();if(t)patchNotice(next.id,{photoNote:sentFit(t,600)})}
+  catch(e){}finally{photoNoteBusy=false}}
+setInterval(()=>{photoNoteAuto().catch(()=>{})},40000);
+// observations kept this year with no class chosen take the class their tagged children share, a few at a time
+setInterval(()=>{if(!db||VIEW_AS||!isDirector()||document.hidden)return;const since=parseIso(schoolYearStart()).getTime();let k=0;
+  for(const n of notices.values()){if(k>=20)break;if((n.at||0)<since)continue;const r=noticeOwnRoom(n);if(r){patchNotice(n.id,{classroom:r});k++}}},45000);
 function drdpRefresh(){if(view==="slide")renderSlide();else if(view==="moments"||view==="child")renderMain()}
 // where each suggestion from this documentation stands now, read from the child's page
 function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c.drdp||{}).items||{})[x.id];
@@ -6801,7 +6823,10 @@ function newNotice(){return {id:"n"+Date.now().toString(36)+Math.random().toStri
 /* A changed observation sends only what changed since it was opened, so two educators changing the same observation
    keep each other's words. A new one is sent whole. */
 const noticeBase=new Map();
-function saveNotice(n,base){n.updatedAt=Date.now();
+// an observation kept with no class chosen, such as from the director's sign-in, takes its class from the tagged children
+// when they all share one. Children from two classes leave it unset, and it shows under each of their classes.
+function noticeOwnRoom(n){if(!n||n.classroom||!(n.children||[]).length)return "";const r=momentRooms(n);return r.length===1?r[0]:""}
+function saveNotice(n,base){{const r=noticeOwnRoom(n);if(r)n.classroom=r}n.updatedAt=Date.now();
   if(VIEW_AS)return;
   notices.set(n.id,n);
   // without signal, with a photo still to send, or behind a change already waiting, it waits on this phone
@@ -6955,9 +6980,10 @@ const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
 // Fulton's classes mix, so a moment belongs to its own class and to the class of every child tagged in it
 function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
-// "none" is every observation kept without a class chosen on it. One with children tagged also shows under their classes.
-const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!n.classroom:momentRooms(n).includes(room));
-const noClassPill=()=>{const k=[...notices.values()].filter(n=>!n.classroom).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
+// "none" is every observation that belongs to no class at all, with no class chosen and no tagged child in a class.
+// One with children tagged shows under their classes.
+const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!momentRooms(n).length:momentRooms(n).includes(room));
+const noClassPill=()=>{const k=[...notices.values()].filter(n=>!momentRooms(n).length).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
 function noticeText(n){const a=String(n.noticed||"").trim(),b=String(wonderLine(n.wonder)||"").trim();return a&&b?a+(/[.!?"”)]$/.test(a)?" ":". ")+b:a||b}
@@ -7482,13 +7508,13 @@ async function momentsRead(){
   if(mBusy||!sample||!isDirector())return;
   const all=momentsIn();
   if(all.length<3){rToast("Keep a few more observations first.");return}
-  const d=capDigest(all.slice(0,160).map(n=>({id:n.id,date:shortDate(n.at),classroom:n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,700),wonder:String(n.wonder||"").slice(0,400)})),150000);
+  const d=capDigest(onePerPostN(all).slice(0,160).map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,400)},noticeExtras(n))),150000);
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom==="none"?"All":nRoom;
   const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),closed:t.status==="closed"}));
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
-Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say.
+Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say. ${PHOTO_RULE}
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
 Threads the team is already following or has closed ${JSON.stringify(followed)}. Before naming a pattern, check it against these. ${(()=>{const d=[...scans.values()].flatMap(c=>(c.patterns||[]).filter(p=>p.notThread&&p.matchId0).map(p=>p.name+" is not "+((threads.get(p.matchId0)||{}).name||"")));return d.length?`The team said these patterns do not belong to those threads ${JSON.stringify(d.slice(-12))}. `:""})()}When a pattern is what one of these threads already follows, set "thread" to that thread's id and use the thread's own name as the pattern name, so the team adds to the thread they have instead of starting another. Leave "thread" empty for anything new.
 ${STYLE}
@@ -8776,7 +8802,7 @@ function foundSet(kind,x,found){x.found=found;if(!db)return kind==="project"?sav
 async function foundRead(kind,x){if(!sample||!isDirector())return -1;
   const pool=foundPool(kind,x);
   if(!pool.length){if(x.found&&(x.found.items||[]).length)foundSet(kind,x,{at:Date.now(),items:[]});return 0}
-  const d=capDigest(pool.map(n=>({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",noticed:String(n.noticed||"").slice(0,700),wonder:String(n.wonder||"").slice(0,300)})),120000);
+  const d=capDigest(pool.map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,300)},noticeExtras(n))),120000);
   const ids=new Set(d.map(o=>o.id));
   const about=kind==="project"
     ?`a project the team is following. A project is the team's reading of a deeper question children are working on. An observation belongs when what children did or said in it speaks to that question. Sharing a topic or a material alone is not enough.
@@ -8786,7 +8812,7 @@ The inquiry ${JSON.stringify({question:x.name||"",what_the_team_sees:x.see||"",w
 ${IQ_POLICY}
 An observation helps when it shows the moments the team is wondering about, what came just before or after them, or times when things went well, which matter as much.`;
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm, to find the ones that may belong to ${about}
-Rules. Use only what the observations say. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never label a child. Phrase any reading of a child's idea or behavior as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Choose at most 6, the clearest first, and none when nothing fits. Only use an id from the list. Return only the JSON, with no other text.
+Rules. Use only what the observations say. ${PHOTO_RULE} Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never label a child. Phrase any reading of a child's idea or behavior as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Choose at most 6, the clearest first, and none when nothing fits. Only use an id from the list. Return only the JSON, with no other text.
 ${STYLE}
 Return JSON {"found":[{"id": id, "why": one sentence on how it may connect}]}
 
@@ -10053,7 +10079,8 @@ function renderLens(){
   $("#main").innerHTML=h;
 }
 function lensDigest(ps){
-  return [...ps].sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":planWho(p),text:{}};
+  return shareRoom(onePerPost([...ps]),160).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":planWho(p),text:{}};
+    if(p.type==="notice"&&notices.get(p.id))Object.assign(o,noticeExtras(notices.get(p.id)));
     for(const [label,text] of lensPlanParts(p))o.text[label]=text.trim().slice(0,520);
     const mk=lensMarked(p);if(mk.length)o.languages_marked=mk;return o}).filter(o=>Object.keys(o.text).length);
 }
@@ -10068,7 +10095,7 @@ The lens is ${LENS.name}. ${LENS.description}
 The languages in this lens are ${LENS.languages.join(", ")}.
 Find up to 14 moments where children gave visible form to their thinking in one of these languages. Choose across classrooms and weeks, and prefer moments where a child or group returned to a mark or reworked an idea in another language.
 For each moment answer the school's questions, in this order. ${LENS.questions.map((q,i)=>`${i+1}. ${q}`).join(" ")}
-Rules. Read for the thinking. Never rate, praise, or describe how a drawing or product looks, and never use words such as beautiful, detailed, neat, careful, or advanced. Use only what the plans say. Never invent children, quotes, tools, materials, or events. When a plan says nothing for a question, return an empty string for it, because an empty answer shows the team what has not yet been recorded. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Copy each quote exactly from the plan, under 30 words. Use a planId from the list. Return only the JSON, with no other text.
+Rules. Read for the thinking. ${PHOTO_RULE} Never rate, praise, or describe how a drawing or product looks, and never use words such as beautiful, detailed, neat, careful, or advanced. Use only what the plans say. Never invent children, quotes, tools, materials, or events. When a plan says nothing for a question, return an empty string for it, because an empty answer shows the team what has not yet been recorded. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Copy each quote exactly from the plan, under 30 words. Use a planId from the list. Return only the JSON, with no other text.
 ${STYLE}
 Return JSON {"summary": two or three sentences on how children are using these languages to think in this range, "moments":[{"planId": id, "quote": exact words from that plan, "language": one of the lens languages, "answers": [${n} strings, one for each question in order]}], "gaps":[up to 4 short sentences naming what the plans rarely record, each phrased as something educators could notice next], "teamQuestions":[2 or 3 questions the team could take to its next meeting]}
 
@@ -11629,10 +11656,26 @@ document.addEventListener("change",e=>{
   if(t.dataset.tstatus){const th=threads.get(t.dataset.tstatus);if(th){th.status=t.value;saveThread(th);renderMain()}}
 });
 
+/* How observations come into a reading. A Kaymbu post kept once for each child in it is read once, with every child in
+   it named. Each observation carries the children tagged, its small group, the languages marked and, when there is a
+   photo, what the photo shows, from the DRDP reading or TREE's own note on it. The photo is the educator's documentation,
+   and its note helps a reading understand the moment, while quotes and evidence always come from the educators' words. */
+function photoNoteOf(n){for(const x of noteGroup(n)){const t=(x.drdp&&x.drdp.photo)||x.photoNote;if(has(t))return String(t)}return ""}
+function onePerPost(ps){const seen=new Set();return ps.filter(p=>{if(p.type!=="notice")return true;const n=notices.get(p.id);const k=(n&&n.group)||p.id;if(seen.has(k))return false;seen.add(k);return true})}
+function onePerPostN(ns){const seen=new Set();return ns.filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return true})}
+function noticeExtras(n){const g=noteGroup(n);const kids=[...new Set(g.flatMap(x=>x.children||[]))].map(id=>children.get(id)).filter(Boolean).map(c=>c.first).filter(Boolean);
+  const o={};if(kids.length)o.children=kids;const sg=g.map(x=>x.smallGroup||"").find(Boolean);if(sg)o.small_group=sg;
+  const ls=[...new Set(g.flatMap(x=>x.languages||[]))];if(ls.length)o.languages_marked=ls;const ph=photoNoteOf(n);if(ph)o.photo_shows=ph.slice(0,500);return o}
+// observations keep their own share of a reading, so plans never crowd them out, and either takes the room the other leaves
+function shareRoom(ps,total){const obs=ps.filter(p=>p.type==="notice"),pl=ps.filter(p=>p.type!=="notice");
+  const nO=Math.min(obs.length,Math.max(Math.round(total*.55),total-pl.length)),nP=Math.min(pl.length,total-nO);
+  const by=(a,b)=>b.weekOf.localeCompare(a.weekOf);return [...pl.sort(by).slice(0,nP),...obs.sort(by).slice(0,nO)].sort(by)}
+const PHOTO_RULE="An observation may carry photo_shows, a plain description of the photo the educator took. Use it only to understand the moment. Quotes and evidence always come from the educators' own words, never from photo_shows, and nothing rests on a photo alone. children lists the children tagged in an observation.";
 function digest(ps){
   const keys={classroom:["observation","intentions","interests","indoor","outdoor","brainstorm"],individual:["area","observation","intent","questions","remarks"],smallgroup:["thread","intention","questions","reflection"],notice:["noticed","wonder"]};
-  return ps.sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,140).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":(p.educator||""),text:{}};
-    (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,450)});
+  return shareRoom(onePerPost(ps),160).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":(p.educator||""),text:{}};
+    (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,p.type==="notice"?900:450)});
+    if(p.type==="notice"&&notices.get(p.id))Object.assign(o,noticeExtras(notices.get(p.id)));
     if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...p.web.branches.map(b=>b.name)].filter(Boolean).join("; ");
     const fol=planThreads(p).filter(c=>c.how!=="quoted").map(c=>c.t.id);if(fol.length)o.follows=fol;
     return o}).filter(o=>Object.keys(o.text).length);
@@ -11646,7 +11689,7 @@ async function findThreads(){
   const tracked=[...threads.values()].filter(t=>threadLive(t)&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question,closed:t.status==="closed"}));
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classes":"the "+tRoom+" class"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and observations, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
-Rules. Use only what the plans and entries say. Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single observation, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
+Rules. Use only what the plans and entries say. ${PHOTO_RULE} Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single observation, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.
 Threads the team is already following ${JSON.stringify(tracked)}. If a thread you find is one of these, set trackedId to its id, including a closed one children have returned to.${(()=>{const d=[...scans.values()].flatMap(c=>(c.threads||[]).filter(x=>x.dismissed&&!x.trackedId).map(x=>x.name)).filter(Boolean);return d.length?` The team dismissed these threads when TREE found them before, so do not raise them again unless the plans now show something new ${JSON.stringify([...new Set(d)].slice(-20))}.`:""})()} When a plan has a "follows" list, an educator connected that plan to those followed threads, so read it as part of them.
 Projects the school is following ${JSON.stringify([...projects.values()].filter(x=>x.status!=="closed").map(x=>({id:x.id,name:x.name,what_may_lie_underneath:firstLine(projUnder(x),240),threads:(x.threads||[]).map(l=>l.id)})))}. If a thread you find that is not already followed looks related to one of these projects, set relatedProject to that project's id. Educators decide whether it joins, so only point it out.
 ${STYLE}

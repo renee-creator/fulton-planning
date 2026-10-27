@@ -27,3 +27,13 @@ test('the week\'s reading covers each Class, observations, projects and inquirie
   assert.match(src, /foundHtml\("project",x\)/);
   assert.match(src, /foundHtml\("inquiry",x\)/);
 });
+
+test('observations come into readings fairly, once per post, with their photo as context', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.html'), 'utf8');
+  assert.match(src, /room==="none"\?!momentRooms\(n\)\.length/, 'No class means no class at all, chosen or from the children');
+  assert.match(src, /function noticeOwnRoom/, 'an observation takes the class its tagged children share');
+  assert.match(src, /shareRoom\(onePerPost\(ps\),160\)/, 'Find threads reads each post once and keeps room for observations');
+  assert.match(src, /shareRoom\(onePerPost\(\[\.\.\.ps\]\),160\)/, 'the lens does the same');
+  assert.strictEqual((src.match(/\$\{PHOTO_RULE\}/g) || []).length, 4, 'every reading is told the photo note is context only');
+  assert.match(src, /async function photoNoteAuto/);
+});

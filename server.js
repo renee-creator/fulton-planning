@@ -1341,6 +1341,8 @@ async function suggestThreadFor(id) {
   const docs = noticeGroupDocs(r.doc); const lead = docs[0] || r.doc;
   const words = [...new Set(docs.map(d => [d.noticed, d.wonder].filter(Boolean).join('\n').trim()).filter(Boolean))].join('\n').trim();
   if (words.split(/\s+/).filter(Boolean).length < 6) return;   // never from a photo alone, nor from a word or two
+  // what the educator's photo shows, from the DRDP reading or TREE's note on it, helps read the words and is never a reason alone
+  const shows = (docs.map(d => (d.drdp && d.drdp.photo) || d.photoNote).find(t => t && String(t).trim()) || '').toString().slice(0, 500);
   const ids = new Set(docs.map(d => d.id));
   // an observation a team inquiry holds stays with the inquiry
   for (const [, q] of store.recs.inquiries) if (!q.deleted && q.doc && (q.doc.obs || []).some(x => ids.has(x))) return;
@@ -1359,7 +1361,7 @@ async function suggestThreadFor(id) {
   if (!anthropicKey()) return;
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
-  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\nThese are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
+  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\n${shows ? `What the educator's photo shows, as TREE described it, to help read the words only.\n<<<\n${shows}\n>>>\n` : ''}These are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 400 });
     if (res.status !== 200) return;
