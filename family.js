@@ -136,6 +136,8 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const unb = s => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
   const nowIso = () => new Date().toISOString();
+  // today in California, so after 5 pm the page still shows today's sign-ups, menu and closures
+  const laToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const newId = p => p + '-' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
 
   // the school year runs from August, so hours start fresh each August
@@ -209,7 +211,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {
-    const c = cfg(); const ys = yearStart(); const ids = new Set(f.kids.map(k => k.id)); const today = new Date().toISOString().slice(0, 10);
+    const c = cfg(); const ys = yearStart(); const ids = new Set(f.kids.map(k => k.id)); const today = laToday();
     const mine = logs().filter(l => ids.has(l.childId) && (l.date || '') >= ys && !!l.test === f.test);
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
@@ -466,9 +468,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   function addLog(f, b) {
     const kid = f.kids.find(k => k.id === b.childId); if (!kid) return { error: 'Choose which child this counts for.' };
     let what = String(b.what || '').trim().slice(0, 200), itemId = '', date = String(b.date || '').slice(0, 10), minutes = Number(b.minutes) || 0;
-    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || (it.date && it.date <= new Date().toISOString().slice(0, 10) ? it.date : new Date().toISOString().slice(0, 10)); if (!minutes) minutes = (Number(it.hours) || 1) * 60; }
+    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || (it.date && it.date <= laToday() ? it.date : laToday()); if (!minutes) minutes = (Number(it.hours) || 1) * 60; }
     if (!what) return { error: 'Say what you did.' };
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > new Date().toISOString().slice(0, 10)) return { error: 'Choose the day, today or earlier.' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > laToday()) return { error: 'Choose the day, today or earlier.' };
     if (!(minutes > 0) || minutes > 24 * 60) return { error: 'Say how long it took.' };
     const id = newId('lg');
     save(id, { id, kind: 'log', email: f.email, childId: kid.id, itemId, what, date, minutes, hours: hoursOf(minutes), test: f.test, at: nowIso() });
@@ -483,15 +485,19 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   // the month's menu and the month before's Farm to School story, from the menus and FEED bins the staff already keep.
   // Families get the menu before the month starts, so the farms are counted from the month before.
   function publicMenu(month) {
-    const now = new Date(); const m = /^\d{4}-\d{2}$/.test(month || '') ? month : now.toISOString().slice(0, 7);
+    const now = new Date(); const m = /^\d{4}-\d{2}$/.test(month || '') ? month : laToday().slice(0, 7);
     const mr = store.recs.menus.get(m); const menu = mr && !mr.deleted && mr.doc ? { month: m, days: mr.doc.days || {}, notes: mr.doc.notes || {}, times: mr.doc.times || {} } : null;
     const d = new Date(m + '-15T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() - 1); const prev = d.toISOString().slice(0, 7);
+    // only the bins that came to us, our Tuesday bins and any added by hand, never FEED's other delivery days
     const farms = {}; let bins = 0;
-    for (const [id, r] of store.recs.bins) { const b = r.doc; if (r.deleted || !b || !/^\d{4}-\d{2}-\d{2}$/.test(id) || id.slice(0, 7) !== prev) continue; bins++;
+    for (const [id, r] of store.recs.bins) { const b = r.doc; if (r.deleted || !b || !/^\d{4}-\d{2}-\d{2}$/.test(id) || id.slice(0, 7) !== prev || !(b.tuesday || b.source === 'hand')) continue; bins++;
       for (const it of b.items || []) for (const f of it.farms || []) { const k = String(f).trim(); if (!k) continue; (farms[k] = farms[k] || []).push(it.name); } }
     const fr = store.recs.bins.get('farms'); const towns = fr && !fr.deleted && fr.doc && fr.doc.towns ? fr.doc.towns : {};
     const months = [...store.recs.menus.keys()].filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
-    return { menu, prev, bins, farms, towns, months, grantEnd: '2027-06-30' };
+    // our cheese and our beans and grains come from the same producers each time, named only in a month whose menu has them
+    const pr = store.recs.menus.get(prev); const ate = pr && !pr.deleted && pr.doc ? Object.values(pr.doc.days || {}).filter(x => x && !x.closed).map(x => [x.lunch, x.am, x.pm].filter(Boolean).join(' ')).join(' ') : '';
+    const standing = []; if (/cheese|pizza|quesadilla/i.test(ate)) standing.push('Petaluma Creamery'); if (/\bbeans?\b|lentil|quinoa|farro|barley|\brice\b(?! cakes?)/i.test(ate)) standing.push('Next Generation Foods');
+    return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
   return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };

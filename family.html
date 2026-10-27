@@ -256,9 +256,10 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:""}</p></section>`}
   // when a new edition of the Family Handbook becomes current, a returning family reads it and says so once, for all
   // their children at Fulton
-  const hbNew=()=>D.handbook?D.children.filter(k=>!k.isNew&&k.handbook&&!k.handbook.at&&k.handbook.earlier):[];
+  // every returning family without a tick for the current edition is asked, whether or not they acknowledged an earlier one
+  const hbNew=()=>D.handbook?D.children.filter(k=>!k.isNew&&k.handbook&&!k.handbook.at):[];
   function hbNewHtml(){const ks=hbNew();if(!ks.length)return "";const y=ks[0].handbook.year;
-    return `<section class="card" id="hbnew"><h2>Read and acknowledge the ${esc(y)} Family Handbook</h2><p class="small muted" style="margin:0 0 8px">The school has a new edition of the Family Handbook. Please read it, then say so. It counts for ${esc(ks.map(k=>k.first).join(" and "))}.</p>
+    return `<section class="card" id="hbnew"><h2>Read and acknowledge the ${esc(y)} Family Handbook</h2><p class="small muted" style="margin:0 0 8px">Please read the ${esc(y)} Family Handbook, then say so. It counts for ${esc(ks.map(k=>k.first).join(" and "))}.</p>
       <div class="row"><button class="btn ghost" data-hbread="">Open the Family Handbook</button><button class="btn" data-hbackall="1">I have read the ${esc(y)} Family Handbook</button></div></section>`}
   // the Family Handbook, read here in full. The current edition opens, and an earlier edition stays readable.
   const hbRead=k=>!!(k.handbook?k.handbook.at:(k.checks&&k.checks.handbook));
@@ -269,7 +270,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(!h){api("/family/handbook",{edition:y}).then(j=>{HB[y]=j;if(!y)HB[j.edition]=j;if(form&&form.startsWith("hb|"))render()}).catch(er=>{const el=$("#hbmsg");if(el)el.textContent=er.message});
       return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook</h2><p class="muted" id="hbmsg">Opening the handbook.</p></section>`}
     const pic=(src,alt)=>`<img data-fimg="${esc(src)}" alt="${esc(alt||"A picture from the Family Handbook")}">`;
-    const ks=D.children.filter(k=>(k.isNew||(k.handbook&&k.handbook.earlier))&&k.handbook&&!k.handbook.at&&h.edition===h.current);
+    const ks=D.children.filter(k=>k.handbook&&!k.handbook.at&&h.edition===h.current);
     return `<section class="card"><button class="link" data-formclose="1">‹ Back</button><h2 style="margin-top:8px">The Family Handbook, ${esc(h.edition)}</h2>
       <p class="small muted" style="margin:0">${h.edition===h.current?"The current edition.":"An earlier edition, kept to read."} Open a part to read it.</p>
       ${(h.editions||[]).length>1?`<div class="tabs" style="margin:10px 0 0">${h.editions.map(e=>`<button data-hbread="${esc(e.year)}" ${e.year===h.edition?'aria-current="page"':""}>${esc(e.year)}${e.current?", current":""}</button>`).join("")}</div>`:""}

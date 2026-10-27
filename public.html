@@ -61,7 +61,7 @@ const G_SCHOOL_LL=[38.4706,-122.779];
   function render(j){
     month=j.menu?j.menu.month:(month||new Date().toISOString().slice(0,7));
     const list=[];for(const [f,what] of Object.entries(j.farms||{})){const t=townOf(f,j.towns||{});const i=t&&info(t);list.push({name:f,town:t,mi:i?miles(i.lat,i.lng):null,county:i?i.county:"",what:[...new Set(what)]})}
-    for(const [n,t,w] of STANDING){const i=info(t);list.push({name:n,town:t,mi:i?miles(i.lat,i.lng):null,county:i?i.county:"",what:[w],standing:true})}
+    for(const [n,t,w] of STANDING.filter(x=>(j.standing||[]).includes(x[0]))){const i=info(t);list.push({name:n,town:t,mi:i?miles(i.lat,i.lng):null,county:i?i.county:"",what:[w],standing:true})}
     const fromFarms=list.filter(x=>!x.standing);
     const son=list.filter(x=>x.county==="Sonoma").length;const known=list.filter(x=>x.mi!=null);const avg=known.length?Math.round(known.reduce((a,x)=>a+x.mi,0)/known.length):null;
     let h="";

@@ -16,7 +16,7 @@ function kLibrary(){const m=new Map(),today=iso(new Date());for(const mn of menu
 // days the school is closed, from the calendar's all-day events, so a draft leaves them empty
 async function kLoadClosed(month){if(kClosed[month]||!window.FP_API)return;kClosed[month]=new Set();const [y,mo]=month.split("-").map(Number);
   try{const j=await calView(month+"-01",iso(new Date(y,mo,0)));
-    for(const e of j.events||[])if(/no school|closed|closure|holiday|break|in.?service|staff development|thanksgiving/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
+    for(const e of j.events||[])if(/no school|\bclosed\b|closure|\bbreak\b|\bholidays?\b(?!\s*(party|parties|celebration|potluck|lunch|program|show|concert|sing|craft))|in.?service|staff development|thanksgiving(?!\s*(lunch|feast|potluck|meal))/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
   if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()}
 const kLastYear=d=>addDays(d,-364);
 // a draft of the month from past menus, never saved until the kitchen saves it

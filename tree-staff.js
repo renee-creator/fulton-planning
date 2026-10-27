@@ -1451,7 +1451,8 @@ async function checkinForm(my,name){const d=await doc(name,true);const y=yr();co
 /* ---------- Proud Moments and Kudos ---------- */
 async function momentsPage(my){st.moments=(await ga("moments")).list;const f=st.mform;const team=B().team.filter(t=>t.name!==meName());
   const mine=workOf(meName(),Date.now()-120*864e5);const links=[...(f.link&&f.link.kind==="presenting"?[f.link]:[]),...mine.obs.slice(0,8).map(exObs),...mine.pl.slice(0,5).map(p=>exPlan(p)),...mine.sl.slice(0,5).map(exSlide)];
-  const aud={everyone:"Everyone at our school",class:"My Class team",director:"Only the director"};
+  // My Class team is offered only to someone with a Class, so a moment always reaches someone
+  const aud=Object.assign({everyone:"Everyone at our school"},B().me&&B().me.room?{class:"My Class team"}:{},{director:"Only the director"});if(!aud[f.audience])f.audience="everyone";
   draw(my,head("Proud Moments","Proud Moments and Kudos","Keep what you are proud of and recognize one another. Moments and Kudos shared with everyone also rotate on the staff room display. Nothing is counted or tallied.")+
     card(f.kind==="kudos"?"Kudos for a colleague":"My proud moment",`${seg("data-gmkind",[["moment","My proud moment"],["kudos","Kudos for a colleague"]],f.kind)}
       ${f.kind==="kudos"?`<label class="fld-label">Colleague<select id="gm-to"><option value="">Choose</option>${team.map(t=>`<option ${f.to===t.name?"selected":""}>${H(t.name)}</option>`).join("")}</select></label><label class="fld-label">What they did that made a difference<textarea rows="3" id="gm-text">${H(f.text||"")}</textarea></label>`

@@ -315,7 +315,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         // a photo already kept from its Moment keeps its own words. The newsletter adds only its small group and that it was shared.
         if (board && have.has(k)) { const hit = [...store.recs.notices].find(([, r]) => !r.deleted && r.doc && r.doc.kaymbu && r.doc.kaymbu.key === k);
           if (hit) { const [nid, r] = hit, d = r.doc; let ch = false;
-            if (m.smallGroup && !d.smallGroup) { d.smallGroup = m.smallGroup; ch = true; }
+            if (m.smallGroup && !d.smallGroup && !d.editedBy) { d.smallGroup = m.smallGroup; ch = true; }
             if (!d.kaymbu.newsletter) { d.kaymbu = Object.assign({}, d.kaymbu, { newsletter: m.newsletter }); ch = true; }
             if (ch) { noteChange('notices', nid); scheduleSave('notices', nid); linked++; } } }
         again++; continue; }
@@ -366,15 +366,17 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   async function repair() {
     let n = 0;
     for (const [id, r] of store.recs.notices) {
-      const d0 = r.doc; if (!r.deleted && d0 && d0.kaymbu && d0.by && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
+      const d0 = r.doc; // a Kept by an educator changed by hand stays as they chose
+      if (!r.deleted && d0 && d0.kaymbu && d0.by && !d0.editedBy && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
       // a moment whose subject named only a small group was kept with no class, and is placed in that group's class now,
       // with the group's educator when it has none, whoever has edited it since
-      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.smallGroup) {
+      // only for a moment nobody has changed by hand, so a small group an educator took off stays off
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.smallGroup && !d0.editedBy) {
         const rs = readSubject(d0.kaymbu.subject);
         if (rs.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; if (!d0.by && rs.educator) d0.by = rs.educator; noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
-      // a moment kept before the subject's educator was read takes that educator, unless an educator has changed it since
-      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
+      // a moment kept before the subject's educator was read takes that educator, once, unless an educator has changed it by hand
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }

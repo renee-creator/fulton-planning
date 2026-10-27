@@ -1043,7 +1043,7 @@ async function boot(){
     if(window.FP_HOSTED)setTimeout(()=>loadCalSpaces(),1500);
     db.doc("settings/program").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v){applyProgram(v);LS.set("fps.program",v);if(ownRoomDefaults()&&["children","threads","lens","moments"].includes(view))renderMain();if(view==="settings"&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view!=="settings"&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
     db.doc("settings/educators").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&Array.isArray(v.names)){roster=v.names.filter(r=>r&&r.name&&!isShared(r.name));rosterSeen=true;renderRoster();fillEducatorList();if((view==="plans"||(view==="children"&&!kVisit))&&!document.activeElement?.closest?.("#main"))renderMain()}},()=>{});
-    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("threads").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);threadBase.set(d.id,jclone(v))}});threads=m;if((view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("projects").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);projBase.set(d.id,JSON.stringify(v))}});projects=m;if((view==="projects"||view==="threads"||view==="plans"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("newsletters").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||nlDeleted.has(d.id))return;const loc=newsletters.get(d.id);m.set(d.id,(loc&&(nlTimers[d.id]||((loc.updatedAt||0)>=(v.updatedAt||0)&&Date.now()-(loc.updatedAt||0)<60000)))?loc:v)});for(const [id,loc] of newsletters)if(!m.has(id)&&!nlDeleted.has(id)&&(nlTimers[id]||Date.now()-(loc.updatedAt||0)<30000))m.set(id,loc);newsletters=m;if(view==="newsletter"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("grant").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});grantRecs=m;grantLoaded=true;if(view==="grant"&&!gBusy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderGrant()},()=>{});
@@ -1056,7 +1056,7 @@ async function boot(){
     db.doc("settings/staffbirthdays").onSnapshot(snap=>{const v=snap.exists?snap.data():null;staffBdays=v&&Array.isArray(v.people)?v.people:[];if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#sb-card"))renderSettings()},()=>{});
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
-    db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
+    db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);inqBase.set(d.id,jclone(v))}});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -1068,7 +1068,7 @@ async function boot(){
       posts=m;if(shareSt&&posts.get(shareSt.id)&&posts.get(shareSt.id)!==shareSt&&!document.activeElement?.closest?.("#main")){shareSt=posts.get(shareSt.id);shStale()}
       if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
-    db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain();else{try{evSync()}catch(e){}}},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     draftBoot();
   }else setConn("Saving on this device");
@@ -1252,6 +1252,8 @@ const gardenRooms=p=>[...new Set((p.children||[]).map(id=>(children.get(id)||{})
 function planInRoom(p,room){return p.classroom===room||(isGardenPlan(p)&&gardenRooms(p).includes(room))}
 const GARDEN_SPACE=/garden|yard|orchard|bed|goat|chicken|farm|pollinator|compost|green ?house|field|meadow/i;
 function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||planInRoom(p,roomFilter)))}
+// the week packet prints the Class the board is showing
+function packetPlans(){const r=boardRoom();return [...plans.values()].filter(p=>p.id!=="example"&&p.weekOf===week&&planInRoom(p,r))}
 function renderList(){
   pruneEmpty();renderDue();renderFeedbackPanel();
   const ps=weekPlans();
@@ -1336,7 +1338,7 @@ function renderMain(){
     </div>
     <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
     ${sendable(p)&&!isDirector()?`<div class="actions"><span class="muted" style="font-size:13px">Status</span><span class="status ${p.status}">${esc(STATUS[p.status]||"Draft")}</span></div>`:`<div class="actions"><span class="muted" style="font-size:13px">Status</span>
-      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"The director marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>!(p.byDirector&&isDirector()&&k==="ready")).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"The director marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
     </div>`}
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
@@ -2277,12 +2279,14 @@ window.TREE_FAMILY_COPY=async(confId,opt)=>{opt=opt||{};const cf=conferences.get
   const lay=opt.layout||famLayout(cf),drdp=!!cf.familyDrdp,its=confPrintItems(cf);
   // the summary fits one page, each part set shorter at a sentence until it does
   // the summary fits one page and each sheet of two pieces fits its sheet, each part set shorter at a sentence until it
-  // does. Word sets type a little larger, so the Word file takes the next step shorter.
+  // does. The Word file keeps the whole summary.
   const MX=[0,1.4,1.1,.85,.65,.5,.4,.32,.25],PAIR=[[380,420],[330,420],[290,420],[255,420],[225,360],[200,300],[170,240],[150,180],[130,140],[110,100],[100,80]];
   let L=null;try{L=await TREE_KIT.pdfLib()}catch(e){}const one=async d=>{if(!L)return true;const b=await makePdf([d],"x.pdf","quiet");return !b||(await L.PDFDocument.load(await b.arrayBuffer())).getPageCount()<=1};
   const pre=[...its.map(x=>confPieceDoc(c,x,drdp))];if(pre.some(d=>(d.photos||[]).length))await loadPhotos(pre,!!opt.quiet);
   let si=0;for(;si<MX.length-1;si++)if(await one(famSummaryDoc(cf,MX[si])))break;
-  const sum=famSummaryDoc(cf,MX[Math.min(MX.length-1,si+(opt.word?4:0))],!!opt.word);
+  // the Word file keeps every word, since it can be adjusted. When the PDF shortens a part to fit one page, it says so.
+  const sum=famSummaryDoc(cf,opt.word?MX[0]:MX[si],!!opt.word);
+  if(!opt.word&&si>0&&!opt.quiet)toast("To fit one page, some parts of the summary were shortened at a sentence. The Word copy keeps every word.");
   // a Booklet folds only on paper from the PDF, so its Word file sets two pieces to a page
   const pieces=[];if(lay==="two"||(opt.word&&lay==="booklet"))for(let i=0;i<its.length;i+=2){const xs=its.slice(i,i+2);let k=0;for(;k<PAIR.length-1;k++)if(await one(confPairDoc(c,xs,drdp,...PAIR[k])))break;let kw=k;if(opt.word)while(kw<PAIR.length-1&&(PAIR[kw][0]>PAIR[k][0]*.68||PAIR[kw][1]>PAIR[k][1]*.75))kw++;pieces.push(confPairDoc(c,xs,drdp,...PAIR[kw]))}
   else pieces.push(...its.map(x=>confPieceDoc(c,x,drdp)));
@@ -2851,9 +2855,10 @@ function shareFood(k){
   const src=new Map(),add=(name,town,what)=>{if(!has(name))return;const k2=gKey(name);if(/^feed( cooperative| sonoma)?$/.test(k2))return;const p=gProducer(name);const e=src.get(k2)||{name:p.name||name,town:town||p.town||"",what:new Set()};if(!e.town&&(town||p.town))e.town=town||p.town;if(has(what))e.what.add(String(what).replace(/^\s*OG\s+/,"").split(",")[0].trim());src.set(k2,e)};
   for(const f of gBinFarms(r.from,r.to))for(const it of f.items)add(f.name,f.town,it);
   for(const x of gLinesAll(r.from,r.to))if(x.kind!=="retail"&&!/FEED Bin/i.test(x.item||""))add(x.producer,"",x.item);
-  const lunches=days.map(d=>d.lunch).join(" ");
+  // our cheese and our beans and grains come from the same producers, named whenever the menu has them, at lunch or snack
+  const lunches=days.map(d=>[d.lunch,d.am,d.pm].join(" ")).join(" ");
   if(/cheese|pizza|quesadilla/i.test(lunches))add("Petaluma Creamery","Petaluma","cheese");
-  if(/bean|lentil|rice/i.test(lunches))add("Next Generation Foods","","beans and grains");
+  if(/\bbeans?\b|lentil|quinoa|farro|barley|\brice\b(?! cakes?)/i.test(lunches))add("Next Generation Foods","","beans and grains");
   const list=[...src.values()].map(e=>Object.assign(e,{miles:e.town?gTownMiles(e.town):null,county:e.town?gTownCounty(e.town):"",what:[...e.what].filter(Boolean).slice(0,2)})).sort((a,b)=>(a.miles==null?999:a.miles)-(b.miles==null?999:b.miles));
   return {range:r,days,sources:list}}
 const SH_DOW=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long"});
@@ -4182,7 +4187,19 @@ const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",st
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
+/* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
+   at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
+const TREE_BUILD="__TREE_BUILD__";let treeNewer=false,treeBuildAt=0;
+async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
+  try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
+    if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
+      b.style.cssText="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:var(--moss,#2f5d50);color:#fff;padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.2);max-width:calc(100vw - 32px)";
+      b.innerHTML=`<span>TREE was updated.</span><button class="btn small" style="background:#fff;color:var(--moss,#2f5d50)" id="treereload">Reload</button>`;document.body.appendChild(b);
+      document.getElementById("treereload").onclick=()=>location.reload()}}catch(e){}}
+setInterval(treeBuildCheck,30*60e3);document.addEventListener("visibilitychange",()=>{if(!document.hidden)treeBuildCheck()});
 function goView(v,opts){
+  // leaving the Weekly bin brings it back to this week's bin next time
+  if(v!=="bin"&&typeof binWeek!=="undefined")binWeek="";
   // leaving the journal by any way closes it, so it asks for the passcode again
   if(v!=="stjour"&&window.TreeGrowth&&TreeGrowth.leave)TreeGrowth.leave();
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
@@ -4575,7 +4592,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-binuse]");
   const b=binAll().find(x=>x.id===p.bin);if(!b)return;const x=binPieces(b,p.classroom).find(y=>y.key===key);if(!x)return;
   if(binAddPiece(p,x,b)){persist(p);renderMain();toast(`Added to ${binTargetLabel(p.type,BIN_TO[p.type][x.kind])}.`)}},true);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-binplan],[data-binplango],[data-pbin]");if(!t)return;e.stopImmediatePropagation();
-  if(t.dataset.pbin){binWeek=t.dataset.pbin;LS.set("fps.binweek",binWeek);goView("bin");return}
+  if(t.dataset.pbin){binWeek=t.dataset.pbin;goView("bin");return}
   if(t.dataset.binplan){const el=document.getElementById("binplan");if(el)el.innerHTML=`<span class="confirm">A plan for ${esc(binRoomNow())} class <button class="btn small" data-binplango="${esc(t.dataset.binplan)}|individual">Individual plan</button><button class="btn small ghost" data-binplango="${esc(t.dataset.binplan)}|classroom">Classroom plan</button></span>`;return}
   const [id,kind]=t.dataset.binplango.split("|");const b=binAll().find(x=>x.id===id);if(b)planFromBin(b,binRoomNow(),kind)},true);
 /* ---------- Coming for lunch and snack ----------
@@ -4586,7 +4603,7 @@ let kitchen={at:0,weeks:null,busy:false};
 // only once signed in and connected, since a request before sign-in would sign the page out
 async function kitchenLoad(){if(kitchen.busy||!db||!window.FP_HOSTED||!window.FP_API||Date.now()-kitchen.at<5*60000)return;kitchen.busy=true;
   try{const j=await window.FP_API("/api/kitchen-week",{});kitchen.weeks=Array.isArray(j.weeks)?j.weeks:[]}catch(e){}
-  kitchen.at=Date.now();kitchen.busy=false;if((view==="today"||view==="bin")&&!document.activeElement?.closest?.("#main"))renderMain()}
+  kitchen.at=Date.now();kitchen.busy=false;if((view==="today"||view==="bin"||view==="kitchen")&&!document.activeElement?.closest?.("#main"))renderMain()}
 // a food word and its plural, so strawberry finds strawberries and tomato finds tomatoes
 const kFoodRe=f=>{const w=String(f||"").toLowerCase().replace(/[^a-z ]/g,"").trim().split(" ").pop().replace(/(ies|es|s)$/,m=>m==="ies"?"y":"");if(w.length<3)return null;
   const stem=/y$/.test(w)?w.slice(0,-1)+"(y|ies)":/o$/.test(w)?w+"(es)?":w+"s?";return new RegExp("\\b"+stem+"\\b","i")};
@@ -5937,8 +5954,8 @@ document.addEventListener("click",async e=>{
   if(t.dataset.room){roomFilter=t.dataset.room;LS.set("fps.room",roomFilter);renderFilters();renderList();if(view==="plans"&&!currentId)renderMain();return}
   if(t.id==="prevwk"||t.id==="nextwk"){week=addDays(week,t.id==="prevwk"?-7:7);currentId=null;renderAll();return}
   if(t.id==="blanks"){makePdf(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.pdf");return}
-  if(t.id==="packet"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makePdf(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.pdf`);return}
-  if(t.id==="packetw"){const ps=weekPlans();if(!ps.length){toast("No plans this week to download.");return}makeDocx(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.docx`);return}
+  if(t.id==="packet"){const ps=packetPlans();if(!ps.length){toast("No plans this week to download.");return}makePdf(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.pdf`);return}
+  if(t.id==="packetw"){const ps=packetPlans();if(!ps.length){toast("No plans this week to download.");return}makeDocx(ps,`Fulton Community School plans week of ${week}${roomFilter!=="All"?" "+roomFilter:""}.docx`);return}
   if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.docx");return}
   if(t.id==="sample"){makePdf([EXAMPLE],"Fulton Community School sample classroom plan.pdf");return}
   if(!p)return;
@@ -6084,6 +6101,11 @@ function carryForward(p){
   // a plan is carried forward only once every section is written, Final remarks included, since they are what prompts the next week
   const miss=missingSections(p);
   if(miss.length){const el=$("#carrymsg");if(el){el.innerHTML=`<section class="ref" style="background:var(--clay-soft);margin-top:10px"><b style="color:var(--clay)">This plan is not complete, so it cannot be carried forward yet</b><div>Finish ${miss.length===1?"this section":"these "+miss.length+" sections"} first.</div><div class="actions">${miss.map(m=>`<button class="linkbtn" data-jump="${m.k}">${esc(m.label)}</button>`).join("")}</div></section>`;el.scrollIntoView({block:"nearest"})}return}
+  // a plan for the same group and week already started from the week board is the one carried into, never a second plan
+  {const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
+    const twin=[...plans.values()].find(x=>x.id!=="example"&&!x.deleted&&x.id!==p.id&&x.type===p.type&&x.weekOf===nw&&same(x.classroom,p.classroom)&&(p.type==="classroom"||(same(x.educator,p.educator)&&same(x.group,p.group))));
+    if(twin){if(!twin.prevId){twin.prevId=p.id;const fr=String(p.fields.remarks||"").trim();if(p.type==="individual"&&fr&&!String((twin.fields||{}).observation||"").trim()){twin.fields=twin.fields||{};twin.fields.observation=fr;twin.obsFrom=fr}persist(twin)}
+      currentId=twin.id;week=twin.weekOf;renderAll();toast("Next week's plan was already started. Opened it, joined to this one.");return}}
   const np=newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
   if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`;
     // last week's final remarks are what prompted continuing, so they open this week's observation rationale
@@ -6665,7 +6687,9 @@ function combineNotices(keepId,goneId){const keep=notices.get(keepId),gone=notic
   // a photo-less record of the second observation hands its children, and its DRDP reading when this one has none, to the one kept
   const extraKids=P.dropped.flatMap(x=>x.children||[]);const drdpFrom=!lead.drdp&&P.dropped.find(x=>x.drdp);
   const all=[...K,...P.moved];
-  all.forEach((x,i)=>{const base=jclone(x);Object.assign(x,words);for(const [k,v] of Object.entries(shared)){if(v)x[k]=v;else delete x[k]}
+  // words newly joined have not been proofread, so the proofread mark comes off when the words change
+  const wordsChanged=words.noticed!==String(lead.noticed||"").trim()||words.wonder!==String(lead.wonder||"").trim();
+  all.forEach((x,i)=>{const base=jclone(x);Object.assign(x,words);if(wordsChanged)delete x.proofread;for(const [k,v] of Object.entries(shared)){if(v)x[k]=v;else delete x[k]}
     x.languages=[...languages];x.group=group;if(x===lead){x.children=[...new Set([...(x.children||[]),...extraKids])];if(drdpFrom){x.drdp=drdpFrom.drdp;if(drdpFrom.drdpAuto)x.drdpAuto=drdpFrom.drdpAuto}x.combinedFrom=[...(x.combinedFrom||[]),...G.map(g=>g.id)]}
     if(P.moved.includes(x)){x.at=(lead.at||now)+K.length+P.moved.indexOf(x);x.week=lead.week||mondayOf(new Date(x.at))}
     x.editedBy=who;x.editedAt=now;saveNotice(x,base)});
@@ -7152,7 +7176,7 @@ function patternRoom(ns){if(nRoom!=="All"&&nRoom!=="none")return nRoom;const c={
 // pattern's name and TREE's reading stay out of it, so the educator writes the area and the intent.
 // a plan from a thread the team follows, Individual, carrying the thread's question and its last reflection
 function planFromThread(th){if(!th)return;const first=[...(th.weeks||[])].sort()[0];
-  const np=newPlan("individual",{classroom:th.classroom||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:th.classroom||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, extending based on ongoing engagement.`;
   // the thread's last reflection opens the observation, as last week's Final remarks do when a plan continues
   {const last=threadLastRemarks(th);if(last){np.fields.observation=last.text;np.obsFrom=last.text;np.obsFromThread=th.id}}
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop()}
@@ -7163,7 +7187,7 @@ function patternIsNew(p){const th=patternThread(p);if(!th)return true;const inIt
   return patternMoments(p).some(n=>!inIt(n))}
 function planFromPattern(p){const th0=patternThread(p);if(th0){planFromThread(th0);return}
   const ns=patternMoments(p);if(!ns.length){toast("Those observations are no longer here.");return}
-  const np=newPlan("individual",{classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:patternRoom(ns)});np.educator=me()||np.educator||"";
   np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");
   np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id);np.source={kind:"pattern",name:p.name||"",ids:ns.map(n=>n.id),at:Date.now()};
   if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;else{const m=patternMatch(p);if(m)np.threadId=m.id}
@@ -7172,7 +7196,7 @@ function planFromPattern(p){const th0=patternThread(p);if(th0){planFromThread(th
 // a plan from a project. It continues one of the project's threads when one is chosen, and it keeps the project beside it
 function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNotices(x);
   const room=(th&&th.classroom)||x.home||(ns.length?patternRoom(ns):"")||myRoom()||"";
-  const np=newPlan("individual",{classroom:room,projectId:x.id,source:{kind:"project",id:x.id,threadId:th?th.id:"",at:Date.now()}});
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:room,projectId:x.id,source:{kind:"project",id:x.id,threadId:th?th.id:"",at:Date.now()}});
   np.educator=me()||np.educator||"";
   if(th){np.threadId=th.id;if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;
     const first=[...(th.weeks||[])].sort()[0];if(first)np.fields.dates=`Continuing a thread first seen the week of ${fmtDate(first)}, part of the project ${x.name}.`}
@@ -8349,7 +8373,7 @@ function kLibrary(){const m=new Map(),today=iso(new Date());for(const mn of menu
 // days the school is closed, from the calendar's all-day events, so a draft leaves them empty
 async function kLoadClosed(month){if(kClosed[month]||!window.FP_API)return;kClosed[month]=new Set();const [y,mo]=month.split("-").map(Number);
   try{const j=await calView(month+"-01",iso(new Date(y,mo,0)));
-    for(const e of j.events||[])if(/no school|closed|closure|holiday|break|in.?service|staff development|thanksgiving/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
+    for(const e of j.events||[])if(/no school|\bclosed\b|closure|\bbreak\b|\bholidays?\b(?!\s*(party|parties|celebration|potluck|lunch|program|show|concert|sing|craft))|in.?service|staff development|thanksgiving(?!\s*(lunch|feast|potluck|meal))/i.test(e.title||"")){for(let d=String(e.start||"").slice(0,10);d&&d<=String(e.end||e.start||"").slice(0,10);d=addDays(d,1))kClosed[month].add(d)}}catch(e){}
   if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()}
 const kLastYear=d=>addDays(d,-364);
 // a draft of the month from past menus, never saved until the kitchen saves it
@@ -8610,12 +8634,12 @@ function menuSchoolDays(month){const [y,mo]=month.split("-").map(Number);const o
 function menusHtml(){
   const kept=[...menus.values()].filter(m=>m&&m.month).sort((a,b)=>b.month.localeCompare(a.month));
   let h=`<section class="card" id="menus-card"><div class="lbl">Monthly menus</div>
-    <div class="hint">Add the month's snack and lunch menus as PDFs or photos. TREE reads them into days for you to check, then they show on the calendar as Snack and lunch, and on Today. The menus and farm sheets TREE prints are on the Kitchen page.</div>
+    <div class="hint">Add the month's menu as a PDF or photo. TREE reads it into days for you to check, and only fills days the kitchen has not written, so nothing typed on the Kitchen page is written over. Every change to a day, and the menu and farm sheets TREE prints, are on the Kitchen page.</div>
     <div class="actions"><label class="btn small ghost" style="cursor:pointer">Add menus<input type="file" id="menu-files" accept="application/pdf,image/*" multiple hidden></label>${menuBusy?`<span class="cnt"><span class="spin"></span> Reading ${menuBusy} menu${menuBusy===1?"":"s"}</span>`:""}</div>`;
   if(menuDraft)h+=menuDraftHtml();
   // this month and next show, and earlier months fold under Earlier menus
   const ym=iso(new Date()).slice(0,7),row=m=>{const n=Object.values(m.days||{}).filter(d=>d&&!d.closed&&(d.am||d.pm||d.lunch)).length;
-    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">The kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-menuedit="${esc(m.month)}">Check or change</button></div></div>`};
+    return `<div class="prow"><div><b>${esc(MENU_MONTH(m.month))}</b><div class="cnt">${n} school day${n===1?"":"s"}${m.by?" · added by "+esc(m.by):""}</div>${m.pdfs&&window.FP_ORIGINAL_URL?`<div class="cnt">${["menu","lunch","snack"].filter(k=>m.pdfs[k]).map(k=>`<a href="${esc(window.FP_ORIGINAL_URL(m.pdfs[k]))}" target="_blank" rel="noopener">The kitchen's original ${k} PDF</a>`).join(" · ")}</div>`:""}</div><div class="actions"><button class="linkbtn" data-tview="kitchen">Change it on the Kitchen page</button></div></div>`};
   const now=kept.filter(m=>m.month>=ym),past=kept.filter(m=>m.month<ym);
   if(now.length)h+=`<div class="tlist" style="margin-top:10px">${now.slice().reverse().map(row).join("")}</div>`;
   if(past.length)h+=`<details class="fold" data-fold="set:oldmenus" ${foldOpen.has("set:oldmenus")?"open":""} style="margin-top:8px"><summary class="foldhead"><span class="cnt">Earlier menus</span><span class="cnt">${past.length}</span></summary><div class="foldbody tlist">${past.map(row).join("")}</div></details>`;
@@ -8629,16 +8653,14 @@ function menuDraftHtml(){const d=menuDraft;const days=menuSchoolDays(d.month);
     </tbody></table></div>
     <div class="kfields" style="margin-top:10px">${[["am","Morning snack at"],["lunch","Lunch at"],["pm","Afternoon snack at"]].map(([k,l])=>`<label class="cnt">${l}<input type="time" data-menutime="${k}" value="${esc(((d.times||{})[k])||"")}"></label>`).join("")}</div>
     <div class="hint">Each meal shows at its time on the calendar. Left empty, it shows across the day.</div>
-    <label class="fld-label" style="margin-top:10px">Note with the snack menu<textarea data-menunote="snack" rows="2">${esc((d.notes||{}).snack||"")}</textarea></label>
-    <label class="fld-label">Note with the lunch menu<textarea data-menunote="lunch" rows="2">${esc((d.notes||{}).lunch||"")}</textarea></label>
     <div class="actions" style="margin-top:8px"><button class="btn small" data-menuact="save">Save ${esc(MENU_MONTH(d.month))}</button><button class="linkbtn" data-menuact="cancel">Cancel</button></div></div>`}
 
-const MENU_PROMPT=`This is a preschool's monthly menu, either the snack menu or the lunch menu. Read every school day on it.
+const MENU_PROMPT=`This is a preschool's monthly menu. It may be the snack menu, the lunch menu, or one menu with both snacks and lunch. Read every school day on it.
 Use the weekday column headings and the day numbers to give each day its full date. Copy what is served exactly as the menu says, only putting it in sentence case. When a day's lunch is written on two or three lines, join them into one with "and" or commas, such as "Pinto beans, brown rice and cheese". On the snack menu, "Am" is the morning snack and "Pm" is the afternoon snack. Monday has a morning snack only. A day marked No School is closed. Leave a field empty when the menu shows nothing for it. Never add an item that is not on the menu.
 Copy the note at the top of the menu, about what is served with every meal, in plain sentences.
 Do not use colons or dashes in what you write.
 
-Return a JSON object with "kind", either "snack" or "lunch", "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false.`;
+Return a JSON object with "kind", "snack" or "lunch" or "both" when one menu has snacks and lunch, "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false.`;
 async function menuRead(f){
   const name=f.name||"menu";const ext=(name.split(".").pop()||"").toLowerCase();const images=[];let text="";
   if(ext==="pdf"||f.type==="application/pdf"){const R=await TREE_KIT.readPdf(f,{maxPages:4,joined:true,layout:false,keep:true});
@@ -8646,14 +8668,14 @@ async function menuRead(f){
   else images.push(await shrinkImage(f));
   const out=await askRead(MENU_PROMPT+(text.trim()?"\n\nThe text on the menu, in reading order, to help with spelling.\n"+text.slice(0,6000):""),{images,careful:true,purpose:"menu",maxSide:2000});
   return {name,out}}
-function menuMerge(r){const o=r.out||{};const kind=o.kind==="lunch"?"lunch":"snack";
+function menuMerge(r){const o=r.out||{};const kind=o.kind==="both"?"both":o.kind==="lunch"?"lunch":"snack";
   const month=/^\d{4}-\d{2}$/.test(o.month||"")?o.month:((o.days||[])[0]?.date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(month))return false;
   if(!menuDraft||menuDraft.month!==month){const have=menus.get(month);menuDraft=have?JSON.parse(JSON.stringify(have)):{id:month,month,days:{},notes:{},files:{},times:menuTimesLast()};menuDraft.read=[]}
   const clean=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,", ").replace(/\s+/g," ").trim();
   for(const d of o.days||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(d?.date||"")||d.date.slice(0,7)!==month)continue;const x=menuDraft.days[d.date]=menuDraft.days[d.date]||{};
     if(d.closed){x.closed=true;continue}
-    if(kind==="snack"){x.am=clean(d.am);x.pm=clean(d.pm)}else x.lunch=clean(d.lunch)}
-  if(has(o.note))menuDraft.notes[kind]=clean(o.note);
+    if(kind!=="lunch"){x.am=clean(d.am);x.pm=clean(d.pm)}if(kind!=="snack")x.lunch=clean(d.lunch)}
+  if(has(o.note))menuDraft.notes[kind==="both"?"lunch":kind]=clean(o.note);
   menuDraft.files=menuDraft.files||{};menuDraft.files[kind]=r.name;menuDraft.read=[...(menuDraft.read||[]),r.name];return true}
 document.addEventListener("change",async e=>{const t=e.target;
   if(t.id==="menu-files"){const fs=[...t.files];t.value="";if(!fs.length)return;menuBusy+=fs.length;renderSettings();
@@ -8670,7 +8692,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-menu
   if(t.dataset.menuact==="save"&&menuDraft){document.querySelectorAll("#menus-card [data-menuday]").forEach(i=>{if(i.dataset.menuk!=="closed"&&!i.disabled){const x=menuDraft.days[i.dataset.menuday]=menuDraft.days[i.dataset.menuday]||{};x[i.dataset.menuk]=i.value.trim()}});
     document.querySelectorAll("#menus-card [data-menunote]").forEach(i=>{menuDraft.notes[i.dataset.menunote]=i.value.trim()});
     menuDraft.times=menuDraft.times||{};document.querySelectorAll("#menus-card [data-menutime]").forEach(i=>{menuDraft.times[i.dataset.menutime]=i.value});
-    const doc=Object.assign({},menuDraft,{by:whoAmI(),updatedAt:Date.now()});delete doc.read;
+    // what the kitchen already wrote stays. A menu added here fills only the days, meals, notes and times still empty.
+    const was=menus.get(menuDraft.month);const doc=Object.assign({},menuDraft,{by:whoAmI(),updatedAt:Date.now()});delete doc.read;
+    if(was){doc.days=Object.assign({},doc.days);for(const [day,x] of Object.entries(was.days||{})){if(!x)continue;const n=Object.assign({},doc.days[day]||{});if(x.closed)n.closed=true;for(const k of ["am","pm","lunch"])if(has(x[k]))n[k]=x[k];doc.days[day]=n}
+      doc.notes=Object.assign({},doc.notes||{},Object.fromEntries(Object.entries(was.notes||{}).filter(([,v])=>has(v))));doc.times=Object.assign({},doc.times||{},Object.fromEntries(Object.entries(was.times||{}).filter(([,v])=>has(v))));
+      for(const k of Object.keys(was))if(!(k in doc))doc[k]=was[k]}
     for(const [k,v] of Object.entries(doc.days))if(!v||(!v.closed&&!has(v.am)&&!has(v.pm)&&!has(v.lunch)))delete doc.days[k];
     if(!db){toast("TREE is not connected. Try again in a moment.");return}
     try{t.disabled=true;await db.doc("menus/"+doc.month).set(doc);menus.set(doc.month,doc);menuDraft=null;toast(`${MENU_MONTH(doc.month)} is on the calendar`)}catch(err){toast((err&&err.message)||"The menus could not be saved.");t.disabled=false}
@@ -8681,10 +8707,12 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-menu
    The server reads the list FEED posts ahead of delivery and keeps each week under bins/, so the year's record of
    what came grows by itself. The team keeps an idea bank of its own. Claude can suggest questions to hold, and a
    suggestion is kept only when an educator chooses it. Nothing here asks an educator to fill anything in. */
-let bins=new Map(), binWeek=LS.get("fps.binweek",""), binRoom=LS.get("fps.binroom",""), binFeed={weeks:null,error:"",at:0,busy:false}, binSugg=null, binBusy=false, binAdd=null;
+// a past week chosen on the Weekly bin lasts only while the page is open, so the phone comes back to this week's bin
+let bins=new Map(), binWeek="", binRoom=LS.get("fps.binroom",""), binFeed={weeks:null,error:"",at:0,busy:false}, binSugg=null, binBusy=false, binAdd=null;
 const binOk=b=>b&&/^\d{4}-\d{2}-\d{2}$/.test(b.id||b.date||"")&&(b.items||[]).length;
 function binAll(){const m=new Map();for(const w of binFeed.weeks||[])m.set(w.date,Object.assign({id:w.date},w));for(const b of bins.values())if(binOk(b))m.set(b.id,b);
-  const all=[...m.values()].filter(binOk).sort((a,b)=>b.date.localeCompare(a.date));const t=all.filter(b=>b.tuesday);return t.length?t:all}
+  // our Tuesday bins, and any bin added by hand, such as a holiday-week delivery on another day
+  const all=[...m.values()].filter(binOk).sort((a,b)=>b.date.localeCompare(a.date));const t=all.filter(b=>b.tuesday||b.source==="hand");return t.length?t:all}
 function binCurrent(){const list=binAll();if(!list.length)return null;
   if(binWeek){const b=list.find(x=>x.id===binWeek);if(b)return b}
   const now=new Date(),today=iso(now),dw=now.getDay();
@@ -8898,7 +8926,7 @@ document.addEventListener("click",async e=>{
   if(d.binroom){binRoom=d.binroom;LS.set("fps.binroom",binRoom);binAdd=null;renderBin();return}
   // the team says an observation came from the unboxing, and every photo kept with it goes with the bin
   if(d.binlink&&b){if(VIEW_AS){toast("Nothing is saved while you see TREE as another educator.");return}const n=notices.get(d.binlink);if(!n)return;for(const x of binSiblings(n))if(!x.bin)patchNotice(x.id,{bin:b.id});toast("Kept with this bin");renderBin();return}
-  if(d.binweek){binWeek=d.binweek;LS.set("fps.binweek",binWeek);binAdd=null;binSugg=null;renderBin();jumpTop();return}
+  if(d.binweek){binWeek=d.binweek;binAdd=null;binSugg=null;renderBin();jumpTop();return}
   if(d.binpk&&binAdd){binAdd.text=$("#bin-idea")?.value||binAdd.text;const k=d.binpk;binAdd.produce=binAdd.produce||[];binAdd.produce=binAdd.produce.includes(k)?binAdd.produce.filter(x=>x!==k):[...binAdd.produce,k];renderBin();return}
   const a=d.binact;
   if(a==="fresh"){binLoad(true);renderBin();return}
@@ -8921,7 +8949,7 @@ document.addEventListener("click",async e=>{
     await binWrite("ideas",{list:{[i.id]:{__delete__:true}}});renderBin();return}
   if(a==="moment"&&b){noticeForm=Object.assign(newNotice(),{bin:b.id,classroom:room});view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return}
   if(a==="hand"){const date=$("#bin-hdate")?.value||"",paste=$("#bin-hlist")?.value||"";if(!paste.trim()){toast("Add the list first, one item on each line.");return}
-    try{t.disabled=true;await window.FP_API("/api/feed-bin",{date,paste});binWeek=date;LS.set("fps.binweek",binWeek);toast("The list is kept")}catch(err){toast((err&&err.message)||"The list could not be kept.")}
+    try{t.disabled=true;await window.FP_API("/api/feed-bin",{date,paste});binWeek=date;toast("The list is kept")}catch(err){toast((err&&err.message)||"The list could not be kept.")}
     t.disabled=false;renderBin();return}
 },true);
 
@@ -8946,7 +8974,7 @@ Never suggest or describe time-outs, punishment, consequences meant to make a ch
 // words in what the team sees that may mean a child or an adult could be hurt, physically or emotionally
 const IQ_UNSAFE=/\b(hit|hits|hitting|bit|bite|bites|biting|kick|kicks|kicking|punch\w*|hurt\w*|injur\w*|unsafe|danger\w*|threw .*at|throw\w* .*at|chok\w*|scratch\w*|pull\w* hair|push\w* (a |his |her |their )?(friend|child|peer)|runs? (out|away|off)|ran (out|away|off)|left the (yard|room|class)|elop\w*|self.harm|bang\w* (his|her|their) head)\b/i;
 function saveInquiry(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();inquiries.set(x.id,x);
-  if(db)db.doc("inquiries/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the inquiry. Check your connection."));
+  if(db)savePart("inquiries",inqBase,x,"inquiry");
   else LS.set("fps.inquiries",[...inquiries.values()])}
 const iqTimers={};
 function saveInquirySoon(x){inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>saveInquiry(x),700)}
@@ -9197,12 +9225,13 @@ function lockInquiryPage(){const m=$("#main");if(!m)return;
 function planFromInquiry(x,kind){
   const room=x.room||myRoom()||(roomFilter!=="All"?roomFilter:"");
   if(kind==="classroom"){if(!room){toast("This inquiry is school-wide. Choose a class on the Plans page first.");return}
-    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
-    const made=!cp;if(made)cp=newPlan("classroom",{classroom:room});
+    // a plan started from an inquiry belongs to the current planning week, whatever week Plans was last showing
+    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===planWeekNow()&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    const made=!cp;if(made)cp=newPlan("classroom",{weekOf:planWeekNow(),classroom:room});
     cp.inquiries=[...new Set([...(cp.inquiries||[]),x.id])];plans.set(cp.id,cp);persist(cp);
     currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}. The inquiry is beside it.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return}
-  const np=newPlan("individual",{classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
   toast("Write the plan for the whole group. The inquiry and its evidence are beside it.")}
 
@@ -9525,7 +9554,7 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
   const out=[];const seen=new Set();
   for(const n of [...notices.values()].sort((a,b)=>(b.at||0)-(a.at||0))){const k=n.group||n.id;if(seen.has(k))continue;const grpN=noteGroup(n);const ids=[...new Set(grpN.flatMap(x=>x.children||[]))];
     const text=[n.noticed,n.wonder].filter(Boolean).join("\n"),full=[text,names(ids),n.by].join("\n");
-    if(!inTime(n.at)||!okKid(ids,text)||!okGrp(ids,[n.group])||(terms.length&&!evMatch(full,terms)))continue;seen.add(k);
+    if(!inTime(n.at)||!okKid(ids,text)||!okGrp(ids,grpN.map(x=>x.smallGroup).filter(Boolean))||(terms.length&&!evMatch(full,terms)))continue;seen.add(k);
     out.push({kind:grpN.some(x=>x.photo)?"photo":"obs",n,ph:grpN.find(x=>x.photo),at:n.at||0,text:text||names(ids),title:[n.by,momentRoomsText(n)].filter(Boolean).join(", "),open:`data-mjump="${esc(n.id)}"`})}
   for(const pl of plans.values()){if(pl.id==="example"||!PLAN_TYPES.includes(pl.type)||isEmptyPlan(pl))continue;const at=parseIso(pl.weekOf).getTime();const text=FORMS[pl.type].fields.map(f=>pl.fields?.[f.k]).filter(Boolean).join("\n");
     if(!inTime(at)||!okKid([],text)||!okGrp([],[pl.group,...(pl.groups||[])])||(terms.length&&!evMatch([text,pl.educator,pl.classroom].join("\n"),terms)))continue;
@@ -11802,8 +11831,15 @@ function unlinkThread(p,id){
   persist(p);renderMain();toast("Disconnected. Choose the thread from the list to connect it again.");
 }
 
+/* A thread and a team inquiry save only what changed since this browser last had them from the server, the way plans do,
+   so two people writing in one at the same time never write over each other's words. */
+const threadBase=new Map(),inqBase=new Map();
+function savePart(kind,base,x,what){const b=base.get(x.id);const cur=JSON.parse(JSON.stringify(x));
+  if(!b)return db.doc(kind+"/"+x.id).set(cur).then(()=>base.set(x.id,jclone(cur))).catch(()=>toast(`Could not save the ${what}. Check your connection.`));
+  const patch=pdiff(b,cur);if(!patch)return Promise.resolve();base.set(x.id,jclone(cur));
+  return db.doc(kind+"/"+x.id).update(patch).catch(()=>{base.set(x.id,b);return db.doc(kind+"/"+x.id).update(patch).catch(()=>toast(`Could not save the ${what}. Your words are still here, so try again in a moment.`))})}
 function saveThread(t){obsIdx=null;t.updatedAt=Date.now();threads.set(t.id,t);
-  if(db)db.doc("threads/"+t.id).set(JSON.parse(JSON.stringify(t))).catch(()=>toast("Could not save the thread. Check your connection."));
+  if(db)savePart("threads",threadBase,t,"thread");
   else LS.set("fps.threads",[...threads.values()])}
 // a thread followed by mistake goes back to being a suggestion, in the search where it was found
 function undoFollow(th){
@@ -11875,9 +11911,10 @@ async function threadsClick(t){
   if(t.dataset.tcplan){const th=threads.get(t.dataset.tcplan);if(!th)return true;
     const room=th.classroom||(roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""));
     if(!room){toast("This thread runs across classes. Choose a class on the Plans page first.");return true}
-    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===week&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    // a plan started from a thread belongs to the current planning week, whatever week Plans was last showing
+    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===planWeekNow()&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     const made=!cp;
-    if(made){cp=newPlan("classroom",{classroom:room,threadId:th.id});{const last=threadLastRemarks(th);if(last){cp.fields.observation=last.text;cp.obsFrom=last.text;cp.obsFromThread=th.id}}plans.set(cp.id,cp);persist(cp)}
+    if(made){cp=newPlan("classroom",{weekOf:planWeekNow(),classroom:room,threadId:th.id});{const last=threadLastRemarks(th);if(last){cp.fields.observation=last.text;cp.obsFrom=last.text;cp.obsFromThread=th.id}}plans.set(cp.id,cp);persist(cp)}
     else if(!planThreads(cp).some(c=>c.t.id===th.id)){cp.threadLinks=(cp.threadLinks||[]).filter(l=>l.id!==th.id);cp.threadLinks.push({id:th.id,by:whoAmI(),at:Date.now()});if(cp.threadOff)cp.threadOff=cp.threadOff.filter(v=>v!==th.id);persist(cp)}
     currentId=cp.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
     toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}, following this thread.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return true}
@@ -13110,7 +13147,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-kdietgo],[
 // the kitchen's list, from the server, which sends the kitchen only each child's first name, last initial, Class and line
 let kDiets=null;
 async function kDietLoad(){try{const j=await window.FP_API("/api/kitchen-diets",{});kDiets=j.list||[]}catch(e){kDiets=kDiets||[]}return kDiets}
-function kDietHtml(){if(!kDiets){kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()});return `<section class="card" id="kdietcard"><div class="lbl">Allergies and dietary needs</div><div class="cnt">Loading…</div></section>`}
+// the allergy list is read again each time the card is drawn, at most once a minute, so a device left open never shows an old list
+let kDietAt=0;
+function kDietHtml(){if(kDiets&&Date.now()-kDietAt>60e3){kDietAt=Date.now();kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()})}
+  if(!kDiets){if(!kDietAt){kDietAt=Date.now();kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()})}return `<section class="card" id="kdietcard"><div class="lbl">Allergies and dietary needs</div><div class="cnt">Loading…</div></section>`}
   const by=[...new Set(kDiets.map(x=>x.room||""))];
   return `<section class="card" id="kdietcard"><div class="secthead"><div class="lbl">Allergies and dietary needs</div><div class="actions">${kDiets.length?printBtns("kdiet","","Print the list"):""}</div></div>
     ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" Class":"No Class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. We are a nut free school.</div>`}</section>`}

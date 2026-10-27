@@ -8,14 +8,14 @@ const https = require('https');
 
 const HOSTS = /(^|\.)(kaymbu\.com|cloudfront\.net|amazonaws\.com|sendgrid\.net)$/i;
 
-const MENU_PROMPT = `This is a preschool's monthly menu, either the snack menu or the lunch menu. Read every school day on it.
+const MENU_PROMPT = `This is a preschool's monthly menu. It may be the snack menu, the lunch menu, or one menu with both snacks and lunch. Read every school day on it.
 Use the weekday column headings and the day numbers to give each day its full date. Copy what is served exactly as the menu says, only putting it in sentence case. When a day's lunch is written on two or three lines, join them into one with "and" or commas, such as "Pinto beans, brown rice and cheese". On the snack menu, "Am" is the morning snack and "Pm" is the afternoon snack. Monday has a morning snack only. A day marked No School is closed. Leave a field empty when the menu shows nothing for it. Never add an item that is not on the menu.
 Copy the note at the top of the menu, about what is served with every meal, in plain sentences.
 Do not use colons or dashes in what you write.
 
 If the document is not a snack or lunch menu, return {"kind": "none"}.
 
-Return a JSON object with "kind", either "snack" or "lunch", "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false. Return only the JSON.`;
+Return a JSON object with "kind", "snack" or "lunch" or "both" when one menu has snacks and lunch, "month" as YYYY-MM, "note", and "days", an array of objects with "date" as YYYY-MM-DD, "am", "pm", "lunch" and "closed", true or false. Return only the JSON.`;
 
 module.exports = function menuIntake({ store, log, askClaude, anthropicKey, noteChange, scheduleSave, keepFile }) {
   let running = false; let last = '';
@@ -46,7 +46,8 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
 
   // what Claude read goes into the month, without replacing anything already written for a day
   function merge(doc, o, label) {
-    const kind = /lunch/i.test(label) ? 'lunch' : /snack/i.test(label) ? 'snack' : (o.kind === 'lunch' ? 'lunch' : 'snack');
+    // one menu with snacks and lunch fills both, as the kitchen now sends it
+    const kind = o.kind === 'both' || (/lunch/i.test(label) && /snack/i.test(label)) ? 'both' : /lunch/i.test(label) ? 'lunch' : /snack/i.test(label) ? 'snack' : (o.kind === 'lunch' ? 'lunch' : 'snack');
     let n = 0, other = 0;
     for (const d of Array.isArray(o.days) ? o.days : []) {
       const day = String((d && d.date) || '');
@@ -56,9 +57,9 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
       const x = doc.days[day] || (doc.days[day] = {});
       if (d.closed) { x.closed = true; n++; continue; }
       const put = (k, v) => { v = String(v || '').trim(); if (v && !String(x[k] || '').trim()) { x[k] = v; n++; } };
-      if (kind === 'lunch') put('lunch', d.lunch); else { put('am', d.am); if (wd !== 1) put('pm', d.pm); }
+      if (kind !== 'snack') put('lunch', d.lunch); if (kind !== 'lunch') { put('am', d.am); if (wd !== 1) put('pm', d.pm); }
     }
-    if (o.note && !(doc.notes[kind] || '').trim()) doc.notes[kind] = String(o.note).trim();
+    const nk = kind === 'both' ? 'lunch' : kind; if (o.note && !(doc.notes[nk] || '').trim()) doc.notes[nk] = String(o.note).trim();
     return { kind, n, other };
   }
 
@@ -69,7 +70,7 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
   // gives the kept file's name, null when it could not be kept, and '' when there is nothing to keep
   async function keepPdf(month, kind0, buf) {
     if (!keepFile || kind0 === 'none') return '';
-    const kind = kind0 === 'lunch' ? 'lunch' : 'snack';
+    const kind = kind0 === 'lunch' ? 'lunch' : kind0 === 'both' ? 'menu' : 'snack';
     const name = 'menu-' + month + '-' + kind + '-' + require('crypto').randomBytes(4).toString('hex') + '.pdf';
     try { await keepFile(name, buf, 'application/pdf', 'Add the ' + month + ' ' + kind + ' menu'); return name; }
     catch (e) { log('Menu PDF could not be kept,', month, kind, e.message); return null; }
@@ -82,7 +83,7 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
         const f0 = current(id) && fileOf(current(id).doc, url); if (!f0) return; label = f0.label || ''; kept = await keepPdf(current(id).doc.month, f0.kind, g.buf); }
       catch (e) { log('Menu PDF could not be opened again,', r0.doc.month, label, e.message); }
       const r = current(id), f = r && fileOf(r.doc, url); if (!f) return;
-      if (kept) { f.pdf = kept; r.doc.pdfs = Object.assign({}, r.doc.pdfs, { [f.kind === 'lunch' ? 'lunch' : 'snack']: kept }); } else f.pdfTries = (f.pdfTries || 0) + 1;
+      if (kept) { f.pdf = kept; r.doc.pdfs = Object.assign({}, r.doc.pdfs, { [f.kind === 'lunch' ? 'lunch' : f.kind === 'both' ? 'menu' : 'snack']: kept }); } else f.pdfTries = (f.pdfTries || 0) + 1;
       r.local = true; noteChange('menus', id); scheduleSave('menus', id);
     }
   }
@@ -93,6 +94,12 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
     try {
       for (const id of [...store.recs.menus.keys()]) {
         const r0 = store.recs.menus.get(id); const doc0 = r0 && r0.doc; if (!r0 || r0.deleted || !doc0 || !doc0.intake) continue;
+        // a month read as a lunch menu alone, with no snacks, such as July 2026, is read once more as one combined menu.
+        // Nothing already written is replaced, so only the missing snacks are filled.
+        if (doc0.intake.done && !doc0.intake.refilled && !Object.values(doc0.days || {}).some(x => x && String(x.am || '').trim()) && (doc0.intake.files || []).some(f => f.url && f.kind !== 'none')) {
+          doc0.intake = Object.assign({}, doc0.intake, { done: 0, tries: 0, refilled: Date.now(), files: (doc0.intake.files || []).map(f => f.kind === 'none' ? f : Object.assign({}, f, { done: false })) });
+          r0.local = true; noteChange('menus', id); scheduleSave('menus', id); log('Menu read again for its missing snacks,', doc0.month);
+        }
         // a month read before its PDFs were kept gets them now, for educators to print
         if (doc0.intake.done) { if (keepFile && !(doc0.intake.files || []).every(f => f.kind === 'none' || f.pdf || (f.pdfTries || 0) >= 3)) await backfill(id); continue; }
         if ((doc0.intake.tries || 0) >= 3) continue;
@@ -112,7 +119,7 @@ module.exports = function menuIntake({ store, log, askClaude, anthropicKey, note
             now.local = true; noteChange('menus', id); scheduleSave('menus', id);
             const kept = await keepPdf(now.doc.month, f.kind, g.buf);
             now = current(id); f = now && fileOf(now.doc, url);
-            if (f) { if (kept) { f.pdf = kept; now.doc.pdfs = Object.assign({}, now.doc.pdfs, { [m.kind === 'lunch' ? 'lunch' : 'snack']: kept }); } else if (kept === null) f.pdfTries = (f.pdfTries || 0) + 1; }
+            if (f) { if (kept) { f.pdf = kept; now.doc.pdfs = Object.assign({}, now.doc.pdfs, { [m.kind === 'lunch' ? 'lunch' : m.kind === 'both' ? 'menu' : 'snack']: kept }); } else if (kept === null) f.pdfTries = (f.pdfTries || 0) + 1; }
             if (m.other) errors.push(`${label0 || m.kind} also listed ${m.other} day${m.other === 1 ? '' : 's'} outside ${(now || r0).doc.month}, left out`);
             log('Menu read from the Kitchen Digest,', (now || r0).doc.month, label0 || m.kind + ',', m.n, 'entries');
           } catch (e) { errors.push(`${label0 || 'A menu'} could not be read, ${e.message}`); log('Menu from the Kitchen Digest could not be read,', doc0.month, label0, e.message); }

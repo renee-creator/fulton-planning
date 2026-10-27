@@ -300,7 +300,10 @@
     return (fileKey,id)=>{const i=String(fileKey||"").indexOf(".");if(i<0)return "";return fileKey.slice(0,i)+"."+b64u(hmac(fileKey.slice(i+1),String(id))).slice(0,32)};})();
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,id));
   // a fresh key for photos, taken at once when one is refused
-  window.FP_RENEW_KEY=async()=>{try{const j=await api("/api/data");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}if(j&&j.storage)window.FP_STORAGE=j.storage;}catch(e){}};
+  // renews only the photo key, once for every broken photo on the page at the same moment, and not again within half a minute
+  let renewing=null;
+  window.FP_RENEW_KEY=()=>{if(renewing)return renewing;if(Store.fileKeyAt&&Date.now()-Store.fileKeyAt<30000)return Promise.resolve();
+    renewing=(async()=>{try{const j=await api("/api/file-key");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}}catch(e){}finally{setTimeout(()=>{renewing=null},0)}})();return renewing};
   window.claude={ use:async(name)=>{ await Store.ready; return caps[name]||null; } };
   window.addEventListener("pagehide",()=>{ try{ if(Auth.token) navigator.sendBeacon && fetch(SERVER+"/api/save-now",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+Auth.token},body:"{}"}); }catch(e){} });
 })();

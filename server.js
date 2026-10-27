@@ -92,7 +92,10 @@ const roles = { directors: [], office: [] };
 const inRole = (list, name) => list.some(n => String(n || '').trim().toLowerCase() === String(name || '').trim().toLowerCase());
 function isDirector(name) { if (DIRECTORS.includes(String(name || '').toLowerCase()) || inRole(roles.directors, name)) return true; const a = accountFor(name); return !!(a && a.director); }
 const SKIPPED_PASSCODES = PASS_RAW.split(',').filter(e => e.trim() && !/^staff=/i.test(e.trim()) && e.includes('=')).length - TEACHERS.length;
-const SECRET = sha('fulton-planning|' + (process.env.SESSION_SECRET || '') + '|' + githubToken() + '|' + PASS_RAW);
+// sign-ins and photo links are signed with SESSION_SECRET on Render, when it is set and long enough, so renewing the GitHub
+// token or changing a Render passcode never signs everyone out. Without it, the older mix is used as before.
+const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
+const SECRET = SESSION_SECRET.length >= 24 ? sha('fulton-planning|session|' + SESSION_SECRET) : sha('fulton-planning|' + SESSION_SECRET + '|' + githubToken() + '|' + PASS_RAW);
 const SESSION_DAYS = 60;
 
 function b64u(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
@@ -809,6 +812,8 @@ const famPlain = t => String(t || '')
   .map(l => /[.!?"”)]$/.test(l) ? l : l + '.').join('\n')
   .replace(/(?:\.{2,}|…)/g, '.').replace(/([a-z]{2,}[.!?])\s*,+/g, '$1').replace(/,\s*([.!?])/g, '$1').replace(/([.!?])\1+/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()).trim();
 const forPrint = t => String(t || '').split('\n').map(l => l.split(/(?<=[.!?])\s+/).filter(x => !FOR_EDUCATOR.test(x)).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+// educator for teacher in our own words, never inside a child's quoted words, which stay exactly as they were said
+const educatorWord = t => String(t || '').split(/("[^"]*"|“[^”]*”)/).map((part, i) => i % 2 ? part : part.replace(/\b([Tt])eachers?\b/g, m => (m[0] === 'T' ? 'E' : 'e') + 'ducator' + (/s$/.test(m) ? 's' : ''))).join('');
 const FAM_AREAS = [['approaches', 'Curiosity and staying with what matters to them'], ['social', 'Friends, feelings and getting along'], ['language', 'Talking, listening and stories'], ['cognition', 'Wondering, counting and solving problems'], ['physical', 'Moving, growing and caring for their body']];
 function familySummaryDraft(cf, child) {
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
@@ -821,7 +826,7 @@ function familySummaryDraft(cf, child) {
   const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{1,3})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(str.slice(0, at)); if (start || w === child.first || keep.has(w) || fam.EVERYDAY.has(w.toLowerCase()) || fam.NEVER_NAMES.has(w)) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
   // our words for families, educator for teacher, and sentences joined with stops in place of dashes and colons
-  const ours = t => String(t || '').replace(/\b([Tt])eachers?\b/g, m => (m[0] === 'T' ? 'E' : 'e') + 'ducator' + (/s$/.test(m) ? 's' : '')).replace(/\s*[—–]\s*|\s+-\s+/g, ', ').replace(/(\w):\s+/g, '$1. ').replace(/;\s*/g, '. ');
+  const ours = t => educatorWord(t).replace(/\s*[—–]\s*|\s+-\s+/g, ', ').replace(/(\w):\s+/g, '$1. ').replace(/;\s*/g, '. ');
   const clean = t => famPlain(prefix(fam.withoutOthers(forPrint(counts(ours(famPlain(t)))), child, all)));
   // a short highlight is the first two sentences of the educators' own words
   const short = (t, n) => { const ss = clean(t).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(x => x && x.trim().split(/\s+/).length > 1); return ss.slice(0, n || 2).join(' '); };
@@ -847,7 +852,7 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
-  const tidy = t => famPlain(fam.withoutOthers(forPrint(String(t || '').replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
+  const tidy = t => famPlain(fam.withoutOthers(forPrint(educatorWord(t).replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
   const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
   const fr = String(parts.friends || '').trim() ? got('friends') : '';
@@ -1725,6 +1730,8 @@ async function handle(req, res) {
     try { await staff.load(); } catch (e) { log('Educator records could not be loaded for the backup', e.message); }
     const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
     const bundle = backupBundle(saved);
+    // the pictures in the Teacher Policies, the Family Handbook and the recipe library travel with the backup
+    try { const imgs = await staff.dumpImages(); let n = 0; for (const [p, b64] of Object.entries(imgs)) { bundle.files[p] = { base64: b64 }; n++; } bundle.manifest.counts.pictures = n; bundle.manifest.files = Object.keys(bundle.files).length; } catch (e) { log('The pictures could not be added to the backup', e.message); }
     const gz = zlib.gzipSync(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 9 });
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
     // the time is kept in the records too, so the director's Settings shows it after the server has slept
@@ -1878,7 +1885,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/file-key', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -1887,7 +1894,7 @@ async function handle(req, res) {
   // families or other staff is sent to that sign-in, and every other request is refused here.
   const newHire = staff.isNewHire(me.name);
   if (newHire) {
-    const OPEN = ['/api/data', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
+    const OPEN = ['/api/data', '/api/file-key', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
     if (!OPEN.includes(path) && !path.startsWith('/api/staff/')) { log('New educator sign-in refused', me.name, path); err(req, res, 403, 'This opens once the director turns on full access.'); return; }
     if (path === '/api/data') { json(req, res, 200, { bootId: BOOT_ID, rev, me: me.name, director: false, newHire: true, staff: staff.bootInfo(me.name), data: {} }); return; }
     if (path === '/api/changes') { json(req, res, 200, { bootId: BOOT_ID, rev, changes: {}, newHire: true }); return; }
@@ -1902,6 +1909,8 @@ async function handle(req, res) {
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
+  // a broken photo renews only the photo key, never the whole school's records
+  if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }

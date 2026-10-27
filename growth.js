@@ -164,7 +164,13 @@ module.exports = function growthModule(c) {
       order.forEach((n, i) => list.push({ name: n, date: day1, time: hhmm(toMin(hr) + i * (+sc.minutes || 20)), minutes: +sc.minutes || 20, kind: 'slot' }));
     }
     const second = ps.filter(n => (profileOf(n).checkin || '') === 'second').sort();
-    if (second.length) { const r = k % second.length; second.slice(r).concat(second.slice(0, r)).forEach((n, i) => list.push({ name: n, date: day2, time: sc.secondTime ? hhmm(toMin(sc.secondTime) + i * (+sc.minutes || 20)) : '', minutes: +sc.minutes || 20, kind: 'second' })); }
+    // the short second-Monday check-ins are set around every Class team meeting that day, since the director is at them
+    if (second.length) { const r = k % second.length; const mins = +sc.minutes || 20;
+      const busy = teamDays(day2, day2).length ? ROOMS().map(teamTimes).filter(([a, b]) => a && b).map(([a, b]) => [toMin(a), toMin(b)]) : [];
+      let t = sc.secondTime ? toMin(sc.secondTime) : null;
+      second.slice(r).concat(second.slice(0, r)).forEach(n => { let time = '';
+        if (t != null) { for (let moved = true; moved;) { moved = false; for (const [a, b] of busy) if (t < b && t + mins > a) { t = b; moved = true; } } time = hhmm(t); t += mins; }
+        list.push({ name: n, date: day2, time, minutes: mins, kind: 'second' }); }); }
     // a check-in set by hand, for someone met as needed or a moved conversation, is kept on the educator's record
     for (const n of ps) for (const x of (growth(n).booked || [])) if (x.date && x.date.slice(0, 7) === ym) list.push({ name: n, date: x.date, time: x.time || '', minutes: +sc.minutes || 20, kind: 'booked', id: x.id });
     return { ym, day1, day2, list: list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)), moved: target !== day1 ? target : '' };
