@@ -66,17 +66,17 @@ module.exports = function garden(o) {
     const mm = day.slice(5, 7), dow = new Date(day + 'T12:00:00Z').getUTCDay(), L = glog(), out = [];
     const doneKey = (id, d) => L.done.find(x => x.task === id && x.day === d);
     const push = (t, key) => { const bed = bedOf(s, t.bed); const who = t.who || tenderOf(s, bed, day) || {}; const d = doneKey(t.id, key);
-      out.push(Object.assign({}, t, { key, bedName: bed ? bed.name : t.bedName || '', room: who.room || t.room || '', group: who.group || '', done: d ? { by: d.by, at: d.at, room: d.room || '' } : null })); };
+      out.push(Object.assign({}, t, { key, bedName: bed ? bed.name : t.bedName || '', room: who.room || t.room || '', group: who.group || '', done: d ? { by: d.by, at: d.at, room: d.room || '', passed: !!d.passed } : null })); };
     for (const t of (((s.plan || {}).months || {})[mm] || {}).tasks || []) {
       if (!clean(t.text)) continue;
       if (t.repeat && t.repeat.weekday) { if (t.repeat.weekday === dow) push(Object.assign({ kind: 'repeat' }, t), day); continue; }
       push(Object.assign({ kind: 'month' }, t), day.slice(0, 7));
     }
-    for (const p of s.plants || []) for (const c of p.care || []) if (c.month === mm && clean(c.text)) push({ id: 'care-' + p.id + '-' + mm + '-' + (c.id || ''), kind: 'care', text: c.text, stage: c.stage || 'tend', bed: p.bed, plant: p.id }, day.slice(0, 7));
+    for (const p of s.plants || []) for (const c of p.care || []) if (c.month === mm && clean(c.text)) push({ id: 'care-' + p.id + '-' + mm + '-' + (c.id || ''), kind: 'care', careId: c.id || '', text: c.text, stage: c.stage || 'tend', bed: p.bed, plant: p.id }, day.slice(0, 7));
     for (const a of s.animals || []) for (const c of a.care || []) {
       const every = c.every || 'day'; if (every === 'day' && !WEEKDAYS.includes(dow)) continue; if (every === 'week' && (c.weekday || 1) !== dow) continue;
       const who = tenderOf({ tending: { rotations: [Object.assign({ beds: ['animal-' + a.id] }, a.rotation || {})] } }, { id: 'animal-' + a.id }, day);
-      push({ id: 'animal-' + a.id + '-' + c.id, kind: 'animal', text: c.text, stage: 'tend', animal: a.id, bedName: a.name, who: who || { room: '' } }, day);
+      push({ id: 'animal-' + a.id + '-' + c.id, kind: 'animal', careId: c.id, every: c.every || 'day', weekday: c.weekday || 1, text: c.text, stage: 'tend', animal: a.id, bedName: a.name, who: who || { room: '' } }, day);
     }
     for (const tr of L.trays) if (tr.ready && !tr.plantedOn && tr.bed) push({ id: 'tray-' + tr.id, kind: 'tray', text: `Plant out the ${tr.seedName || 'greenhouse'} starts`, stage: 'plant', bed: tr.bed }, day.slice(0, 7));
     return out;
@@ -98,7 +98,7 @@ module.exports = function garden(o) {
     return { season: sh.season, recipes: sh.recipes, seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden && !p.planned).map(p => ({ id: p.id, common: p.common, eat: p.eat, taste: p.taste || '', gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
-    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, wanted: s.wantedSpaces || [],
+    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
@@ -122,7 +122,7 @@ module.exports = function garden(o) {
       const day = ISO.test(body.day || '') ? body.day : today(); const t = tasksFor(day, s).find(x => x.id === body.task); if (!t) { err(req, res, 404, 'That task is not here.'); return; }
       if (!dir && t.room && t.room !== roomOf(me)) { err(req, res, 403, 'That task belongs to another Class.'); return; }
       saveL(L => { const i = L.done.findIndex(x => x.task === t.id && x.day === t.key); if (body.undo) { if (i >= 0) L.done.splice(i, 1); }
-        else if (i < 0) L.done.push({ task: t.id, day: t.key, by: me, at: Date.now(), room: t.room || roomOf(me) || '', group: t.group || txt(body.group, 40), stage: t.stage || '', text: t.text, bed: t.bed || '', kind: t.kind }); });
+        else { if (i >= 0) L.done.splice(i, 1); L.done.push({ task: t.id, day: t.key, by: me, at: Date.now(), passed: !!body.passed, room: t.room || roomOf(me) || '', group: t.group || txt(body.group, 40), stage: t.stage || '', text: t.text, bed: t.bed || '', kind: t.kind }); } });
       return back();
     }
     // a harvest, from the kitchen, an educator or the director. A Look, don't eat plant is never harvested.
@@ -181,6 +181,7 @@ module.exports = function garden(o) {
       saveS({ familyShare: fs }); return back(); }
     // the site map shows beyond the Garden, on sign-ups, plans, New Educator, the Family page and handouts, once ready
     if (P === 'garden/mapready') { saveS({ mapReady: !!body.on }); return back(); }
+    if (P === 'garden/maplabels') { const L = {}; for (const k of ['bed', 'plant', 'animal']) L[k] = !(body.labels && body.labels[k] === false); saveS({ mapLabels: L }); return back(); }
     if (P === 'garden/seed') {
       saveL(L => { let x = L.seeds.find(y => y.id === body.id); if (body.remove) { L.seeds = L.seeds.filter(y => y.id !== body.id); return; } if (!x) { x = { id: rid('s') }; L.seeds.push(x); }
         Object.assign(x, { name: txt(body.name, 80) || x.name || '', variety: txt(body.variety, 80), from: ['bought', 'donated'].includes(body.from) ? body.from : 'saved', share: body.share === undefined ? !!x.share : !!body.share, source: txt(body.source, 80), link: /^https:\/\//.test(body.link || '') ? String(body.link).slice(0, 300) : '', plant: plantOf(s, body.plant) ? body.plant : '', bed: bedOf(s, body.bed) ? body.bed : '', savedOn: ISO.test(body.savedOn || '') ? body.savedOn : '', left: txt(body.left, 60), stored: txt(body.stored, 80), months: (Array.isArray(body.months) ? body.months : []).filter(m => /^(0[1-9]|1[0-2])$/.test(m)), grow: !!body.grow }); });
@@ -233,7 +234,7 @@ module.exports = function garden(o) {
       saveS({ animals: list }); return back();
     }
     if (P === 'garden/agreements') { const a = Object.assign({}, s.agreements || {}); for (const k of ['children', 'families']) if (body[k] && Array.isArray(body[k].items)) a[k] = Object.assign({}, a[k] || {}, { items: body[k].items.map(x => txt(x, 200)).filter(Boolean) }); saveS({ agreements: a }); return back(); }
-    if (P === 'garden/map') { const spots = Object.assign({}, s.mapSpots || {}); if (body.space && body.x >= 0 && body.x <= 1 && body.y >= 0 && body.y <= 1) spots[String(body.space).slice(0, 60)] = { x: +body.x, y: +body.y }; const next = { mapSpots: spots }; if (/^[a-z0-9-]+\.(jpe?g|png)$/i.test(body.photo || '')) next.mapPhoto = body.photo; saveS(next); return back(); }
+    if (P === 'garden/map') { const spots = Object.assign({}, s.mapSpots || {}); if (body.space && body.remove) delete spots[String(body.space).slice(0, 60)]; else if (body.space && body.x >= 0 && body.x <= 1 && body.y >= 0 && body.y <= 1) spots[String(body.space).slice(0, 60)] = { x: +body.x, y: +body.y }; const next = { mapSpots: spots }; if (/^[a-z0-9-]+\.(jpe?g|png)$/i.test(body.photo || '')) next.mapPhoto = body.photo; saveS(next); return back(); }
     if (P === 'garden/offer') { saveL(L => { L.offered.push({ id: rid('f'), date: ISO.test(body.date || '') ? body.date : today(), text: txt(body.text, 300), by: me, at: Date.now() }); }); return back(); }
     if (P === 'garden/offer/done') { saveL(L => { L.offered = L.offered.filter(x => x.id !== body.id); }); return back(); }
     // the end of a year carries the plan, the beds, the seeds saved and what worked into the next
@@ -250,7 +251,7 @@ module.exports = function garden(o) {
   function evidence(from, to) {
     const s = setup(); if (!s || !s.ready) return []; const L = glog(); const out = [];
     for (const h of L.harvests) if (h.children && h.date >= from && h.date <= to) { const p = plantOf(s, h.plant); if (!isFood(p)) continue; out.push({ id: 'h-' + h.id, n: 5, date: h.date, text: `Children${h.room ? ' of ' + h.room + ' Class' : ''} gathered ${h.amount ? h.amount + ' of ' : ''}${h.plantName} from the garden.` }); }
-    for (const d of L.done) { const day = String(d.day).length === 7 ? d.day + '-01' : d.day; if (!d.group || day < from || day > to || !['plant', 'harvest', 'tend', 'seeds'].includes(d.stage)) continue; if (!/water|plant|harvest|measur|sow|seed/i.test(d.text || '')) continue;
+    for (const d of L.done) { if (d.passed) continue; const day = String(d.day).length === 7 ? d.day + '-01' : d.day; if (!d.group || day < from || day > to || !['plant', 'harvest', 'tend', 'seeds'].includes(d.stage)) continue; if (!/water|plant|harvest|measur|sow|seed/i.test(d.text || '')) continue;
       out.push({ id: 'd-' + d.task + '-' + d.day, n: 7, date: day, text: `The ${d.group} small group${d.room ? ', ' + d.room + ' Class,' : ''} ${String(d.text || '').replace(/^./, c => c.toLowerCase()).replace(/\.$/, '')}.` }); }
     return out;
   }
@@ -272,7 +273,12 @@ module.exports = function garden(o) {
   // the site map's photo and where each space sits, one place for every page that shows it. Off until the director
   // marks it ready, and never anything but the map photo, the spaces and their names.
   const siteMap = (names, dir) => { const s = setup(); if (!s || !s.mapPhoto || (!dir && !s.mapReady)) return null;
-    const pos = s.mapSpots || {}; return { ready: !!s.mapReady, photo: s.mapPhoto, spots: names.map(x => Object.assign({ id: x.id, name: x.name }, pos[x.id] ? { x: pos[x.id].x, y: pos[x.id].y } : {})) }; };
+    const pos = s.mapSpots || {}, lab = s.mapLabels || {};
+    // the beds, plants and animal yards placed on the map, as labels only, each kind shown unless the director turned it off
+    const detail = Object.entries(pos).map(([k, p]) => { const m = k.match(/^(bed|plant|animal):(.+)$/); if (!m || lab[m[1]] === false) return null;
+      const x = m[1] === 'bed' ? (s.beds || []).find(b => b.id === m[2]) : m[1] === 'plant' ? (s.plants || []).find(q => q.id === m[2] && !q.planned && !q.hidden) : (s.animals || []).find(a => a.id === m[2]);
+      return x ? { id: k, name: x.common || x.name || '', x: p.x, y: p.y, detail: m[1] } : null; }).filter(Boolean);
+    return { ready: !!s.mapReady, photo: s.mapPhoto, spots: [...names.map(x => Object.assign({ id: x.id, name: x.name }, pos[x.id] ? { x: pos[x.id].x, y: pos[x.id].y } : {})), ...detail] }; };
     // one Garden entry a day for the staff room display, every plant, animal and wildlife entry in turn, never a planned plant
   function ofTheDay(day) { const s = setup(); if (!s || !s.ready) return null; const L = glog();
     const all = [...(s.plants || []).filter(p => !p.planned && !p.hidden).map(p => ({ kind: 'plant', x: p })), ...(s.animals || []).map(a => ({ kind: 'animal', x: a })), ...(s.wild || []).map(w => ({ kind: w.kind || 'wildlife', x: w }))];

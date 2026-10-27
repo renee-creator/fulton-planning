@@ -11,6 +11,7 @@
     ".smap-in{position:absolute;left:0;top:0;transform-origin:0 0}.smap-in img{display:block;width:100%;height:auto;pointer-events:none}"+
     ".smap-spot{position:absolute;transform-origin:0 0;white-space:nowrap;font:600 13px/1.2 system-ui,sans-serif;color:#1f3a2c;background:rgba(255,255,255,.92);border:1.5px solid #2f5a43;border-radius:999px;padding:4px 9px;cursor:pointer;min-height:28px}"+
     ".smap-spot[aria-pressed=true]{background:#2f5a43;color:#fff}"+
+    ".smap-detail{font-size:11px;font-weight:500;border-width:1px;border-color:#8a6a3b;background:rgba(255,250,238,.9);min-height:0;padding:2px 7px;cursor:default;pointer-events:none}"+
     ".smap-zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:2}.smap-zoom button{width:40px;height:40px;border-radius:10px;border:1px solid #c8d2ca;background:#fff;font:600 20px/1 system-ui,sans-serif;color:#1f3a2c;cursor:pointer}"+
     ".smap-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.smap-list button{font:500 14px/1.2 system-ui,sans-serif;border:1px solid #c8d2ca;background:#fff;border-radius:999px;padding:7px 12px;min-height:36px;cursor:pointer;color:#1f3a2c}.smap-list button[aria-pressed=true]{background:#2f5a43;color:#fff;border-color:#2f5a43}";
     document.head.appendChild(s); }
@@ -19,8 +20,8 @@
     opts=opts||{}; style(); if(!el) return null;
     const spots=(d&&d.spots||[]).filter(s=>s&&s.name);
     if(!d||!d.src){ el.innerHTML=""; return null; }
-    el.innerHTML=`<div class="smap" role="group" aria-label="Site map"><div class="smap-zoom"><button type="button" data-z="1" aria-label="Zoom in">+</button><button type="button" data-z="-1" aria-label="Zoom out">−</button></div><div class="smap-in"><img alt="Our site map, from above" src="${esc(d.src)}">${spots.filter(s=>s.x!=null).map((s,i)=>`<button type="button" class="smap-spot" data-spot="${esc(s.id)}" aria-pressed="${s.id===opts.selected}" style="left:${s.x*100}%;top:${s.y*100}%">${esc(s.name)}</button>`).join("")}</div></div>`+
-      (opts.list===false?"":`<div class="smap-list">${spots.map(s=>`<button type="button" data-spot="${esc(s.id)}" aria-pressed="${s.id===opts.selected}">${esc(s.name)}</button>`).join("")}</div>`);
+    el.innerHTML=`<div class="smap" role="group" aria-label="Site map"><div class="smap-zoom"><button type="button" data-z="1" aria-label="Zoom in">+</button><button type="button" data-z="-1" aria-label="Zoom out">−</button></div><div class="smap-in"><img alt="Our site map, from above" src="${esc(d.src)}">${spots.filter(s=>s.x!=null).map((s,i)=>s.detail?`<span class="smap-spot smap-detail" style="left:${s.x*100}%;top:${s.y*100}%">${esc(s.name)}</span>`:`<button type="button" class="smap-spot" data-spot="${esc(s.id)}" aria-pressed="${s.id===opts.selected}" style="left:${s.x*100}%;top:${s.y*100}%">${esc(s.name)}</button>`).join("")}</div></div>`+
+      (opts.list===false?"":`<div class="smap-list">${spots.filter(s=>!s.detail).map(s=>`<button type="button" data-spot="${esc(s.id)}" aria-pressed="${s.id===opts.selected}">${esc(s.name)}</button>`).join("")}</div>`);
     const box=el.querySelector(".smap"), inner=el.querySelector(".smap-in"), img=inner.querySelector("img");
     let z=1,tx=0,ty=0,base=1;
     const fit=()=>{ const w=box.clientWidth; inner.style.width=w+"px"; base=1; apply(); };
