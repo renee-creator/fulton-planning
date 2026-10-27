@@ -5240,7 +5240,7 @@ function artRow(c){const dir=isDirector()&&!VIEW_AS;
   return `<details class="strow" data-artrow="${esc(c.id)}" ${artOpen===c.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-artpick="${esc(c.id)}" ${artPick.has(c.id)?"checked":""} aria-label="Choose ${esc(c.name)} to print"></label><b>${esc(c.name)}</b> <span class="cnt">${esc(c.picture?"Prints large":c.kind==="book"?"From a book":c.kind==="print"?"Public domain, picture to add":"Linked")}</span></summary>
     <div style="display:grid;gap:6px;margin:8px 0">
       ${c.picture?`<img src="${esc(c.picture)}" alt="${esc(c.name)}" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;justify-self:start;border-radius:6px;border:1px solid var(--line)">`:""}
-      ${c.pairs?`<div><span class="muted">Beside.</span> ${esc(c.pairs)}</div>`:""}
+      ${c.pairs?`<div><span class="muted">Connected to.</span> ${esc(c.pairs)}</div>`:""}
       ${c.wonder?`<div><span class="muted">Our wondering.</span> ${esc(c.wonder)}</div>`:""}
       <div><span class="muted">Our routine.</span> ${esc(ART_ROUTINE)}</div>
       ${c.note?`<div class="hint"><b>For the educator.</b> ${esc(c.note)} <span class="cnt">This note stays on the screen and never prints.</span></div>`:""}
@@ -5258,10 +5258,15 @@ function renderArtists(){const m=$("#main");if(!libData){loadLibrary();m.innerHT
       ${list.map(artRow).join("")||`<div class="empty">${artCards().length?"No artist matches.":"No artists yet."}</div>`}</section>`}
 // an artist as a card for a table. A public domain work prints large with its name and our routine. Any other card names
 // where to see the work, what it sits beside and the wondering. The note for the educator never prints.
-function artistDoc(c){const blocks=[];
-  if(c.picture){blocks.push({t:"photo",key:"art-"+c.id,src:c.picture,maxH:520,full:true});blocks.push(dText("",ART_ROUTINE))}
-  else{if(c.links.length)blocks.push(dText(c.kind==="book"?"Find it in the book":"See the work",c.links.map(l=>l[0]).join(", ")));if(c.pairs)blocks.push(dText("Beside",c.pairs));if(c.wonder)blocks.push(dText("Our wondering",c.wonder));blocks.push(dText("Our routine",ART_ROUTINE))}
-  return {display:true,type:"report",acc:"story",title:c.name,meta:[],blocks}}
+function artistDoc(c){let work=c.name.slice(c.who.length).replace(/^\s*,\s*/,"").trim();work=work.charAt(0).toUpperCase()+work.slice(1);const ask=(ART_ROUTINE.match(/[^.?]+[.?]/g)||[ART_ROUTINE]).map(x=>x.trim());
+  const place=l=>{let h="";try{h=new URL(l[1]).hostname.replace(/^www\./,"")}catch(e){}return h&&!l[0].toLowerCase().includes(h)?l[0]+", "+h:l[0]};
+  const d={display:true,type:"report",acc:"story",title:c.who,meta:[],blocks:[]};
+  // a public domain work prints large, with our routine in two short lines beneath it
+  if(c.picture)return asCard(d,{sub:work,photos:[{key:"art-"+c.id,src:c.picture}],blocks:[{t:"list",label:"Our routine",items:[ask.slice(0,-1).join("  "),ask[ask.length-1]],strong:true}]});
+  const blocks=[];if(c.pairs)blocks.push(dText("Connected to",c.pairs));if(c.wonder)blocks.push(dText("Our wondering",c.wonder));
+  blocks.push({t:"list",label:"Our routine",items:ask,strong:true});
+  if(c.links.length)blocks.push(dText(c.kind==="book"?"Find it in the book":"See the work",c.links.map(place).join("\n")));
+  return asCard(d,{sub:work,blocks})}
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="art-q"){artQ=e.target.value;const c=e.target.selectionStart;renderMain();const i=$("#art-q");if(i){i.focus();try{i.setSelectionRange(c,c)}catch(er){}}}});
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.artpick){if(t.checked)artPick.add(t.dataset.artpick);else artPick.delete(t.dataset.artpick);renderMain()}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.artrow!=null&&d.open)artOpen=d.dataset.artrow},true);
@@ -5354,7 +5359,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
   if(kind==="artist")return `<div class="actions" style="flex-wrap:wrap">${printBtns("artistcard",esc(x.id),"Card",true)}${x.links.map(([t2,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t2)}</a>`).join("")}</div><h2>${esc(x.name)}</h2>
     ${x.picture?`<img src="${esc(x.picture)}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:""}
-    ${x.pairs?`<div class="lbl">Beside</div><p>${esc(x.pairs)}</p>`:""}${x.wonder?`<div class="lbl">Our wondering</div><p>${esc(x.wonder)}</p>`:""}<div class="lbl">Our routine</div><p>${esc(ART_ROUTINE)}</p>
+    ${x.pairs?`<div class="lbl">Connected to</div><p>${esc(x.pairs)}</p>`:""}${x.wonder?`<div class="lbl">Our wondering</div><p>${esc(x.wonder)}</p>`:""}<div class="lbl">Our routine</div><p>${esc(ART_ROUTINE)}</p>
     ${x.note?`<div class="hint"><b>For the educator.</b> ${esc(x.note)} This note never prints.</div>`:""}`;
   if(kind==="prompt")return `<div class="lbl">${esc(x.set)}</div><p style="font-size:18px">${esc(x.title)}</p><div class="hint">A wondering to carry into the day, ready to set aside whenever the children lead somewhere else.</div>`;
   if(kind==="garden")return typeof gdnEntrySheet==="function"?gdnEntrySheet(x):"";
@@ -10725,6 +10730,22 @@ const dText=(label,text)=>({t:"text",label,text});
 const dQuote=(text,by,side,plain)=>({t:"quote",text,by,side,plain:!!plain});
 const dTags=(label,items)=>({t:"tags",label,items});
 const dList=(label,items,numbered)=>({t:"list",label,items,numbered:!!numbered});
+/* A one-page card, centred: the school's name, the title, a second line under it, a short rule, then each part with a
+   small spaced label over its words, in the middle of the page. Photos print large under the title. Artist cards, the PD
+   printables cards and the Garden's cards and signs print this way. A card holding a table or anything only a full page
+   lays out keeps the full page layout. o.sub names the second line, and o.blocks or o.photos replace what the page holds. */
+function asCard(d,o){o=o||{};if(!d)return d;const B=o.blocks||d.blocks||[];
+  if(B.some(b=>["table","web","figures","item","qa","tags","lead","rule"].includes(b.t)))return d;
+  const photos=[...(o.photos||[])],blocks=[];let pend="";
+  const m=(d.meta||[]).map(x=>Array.isArray(x)?x[1]:x).filter(has);
+  for(const b of B){
+    if(b.t==="photo"){if(b.src&&!photos.some(p=>p.key===b.key))photos.push({key:b.key,src:b.src});continue}
+    if(b.t==="sub"){pend=b.text;continue}
+    if(b.t==="text"){if(has(b.text)||has(b.label)||pend)blocks.push({t:"sect",label:has(b.label)?b.label:pend,text:b.text||"",strong:!!b.strong});pend="";continue}
+    if(b.t==="list"){blocks.push({t:"sect",label:has(b.label)?b.label:pend,lines:(b.items||[]).filter(has),strong:!!b.strong});pend="";continue}
+    blocks.push(b)}
+  return {centered:true,card:true,display:true,type:"report",acc:d.acc||"story",title:o.title||d.title||"",sub:o.sub!==undefined?o.sub:m.join(", "),
+    details:[],photos,blocks,brand:d.brand,noTitle:d.noTitle}}
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
 const dSub=text=>({t:"sub",text});
 // a photo kept with a moment. It is drawn from the copy fetched just before printing.
@@ -11116,7 +11137,8 @@ function displayHead(doc,p,A,dry){
   tl=tl.slice(0,3);const tlh=ts*1.12;
   if(!dry){doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,y+ts*.8+i*tlh))}
   y+=tl.length*tlh+8;
-  const facts=(p.meta||[]).filter(r=>has(r[1]));let x=m,ry=y;
+  // a fact may be a pair, its label and its words, or words alone such as "From Ours", printed with no label
+  const facts=(p.meta||[]).map(r=>Array.isArray(r)?r:["",r]).filter(r=>has(r[1]));let x=m,ry=y;
   facts.forEach(([l,v])=>{pfont(doc,"fs",11.5);const val=doc.splitTextToSize(clean(v),w)[0];const vw=doc.getTextWidth(val);pfont(doc,"fr",8.6);const lw=doc.getTextWidth(clean(l));const fw=Math.max(vw,lw);
     if(x>m&&x+fw>m+w){x=m;ry+=34}
     if(!dry){pfont(doc,"fr",8.6);doc.setTextColor(...D_MUTED);doc.text(clean(l),x,ry+8);pfont(doc,"fs",11.5);doc.setTextColor(...D_INK);doc.text(val,x,ry+22.5)}
@@ -11167,7 +11189,7 @@ function displayWeb(doc,x,y,w,h,web,A){
 }
 function displayAtoms(doc,p,A,s){
   const atoms=[];const {m,w}=DG;const cx=m,cw=w;
-  const Z={body:12*s,blh:16.8*s,quote:14.5*s,qlh:19.6*s,small:9.4*s,slh:12.8*s,head:12.5*s,item:14.5*s,ilh:19*s,sub:16.5*s,cell:10.2*s,clh:13.8*s};
+  const Z={body:12*s,blh:18.4*s,quote:14.5*s,qlh:20.4*s,small:9.4*s,slh:13.6*s,head:12.5*s,item:14.5*s,ilh:19*s,sub:16.5*s,cell:10.2*s,clh:13.8*s};
   const wrap=(text,k,fs,width,quoted)=>{pfont(doc,k,fs);const t=clean(text).trim();if(quoted)return doc.splitTextToSize(dq(doc,t.replace(/^"+|"+$/g,"").replace(/\s*\n+\s*/g," ")),width);return t.split(/\n+/).flatMap(par=>par.trim()?doc.splitTextToSize(par.trim(),width):[])};
   const AT=deep(A.c);
   const base=(lh,fs)=>(lh-fs)/2+fs*.8;
@@ -11175,7 +11197,7 @@ function displayAtoms(doc,p,A,s){
   const gap=h=>push({h:h*s,gap:true,draw(){}});
   const line=(l,k,fs,lh,x,color,keep)=>push({h:lh,base:base(lh,fs),keep:!!keep,draw(y){pfont(doc,k,fs);doc.setTextColor(...color);doc.text(l,x,y+base(lh,fs))}});
   const lines=(ls,k,fs,lh,x,color,keepAll)=>ls.forEach((l,i)=>line(l,k,fs,lh,x,color,keepAll||(ls.length<=3&&i<ls.length-1)));
-  const hair=()=>{if(!atoms.length)return;gap(9);push({h:9*s,keep:true,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}})};
+  const hair=()=>{if(!atoms.length)return;gap(12);push({h:9*s,keep:true,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}})};
   // a section heading sits on its own line, and stays with the first two lines under it
   const heading=t=>{hair();if(!has(t))return;wrap(t,"bs",Z.head,w).forEach(l=>line(l,"bs",Z.head,Z.head*1.38,m,AT,true));push({h:3*s,keep:true,draw(){}})};
   const holdFirst=i0=>{if(atoms[i0]&&atoms[i0+1])atoms[i0].keep=true};
@@ -11190,7 +11212,7 @@ function displayAtoms(doc,p,A,s){
         if(lab){pfont(doc,"fs",10);doc.setTextColor(...AT);doc.text(clean(b.label),m+pad,y+pad+7)}
         pfont(doc,"bm",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,m+pad,y+pad+lab+i*lh+fs*.86))}});gap(8);
       if(lrest){lines(wrap(lrest,"fr",Z.body,w),"fr",Z.body,Z.blh,m,D_INK);gap(6)}}
-    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(4);const i0=atoms.length;lines(wrap(b.text,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
+    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(7);const i0=atoms.length;lines(wrap(b.text,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else gap(6);const i0=atoms.length;(b.lines||[b.text]).filter(has).forEach(t=>lines(wrap(t,"fr",Z.small,cw),"fr",Z.small,Z.slh,cx,D_MUTED));holdFirst(i0)}
     else if(b.t==="list"){heading(b.label);const i0=atoms.length;(b.items||[]).filter(has).forEach((it,i)=>{const ls=wrap(it,"fr",Z.body,cw-18);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
         if(k===0){if(b.numbered){pfont(doc,"fs",Z.body);doc.setTextColor(...AT);doc.text(String(i+1),cx,by)}else{doc.setFillColor(...A.c);doc.circle(cx+3,by-Z.body*.3,2*s,"F")}}
@@ -11332,9 +11354,13 @@ function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
   if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School"});y+=24}else y+=4;
   if(md.over){ops.push({t:"text",x,y:y+9,k:"fs",s:11,c:deep(A.c),txt:ct(doc,md.over)});y+=22}
-  let ts=36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
+  let ts=md.card?30:36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
+  // a card's second line names the work or where it comes from, set smaller under the title
+  if(md.card&&has(md.sub)){cwrap(doc,"fr",14,md.sub,W).slice(0,2).forEach(l=>{ops.push({t:"text",x,y:y+13,k:"fr",s:14,c:D_MUTED,txt:l});y+=19});y+=4}
   const d=(md.details||[]).filter(has).join("   ·   ");if(d){const dl=cwrap(doc,"fr",11,d,W)[0]||"";ops.push({t:"text",x,y:y+11,k:"fr",s:11,c:D_MUTED,txt:dl});y+=25}
+  // a card keeps a short rule under its title, and every other sheet a rule across the page
+  if(md.card){y+=4;ops.push({t:"line",x1:x-28,y1:y,x2:x+28,y2:y,c:A.c,w:2.6});return y+26}
   ops.push({t:"line",x1:CM,y1:y,x2:PWd-CM,y2:y,c:A.c,w:1.3});return y+20;
 }
 // the words of a sheet, measured, or set down when ops is given
@@ -11348,6 +11374,11 @@ function cWords(doc,md,A,s,cx,w,y0,ops){
       if(has(b.by)){put({t:"text",x:cx,y:y+9.5*s,k:"fr",s:9.5*s,c:D_MUTED,txt:ct(doc,b.by)});y+=14*s}y+=6*s}
     else if(b.t==="box"){const z=13*s,pad=14*s,lh=z*1.42;const ls=cwrap(doc,"bm",z,b.text,w-2*pad);const h=ls.length*lh+2*pad-3*s;
       if(i>0)y+=4*s;put({t:"rect",x:cx-w/2,y,w,h,r:10,fill:A.t});ls.forEach((l,j)=>put({t:"text",x:cx,y:y+pad+z*.84+j*lh,k:"bm",s:z,c:D_INK,txt:l}));y+=h+14*s}
+    else if(b.t==="sect"){const lz=9.2*Math.min(s,1.25),z=13*s,lh=z*1.6,wk=b.strong?"bs":"fr";
+      if(i>0&&B[i-1].t==="sect")y+=20*s;
+      if(has(b.label)){put({t:"text",x:cx,y:y+lz,k:"fs",s:lz,c:deep(A.c),cs:lz*.16,txt:ct(doc,b.label).replace(/[.]+$/,"").toUpperCase()});y+=lz+8*s}
+      const ls=[...(has(b.text)?cwrap(doc,wk,z,b.text,w):[]),...(b.lines||[]).filter(has).flatMap(l=>cwrap(doc,wk,z,l,w))];
+      ls.forEach(l=>{put({t:"text",x:cx,y:y+z*.95,k:wk,s:z,c:D_INK,txt:l});y+=lh});y+=2*s}
     else if(b.t==="small"){put({t:"text",x:cx,y:y+9,k:"fs",s:9,c:deep(A.c),txt:b.label});y+=15;(b.lines||[]).forEach(l=>{cwrap(doc,"fr",9.5,l,w).forEach(x=>{put({t:"text",x:cx,y:y+9.5,k:"fr",s:9.5,c:D_MUTED,txt:x});y+=13.5})});y+=6}
   });
   return y-y0;
@@ -11378,7 +11409,7 @@ function cLayout(doc,md,A){
   const PWd=sq?PW:land?PH:PW,PHd=sq?PW:land?PW:PH,W=PWd-2*CM,ops=[];
   if(md.bg==="tint")ops.push({t:"rect",x:0,y:0,w:PWd,h:PHd,r:0,fill:mixW(A.t,.45)});
   const foot=(md.footLine||[]).filter(has).join("    ·    ");
-  let cap={s:[1.05,1.1,1.2],l:[1.5,1.6,1.6]}[md.tsize]||[1.25,1.4,1.6];if(md.capS)cap=cap.map(x=>Math.min(x,Math.max(md.capS,1)));
+  let cap={s:[1.05,1.1,1.2],l:[1.5,1.6,1.6]}[md.tsize]||(md.card?[1.15,1.25,1.3]:[1.25,1.4,1.6]);if(md.capS)cap=cap.map(x=>Math.min(x,Math.max(md.capS,1)));
   // a full page photo, with the title and the words on a panel across the foot
   if(pos==="full"&&ps.length){const p0=ps[0];ops.push({t:"img",x:0,y:0,w:PWd,h:PHd,key:p0.key,src:p0.src,cover:true,iw:p0.w,ih:p0.h});
     ops.push({t:"rect",x:0,y:PHd-56,w:PWd,h:56,r:0,fill:md.bg==="tint"?mixW(A.t,.45):[255,255,255]});
@@ -11412,7 +11443,7 @@ function cLayout(doc,md,A){
     const pyy=pos==="below"?y0+(wh?wh+gap:0):y0,wy=pos==="below"?y0:y0+lay.h+gap;
     lay.items.forEach(o=>ops.push({t:"img",x:o.x,y:o.y-top+pyy,w:o.w,h:o.h,key:o.p.key,src:o.p.src}));
     cWords(doc,md,A,s,PWd/2,ww,wy,ops);
-  }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:.4)),ops)}
+  }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:md.card?.46:.4)),ops)}
   return {ops,s,over,PW:PWd,PH:PHd,land:false,sq,pos};
 }
 // a moment sheet keeps everything that was written, so words that do not fit beside the photo go on to a second sheet
@@ -11434,7 +11465,8 @@ function cFlow0(doc,md,A){
 // photos that could not be fetched are left out before the layout, so nothing leaves an empty frame
 function cReady(md){return Object.assign({},md,{photos:(md.photos||[]).map(p=>{const im=photoCache.get(p.key);return im?Object.assign({},p,{w:im.w,h:im.h}):null}).filter(Boolean)})}
 function cDraw(doc,ops){for(const o of ops){
-  if(o.t==="text"){pfont(doc,o.k,o.s);doc.setTextColor(...o.c);doc.text(o.txt,o.x,o.y,{align:"center"})}
+  if(o.t==="text"){pfont(doc,o.k,o.s);doc.setTextColor(...o.c);
+    if(o.cs){const tw=doc.getTextWidth(o.txt)+o.cs*(o.txt.length-1);doc.text(o.txt,o.x-tw/2,o.y,{charSpace:o.cs})}else doc.text(o.txt,o.x,o.y,{align:"center"})}
   else if(o.t==="img"){const im=photoCache.get(o.key);if(!im)continue;
     if(o.cover){const r=Math.max(o.w/im.w,o.h/im.h),w=im.w*r,h=im.h*r;try{doc.saveGraphicsState();doc.rect(o.x,o.y,o.w,o.h,null);doc.clip();doc.discardPath();doc.addImage(im.url,"JPEG",o.x+(o.w-w)/2,o.y+(o.h-h)/2,w,h,undefined,"FAST");doc.restoreGraphicsState()}catch(e){doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}}
     else doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}
@@ -11454,7 +11486,7 @@ function cPreview(md){
     const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover);
       let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre${cover.length?";position:relative":""}" role="img" aria-label="How the sheet prints">${cover.length?"":`<rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`}`;
       for(const o of L.ops){if(o.cover)continue;
-        if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle">${esc(o.txt)}</text>`;
+        if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle"${o.cs?` letter-spacing="${o.cs.toFixed(2)}"`:""}>${esc(o.txt)}</text>`;
         else if(o.t==="img")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" fill="#eef1ec"/>`;
         else if(o.t==="rect")h+=(o.after?"":`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`);
         else if(o.t==="line")h+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${rgb(o.c)}" stroke-width="${o.w}"/>`;
@@ -11479,7 +11511,7 @@ async function sheetJpg(md,longSide){
   const pics={};for(const o of L.ops)if(o.t==="img"&&!pics[o.key]){const im=photoCache.get(o.key);if(im)pics[o.key]=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=im.url})}
   const ops=[...L.ops.filter(o=>o.cover),...L.ops.filter(o=>!o.cover)];
   for(const o of ops){
-    if(o.t==="text"){g.font=face(o.k).replace("%s",(o.s*k).toFixed(1));g.fillStyle=rgb(o.c);g.textAlign="center";g.fillText(o.txt,o.x*k,o.y*k)}
+    if(o.t==="text"){g.font=face(o.k).replace("%s",(o.s*k).toFixed(1));g.fillStyle=rgb(o.c);g.textAlign="center";if("letterSpacing" in g)g.letterSpacing=o.cs?(o.cs*k).toFixed(1)+"px":"0px";g.fillText(o.txt,o.x*k,o.y*k)}
     else if(o.t==="img"){const im=pics[o.key];if(!im)continue;if(o.cover){const r=Math.max(o.w/im.width,o.h/im.height),w=im.width*r,h=im.height*r;g.save();g.beginPath();g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.clip();g.drawImage(im,(o.x+(o.w-w)/2)*k,(o.y+(o.h-h)/2)*k,w*k,h*k);g.restore()}else g.drawImage(im,o.x*k,o.y*k,o.w*k,o.h*k)}
     else if(o.t==="rect"){g.fillStyle=rgb(o.fill);g.beginPath();if(g.roundRect)g.roundRect(o.x*k,o.y*k,o.w*k,o.h*k,(o.r||0)*k);else g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.fill()}
     else if(o.t==="line"){g.strokeStyle=rgb(o.c);g.lineWidth=o.w*k;g.beginPath();g.moveTo(o.x1*k,o.y1*k);g.lineTo(o.x2*k,o.y2*k);g.stroke()}
@@ -11514,15 +11546,19 @@ async function centeredDocx(ch,p,D,A){
       out.push(P(run("“"+b.words+"”","bm",15*s),{alignment:CEN,spacing:{after:has(b.by)?20:100,line:Math.round(15*s*1.28*20),lineRule:"atLeast"}}));
       if(has(b.by))out.push(P(run(b.by,"fr",9.5*s,D_MUTED),{alignment:CEN,spacing:{after:100}}))}
     else if(b.t==="box")out.push(P(run(b.text,"bm",13*s),{alignment:CEN,shading:{type:ShadingType.CLEAR,fill:hex(A.t),color:"auto"},indent:{left:300,right:300},spacing:{before:120,after:220,line:Math.round(13*s*1.42*20),lineRule:"atLeast"}}));
+    else if(b.t==="sect"){const z=13*s,wk=b.strong?"bs":"fr";
+      if(has(b.label))out.push(P(new TextRun({text:ct(doc,b.label).replace(/[.]+$/,"").toUpperCase(),font:word("fs"),bold:heavy("fs"),size:Math.round(9.2*Math.min(s,1.25)*2),color:hex(deep(A.c)),characterSpacing:Math.round(9.2*.16*20)}),{alignment:CEN,spacing:{before:i>0?Math.round(20*s*20):0,after:80}}));
+      const ls=[...(has(b.text)?String(b.text).split("\n").filter(has):[]),...(b.lines||[]).filter(has)];ls.forEach((l,j)=>out.push(P(run(l,wk,z),{alignment:CEN,spacing:{before:!has(b.label)&&j===0&&i>0?Math.round(20*s*20):0,after:j===ls.length-1?60:0,line:Math.round(z*1.6*20),lineRule:"atLeast"}})))}
     else if(b.t==="small"){out.push(P(run(b.label,"fs",9,deep(A.c)),{alignment:CEN,spacing:{before:80,after:40}}));(b.lines||[]).forEach(l=>out.push(P(run(l,"fr",9.5,D_MUTED),{alignment:CEN})))}});return out};
   F.sheets.forEach((md,si)=>{const L=F.pages[si];
     let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
     if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
     if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
     if(md.over)ch.push(P1(run(md.over,"fs",11,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
-    ch.push(P1(run(md.title||"","bs",34),{alignment:CEN,spacing:{after:110,line:Math.round(34*22),lineRule:"atLeast"}}));
+    ch.push(P1(run(md.title||"","bs",md.card?28:34),{alignment:CEN,spacing:{after:110,line:Math.round((md.card?28:34)*22),lineRule:"atLeast"}}));
+    if(md.card&&has(md.sub))ch.push(P(run(md.sub,"fr",14,D_MUTED),{alignment:CEN,spacing:{after:80}}));
     const d=(md.details||[]).filter(has).join("   ·   ");if(d)ch.push(P(run(d,"fr",11,D_MUTED),{alignment:CEN,spacing:{after:60}}));
-    ch.push(P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}))}
+    ch.push(md.card?P([],{border:{bottom:{style:BorderStyle.SINGLE,size:18,color:hex(A.c),space:4}},indent:{left:4480,right:4480},spacing:{after:420}}):P([],{border:{bottom:{style:BorderStyle.SINGLE,size:10,color:hex(A.c),space:4}},spacing:{after:280}}))}
     const foot=(md.footLine||[]).filter(has).join("    ·    ");
     if(L.land||(L.sq&&(L.pos==="left"||L.pos==="right"))){shrink=.82;const TWL=(L.sq?12240:15840)-2160,pw=Math.round(TWL*(L.sq?.5:.56)),ww=TWL-pw,right=L.pos==="right";
       const pc=new TableCell({width:{size:pw,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:photoTable(L.ops.filter(o=>o.t==="img"))});
@@ -11588,7 +11624,7 @@ async function displayDocx(ch,p,D,A){
   if(PRINT.schoolDocs)ch.push(para(run("Fulton Community School","fs",9.5,dp),{spacing:{after:70}}));
   const tpt=String(p.title||"").length>30?28:36;
   ch.push(para(run(p.title||"","bs",tpt),{spacing:{after:150,line:Math.round(tpt*22.4),lineRule:"atLeast"}}));
-  const facts=(p.meta||[]).filter(r=>has(r[1]));
+  const facts=(p.meta||[]).map(r=>Array.isArray(r)?r:["",r]).filter(r=>has(r[1]));
   if(facts.length){let ws=facts.map(([l,v])=>Math.max(clean(v).length*132,clean(l).length*98)+520);const sum=ws.reduce((a,b)=>a+b,0);if(sum>W-200)ws=ws.map(x=>Math.floor(x*(W-200)/sum));const rest=W-ws.reduce((a,b)=>a+b,0);
     ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[...ws,rest],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({children:[
       ...facts.map(([l,v],i)=>new TableCell({width:{size:ws[i],type:WidthType.DXA},borders:noB,margins:{top:0,bottom:0,left:0,right:160},children:[para(run(l,"fr",8.6,MUT),{spacing:{after:30}}),para(run(v,"fs",11.5))]})),

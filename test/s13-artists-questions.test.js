@@ -124,8 +124,8 @@ test('suggested questions are labelled, kept to our rules, added only with a tap
   if (SHOTS) await s.p.screenshot({ path: path.join(SHOTS, 'artists-page.png'), fullPage: true });
   const docs = await s.p.evaluate(() => artCards().map(c => JSON.stringify(artistDoc(c))));
   for (const d of docs) assert.doesNotMatch(d, /never prints/, 'the note for the educator never prints');
-  const pic = JSON.parse(docs[1]); assert.strictEqual(pic.blocks[0].t, 'photo'); assert.strictEqual(pic.blocks.length, 2, 'a public domain work prints large with little text');
-  const link = JSON.parse(docs[0]); assert.ok(!link.blocks.some(x => x.t === 'photo'), 'a work under copyright is never copied');
+  const pic = JSON.parse(docs[1]); assert.strictEqual(pic.photos.length, 1); assert.strictEqual(pic.blocks.length, 1, 'a public domain work prints large with little text');
+  const link = JSON.parse(docs[0]); assert.ok(!link.photos.length && !link.blocks.some(x => x.t === 'photo'), 'a work under copyright is never copied');
   assert.deepStrictEqual(s.errors, []);
   await s.close();
 });

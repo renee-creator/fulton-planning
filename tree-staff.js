@@ -1791,7 +1791,19 @@ function printBlocks(body){const out=[];const lines=String(body||"").split("\n")
     if(!l.trim()){i++;continue}
     const para=[];while(i<lines.length&&lines[i].trim()&&!/^\s*([-*]|\d+\.|\||#{3,})\s*/.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
   return out}
-const printDoc=(m,x)=>({display:true,type:"report",acc:"story",centered:x.kind==="sign",title:x.title,meta:x.kind==="sign"?[]:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)});
+// a card or a sign prints centred, each "**Label.** words" paragraph as a part with its small label, and a sheet keeps the full page
+function cardBlocks(body){if(/^\s*\|/m.test(String(body||"")))return printBlocks(body);const out=[];
+  const strip=t=>String(t).replace(/\*\*([^*]+)\*\*/g,"$1").replace(/\*([^*]+)\*/g,"$1").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").trim();
+  const item=/^\s*([-*]|\d+\.)\s+/;
+  for(const p of String(body||"").split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean)){
+    if(/^#{3,}\s+/.test(p)){out.push({t:"sub",text:strip(p.replace(/^#+\s+/,""))});continue}
+    if(item.test(p)){out.push({t:"list",label:"",items:p.split("\n").filter(l=>item.test(l)).map(l=>strip(l.replace(item,"")))});continue}
+    const m=p.match(/^\*\*([^*]+?)\*\*\s*([\s\S]*)$/);
+    if(m&&has(m[2]))out.push({t:"text",label:strip(m[1]).replace(/[.]+$/,""),text:strip(m[2].replace(/\s*\n\s*/g," "))});
+    else out.push({t:"text",label:"",text:strip(p.replace(/\s*\n\s*/g," ")),strong:!!m})}
+  return out}
+const printDoc=(m,x)=>x.kind==="sheet"?{display:true,type:"report",acc:"story",title:x.title,meta:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)}
+  :asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:cardBlocks(x.body)},{sub:x.kind==="sign"?"":m.title});
 function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:true,display:true,type:"report",acc:"story",title,details:[],photos:[],blocks:lines.filter(Boolean).map(l=>({t:"para",text:l}))},o||{});
   const sec=h=>m.sections.find(x=>x.heading.toLowerCase().startsWith(h));const why=sec("why it matters"),rd=sec("reading"),tr=sec("try this week"),rf=sec("reflect");
   const q=(String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"";

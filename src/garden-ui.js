@@ -281,16 +281,19 @@ function gdnInatHtml(){const I=(gdn&&gdn.inat)||{};const dir=isDirector()&&!VIEW
 // a small card of the ten most likely species in each yard, at adult height
 function gdnFieldGuidesHtml(){const F=(gdn&&gdn.fieldGuides)||[];if(!F.length)return "";
   return `<div class="lbl" style="margin-top:8px">Field guide cards for each yard</div>${F.map(f=>`<div class="prow"><div><b>${esc(f.title)}</b><div class="cnt">${esc((f.entries||[]).map(id=>gdnName(gdnEntry(id))).filter(Boolean).join(", "))}</div></div>${printBtns("gfield",esc(f.space||f.title),"Card, PDF")}</div>`).join("")}`}
-// an entry as it prints, its card or sign, photo first, our own when there is one
-function gdnEntryDoc(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[]).includes(x)&&"plant"||(gdn.animals||[]).includes(x)&&"animal"||"";
+// an entry as it prints, its card or sign, photo first, our own when there is one, centred as a card
+function gdnEntryDoc(x){return asCard(gdnEntryDoc0(x))}
+function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[]).includes(x)&&"plant"||(gdn.animals||[]).includes(x)&&"animal"||"";
   const photo=p?[{t:"photo",key:p.key,src:p.src,maxH:k==="sign"?380:330}]:[];const credit=p&&p.credit?[{t:"small",label:"",lines:[p.credit]}]:[];
   if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
-  if(x.kind==="hazard")return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",x.sign||x.know||""),dText("","Look. Do not touch. Tell an adult."),dText("","We only taste what an adult has named as edible."),...credit]};
+  // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
+  if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
+    return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
   if((gdn.animals||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,...(x.card?[dText("",x.card)]:[]),...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...credit]};
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
-  return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
+  return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 function gdnFieldDoc(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return null;const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
-  return {display:true,type:"report",acc:"story",title:"Who we might see in the "+f.title.toLowerCase(),meta:[],blocks:[dList("",es.map(x=>gdnName(x)+(x.know?". "+x.know:""))),dText("","We look with our eyes and leave them be.")]}}
+  return asCard({display:true,type:"report",acc:"story",title:"Who we might see in the "+f.title.toLowerCase(),meta:[],blocks:[dList("",es.map(x=>gdnName(x)+(x.know?". "+x.know:""))),dText("","We look with our eyes and leave them be.")]})}
 // an entry in the sheet that opens from Search
 function gdnEntrySheet(x){const kind=x.kind||((gdn.plants||[]).includes(x)?"plant":(gdn.animals||[]).includes(x)?"animal":"");
   const body=kind==="plant"?`${gdnPhotoHtml(x)}<div class="cnt">${esc(x.where||(gdnBed(x.bed)||{}).name||"")}</div>${x.taste?`<div class="gsafe">${esc(x.taste)}</div>`:""}${x.opens?`<p>${esc(x.opens)}</p>`:""}${(x.wonder||[]).length?`<ul class="gwonder">${x.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`:kind==="animal"?gdnAnimalHtml(x):gdnWildRow(x).replace(/^<details[^>]*>/,"<div>").replace(/<summary>[\s\S]*?<\/summary>/,"").replace(/<\/details>$/,"</div>");
@@ -314,7 +317,7 @@ window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=g
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
-  if(kind==="children")return ps.map(p=>({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]}));
+  if(kind==="children")return ps.map(p=>asCard({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]},{sub:p.botanical||""}));
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
 // one clean sheet for a season, for the staff room or a wall
 function gdnSeasonDoc(S){const D=gdnSeason(S);const blocks=[];if(D.lead)blocks.push(dText("",D.lead));
