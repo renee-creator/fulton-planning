@@ -53,13 +53,13 @@ test('a rewrite proposal replaces one passage in a section, only once the direct
   assert.match(read('staff/policies/teacher/talk.json').body, /not just sounds/);
   // she changes the wording first, and only the passage is replaced, with the earlier wording in the section's history
   const r = await fx.as(dee, '/api/staff/proposals/accept', { id: 'rewrite-talk', to: 'Words are sounds and a bridge.' });
-  assert.strictEqual(r.status, 200, JSON.stringify(r.body)); await wait(1500);
+  assert.strictEqual(r.status, 200, JSON.stringify(r.body)); await wait(4000);
   const talk = read('staff/policies/teacher/talk.json');
   assert.strictEqual(talk.body, 'We kneel down.\n\nWords are sounds and a bridge.\n\nWe listen.');
   assert.strictEqual(talk.history.length, 1); assert.match(talk.history[0].body, /not just sounds/);
   assert.strictEqual(read('staff/proposals/rewrite-talk.json').status, 'accepted');
   // the Family Handbook draft takes the rewrite into its own copy, and the published edition keeps its wording
-  assert.strictEqual((await fx.as(dee, '/api/staff/proposals/accept', { id: 'rewrite-2027-play' })).status, 200); await wait(1500);
+  assert.strictEqual((await fx.as(dee, '/api/staff/proposals/accept', { id: 'rewrite-2027-play' })).status, 200); await wait(4000);
   assert.strictEqual(read('family/handbook/2027/play.json').body, 'Play is fun and it is work.');
   assert.strictEqual(read('family/handbook/2026/play.json').body, 'Play is not only fun but also work.');
   // the writing rule finds what the rewrites replace

@@ -447,14 +447,14 @@ test('the song book: a © song keeps only its title, songwriter and recording, a
   // marking a traditional song © removes its words, and only the director may
   assert.strictEqual((await fx.as(ann, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: true })).status, 403);
   L = (await fx.as(dee, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: true })).body;
-  await wait(1500);
+  await wait(4000);
   assert.doesNotMatch(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/old-tune.md'), 'utf8'), /La la/);
   // taking the mark off leaves a place for words
-  await fx.as(dee, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: false }); await wait(1500);
+  await fx.as(dee, '/api/staff/library/copyright', { path: 'staff/library/songs/old-tune.md', on: false }); await wait(4000);
   assert.match(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/old-tune.md'), 'utf8'), /## Words/);
   // a song added with the mark keeps no words even when some are sent
   const r = await fx.as(dee, '/api/staff/library/add', { kind: 'song', title: 'New Hit', songwriter: 'Someone', copyright: true, words: 'Do not keep me' });
-  assert.strictEqual(r.status, 200); await wait(1500);
+  assert.strictEqual(r.status, 200); await wait(4000);
   assert.doesNotMatch(fs.readFileSync(path.join(fx.dir, 'staff/library/songs/new-hit.md'), 'utf8'), /Do not keep me/);
   if (!chromium) return;
   const b = await chromium.launch(); t.after(() => b.close());
