@@ -174,6 +174,16 @@ module.exports = function staffModule(o) {
   const newedReady = slug => !!(((get(NEWED_READY) || {}).parts || {})[slug]);
   const newedFor = (me, experienced) => { const dir = isDirector(me);
     return newedParts().filter(g => dir || ((!g.draft || newedReady(g.slug)) && (g.audience === 'all' || experienced))).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !newedReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
+  // the First weeks path's order is the parts' own order, so changing it rewrites the order line in each part's opening note
+  function newedOrder(slugs, me) {
+    slugs.forEach((slug, i) => { const p = 'staff/newed/' + slug + '.md'; const r = S.files.get(p); if (!r) return; const t = String(r.text || ''); const m = t.match(/^\s*<!--([\s\S]*?)-->/);
+      const next = !m ? '<!--\norder: ' + (i + 1) + '\n-->\n' + t : /^[ \t]*order[ \t]*:/mi.test(m[1]) ? m[0].replace(/^([ \t]*order[ \t]*:).*$/mi, '$1 ' + (i + 1)) + t.slice(m[0].length) : m[0].replace(/-->$/, 'order: ' + (i + 1) + '\n-->') + t.slice(m[0].length);
+      if (next !== t) putText(p, next); });
+    log('New Educator order changed by', me);
+  }
+  // a new educator with an onboarding path of their own reads its parts of the first weeks in that path's order
+  const newedOwn = (list, name) => { const p = PA.onboardingOf(name); if (p.id === PA.FIRST) return list; const at = new Map(p.steps.filter(s => s.kind === 'newed').map((s, i) => [s.slug, i]));
+    return [...list.filter(g => g.place !== 'newed'), ...list.filter(g => g.place === 'newed' && at.has(g.slug)).sort((a, b) => at.get(a.slug) - at.get(b.slug))]; };
 
   /* ---------- Help inside TREE ---------- */
   // short how-to answers in the records, staff/help.json, each for the roles that can do it. Educators never receive a
@@ -434,6 +444,8 @@ module.exports = function staffModule(o) {
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
+    // PD paths and assignments, in paths.js, for every sign-in with records of its own. The kitchen never reaches them.
+    if (P === 'paths' || P.startsWith('paths/')) { if (!hasOwn(me)) return deny(); await PA.handle(P, body, me, req, res, { json, err }); return; }
     // Presenting, in presenting.js, decides itself who receives each entry
     if (P.startsWith('pres/')) { if (!hasOwn(me)) return deny(); await PR.handle(P.slice(5), body, me, req, res, { json, err }); return; }
     if (P === 'moment/file') {
@@ -517,7 +529,7 @@ module.exports = function staffModule(o) {
         put(NEWED_READY, all);
       }
       const exp = !!profileOf(dir ? who : me).experienced;
-      json(req, res, 200, { experienced: exp, goTo: goToName() || '', list: newedFor(me, exp) }); return;
+      json(req, res, 200, { experienced: exp, goTo: goToName() || '', list: newedOwn(newedFor(me, exp), dir ? who : me), onboarding: PA.onboardingOf(dir ? who : me).id }); return;
     }
     // the one-page materials guides, one Markdown file each in staff/guides. A guide written as a draft shows only to the
     // director, with its source note, until she marks it ready. Each one names the Materials library group and the
@@ -785,6 +797,8 @@ module.exports = function staffModule(o) {
       if ('curriculumFrom' in b) doc.profile.curriculumFrom = b.curriculumFrom === 'smallgroup' ? 'smallgroup' : '';
       if ('startDate' in b) doc.profile.startDate = /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : '';
       if ('goTo' in b) doc.profile.goTo = String(b.goTo || '').slice(0, 40);
+      // the onboarding path a new educator receives, First weeks unless she chooses another
+      if ('onboarding' in b) doc.profile.onboarding = PA.onboardingId(b.onboarding);
       // the trainings the director chooses for this person
       for (const it of ITEMS.filter(i => i.chosen)) if (('need:' + it.k) in b) { const n = Object.assign({}, doc.profile.needs || {}); if (b['need:' + it.k] && b['need:' + it.k] !== '0') n[it.k] = true; else delete n[it.k]; doc.profile.needs = n; }
       put(pPath(who), doc);
@@ -798,7 +812,7 @@ module.exports = function staffModule(o) {
       if (accountFor(name)) { err(req, res, 409, name + ' already has a sign-in.'); return; }
       accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: String(crypto.randomInt(100000, 1000000)), v: 0 });
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
-      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced };
+      const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced, onboarding: PA.onboardingId(body.onboarding) };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
       json(req, res, 200, { ok: true, start: (accountFor(name) || {}).start || '' }); return;
     }
@@ -977,6 +991,8 @@ module.exports = function staffModule(o) {
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id), putText, piecesChanged: () => { pieceCache = null; } });
+  // PD paths and assignments, beside the PD library's modules
+  const PA = require('./paths.js')({ get, put, log, S, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder: (l, me) => newedOrder(l, me), goToName, reminders });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
   // a records page holding nothing but the 2026 Know Your Rights mark TREE made at start is not records of their own, so a
   // sign-in added by mistake can still be removed
@@ -1170,5 +1186,5 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me)] : []; } catch (e) { return []; } }, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() };
+  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me), ...PA.calendar(f, t, me)] : []; } catch (e) { return []; } }, paths: PA, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() + '.' + PA.rev() };
 };

@@ -856,5 +856,5 @@ module.exports = function growthModule(c) {
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
   const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
-  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; restCache = null; }, AREAS, schedule, periodOf };
+  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, allowed, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; restCache = null; }, AREAS, schedule, periodOf };
 };

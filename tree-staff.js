@@ -298,11 +298,13 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
     card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
       <div class="hint" style="margin-top:6px">Tap an educator to open their records page.</div>`,printBar("team"))+
     addNewHtml()+groupHtml())}
+// the onboarding path a new educator receives, First weeks unless the director chooses another onboarding path
+const onbSelect=(id,cur,attr)=>{const L=((pa.data||{}).paths||[]).filter(p=>p.onboarding);return L.length>1?`<label>Onboarding path<select ${attr||`id="${id}"`}>${L.map(p=>`<option value="${p.id==="firstweeks"?"":H(p.id)}" ${(cur||"")===(p.id==="firstweeks"?"":p.id)?"selected":""}>${H(p.title)}</option>`).join("")}</select></label>`:""};
 function addNewHtml(){const names=B.people||[];
   return card("Add a new educator",st.adding?`<div class="hint">They sign in with their first name before their first day and reach only the New Educator section. You turn on full access once their clearances are in.</div>
     <div class="kfields"><label>First name<input type="text" id="stn-name" placeholder="First name"></label><label>Class<select id="stn-room"><option value="">No Class</option>${CLASSROOMS.map(r=>`<option>${H(r)}</option>`).join("")}</select></label>
       <label>Role<select id="stn-role"><option value="educator">Educator</option><option value="apprentice">Apprentice</option></select></label><label>Start date<input type="date" id="stn-start"></label><label class="radio" style="grid-column:span 2"><input type="checkbox" id="stn-exp"><span>An experienced educator, who also reads the part for experienced educators</span></label>
-</div><div class="hint">${B.goTo?H(B.goTo)+" is the go-to person for every new educator.":"Name the go-to person for new educators in Settings."}</div>
+      ${onbSelect("stn-onb","")}</div><div class="hint">${B.goTo?H(B.goTo)+" is the go-to person for every new educator.":"Name the go-to person for new educators in Settings."}</div>
     <div class="actions"><button class="btn small" data-stnew="add">Add</button><button class="linkbtn" data-stnew="cancel">Cancel</button></div>`:`<div class="actions" style="margin:0"><button class="btn small ghost" data-stnew="open">Add a new educator</button></div>`)}
 function groupHtml(){const names=B.people||[];
   return card("Record a training for a group",st.group?`<div class="hint">For an in-house Pediatric First Aid and CPR class, or the yearly emergency and disaster plan training. Everyone chosen gets the same date, and the class roster is kept with each record.</div>
@@ -466,6 +468,7 @@ async function pageNew(my){const dir=D();let who=meName();
   if(dir){await loadPeople();const news=st.people.filter(p=>p.newHire||p.newEd);if(!st.newWho||!news.some(p=>p.name===st.newWho))st.newWho=(news[0]||{}).name||"";who=st.newWho;
     if(!who){draw(my,head("Educators","New Educator","A new educator gets into TREE before their first day, with access only to the New Educator section. Add one from Educators.")+addNewHtml()+welcomeEditHtml());return}}
   if(!st.doc||st.doc.name!==who||!T._keep)await loadPerson(who);const p=P(),pr=p.profile||{};const pcs=await loadPd().catch(()=>({licensing:[],howto:[]}));
+  if(dir)await loadPaths().catch(()=>null);
   const start=pr.startDate||"",wk=start?Math.max(1,Math.floor(daysTo(start,today())/7)+1):0;const starting=start?addMonths(start,2):"";
   const papers=PAPERS();const pw=p.paperwork||{};const links=B.school.formLinks||{};
   const paperRow=x=>{const r=pw[x.k]||{};const blank=links[x.k]||x.blank;
@@ -481,6 +484,7 @@ async function pageNew(my){const dir=D();let who=meName();
     ${dir?`<div class="actions" style="margin:0 0 10px">${st.people.filter(x=>x.newHire||x.newEd).map(x=>`<button class="pill" aria-pressed="${x.name===who}" data-stnewwho="${H(x.name)}">${H(x.name)}</button>`).join("")}</div>`:""}
     ${card("Your first two months",`<div class="cnt">${H([start?"Start date "+fd(start):"The director adds your start date",starting?"Starting-point conversation with the director around "+fd(starting):""].filter(Boolean).join(". "))}${start?".":""}</div>
       ${goTo?`<div style="margin-top:6px"><b>${H(goTo)}</b> is the go-to person for every new educator. ${dir?H(goTo)+" answers their questions, walks them through paperwork and routines, and checks in briefly at the end of each of their first weeks. The educators on their Class team help on the floor every day.":`${H(goTo)} answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks. The educators on your Class team help you on the floor every day. You can bring ${H(goTo)} into your starting-point conversation if you like.`}</div>`:`<div class="cnt" style="margin-top:6px">The director names the go-to person in Settings.</div>`}
+      ${dir?`<div class="kfields" style="margin-top:6px">${onbSelect("",pr.onboarding,`data-stprof="${H(who)}|onboarding"`)}</div>`:""}
       ${dir?`<div class="actions">${(st.people.find(x=>x.name===who)||{}).newHire?`<button class="btn small" data-staccess="full" data-who="${H(who)}">Turn on full access to the school, the children and their work</button>`:`<span class="cnt">Full access is on.</span><button class="linkbtn" data-staccess="limit" data-who="${H(who)}">Limit to the New Educator section</button>`}</div>`:""}`)}
     ${await neCard(who,dir)}
     ${card("First weeks checklist",`<ol style="margin:0;padding-left:22px">${ck.map(c=>`<li style="margin:6px 0"><span class="actions" style="margin:0;justify-content:space-between;display:flex;flex-wrap:wrap;gap:4px 10px"><span>${H(c.label)}</span>${c.done?chip("ok",c.note||"Done"):chip(c.note==="Due"?"soon":"missing",c.note||"Not yet")}</span>${c.dirTick&&dir?`<label class="radio"><input type="checkbox" data-stck="${c.key}" ${c.done?"checked":""}><span>Done</span></label>`:""}${c.goto&&!dir?"":c.goto?`<button class="linkbtn" data-stgoto="${H(who)}">Note this week's check-in</button>`:""}${c.links?asLinks():""}${c.view&&B.can&&B.can.growth?`<button class="linkbtn" data-tview="${c.view}">Open</button>`:""}</li>`).join("")}</ol>`,printBar("checklist"))}
@@ -502,7 +506,7 @@ async function pageNew(my){const dir=D();let who=meName();
 let NE=null;
 async function loadNewed(who,force){if(force||!NE||NE.who!==who){try{NE=Object.assign(await api("newed",{name:who}),{who})}catch(e){NE={list:[],who,goTo:""}}}return NE}
 const neFill=(t,g)=>String(t||"").replace(/\{goTo\}/g,g||"your go-to person");
-function nePart(x,ne,dir){return `<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b>${x.waiting?" "+chip("soonish","Draft, only you see it"):""}${dir&&x.audience==="experienced"?` <span class="cnt">For experienced educators</span>`:""}</summary>
+function nePart(x,ne,dir){return `<details class="strow"${dir?"":` data-paopen="${H(x.slug)}"`}><summary style="cursor:pointer"><b>${H(x.title)}</b>${x.waiting?" "+chip("soonish","Draft, only you see it"):""}${dir&&x.audience==="experienced"?` <span class="cnt">For experienced educators</span>`:""}</summary>
   <div class="stmd" style="margin-top:6px">${md(neFill(x.body,ne.goTo))}</div>
   ${dir?`<div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-neready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Hide it again"}</button>`:""}${peBtn("staff/newed/"+x.slug+".md")}</div>`:""}
   ${dir&&x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`}
@@ -565,8 +569,10 @@ async function pagePd(my){if(window.TreeGrowth)await TreeGrowth.ready().catch(()
       card(isLic?"The pieces":"The guides",isLic?grp("Title 22 requirements",x=>x.list==="title22")+grp("Our own procedures",x=>x.list==="procedure")+grp("Official trainings",x=>x.list!=="title22"&&x.list!=="procedure"):grp("",()=>true),`${nd} of ${list.length} read`)+
       `<div class="actions">${printBar("pieces:"+st.mod)}</div>`);return}
   const sec=B.me.newEd||D();
+  // what is assigned comes first, and for the director the paths and everyone's progress
+  let paths="";if(D()){try{const r=await loadPaths(!T._keep);paths=pathsDirCard(r)+assignedDirCard(r)}catch(e){paths=""}}else paths=await assignedCard();
   draw(my,head("PD library","PD library","Each module holds a short reading, examples from our own documentation, a practice to try in your own Class that week, and one reflection on what happened when you tried it. You choose the order. Finishing a module logs its hours on your records page.")+
-    (await neWelcome())+(sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
+    paths+(await neWelcome())+(sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
     (window.TreeGrowth?await TreeGrowth.libraryHtml(pcs,dn):card("Modules",`<div class="stgrid">${MODULES.filter(m=>m[2]).map(([t,d,k])=>`<div class="stmod"><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${k}">Open</button></div></div>`).join("")}</div>`))+(window.TreeGrowth&&TreeGrowth.readingsHtml?await TreeGrowth.readingsHtml():""))}
 function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i=list.indexOf(x),nx=list[i+1];
   const sec=h=>x.sections.find(s=>s.heading.toLowerCase().startsWith(h));const q=sec("one question");
@@ -585,6 +591,86 @@ function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i
       `<section class="card"><div class="actions" style="margin:0"><button class="btn" data-stdone="${H(x.id)}">${d?"Read":"Finish this guide"}</button>${nx?`<button class="btn small ghost" data-stpiece="${H(nx.id)}">Next, ${H(nx.title)}</button>`:""}</div></section>`}`);
   jumpTop()}
 const hbTitle=id=>{const d=st.pol.teacher;const s=d&&d.parts.flatMap(p=>p.sections).find(x=>x.id===id);return s?s.title:id.replace(/-/g," ").replace(/^./,c=>c.toUpperCase())};
+
+/* ---------- PD paths and assignments ----------
+   A path is a set of steps in order, PD modules and parts of the first weeks. The director makes, copies, changes and
+   assigns paths at the top of the PD library and sees each person's progress there. Each educator sees Assigned to you
+   at the top of the PD library, with the director's note, the finish-by date and each step in order. The server sends
+   each educator only their own assignments, and only the steps they can open. */
+const pa={data:null,mine:null,edit:null,assign:null};
+const WAYS=[["own","On my own"],["meeting","Staff meeting"],["pdday","PD day"]];const wayName=k=>(WAYS.find(w=>w[0]===k)||WAYS[0])[1];
+const PSTATE={done:["ok","Done"],progress:["soonish","In progress"],none:["missing","Not started"]};
+const stateChip=s=>chip(...(PSTATE[s]||PSTATE.none));
+const draftChip=()=>chip("soonish","Draft, not visible yet");
+async function loadPaths(force){if(D()){if(!pa.data||force)pa.data=await api("paths");return pa.data}if(!pa.mine||force)pa.mine=await api("paths/mine");return pa.mine}
+// what the director assigned to this educator, each step tapped to open it
+async function assignedCard(){let r;try{r=await loadPaths(true)}catch(e){return ""}const L=r.list||[];if(!L.length)return "";
+  const step=s=>s.kind==="module"?`<li style="margin:6px 0"><button class="linkbtn" style="text-align:left" data-stmod="m:${H(s.slug)}">${H(s.title)}</button> <span class="cnt">${H(wayName(s.way))}</span> ${s.done?chip("ok","Done"):s.started?chip("soonish","Started"):chip("missing","Not yet")}</li>`
+    :`<li style="margin:6px 0"><details data-paopen="${H(s.slug)}"><summary style="cursor:pointer"><span class="linkbtn">${H(s.title)}</span> <span class="cnt">First weeks</span> ${s.done?chip("ok","Opened"):chip("missing","Not yet")}</summary><div style="margin-top:6px">${md(neFill(s.body,r.goTo))}</div></details></li>`;
+  return card("Assigned to you",`<div class="hint">From the director, in order. Tap a step to open it.</div>${L.map(a=>`<div class="strow"><div class="sttop"><b>${H(a.title)}</b><span class="actions" style="margin:0">${a.due?chip(a.overdue?"out":"soonish",(a.overdue?"Past due, ":"Finish by ")+fd(a.due)):""}${stateChip(a.state)}</span></div>
+    ${a.note?`<div class="stq">${H(a.note)}</div>`:a.desc?`<div class="cnt">${H(a.desc)}</div>`:""}<ol style="margin:4px 0 0;padding-left:22px">${a.steps.map(step).join("")}</ol></div>`).join("")}`)}
+// a part of the first weeks counts as done once it is opened, here or on the New Educator page
+document.addEventListener("toggle",async e=>{const t=e.target;if(!t||!t.dataset||t.dataset.paopen==null||!t.open||D()||(typeof VIEW_AS!=="undefined"&&VIEW_AS))return;
+  try{await api("paths/opened",{slug:t.dataset.paopen});pa.mine=null;const c=t.querySelector("summary .stchip.missing");if(c){c.className="stchip ok";c.textContent="Opened"}}catch(er){}},true);
+// the director's paths, each with Edit, Copy, Assign and Delete, and the form to make, change or assign one
+function pathsDirCard(r){const E=pa.edit,A=pa.assign;
+  const row=p=>E&&E.id===p.id?paEditHtml(r):`<div class="strow"><div class="sttop"><b>${H(p.title)}</b><span class="actions" style="margin:0">${p.builtin?chip("ok","Built in"):""}${p.onboarding?chip("soonish","Onboarding"):""}</span></div>${p.desc?`<div class="cnt">${H(p.desc)}</div>`:""}${p.steps.some(s=>s.waiting)?`<div class="cnt">${draftChip()} ${H(p.steps.filter(s=>s.waiting).map(s=>s.title).join(", "))}</div>`:""}
+    <details><summary class="cnt" style="cursor:pointer">${p.steps.length===1?"One step":p.steps.length+" steps"}</summary><ol style="margin:4px 0;padding-left:22px">${p.steps.map(s=>`<li style="margin:3px 0">${H(s.title)} <span class="cnt">${s.kind==="module"?"PD module":"First weeks"}</span>${s.waiting?" "+draftChip():""}${s.missing?" "+chip("out","No longer in the library"):""}</li>`).join("")}</ol></details>
+    <div class="actions" style="margin:0"><button class="btn small ghost" data-paedit="${H(p.id)}">Edit</button><button class="btn small ghost" data-pacopy="${H(p.id)}">Copy</button><button class="btn small ghost" data-paassign="p:${H(p.id)}">Assign</button>${p.builtin?"":`<button class="linkbtn" data-padel="${H(p.id)}">Delete</button>`}</div></div>`;
+  return card("Paths",`<div class="hint">A path is a set of steps in order, PD modules and parts of the first weeks. First weeks reaches every new educator by itself. Assign a path or a single module to people, to a class or both.</div>
+    ${E&&!E.id?paEditHtml(r):""}${r.paths.map(row).join("")}
+    ${E||A?"":`<div class="actions"><button class="btn small" data-panew="1">New path</button><button class="btn small ghost" data-paassign="1">Assign</button></div>`}${A?paAssignHtml(r):""}`)}
+const paTitle=(r,s)=>((s.kind==="module"?r.modules.find(m=>m.slug===s.slug):r.newed.find(n=>n.slug===s.slug))||{}).title||s.slug;
+const paWaits=(r,s)=>!!((s.kind==="module"?r.modules.find(m=>m.slug===s.slug):r.newed.find(n=>n.slug===s.slug))||{}).waiting;
+function paEditHtml(r){const E=pa.edit;const fw=E.id==="firstweeks";
+  return `<div class="strow" style="border:1px solid var(--line);border-radius:10px;padding:12px;margin:6px 0"><b>${fw?"First weeks":E.id?"Edit the path":"New path"}</b>
+    ${fw?`<div class="hint">First weeks keeps its own parts. The order here is the order on the New Educator page. Copy it to make a path with other steps.</div>`:`<label class="fld-label">Title<input type="text" id="pa-title" value="${H(E.title)}" placeholder="Such as Garden series"></label><label class="fld-label">Description<textarea id="pa-desc" rows="2">${H(E.desc)}</textarea></label><label class="radio"><input type="checkbox" id="pa-onb" ${E.onboarding?"checked":""}><span>An onboarding path, offered when you add a new educator</span></label>`}
+    ${E.steps.length?`<ol style="margin:6px 0;padding-left:22px">${E.steps.map((s,i)=>`<li style="margin:4px 0">${H(paTitle(r,s))} <span class="cnt">${s.kind==="module"?"PD module":"First weeks"}</span>${paWaits(r,s)?" "+draftChip():""}<span class="actions" style="margin:0 0 0 8px;display:inline-flex"><button class="linkbtn" data-pamove="${i}|-1" ${i?"":"disabled"}>Up</button><button class="linkbtn" data-pamove="${i}|1" ${i<E.steps.length-1?"":"disabled"}>Down</button>${fw?"":`<button class="linkbtn" data-parm="${i}">Remove</button>`}</span></li>`).join("")}</ol>`:`<div class="cnt" style="margin:6px 0">No steps yet.</div>`}
+    ${fw?"":`<div class="kfields"><label>Add a step<select id="pa-add"><optgroup label="PD modules">${r.modules.map(m=>`<option value="module|${H(m.slug)}">${H(m.title)}${m.waiting?", a draft":""}</option>`).join("")}</optgroup><optgroup label="First weeks">${r.newed.map(n=>`<option value="newed|${H(n.slug)}">${H(n.title)}${n.waiting?", a draft":""}</option>`).join("")}</optgroup></select></label></div><div class="actions" style="margin:4px 0"><button class="btn small ghost" data-paadd="1">Add the step</button></div>`}
+    <div class="actions"><button class="btn small" data-pasave="1">Save</button><button class="linkbtn" data-pacancel="1">Cancel</button></div></div>`}
+function paAssignHtml(r){const A=pa.assign;const w=A.what;
+  const steps=w.startsWith("p:")?((r.paths.find(p=>p.id===w.slice(2))||{}).steps||[]):w.startsWith("m:")?[{kind:"module",slug:w.slice(2),title:paTitle(r,{kind:"module",slug:w.slice(2)})}]:[];const mods=steps.filter(s=>s.kind==="module");
+  return `<div class="strow" style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:8px"><b>Assign</b>
+    <div class="kfields"><label>A path or a module<select id="pa-what"><option value="">Choose</option><optgroup label="Paths">${r.paths.map(p=>`<option value="p:${H(p.id)}" ${w==="p:"+p.id?"selected":""}>${H(p.title)}</option>`).join("")}</optgroup><optgroup label="PD modules">${r.modules.map(m=>`<option value="m:${H(m.slug)}" ${w==="m:"+m.slug?"selected":""}>${H(m.title)}${m.waiting?", a draft":""}</option>`).join("")}</optgroup></select></label></div>
+    ${steps.some(s=>s.waiting||paWaits(r,s))?`<div class="cnt">${draftChip()} A draft step stays hidden from educators until you mark it ready.</div>`:""}
+    <div class="lbl" style="margin-top:8px">Classes</div><div class="chips">${r.classes.map(c=>`<button class="chip${A.classes.includes(c)?" on":""}" type="button" data-paclass="${H(c)}">${H(c)} class</button>`).join("")}</div>
+    <div class="hint">A class means every educator whose class is that class, now and later.</div>
+    <div class="lbl" style="margin-top:8px">People</div><div class="chips">${r.people.map(p=>`<button class="chip${A.people.includes(p.name)?" on":""}" type="button" data-paperson="${H(p.name)}">${H(p.name)}</button>`).join("")}</div>
+    ${mods.length?`<div class="lbl" style="margin-top:8px">The way in for each module</div><div class="kfields">${mods.map(s=>`<label>${H(s.title)}<select data-paway="${H(s.slug)}">${WAYS.map(([k,l])=>`<option value="${k}" ${(A.ways[s.slug]||"own")===k?"selected":""}>${l}</option>`).join("")}</select></label>`).join("")}</div>`:""}
+    <div class="kfields"><label>Finish by, if you like<input type="date" id="pa-due" value="${H(A.due)}"></label></div>
+    <label class="fld-label">A note, if you like<textarea id="pa-note" rows="2" placeholder="Such as Read this before our garden day">${H(A.note)}</textarea></label>
+    <div class="hint">A few days before the date, each person who has not finished hears a reminder. The date shows on their TREE calendar.</div>
+    <div class="actions"><button class="btn small" data-pago="1">Assign</button><button class="linkbtn" data-pacancel="1">Cancel</button></div></div>`}
+// every assignment with each person's progress, done, in progress or not started, and overdue past the date
+function assignedDirCard(r){const L=r.assignments||[];
+  const forWho=a=>a.auto?"every new educator in the New Educator section, by itself":[...a.classes.map(c=>c+" class"),...a.people].join(", ");
+  return card("Assigned PD",L.length?L.map(a=>`<div class="strow"><div class="sttop"><b>${H(a.title)}</b><span class="actions" style="margin:0">${a.due?chip(a.progress.some(p=>p.overdue)?"out":"soonish","Finish by "+fd(a.due)):""}</span></div>
+    <div class="cnt">For ${H(forWho(a))}.</div>${a.steps.some(s=>s.waiting)?`<div class="cnt">${draftChip()} ${H(a.steps.filter(s=>s.waiting).map(s=>s.title).join(", "))}</div>`:""}${a.note?`<div class="stq">${H(a.note)}</div>`:""}
+    <details><summary class="cnt" style="cursor:pointer">${a.steps.length===1?"One step":a.steps.length+" steps"}</summary><ol style="margin:4px 0;padding-left:22px">${a.steps.map(s=>`<li style="margin:3px 0">${H(s.title)} <span class="cnt">${s.kind==="module"?H(wayName(s.way)):"First weeks"}</span>${s.waiting?" "+draftChip():""}</li>`).join("")}</ol></details>
+    ${a.progress.length?`<div class="tablewrap"><table class="grid2" style="min-width:300px"><tbody>${a.progress.map(p=>`<tr><td><b>${H(p.name)}</b>${p.room?` <span class="cnt">${H(p.room)} class</span>`:""}</td><td>${stateChip(p.state)}${p.overdue?" "+chip("out","Overdue"):""}</td><td class="cnt">${p.open?`${p.done} of ${p.open} step${p.open===1?"":"s"}`:"Nothing open to them yet"}</td></tr>`).join("")}</tbody></table></div>`:`<div class="cnt">No one yet.</div>`}
+    ${a.auto?"":`<div class="actions" style="margin:0"><button class="linkbtn" data-paunassign="${H(a.id)}">Remove assignment</button></div>`}</div>`).join(""):`<div class="empty">Nothing assigned yet. Choose Assign under Paths.</div>`)}
+// what the director typed is kept while the form is drawn again
+function paKeep(){const E=pa.edit;if(E){if($("#pa-title"))E.title=$("#pa-title").value;if($("#pa-desc"))E.desc=$("#pa-desc").value;if($("#pa-onb"))E.onboarding=$("#pa-onb").checked}
+  const A=pa.assign;if(A){if($("#pa-due"))A.due=$("#pa-due").value;if($("#pa-note"))A.note=$("#pa-note").value;document.querySelectorAll("[data-paway]").forEach(x=>A.ways[x.dataset.paway]=x.value)}}
+const paForm=p=>({id:p.id,title:p.title,desc:p.desc||"",onboarding:!!p.onboarding,steps:p.steps.map(s=>({kind:s.kind,slug:s.slug}))});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-panew],[data-paedit],[data-pacopy],[data-padel],[data-paassign],[data-pamove],[data-parm],[data-paadd],[data-pasave],[data-pacancel],[data-paclass],[data-paperson],[data-pago],[data-paunassign]");if(!t||!D())return;e.preventDefault();e.stopPropagation();tapOnce(t,()=>paTap(t))},true);
+document.addEventListener("change",e=>{const t=e.target;if(!t||t.id!=="pa-what"||!pa.assign)return;paKeep();pa.assign.what=t.value;redraw()});
+async function paTap(t){const d=t.dataset,r=pa.data;paKeep();
+  if(d.panew){pa.edit={id:"",title:"",desc:"",onboarding:false,steps:[]};pa.assign=null;redraw();return}
+  if(d.paedit){const p=r.paths.find(x=>x.id===d.paedit);if(!p)return;pa.edit=paForm(p);pa.assign=null;redraw();return}
+  if(d.pacancel){pa.edit=null;pa.assign=null;redraw();return}
+  if(d.pamove){const [i,dx]=d.pamove.split("|").map(Number);const L=pa.edit.steps,j=i+dx;if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];redraw();return}
+  if(d.parm!=null){pa.edit.steps.splice(+d.parm,1);redraw();return}
+  if(d.paadd){const [kind,slug]=(($("#pa-add")||{}).value||"").split("|");if(!slug)return;if(pa.edit.steps.some(s=>s.kind===kind&&s.slug===slug)){toast("That step is in the path already.");return}pa.edit.steps.push({kind,slug});redraw();return}
+  if(d.pasave){const E=pa.edit;if(E.id!=="firstweeks"&&!String(E.title).trim()){toast("Give the path a title.");return}pa.data=await api("paths/save",{path:E});pa.edit=null;if(E.id==="firstweeks")NE=null;toast(E.id==="firstweeks"?"Saved. The New Educator page follows this order.":"Saved.");redraw();return}
+  if(d.pacopy){pa.data=await api("paths/copy",{id:d.pacopy});const p=pa.data.paths.find(x=>x.id===pa.data.id);pa.edit=p?paForm(p):null;pa.assign=null;toast("Copied. Change it, then Save.");redraw();return}
+  if(d.padel){const p=r.paths.find(x=>x.id===d.padel);if(!p||!confirm(`Delete ${p.title}?${p.assigned?` ${p.assigned===1?"Its assignment goes":"Its "+p.assigned+" assignments go"} with it.`:""}`))return;pa.data=await api("paths/remove",{id:p.id});toast("Deleted.");redraw();return}
+  if(d.paassign){pa.edit=null;pa.assign={what:d.paassign==="1"?"":d.paassign,people:[],classes:[],ways:{},due:"",note:""};redraw();return}
+  if(d.paclass){const A=pa.assign;A.classes=A.classes.includes(d.paclass)?A.classes.filter(x=>x!==d.paclass):[...A.classes,d.paclass];t.classList.toggle("on");return}
+  if(d.paperson){const A=pa.assign;A.people=A.people.includes(d.paperson)?A.people.filter(x=>x!==d.paperson):[...A.people,d.paperson];t.classList.toggle("on");return}
+  if(d.pago){const A=pa.assign,w=A.what;if(!w){toast("Choose a path or a module.");return}if(!A.people.length&&!A.classes.length){toast("Choose the people, a class or both.");return}
+    pa.data=await api("paths/assign",{kind:w.startsWith("m:")?"module":"path",id:w.startsWith("p:")?w.slice(2):"",slug:w.startsWith("m:")?w.slice(2):"",people:A.people,classes:A.classes,ways:A.ways,due:A.due,note:A.note});pa.assign=null;toast("Assigned.");redraw();return}
+  if(d.paunassign){if(!confirm("Remove this assignment? Nothing anyone has done is lost."))return;pa.data=await api("paths/unassign",{id:d.paunassign});toast("Removed.");redraw();return}}
 
 /* ---------- the Teacher Policies and Procedures and the Family Handbook ----------
    Both are read section by section from the records, in the Markdown policy-md.js reads. The director edits any section
@@ -1007,8 +1093,8 @@ async function stTap(e,t){const d=t.dataset;
   if(d.stformer!=null){st.formerWho=d.stformer;redraw();jumpTop();return}
   if(d.stback){const n=d.stback,w=$("#stbackrow");if(!t.dataset.sure){if(w)w.innerHTML=`<span class="confirm">Bring ${H(n)} back with their history? <button class="btn small" data-stback="${H(n)}" data-sure="1">Bring back</button><button class="linkbtn" data-stformer="${H(n)}">Cancel</button></span>`;return}
     try{await window.FP_API("/api/accounts/return",{name:n});if(typeof signins!=="undefined")signins.list=null;st.formerWho="";toast(`${n} is back, with their history. They choose a new code at their next sign-in.`);await boot(true);redraw()}catch(er){fail(er)}return}
-  if(d.stnew==="open"){st.adding=true;redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
-  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value,experienced:!!$("#stn-exp")?.checked};
+  if(d.stnew==="open"){st.adding=true;await loadPaths().catch(()=>null);redraw();return}if(d.stnew==="cancel"){st.adding=false;redraw();return}
+  if(d.stnew==="add"){const b={newName:$("#stn-name")?.value,room:$("#stn-room")?.value,role:$("#stn-role")?.value,startDate:$("#stn-start")?.value,experienced:!!$("#stn-exp")?.checked,onboarding:$("#stn-onb")?.value||""};
     try{const r=await api("newhire",b);st.adding=false;toast(`${b.newName} signs in with their first name and the start code ${r&&r.start?r.start:"in Settings, Sign-ins"}, then chooses four numbers. They see only the New Educator section.`);await boot(true);st.newWho=b.newName;redraw()}catch(er){fail(er)}return}
   if(d.stgroup==="open"){st.group=true;st.roster="";redraw();return}if(d.stgroup==="cancel"){st.group=false;redraw();return}
   if(d.stgname){t.classList.toggle("on");return}
@@ -1062,7 +1148,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.closest||!t.
   if(d.stflu){const p=P();const s=fluSeason();p.flu=p.flu||{};p.flu[s]=Object.assign({},p.flu[s],{[d.stflu]:t.value});await save(p,"Saved.");redraw();return}
   if(d.stonce){const p=P();p.once=p.once||{};p.once[d.stonce]=Object.assign({},p.once[d.stonce],{[d.f]:t.value});await save(p,"Saved.");redraw();return}
   if(d.stunits){const p=P();p.units=Object.assign({},p.units,{completed:t.value===""?"":Number(t.value)});await save(p,"Saved.");redraw();return}
-  if(d.stprof){const [name,k]=d.stprof.split("|");try{const r=await api("profile",{name,profile:{[k]:t.type==="checkbox"?(t.checked?"1":""):t.value}});if(k==="garden"){window.FP_GARDENERS=(window.FP_GARDENERS||[]).filter(n=>n!==name).concat(t.checked?[name]:[])}toast("Saved.");if(/^need:/.test(k)&&st.doc&&st.doc.name===name&&r.profile){st.doc.profile=r.profile;redraw()}}catch(er){fail(er)}return}
+  if(d.stprof){const [name,k]=d.stprof.split("|");try{const r=await api("profile",{name,profile:{[k]:t.type==="checkbox"?(t.checked?"1":""):t.value}});if(k==="garden"){window.FP_GARDENERS=(window.FP_GARDENERS||[]).filter(n=>n!==name).concat(t.checked?[name]:[])}toast("Saved.");if(k==="onboarding"){NE=null;redraw()}if(/^need:/.test(k)&&st.doc&&st.doc.name===name&&r.profile){st.doc.profile=r.profile;redraw()}}catch(er){fail(er)}return}
   if(d.stpolmust||d.stpolonly||d.stfhhide){if(VIEW_AS)return;await polChange(t,d);return}
   if(t.id==="sts-days"){try{await api("school",{school:{remindDays:+t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
   if(t.id==="sts-goto"){try{await api("school",{school:{goTo:t.value}});await boot(true);toast("Saved.")}catch(er){fail(er)}return}
