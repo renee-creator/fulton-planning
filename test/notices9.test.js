@@ -58,5 +58,5 @@ test('the yearly notice is recorded by the director, and the January reminder st
   assert.strictEqual(g.body.given, 2);
   assert.strictEqual((await call(h.staff, 'Dir', 'notices', { name: 'Pat' })).body.mine.kyr['2027'].way, 'email');
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'staff.js'), 'utf8');
-  assert.match(src, /day\.slice\(5, 7\) === '01' && y >= 2027 && once\('notices\|jan\|' \+ y\)/);
+  assert.match(src, /day\.slice\(5, 7\) === '01' && y >= 2027 && !sentDoc\(\)\['notices\|jan\|' \+ y\]/);
 });

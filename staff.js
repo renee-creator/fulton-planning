@@ -852,7 +852,7 @@ module.exports = function staffModule(o) {
   function semesterOf(iso) { const y = iso.slice(0, 4), m = +iso.slice(5, 7); return m >= 8 ? y + '-fall' : m <= 5 ? y + '-spring' : ''; }
   /* What is due for one educator, each item with the key that marks it sent. Nothing is marked here. An item is marked sent
      only once it reaches someone, so a reminder held while records pages are closed, or one no phone received, is not used up. */
-  function dueFor(name, day) {
+  function dueItems(name, day) {
     const sc = school(), on = k => !sc.remind || sc.remind[k] !== false, lead = sc.remindDays || 30, doc = person(name), out = [];
     const sent = sentDoc(); const fresh = k => !sent[k]; const add = (k, text) => out.push({ k, text });
     if (on('expiry') || on('hsa')) for (const it of ITEMS) {
@@ -881,6 +881,8 @@ module.exports = function staffModule(o) {
     }
     return out;
   }
+  // what is due for one educator as it is heard, each item marked sent as it is, as when it reaches their phone
+  function dueFor(name, day) { const items = dueItems(name, day); if (items.length) { const s = Object.assign({}, sentDoc()); for (const i of items) s[i.k] = day; put(SENT, s); } return items.map(i => i.text); }
   let busy = false;
   /* ---------- walk safety and proposals, kept in the records as staff/walks.json and staff/proposals/<id>.json ---------- */
   const WALKS = 'staff/walks.json';
@@ -907,7 +909,7 @@ module.exports = function staffModule(o) {
       for (const n of staffNames()) {
         // while records pages are closed, an educator's reminders wait and nothing is used up, unless they are a new hire
         if (!isDirector(n) && !(opened().records || inNewEd(n))) continue;
-        const items = dueFor(n, day); if (!items.length) continue;
+        const items = dueItems(n, day); if (!items.length) continue;
         let reached = false;
         if (!isDirector(n)) { const r = await reminders.sendTo(n, { title: 'TREE, your records', body: items.map(i => i.text).join('\n'), url: 'tree.html?go=records', tag: 'tree-records' }); reached = !!(r && r.sent); }
         if (reached) markSent(items.map(i => i.k)); else marks.push(...items.map(i => i.k));
