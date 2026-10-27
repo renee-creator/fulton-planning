@@ -60,6 +60,14 @@ test('restored drafts, three ways in and layers', async t => {
     const m = (await fx.as(dee, '/api/staff/pres/new', { title: 'Documentation', template: true, module: 'documentation' })).body;
     assert.ok(m && m.id); await fx.as(dee, '/api/staff/pres/save', { id: m.id, fields: { presenters: ['Ann'] } });
     assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 200);
+    // only the director takes a file off the list, and Put back returns it
+    const id = 'pdorig-documentation-guide.pdf';
+    assert.strictEqual((await fx.as(ann, '/api/staff/pd/original/remove', { slug: 'documentation', id })).status, 403);
+    const rm = await fx.as(dee, '/api/staff/pd/original/remove', { slug: 'documentation', id }); assert.strictEqual(rm.status, 200);
+    assert.strictEqual(rm.body.list.length, 0); assert.strictEqual(rm.body.removed[0].id, id);
+    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).body.list.length, 0);
+    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).body.removed, undefined);
+    const bk = await fx.as(dee, '/api/staff/pd/original/restore', { slug: 'documentation', id }); assert.strictEqual(bk.body.list[0].id, id);
   });
 
   await t.test('anyone suggests a book, and it waits for the director', async () => {
@@ -96,7 +104,7 @@ test('restored drafts, three ways in and layers', async t => {
     const made = await sd.p.evaluate(() => __made.map(x => ({ name: x.name, titles: x.list.map(d => d.title) })));
     assert.ok(made.length === 1 && /slides\.pdf$/.test(made[0].name)); assert.ok(made[0].titles.includes('Why it matters')); assert.ok(made[0].titles.includes('A part')); assert.ok(made[0].titles.includes('Plus and delta'));
     const dtxt = await sd.p.evaluate(() => document.getElementById('main').innerText);
-    assert.match(dtxt, /Original materials/); assert.match(dtxt, /Presenting this module/);
+    assert.match(dtxt, /Original materials/); assert.match(dtxt, /Remove/); assert.match(dtxt, /Presenting this module/);
     assert.match(txt, /Three ways in/); assert.match(txt, /With families/); assert.match(txt, /PD day, /); assert.doesNotMatch(txt, /Presenting this module/);
   });
 });
