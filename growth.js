@@ -14,7 +14,7 @@ const crypto = require('crypto');
 
 module.exports = function growthModule(c) {
   const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
-    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd } = c;
+    mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, putText, piecesChanged } = c;
   const isFormer = n => !!n && !!c.isFormerEducator && c.isFormerEducator(n);
   const DAY = 864e5;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
@@ -67,24 +67,61 @@ module.exports = function growthModule(c) {
   }
 
   /* ---------- the PD library's modules, one Markdown file each, as written ---------- */
-  let modCache = null;
+  let modCache = null, restCache = null;
+  // one module page read from its Markdown, the opening note, the title, the lead and each part
+  function parseModule(text, slug) {
+    const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
+    if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
+    const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
+    const parts = text.slice(t.index + t[0].length).split(/^##\s+/m);
+    const lead = parts.shift().split('\n').map(s => s.trim()).filter(Boolean);
+    const sections = parts.map(s => { const i = s.indexOf('\n'); return i < 0 ? { heading: s.trim(), body: '' } : { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
+    // an adapted module written as a draft says status draft, and waits for the director to mark it ready. Its source
+    // note, its library description and its place in the list come from the same comment, so no new title is in this file
+    return { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 0, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
+      draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean),
+      links: String(meta.links || '').split(/[;,]/).map(s => s.trim()).filter(Boolean) };
+  }
   function modules() {
     if (modCache) return modCache;
     const pre = 'staff/pd/modules/'; const out = {};
-    for (const p of [...S.files.keys()].filter(p => p.startsWith(pre) && /\.md$/.test(p)).sort()) {
-      let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
-      if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
+    for (const p of [...S.files.keys()].filter(p => p.startsWith(pre) && /\.md$/.test(p) && !p.slice(pre.length).includes('/')).sort()) {
       const slug = p.slice(pre.length).replace(/^\d+-/, '').replace(/\.md$/, '');
-      const t = text.match(/^#\s+(.+)$/m); if (!t) continue;
-      const parts = text.slice(t.index + t[0].length).split(/^##\s+/m);
-      const lead = parts.shift().split('\n').map(s => s.trim()).filter(Boolean);
-      const sections = parts.map(s => { const i = s.indexOf('\n'); return { heading: s.slice(0, i).trim(), body: s.slice(i + 1).trim() }; });
-      // an adapted module written as a draft says status draft, and waits for the director to mark it ready. Its source
-      // note, its library description and its place in the list come from the same comment, so no new title is in this file
-      out[slug] = { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 0, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
-        draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean) };
+      const mod = parseModule((S.files.get(p) || {}).text || '', slug); if (mod) out[slug] = Object.assign(mod, { path: p });
     }
     modCache = out; return out;
+  }
+  /* A restored draft of a module waits in staff/pd/restored, one file for each module, beside the module educators know.
+     Only the director reads it. Accept puts it in place of the current module, and the wording it replaces is kept in
+     the page's history, so Restore this version brings it back. Accepted drafts are noted in staff/pd/restored.json. */
+  const RESTORED = 'staff/pd/restored.json';
+  function restoredAll() {
+    if (restCache) return restCache;
+    const pre = 'staff/pd/restored/'; const out = {}; const done = (get(RESTORED) || {}).accepted || {};
+    for (const p of [...S.files.keys()].filter(p => p.startsWith(pre) && /\.md$/.test(p)).sort()) {
+      const slug = p.slice(pre.length).replace(/\.md$/, ''); const r = S.files.get(p) || {};
+      if (done[slug] && done[slug].stamp === stampOf(r.text)) continue;
+      const mod = parseModule(r.text || '', slug); if (mod) out[slug] = Object.assign(mod, { path: p, text: r.text });
+    }
+    restCache = out; return out;
+  }
+  const stampOf = text => crypto.createHash('sha1').update(String(text || '')).digest('hex').slice(0, 16);
+  const PAGE_HIST = p => 'staff/pd/history/' + p.slice(6).replace(/\.md$/, '').replace(/\//g, '--') + '.json';
+  // the restored wording, with its review note taken out and the module's own place in the list kept
+  function acceptedText(cur, rest) {
+    const curMeta = (cur.match(/^\s*<!--([\s\S]*?)-->/) || [])[1] || '';
+    const keep = {}; for (const l of curMeta.split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) keep[kv[1].toLowerCase()] = kv[2]; }
+    let text = String(rest || '').replace(/\r/g, '');
+    const m = text.match(/^\s*<!--([\s\S]*?)-->/); const lines = m ? m[1].split('\n').filter(l => l.trim()) : [];
+    const keyOf = l => ((l.match(/^\s*([a-z]+)\s*:/i) || [])[1] || '').toLowerCase();
+    // the module keeps its own status, place in the list, minutes and folds, so accepting never hides or moves it
+    const own = ['status', 'order', 'minutes', 'folds'];
+    const out = lines.filter(l => !own.includes(keyOf(l)));
+    for (const k of own) if (keep[k]) out.push(k + ': ' + keep[k]);
+    for (const k of ['serves', 'desc', 'links']) if (keep[k] && !out.some(l => keyOf(l) === k)) out.push(k + ': ' + keep[k]);
+    lines.length = 0; lines.push(...out);
+    text = (m ? text.slice(m[0].length) : text).replace(/^##\s+What changed[^\n]*\n[\s\S]*?(?=^##\s|(?![\s\S]))/mi, '');
+    return '<!--\n' + lines.join('\n') + '\n-->\n' + text.replace(/^\s*\n/, '');
   }
   const READY = 'staff/pd/ready.json';
   // the readings library, the shared list and the library added since in its own file, which waits for the director
@@ -105,7 +142,7 @@ module.exports = function growthModule(c) {
   const published = slug => { const m = modules()[slug]; return !!m && (!m.draft || readyOn(slug)); };
   // what a reader receives. The director sees every module, drafts marked, with the source note. Others see published ones only.
   const modulesFor = me => { const dir = isDirector(me); const out = {};
-    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: m.draft && !readyOn(k) }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; out[k] = c; } }
+    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: m.draft && !readyOn(k), restored: !!restoredAll()[k] }); else if (published(k)) { const c = Object.assign({}, m); delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
     return out; };
   // the library's list, the design's modules in order, then modules written since, in their own order
   const libraryList = me => { const dir = isDirector(me); const m = modules();
@@ -603,7 +640,7 @@ module.exports = function growthModule(c) {
       if ('reflection' in b) cur.reflection = txt(b.reflection, 6000);
       if ('share' in b) cur.share = txt(b.share, 3000);
       let logged = false;
-      if (b.finish && !cur.done) { if (!String(cur.reflection || '').trim()) return err(req, res, 400, 'Write your reflection on what happened when you tried it first.'); cur.done = Date.now(); logged = true; }
+      if (b.finish && !cur.done) { if (!String(cur.reflection || '').trim()) return err(req, res, 400, 'Write your reflection on what happened when you tried it first.'); cur.done = Date.now(); cur.layers = Object.assign({}, cur.layers, { own: today() }); logged = true; }
       g.modules = Object.assign({}, g.modules, { [slug]: cur }); put(gPath(me), g);
       // a finished module logs its hours on the records page, as Fulton PD hours
       if (logged) { const doc = person(me); doc.hours = [...(doc.hours || []), { id: rid('h'), date: today(), title: 'PD module, ' + md.title, hours: md.minutes ? Math.round(md.minutes / 6) / 10 : 0, kind: 'module', approved: false, by: 'TREE' }]; put(pPath(me), doc); }
@@ -613,6 +650,23 @@ module.exports = function growthModule(c) {
       if (!dir) return deny('The director marks a module ready.'); const slug = String(body.slug || ''); if (!modules()[slug]) return err(req, res, 404, 'That module is not here.');
       const all = Object.assign({ modules: {} }, get(READY) || {}); all.modules = Object.assign({}, all.modules); if (body.on) all.modules[slug] = { on: today(), by: me }; else delete all.modules[slug];
       put(READY, all); json(req, res, 200, { modules: modulesFor(me), list: libraryList(me) }); return;
+    }
+    // a restored draft, read by the director beside the module educators know, and accepted in its place
+    if (P === 'module/restored') {
+      if (!dir) return deny('Only the director reads a restored draft.'); const r = restoredAll()[String(body.slug || '')]; if (!r) return err(req, res, 404, 'There is no restored draft for this module.');
+      const c = Object.assign({}, r); delete c.text; json(req, res, 200, { module: c }); return;
+    }
+    if (P === 'module/accept') {
+      if (!dir) return deny('Only the director accepts a restored draft.'); const slug = String(body.slug || ''); const r = restoredAll()[slug]; const m = modules()[slug];
+      if (!r || !m) return err(req, res, 404, 'There is no restored draft for this module.');
+      const cur = (S.files.get(m.path) || {}).text || ''; const next = acceptedText(cur, r.text);
+      const h = Object.assign({ path: m.path, history: [] }, get(PAGE_HIST(m.path)) || {});
+      h.history = [...(h.history || []), { title: m.title, text: cur, at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
+      Object.assign(h, { note: 'Accepted the restored draft', updatedAt: Date.now(), updatedBy: me }); put(PAGE_HIST(m.path), h);
+      putText(m.path, next);
+      const all = Object.assign({ accepted: {} }, get(RESTORED) || {}); all.accepted = Object.assign({}, all.accepted, { [slug]: { at: Date.now(), by: me, stamp: stampOf(r.text) } }); put(RESTORED, all);
+      modCache = null; restCache = null; if (piecesChanged) piecesChanged(); log('Restored module accepted', slug, 'by', me);
+      json(req, res, 200, { modules: modulesFor(me), list: libraryList(me) }); return;
     }
     // a reflection prompt the educator chooses to carry into the weekly journal, one at a time
     if (P === 'module/carry') {
@@ -675,7 +729,7 @@ module.exports = function growthModule(c) {
     }
     if (P === 'readings/add') {
       if (!dir) return deny(); const b = body.reading || {}; if (!/^https:\/\//.test(b.url || '')) return err(req, res, 400, 'Add the reading\'s web address, starting with https.');
-      const r = { id: rid('r'), title: txt(b.title, 240) || b.url, url: String(b.url).slice(0, 600), source: txt(b.source, 160), supports: txt(b.supports, 160), areas: (b.areas || []).filter(a => AREA_KEYS.includes(a)), modules: (b.modules || []).filter(m => MODULE_LIST.some(x => x[0] === m)), by: me, at: Date.now() };
+      const r = { id: rid('r'), title: txt(b.title, 240) || b.url, url: String(b.url).slice(0, 600), source: txt(b.source, 160), supports: txt(b.supports, 160), areas: (b.areas || []).filter(a => AREA_KEYS.includes(a)), modules: (b.modules || []).filter(m => MODULE_LIST.some(x => x[0] === m) || !!modules()[m]), by: me, at: Date.now() };
       const all = Object.assign({ list: [] }, get(READ) || {}); all.list = [...all.list.filter(x => x.url !== r.url), r]; put(READ, all); json(req, res, 200, { list: all.list }); return;
     }
 
@@ -736,7 +790,7 @@ module.exports = function growthModule(c) {
       const isTeam = b.kind === 'team' && ROOMS().includes(b.room);
       if (isTeam ? !roomsFor(me).includes(b.room) : !dir) return deny(isTeam ? 'Each Class team builds its own team meeting agenda.' : 'The director builds each agenda.');
       const kind = isTeam ? 'team' : b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = isTeam ? teamId(b.date, b.room) : b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
-      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: MODULE_LIST.some(m => m[0] === x.module) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '',
+      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: (MODULE_LIST.some(m => m[0] === x.module) || (!!modules()[x.module] && (dir || published(x.module)))) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '',
         // a guest session, training our team receives from outside presenters, with its presenters, their organization,
         // its length, its link and any handout
         guest: !!x.guest && x.guest !== 'no', guestBy: txt(x.guestBy, 200), guestOrg: txt(x.guestOrg, 200), guestMinutes: Math.max(0, Math.min(600, Math.round(+x.guestMinutes || 0))), guestLink: /^https:\/\//.test(x.guestLink || '') ? String(x.guestLink).slice(0, 600) : '', guestHandout: /^https:\/\//.test(x.guestHandout || '') ? String(x.guestHandout).slice(0, 600) : '', guestPeople: Math.max(0, Math.min(200, Math.round(+x.guestPeople || 0))) }))
@@ -767,6 +821,11 @@ module.exports = function growthModule(c) {
       const guests = (a.blocks || []).filter(x => x.guest && x.title);
       const hrs = Math.max(agendaHours(a), Math.round(guests.reduce((t, x) => t + (+x.guestMinutes || 0), 0) / 15) / 4); const already = new Set((a.logged && a.logged.names || []).map(nameKey)); let n = 0;
       for (const nm of names) { if (already.has(nameKey(nm))) continue; const doc = person(nm); doc.hours = [...(doc.hours || []), { id: rid('h'), date: a.date, title: (a.kind === 'meeting' ? 'PD staff meeting, ' : 'PD day, ') + (a.title || a.date) + (guests.length ? ', with ' + guests.map(x => x.title + (x.guestOrg ? ' (' + x.guestOrg + ')' : '')).join(' and ') : ''), hours: hrs, kind: a.kind === 'meeting' ? 'meeting' : 'pdday', approved: false, by: 'TREE' }]; put(pPath(nm), doc); n++; }
+      // each module a block opened counts as that module's Staff meeting or PD day way in for everyone present, recorded once
+      const mods = [...new Set((a.blocks || []).map(x => x.module).filter(x => x && modules()[x] && published(x)))]; const layer = a.kind === 'meeting' ? 'meeting' : 'pdday';
+      if (mods.length) for (const nm of names) { if (!takesPart(nm)) continue; const g = growth(nm); let ch = false;
+        for (const slug of mods) { const cur = Object.assign({}, (g.modules || {})[slug]); const L = Object.assign({}, cur.layers); if (!L[layer]) { L[layer] = a.date; cur.layers = L; if (!cur.opened) cur.opened = Date.now(); g.modules = Object.assign({}, g.modules, { [slug]: cur }); ch = true; } }
+        if (ch) put(gPath(nm), g); }
       a.logged = { at: Date.now(), names: [...new Set([...(a.logged && a.logged.names || []), ...names])] }; put(PDD, d); json(req, res, 200, { ok: true, n, hours: hrs }); return;
     }
     err(req, res, 404, 'Not found');
@@ -779,5 +838,5 @@ module.exports = function growthModule(c) {
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
   const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
-  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; }, AREAS, schedule, periodOf };
+  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; restCache = null; }, AREAS, schedule, periodOf };
 };

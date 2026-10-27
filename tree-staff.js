@@ -1565,10 +1565,19 @@ async function drdpRefPage(my){const ms=await loadMods();const dir=isDir();let L
     ${!L?card("The official wording",`<div class="hint">The official wording could not be read just now. Try again in a moment.</div>`):""}
     ${doms.map(d=>card((typeof DRDP_DOM!=="undefined"&&DRDP_DOM[d])||d,Object.keys(M).filter(k=>M[k].d===d).map(mBlock).join(""))).join("")}`)}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drefview]");if(!t)return;st.drefView=t.dataset.drefview;redraw()});
-Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();const m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
+Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();let m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
+  // the director reads a restored draft in the same page, beside the module educators know, and accepts it or goes back
+  const viewing=isDir()&&st.restView===slug&&m.restored;if(viewing){try{m=Object.assign({},(await ga("module/restored",{slug})).module,{draft:false})}catch(er){st.restView="";toast(er.message||"The restored draft could not be opened.")}}
   const d=await doc(meName(),true);const pr=(d.modules||{})[slug]||{};const dir=isDir();const ex=(ms.examples||{})[slug]||{examples:[]};
   const sec=h=>m.sections.find(s=>s.heading.toLowerCase().startsWith(h));
   const why=sec("why it matters"),reading=sec("reading"),own=sec("from fulton")||sec("from our own"),tr=sec("try this week"),rf=sec("reflect"),sh=sec("share at"),rd=sec("readings");
+  // the newer parts of a module, the three ways in, families, our program, presenting and the printables
+  const ways=sec("three ways in"),fam=sec("with families"),prog=sec("into our program"),pres=sec("presenting this module"),prints=sec("printables"),changed=sec("what changed");
+  const known=[why,reading,own,tr,rf,sh,rd,ways,fam,prog,pres,prints,changed];const other=m.sections.filter(x=>!known.includes(x)&&x.body);
+  const L=pr.layers||{};const lay=(k,label)=>L[k]?chip("ok",label+", "+fd(L[k])):chip("out",label);
+  const waysCard=ways?card("Three ways in",`${md(ways.body)}<div class="actions" style="margin:8px 0 0">${L.own||!pr.done?lay("own","On my own"):chip("ok","On my own, "+fms(pr.done))}${lay("meeting","Staff meeting")}${lay("pdday","PD day")}</div><div class="cnt">On my own is marked when you finish the module below. Staff meeting and PD day are marked when the director logs the hours for a meeting or PD day that used this module.</div>`):"";
+  const restCard=dir&&m.restored&&!viewing?card("A restored draft is waiting",`<div class="hint">This draft puts back what was lost from the original workshop and adds material from our files. Read it here, then accept it or leave the current module as it is.</div><div class="actions"><button class="btn small" data-gmrest="${H(slug)}">Read the restored draft</button></div>`):"";
+  const restBar=viewing?card("Restored draft, only you see it",`${changed?md(changed.body):""}<div class="actions"><button class="btn small" data-gmaccept="${H(slug)}">Accept it in place of the current module</button><button class="btn small ghost" data-gmrestback="${H(slug)}">Back to the current module</button></div><div class="cnt">The current wording is kept in the page's history, so Restore this version brings it back.</div>`):"";
   const serves=(m.serves||[]).map(areaName).filter(Boolean);
   // the reflection prompts, one per line or list item, each one can be carried into the weekly journal
   const prompts=rf?String(rf.body).split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean):[];const carry=(d.carry||{}).prompt||"";
@@ -1579,16 +1588,22 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   if(dir){exBody=exPicker(slug,ex,/drdp/i.test(slug)?exSuggest(m,slug,own,drdpEvPool()):exSuggest(m,slug,own))}
   else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
-    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):""}${leadBtn}</div>${draftCard}
-    ${why?card("Why it matters",md(why.body)):""}${reading?card("Reading",md(reading.body)):""}
+    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}
+    ${why?card("Why it matters",md(why.body)):""}${waysCard}${reading?card("Reading",md(reading.body)):""}
     ${exBody||dir?card("From our own documentation",exBody):""}
     ${tr?card("Try this week",`${md(tr.body)}<label class="radio"><input type="checkbox" data-gmtried="${H(slug)}" ${pr.tried?"checked":""}><span>I tried it in my Class</span></label>`):""}
     ${rf?card("Reflect",`${prompts.map(q=>`<div class="gq"><div class="stq">${H(q)}</div><div class="actions" style="margin:4px 0 0"><button class="pill" aria-pressed="${carry===q}" data-gmcarry="${H(slug)}">${carry===q?"In my journal this week":"Carry to my journal"}</button></div></div>`).join("")}<label class="fld-label">What happened when I tried it<textarea rows="4" id="gmod-ref">${H(pr.reflection||"")}</textarea></label><div class="cnt">Your reflection counts as evidence for ${H(serves.join(" and "))}. Only you and the director read it.</div>`):""}
+    ${fam?card("With families",md(fam.body)):""}${prog?card("Into our program",md(prog.body)):""}
     ${sh?card("Share at a staff meeting",`${md(sh.body)}<label class="fld-label">What I will share, if I want a note<textarea rows="2" id="gmod-share">${H(pr.share||"")}</textarea></label>`):""}
     ${rd?card("Readings",md(rd.body)):""}${await (async()=>{const R2=((await loadReadings()).list||[]).filter(x=>(x.modules||[]).includes(slug));const bk=R2.filter(x=>x.kind!=="article"),ar=R2.filter(x=>x.kind==="article");
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
+    ${other.map(x=>card(x.heading,md(x.body))).join("")}${prints?card("Printables",md(prints.body)):""}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
-    <div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">Finish the module</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`);window.scrollTo(0,0)};
+    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);window.scrollTo(0,0)};
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept]");if(!t)return;e.preventDefault();const d=t.dataset;
+  if(d.gmrest){st.restView=d.gmrest;redraw();return}
+  if(d.gmrestback){st.restView="";redraw();return}
+  if(d.gmaccept){if(!confirm("Accept the restored draft in place of the current module? The current wording stays in the page's history."))return;const r=await ga("module/accept",{slug:d.gmaccept});st.mods.modules=r.modules;if(B())B().modules=r.list;st.restView="";toast("Accepted. The earlier wording is kept in the page's history.");redraw();return}});
 
 /* ---------- PD days and monthly PD staff meetings ---------- */
 const HOW={whole:"Whole group",class:"By Class",pairs:"In pairs",quiet:"Quiet individual time"};
