@@ -25,5 +25,5 @@ test('the Family Summary draft is set in complete sentences, cleaned again', asy
   assert.match(asked, /complete, warm, plain sentences/);
   assert.strictEqual(p.returns, 'Fern returns to stories again and again. She loves the creek.');
   assert.ok(!/Bruno/.test(p.areas.social), 'no other child named');
-  assert.ok(!/Building Middle/.test(p.areas.social), 'no rating');
+  assert.ok(/Building Middle/.test(p.areas.social), "the educators' DRDP words stay, since they make learning visible");
 });

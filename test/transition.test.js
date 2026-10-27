@@ -1,6 +1,6 @@
 'use strict';
 // The transition summary for a child going to kindergarten or TK. Drafted only from the child's own observations, portfolio
-// and conference notes, never with DRDP levels or ratings, edited and marked ready by educators, printed as PDF and Word,
+// and conference notes, with the educators' DRDP words and never with scores or ratings, edited and marked ready by educators, printed as PDF and Word,
 // and seen by the family only once the director shares it. The server decides what a family receives.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -78,14 +78,14 @@ test('Transition summary', async t => {
     assert.match(pr, /dug for worms with R\. and counted nine/); assert.match(pr, /Worms and digging/); assert.match(pr, /Plays with R\. most days/);
     assert.doesNotMatch(pr, /painted the gate/); assert.doesNotMatch(pr, /ran from the circle/); assert.doesNotMatch(pr, /DRDP evidence box/); assert.doesNotMatch(pr, /Rue/);
     const val = k => s.p.inputValue(`[data-ts="${k}"]`);
-    assert.strictEqual(await val('play'), 'Pip counted nine worms.');
+    assert.strictEqual(await val('play'), 'Pip counted nine worms. Pip is at DRDP level Building Middle in counting.', "the educators' DRDP words stay");
     assert.strictEqual(await val('helps'), 'An educator nearby helps Pip, and time to dig.');
     assert.strictEqual(await val('working'), '');
     await s.p.fill('[data-ts="working"]', 'Pip is practicing waiting for a turn at the hose.'); await s.p.locator('[data-ts="working"]').blur(); await save();
     assert.strictEqual(kid('pip-test').transitionSummary[YEAR].sections.working, 'Pip is practicing waiting for a turn at the hose.');
     // rating words keep it from being marked ready
     await s.p.fill('[data-ts="who"]', 'Pip scored high on the DRDP.'); await s.p.locator('[data-ts="who"]').blur();
-    assert.match(await s.p.textContent('#ts-warn'), /Who this child is has words about the DRDP/);
+    assert.match(await s.p.textContent('#ts-warn'), /Who this child is has words that score, rate or compare a child/);
     await s.p.click('[data-tsready="1"]'); await s.p.waitForTimeout(1500);
     assert.strictEqual(kid('pip-test').transitionSummary[YEAR].status, 'draft');
     await s.p.fill('[data-ts="who"]', 'Pip is a curious digger who loves worms.'); await s.p.locator('[data-ts="who"]').blur(); await save();
@@ -118,7 +118,7 @@ test('Transition summary', async t => {
     assert.strictEqual(doc.title, 'Transition summary'); assert.deepStrictEqual(doc.meta.map(m => m[0]), ['Child', 'Age', 'Next year', 'Class', 'Date']);
     assert.match(doc.meta[1][1], /^\d+ years?/);
     assert.deepStrictEqual(doc.blocks.map(x => x.label), ['Who this child is', 'How they play and learn', 'Friends and relationships', 'What they are working on', 'What helps']);
-    assert.doesNotMatch(JSON.stringify(doc), /DRDP|level|teacher|[–—]/);
+    assert.doesNotMatch(JSON.stringify(doc), /teacher|[–—]/);
     await s.p.evaluate(() => { kidTab = 'details'; renderMain(); }); await s.p.waitForSelector('[data-tsunshare]');
     await s.p.click('[data-tsunshare]'); await save();
     assert.strictEqual(kid('pip-test').transitionSummary[YEAR].shared, undefined);
