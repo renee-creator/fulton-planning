@@ -90,6 +90,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 <script src="agreement.js"></script>
 <script src="policy-md.js"></script>
 <script src="sitemap.js"></script>
+<script src="community.js"></script>
 <script>
 (function(){
   const qs=new URLSearchParams(location.search);
@@ -142,7 +143,11 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
-  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);return t};
+  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(D.community&&(D.community.places||D.community.plants))t.push(["places","Places and plants"]);return t};
+  // the museums and the plants on our site, drawn by community.js, the same as the public page
+  const cmState=window.TREE_COMMUNITY?window.TREE_COMMUNITY.state():null;let cmBound=false;
+  function placesHtml(){const C=window.TREE_COMMUNITY;if(!C||!D.community)return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
+    if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="places")render()})}return C.html(D.community,cmState,SERVER)}
   function slotList(k){if(!k.slots.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
     const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
@@ -379,7 +384,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
     h+=`<nav class="tabs" aria-label="Family page">${T.map(([k,l])=>`<button data-tab="${k}" ${tab===k?'aria-current="page"':""}>${esc(l)}</button>`).join("")}</nav>`;
     h+=hbNewHtml();
-    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():foodHtml();
+    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():tab==="places"&&D.community?placesHtml():foodHtml();
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};

@@ -96,7 +96,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released, volunteer }) {
+module.exports = function family({ community, store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released, volunteer }) {
   const o = { released };
   /* the Family page's own wording, kept in the private records in staff/wording, which the director edits in place.
      The Family Questionnaire, the Family Reflections, the first steps, the packing list, the All About Me book, the
@@ -256,7 +256,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     // the specialty or passion visits this family offered, and where each one stands
     const visits = listOf(d => d.kind === 'visit' && d.email === f.email && !!d.test === f.test).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
       .map(v => { const r = v.itemId && recs().get(v.itemId); const it = r && !r.deleted && r.doc; return { id: v.id, what: v.what, status: v.status || 'new', date: it ? it.date || '' : '', start: it ? it.start || '' : '' }; });
-    return { visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+    // the museums and the plants on our site, each part once the director turns it on for families
+    let communityInfo = null; try { communityInfo = community ? community() : null; } catch (e) { communityInfo = null; }
+    return { community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 

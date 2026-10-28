@@ -18,6 +18,12 @@ module.exports = function library(o) {
   // the museums and cultural places near us, one page with a part for each area, and the director's switch that shows it
   // to educators
   const PLACES = 'staff/library/places/museums.md', PLACES_SET = 'staff/library/places/settings.json';
+  // the director's switches, each off until she turns it on. show is the page for educators, family the museums on the
+  // Family page, plantsFamily the plants on our site there, and public the public page with both.
+  const SWITCHES = ['show', 'family', 'plantsFamily', 'public'];
+  const placeSwitches = () => { const d = get(PLACES_SET) || {}; return Object.fromEntries(SWITCHES.map(k => [k, !!d[k]])); };
+  // the museum list as families and the public read it, the title, the opening lines and each area's lines
+  const placesOut = () => { const pl = item(PLACES); return pl ? { title: pl.title, lead: pl.lead, parts: pl.parts.map(x => ({ key: x.key, text: x.text })) } : null; };
   const pictures = () => { const out = {};
     for (const p of S.imgs.keys()) { const m = p.match(/^staff\/library\/images\/([a-z0-9_]+)\.(png|jpe?g|webp)$/i); if (m) out[m[1].toLowerCase()] = { from: 'library', path: p }; }
     for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
@@ -54,7 +60,7 @@ module.exports = function library(o) {
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? { title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown } : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? Object.assign({ title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown }, isDirector(me) ? { switches: placeSwitches() } : {}) : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -100,8 +106,11 @@ module.exports = function library(o) {
   async function handle(P, body, me, req, res, { json, err, send }) {
     const dir = isDirector(me), kit = isKitchen(me);
     if (P === 'library') { json(req, res, 200, list(me)); return; }
+    if (P === 'library/places/switch') { if (!dir) { err(req, res, 403, 'The director turns these on and off.'); return; }
+      const k = String(body.key || ''); if (!SWITCHES.includes(k)) { err(req, res, 400, 'That switch is not here.'); return; }
+      put(PLACES_SET, Object.assign({}, get(PLACES_SET) || {}, { [k]: !!body.on, at: Date.now(), by: me })); log('Community switch', k, body.on ? 'on' : 'off', 'by', me); json(req, res, 200, list(me)); return; }
     if (P === 'library/places/show') { if (!dir) { err(req, res, 403, 'The director shows this page to educators.'); return; }
-      put(PLACES_SET, { show: !!body.on, at: Date.now(), by: me }); log('Museums and cultural places', body.on ? 'shown to educators' : 'kept with the director', 'by', me); json(req, res, 200, list(me)); return; }
+      put(PLACES_SET, Object.assign({}, get(PLACES_SET) || {}, { show: !!body.on, at: Date.now(), by: me })); log('Museums and cultural places', body.on ? 'shown to educators' : 'kept with the director', 'by', me); json(req, res, 200, list(me)); return; }
     // a picture from the picture library, read from the records the first time it is asked for
     if (P === 'library/img') { const k = String(body.name || '').toLowerCase(); const x = pictures()[k]; if (!x || x.from !== 'library') { err(req, res, 404, 'That picture is not here.'); return; }
       try { const buf = await o.readImage(x.path); send(req, res, 200, { 'Content-Type': /\.png$/i.test(x.path) ? 'image/png' : /\.webp$/i.test(x.path) ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } return; }
@@ -130,5 +139,5 @@ module.exports = function library(o) {
       const cur = String(x.meta.photos || '').split(/[;,]\s*/).filter(p => p && !p.startsWith(step + '=')); cur.push(step + '=' + id); setMeta(x.path, 'photos', cur.join('; ')); json(req, res, 200, list(me)); return; }
     err(req, res, 404, 'Not found');
   }
-  return { list, add, guard, handle, item, isCopyright, META };
+  return { list, add, guard, handle, item, isCopyright, META, placeSwitches, placesOut };
 };

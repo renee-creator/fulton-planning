@@ -108,6 +108,13 @@ function photoSecret(e) { return b64u(crypto.createHmac('sha256', SECRET).update
 function makeFileKey() { const e = Date.now() + 12 * 36e5; return e.toString(36) + '.' + photoSecret(e); }
 function photoMac(secret, id) { return b64u(crypto.createHmac('sha256', Buffer.from(secret, 'utf8')).update(String(id), 'utf8').digest()).slice(0, 32); }
 function photoKey(id) { const e = Date.now() + 12 * 36e5; return e.toString(36) + '.' + photoMac(photoSecret(e), id); }
+// the community view with each of our own photos given its address, which needs no sign-in, and a stand-in's credit kept
+function communityOut(who) {
+  const c = staff.community(who); if (!c) return null;
+  const ph = x => !x ? null : x.own ? { src: photoSrc(x.own) } : { src: x.url, credit: x.credit || '', link: x.link || '' };
+  const plants = c.plants ? { plants: c.plants.plants.map(p => Object.assign({}, p, { photo: ph(p.photo) })), fieldGuides: c.plants.fieldGuides.map(f => ({ title: f.title, entries: f.entries.map(e => Object.assign({}, e, { photo: ph(e.photo) })) })) } : null;
+  return { places: c.places, plants };
+}
 function photoSrc(id) { return '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(photoKey(id)); }
 function checkPhotoKey(tok, id) {
   if (!tok || tok.length > 120 || !id) return false;
@@ -418,7 +425,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -1782,10 +1789,15 @@ async function handle(req, res) {
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
-  if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/handbook' || path === '/public/handbook/img' || path === '/public/playgarden' || path === '/public/playgarden/apply') {
+  if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/community' || path === '/public/handbook' || path === '/public/handbook/img' || path === '/public/playgarden' || path === '/public/playgarden/apply') {
     if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, 'The school records are still loading. Try again in a moment.'); return; } }
     const ip = who(req);
     if (path === '/public/menu') { json(req, res, 200, familyPage.publicMenu(body.month)); return; }
+    // the museums and the plants on our site, for anyone, once the director turns the public page on. Nothing else.
+    if (path === '/public/community') {
+      try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The page is still loading. Try again in a moment.'); return; }
+      const c = communityOut('public'); if (!c) { err(req, res, 403, 'This page is not open yet.'); return; } json(req, res, 200, c); return;
+    }
     // the Family Handbook for prospective families and the website, read only, and only once the director turns it on
     const imgType = p => /\.png$/i.test(p) ? 'image/png' : /\.gif$/i.test(p) ? 'image/gif' : /\.webp$/i.test(p) ? 'image/webp' : 'image/jpeg';
     const hbImage = async isPublic => { try { const buf = await staff.handbook.image(String(body.path || ''), isPublic); send(req, res, 200, { 'Content-Type': imgType(String(body.path || '')), 'Cache-Control': isPublic ? 'public, max-age=86400' : 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } };
