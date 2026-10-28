@@ -311,7 +311,7 @@ async function eventsFor(from, to, me) {
   return { events: out, status };
 }
 // Each timed slot on the conference calendar reads as the conference booked in TREE for it, Conference, the child's
-// name and Class, and a slot nobody has booked reads Open conference time. The slot's own title and notes are left out.
+// name and class, and a slot nobody has booked reads Open conference time. The slot's own title and notes are left out.
 // A conference is matched to the slot that starts at its time, or else the slot its time falls inside, and to one slot
 // only. Returns the conferences no slot holds, so they still show. The cached feed entries are copied, never changed.
 function slotsNamed(out, calId, confs) {
@@ -332,7 +332,7 @@ const EXTRA_CALS = [{ id: 'tconf', name: 'Family conferences', color: 'marigold'
 // the school calendar that is the family conference sign-up sheet, if there is one
 function confCalId() { const c = core.program.calendars.find(c => /signupgenius\.com/i.test(feedAddresses[c.id] || '') || (/conference/i.test(c.name || '') && feedAddresses[c.id])); return c ? c.id : ''; }
 function settingsFor(me) {
-  // the Classes and small groups are TREE's one list, in Program settings. The calendar reads them from there.
+  // the classes and small groups are TREE's one list, in Program settings. The calendar reads them from there.
   const one = opts.oneLists ? opts.oneLists() : null;
   const p0 = one ? Object.assign({}, core.program, { classes: one.classrooms.slice(), groups: one.groups.map(g => ({ name: g.name, room: g.room })) }) : core.program; const p = opts.extraEvents ? Object.assign({}, p0, { calendars: p0.calendars.concat(EXTRA_CALS.filter(c => c.id !== 'tconf' || !confCalId())) }) : p0;
   if (!me.director) return p;
@@ -363,7 +363,7 @@ async function handle(path, me, body, reply) {
     if (path === '/api/booking/update') { reply(200, core.update(me, String(body.id || ''), body.patch)); return true; }
     if (path === '/api/booking/remove') { reply(200, core.remove(me, String(body.id || ''), body.scope)); return true; }
     if (path === '/api/settings') { if (body.program && Array.isArray(body.program.calendars)) body.program.calendars = body.program.calendars.filter(c => !EXTRA_CALS.some(x => x.id === (c && c.id)));
-      // the Classes and small groups are changed in Program settings only, so what the calendar kept stays as it was
+      // the classes and small groups are changed in Program settings only, so what the calendar kept stays as it was
       if (opts.oneLists && body.program && typeof body.program === 'object') { body.program.classes = core.program.classes; body.program.groups = core.program.groups; } core.setProgram(me, body.program); reply(200, { settings: settingsFor(me) }); return true; }
     if (path === '/api/calendar/connect') {
       if (!me.director) { reply(403, { error: 'Only the director can connect calendars.' }); return true; }

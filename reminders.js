@@ -172,7 +172,7 @@ module.exports = function reminders(o) {
   function openFor(e, when, S) {
     const { week } = when; const start = S.start || week; const off = new Set(personOf(S, e.name).off || []); const on = t => S.types[t] && !off.has(t);
     const out = []; const ps = plansAll(); const every = planEvery(S, e.name);
-    // a garden plan belongs to the Garden group, so it never counts as an educator's plan for their Class
+    // a garden plan belongs to the Garden group, so it never counts as an educator's plan for their class
     const mine = ps.filter(p => (p.type === 'individual' || p.type === 'smallgroup') && p.focus !== 'garden' && nameIn(p.educator, e.name));
     if (every === 'weekly') {
       const last = addDays(week, -7);
@@ -198,9 +198,9 @@ module.exports = function reminders(o) {
     }
     if (on('classroom') && week >= start && e.room) {
       const cp = ps.filter(p => p.type === 'classroom' && p.classroom === e.room && p.weekOf === week && nonEmpty(p));
-      if (!cp.length) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan` });
-      else if (cp.every(p => !sent(p) && missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} Class's Classroom plan`, plan: cp[0].id });
-      else { const d = cp.find(p => draftLeft(p, when)); if (d && !cp.some(sent)) out.push({ t: 'classroom', text: `${e.room} Class's Classroom plan is still a draft. Send it to the director when it's ready.`, plan: d.id }); }
+      if (!cp.length) out.push({ t: 'classroom', text: `${e.room} class's Classroom plan` });
+      else if (cp.every(p => !sent(p) && missing(p))) out.push({ t: 'classroom', text: `Finish ${e.room} class's Classroom plan`, plan: cp[0].id });
+      else { const d = cp.find(p => draftLeft(p, when)); if (d && !cp.some(sent)) out.push({ t: 'classroom', text: `${e.room} class's Classroom plan is still a draft. Send it to the director when it's ready.`, plan: d.id }); }
     }
     // family conferences this educator leads. A reminder a week before, the Friday before and that morning, and the form
     // finished two school days ahead, with a reminder each school morning from five school days ahead until it is

@@ -178,7 +178,7 @@ async function loadAccounts() {
   accounts.loaded = true;
 }
 function saveAccounts(by) {
-  // an educator's Class is kept on their sign-in. The educators list and Conference settings' Educators by Class follow it.
+  // an educator's class is kept on their sign-in. The educators list and Conference settings' Educators by class follow it.
   try { if (store.ready && onceDone('educatorList')) syncEducators(); } catch (e) { log('The educators list could not follow the sign-ins', e.message); }
   accounts.saving = accounts.saving.then(async () => {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -348,7 +348,7 @@ function conferenceEvents(from, to, me) {
     // a child who has left keeps their past conferences, and nothing after their last day shows as coming up
     if (k && !k.deleted && k.doc.status === 'withdrawn' && c.confDate > (k.doc.leftOn || String(k.doc.withdrawnAt || '').slice(0, 10) || '0000')) continue;
     const t = /^\d{2}:\d{2}$/.test(c.confTime || '') ? c.confTime : '';
-    // a conference reads only Conference, the child's name and Class, such as Conference, Wren, North
+    // a conference reads only Conference, the child's name and class, such as Conference, Wren, North
     events.push(Object.assign({ id: 'tconf.' + hid(id), cal: 'tconf', conf: true, title: 'Conference, ' + first + (room ? ', ' + room : ''), desc: '' }, t ? { allDay: false, start: c.confDate + 'T' + t, end: c.confDate + 'T' + plus(t, 20) } : { allDay: true, start: c.confDate, end: c.confDate }));
   }
   // a walk or a garden day families are invited to, from the participation sign-ups, shows on the calendar for staff
@@ -480,19 +480,19 @@ function runOnce() {
     }
   })().finally(() => { onceBusy = null; if (run.again) runOnce(); });
 }
-// the educator names are one list, settings/educators. Conference settings keep the names by Class, made from that list.
+// the educator names are one list, settings/educators. Conference settings keep the names by class, made from that list.
 function syncEducators() {
-  // the Class on each sign-in is the one kept. A name on the list with a sign-in takes that sign-in's Class.
+  // the class on each sign-in is the one kept. A name on the list with a sign-in takes that sign-in's class.
   { const ed0 = store.recs.settings.get('educators');
     if (ed0 && !ed0.deleted && ed0.doc && Array.isArray(ed0.doc.names) && accounts.loaded) { let changed = false;
       const names = ed0.doc.names.map(x => { const a = x && x.name ? accountFor(x.name) : null; if (!a || isFormerAccount(a)) return x; const room = String(a.room || ''); if (String(x.room || '') === room) return x; changed = true; return Object.assign({}, x, { room }); });
-      if (changed) { setSetting('educators', Object.assign({}, ed0.doc, { names })); log('The educators list follows each sign-in\'s Class'); } } }
+      if (changed) { setSetting('educators', Object.assign({}, ed0.doc, { names })); log('The educators list follows each sign-in\'s class'); } } }
   const ed = store.recs.settings.get('educators'), mn = store.recs.settings.get('main');
   if (!ed || ed.deleted || !ed.doc || !Array.isArray(ed.doc.names) || !mn || mn.deleted || !mn.doc) return;
   const by = {}; for (const r of oneLists().classrooms) by[r] = [];
   for (const x of ed.doc.names) { if (!x || !x.name || !x.room || isFormerEducator(x.name)) continue; (by[x.room] = by[x.room] || []).push(String(x.name)); }
   if (JSON.stringify(by) === JSON.stringify(mn.doc.educators || {})) return;
-  mn.doc.educators = by; mn.local = true; noteChange('settings', 'main'); scheduleSave('settings', 'main'); log('Educators by Class copied from the educator list');
+  mn.doc.educators = by; mn.local = true; noteChange('settings', 'main'); scheduleSave('settings', 'main'); log('Educators by class copied from the educator list');
 }
 ONCE.push(['educatorList', () => { syncEducators(); }]);
 // presenting2027 wrote the October details of the two starting Presenting entries into the records on October 25, 2026.
@@ -563,7 +563,7 @@ function ensureDirectorSignIns() {
   for (const n of add) { accounts.list.push({ name: n, room: '', director: true, newHire: false, addedBy: 'TREE', addedAt: Date.now(), code: '', start: newStart(), v: 0 }); log('TREE sign-in made for the director', n); }
   saveAccounts('TREE');
 }
-/* once an educator's last day has passed, they come off the names offered on plans, the Class lists and the small group
+/* once an educator's last day has passed, they come off the names offered on plans, the class lists and the small group
    leads. What was taken is kept on the account, so bringing them back puts it back where nothing else took its place. */
 function settleFormer() {
   if (!store.ready || !accounts.loaded) return; let changed = false;
@@ -749,8 +749,8 @@ ONCE.push(['prepDirector', () => {
   }
   log('Conference preparation, the step to invite the director kept under its own name on', n, 'conferences');
 }]);
-// the Classes and the small groups are one list each, kept in Program settings. Conference settings, the calendar and
-// every page read them from there. Until the one-time step oneLists has run, the Classes Conference settings kept are read.
+// the classes and the small groups are one list each, kept in Program settings. Conference settings, the calendar and
+// every page read them from there. Until the one-time step oneLists has run, the classes Conference settings kept are read.
 function settingDoc(id) { const r = store.recs.settings.get(id); return r && !r.deleted && r.doc ? r.doc : {}; }
 function oneLists() {
   const pg = settingDoc('program'), mn = settingDoc('main');
@@ -764,15 +764,15 @@ function listDifferences() {
   const pg = settingDoc('program'), mn = settingDoc('main'), cal = calendar.classesKept() || { classes: [], groups: [] };
   const out = []; const j = a => (a || []).join(', ');
   const progC = (pg.classrooms || mn.classrooms || []);
-  if (j(mn.classrooms) !== j(progC)) out.push(`Conference settings listed the Classes as ${j(mn.classrooms) || 'none'}. Program settings keeps ${j(progC)}.`);
-  if (cal.classes.length && j(cal.classes) !== j(progC)) out.push(`Calendar settings listed the Classes as ${j(cal.classes)}. Program settings keeps ${j(progC)}.`);
-  const gk = g => (g || []).map(x => x.name + ' in ' + (x.room || 'no Class')).join(', ');
+  if (j(mn.classrooms) !== j(progC)) out.push(`Conference settings listed the classes as ${j(mn.classrooms) || 'none'}. Program settings keeps ${j(progC)}.`);
+  if (cal.classes.length && j(cal.classes) !== j(progC)) out.push(`Calendar settings listed the classes as ${j(cal.classes)}. Program settings keeps ${j(progC)}.`);
+  const gk = g => (g || []).map(x => x.name + ' in ' + (x.room || 'no class')).join(', ');
   if (Array.isArray(mn.groups) && gk(mn.groups) !== gk(pg.groups)) out.push(`Conference settings listed the small groups as ${gk(mn.groups)}. Program settings keeps ${gk(pg.groups)}.`);
   if (cal.groups.length && gk(cal.groups) !== gk(pg.groups)) out.push(`Calendar settings listed the small groups as ${gk(cal.groups)}. Program settings keeps ${gk(pg.groups)}.`);
   const sp = calendar.allSpaces().map(x => x.name.toLowerCase());
   const places = (Array.isArray(pg.places) ? pg.places : []).filter(Boolean);
   const onlyP = places.filter(x => !sp.includes(String(x).toLowerCase())), onlyS = calendar.allSpaces().filter(x => !places.some(p => String(p).toLowerCase() === x.name.toLowerCase())).map(x => x.name);
-  if (onlyP.length) out.push(`Where it happens in Program settings had ${onlyP.join('; ')}, which the calendar's spaces did not. ${onlyP.filter(x => !/^classroom$/i.test(x)).join('; ') || 'None'} joined the spaces, kept off the sign-up list.${onlyP.some(x => /^classroom$/i.test(x)) ? ' Classroom on its own is each Class\'s classroom space.' : ''}`);
+  if (onlyP.length) out.push(`Where it happens in Program settings had ${onlyP.join('; ')}, which the calendar's spaces did not. ${onlyP.filter(x => !/^classroom$/i.test(x)).join('; ') || 'None'} joined the spaces, kept off the sign-up list.${onlyP.some(x => /^classroom$/i.test(x)) ? ' Classroom on its own is each class\'s classroom space.' : ''}`);
   if (onlyS.length) out.push(`The calendar's spaces had ${onlyS.join('; ')}, which Where it happens in Program settings did not. They stay as spaces.`);
   return out;
 }
@@ -786,7 +786,7 @@ ONCE.push(['oneLists', () => {
   const places = (Array.isArray(pg.doc.places) ? pg.doc.places : []).filter(x => x && !/^classroom$/i.test(x));
   calendar.addHiddenSpaces(places);
   setSetting('onelists', { at: new Date().toISOString(), differences });
-  log('One list of Classes, small groups and spaces.', differences.length, 'differences kept for the director');
+  log('One list of classes, small groups and spaces.', differences.length, 'differences kept for the director');
 }]);
 const PLAN_KINDS = ['classroom', 'individual', 'smallgroup'];
 function linkPlansToObservations() {
@@ -827,7 +827,7 @@ function familySummaryDraft(cf, child) {
   // a short form of another child's name, such as the first letters of it, reads as a friend too, and TREE's own count of
   // who a child is seen with, such as a friend S (18), is left for the educators
   const others = all.filter(c => c && c.id !== child.id && c.first).map(c => String(c.first));
-  // only a short form, two to four letters, that is no everyday word, month, Class, group or educator's name
+  // only a short form, two to four letters, that is no everyday word, month, class, group or educator's name
   const L = oneLists(); const keep = new Set([...(L.classrooms || []), ...(L.groups || []).flatMap(g => [g.name, g.educator]), ...(L.educators || []).map(e => e && (e.name || e)), 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'The', 'They', 'She', 'Her', 'His', 'And', 'But', 'Then', 'When', 'With'].filter(Boolean).flatMap(x => String(x).split(/\s+/)));
   const prefix = t => String(t || '').replace(/\b([A-Z][a-z]{1,3})\b/g, (m, w, at, str) => { const start = !str.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(str.slice(0, at)); if (start || w === child.first || keep.has(w) || fam.EVERYDAY.has(w.toLowerCase()) || fam.NEVER_NAMES.has(w)) return m; return others.some(o => o !== w && o.startsWith(w) && o.length > w.length) ? 'a friend' : m; });
   const counts = t => String(t || '').split(/(?<=[.!?])\s+/).filter(x => !/\(\d+\)/.test(x) && !/^In observations together/i.test(x)).join(' ');
@@ -1532,7 +1532,7 @@ async function displayFeed() {
   const now = Date.now();
   let recent = shown.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (recent.length < 10) recent = shown.slice(0, 10);
-  // photos and observations take turns across the Classes, so no one Class fills the screen
+  // photos and observations take turns across the classes, so no one class fills the screen
   const byRoom = list => { const groups = new Map(); for (const n of list) { const r = roomsOf(n)[0] || ''; if (!groups.has(r)) groups.set(r, []); groups.get(r).push(n); } const out = []; const gs = [...groups.values()]; for (let i = 0; out.length < list.length; i++) for (const g of gs) if (g[i]) out.push(g[i]); return out; };
   recent = byRoom(recent.slice(0, 36));
   const moments = recent.map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
@@ -1950,7 +1950,7 @@ async function handle(req, res) {
     // any educator may delete a plan (the page asks twice); removing a followed thread for good stays with the director
     // any educator can keep a child's details current, as they did in Family Conferences. Whether a child is at Fulton,
     // has left, or has moved on is the director's to change, so an educator's save keeps whatever the director last set.
-    // a Class team can ask families for help. The request waits for the director, so an educator may only start one, never change or open it
+    // a class team can ask families for help. The request waits for the director, so an educator may only start one, never change or open it
     const askOk = kind === 'participation' && /^rq-/.test(id) && (op === 'create' || op === 'set') && !(store.recs.participation.get(id) && !store.recs.participation.get(id).deleted) && body.data && body.data.kind === 'item' && body.data.status === 'requested' && body.data.open === false;
     if (askOk) body.data = Object.assign({}, body.data, { requestedBy: me.name, test: false });
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
@@ -1982,7 +1982,7 @@ async function handle(req, res) {
     if (kind === 'children' && !isDirector(me.name)) {
       // an educator keeps a child's details current. Adding a child to the roster is the director's.
       if (!cur || cur.deleted) { log('New child refused for', me.name, id); err(req, res, 403, 'Only the director adds a child to the roster.'); return; }
-      // a child's Class is the director's to change, through Move children, so a save from Conferences or anywhere else keeps it
+      // a child's class is the director's to change, through Move children, so a save from Conferences or anywhere else keeps it
       const ST = ['status', 'withdrawnAt', 'leftAs', 'leftOn', 'classroom'];
       const keepSt = d => { for (const k of ST) { if (cur && !cur.deleted && cur.doc[k] !== undefined) d[k] = cur.doc[k]; else if (k === 'status') d[k] = 'active'; else delete d[k]; } };
       if (op === 'delete') { err(req, res, 403, 'Only the director can remove a child.'); return; }
@@ -2395,7 +2395,7 @@ async function handle(req, res) {
   // what the kitchen ordered for lunch and snack this week and next, for every educator. Only the food, its farm and the
   // day it comes. No prices, totals, order numbers or vendor details, and no FEED bin lines, since the bin has its own page.
   // the allergy and dietary lines the office has confirmed, for the Kitchen page. The kitchen receives no children's
-  // records, so this sends only each child's first name and last initial, Class and line.
+  // records, so this sends only each child's first name and last initial, class and line.
   if (path === '/api/kitchen-diets') {
     const list = []; for (const [, r] of store.recs.children) { const c = r && !r.deleted && r.doc; if (!c || (c.status && c.status !== 'active')) continue;
       const d = c.diet; if (!d || d.none || !String(d.line || '').trim()) continue;

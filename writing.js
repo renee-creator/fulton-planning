@@ -3,7 +3,7 @@
    or rewrites, so wording already there, such as the title of a cited outside source, never stops a save. */
 const RULES = [
   [/[—–]/, 'A dash. Use a comma or a full stop.'],
-  [/\btoddlers?\b/i, 'Say Class.'],
+  [/\btoddlers?\b/i, 'Say class.'],
   [/\b(bug (box|boxes|catchers?|jars?|houses?|viewers?)|insect (cages?|boxes|jars?)|butterfly nets?|critter (cages?|keepers?)|terrariums?)\b|\b(collect|catch|capture|trap|keep|bring)(s|ing|ed)? (the |some |a few )?(bugs|insects|worms|snails|slugs|caterpillars|ladybugs|beetles|spiders|lizards|frogs|tadpoles|butterflies|creatures|critters|roly polies|pill bugs)\b|\b(bugs|insects|worms|snails|caterpillars|ladybugs|creatures|critters|tadpoles) in (a |the )?(jars?|containers?|boxes|cups?)\b/i, 'Leave them be. Children observe creatures where they live.', /\b(never|not|no|without)\b/i],
   [/\b(Claude|Anthropic|ChatGPT|OpenAI|GPT-\d)\b/, 'No AI model or its maker is named.'],
   [/\b(sorry|apologi[sz]e|apologies)\b/i, 'No apologies.'],

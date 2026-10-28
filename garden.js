@@ -3,7 +3,7 @@
    beds, year plan, animals, agreements and who tends what, and staff/garden/log.json for what happens, tasks done,
    harvests, compost, seeds, greenhouse trays, wildlife seen, plant photos and the year's carry forward.
 
-   The director plans and changes everything. Educators read their Class's beds and the shared spaces and mark tasks
+   The director plans and changes everything. Educators read their class's beds and the shared spaces and mark tasks
    done. The kitchen reads and records harvests. Families read only the garden agreements and the children's plant guide,
    on the Family page, once the director marks the Garden ready. The spaces are the Spaces list in Settings, never a
    second copy, so a bed names the space it sits in. Fulton uses no herbicides or pesticides, and nothing here suggests
@@ -30,7 +30,7 @@ module.exports = function garden(o) {
   const LIB = 'staff/library/garden/';
   function library() { const out = {}; for (const p of (o.libraryPaths ? o.libraryPaths(LIB) : [])) { const m = p.match(/^staff\/library\/garden\/([a-z0-9-]+)\.md$/); if (m) out[m[1]] = Object.assign(WD.parse(o.getText(p)), { path: p }); } return out; }
   const WEEKDAYS = [1, 2, 3, 4, 5];
-  // the Classes, from Program settings, the one list
+  // the classes, from Program settings, the one list
   const ROOMS = () => (o.classrooms ? o.classrooms() : []);
   // words that suggest a chemical, which no task, tip or plan here may carry
   const CHEM = /\b(herbicides?|pesticides?|insecticides?|fungicides?|roundup|glyphosate|weed ?killer|bug ?spray|spray(ed|ing)? (for|with) (bugs|pests|weeds)|neem|copper spray|sevin|malathion|diazinon)\b/i;
@@ -41,7 +41,7 @@ module.exports = function garden(o) {
   const entryOf = (s, id) => (s.plants || []).find(x => x.id === id) || (s.animals || []).find(x => x.id === id) || (s.wild || []).find(x => x.id === id) || (s.signs || []).find(x => x.id === id) || null;
 
   /* ---------- who tends what ---------- */
-  // a bed is tended by its home Class all year, or by the Classes and small groups a rotation names, turn by turn
+  // a bed is tended by its home class all year, or by the classes and small groups a rotation names, turn by turn
   function tenderOf(s, bed, day) {
     if (!bed) return null; const home = (s.tending || {}).home || {};
     if (home[bed.id]) return { room: home[bed.id], group: '' };
@@ -81,7 +81,7 @@ module.exports = function garden(o) {
     for (const tr of L.trays) if (tr.ready && !tr.plantedOn && tr.bed) push({ id: 'tray-' + tr.id, kind: 'tray', text: `Plant out the ${tr.seedName || 'greenhouse'} starts`, stage: 'plant', bed: tr.bed }, day.slice(0, 7));
     return out;
   }
-  // what one person sees, their Class's tasks and the shared ones not yet given to a Class, or every task for the director
+  // what one person sees, their class's tasks and the shared ones not yet given to a class, or every task for the director
   const mine = (list, me) => isDirector(me) || isKitchen(me) ? list : list.filter(t => !t.room || t.room === roomOf(me));
 
   /* ---------- what a reader receives ---------- */
@@ -120,7 +120,7 @@ module.exports = function garden(o) {
     if (P === 'garden/done') {
       if (kit) { err(req, res, 403, 'The kitchen records harvests.'); return; }
       const day = ISO.test(body.day || '') ? body.day : today(); const t = tasksFor(day, s).find(x => x.id === body.task); if (!t) { err(req, res, 404, 'That task is not here.'); return; }
-      if (!dir && t.room && t.room !== roomOf(me)) { err(req, res, 403, 'That task belongs to another Class.'); return; }
+      if (!dir && t.room && t.room !== roomOf(me)) { err(req, res, 403, 'That task belongs to another class.'); return; }
       saveL(L => { const i = L.done.findIndex(x => x.task === t.id && x.day === t.key); if (body.undo) { if (i >= 0) L.done.splice(i, 1); }
         else { if (i >= 0) L.done.splice(i, 1); L.done.push({ task: t.id, day: t.key, by: me, at: Date.now(), passed: !!body.passed, room: t.room || roomOf(me) || '', group: t.group || txt(body.group, 40), stage: t.stage || '', text: t.text, bed: t.bed || '', kind: t.kind }); } });
       return back();
@@ -250,9 +250,9 @@ module.exports = function garden(o) {
   // possible Farm to School evidence, for the director's one-tap confirm list. Nothing counts until she confirms it.
   function evidence(from, to) {
     const s = setup(); if (!s || !s.ready) return []; const L = glog(); const out = [];
-    for (const h of L.harvests) if (h.children && h.date >= from && h.date <= to) { const p = plantOf(s, h.plant); if (!isFood(p)) continue; out.push({ id: 'h-' + h.id, n: 5, date: h.date, text: `Children${h.room ? ' of ' + h.room + ' Class' : ''} gathered ${h.amount ? h.amount + ' of ' : ''}${h.plantName} from the garden.` }); }
+    for (const h of L.harvests) if (h.children && h.date >= from && h.date <= to) { const p = plantOf(s, h.plant); if (!isFood(p)) continue; out.push({ id: 'h-' + h.id, n: 5, date: h.date, text: `Children${h.room ? ' of ' + h.room + ' class' : ''} gathered ${h.amount ? h.amount + ' of ' : ''}${h.plantName} from the garden.` }); }
     for (const d of L.done) { if (d.passed) continue; const day = String(d.day).length === 7 ? d.day + '-01' : d.day; if (!d.group || day < from || day > to || !['plant', 'harvest', 'tend', 'seeds'].includes(d.stage)) continue; if (!/water|plant|harvest|measur|sow|seed/i.test(d.text || '')) continue;
-      out.push({ id: 'd-' + d.task + '-' + d.day, n: 7, date: day, text: `The ${d.group} small group${d.room ? ', ' + d.room + ' Class,' : ''} ${String(d.text || '').replace(/^./, c => c.toLowerCase()).replace(/\.$/, '')}.` }); }
+      out.push({ id: 'd-' + d.task + '-' + d.day, n: 7, date: day, text: `The ${d.group} small group${d.room ? ', ' + d.room + ' class,' : ''} ${String(d.text || '').replace(/^./, c => c.toLowerCase()).replace(/\.$/, '')}.` }); }
     return out;
   }
   // the harvests for the Kitchen page, food only
@@ -260,7 +260,7 @@ module.exports = function garden(o) {
   // the materials ready to gather this month for the Atelier, never food
   const materials = () => { const s = setup(); if (!s || !s.ready) return []; const mm = today().slice(5, 7);
     return (s.plants || []).filter(p => !isFood(p) && (p.uses || []).some(u => u === 'Dye' || u === 'Art materials') && (!(p.ready || []).length || p.ready.includes(mm))).map(p => p.common + ((p.uses || []).includes('Dye') ? ' for dye' : '')); };
-  // the calendar's garden entries, the repeating tasks and the animals' care, for the reader's Class or for the director
+  // the calendar's garden entries, the repeating tasks and the animals' care, for the reader's class or for the director
   function calendar(from, to, me) {
     const s = setup(); if (!s || !s.ready || !me) return []; const name = typeof me === 'string' ? me : me.name || ''; const out = [];
     for (let d = from; d <= to; d = addDays(d, 1)) { const dow = new Date(d + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue;

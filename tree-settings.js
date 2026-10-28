@@ -10,7 +10,7 @@ function setStatus(t,x){try{
   if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
   if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
   if(t==="Educators")return plural(rosterNames().length,"educator");
-  if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
+  if(t==="Team meetings")return "Each class, the Mondays without the all-staff meeting";
   if(t==="Small groups")return plural(GROUPS.length,"group");
   if(t==="Garden group")return gardenGroupName()+(gardeners().length?", "+gardeners().join(", "):", held by you");
   if(t==="Classes")return CLASSROOMS.join(", ");
@@ -89,16 +89,16 @@ function renderSettings(){
   <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of Classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
+  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
-    <div class="actions"><input type="text" id="c-new" placeholder="A new Class" style="width:200px"><button class="btn small" id="c-add">Add a Class</button></div>${oneListsNote()}</section>
-  <section class="card"><div class="lbl">Garden group</div><div class="hint">Beside the Classes. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any Class. It shows on each Class whose children are in it, and never counts as that Class's plan for reminders. The Garden educator leads it, a role you give in Educators beside the person's own role.</div>
+    <div class="actions"><input type="text" id="c-new" placeholder="A new class" style="width:200px"><button class="btn small" id="c-add">Add a class</button></div>${oneListsNote()}</section>
+  <section class="card"><div class="lbl">Garden group</div><div class="hint">Beside the classes. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any class. It shows on each class whose children are in it, and never counts as that class's plan for reminders. The Garden educator leads it, a role you give in Educators beside the person's own role.</div>
     <label class="sgf"><span>Name</span><input type="text" id="gg-name" value="${esc(gardenGroupName())}" aria-label="Garden group name" style="flex:1"></label>
     <div class="cnt">${gardeners().length?`Garden educator: ${esc(gardeners().join(", "))}.`:"No one holds the Garden educator role yet, so you hold it."}</div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
-    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
+    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
       <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
-      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
       <label class="sgf"><span>Lead</span><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
       <span class="actions" style="margin:0"><button class="linkbtn" data-gdel="${i}">Remove</button></span></div></details>`).join("")}</div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
@@ -124,7 +124,7 @@ function renderSettings(){
 
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
-  // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
+  // each educator's role, class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
   if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   settingsFold();
@@ -135,7 +135,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.id==="g-add"){const n=val("#g-new");if(!n){toast("Type a group name first.");return}if(GROUPS.some(g=>g.name.toLowerCase()===n.toLowerCase())){toast("That group already exists.");return}GROUPS.push({name:n,room:"",educator:""});saveProgram();renderSettings();return}
   if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
   if(t.id==="p-add"){spaceAdd(val("#p-new"));return}
-  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the Class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That Class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
+  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
   if(t.dataset.cdel!=null){const r=CLASSROOMS[+t.dataset.cdel];const kids=[...children.values()].filter(c=>c.classroom===r&&kidAt(c)).length,gs=GROUPS.filter(g=>g.room===r).length;
     if(kids||gs){toast(`${r} still has ${kids?kids+(kids===1?" child":" children"):""}${kids&&gs?" and ":""}${gs?gs+(gs===1?" small group":" small groups"):""}. Move them first.`);return}
     CLASSROOMS=CLASSROOMS.filter(x=>x!==r);saveProgram();renderSettings();return}
@@ -155,7 +155,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
   if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
-    // the Classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
+    // the classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
     d0.classrooms=CLASSROOMS.slice();d0.groups=JSON.parse(JSON.stringify(GROUPS));delete d0.places;applyProgram(Object.assign({},PROGRAM_DOC,d0));saveProgram();renderSettings();toast("Original lists restored.");return}
 });
 document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;

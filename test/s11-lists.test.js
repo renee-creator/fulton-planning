@@ -23,7 +23,7 @@ test('the Classes, small groups and spaces become one list each, and the differe
   assert.deepStrictEqual(pg.classrooms, ['West', 'North'], 'the Classes Conference settings kept become Program settings\' list');
   assert.deepStrictEqual(pg.places, ['Library', 'Classroom', 'Art atelier'], 'the old Where it happens list stays as it was');
   const diff = read('settings/onelists.json').differences.join('\n');
-  assert.match(diff, /Calendar settings listed the Classes as West, North, East/);
+  assert.match(diff, /Calendar settings listed the classes as West, North, East/);
   assert.match(diff, /Conference settings listed the small groups as Fern in West\. Program settings keeps Fern in West, Moss in North/);
   assert.match(diff, /Art atelier joined the spaces, kept off the sign-up list/);
   assert.match(diff, /The calendar's spaces had Garden/);

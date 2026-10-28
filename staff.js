@@ -17,7 +17,7 @@ const NOTICES = require('./notices.js');
 
 module.exports = function staffModule(o) {
   let RECS_EDIT = null;
-  // the Classes, from Program settings, the one list
+  // the classes, from Program settings, the one list
   const classrooms = () => (o.classrooms ? o.classrooms() : []);
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
   const S = { files: new Map(), timers: new Map(), saving: new Map(), imgs: new Map(), imgCache: new Map(), ready: false, loading: null };
@@ -774,7 +774,7 @@ module.exports = function staffModule(o) {
       if ('goTo' in b) { const g = String(b.goTo || '').slice(0, 40); if (g && (!staffNames().some(n => nameKey(n) === nameKey(g)) || profileOf(g).neverGoTo)) { err(req, res, 400, 'Choose someone else as the go-to person.'); return; } sc.goTo = g; }
       if (b.checkin && typeof b.checkin === 'object') sc.checkin = { week: Math.min(4, Math.max(1, Math.round(+b.checkin.week || 1))), secondTime: /^\d{2}:\d{2}$/.test(b.checkin.secondTime || '') ? b.checkin.secondTime : '', minutes: 20 };
       if (b.meeting && typeof b.meeting === 'object') sc.meeting = { start: /^\d{2}:\d{2}$/.test(b.meeting.start || '') ? b.meeting.start : '13:15', end: /^\d{2}:\d{2}$/.test(b.meeting.end || '') ? b.meeting.end : '14:30' };
-      // each Class's team meeting time, and the months the director marks with no all-staff meeting, as December and February have none
+      // each class's team meeting time, and the months the director marks with no all-staff meeting, as December and February have none
       const T = x => /^\d{2}:\d{2}$/.test(x || '') ? x : '';
       if (b.teamMeetings && typeof b.teamMeetings === 'object') sc.teamMeetings = Object.fromEntries(classrooms().map(r => [r, { start: T((b.teamMeetings[r] || {}).start), end: T((b.teamMeetings[r] || {}).end) }]));
       if (Array.isArray(b.quietMonths)) sc.quietMonths = [...new Set(b.quietMonths.map(String).filter(x => /^\d{4}-(0[13-9]|1[01])$/.test(x)))].sort().slice(-36);
