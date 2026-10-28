@@ -62,7 +62,8 @@ const gdnPhotoOf=id=>{const p=((gdn&&gdn.photos)||[]).find(x=>x.plant===id);retu
 function gdnMark(p){return [p.eat==="food"?`<span class="gtag food">Food</span>`:p.eat==="partly"?`<span class="gtag gather">Partly edible</span>`:`<span class="gtag look">Look, don't eat</span>`,p.gather?`<span class="gtag gather">Gather with an educator</span>`:""].join("")}
 // a folding section with its one-line summary, open once opened
 // the recipes from the library the director shares on the Family page, food and sensory, never a draft
-function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";if(!libData){loadLibrary().then(()=>{if(view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
+function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";// a load already under way answers at once with nothing, so only the answer with the library redraws the page
+  if(!libData){loadLibrary().then(d=>{if(d&&view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
   const on=new Set((g.familyShare||{}).recipes||[]);const rs=(libData.recipes||[]).filter(r=>!r.draft);
   return `<div class="lbl" style="margin-top:6px">Recipes</div><div class="chips">${rs.map(r=>`<button class="chip ${on.has(r.id)?"on":""}" type="button" data-gfrecipe="${esc(r.id)}">${esc(r.title)}</button>`).join("")||`<span class="cnt">No recipes in the library yet.</span>`}</div>`}
 let gdnTEdit="";

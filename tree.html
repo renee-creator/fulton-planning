@@ -4534,7 +4534,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="c5e2fe707e3b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="881784a9c7b8";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5230,7 +5230,8 @@ const gdnPhotoOf=id=>{const p=((gdn&&gdn.photos)||[]).find(x=>x.plant===id);retu
 function gdnMark(p){return [p.eat==="food"?`<span class="gtag food">Food</span>`:p.eat==="partly"?`<span class="gtag gather">Partly edible</span>`:`<span class="gtag look">Look, don't eat</span>`,p.gather?`<span class="gtag gather">Gather with an educator</span>`:""].join("")}
 // a folding section with its one-line summary, open once opened
 // the recipes from the library the director shares on the Family page, food and sensory, never a draft
-function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";if(!libData){loadLibrary().then(()=>{if(view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
+function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";// a load already under way answers at once with nothing, so only the answer with the library redraws the page
+  if(!libData){loadLibrary().then(d=>{if(d&&view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
   const on=new Set((g.familyShare||{}).recipes||[]);const rs=(libData.recipes||[]).filter(r=>!r.draft);
   return `<div class="lbl" style="margin-top:6px">Recipes</div><div class="chips">${rs.map(r=>`<button class="chip ${on.has(r.id)?"on":""}" type="button" data-gfrecipe="${esc(r.id)}">${esc(r.title)}</button>`).join("")||`<span class="cnt">No recipes in the library yet.</span>`}</div>`}
 let gdnTEdit="";
