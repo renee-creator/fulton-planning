@@ -4559,7 +4559,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="5200e796a7b5";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="c054f2d04a8e";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8114,6 +8114,14 @@ function saveProject(x){obsIdx=null;x.updatedAt=Date.now();projects.set(x.id,x);
   else if(db){const d=JSON.parse(JSON.stringify(x));if(!isDirector())delete d.wall;db.doc("projects/"+x.id).set(d).catch(()=>toast("Could not save the project. Check your connection."))}
   else LS.set("fps.projects",[...projects.values()])}
 const pTimers={};
+// Not part of this project and Put it back, the director's, for every photo of the post together
+document.addEventListener("click",e=>{const t=e.target.closest("[data-projout],[data-projback]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(!isDirector()||VIEW_AS){toast("The director changes which observations belong to a project.");return}
+  const [pid,nid]=String(t.dataset.projout||t.dataset.projback).split("|");const x=projects.get(pid);if(!x)return;
+  if(t.dataset.projout){const n=notices.get(nid);const ids=noteGroup(n).map(g=>g.id);const have=projAside(x);
+    x.setAside=[...(x.setAside||[]),...ids.filter(id=>!have.has(id)).map(id=>({id,by:whoAmI(),at:Date.now()}))];saveProject(x);toast("Taken out of this project. Its threads stay as they are.")}
+  else{const n=notices.get(nid);const ids=new Set(n?noteGroup(n).map(g=>g.id):[nid]);x.setAside=(x.setAside||[]).filter(a=>a&&!ids.has(a.id));saveProject(x);toast("Back in the project.")}
+  renderMain()},true);
 function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
 function projectOfThread(tid){for(const x of projects.values())if((x.threads||[]).some(l=>l.id===tid))return x;return null}
 function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
@@ -8175,8 +8183,10 @@ const threadNotices=t=>{if(!t)return [];const ix=obsIndex();if(!ix.byT){ix.byT=n
   const m=new Map();for(const n of ix.byT.get(t.id)||[])m.set(n.id,n);for(const id of evNoticeIds(t.evidence))m.set(id,notices.get(id));
   return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
 // a project holds its own observations and every observation of the threads it follows
+// an observation the director marked Not part of this project stays out of it everywhere, its threads as they were
+const projAside=x=>new Set(((x&&x.setAside)||[]).map(a=>a&&a.id).filter(Boolean));
 const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
-  for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}return [...m.values()].sort((a,b)=>(b.at||0)-(a.at||0))};
+  for(const l of x.threads||[]){const t=threads.get(l.id);if(t)for(const n of threadNotices(t))m.set(n.id,n)}const out=projAside(x);return [...m.values()].filter(n=>n&&!out.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
 let noticesSeen=false, grantLoaded=false, grantRecs=new Map(), gQuarter="", gBusy=false, gAdd=null;
 const G_DEFAULT={agreement:"24-0887-000-SG",end:"2027-06-30",start:"",award:200000,b1a:80000,b1b:10000};
@@ -10300,9 +10310,12 @@ function renderProject(x){
       ${br.length<8?`<div class="actions"><button class="btn small ghost" data-pwadd="1">Add a direction</button></div>`:""}</div>
       <div id="pwebprev">${webPreviewSvg(projWeb(x))}</div></div></section>`;
 
-  {const ns=projNotices(x);if(ns.length)h+=`<section class="card"><div class="lbl">Observations</div>
-    <div class="hint">Observations educators kept for this project, in the order they happened.</div>
-    <div style="display:grid;gap:12px">${ns.map(noticeCard).join("")}</div></section>`;}
+  {const ns=projNotices(x),dir=isDirector()&&!VIEW_AS,aside=((x.setAside)||[]).map(a=>({a,n:notices.get(a.id)})).filter(o=>o.n);
+    const shown=new Set();const firsts=dir?ns.filter(n=>{const k=n.group||n.id;if(shown.has(k))return false;shown.add(k);return true}):[];const first=new Set(firsts.map(n=>n.id));
+    if(ns.length||aside.length)h+=`<section class="card"><div class="lbl">Observations</div>
+    <div class="hint">Observations educators kept for this project, in the order they happened.${dir?" Not part of this project takes one out of the project only, and its threads stay as they are.":""}</div>
+    <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<div class="actions" style="margin:-6px 0 0"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div>`:"")).join("")}</div>
+    ${dir&&aside.length?`<details style="margin-top:10px"><summary class="cnt" style="cursor:pointer">Not part of this project, ${aside.length}</summary>${aside.map(({a,n})=>`<div class="cnt">${esc(momentHeading(n)||firstLine(noticeText(n),80))}, ${esc(shortDate(n.at))}. Taken out by ${esc(a.by||"the director")} on ${esc(shortDate(a.at))}. <button class="linkbtn" data-projback="${esc(x.id)}|${esc(a.id)}">Put it back</button></div>`).join("")}</details>`:""}</section>`;}
   {const iq=inqsOfProject(x.id);if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries alongside it</div>
     <div class="hint">Questions about practice and development the team is thinking through with this project in mind.</div>
     <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${esc(q.id)}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span>${inqOpenHyps(q).length?`<div class="muted">${esc(firstLine(inqOpenHyps(q).slice(-1)[0].text,200))}</div>`:""}</div>`).join("")}</div></section>`}

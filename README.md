@@ -120,6 +120,8 @@ A plan can begin from a pattern in What these observations keep returning to, fr
 
 Only the director changes a project. Educators read it, add a thread to it, keep observations for it, and start plans from it. The server refuses any other change to a project from anyone else.
 
+An observation reaches a project through one of its threads, so an observation not kept for the project can still show on its page. Under Observations, the director's Not part of this project takes it out of that project only. Its threads keep it as they are. A folded list, Not part of this project, shows each one taken out, who took it out and when, with Put it back.
+
 ## Team inquiries
 
 Plans, then Inquiries. A team inquiry is where the team thinks through a question about children's development and its own practice, such as a child running from a request, kept beside the curriculum plans so a plan never becomes about a behavior. Everyone reads them. The director starts and writes each one with the team, the way a project works. Educators add observations and threads to it, write what happened when the team tried something, and start plans from it, and the server refuses any other change from them. Each belongs to one class or to the whole school. The director can draft any section from the inquiry's evidence, or strengthen the wording, using only what educators wrote.
