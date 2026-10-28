@@ -2739,6 +2739,25 @@ window.TREE_DOCS_FOR=(childId,from,to)=>{const c=children.get(childId);if(!c)ret
 /* the DRDP on a child's page. Every measure of the child's view, the levels educators have accepted with their evidence,
    the suggestions waiting for review, and the marks the instrument allows. */
 let drdpEdit="",drdpShowAside=false;
+/* The DRDP review queue. Review on Today, or Review all waiting on a child's DRDP tab, steps through every waiting
+   suggestion one at a time, each with all it shows on the child's page, and Accept, Change or Set aside opens the next
+   one at once, the next child's too. Skip leaves one waiting. Nothing is accepted without a tap. */
+let drQ=null;
+const drQWaiting=c=>{const v=drdpViewOf(c).v;return kidDrdpItems(c).filter(x=>x.status==="suggested"&&(x.view===v||!x.view)).sort((a,b)=>(b.at||0)-(a.at||0))};
+function drQStart(scope){const rm=myRoom(),dir=isDirector()&&!VIEW_AS;
+  const kids=scope&&scope.startsWith("kid:")?[children.get(scope.slice(4))].filter(Boolean):kidsAt().filter(c=>dir||!rm||c.classroom===rm);
+  const list=kids.flatMap(c=>drQWaiting(c).map(x=>({c:c.id,id:x.id})));
+  if(!list.length){toast("Nothing is waiting for review.");return}
+  drQ={list,skip:new Set(),done:0};drdpEdit="";drQGo()}
+const drQLive=e=>{const c=children.get(e.c);const x=c&&((c.drdp||{}).items||{})[e.id];return !!x&&x.status==="suggested"};
+function drQCurrent(){return drQ?drQ.list.find(e=>!drQ.skip.has(e.id)&&drQLive(e))||null:null}
+function drQGo(){const cur=drQCurrent();if(cur&&kidOpen!==cur.c){kidOpen=cur.c;LS.set("tree.kid",kidOpen)}kidTab="drdp";LS.set("tree.kidtab",kidTab);
+  if(view!=="child")goView("child");else renderMain();window.scrollTo(0,0)}
+// after Accept, Change or Set aside, the queue opens the next suggestion, and without a queue the page simply redraws
+document.addEventListener("click",e=>{const t=e.target.closest("[data-drqueue]");if(!t)return;e.preventDefault();e.stopPropagation();drQStart(t.dataset.drqueue)},true);
+// leaving for any page but a child's ends the queue, so it never waits on a child's page later
+{const gv=goView;goView=function(v){if(v!=="child")drQ=null;return gv.apply(this,arguments)}}
+function drQNext(){if(drQ){drQ.done++;drdpEdit="";drQGo()}else renderMain()}
 // which measures an educator has opened or closed stay that way while they work on the page
 const drdpOpen=new Set(),drdpShut=new Set();
 document.addEventListener("toggle",e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.drrow)return;const k=d.dataset.drrow;if(d.open){drdpOpen.add(k);drdpShut.delete(k)}else{drdpOpen.delete(k);drdpShut.add(k)}},true);
@@ -2833,8 +2852,12 @@ function kidDrdpHtml(c){
   const domBlock=dm=>{const codes=ms.filter(k=>DRDP_M[v][k].d===dm);const got=codes.filter(k=>latest(k)).length;const busy=codes.some(k=>latest(k)||wait.some(x=>x.code===k)||(legacy[k]||[]).length||marks[k]);
     const key="dom:"+dm;const open=drdpOpen.has(key);
     return `<details class="drdom" data-drrow="${esc(key)}" ${open?"open":""}><summary class="drdomh"><b>${esc(DRDP_DOM[dm]||dm)}</b>${got?`<span class="cnt">${got} of ${codes.length} with evidence</span>`:""}</summary>${codes.map(rowOf).join("")}</details>`};
-  return `<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span></div>
-      ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>
+  const cur=drQ?drQCurrent():null;const left=drQ?drQ.list.filter(e=>!drQ.skip.has(e.id)&&drQLive(e)).length:0;
+  const queue=drQ?`<section class="card" id="kdrdp" style="border-color:var(--moss)"><div class="secthead"><h3 style="font-size:17px">${cur?`Reviewing ${esc(c.first)}'s DRDP`:"Every suggestion is reviewed"}</h3><span class="cnt">${drQ.done} reviewed, ${left} to go${drQ.skip.size?`, ${drQ.skip.size} skipped`:""}</span></div>
+      ${cur&&cur.c===c.id&&wait.find(x=>x.id===cur.id)?`${reviewRow(wait.find(x=>x.id===cur.id))}<div class="actions"><button class="linkbtn" data-drqskip="${esc(cur.id)}">Skip, leave it waiting</button><button class="linkbtn" data-drqstop="1">Stop reviewing</button></div>`
+        :`<div class="cnt">${drQ.skip.size?"The ones you skipped are still waiting on each child's page.":"Nothing is left to review."}</div><div class="actions"><button class="btn small" data-drqstop="1" data-drqtoday="1">Back to Today</button><button class="linkbtn" data-drqstop="1">Stay on ${esc(c.first)}'s page</button></div>`}</section>`:"";
+  return (queue||`<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span>${wait.length>1?`<span class="actions"><button class="btn small" data-drqueue="kid:${esc(c.id)}">Review all waiting, one at a time</button></span>`:""}</div>
+      ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>`)+`
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with documentation</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
       <div class="cnt">Each level is read from documentation and reviewed by an educator. Tap a measure to see the moments behind it.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
@@ -2853,16 +2876,18 @@ function kidDrdpHtml(c){
 function drdpKid(){return children.get(kidOpen)}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;const c=drdpKid();if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted for ${x.code}.`);renderMain();return}
-  if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");renderMain();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted for ${x.code}.`);drQNext();return}
+  if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");drQNext();return}
   if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested"}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
   if(t.dataset.drcancel){drdpEdit="";renderMain();return}
+  if(t.dataset.drqskip){if(drQ){drQ.skip.add(t.dataset.drqskip);drdpEdit="";drQGo()}return}
+  if(t.dataset.drqstop){const today=!!t.dataset.drqtoday;drQ=null;drdpEdit="";if(today)goView("today");else renderMain();return}
   if(t.dataset.drsave){const id=t.dataset.drsave,x=it(id);if(!x)return;const lv=document.querySelector(`[data-drlevel="${id}"]:checked`)?.value||"";const em=!!document.querySelector(`[data-dremerg="${id}"]`)?.checked;
     if(!lv){toast("Choose a level, or set this aside.");return}
     const sug=x.suggested||{};const same=lv===sug.level&&em===!!sug.emerging;
     kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpEmergeOk(x.view||drdpViewOf(c).v,x.code,lv),status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
-    drdpEdit="";toast(`Saved for ${x.code}.`);renderMain();return}
+    drdpEdit="";toast(`Saved for ${x.code}.`);drQNext();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="child")return;const c=drdpKid();if(!c)return;
   if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
@@ -4534,7 +4559,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="86df61726319";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="5200e796a7b5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4756,7 +4781,7 @@ function todayWaiting(){
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
   {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
-      out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-kid="${esc(kw[0][0].id)}" data-drdpfocus="1"`,b:"Review"})}}
+      out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-drqueue="room"`,b:"Review"})}}
   // order lines TREE is not sure were bought for meals, for the director to place
   if(dir){let n=0;try{n=gUnsure().length}catch(e){}if(n)out.push({dot:"mari",n,t:`${n} order line${n===1?"":"s"} to place, meals or education`,s:"TREE is not sure these were bought for meals. Choose on the Farm to School page.",act:`data-tview="grant"`,b:"Place"})}
   // this week's few observations and plans the words tie to food education, each counted once
