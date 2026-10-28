@@ -80,7 +80,7 @@ module.exports = function presentingModule(c) {
   // the sentence of the record that holds the word, quoted as it was written
   const sentence = (text, w) => { const ss = String(text || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/); const q = ss.find(x => wordRe(w).test(x)) || ''; if (q.length <= 200) return q; const i = q.search(wordRe(w)); return (i > 90 ? '…' : '') + q.slice(Math.max(0, i - 90), i + 110).replace(/^\S*\s/, i > 90 ? '' : '$&').replace(/\s\S*$/, '') + '…'; };
   const join = ws => ws.length < 2 ? ws.join('') : ws.slice(0, -1).join(', ') + ' and ' + ws[ws.length - 1];
-  // the Class that holds Fulton's two-year-olds is the one with the most children under three today
+  // the class that holds Fulton's two-year-olds is the one with the most children under three today
   const underThree = (kid, day) => !!(kid && ISO.test(String(kid.dob || '').slice(0, 10)) && day && (+day.slice(0, 4) - 3) + day.slice(4) < String(kid.dob).slice(0, 10));
   function youngClass(kids) { const n = {}; for (const k of kids) if (k.status !== 'withdrawn' && underThree(k, today())) n[k.classroom] = (n[k.classroom] || 0) + 1; return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || ''; }
   function lenses() { const r = store.recs && store.recs.settings && store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {}; return (Array.isArray(v.lenses) ? v.lenses : []).filter(l => l && l.name); }
@@ -123,7 +123,7 @@ module.exports = function presentingModule(c) {
       if (e.youngest) {
         const small = r.kind === 'obs' && (r.children || []).some(id => underThree(kids.get(id), r.date));
         if (small) { groups.push('youngest'); score += 2; why.push('With our youngest children. A child in it was under three that day.'); }
-        else if (young && r.room === young && ['obs', 'plan', 'thread'].includes(r.kind)) { groups.push('youngest'); score += 1; why.push(`With our youngest children. Kept in ${young} Class, where our two-year-olds are.`); }
+        else if (young && r.room === young && ['obs', 'plan', 'thread'].includes(r.kind)) { groups.push('youngest'); score += 1; why.push(`With our youngest children. Kept in ${young} class, where our two-year-olds are.`); }
       }
       if (!groups.length) continue;
       let lensLine = '';
@@ -137,7 +137,7 @@ module.exports = function presentingModule(c) {
     const show = items.filter(x => x.state !== 'aside').slice(0, 60);
     return { look, youngest: !!e.youngest, youngClass: young, lens: lens ? lens.name : '', lenses: ls.map(l => l.name), items: [...show, ...items.filter(x => x.state === 'aside')], more: Math.max(0, items.filter(x => x.state !== 'aside').length - show.length) };
   }
-  // a chosen moment is made from the record itself, with the educators' words, date, Class and language as written there
+  // a chosen moment is made from the record itself, with the educators' words, date, class and language as written there
   function momentFrom(key, by, e) {
     const r = sources().find(x => x.key === key); if (!r) return null;
     const ev = e && r.kind !== 'obs' ? evidence(e).items.find(x => x.key === key) : null;

@@ -58,7 +58,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         if (!srcs.length) return; if (!cur) { cur = { heading: '', photos: [], text: [] }; out.sections.push(cur); } cur.photos.push(...srcs); }
     });
     // a part is an observation only when an educator wrote about it. Photos with only a heading or names under them,
-    // such as The Faces of North Class, are left out.
+    // such as The Faces of North class, are left out.
     out.sections = out.sections.filter(sc => sc.text.length);
     return out.sections.length ? out : null;
   }
@@ -169,7 +169,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   const postGroup = (noticed, room, day) => { const t = String(noticed || '').replace(/\s+/g, ' ').trim().toLowerCase(); return t.length >= 12 ? 'k' + crypto.createHash('sha1').update(t + '|' + (room || '') + '|' + day).digest('hex').slice(0, 14) : ''; };
 
 
-  // the subject names the class, as North or North Class, and can also name a project or a thread the moments belong to
+  // the subject names the class, as North or North class, and can also name a project or a thread the moments belong to
   function readSubject(subject) {
     const set = (store.recs.settings.get('main') || {}).doc || {};
     const rooms = Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South'];
@@ -248,7 +248,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
   }
 
   // the educator who shared it from Kaymbu, matched to their TREE sign-in by first name
-  // A class's own Kaymbu account, such as West Class, names no educator, so the moment carries no educator's name.
+  // A class's own Kaymbu account, such as West class, names no educator, so the moment carries no educator's name.
   function classNames() { const set = (store.recs.settings.get('main') || {}).doc || {}; return (Array.isArray(set.classrooms) && set.classrooms.length ? set.classrooms.map(String) : ['West', 'North', 'South']).map(words); }
   function isClassName(n) { const w = words(n).replace(/\b(class|classroom|room|fulton|community|school|farm|kaymbu)\b/g, ' ').trim(); return !w || classNames().includes(w); }
   function sharedBy(name, email) {
@@ -380,7 +380,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
-      // Photos from a newsletter part with no words, such as The Faces of North Class, were removed by an earlier clean up,
+      // Photos from a newsletter part with no words, such as The Faces of North class, were removed by an earlier clean up,
       // and a newsletter part with no words is no longer kept at all. That clean up no longer runs, since a Moment kept from
       // its own email and then seen again in a newsletter looks the same and must never be removed.
       const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.v >= 3) continue;

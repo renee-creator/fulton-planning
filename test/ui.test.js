@@ -112,7 +112,7 @@ test('TREE in the browser', async t => {
   await t.test('seeing TREE as an educator opens that educator\'s own records, growth and check-in', async () => {
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280, { name: 'Bea', room: 'North' });
     await s.p.evaluate(() => goView('strec')); await s.p.waitForFunction(() => /Monday planning hour/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
-    assert.match(await s.p.evaluate(() => document.querySelector('#main').innerText), /North Class/);
+    assert.match(await s.p.evaluate(() => document.querySelector('#main').innerText), /North class/);
     await s.p.evaluate(() => goView('stci')); await s.p.waitForFunction(() => /My next check-in/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
     const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
     assert.match(text, /10:15 am/); assert.doesNotMatch(text, /could not open/);

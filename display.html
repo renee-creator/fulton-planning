@@ -140,7 +140,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   h=((h%24)+24)%24;return (h%12||12)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")}
   const timeOf=s=>{const m=/T(\d{2}):(\d{2})/.exec(s);return m?clockTime(m[1]+":"+m[2]):""};
   const nowClock=()=>{const d=new Date();return clockTime(d.getHours()*60+d.getMinutes())};
-  const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" Class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" Classes";
+  const roomsText=r=>!r||!r.length?"Whole school":r.length===1?r[0]+" class":r.slice(0,-1).join(", ")+" and "+r.slice(-1)+" classes";
   const weekText=iso=>/^\d{4}-\d{2}-\d{2}$/.test(iso||"")?"Week of "+new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"}):"";
   const names=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a.slice(-1);
   const img=p=>p&&p.src?`<img src="${esc(/^https:\/\//.test(p.src)?p.src:SERVER+p.src)}" alt="">`:"";
@@ -162,7 +162,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       <div class="measure"><div class="where">${esc(d.code)}</div><h2>${esc(d.measure||d.code)}</h2>${d.def?`<p>${esc(d.def)}</p>`:""}</div>
       <div class="lvl"><b>${esc(d.level)}${d.emerging?", emerging to the next level":""}</b>${d.descriptor?`<p>${esc(d.descriptor)}</p>`:""}</div>
       <div class="fine">Evidence from our documentation${d.by?", reviewed by "+esc(d.by):""}. Never a DRDP rating on its own.</div></div>`}
-  function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" Class":"across the school")}</span></div>
+  function threadHtml(t){return `<div class="body"><div class="kind">A thread we are following <span>${esc(t.room?t.room+" class":"across the school")}</span></div>
       <h1>${esc(t.name)}</h1>${t.question?`<div class="q">${esc(t.question)}</div>`:""}
       ${t.words?`<div class="words">${esc(t.words)}</div>`:""}
       ${t.weeks>1?`<div class="small">Seen across ${t.weeks} weeks</div>`:""}</div>${t.photo?`<div class="side">${img(t.photo)}</div>`:""}`}
@@ -172,7 +172,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${x.threads&&x.threads.length?`<div class="small">Threads in it, ${esc(names(x.threads))}</div>`:""}</div>${x.photo?`<div class="side">${img(x.photo)}</div>`:""}`}
   function storyHtml(x){const p=x.photo||{};const portrait=p.h&&p.w&&p.h>p.w*1.05;
     return `<div class="ph" style="width:${portrait?36:48}%">${img(p)}</div><div class="tx">
-      <div class="kind">A story we read together <span>${esc([x.room?x.room+" Class":"",x.group?String(x.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", ")||"across the school")}</span></div>
+      <div class="kind">A story we read together <span>${esc([x.room?x.room+" class":"",x.group?String(x.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", ")||"across the school")}</span></div>
       <h2 class="sttitle">${esc(x.title)}</h2>${x.cover?`<div class="when">${esc(x.cover)}</div>`:""}
       ${(x.pages||[]).map(pg=>`<div class="stpg">${pg.photo&&pg.photo.src?`<img src="${esc(SERVER+pg.photo.src)}" alt="">`:""}<div>${pg.heading?`<b>${esc(pg.heading)}</b>`:""}${pg.lines.map(l=>`<div>${esc(l)}</div>`).join("")}</div></div>`).join("")}</div>`}
   // a finished Documentation slide, its photo large and first, then its title and the team's words
@@ -189,7 +189,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${m.wonder?`<div class="wonder" style="max-width:44ch">${esc(m.wonder)}</div>`:""}
       ${m.children&&m.children.length?`<div class="kids">With ${esc(names(m.children))}</div>`:""}</div>`}
   // the reflection an educator writes once the week has passed
-  function reflectionHtml(r){return `<div class="body"><div class="kind">${esc(r.label)} <span>${esc([r.room?r.room+" Class":"",r.group?String(r.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", "))}</span></div>
+  function reflectionHtml(r){return `<div class="body"><div class="kind">${esc(r.label)} <span>${esc([r.room?r.room+" class":"",r.group?String(r.group).replace(/\s+group$/i,"")+" group":""].filter(Boolean).join(", "))}</span></div>
       <div class="when">${esc([r.by,weekText(r.week)].filter(Boolean).join(", "))}</div>
       <div class="words" style="white-space:pre-line">${esc(r.text)}</div></div>`}
   // a proud moment or a Kudos shared with everyone at Fulton, with first names only
@@ -199,7 +199,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   // a moment found through a lens, the educator's own words and where they were written
   function lensMomentHtml(x){return `<div class="body"><div class="kind">Seen through the lens <span>${esc([x.lens,x.language].filter(Boolean).join(", "))}</span></div>
       <div class="q" style="max-width:36ch">${esc(x.quote)}</div>
-      <div class="small">${esc(["Found in "+(/^[aeiou]/i.test(x.found)?"an ":"a ")+x.found+(x.by?" by "+x.by:""),x.room?x.room+" Class":"",x.at?whenOf(x.at):weekText(x.week)].filter(Boolean).join(", "))}</div></div>`}
+      <div class="small">${esc(["Found in "+(/^[aeiou]/i.test(x.found)?"an ":"a ")+x.found+(x.by?" by "+x.by:""),x.room?x.room+" class":"",x.at?whenOf(x.at):weekText(x.week)].filter(Boolean).join(", "))}</div></div>`}
   // the whole description on the left and the lens's questions on the right, or a photo from a moment it found lately
   function lensHtml(l){return `<div class="body lensbody"><div class="kind">This year's lens</div><h1>${esc(l.name)}</h1>
       <div class="lensgrid"><div>${l.description?`<div class="lensdesc">${esc(l.description)}</div>`:""}</div>
@@ -215,7 +215,7 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     return `<div class="body"><div class="kind">Gatherings with families</div><h1>Coming up</h1><div class="days">${G.map(g=>`<div class="day"><h2>${esc(dayName(g.date))}${g.start?", "+esc(new Date("2000-01-01T"+g.start).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}).replace(/\s?([AP])M$/,(m,x)=>" "+x.toLowerCase()+"m")):""}</h2><div class="small"><b>${esc(g.title||GN[g.gathering]||"A gathering")}</b>${g.gardenDay?", a seasonal garden day":""}${g.ready?"":", still being planned"}</div>${g.jobs.length?`<div class="small">${esc(g.jobs.map(j=>j.title+(j.open!=null?(j.open?", "+j.open+" open":", full"):"")).join(" · "))}</div>`:""}</div>`).join("")}</div></div>`}
   function noteHtml(x){return `<div class="body quiet"><div class="kind">A note from ${esc(x.by||"the director")}</div><div class="words" style="white-space:pre-line;max-width:40ch">${esc(x.text)}</div></div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
-    return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" Class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
+    return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
       <div class="blocks">${b.map(([k,v])=>`<div class="blk"><h2>${esc(k)}</h2><p style="white-space:pre-line">${esc(v)}</p></div>`).join("")}</div>
       ${x.lookAgain?`<div class="small">We look again ${esc(dayName(x.lookAgain))}</div>`:""}</div>`}
   function weekHtml(w){const by={};for(const e of w){const d=e.start.slice(0,10);(by[d]=by[d]||[]).push(e)}

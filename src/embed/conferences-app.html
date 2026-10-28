@@ -244,7 +244,7 @@ const REFLECTIONS = ["r1","r2","r3","r4","r5","r6"].map(k=>({k, get q(){ return 
 // the preparation steps and the new family steps, their words from TREE's records, staff/wording, which the director edits in place
 const PREP_KEYS = [["questionnaire"],["drdp"],["coteachers"],["samples"],["priorGoals",true],["offeredVirtual"],["director"]];
 const PREP = PREP_KEYS.map(([k,needsPrior])=>({k, needsPrior:!!needsPrior, get label(){ return WORDS_OF("conference-prep")[k]||""; }}));
-// the Classes and small groups are TREE's one list, in Program settings, read below
+// the classes and small groups are TREE's one list, in Program settings, read below
 const DEFAULT_GROUPS = [];
 const ONBOARD = ["questionnaire", "welcomeCall", "visitScheduled", "calendar", "contactVerified", "visitDone", "thankYou", "teamShared", "labels", "aboutMe", "firstDay"].map(k=>({k, get label(){ return WORDS_OF("onboarding")["team "+k]||""; }}));
 const MONTHS = ["Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul"];
@@ -293,8 +293,8 @@ const S = {
 };
 S.period = currentPeriod();
 try{ const f = JSON.parse(localStorage.getItem("fcf-filters")||"null"); if(f) Object.assign(S.filters,f); }catch(e){}
-// the page opens on the signed-in educator's own Class each visit, and on every Class for the director or an educator
-// with no Class. Another Class holds for this visit only.
+// the page opens on the signed-in educator's own class each visit, and on every class for the director or an educator
+// with no class. Another class holds for this visit only.
 try{ const own = window.parent!==window && window.parent.treeOwnClass ? window.parent.treeOwnClass() : null; if(own!=null) S.filters.room = own || "All"; }catch(e){}
 function checkFilters(){ const f=S.filters; if(f.room!=="All" && !(S.settings.classrooms||[]).includes(f.room)) f.room="All"; if(f.edu && f.edu!=="All" && !educatorsFor().includes(f.edu)) f.edu="All"; }
 
@@ -465,7 +465,7 @@ function canEdit(){ return S.db && S.canWrite!==false; }
 function openInTree(id,tab){ try{ if(window.parent!==window&&window.parent.TREE_OPEN_KID){ window.parent.TREE_OPEN_KID(id||"",tab||"details"); return; } }catch(e){} toast("Open the child in TREE, under Children."); }
 // where a child is, in the words TREE's Children page uses
 function kidWord(c){ return c.status!=="withdrawn"? "At our school" : c.leftAs==="moved"? "Moved on to kindergarten" : "Left our school"; }
-// adding a child, the 1Core roster and a child's Class are the director's, as the server keeps them
+// adding a child, the 1Core roster and a child's class are the director's, as the server keeps them
 function isDirector(){ return canEdit() && !!S.director; }
 
 /* ---------- capabilities ---------- */
@@ -491,7 +491,7 @@ async function boot(){
   db.collection("conferences").limit(1000).onSnapshot(snap=>{
     const m={}; snap.docs.forEach(d=>{ m[d.id]={id:d.id,...d.data()}; }); S.confs=m; S.loaded.confs=true; refresh();
   }, onErr);
-  // Conference settings keep the school years. The Classes and small groups come from Program settings, the one list.
+  // Conference settings keep the school years. The classes and small groups come from Program settings, the one list.
   let mainDoc=null, progDoc=null;
   const settle=()=>{ const d=mainDoc||{}; const pg=progDoc||{}; S.settings={...structuredClone(DEFAULT_SETTINGS),...d};
     S.settings.classrooms=Array.isArray(pg.classrooms)&&pg.classrooms.length? pg.classrooms.slice() : (Array.isArray(d.classrooms)? d.classrooms : []);
@@ -1013,7 +1013,7 @@ function viewSettings(){
   return `<div style="max-width:760px" class="stack">
   <div><div class="eyebrow">Setup</div><h1>Conference settings</h1></div>
   <form id="settings-form" class="panel stack">
-    <div class="hint">The Classes and small groups are kept in TREE's Settings, under Program settings, and read here from there.</div>
+    <div class="hint">The classes and small groups are kept in TREE's Settings, under Program settings, and read here from there.</div>
     <div class="field"><label>Families book conference times</label><div class="hint">Through SignUpGenius, with TREE filling in each time every hour, or on the Family page, from the times the office opens there. Only the director changes this.</div>
       <label class="check"><input type="radio" name="s-booking" value="signupgenius" ${S.settings.conferenceBooking!=="tree"?"checked":""} ${isDirector()?"":"disabled"}><span>Through SignUpGenius</span></label>
       <label class="check"><input type="radio" name="s-booking" value="tree" ${S.settings.conferenceBooking==="tree"?"checked":""} ${isDirector()?"":"disabled"}><span>On the Family page in TREE</span></label></div>
@@ -1021,7 +1021,7 @@ function viewSettings(){
     <div class="field"><label for="s-feed">SignUpGenius calendar link</label><div class="hint">The webcal link from SignUpGenius, under Tools, then Calendar Subscriptions. The app reads it to fill in conference times.</div><input id="s-feed" value="${esc(S.settings.signupFeed||"")}" ${isDirector()?"":"disabled"} placeholder="webcal://www.signupgenius.com/index.cfm?go=t.calendar&record=..." style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;width:100%"></div>
     ${isDirector()&&(()=>{try{return !!window.parent.TREE_EDIT_WORDING}catch(e){return false}})()?`<div class="row"><button class="btn" type="button" data-act="edit-prep">Edit the preparation steps</button></div>`:""}
     <div class="field"><label for="s-years">School years</label><div class="hint">One per line, written like 2026-27. Each year has a Fall and a Spring season.</div><textarea id="s-years" rows="3" ${isDirector()?"":"disabled"}>${esc(s.years.join("\n"))}</textarea></div>
-    <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by Class</div><div class="hint">Each educator's Class is kept on their sign-in, changed in TREE's Settings, Sign-ins, or on the Educators page. They show here by that Class.</div>
+    <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Educators by class</div><div class="hint">Each educator's class is kept on their sign-in, changed in TREE's Settings, Sign-ins, or on the Educators page. They show here by that class.</div>
       ${s.classrooms.map(r=>`<div class="cnt"><b>${esc(r)}</b> ${esc((s.educators?.[r]||[]).join(", ")||"No one yet")}</div>`).join("")}
     </div>
     <div class="stack" style="gap:6px"><div class="lbl" style="font-weight:600">Small groups</div><div class="hint">The lead educator of each group is the primary educator for every child in it.</div>${groupsList().map(g=>`<div class="cnt"><b>${esc(g.name)}</b> ${esc([g.room,g.educator].filter(Boolean).join(", "))}</div>`).join("")}</div>

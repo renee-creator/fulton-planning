@@ -768,7 +768,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 
 <script>
 /* ---------- Program data, from the Policies and Procedures & Procedures and Small Group Work policy ---------- */
-// the Classes, the small groups and the spaces are one list each. The Classes and small groups come from Program
+// the classes, the small groups and the spaces are one list each. The classes and small groups come from Program
 // settings, and the spaces are the calendar's, read from the server. None is kept in this page.
 let CLASSROOMS=[],CLASSES_MAIN=[],snapMain=null;
 // the school's own wording the director edits in place, from staff/wording in the records, sent with the records
@@ -980,9 +980,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("#mp-save,#
 {let lastY=0;window.addEventListener("scroll",()=>{const y=window.scrollY||0,f=document.getElementById("newnotice");if(!f)return;
   if(y>lastY+6&&y>140)f.classList.add("away");else if(y<lastY-6||y<140)f.classList.remove("away");lastY=y},{passive:true})}
 /* An educator's lists open on their own classroom until they choose another. The director starts on All. */
-/* Children and Conferences open on the signed-in educator's own Class each time the page opens, the Class on their
-   sign-in, which the educators list carries. Another Class holds for that visit only. An educator with no Class and the
-   director see every Class. */
+/* Children and Conferences open on the signed-in educator's own class each time the page opens, the class on their
+   sign-in, which the educators list carries. Another class holds for that visit only. An educator with no class and the
+   director see every class. */
 function ownClass(){if(VIEW_AS)return VIEW_AS.room&&CLASSROOMS.includes(VIEW_AS.room)?VIEW_AS.room:"";if(isDirector())return"";const m=me().toLowerCase();if(!m)return"";
   const e=roster.find(x=>(x.name||"").toLowerCase()===m);const r=e?String(e.room||""):((GROUPS.find(g=>(g.educator||"").toLowerCase()===m)||{}).room||"");return CLASSROOMS.includes(r)?r:""}
 window.treeOwnClass=()=>ownClass();
@@ -1040,7 +1040,7 @@ async function boot(){
       // a section another educator changed is shown fresh, and the one being typed in is left alone
       else if(changedCur.length&&view==="plans"&&plans.get(currentId)){const p=plans.get(currentId),typing=document.activeElement?.dataset?.f;for(const k of new Set(changedCur))if(k!==typing&&FORMS[p.type]?.fields.some(f=>f.k===k))try{rerenderCard(p,k)}catch(e){}}
     },()=>setConn("Offline. Changes stay on this device"));
-    // the Classes Conference settings kept, read until Program settings holds the one list
+    // the classes Conference settings kept, read until Program settings holds the one list
     db.doc("settings/main").onSnapshot(snap=>{const v=snap.exists?snap.data():null;snapMain=v||null;CLASSES_MAIN=v&&Array.isArray(v.classrooms)?v.classrooms:[];if(!(PROGRAM_DOC.classrooms||[]).length)applyProgram(PROGRAM_DOC)});
     if(isDirector())db.doc("settings/onelists").onSnapshot(snap=>{ONELISTS=snap.exists?snap.data():null});
     if(window.FP_HOSTED)setTimeout(()=>loadCalSpaces(),1500);
@@ -1244,7 +1244,7 @@ function renderDue(){
     (list.length>6?`<button class="linkbtn" data-view="all" data-astatus="due">See all ${list.length}</button>`:"")+(mineOnly&&total>list.length?`<div class="cnt">${total-list.length} more for other educators</div>`:"");
 }
 /* The Garden group. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any
-   Class. It belongs to the Garden group and shows on each Class whose children are in it, without counting as that
+   Class. It belongs to the Garden group and shows on each class whose children are in it, without counting as that
    Class's plan for reminders. The Garden educator leads it, a role held beside the person's own, and until someone holds
    it the director does. */
 const gardenGroupName=()=>String(((PROGRAM_DOC||{}).gardenGroup||{}).name||"Garden");
@@ -1255,7 +1255,7 @@ const gardenRooms=p=>[...new Set((p.children||[]).map(id=>(children.get(id)||{})
 function planInRoom(p,room){return p.classroom===room||(isGardenPlan(p)&&gardenRooms(p).includes(room))}
 const GARDEN_SPACE=/garden|yard|orchard|bed|goat|chicken|farm|pollinator|compost|green ?house|field|meadow/i;
 function weekPlans(){return [...plans.values()].filter(p=>p.weekOf===week&&(roomFilter==="All"||planInRoom(p,roomFilter)))}
-// the week packet prints the Class the board is showing
+// the week packet prints the class the board is showing
 function packetPlans(){const r=boardRoom();return [...plans.values()].filter(p=>p.id!=="example"&&p.weekOf===week&&planInRoom(p,r))}
 function renderList(){
   pruneEmpty();renderDue();renderFeedbackPanel();
@@ -1373,7 +1373,7 @@ function renderMain(){
     h+=fieldCard(p,f);
   }
   if(F.web)h+=webEditor(p);
-  if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's Class newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
+  if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's class newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" data-talk="1" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
   h+=attachHtml(p)+sendHtml(p)+feedbackHtml(p)+`
@@ -1454,7 +1454,7 @@ async function draftInterests(p){
   const f=FORMS.classroom.fields.find(x=>x.k==="interests");const key=p.id+"interests";
   suggest[key]={status:"working",text:"",from:"ind"};rerenderCard(p,"interests");
   const cur=String(p.fields.interests||"").trim();
-  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} Class, week of ${fmtDate(p.weekOf)}.
+  const prompt=`You are helping the classroom team at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, write the "${f.label}" section of their Classroom Curriculum Plan for the ${p.classroom} class, week of ${fmtDate(p.weekOf)}.
 The program's standard for this section. ${f.hint}
 Strong example. ${f.strong}
 Write it from the educators' Individual and small group plans for this week below. Keep it short, 3 to 5 sentences and under 100 words in all. Give one sentence per thread naming the educator or group and what children are wondering, then one sentence on how the threads meet each other or the classroom community. Leave out individual children's names, quotes, and lists of materials, since those live in the Individual plans. Use only what the plans say. Never invent children, quotes, events, or materials. ${cur?"Keep everything the team already wrote and weave it in.":""} ${STYLE}
@@ -1473,26 +1473,26 @@ function refCard(prev){
 }
 const focusAll=new Set();
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-fshowall]");if(!t)return;focusAll.add(t.dataset.fshowall);renderMain()});
-// a garden plan's focus, a garden or yard space and children from any Class
+// a garden plan's focus, a garden or yard space and children from any class
 function gardenFocusCard(p){const sp=PLACES.filter(x=>GARDEN_SPACE.test(x));const spaces=sp.length?sp:PLACES;const sel=new Set(p.children||[]);
   const kids=kidsAt().sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||(a.first||"").localeCompare(b.first||""));
   return `<section class="card"><div class="lbl">Focus this week</div>
     <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="false">Small group</button><button data-focus="area" aria-pressed="false">Classroom area</button><button data-focus="garden" aria-pressed="true">${esc(gardenGroupName())}</button></div>
-    <div class="hint">A garden plan belongs to the ${esc(gardenGroupName())} group. It shows on each Class whose children are in it, and it never counts as that Class's plan for reminders.</div>
+    <div class="hint">A garden plan belongs to the ${esc(gardenGroupName())} group. It shows on each class whose children are in it, and it never counts as that class's plan for reminders.</div>
     <label class="fld-label">The garden or yard space<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
     <div class="chips">${spaces.map(x=>`<button class="chip ${(p.where||"").toLowerCase()===x.toLowerCase()?"on":""}" data-gspace="${esc(x)}">${esc(x)}</button>`).join("")}</div>
-    <div class="chiprow-label">Children, from any Class</div>
-    ${CLASSROOMS.map(r=>{const ks=kids.filter(k=>k.classroom===r);return ks.length?`<div class="cnt" style="margin-top:6px">${esc(r)} Class</div><div class="chips">${ks.map(k=>`<button class="chip ${sel.has(k.id)?"on":""}" data-gkid="${esc(k.id)}">${esc(kidName(k))}</button>`).join("")}</div>`:""}).join("")}
+    <div class="chiprow-label">Children, from any class</div>
+    ${CLASSROOMS.map(r=>{const ks=kids.filter(k=>k.classroom===r);return ks.length?`<div class="cnt" style="margin-top:6px">${esc(r)} class</div><div class="chips">${ks.map(k=>`<button class="chip ${sel.has(k.id)?"on":""}" data-gkid="${esc(k.id)}">${esc(kidName(k))}</button>`).join("")}</div>`:""}).join("")}
     ${gardenNote(p)}</section>`}
 function focusCard(p){
-  // the plan's own Class's groups show, and Show other Classes is there for an educator who leads a group in another
+  // the plan's own class's groups show, and Show other classes is there for an educator who leads a group in another
   if(isGardenPlan(p))return gardenFocusCard(p);
   const sg=p.focus!=="area";const room=p.classroom;const sel=p.groups||[];const other=GROUPS.filter(g=>room&&g.room!==room);
   const wide=!room||focusAll.has(p.id)||other.some(g=>sel.includes(g.name));const gs=[...GROUPS.filter(g=>!room||g.room===room),...(wide?other:[])];
   return `<section class="card"><div class="lbl">Focus this week</div>
     <div class="seg" role="group" aria-label="Focus"><button data-focus="smallgroup" aria-pressed="${sg}">Small group</button><button data-focus="area" aria-pressed="${!sg}">Classroom area</button>${holdsGarden()?`<button data-focus="garden" aria-pressed="false">${esc(gardenGroupName())}</button>`:""}</div>
     ${sg?`<div class="chiprow-label">Small group</div><div class="chips">${gs.map(g=>`<button class="chip ${sel.includes(g.name)?"on":""}" data-fgroup="${esc(g.name)}">${esc(g.name)}${g.room?` <span class="cnt">${esc(g.room)}</span>`:""}</button>`).join("")}</div>
-      ${room&&other.length&&!wide?`<button class="linkbtn" data-fshowall="${esc(p.id)}">Show other Classes</button>`:""}
+      ${room&&other.length&&!wide?`<button class="linkbtn" data-fshowall="${esc(p.id)}">Show other classes</button>`:""}
       <div class="hint">Leading two groups? Choose both when they are following the same thread, or start a separate plan for each group.</div>
       ${window.FP_HOSTED?"":`<label class="fld-label">Where it happens, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden"></label>${gardenNote(p)}`}`
     :`<label class="fld-label">Area of the classroom<input type="text" id="f-where" list="arealist" value="${esc(p.where||"")}" placeholder="Choose below or type another"></label>
@@ -1815,7 +1815,7 @@ function remindersHtml(){if(!window.FP_HOSTED)return "";if(!remSt){remLoad();ret
     <label class="cnt">Observations expected each week <input type="number" id="remper" min="1" max="15" value="${esc(String(S.perWeek))}" style="width:5em"></label>
     <div><span class="chiprow-label">Reminders that go out</span><div class="chips">${Object.entries(T).map(([k,l])=>`<button class="chip ${S.types[k]?"on":""}" data-remtype="${k}" type="button">${esc(l)}</button>`).join("")}</div></div>
     <div style="display:grid;gap:8px">${remSt.educators.map(e=>{const pp=S.people[e.name]||{},off=new Set(pp.off||[]);
-      return `<details class="remrow evhit"><summary style="cursor:pointer"><b>${esc(e.name)}</b>${e.room?`, ${esc(e.room)} Class`:""}${e.plans==="monthly"?" · plans monthly":e.plans==="none"?" · observations only":""}${pp.paused?" · paused":""}<span class="cnt">${st(e)}${e.open.length?` · ${e.open.length} open now`:""}</span></summary>
+      return `<details class="remrow evhit"><summary style="cursor:pointer"><b>${esc(e.name)}</b>${e.room?`, ${esc(e.room)} class`:""}${e.plans==="monthly"?" · plans monthly":e.plans==="none"?" · observations only":""}${pp.paused?" · paused":""}<span class="cnt">${st(e)}${e.open.length?` · ${e.open.length} open now`:""}</span></summary>
         <div style="display:grid;gap:8px;margin-top:8px">${e.why&&!e.phones?`<div class="cnt warnline">${esc(e.why)}</div>`:""}
         ${e.open.length?`<div class="cnt">${e.open.map(esc).join("<br>")}</div>`:""}
         <label class="cnt">Plans <select data-remplans="${esc(e.name)}" style="width:auto">${[["weekly","Weekly"],["monthly","Monthly, first week of the month"],["none","None, observations only"]].map(([v,l])=>`<option value="${v}" ${e.plans===v?"selected":""}>${l}</option>`).join("")}</select></label>
@@ -2281,7 +2281,7 @@ function famSummaryDoc(cf,max,compact){const c=children.get(cf.childId)||{};cons
   const ar=FAM_AREAS.filter(([k])=>has(A[k]));if(ar.length){if(compact)blocks.push(dList("Growing and learning",ar.map(([k,l])=>l+". "+A[k])));else{blocks.push(dSub("Growing and learning"));for(const [k,l] of ar)blocks.push(dText(l,A[k]))}}
   if(has(P.strengths)&&!compact)blocks.push(dText("Strengths",P.strengths));
   blocks.push(dText("Shared Goals and Next Steps",[P.goals,P.nextSteps].filter(has).join("\n")+"\n"+(compact?[lines,lines]:[lines,lines,lines]).join("\n")));
-  return {display:true,type:"report",acc:"story",title:`${c.first||"Your child"}'s Family Summary`,meta:[["Child",[c.first,c.last].filter(Boolean).join(" ")],["Class",c.classroom?c.classroom+" Class":""],["Educators",[...new Set(eds)].join(", ")],["Date",cf.confDate?longDate(cf.confDate):""]].filter(x=>x[1]),blocks}}
+  return {display:true,type:"report",acc:"story",title:`${c.first||"Your child"}'s Family Summary`,meta:[["Child",[c.first,c.last].filter(Boolean).join(" ")],["Class",c.classroom?c.classroom+" class":""],["Educators",[...new Set(eds)].join(", ")],["Date",cf.confDate?longDate(cf.confDate):""]].filter(x=>x[1]),blocks}}
 // the family copy, the Family Summary then the ticked pieces in the layout chosen, as a PDF or a Word file
 window.TREE_FAMILY_COPY=async(confId,opt)=>{opt=opt||{};const cf=conferences.get(confId);const c=cf&&children.get(cf.childId);if(!cf||!c)return null;
   const fs=cf.familySummary;if(!fs||!fs.readAt){if(!opt.quiet)toast("Read the Family Summary and mark it read before it prints.");return null}
@@ -2321,7 +2321,7 @@ function famSumPaint(){let el=document.getElementById("famsum");if(!famSumOpen){
   if(!el){el=document.createElement("div");el.id="famsum";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
   const fs=cf.familySummary,P=(fs&&fs.parts)||{},A=P.areas||{};const ta=(k,l,v,r)=>`<label class="fld-label">${esc(l)}<textarea rows="${r||3}" data-famsum="${esc(k)}">${esc(v||"")}</textarea></label>`;
   el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">Family Summary</span><button class="btn small ghost" data-famsumclose="1">Close</button></div>
-    <h2>${esc(c.first)}'s Family Summary</h2><div class="cnt">${esc([c.classroom?c.classroom+" Class":"",cf.confDate?longDate(cf.confDate):""].filter(Boolean).join(" · "))}</div>
+    <h2>${esc(c.first)}'s Family Summary</h2><div class="cnt">${esc([c.classroom?c.classroom+" class":"",cf.confDate?longDate(cf.confDate):""].filter(Boolean).join(" · "))}</div>
     ${!fs?`<div class="hint">TREE drafts it the day before the conference from the form's own words. It can be drafted now.</div><div class="actions"><button class="btn small" data-famsumdraft="0" ${famSumBusy?"disabled":""}>${famSumBusy?'<span class="spin"></span> Drafting':"Draft it now"}</button></div>`
     :`<div class="hint">Drafted from the form's own words. Another child reads as a friend, the educators' DRDP words stay, and notes written for educators are left out. Read it and change anything, then mark it read so it can print.</div>
       ${ta("returns",`What ${c.first} keeps returning to`,P.returns)}${ta("friends","Friends and small group",P.friends,2)}
@@ -2666,7 +2666,7 @@ function shareSources(){
   for(const t of [...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,20))out.push(["thread:"+t.id,"Thread, "+t.name]);
   for(const l of [...LENSES.filter(l=>l.year),...LENSES.filter(l=>!l.year)])out.push(["lens:"+l.id,"Lens, "+l.name]);
   for(const x of [...projects.values()].filter(x=>x&&!x.deleted&&shareWallSheets(x).length).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)).slice(0,20))out.push(["wall:"+x.id,"Wall, "+x.name]);
-  out.push(["recent:","The last two weeks, all classes"]);CLASSROOMS.forEach(r=>out.push(["recent:"+r,"The last two weeks, "+r+" Class"]));
+  out.push(["recent:","The last two weeks, all classes"]);CLASSROOMS.forEach(r=>out.push(["recent:"+r,"The last two weeks, "+r+" class"]));
   out.push(["bin:","From the weekly bin, the last six weeks"]);
   // teaching posts, for families and for educators, words only
   out.push(["own:","For families or educators, your own topic"]);
@@ -3274,7 +3274,7 @@ function storyDesignHtml(st){const pal=st.pal||"story",custom=String(pal).starts
     <div class="cnt">Stories print in the same typeface, ink and footer as slides and walls.</div></section>`}
 // a project's first class, whether its classes are kept as names or as entries with a room
 function projRoom(x){const c=(x&&x.classrooms||[])[0];const r=c&&typeof c==="object"?c.room:c;return CLASSROOMS.includes(r)?r:(typeof x.home==="string"&&CLASSROOMS.includes(x.home)?x.home:"")}
-function storyFoot(st){return ["Fulton Community School",st.classroom?st.classroom+" Class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
+function storyFoot(st){return ["Fulton Community School",st.classroom?st.classroom+" class":"",String(st.group||"").trim()?String(st.group).replace(/\s+group$/i,"")+" Group":""].filter(Boolean).join(" | ")}
 function newStory(o){
   if(needName())return null;o=o||{};const n=o.from||null;
   // where the story starts, the observations it brings and the educators' words it is drafted from
@@ -3309,13 +3309,13 @@ let stStarting=false;
 function storyStartOptions(){const g=(label,list)=>list.length?`<optgroup label="${esc(label)}">${list.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`:"";
   const room=myRoom(),mine=x=>isDirector()||!room||!x||x===room;
   const prs=[...projects.values()].filter(x=>x&&!x.deleted&&x.status!=="closed").sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>["proj:"+x.id,x.name]);
-  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted&&mine(t.classroom)).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,25).map(t=>["thread:"+t.id,t.name+(t.classroom?", "+t.classroom+" Class":"")]);
+  const ths=[...threads.values()].filter(t=>t&&!t.unfollowed&&!t.deleted&&mine(t.classroom)).sort((a,b)=>String(b.lastWeek||"").localeCompare(String(a.lastWeek||""))).slice(0,25).map(t=>["thread:"+t.id,t.name+(t.classroom?", "+t.classroom+" class":"")]);
   const wk=mondayOf(new Date()),pls=[...plans.values()].filter(p=>p&&p.id!=="example"&&p.weekOf>=addDays(wk,-14)&&mine(p.classroom)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)).slice(0,30).map(p=>{const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");
     // an Individual plan is named by its educator, its small group or area, and what it is about, so plans of the same week can be told apart
     const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),70);
-    if(p.type==="classroom")return ["plan:"+p.id,`${p.classroom?p.classroom+" Class, ":""}Classroom plan, week of ${wk}`];
+    if(p.type==="classroom")return ["plan:"+p.id,`${p.classroom?p.classroom+" class, ":""}Classroom plan, week of ${wk}`];
     const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";
-    return ["plan:"+p.id,[p.educator||"An educator",foc,p.classroom?p.classroom+" Class":"","week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")]});
+    return ["plan:"+p.id,[p.educator||"An educator",foc,p.classroom?p.classroom+" class":"","week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")]});
   const iqs=inqAll().filter(x=>mine(x.room)).slice(0,20).map(x=>["inq:"+x.id,x.name||"A team inquiry"]);
   const lns=LENSES.map(l=>["lens:"+l.id,l.name]);
   const bns=[...bins.values()].filter(b=>b&&b.date&&b.date>=addDays(wk,-21)).sort((a,b)=>b.date.localeCompare(a.date)).map(b=>["bin:"+b.id,"Weekly bin, "+fmtDate(b.date).replace(/, \d{4}$/,"")]);
@@ -3373,7 +3373,7 @@ function renderStory(){
     ${fr?`<div class="cnt">${esc(fr.line)}</div><div class="nudge" style="margin-top:6px">${stFrameSaid===fr.k?"The frame set the title and turned on Words we can practice and Let's think together, below. ":""}Draft the pages to write the story with this frame in mind. The pages still come only from the observations.</div>`:""}
     ${LENSES.length?`<label class="fld-label" style="margin-top:8px">Read it through a lens<select data-stf="lensId"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${l.id===st.lensId?"selected":""}>${esc(l.name||"A lens")}</option>`).join("")}</select></label>`:""}
 </section>`;
-  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([st.from&&st.from.label?"From "+st.from.label:"",room?room+" Class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")+" after the cover",stReviewed(st)?"Reviewed":"Draft"].filter(Boolean).join(" · "))}</div></div>
+  $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation, a story</span><h2 style="margin-top:4px">${esc(stTitle(st))}</h2><div class="sub">${esc([st.from&&st.from.label?"From "+st.from.label:"",room?room+" class":"",st.group,(st.pages||[]).length+" page"+((st.pages||[]).length===1?"":"s")+" after the cover",stReviewed(st)?"Reviewed":"Draft"].filter(Boolean).join(" · "))}</div></div>
     <span class="actions">${printBtns("story",st.id,"Book PDF",true)}${printBtns("storysmall",st.id,"Small book PDF")}</span></div><div class="hint">The book prints one page to a sheet. The small book prints on letter paper, both sides, flipped on the short edge, then folded in half.</div></div>
   ${kindBox}
   <section class="card"><div class="lbl">What the story tells, in our own words</div>
@@ -3465,7 +3465,7 @@ What they wondered. ${String(n.wonder||"").trim()||"(nothing written)"}`}).join(
 ${kindText}
 Tell it in our community's voice, as we, with the children's first names. Never write as I for one child.${fr?`
 The team chose the frame ${fr.title}. ${fr.line} Let that guide what the pages notice, but use only what the educators wrote.`:""}
-Show the children as capable and caring for one another. When something was hard, show the group finding a way through together, with remedy and repair. Never make one child the problem, and never name a child in a difficulty with behavior. Say educator, never teacher, and name classes as a Class, like the South Class. Add no themes and no seasonal ideas the educators did not bring.
+Show the children as capable and caring for one another. When something was hard, show the group finding a way through together, with remedy and repair. Never make one child the problem, and never name a child in a difficulty with behavior. Say educator, never teacher, and name classes as a class, like the South class. Add no themes and no seasonal ideas the educators did not bring.
 
 Write the story only from the educators' own words below. Never add an event, a place, a feeling, a quote or a child that the educators did not write. When the educators wrote a child's exact words, keep those words exactly and inside quotation marks, like \"I will help!\" they said. Name a feeling only if the educators named it. Use children's first names only, and only for children the educators wrote about or tagged in a photo. Write to the children, in the present or simple past, in short concrete sentences of 4 to 12 words, two or three sentences on a page. Show each child as capable, trying, helping or thinking. Keep it warm and positive. No colons, no dashes, no lists, no morals that the notes do not support.
 
@@ -4168,7 +4168,7 @@ function staffSubOk(k){const s=staffInfo()||{},c=VIEW_AS?(s.open||{}):(s.can||{}
   if(isNewHire())return ["strec","stnew","stpd","sthb","stfh"].includes(k)||(GROW_VIEWS.includes(k)&&!!c.growth&&k!=="stpdd"&&k!=="stmom");
   if(["stteam","st27","stdrill","stfiles","stformer"].includes(k))return false;
   // growth, the journal, check-ins, Proud Moments and PD days, for educators and apprentices once the director turns them on
-  // a Class team's own team meetings open from PD days whether or not the growth pages are open yet
+  // a class team's own team meetings open from PD days whether or not the growth pages are open yet
   if(GROW_VIEWS.includes(k))return !!c.growth||(k==="stpdd"&&!!(VIEW_AS?!isKitchenUser():c.team));
   if(k==="stnotices")return !!c.notices&&!isNewHire();
   return k==="strec"?!!(c.records||c.newed):k==="stnew"?!!(VIEW_AS?c.newed:c.newed):k==="stpd"?!!(c.pd||c.newed):k==="sthb"?!!(c.handbook||c.newed):k==="stfh"?!!(c.family||c.newed):false}
@@ -4378,14 +4378,14 @@ function todayWaiting(){
     const day=new Date().getDate(),pm=mShift(mNow(),-1);if(day<=10&&!farmPostMade(pm)&&farmOfMonth(pm).best)out.push({dot:"sky",t:"Farm of the month post",s:`${farmOfMonth(pm).best.farm}, for ${parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"})}.`,act:`data-gfom="${pm}"`,b:"Start it"});
     const qd=Math.floor((Date.now()-parseIso(quarterRange(quarterOf(iso(new Date()))).from).getTime())/864e5),lq=lastQuarter();
     if(qd<21&&!LS.get("tree.f2sq-"+lq))out.push({dot:"sky",t:"New quarter, Farm to School printouts",s:`The impact story and the farm thank-you cards for ${quarterName(lq)} are ready to print.`,act:`data-tview="grant" data-gopen="made" data-f2sq="${lq}"`,b:"Open"})}
-  // an educator's Class with no food moment in two weeks sees ideas from this week's bin
-  if(!dir){const rm=myRoom();const to=iso(new Date()),from=addDays(to,-14);if(rm&&!LS.get("tree.fidea-"+mondayOf(new Date())+"-"+rm)&&!foodMoments(from,to,rm).found.length&&binCurrent())out.push({dot:"sky",t:"Food education ideas from this week's bin",s:`No food moment in ${rm} Class's observations for two weeks. Three ideas from the bin are ready.`,act:`data-tview="bin"`,b:"See them",q:"fidea|"+rm});}
+  // an educator's class with no food moment in two weeks sees ideas from this week's bin
+  if(!dir){const rm=myRoom();const to=iso(new Date()),from=addDays(to,-14);if(rm&&!LS.get("tree.fidea-"+mondayOf(new Date())+"-"+rm)&&!foodMoments(from,to,rm).found.length&&binCurrent())out.push({dot:"sky",t:"Food education ideas from this week's bin",s:`No food moment in ${rm} class's observations for two weeks. Three ideas from the bin are ready.`,act:`data-tview="bin"`,b:"See them",q:"fidea|"+rm});}
   // once a month, the domains less visible so far in each class
   if(dir&&new Date().getDate()<=7&&!LS.get("tree.drrep-"+mNow())){const {rows,rooms}=drData();const t=rooms.map(r=>[r,drThin(rows.filter(x=>x.c.classroom===r))]).filter(([,x])=>x.length);
     if(t.length)out.push({dot:"sky",t:"DRDP, less visible so far this year",s:t.map(([r,x])=>`${r}, ${x.map(y=>DRDP_DOM[y.d]||y.d).join(" and ")}`).join(". ")+".",act:`data-tview="drdpreport" data-drrep="1"`,b:"Open"})}
-  // requests from Class teams wait for the director or the office to post them
-  if(isOffice())for(const x of ptItems().filter(x=>x.status==="requested"))out.push({dot:"mari",t:`Request from ${x.requestedBy||"a Class team"}`,s:[x.title+".",x.date?fmtDate(x.date)+".":"",x.spots?x.spots+" people.":""].filter(Boolean).join(" "),act:`data-tview="participation"`,b:"Look"});
-  // a family's strengths that fit a thread the Class follows, so the team can think about inviting them
+  // requests from class teams wait for the director or the office to post them
+  if(isOffice())for(const x of ptItems().filter(x=>x.status==="requested"))out.push({dot:"mari",t:`Request from ${x.requestedBy||"a class team"}`,s:[x.title+".",x.date?fmtDate(x.date)+".":"",x.spots?x.spots+" people.":""].filter(Boolean).join(" "),act:`data-tview="participation"`,b:"Look"});
+  // a family's strengths that fit a thread the class follows, so the team can think about inviting them
   if(!dir){const rm=myRoom();if(rm){const off=new Set(LS.get("tree.famfitOff",[]));const ths=[...threads.values()].filter(t=>(!t.room||t.room===rm)&&t.status!=="closed"&&t.status!=="resting");
     const words=t=>new Set(String(t||"").toLowerCase().match(/[a-z]{4,}/g)?.filter(w=>!STOP.has(w)).map(w=>w.replace(/(ing|ers|er|es|s)$/,""))||[]);let n=0;
     for(const k of kidsAt().filter(k=>k.classroom===rm&&k.familyStrengths&&has(k.familyStrengths.text))){if(n>=2)break;const fw=words(k.familyStrengths.text);
@@ -4696,8 +4696,8 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-kser
   try{await window.FP_API("/api/kitchen-serve",{monday:d.kmon,name:d.kname,farm:d.kfarm,field:d.kserve,value:now});
     kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y)}catch(err){t.setAttribute("aria-pressed",String(!now));toast((err&&err.message)||"Could not save that.")}},true);
 /* The week's reading. The first time the director opens TREE each week, TREE reads by itself, in the background. Find
-   threads, each of this year's lenses and the observations are read for the whole school and again for each Class, so a
-   quieter Class is never crowded out by a busier one. Each active project and each open team inquiry is read against the
+   threads, each of this year's lenses and the observations are read for the whole school and again for each class, so a
+   quieter class is never crowded out by a busier one. Each active project and each open team inquiry is read against the
    last eight weeks of observations for the ones that may belong. What they find waits for her, the same as when she presses
    the buttons. One device runs it, each part is marked done as it finishes, and a reading closed partway carries on from
    where it stopped the next time TREE opens. */
@@ -4745,13 +4745,13 @@ async function weeklyReads(){
     db.doc("settings/weekly").set(weeklyRec).catch(()=>{});if(view==="today")renderMain()}}
 function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(new Date()))return "";const w=weeklyRec;
   if(w.failed)return `<div class="card" style="margin-top:14px"><b>Part of this week's reading did not finish</b> <span class="cnt">${w.missed?`${w.missed} part${w.missed===1?"":"s"} still to read. `:""}TREE carries on from there the next time you open it, after an hour.</span></div>`;
-  if(!w.done){let all=0;try{all=weeklySteps().length}catch(e){}const dn=(w.doneSteps||[]).length;return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>This week's reading</b> <span class="cnt">TREE is reading threads, the lens and observations for the whole school and each Class, then the open projects and team inquiries${all?`, ${Math.min(dn,all)} of ${all} done`:""}. Keep TREE open for a few minutes.</span></span></div>`}
+  if(!w.done){let all=0;try{all=weeklySteps().length}catch(e){}const dn=(w.doneSteps||[]).length;return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>This week's reading</b> <span class="cnt">TREE is reading threads, the lens and observations for the whole school and each class, then the open projects and team inquiries${all?`, ${Math.min(dn,all)} of ${all} done`:""}. Keep TREE open for a few minutes.</span></span></div>`}
   if(LS.get("tree.weeklyseen")===w.week)return "";
   const n=(k,one,many)=>w[k]?`${w[k]} ${w[k]===1?one:many}`:"";
   const parts=[n("threads","new thread","new threads"),w.joined?`more evidence for ${w.joined} thread${w.joined===1?"":"s"} you follow`:"",n("moments","lens moment","lens moments"),n("patterns","new pattern in observations","new patterns in observations"),w.projects?`observations that may belong to ${w.projects} project${w.projects===1?"":"s"}`:"",w.inquiries?`observations for ${w.inquiries} team inquir${w.inquiries===1?"y":"ies"}`:""].filter(Boolean);
   const any=parts.length;
   const btn=(go,label,show)=>show?`<button class="btn small${go==="threads"?"":" ghost"}" data-weeklygo="${go}">${label}</button>`:"";
-  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done.</b> <span class="cnt">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each Class has its own reading beside the one for the whole school.":""}</span></span><span class="actions">${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
+  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done.</b> <span class="cnt">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each class has its own reading beside the one for the whole school.":""}</span></span><span class="actions">${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
@@ -4769,9 +4769,9 @@ function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.week
 function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";const b=binAll().find(x=>mondayOf(parseIso(x.date))===mondayOf(new Date()));if(!b)return"";
   const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
   return `<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">This week's bin, ${esc(parseIso(b.date).toLocaleDateString("en-US",{weekday:"long"}))}</h3><div class="cnt">${n} things from local farms${held?" · "+held+" question"+(held===1?"":"s")+" to hold":""}</div></div><button class="btn small ghost" data-tview="bin">See the bin</button></div></section>`}
-// a Class team asks families for help. It goes to the director, who posts it to the Family page.
+// a class team asks families for help. It goes to the director, who posts it to the Family page.
 let askFam=false;
-// the director's Write my plan, an Individual or a Classroom plan for any Class, on the same form. Her plan is marked as
+// the director's Write my plan, an Individual or a Classroom plan for any class, on the same form. Her plan is marked as
 // hers and is ready once its boxes have writing, with no review.
 let dirPlanAsk=false;
 function dirPlanHtml(){return `<section class="card" style="margin-top:12px"><div class="lbl">Write my plan</div><div class="hint">Your plan is marked as yours and needs no review. It is ready once every box has writing.</div>
@@ -4810,7 +4810,7 @@ function renderToday(){
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button data-tview="slides"><b>Make documentation</b><span>${isDirector()?"A slide or a wall from observations":"A slide from observations"}</span></button>
-    ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any Class</span></button>`:isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
+    ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any class</span></button>`:isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
@@ -5057,7 +5057,7 @@ function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!V
   if(!ed&&window.FP_API&&Date.now()-gthAt>30000){gthAt=Date.now();window.FP_API("/api/gatherings",{}).then(r=>{window.FP_GATHERINGS=r;if(view==="gatherings")renderMain()}).catch(()=>{})}
   const list=gthList(),tk=gthToolkits();
   const up=list.filter(g=>!g.date||g.date>=today),past=list.filter(g=>g.date&&g.date<today).reverse();
-  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":k==="garden-visit"?"A Class or group from another school visiting our garden. Their educator fills in the intake form before the first visit, and the form stays on paper with the visiting school. A garden visit stays with the staff and never reaches families.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>${k==="garden-visit"?`<div class="actions">${printBtns("gthintake","","Visiting educator intake form")}</div>`:""}
+  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":k==="garden-visit"?"A class or group from another school visiting our garden. Their educator fills in the intake form before the first visit, and the form stays on paper with the visiting school. A garden visit stays with the staff and never reaches families.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>${k==="garden-visit"?`<div class="actions">${printBtns("gthintake","","Visiting educator intake form")}</div>`:""}
     ${tk[k]?`<div><a href="${esc(tk[k])}" target="_blank" rel="noopener">The ${esc(GTH_NAMES[k])} toolkit</a></div>`:`<div class="cnt">A place for the ${esc(GTH_NAMES[k])} toolkit, once there is one.</div>`}
     ${ed?`<label class="fld-label">The toolkit, a link<input type="url" data-gthtk="${k}" value="${esc(tk[k]||"")}" placeholder="https://"></label>`:""}${k==="play-garden"&&isDirector()&&!VIEW_AS?`<div class="cnt">The Play Garden application is turned on and off in Settings, Releases, beside the Gatherings release.</div>`:""}</div>`;
   const F=gthForm;
@@ -5492,7 +5492,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-nattopen],
     patchNotice(nid,{attached:[...(n.attached||[]),{kind,id,title:x.title}]});renderMain();return}
   if(d.nattrm){const [nid,i]=d.nattrm.split("|");const n=notices.get(nid);if(!n)return;patchNotice(nid,{attached:(n.attached||[]).filter((_,k)=>k!==+i)});renderMain()}},true);
 document.addEventListener("input",e=>{if(e.target.id!=="natt-q")return;nAttachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#natt-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
-// today's plans and what is attached to them, for the educator's own Class and small groups, or every Class for the director
+// today's plans and what is attached to them, for the educator's own class and small groups, or every class for the director
 function todayAttachedHtml(){if(isKitchenUser())return "";const wk=planWeekNow(),dow=new Date().getDay(),room=myRoom(),mg=myGroups().map(g=>g.name);
   const ps=[...plans.values()].filter(p=>p&&p.weekOf===wk&&p.id!=="example"&&(p.attached||[]).length&&(!room||p.classroom===room||(p.groups||[]).some(g=>mg.includes(g)))&&(!(p.space&&(p.space.days||[]).length)||p.space.days.includes(dow)));
   if(!ps.length)return "";if(!libData)loadLibrary();
@@ -5518,7 +5518,7 @@ function gthIntakeDoc(){const line="______________________________";
       dList("Who we contact",["Parent or guardian names "+line,"Primary phone number "+line,"Primary email address "+line,"Emergency contact other than a parent or guardian, with a phone number "+line]),
       dList("Health",["Food or body allergies, sensitivities or restrictions "+line,"Medications or medical conditions we should know "+line,"Medical form on file and up to date?   Yes   No"]),
       dList("What to bring, everything labeled",["Water bottle","Change of clothes","Closed toe shoes","Swim clothes","Boots and dry clothes for winter"]),
-      dList("Daily routines",["Eating and bathroom habits "+line,"What helps this child with transitions "+line,"Who to contact with questions, the school number or the Class email "+line]),
+      dList("Daily routines",["Eating and bathroom habits "+line,"What helps this child with transitions "+line,"Who to contact with questions, the school number or the class email "+line]),
       dList("Rest time",["Rest time items, such as a pillow, blanket or stuffed animal "+line,"Cot labeled?   Yes   No","Sickness and licensed characters policies acknowledged?   Yes   No"]),
       dList("Interests and schedule",["What this child loves to explore "+line,"Visit days and times "+line])]}}
 function walkCheckDoc(){const w=walkInfo||{};const bp=w.backpack||{};
@@ -5551,7 +5551,7 @@ function renderWalks(){const m=$("#main");if(walkInfo===null){loadWalks();m.inne
   ${dir&&(w.proposals||[]).length?`<section class="card"><h3 style="font-size:17px">Waiting for you</h3>${w.proposals.map(x=>`<div class="ptlog"><span>${esc(x.title)}<span class="cnt"> · proposed for the ${x.doc==="family"?"2027 Family Handbook draft":"Policies and Procedures"}, ${esc(x.status==="accepted"?"accepted":x.status==="aside"?"set aside":"waiting")}</span></span><button class="linkbtn" data-tview="${x.doc==="family"?"stfh":"sthb"}">Read it there</button></div>`).join("")}</section>`:""}
   ${dir&&w.note?`<div class="cnt">${esc(w.note)}</div>`:""}`}
 let walkInviting=false;
-function walkInviteHtml(){const d=iso(new Date());return `<div class="kfields" style="margin-top:8px"><label>Walk<input type="text" id="wk-title" value="Creek walk"></label><label>Date<input type="date" id="wk-date" value="${d}"></label><label>From<input type="time" id="wk-start" value="09:30"></label><label>Until<input type="time" id="wk-end" value="11:00"></label><label>Class<select id="wk-room"><option value="">Any Class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>Family spots<input type="number" id="wk-spots" min="0" value="4"></label></div>
+function walkInviteHtml(){const d=iso(new Date());return `<div class="kfields" style="margin-top:8px"><label>Walk<input type="text" id="wk-title" value="Creek walk"></label><label>Date<input type="date" id="wk-date" value="${d}"></label><label>From<input type="time" id="wk-start" value="09:30"></label><label>Until<input type="time" id="wk-end" value="11:00"></label><label>Class<select id="wk-room"><option value="">Any class</option>${CLASSROOMS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></label><label>Family spots<input type="number" id="wk-spots" min="0" value="4"></label></div>
   <div class="actions"><button class="btn small" data-walkinvitesave="1">Post the invitation</button><button class="linkbtn" data-walkinvite="0">Cancel</button></div>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-walkready],[data-walkcheck],[data-walkpicsave],[data-walkinvite],[data-walkinvitesave]");if(!t)return;
   if(VIEW_AS&&!t.dataset.walkcheck){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -6609,7 +6609,7 @@ function planBlocks0(p){
     sec("Curriculum brainstorm",f.brainstorm,.8),{t:"web",web:p.web||blankWeb(),blank:B},
     cols([{label:"Languages of expression",text:(p.web?.languages||[]).join("\n")},{label:"Open questions",text:p.web?.questions},{label:"Notes for the environment",text:p.web?.environment}],1)];
   if(p.type==="individual"){
-    const focus=B?"Small group or classroom area":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any Class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
+    const focus=B?"Small group or classroom area":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
     const join=(a,label,list)=>[a||"",(list||[]).length?label+". "+list.join(", "):""].filter(Boolean).join("\n");
     return [cols([{label:"Focus",text:focus,w:.5},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
       sec("Possible activities and materials",join(f.materials,"Documentation",p.docplan),1.05),sec("Questions and languages",join(f.questions,"Languages to keep open",p.languages),.9),sec("Final remarks",f.remarks,1.15)];
@@ -6905,7 +6905,7 @@ const combPanel=(()=>{const sh=document.createElement("div");sh.className="combs
   sh.addEventListener("click",()=>{comb=null;combPaint()});return p})();
 const combLine=n=>firstLine(String(n.noticed||n.wonder||"").replace(/\s+/g," ").trim(),90)||"No words yet";
 function combRow(n,attr){const g=noteGroup(n),ph=g.find(x=>x.photo);
-  return `<button class="cbrow" type="button" ${attr}>${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="cbnone"></span>`}<span><b>${esc(combLine(g[0]))}</b><span class="cnt" style="display:block">${esc(g[0].by||"An educator")} \u00b7 ${esc(shortDate(g[0].at))}${momentRooms(g[0]).length?" \u00b7 "+esc(momentRooms(g[0]).map(r=>r+" Class").join(" and ")):""}${g.filter(x=>x.photo).length>1?` \u00b7 ${g.filter(x=>x.photo).length} photos`:""}</span></span></button>`}
+  return `<button class="cbrow" type="button" ${attr}>${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="cbnone"></span>`}<span><b>${esc(combLine(g[0]))}</b><span class="cnt" style="display:block">${esc(g[0].by||"An educator")} \u00b7 ${esc(shortDate(g[0].at))}${momentRooms(g[0]).length?" \u00b7 "+esc(momentRooms(g[0]).map(r=>r+" class").join(" and ")):""}${g.filter(x=>x.photo).length>1?` \u00b7 ${g.filter(x=>x.photo).length} photos`:""}</span></span></button>`}
 // every saved place that holds one of these observation ids. With a map of old id to new id, each is changed and saved.
 function combRefs(ids,to){const out=[],has=id=>ids.has(id),swap=id=>has(id)?to:id,uniq=a=>[...new Set(a)];
   const note=(kind,name,fix)=>{out.push({kind,name});if(to)fix()};
@@ -7235,7 +7235,7 @@ function nfKidsHtml(n,ph){
 function groupFirstHtml(kids,sg,room,chip){const mine=sg?kids.filter(c=>c.group===sg):[];
   if(!mine.length)return `<div class="chips">${kids.map(chip).join("")}</div>`;
   const rest=kids.filter(c=>c.group!==sg);
-  return `<div class="cnt kidsgrp">${esc(sg)} group</div><div class="chips">${mine.map(chip).join("")}</div>${rest.length?`<div class="cnt kidsgrp">${room?"The rest of "+esc(room)+" Class":"Everyone else"}</div><div class="chips">${rest.map(chip).join("")}</div>`:""}`}
+  return `<div class="cnt kidsgrp">${esc(sg)} group</div><div class="chips">${mine.map(chip).join("")}</div>${rest.length?`<div class="cnt kidsgrp">${room?"The rest of "+esc(room)+" class":"Everyone else"}</div><div class="chips">${rest.map(chip).join("")}</div>`:""}`}
 function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml(n);
   return `<div class="nf-pgroups">${ps.map((p,i)=>`<div class="nf-pg"><a class="nf-pgimg" href="${esc(photoSrc(p))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(p))}" alt="Photo ${i+1} in this observation"></a>
     <div style="min-width:0">${nfKidsHtml(p,i)}${i?sibStatusHtml(p):""}</div></div>`).join("")}</div>
@@ -7326,7 +7326,7 @@ function shareGroups(list){const groups=[],by=new Map();
 function obsPlanChoices(n){const day=n.day||iso(new Date(n.at||Date.now())),wk=mondayOf(parseIso(day));
   return [...plans.values()].filter(p=>p&&p.id!=="example"&&(p.type==="individual"||p.type==="classroom"||p.type==="smallgroup")&&p.weekOf>=addDays(wk,-7)&&p.weekOf<=addDays(wk,7)&&(!n.classroom||!p.classroom||p.classroom===n.classroom||momentRooms(n).includes(p.classroom)))
     .sort((a,b)=>(a.weekOf===wk?0:1)-(b.weekOf===wk?0:1)||b.weekOf.localeCompare(a.weekOf)||(a.type==="classroom")-(b.type==="classroom"))}
-function obsPlanLabel(p){const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");if(p.type==="classroom")return `${p.classroom?p.classroom+" Class, ":""}Classroom plan, week of ${wk}`;
+function obsPlanLabel(p){const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");if(p.type==="classroom")return `${p.classroom?p.classroom+" class, ":""}Classroom plan, week of ${wk}`;
   const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),32);
   return [p.educator||"",foc,"week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")}
 function obsGroupPlanHtml(n){const gs=GROUPS.filter(g=>!n.classroom||g.room===n.classroom||momentRooms(n).includes(g.room));const ps=obsPlanChoices(n);
@@ -7401,7 +7401,7 @@ function momentGroups(list){
     else if(mGroup==="group"){const gs=[...new Set([...(n.smallGroup?[n.smallGroup+"|"+((GROUPS.find(g=>g.name===n.smallGroup)||{}).room||n.classroom||"")]:[]),...(n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||""))])];
       if(!gs.length)put("~","No small group, since none is chosen and no child in a group is tagged",n);
       for(const k of gs){const [name,room]=k.split("|");const g=GROUPS.find(x=>x.name===name&&(!x.room||!room||x.room===room))||GROUPS.find(x=>x.name===name);
-        put("g"+k,[name+" group",g&&g.educator,room?room+" Class":(g&&g.room?g.room+" Class":"")].filter(Boolean).join(", "),n)}}
+        put("g"+k,[name+" group",g&&g.educator,room?room+" class":(g&&g.room?g.room+" class":"")].filter(Boolean).join(", "),n)}}
     else if(mGroup==="month")put(monthKey(n.at),monthName(n.at),n);
     else{const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
       if(pr)put("p"+pr.id,"Project, "+pr.name,n);
@@ -7454,7 +7454,7 @@ function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const m
 function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";const th=patternMatch(p);
   const posts=ns.filter((n,k)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===k&&!(th&&tookOut(n,th)));if(!posts.length)return "";
   const inIt=n=>th&&threadsOfNotice(n).some(t=>t.id===th.id);
-  const row=n=>{const who=[n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", ");
+  const row=n=>{const who=[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", ");
     return `<div style="display:grid;grid-template-columns:${n.photo?"64px ":""}1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);min-width:0">
       ${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:""}
       <div style="display:grid;gap:4px;min-width:0"><span class="cnt">${esc(who)}</span><span style="font-size:14.5px;overflow-wrap:anywhere">${esc(firstLine(noticeText(n),260))}</span>
@@ -8468,7 +8468,7 @@ function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.fi
     if(rs.some(x=>Object.values(x.dom).some(e=>!e.have&&e.prior&&e.prior.have)))blocks.push(dText("","IT with a number is the measures with evidence in the Infant and Toddler View, from before the child turned three."));
     const thin=drThin(rs);if(thin.length){blocks.push(dSub("Less visible so far"));for(const t of thin){const may=drMaybe(r,t.d);blocks.push(dText(DRDP_DOM[t.d]||t.d,`${t.have} of ${t.of} children have evidence. ${may.length?`${may.length} recent observation${may.length===1?"":"s"} may already hold evidence, ${may.map(n=>firstLine(momentHeading(n)||n.noticed,40).replace(/[.!?,;\s]+$/,"")).join(", ")}.`:"Not offered lately in the observations."}`))}}
     blocks.push(dText("",`Domains, ${doms.map(d=>d+" "+(DRDP_DOM[d]||"")).join(", ")}.`));
-    return {display:true,type:"report",acc:"smallgroup",title:"DRDP evidence, "+r+" Class",meta:[["Since",yr]],blocks}})}
+    return {display:true,type:"report",acc:"smallgroup",title:"DRDP evidence, "+r+" class",meta:[["Since",yr]],blocks}})}
 
 /* ---------- Food at Fulton, made for the school ----------
    Farm to School does work for the school from what TREE already holds. Each piece waits for the director before it
@@ -8497,7 +8497,7 @@ function farmOfMonth(month){const F=farmMonthData(month);const c=new Map();
 const binNoteRec=b=>b?grantRecs.get("binnote-"+b.id):null;
 function binNotePrompt(b){const items=(b.items||[]).map(i=>`${i.name}${(i.farms||[]).length?", from "+i.farms.map(f=>f+(fTown(f)?" in "+fTown(f):"")).join(" and "):""}`);
   const mon=mondayOf(parseIso(b.date));const mrec=menus.get(mon.slice(0,7))||{};const days=[];for(let i=0;i<5;i++){const d=addDays(mon,i);const x=(mrec.days||{})[d];if(x&&!x.closed)days.push(`${parseIso(d).toLocaleDateString("en-US",{weekday:"long"})}, ${[x.am,x.lunch,x.pm].filter(Boolean).join("; ")}`)}
-  return `Write a short note to the families of Fulton Community School & Farm about this week's FEED Sonoma produce bin. Each Class gets a bin, and on Tuesday a small group opens it together, washes, prepares, tastes and shares the food.
+  return `Write a short note to the families of Fulton Community School & Farm about this week's FEED Sonoma produce bin. Each class gets a bin, and on Tuesday a small group opens it together, washes, prepares, tastes and shares the food.
 The bin this week.
 ${items.join("\n")}
 This week's menu, to say where a food from the bin also appears at school, only when it truly does.
@@ -8540,7 +8540,7 @@ function tourDoc(){const ys=ptYearStart(),to=iso(new Date());const lines=gLines(
   const names=new Map();for(const x of lines)names.set(gKey(x.producer),x.producer);for(const b of binAll().filter(b=>b.date>=ys))for(const i of b.items||[])for(const f of i.farms||[])names.set(gKey(f),f);
   const son=[...farms].filter(k=>gTownCounty(fTown(names.get(k)))==="Sonoma").length;const st=kStapleList().slice(0,3);const blocks=[];
   blocks.push(dLead("","Every meal here is cooked from scratch in our school kitchen, and our breads, doughs and crusts are made by hand."));
-  blocks.push(dText("This school year",`${farms.size} local farms and producers have grown our food${son?`, ${son} of them here in Sonoma County`:""}. Each Class opens a FEED Sonoma bin of fresh produce every week, and the children wash, prepare, taste and share it together.`));
+  blocks.push(dText("This school year",`${farms.size} local farms and producers have grown our food${son?`, ${son} of them here in Sonoma County`:""}. Each class opens a FEED Sonoma bin of fresh produce every week, and the children wash, prepare, taste and share it together.`));
   if(st.length)blocks.push(dText("Our staples",kCap(kList(st.map(x=>x.food+(x.maker?" from "+x.maker:""))))+"."));
   blocks.push(dText("Scraps","What is left goes to our chickens and goats at the end of each day."));
   for(const n of foodPhotos(addDays(to,-120),to,2))blocks.push(dPhoto(n,220));
@@ -9002,7 +9002,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-menu
     renderSettings()}},true);
 
 /* ---------- Weekly bin ----------
-   Each Class receives a standard FEED Sonoma bin, and on Tuesday a small group the Class team chooses unboxes it.
+   Each class receives a standard FEED Sonoma bin, and on Tuesday a small group the class team chooses unboxes it.
    The server reads the list FEED posts ahead of delivery and keeps each week under bins/, so the year's record of
    what came grows by itself. The team keeps an idea bank of its own. Claude can suggest questions to hold, and a
    suggestion is kept only when an educator chooses it. Nothing here asks an educator to fill anything in. */
@@ -9064,7 +9064,7 @@ async function binLoad(fresh){
 function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
-    <div class="sub" style="max-width:74ch">Each Class receives a bin of produce from local farms, and on Tuesday a small group the Class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
+    <div class="sub" style="max-width:74ch">Each class receives a bin of produce from local farms, and on Tuesday a small group the class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
     ${b?`<div class="actions">${printBtns("bin",b.id,"Print the bin sheet",true)}<span id="binplan"><button class="btn small ghost" data-binplan="${esc(b.id)}">Make a plan from this bin</button></span><button class="btn small ghost" data-storybin="${esc(b.id)}">Make a story</button></div>`:""}</div>
     <div class="filters" role="group" aria-label="Class">${CLASSROOMS.map(r=>`<button class="pill" aria-pressed="${r===room}" data-binroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(!b){
@@ -9084,7 +9084,7 @@ function renderBin(){
     ${binFeed.error&&binFeed.at?`<div class="cnt warnline" style="margin-top:8px">${esc(binFeed.error)}</div>`:""}
     <div class="actions" style="margin-top:10px"><button class="linkbtn" data-binact="fresh">${binFeed.busy?"Reading FEED":"Read FEED's list again"}</button></div></section>`;
 
-  // the questions this Class is bringing to the table this week
+  // the questions this class is bringing to the table this week
   const held=binHeld(b,room);
   {const km=mondayOf(parseIso(b.date));h+=kitchenCardHtml(km,false,`<div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div>`)}
   h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held)+binExplHtml(b);
@@ -9358,7 +9358,7 @@ function inqStartForm(){const f=iqForm;const t=(f.threads||[])[0]&&threads.get(f
     <div class="actions"><button class="btn small" data-iqmake="1">Start it</button><button class="linkbtn" data-iqcancel="1">Cancel</button><span id="iqf-msg"></span></div></section>`}
 
 /* Observations a project or a team inquiry may hold, found by the week's reading. It reads the last eight weeks of
-   observations in the project's Classes, or the inquiry's Class, or the whole school when it belongs to the whole school,
+   observations in the project's classes, or the inquiry's class, or the whole school when it belongs to the whole school,
    and names the ones that may belong, each with a short reason in TREE's words. They wait on the page for the director to
    add or set aside, and nothing joins until she adds it. A new reading replaces what still waits, and one she set aside is
    not offered again. */
@@ -9739,7 +9739,7 @@ function planEvidence(p){
   // last week's Final remarks, and for an Individual plan last week's Classroom plan, which the week grows from
   {const lw=lastWeekOwn(p);if(lw)heads.push({kind:"Last week's Final remarks",name:planTitle(lw)+", week of "+fmtDate(lw.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(lw.id)}"`,lines:[["Final remarks",planAfter(lw)]]})}
   if(p.type==="individual"&&p.classroom){const cp=[...plans.values()].find(x=>x.type==="classroom"&&x.classroom===p.classroom&&x.weekOf===addDays(p.weekOf,-7)&&!isEmptyPlan(x));
-    if(cp)heads.push({kind:"Last week's Classroom plan",name:p.classroom+" Class, week of "+fmtDate(cp.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(cp.id)}"`,lines:[["Intentions and questions",cp.fields.intentions],["Observation",cp.fields.observation]].filter(([,v])=>has(v))})}
+    if(cp)heads.push({kind:"Last week's Classroom plan",name:p.classroom+" class, week of "+fmtDate(cp.weekOf).replace(/, \d{4}$/,""),open:`data-open="${esc(cp.id)}"`,lines:[["Intentions and questions",cp.fields.intentions],["Observation",cp.fields.observation]].filter(([,v])=>has(v))})}
   {const b=p.bin&&binAll().find(x=>x.id===p.bin);if(b){const pcs=binPieces(b,p.classroom).filter(x=>(BIN_TO[p.type]||{})[x.kind]);
     heads.push({kind:"Weekly bin",name:"The FEED bin of "+fmtDate(b.date).replace(/, \d{4}$/,""),open:`data-pbin="${esc(b.id)}"`,lines:[],bin:pcs})}}
   take([...(src.ids||[]),...(p.noticeAdded||[]),...(p.evidenceRefs||[]).filter(r=>r.kind==="obs").map(r=>r.id)].map(id=>notices.get(id)));
@@ -9799,7 +9799,7 @@ function evSync(){
     ${(()=>{if(!mine.length)return began?`<div class="muted">No observations yet. They appear here as they are kept.</div>`:"";const gs=shareGroups(mine.slice(0,60));const top=gs.slice(0,4),rest=gs.slice(4);
       const label=p.type==="individual"&&(p.groups||[]).length?"More from this group":"More for this plan";
       return `<div class="cnt">Observations for this plan, newest first</div>${top.map(([n,...m])=>evObHtml(n,used,p,m)).join("")}${rest.length?`<details><summary class="chiprow-label">${label}, ${rest.length}</summary><div style="display:grid;gap:12px;margin-top:8px">${rest.map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div></details>`:""}`})()}
-    ${more.length?`<details><summary class="chiprow-label">More from ${esc(p.classroom?p.classroom+" Class":"no class")}, ${more.length}</summary>
+    ${more.length?`<details><summary class="chiprow-label">More from ${esc(p.classroom?p.classroom+" class":"no class")}, ${more.length}</summary>
       <div class="muted" style="margin:6px 0">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>
       <div style="display:grid;gap:12px">${shareGroups(more.slice(0,24)).slice(0,12).map(([n,...m])=>evObHtml(n,used,p,m)).join("")}</div>${more.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</details>`:""}</div>`;
   evResults(p);pn.querySelector(".evbody").scrollTop=top}
@@ -9825,14 +9825,14 @@ function evResults(p){const box=$("#evres");if(!box)return;const q=evQuery.trim(
   if(!rs.length){box.innerHTML=`<div class="cnt">Nothing kept mentions ${esc(q)} yet.</div>`;return}
   box.innerHTML=`<div class="cnt">${rs.length===30?"The 30 most recent":rs.length} found</div>`+rs.map(r=>{
     if(r.kind==="obs"){const n=r.n,on=evRefHas(p,"obs",n.id)||(p.noticeAdded||[]).includes(n.id);
-      return `<div class="evhit"><div class="cnt">Observation, ${esc([n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", "))}</div>
+      return `<div class="evhit"><div class="cnt">Observation, ${esc([n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "))}</div>
         ${n.photo?`<div class="evrow"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"><div>${evSnip(r.text,terms)}</div></div>`:`<div>${evSnip(r.text,terms)}</div>`}
         <div class="actions">${on?`<span class="cnt">Attached</span>`:locked?"":`<button class="btn small ghost" data-evatt="obs|${esc(n.id)}">Attach to this plan</button>`}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></div></div>`}
     if(r.kind==="plan"){const pl=r.pl,on=evRefHas(p,"plan",pl.id);
       return `<div class="evhit"><div class="cnt">${esc(r.label)}, ${esc(byLine(pl))}</div><div>${evSnip(r.text,terms)}</div>
         <div class="actions">${on?`<span class="cnt">Attached</span>`:locked?"":`<button class="btn small ghost" data-evatt="plan|${esc(pl.id)}|${esc(r.k)}">Attach to this plan</button>`}<button class="linkbtn" data-open="${esc(pl.id)}">Open it</button></div></div>`}
     const t=r.t,on=planThreads(p).some(c=>c.t.id===t.id);
-    return `<div class="evhit"><div class="cnt">Thread${t.classroom?", "+esc(t.classroom)+" Class":""}</div><div><b>${evSnip(t.name,terms)}</b>${t.question?`<div class="muted">${evSnip(t.question,terms)}</div>`:""}</div>
+    return `<div class="evhit"><div class="cnt">Thread${t.classroom?", "+esc(t.classroom)+" class":""}</div><div><b>${evSnip(t.name,terms)}</b>${t.question?`<div class="muted">${evSnip(t.question,terms)}</div>`:""}</div>
       <div class="actions">${on?`<span class="cnt">This plan follows it</span>`:locked?"":`<button class="btn small ghost" data-evatt="thread|${esc(t.id)}">Follow it in this plan</button>`}<button class="linkbtn" data-tsee="${esc(t.id)}">Open it</button></div></div>`}).join("")}
 /* ---------- search across TREE ----------
    One search for observations, photos, plans, threads, projects, slides, walls and stories. It finds words, children's
@@ -9968,7 +9968,7 @@ function renderParticipation(){
   const ptMany=(n,w)=>n+" "+w+(n==1?"":(w==="child"?"ren":"s"));
   const ptSignups=(x,ss)=>{const cnt=ptCounts(x);const ad=ss.reduce((a,s)=>a+(Number(s.adults)||0),0),ch=ss.reduce((a,s)=>a+(Number(s.children)||0),0);
     return `${cnt?`<div class="cnt"><b>Coming ${ptMany(ad,"adult")} and ${ptMany(ch,"child")}</b></div>`:""}<ul class="ptsign">${ss.map(s=>`<li>${esc(s.who||s.family||s.email)}${s.who&&s.family?` <span class="muted">(${esc(s.family)})</span>`:""}${cnt&&s.adults!=null?" · "+ptMany(s.adults,"adult")+", "+ptMany(s.children||0,"child"):""}${s.answer?" · "+esc(s.answer):""}</li>`).join("")}</ul>`};
-  const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0">${x.songbook||/\bsong\b/i.test(x.title||"")?`<button class="linkbtn" data-tview="songs" style="float:right">Our song book</button>`:""}<b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":x.type==="wish"?"Wish list":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" Class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?ptSignups(x,ss):""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
+  const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0">${x.songbook||/\bsong\b/i.test(x.title||"")?`<button class="linkbtn" data-tview="songs" style="float:right">Our song book</button>`:""}<b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":x.type==="wish"?"Wish list":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?ptSignups(x,ss):""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
     <span class="actions"><button class="btn small ghost" data-ptedit="${esc(x.id)}">Change</button><button class="linkbtn" data-ptopen="${esc(x.id)}">${x.open===false?"Open it again":"Close it"}</button></span></div>`};
   const form=ptForm?`<section class="card ptform"><h3 style="font-size:17px">${ptForm.id?"Change":"Add"} a way to take part</h3>
     ${ptForm.id?"":`<details class="ptbank"><summary class="chiprow-label">Start from an idea</summary>${PT_BANK.map((g,i)=>`<div class="cnt" style="margin-top:6px"><b>${esc(g.g)}</b></div><div class="chips">${g.items.map((x,j)=>`<button class="chip" data-ptbank="${i}|${j}" type="button">${esc(x.title)}</button>`).join("")}</div>`).join("")}</details>`}
@@ -9989,8 +9989,8 @@ function renderParticipation(){
     ${(()=>{const miss=kidsAt().filter(k=>!(k.parents||[]).some(p=>p&&has(p.email)));return miss.length?`<section class="card"><b>${miss.length} ${miss.length===1?"family has":"families have"} no email on file</b>, so ${miss.length===1?"it":"they"} cannot sign in to the Family page. <div class="actions" style="margin-top:6px">${miss.map(k=>`<button class="btn small ghost" data-kid="${esc(k.id)}" data-ktab="details">${esc(kidName(k))}</button>`).join("")}</div></section>`:""})()}
     ${test?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Testers</h3></div><div class="cnt">An email here signs in to the Family page as the family of the children you link to it. The code shows on the page in test mode.</div>${testers}
       <div class="actions"><input type="email" id="pt-temail" placeholder="An email to test with" style="flex:1;min-width:200px"><button class="btn small" data-ptadd="1">Add a tester</button></div></section>`:""}
-    ${reqs.length?`<section class="card ptbanner"><div class="secthead"><h3 style="font-size:17px">Requests from Class teams</h3></div><div class="cnt">A request reaches families only once you post it.</div>
-      ${reqs.map(x=>`<div class="ptitem"><div style="min-width:0"><b>${esc(x.title)}</b><div class="cnt">${esc([x.requestedBy?"From "+x.requestedBy:"",x.classroom?x.classroom+" Class":"",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.spots?x.spots+" people":""].filter(Boolean).join(" · "))}</div>${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
+    ${reqs.length?`<section class="card ptbanner"><div class="secthead"><h3 style="font-size:17px">Requests from class teams</h3></div><div class="cnt">A request reaches families only once you post it.</div>
+      ${reqs.map(x=>`<div class="ptitem"><div style="min-width:0"><b>${esc(x.title)}</b><div class="cnt">${esc([x.requestedBy?"From "+x.requestedBy:"",x.classroom?x.classroom+" class":"",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.spots?x.spots+" people":""].filter(Boolean).join(" · "))}</div>${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
         <span class="actions"><button class="btn small" data-ptapprove="${esc(x.id)}">Post it</button><button class="btn small ghost" data-ptedit="${esc(x.id)}">Change first</button><button class="linkbtn" data-ptdel="${esc(x.id)}">Not now</button></span></div>`).join("")}</section>`:""}
     ${ptSlotsHtml(c,test)}
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Ways to take part</h3>${ptForm?"":`<button class="btn small" data-ptnew="1">Add one</button>`}</div>
@@ -10342,7 +10342,7 @@ function renderProject(x){
         ${mine.length?mine.map(o=>projThreadCard(x,o.l,o.t,ws)).join(""):`<div class="empty" style="padding:10px">No thread from this class yet.</div>`}</div>`}).join("")}</div>`:`<div class="empty">No threads yet. Add a followed thread below as one appears.</div>`}
     ${free.length?`<label class="tlink">Add a thread we are following<select data-ptadd="1"><option value="">Choose a thread</option>${free.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}</section>`;
 
-  h+=`<section class="card"><div class="lbl">People beyond the Classes</div>
+  h+=`<section class="card"><div class="lbl">People beyond the classes</div>
     <textarea data-pf="people" rows="2" placeholder="Families, community members, or the people receiving the children's letters">${esc(x.people||"")}</textarea></section>
     <section class="card"><div class="lbl">Team notes</div><textarea data-pf="notes" rows="2">${esc(x.notes||"")}</textarea></section>`;
 
@@ -10739,7 +10739,7 @@ function renderLens(){
   }else h+=`<div class="empty">No reading yet for ${lRoom==="All"?"all classes":"the "+esc(lRoom)+" class"}.</div>`;
   h+=`</section>`;
   {const ls=[...stories.values()].filter(st=>st.lensId===LENS.id&&(lRoom==="All"||!st.classroom||st.classroom===lRoom));if(ls.length)h+=`<section class="card"><div class="lbl">Stories read through this lens</div>
-    <div class="evid">${ls.map(st=>`<div><button class="linkbtn" data-story="${esc(st.id)}"><b>${esc(stTitle(st))}</b></button> <span class="cnt">${esc([st.classroom?st.classroom+" Class":"",stReviewed(st)?"":"draft"].filter(Boolean).join(", "))}</span></div>`).join("")}</div></section>`}
+    <div class="evid">${ls.map(st=>`<div><button class="linkbtn" data-story="${esc(st.id)}"><b>${esc(stTitle(st))}</b></button> <span class="cnt">${esc([st.classroom?st.classroom+" class":"",stReviewed(st)?"":"draft"].filter(Boolean).join(", "))}</span></div>`).join("")}</div></section>`}
   {const iq=inqAll().filter(q=>q.lensId===LENS.id&&(lRoom==="All"||!q.room||q.room===lRoom));if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries read through this lens</div>
     <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${esc(q.id)}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span></div>`).join("")}</div></section>`}
   $("#main").innerHTML=h;
@@ -11235,7 +11235,7 @@ function projectDoc(x,long){
       for(const pl of rs)blocks.push(dText([pl.type==="smallgroup"?"After the week":"Final remarks",pBy(whoLine(pl))].filter(Boolean).join(", "),planAfter(pl)))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
-  if(has(x.people))blocks.push(dText("People beyond the Classes",x.people));
+  if(has(x.people))blocks.push(dText("People beyond the classes",x.people));
   if(has(x.notes))blocks.push(dText("Team notes",x.notes));
   return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
 }
@@ -11986,7 +11986,7 @@ async function printsClick(t){
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton Community School projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
   if(kind==="kdiet"){await kDietLoad();await out([kDietDoc()],"Allergies and dietary needs "+iso(new Date()));return true}
-  if(kind==="classlist"){await out([classListDoc(t.dataset.id||"All")],(t.dataset.id&&t.dataset.id!=="All"?t.dataset.id+" Class list ":"Class lists ")+iso(new Date()));return true}
+  if(kind==="classlist"){await out([classListDoc(t.dataset.id||"All")],(t.dataset.id&&t.dataset.id!=="All"?t.dataset.id+" class list ":"Class lists ")+iso(new Date()));return true}
   if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");await kMonthMenu(m,k,word);return true}
   if((kind==="farmsheet"||kind==="farmwall")&&!isDirector())await kMonthFetch(t.dataset.id);
   if(kind==="farmsheet"){await out([farmSheetDoc(t.dataset.id)],`What we ate ${MENU_MONTH(t.dataset.id)}`);return true}
@@ -12712,7 +12712,7 @@ function proofPaint(){const p=proofPanel;if(!proof){p.hidden=true;p.innerHTML=""
     ${proof.fixes.map((f,i)=>f.done?"":`<div class="proofrow"><div><button class="linkbtn cnt" data-proofshow="${f.k}">${esc(f.label||"Show")}</button><div>${show(f)}</div>${f.why?`<span class="cnt">${esc(f.why)}</span>`:""}</div><span class="actions"><button class="btn small ghost" data-proofok="${i}">Accept</button><button class="linkbtn" data-proofno="${i}">${sv?"Keep mine":"Leave it"}</button></span></div>`).join("")}</div>`}
 // the one proofread TREE runs, before a save, from the Proofread button and on the Proofread observations page. F is a list of
 // texts, each {k, text}, and the answer is a list of fixes, each a short span and the same span corrected.
-const proofPrompt=F=>`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Never add or remove anything the writer saw or heard. Keep names of children, people, farms and places exactly. Keep every word inside quotation marks exactly as written, since those are a child's own words. Keep the names of the Classes and the words a Class uses for its places and groups exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
+const proofPrompt=F=>`Proofread the writing below. It is from Fulton Community School & Farm, a preschool. Fix only spelling, capital letters, punctuation, grammar, missing or repeated words. Also replace any colon or semicolon with a comma or a period (a clock time like 9:30 stays), any em dash or en dash with a comma, and the word teacher with educator. Do not rewrite sentences, change word choice, tone or meaning, or shorten anything. Never add or remove anything the writer saw or heard. Keep names of children, people, farms and places exactly. Keep every word inside quotation marks exactly as written, since those are a child's own words. Keep the names of the classes and the words a class uses for its places and groups exactly. Keep formatting marks exactly, such as ### at the start of a line, a dash that starts a list line, and [words](link). Leave a text alone when it is a list of words, a date or a code.
 
 Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","from":"a short span copied exactly from that text, with a few words around the error so it appears only once","to":"the same span corrected","why":"two to five words, such as Capital letter or Spelling"}]}. Answer {"fixes":[]} when nothing needs fixing.
 
@@ -12783,7 +12783,7 @@ function pfGather(){const seen=new Map();
   return [...seen.values()]}
 const pfLeft=()=>pfGather().length;
 function pfStart(){const list=pfGather();pf={items:new Map(list.map(x=>[x.id,Object.assign(x,{status:"waiting"})])),order:list.map(x=>x.id),running:false,paused:false,error:"",read:0,saved:0,skipped:0};pfRun()}
-// a fix that would change a child's name, a Class or a child's quoted words is left out, whatever the proofread says
+// a fix that would change a child's name, a class or a child's quoted words is left out, whatever the proofread says
 function pfSafe(text,f){const at=text.indexOf(f.from);if(at<0)return false;const end=at+f.from.length;
   const quotes=[...text.matchAll(/["“][^"”]{1,400}["”]/g)];
   for(const m of quotes){const a=m.index,b=a+m[0].length;if(a<end&&b>at&&!(at<=a&&b<=end&&f.to.includes(m[0])))return false}
@@ -12818,7 +12818,7 @@ function pfDiff(a,b){const A=String(a||"").split(/(\s+)/),B=String(b||"").split(
   let i=0,j=0,x="",y="";while(i<n&&j<m){if(A[i]===B[j]){x+=esc(A[i]);y+=esc(B[j]);i++;j++}else if(L[i+1][j]>=L[i][j+1]){x+=/^\s+$/.test(A[i])?esc(A[i]):`<del>${esc(A[i])}</del>`;i++}else{y+=/^\s+$/.test(B[j])?esc(B[j]):`<ins>${esc(B[j])}</ins>`;j++}}
   for(;i<n;i++)x+=/^\s+$/.test(A[i])?esc(A[i]):`<del>${esc(A[i])}</del>`;for(;j<m;j++)y+=/^\s+$/.test(B[j])?esc(B[j]):`<ins>${esc(B[j])}</ins>`;return [x,y]}
 function pfItemHtml(x){const n=notices.get(x.id);if(!n)return "";
-  const head=`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:16px">${esc(momentHeading(n)||firstLine(n.noticed,60)||"An observation")}</h3><span class="cnt">${esc([longDate(n.day||iso(new Date(n.at||Date.now()))),n.by||"An educator",n.classroom?n.classroom+" Class":"",x.ids.length>1?x.ids.length+" photos":""].filter(Boolean).join(", "))}</span></div>`;
+  const head=`<div class="secthead" style="margin-bottom:6px"><h3 style="font-size:16px">${esc(momentHeading(n)||firstLine(n.noticed,60)||"An observation")}</h3><span class="cnt">${esc([longDate(n.day||iso(new Date(n.at||Date.now()))),n.by||"An educator",n.classroom?n.classroom+" class":"",x.ids.length>1?x.ids.length+" photos":""].filter(Boolean).join(", "))}</span></div>`;
   if(x.status!=="ready")return `<section class="card pfitem" data-pfid="${esc(x.id)}">${head}<div class="pftext">${esc([n.noticed,n.wonder].map(v=>String(v||"").trim()).filter(Boolean).join("\n"))}</div><div class="cnt" style="margin-top:6px">${x.status==="reading"?`<span class="spin"></span> Proofreading`:"Waiting to be proofread"}</div></section>`;
   const parts=[["noticed","What I noticed"],["wonder","What I wonder"]].filter(([k])=>String(x.orig[k]||"").trim()||String(x.fixed[k]||"").trim());
   const same=parts.every(([k])=>x.orig[k]===x.fixed[k]);
@@ -12835,7 +12835,7 @@ function renderProofObs(){
   const ready=items.filter(x=>x.status==="ready"),reading=items.some(x=>x.status==="reading"),shown=items.slice(0,PF_AHEAD+PF_BATCH);
   const total=pf.order.length,doneN=total-items.length;
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">Proofread observations</h2>
-    <div class="sub" style="max-width:74ch">Every saved observation never proofread, oldest first. Only spelling, grammar and punctuation are fixed. Children's names, their quoted words and Class words stay as written. Nothing is saved until you approve it, and the educator stays the author.</div></div></div>
+    <div class="sub" style="max-width:74ch">Every saved observation never proofread, oldest first. Only spelling, grammar and punctuation are fixed. Children's names, their quoted words and class words stay as written. Nothing is saved until you approve it, and the educator stays the author.</div></div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="moments">‹ Observations</button></div>
     <section class="card"><div class="pfcount"><b id="pf-left">${left===0?"Every observation has been proofread.":left===1?"1 observation left to proofread.":left+" observations left to proofread."}</b>${pf.skipped?` <span class="cnt">${pf.skipped} skipped for now.</span>`:""}</div>
       ${total?`<div class="pfbar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${pf.read}" aria-label="Proofread so far"><span style="width:${Math.round(100*pf.read/Math.max(1,total))}%"></span></div><div class="cnt">Proofread ${pf.read} of ${total}${doneN?`. ${pf.saved} approved`:""}.${reading?" Reading the next few.":pf.paused&&!pf.error?" Paused.":""}</div>`:""}
@@ -13118,7 +13118,7 @@ function howEvents(){const ev=[];const nm=t=>t&&t.name||"a thread";const D=s=>s?
     ev.push({at:x.createdAt||0,pr:[x.id],t:(x.threads||[]).map(l=>l.id),room:x.home||"",what:`The project <b>${esc(x.name||"")}</b> began`,who:x.createdBy||(x.decision&&x.decision.who)||"",how:"hand",why:projUnder(x)?firstLine(projUnder(x),200):"",open:`data-popen="${esc(x.id)}"`});
     for(const l of x.threads||[]){const t=threads.get(l.id);if(!t)continue;ev.push({at:l.at||x.createdAt||0,pr:[x.id],t:[t.id],room:t.classroom||"",what:`Thread <b>${esc(nm(t))}</b> joined the project <b>${esc(x.name||"")}</b>`,who:l.by||"",how:"hand",open:`data-popen="${esc(x.id)}"`})}
     for(const e of x.evidence||[]){if(!e||e.via!=="weekly")continue;const it=itemOf(e.planId||e.id);if(!it)continue;ev.push({item:it.id,at:e.at||it.at,pr:[x.id],room:it.room,what:`Observation <b>${esc(it.label)}</b> joined the project <b>${esc(x.name||"")}</b>`,who:e.by||"",how:"weekly",why:e.why||"",words:firstLine(noticeText(notices.get(it.id)),220),open:`data-obsgo="${esc(it.id)}"`})}
-    for(const c of x.classrooms||[])if(c.room&&c.room!==x.home)ev.push({at:c.at||D(c.week),pr:[x.id],room:c.room,what:`${esc(c.room)} Class joined the project <b>${esc(x.name||"")}</b>`,who:c.by||"",how:"hand",why:PJOIN[c.how]||"",open:`data-popen="${esc(x.id)}"`})}
+    for(const c of x.classrooms||[])if(c.room&&c.room!==x.home)ev.push({at:c.at||D(c.week),pr:[x.id],room:c.room,what:`${esc(c.room)} class joined the project <b>${esc(x.name||"")}</b>`,who:c.by||"",how:"hand",why:PJOIN[c.how]||"",open:`data-popen="${esc(x.id)}"`})}
   for(const x of inqAll())for(const [id,o] of Object.entries(x.obsFound||{})){if(!(x.obs||[]).includes(id))continue;const it=itemOf(id);if(!it)continue;ev.push({item:id,at:o.at||it.at,room:it.room,what:`Observation <b>${esc(it.label)}</b> joined the team inquiry <b>${esc(x.name||"")}</b>`,who:o.by||"",how:"weekly",why:o.why||"",words:firstLine(noticeText(notices.get(id)),220),open:`data-obsgo="${esc(id)}"`})}
   for(const c of scans.values()){for(const x of c.threads||[])if(x.dismissed)ev.push({at:x.dismissed.at||0,t:[],room:x.classroom||"",no:true,what:`Dismissed a thread TREE found, <b>${esc(x.name||"")}</b>`,who:x.dismissed.by||"",how:"find",why:x.question||""});
     for(const p of c.patterns||[])if(p.notThread&&p.notAt){const t=threads.get(p.matchId0);ev.push({at:p.notAt,t:t?[t.id]:[],room:"",no:true,what:`Said the pattern <b>${esc(p.name||"")}</b> is not ${t?`<b>${esc(nm(t))}</b>`:"that thread"}`,who:p.notBy||"",how:"pattern",why:p.why||""})}}
@@ -13132,8 +13132,8 @@ function howFiltered(){const {ev,HOW}=howEvents();const [k,id]=String(aFocus||""
 let howPick="";
 const evKind=e=>e.no?"no":/^Observation/.test(e.what)?"obs":/^Plan/.test(e.what)?"plan":/joined the project|project <b>|began$/.test(e.what)||/^The project/.test(e.what)?"project":"thread";
 const byTree=e=>!e.who&&(e.how==="find"||e.how==="suggest"||e.how==="pattern");
-function howUnits(){const out=[];for(const x of projects.values())if(x&&x.status!=="closed")out.push({k:"p",id:x.id,name:x.name,sub:"Project"+(x.home?", "+x.home+" Class":"")});
-  for(const t of threads.values())if(threadLive(t)&&t.status!=="closed"&&!projectOfThread(t.id))out.push({k:"t",id:t.id,name:t.name,sub:"Thread"+(t.classroom?", "+t.classroom+" Class":"")});return out}
+function howUnits(){const out=[];for(const x of projects.values())if(x&&x.status!=="closed")out.push({k:"p",id:x.id,name:x.name,sub:"Project"+(x.home?", "+x.home+" class":"")});
+  for(const t of threads.values())if(threadLive(t)&&t.status!=="closed"&&!projectOfThread(t.id))out.push({k:"t",id:t.id,name:t.name,sub:"Thread"+(t.classroom?", "+t.classroom+" class":"")});return out}
 function threadBits(t,ev){const mine=ev.filter(e=>e.t.includes(t.id));const ns=threadNotices(t),ps=threadPlans(t);
   const oe=mine.filter(e=>evKind(e)==="obs"),pe=mine.filter(e=>evKind(e)==="plan");
   const who=[...new Set(ps.map(p=>p.educator).filter(Boolean).flatMap(x=>String(x).split(/,\s*/)))].slice(0,3);
@@ -13141,8 +13141,8 @@ function threadBits(t,ev){const mine=ev.filter(e=>e.t.includes(t.id));const ns=t
 function howSentences(focus,bits,ev){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`,L=a=>a.length<3?a.join(" and "):a.slice(0,-1).join(", ")+" and "+a[a.length-1];const out=[];
   const obs=bits.reduce((a,b)=>a+b.ns.length,0),ot=bits.reduce((a,b)=>a+b.obsTree,0),plans=bits.reduce((a,b)=>a+b.ps.length,0),no=ev.filter(e=>e.no).length;
   const who=[...new Set(bits.flatMap(b=>b.who))].slice(0,4),first=bits.map(b=>b.first).filter(Boolean).sort()[0],last=bits.map(b=>b.last).filter(Boolean).sort().slice(-1)[0];
-  if(focus.k==="p"){const x=projects.get(focus.id),rooms=projRooms(x);out.push(`${x.name} holds ${cnt(bits.length,"thread")}${rooms.length?` in ${L(rooms.map(r=>r+" Class"))}`:""}.`)}
-  else{const t=threads.get(focus.id);const w0=[...(t.weeks||[]),...bits.map(b=>b.first)].filter(Boolean).sort()[0];out.push(`${t.name} has been seen${w0?" since the week of "+fmtDate(w0).replace(/, \d{4}$/,""):""}${t.classroom?" in "+t.classroom+" Class":""}.`)}
+  if(focus.k==="p"){const x=projects.get(focus.id),rooms=projRooms(x);out.push(`${x.name} holds ${cnt(bits.length,"thread")}${rooms.length?` in ${L(rooms.map(r=>r+" class"))}`:""}.`)}
+  else{const t=threads.get(focus.id);const w0=[...(t.weeks||[]),...bits.map(b=>b.first)].filter(Boolean).sort()[0];out.push(`${t.name} has been seen${w0?" since the week of "+fmtDate(w0).replace(/, \d{4}$/,""):""}${t.classroom?" in "+t.classroom+" class":""}.`)}
   if(obs)out.push(`TREE found ${ot} of its ${cnt(obs,"observation")}, and educators connected the rest.`);
   if(plans)out.push(`${who.length?L(who)+" have":"Educators have"} carried it in ${cnt(plans,"plan")}${first?` since the week of ${fmtDate(first).replace(/, \d{4}$/,"")}`:""}${last&&last!==first?`, most recently the week of ${fmtDate(last).replace(/, \d{4}$/,"")}`:""}.`);
   if(no)out.push(`The team turned down ${cnt(no,"of TREE's connections")}.`.replace("1 of TREE's connectionss","one of TREE's connections"));
@@ -13154,7 +13154,7 @@ function howMapSvg(focus,bits){const W=380,parts=[];let y=20;const box=(x,y2,w,h
   const spine=focus.k==="p"&&bits.length;const sy=y;
   const mids=[];for(const b of bits){const t=b.t;if(focus.k==="p")y+=22;mids.push(y+26);
     if(focus.k==="p"){const l=((projects.get(focus.id).threads||[]).find(l=>l.id===t.id))||{};parts.push(line(`M24 ${y+26} L44 ${y+26}`,!l.by,`data-howpick="thread:${esc(t.id)}"`))}
-    parts.push(box(44,y,312,52,"mthread",t.name,`Thread${t.classroom?", "+t.classroom+" Class":""}`,focus.k==="p"?`data-howfocus="t:${esc(t.id)}"`:`data-tsee="${esc(t.id)}"`));y+=52;
+    parts.push(box(44,y,312,52,"mthread",t.name,`Thread${t.classroom?", "+t.classroom+" class":""}`,focus.k==="p"?`data-howfocus="t:${esc(t.id)}"`:`data-tsee="${esc(t.id)}"`));y+=52;
     const by=y+18;parts.push(line(`M120 ${y} L120 ${by}`,b.planTree*2>b.ps.length,`data-howpick="plans:${esc(t.id)}"`));parts.push(line(`M280 ${y} L280 ${by}`,b.obsTree*2>b.ns.length,`data-howpick="obs:${esc(t.id)}"`));
     parts.push(box(52,by,136,48,"mitem",`${b.ps.length} plan${b.ps.length===1?"":"s"}`,b.who.slice(0,2).join(", ")||"None yet",`data-howpick="plans:${esc(t.id)}"`));
     parts.push(box(212,by,136,48,"mitem",`${b.ns.length} observation${b.ns.length===1?"":"s"}`,b.ns.length?`${b.obsTree} found by TREE`:"None yet",`data-howpick="obs:${esc(t.id)}"`));y=by+48}
@@ -13174,10 +13174,10 @@ function howFullThread(t,ev,open){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
   const kids=[...new Set(ns.flatMap(n=>n.children||[]))].map(id=>children.get(id)).filter(Boolean);
   const eds=[...new Set([...ps.map(p=>p.educator),...ns.map(n=>n.by)].filter(Boolean).flatMap(x=>String(x).split(/,\s*/)))];
   const sec=(k,title,n,body)=>n?`<details class="howsec" data-fold="${esc(k)}" ${foldOpen.has(k)?"open":""}><summary><span>${esc(title)}</span><span class="cnt">${n}</span></summary><div class="howlist">${body}</div></details>`:"";
-  return `<details class="card fold howthread" data-fold="how:${esc(t.id)}" ${open||foldOpen.has("how:"+t.id)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(t.name)}</span><span class="cnt">${[t.classroom&&t.classroom+" Class",cnt(ps.length,"plan"),cnt(posts.length,"observation")].filter(Boolean).join(" · ")}</span></summary><div class="foldbody" style="display:grid;gap:6px">
+  return `<details class="card fold howthread" data-fold="how:${esc(t.id)}" ${open||foldOpen.has("how:"+t.id)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(t.name)}</span><span class="cnt">${[t.classroom&&t.classroom+" class",cnt(ps.length,"plan"),cnt(posts.length,"observation")].filter(Boolean).join(" · ")}</span></summary><div class="foldbody" style="display:grid;gap:6px">
     ${t.question?`<div class="muted">${esc(t.question)}</div>`:""}
     ${sec("hp:"+t.id,"Plans, week by week",ps.length,ps.map(p=>item(p.id,`${esc(FORMS[p.type].short)} plan, ${esc(p.educator||p.classroom||"")}`,"Week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""),planAfter(p)?"Final remarks. "+firstLine(planAfter(p),180):firstLine((p.fields||{}).observation||(p.fields||{}).area||"",180),"",`data-open="${esc(p.id)}"`,mark(p.id))).join(""))}
-    ${sec("ho:"+t.id,"Observations",posts.length,posts.map(n=>item(n.id,esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),180),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`,mark(n.id))).join(""))}
+    ${sec("ho:"+t.id,"Observations",posts.length,posts.map(n=>item(n.id,esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),180),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`,mark(n.id))).join(""))}
     ${sec("hs:"+t.id,"Slides made from them",sl.length,sl.map(x=>item(x.id,esc(String(x.title||"").trim()||"Untitled slide"),shortDate(x.at||x.updatedAt||Date.now()),"","","data-slide=\""+esc(x.id)+"\"",null)).join(""))}
     ${sec("hst:"+t.id,"Stories made from them",st.length,st.map(x=>item(x.id,esc(stTitle(x)),stReviewed(x)?"Reviewed":"Draft","","","data-story=\""+esc(x.id)+"\"",null)).join(""))}
     ${sec("hi:"+t.id,"Team inquiries",iq.length,iq.map(q=>item(q.id,esc(q.name||"Untitled"),inqScope(q),firstLine(q.see||"",160),"","data-iqopen=\""+esc(q.id)+"\"",null)).join(""))}
@@ -13187,13 +13187,13 @@ function howFullThread(t,ev,open){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
     ${sec("hn:"+t.id,"What the team might offer next",(t.next||[]).length,`<ul style="margin:0 0 0 18px">${(t.next||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`)}
     <div class="actions"><button class="btn small ghost" data-tsee="${esc(t.id)}">Open the thread</button></div></div></details>`}
 function howProjectExtras(x){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;const sts=projStories(x),ps=x.stories||[],wall=((x.wall&&x.wall.sheets)||[]).filter(s=>s.include),iq=inqsOfProject(x.id),rooms=projRooms(x);
-  const rows=[rooms.length&&`<div><span class="chiprow-label">Classes</span><div>${esc(rooms.map(r=>r+" Class").join(", "))}${x.home?`, begun in ${esc(x.home)}`:""}</div></div>`,
+  const rows=[rooms.length&&`<div><span class="chiprow-label">Classes</span><div>${esc(rooms.map(r=>r+" class").join(", "))}${x.home?`, begun in ${esc(x.home)}`:""}</div></div>`,
     (x.groups||[]).length&&`<div><span class="chiprow-label">Small groups carrying it</span><div>${esc(x.groups.join(", "))}</div></div>`,
     wall.length&&`<div><span class="chiprow-label">The wall</span><div>${cnt(wall.length,"sheet")}, ${wall.filter(s=>has(s.text)).length} with the team's words</div></div>`,
     sts.length&&`<div><span class="chiprow-label">Stories to read aloud</span><div class="actions">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}</button>`).join("")}</div></div>`,
     ps.length&&`<div><span class="chiprow-label">Project stories</span><div>${esc(ps.map(s=>(s.label||"Project story")+", "+shortDate(s.at)).join(" · "))}</div></div>`,
     iq.length&&`<div><span class="chiprow-label">Team inquiries alongside it</span><div class="actions">${iq.map(q=>`<button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button>`).join("")}</div></div>`,
-    has(x.people)&&`<div><span class="chiprow-label">People beyond the Classes</span><div>${esc(firstLine(x.people,200))}</div></div>`].filter(Boolean);
+    has(x.people)&&`<div><span class="chiprow-label">People beyond the classes</span><div>${esc(firstLine(x.people,200))}</div></div>`].filter(Boolean);
   return rows.length?`<section class="card" style="gap:10px">${rows.join("")}</section>`:""}
 // what has not been connected to anything yet, so nothing kept is out of view
 function howLoose(){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
@@ -13203,7 +13203,7 @@ function howLoose(){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
   const it=(t,m,b,img,o)=>`<div class="howitem">${img?`<img src="${esc(img)}" alt="" loading="lazy">`:""}<div style="min-width:0;display:grid;gap:2px"><b style="font-weight:600">${t}</b><span class="cnt">${esc(m)}</span>${b?`<span class="evclamp" style="font-size:13.5px">${esc(b)}</span>`:""}<span><button class="linkbtn" ${o}>Open it</button></span></div></div>`;
   return `<details class="card fold" data-fold="howloose" ${foldOpen.has("howloose")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Not connected yet</span><span class="cnt">${cnt(ps.length,"plan")}, ${cnt(posts.length,"observation")}</span></summary><div class="foldbody" style="display:grid;gap:6px">
     ${ps.length?`<details class="howsec"><summary><span>Plans</span><span class="cnt">${ps.length}</span></summary><div class="howlist">${ps.map(p=>it(`${esc(FORMS[p.type].short)} plan, ${esc(p.educator||p.classroom||"")}`,"Week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""),firstLine((p.fields||{}).area||(p.fields||{}).observation||"",160),"",`data-open="${esc(p.id)}"`)).join("")}</div></details>`:""}
-    ${posts.length?`<details class="howsec"><summary><span>Observations</span><span class="cnt">${posts.length}</span></summary><div class="howlist">${posts.slice(0,60).map(n=>it(esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" Class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),160),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`)).join("")}${posts.length>60?`<div class="cnt">The 60 most recent.</div>`:""}</div></details>`:""}</div></details>`}
+    ${posts.length?`<details class="howsec"><summary><span>Observations</span><span class="cnt">${posts.length}</span></summary><div class="howlist">${posts.slice(0,60).map(n=>it(esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),160),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`)).join("")}${posts.length>60?`<div class="cnt">The 60 most recent.</div>`:""}</div></details>`:""}</div></details>`}
 function howHtml(){const {ev,HOW}=howFiltered();const [k,id]=String(aFocus||"").split(":");const f=id&&(k==="t"?threads.get(id):projects.get(id));
   const units=howUnits();
   let h=`<section class="card" style="gap:8px"><select id="afocus" style="width:auto;max-width:100%" aria-label="A project or thread"><option value="">Choose a project or thread</option>${units.map(u=>`<option value="${u.k}:${esc(u.id)}" ${aFocus===u.k+":"+u.id?"selected":""}>${esc(u.sub.split(",")[0]+" "+u.name)}</option>`).join("")}</select></section>`;
@@ -13263,13 +13263,13 @@ function schoolWholeHtml(){const {ev}=howEvents();const cnt=(n,w)=>`${n} ${w}${n
   h+=`<section class="card" style="gap:10px"><div class="lbl">How the school connects</div>
     ${prs.length?`<div class="actions" style="gap:6px 14px">${prs.map(x=>`<button class="linkbtn" data-howfocus="p:${esc(x.id)}"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${pcol(x.id)};margin-right:6px"></span>${esc(x.name)}</button>`).join("")}</div>`:""}
     <div class="schoolmap" style="grid-template-columns:repeat(${rooms.length},minmax(0,1fr))">${rooms.map(r=>{const ts=thOf(r);
-      return `<div class="smcol"><div class="smroom">${esc(r)} Class</div>${ts.map(t=>{const pr=projectOfThread(t.id);const b=threadBits(t,ev);const tr=!t.followedBy&&!!t.origin;
+      return `<div class="smcol"><div class="smroom">${esc(r)} class</div>${ts.map(t=>{const pr=projectOfThread(t.id);const b=threadBits(t,ev);const tr=!t.followedBy&&!!t.origin;
         return `<button class="smthread${tr?" dash":""}" data-howfocus="t:${esc(t.id)}" style="border-left-color:${pr?pcol(pr.id):"var(--line-strong,#888780)"}"><b>${esc(t.name)}</b><span class="cnt">${b.ps.length} plans · ${b.ns.length} obs</span></button>`}).join("")||`<div class="cnt">No thread followed yet</div>`}</div>`}).join("")}</div>
     <div class="cnt">Tap a thread or a project to see everything in it. The coloured edge is the project a thread belongs to.</div></section>`;
   // each class, opened to everything in it
   for(const r of rooms){const ts=thOf(r),k="sch:"+r,lp=loosePlans.filter(p=>p.classroom===r),lo=looseObs.filter(n=>momentRooms(n).includes(r)),lop=lo.filter((n,i)=>lo.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
     const it=(t2,m,b,img,o)=>`<div class="howitem">${img?`<img src="${esc(img)}" alt="" loading="lazy">`:""}<div style="min-width:0;display:grid;gap:2px"><b style="font-weight:600">${t2}</b><span class="cnt">${esc(m)}</span>${b?`<span class="evclamp" style="font-size:13.5px">${esc(b)}</span>`:""}<span><button class="linkbtn" ${o}>Open it</button></span></div></div>`;
-    h+=`<details class="card fold" data-fold="${k}" ${foldOpen.has(k)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(r)} Class</span><span class="cnt">${cnt(ts.length,"thread")}${lp.length||lop.length?` · ${lp.length+lop.length} not connected`:""}</span></summary><div class="foldbody" style="display:grid;gap:6px">
+    h+=`<details class="card fold" data-fold="${k}" ${foldOpen.has(k)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(r)} class</span><span class="cnt">${cnt(ts.length,"thread")}${lp.length||lop.length?` · ${lp.length+lop.length} not connected`:""}</span></summary><div class="foldbody" style="display:grid;gap:6px">
       ${ts.map(t=>howFullThread(t,ev,false)).join("")}
       ${lp.length?`<details class="howsec" data-fold="${k}:lp" ${foldOpen.has(k+":lp")?"open":""}><summary><span>Plans not connected yet</span><span class="cnt">${lp.length}</span></summary><div class="howlist">${lp.map(p=>it(`${esc(FORMS[p.type].short)} plan, ${esc(p.educator||p.classroom||"")}`,"Week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""),firstLine((p.fields||{}).area||(p.fields||{}).observation||"",160),"",`data-open="${esc(p.id)}"`)).join("")}</div></details>`:""}
       ${lop.length?`<details class="howsec" data-fold="${k}:lo" ${foldOpen.has(k+":lo")?"open":""}><summary><span>Observations not connected yet</span><span class="cnt">${lop.length}</span></summary><div class="howlist">${lop.slice(0,60).map(n=>it(esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),160),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`)).join("")}${lop.length>60?`<div class="cnt">The 60 most recent.</div>`:""}</div></details>`:""}
@@ -13320,20 +13320,20 @@ function schoolData(){const since=schoolSince(),sinceW=mondayOf(new Date(since))
   return {rooms,shared,sharedP,mixed}}
 function schoolHtml(){const d=schoolData(),cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
   let h=`<section class="card"><div class="lbl">Each class</div><div class="pcols">${CLASSROOMS.map(r=>{const c=d.rooms[r];
-    return `<div class="pcol"><div class="chiprow-label">${esc(r)} Class</div><div class="cnt">${[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", ")||"Nothing kept in this range"}</div>
+    return `<div class="pcol"><div class="chiprow-label">${esc(r)} class</div><div class="cnt">${[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", ")||"Nothing kept in this range"}</div>
       ${c.threads.size?`<div class="actions">${[...c.threads.values()].map(t=>`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div>`:""}
       ${c.projects.size?`<div class="cnt">Project ${[...c.projects.values()].map(x=>`<button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</div>`:""}</div>`}).join("")}</div></section>`;
   if(d.shared.length||d.sharedP.length)h+=`<section class="card"><div class="lbl">Reaching across classes</div><div style="display:grid;gap:10px">
-    ${d.sharedP.map(x=>`<div><span class="cnt">Project</span> <button class="linkbtn" data-popen="${esc(x.id)}"><b>${esc(x.name)}</b></button><div class="cnt">${esc(projRooms(x).map(r=>r+" Class").join(", "))}</div></div>`).join("")}
+    ${d.sharedP.map(x=>`<div><span class="cnt">Project</span> <button class="linkbtn" data-popen="${esc(x.id)}"><b>${esc(x.name)}</b></button><div class="cnt">${esc(projRooms(x).map(r=>r+" class").join(", "))}</div></div>`).join("")}
     ${d.shared.map(e=>`<div><span class="cnt">Thread</span> <button class="linkbtn" data-tsee="${esc(e.t.id)}"><b>${esc(e.t.name)}</b></button><div class="cnt">${Object.entries(e.by).map(([r,v])=>`${esc(r)}, ${[v.plans&&cnt(v.plans,"plan"),v.obs&&cnt(v.obs,"observation")].filter(Boolean).join(" and ")}`).join(" · ")}</div></div>`).join("")}</div></section>`;
   if(d.mixed.length)h+=`<details class="card fold"><summary class="foldhead"><span class="lbl" style="margin:0">Children from different classes together</span><span class="cnt">${cnt(d.mixed.length,"observation")}</span></summary><div class="foldbody" style="display:grid;gap:8px">
     ${d.mixed.slice(0,20).map(n=>`<div class="evhit" style="display:grid;gap:2px"><span class="cnt">${esc([momentRooms(n).join(" and "),n.by,shortDate(n.at)].filter(Boolean).join(", "))}</span><span>${esc(firstLine(noticeText(n),200))}</span><span><button class="linkbtn" data-obsgo="${esc(n.id)}">Open it</button></span></div>`).join("")}</div></details>`;
   return h}
 function schoolDoc(){const d=schoolData(),cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;const blocks=[];
   blocks.push(dSub("Each class"));for(const r of CLASSROOMS){const c=d.rooms[r];
-    blocks.push(dItem(r+" Class",[[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", "),c.threads.size&&"Threads "+[...c.threads.values()].map(t=>t.name).join(", "),c.projects.size&&"Projects "+[...c.projects.values()].map(x=>x.name).join(", ")].filter(Boolean).join(". "),"",[]))}
+    blocks.push(dItem(r+" class",[[c.plans.length&&cnt(c.plans.length,"plan"),c.obs.length&&cnt(c.obs.length,"observation")].filter(Boolean).join(", "),c.threads.size&&"Threads "+[...c.threads.values()].map(t=>t.name).join(", "),c.projects.size&&"Projects "+[...c.projects.values()].map(x=>x.name).join(", ")].filter(Boolean).join(". "),"",[]))}
   if(d.shared.length||d.sharedP.length){blocks.push(dSub("Reaching across classes"));
-    d.sharedP.forEach(x=>blocks.push(dItem(x.name,projRooms(x).map(r=>r+" Class").join(", "),"",["Project"])));
+    d.sharedP.forEach(x=>blocks.push(dItem(x.name,projRooms(x).map(r=>r+" class").join(", "),"",["Project"])));
     d.shared.forEach(e=>blocks.push(dItem(e.t.name,Object.entries(e.by).map(([r,v])=>`${r}, ${[v.plans&&cnt(v.plans,"plan"),v.obs&&cnt(v.obs,"observation")].filter(Boolean).join(" and ")}`).join(". "),"",["Thread"])))}
   if(d.mixed.length){blocks.push(dSub("Children from different classes together"));d.mixed.slice(0,8).forEach(n=>blocks.push(dQuote(firstLine(noticeText(n),220),[momentRooms(n).join(" and "),pBy(n.by),shortDate(n.at)].filter(Boolean).join(", "))))}
   return {display:true,type:"report",acc:"classroom",title:"Across the school",meta:[["Range",{"4":"Last 4 weeks","8":"Last 8 weeks",year:"This school year"}[aSRange]||""]],blocks}}
@@ -13396,7 +13396,7 @@ function portfoliosHtml(list,yr){
     <div class="pflist">${cards||`<div class="empty">No children in this view.</div>`}</div></section>`;
 }
 function renderChildren(){
-  // a new visit opens on the educator's own Class, once the educators list has arrived
+  // a new visit opens on the educator's own class, once the educators list has arrived
   if(!kVisit&&(rosterSeen||isDirector()||VIEW_AS)){kRoom=ownClass()||"All";kVisit=true}
   const all=kidList(),dir=isDirector();
   const inRoom=c=>kRoom==="All"||c.classroom===kRoom;
@@ -13579,7 +13579,7 @@ const ENROLL_LABELS=new Proxy({},{get:(o,k)=>wordsOf("family-enrollment")[k]||""
 // the All About Me book's page titles, from staff/wording/family-aboutme.md
 const AAM_TITLES_=()=>window.TREE_WORDS?TREE_WORDS.list(wordsDoc("family-aboutme")).map(([,t])=>TREE_WORDS.paras(t)[0]||""):[];
 // the office's checklist for a new family, ticking itself where TREE already knows, then the class team's steps
-// the office steps and the Class team steps, their words from staff/wording/onboarding.md, ticking themselves where TREE already knows
+// the office steps and the class team steps, their words from staff/wording/onboarding.md, ticking themselves where TREE already knows
 const OFFICE_RULES=[["o_1core"],["o_tree",c=>!!c.enrollDate&&(c.parents||[]).some(p=>p&&has(p.email))],["o_link"],["o_kaymbu"],
   ["o_visit",c=>!!c.visit],["o_print",c=>!!(c.onboarding||{}).printed],["o_signed",c=>!!(c.onboarding||{}).paperwork],["o_701"],["o_286"],
   ["o_allergy"],["o_book"]];
@@ -13600,7 +13600,7 @@ document.addEventListener("change",e=>{const t=e.target.closest("[data-ocheck],[
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("occk"))LS.set("tree.occk",d.open?"1":null)},true);
 /* the allergy and dietary line. When a family submits the enrollment form, a short line from what they typed waits on
    the child as pending. Once the office confirms it, the line shows on the child's card, the Children page, the Kitchen
-   page and the Class list, and a change from the family waits for the office the same way. */
+   page and the class list, and a change from the family waits for the office the same way. */
 function dietLine(c){const d=c&&c.diet;return d&&!d.none&&has(d.line)?String(d.line):""}
 function dietPending(c){const p=c&&c.diet&&c.diet.pending;return p&&(has(p.line)||p.none)?p:null}
 let kidDietEdit="";
@@ -13627,7 +13627,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-kdietgo],[
     kidDietSave(c,Object.assign({line:none?"":line,none},stamp));return}
   if(d.kdietok){const p=dietPending(c);if(!p)return;kidDietSave(c,Object.assign({line:p.none?"":p.line,none:!!p.none},stamp));return}
   if(d.kdietkeep){const keep=Object.assign({},c.diet||{});delete keep.pending;kidDietSave(c,keep);return}});
-// the kitchen's list, from the server, which sends the kitchen only each child's first name, last initial, Class and line
+// the kitchen's list, from the server, which sends the kitchen only each child's first name, last initial, class and line
 let kDiets=null;
 async function kDietLoad(){try{const j=await window.FP_API("/api/kitchen-diets",{});kDiets=j.list||[]}catch(e){kDiets=kDiets||[]}return kDiets}
 // the allergy list is read again each time the card is drawn, at most once a minute, so a device left open never shows an old list
@@ -13636,13 +13636,13 @@ function kDietHtml(){if(kDiets&&Date.now()-kDietAt>60e3){kDietAt=Date.now();kDie
   if(!kDiets){if(!kDietAt){kDietAt=Date.now();kDietLoad().then(()=>{const el=$("#kdietcard");if(el)el.outerHTML=kDietHtml()})}return `<section class="card" id="kdietcard"><div class="lbl">Allergies and dietary needs</div><div class="cnt">Loading…</div></section>`}
   const by=[...new Set(kDiets.map(x=>x.room||""))];
   return `<section class="card" id="kdietcard"><div class="secthead"><div class="lbl">Allergies and dietary needs</div><div class="actions">${kDiets.length?printBtns("kdiet","","Print the list"):""}</div></div>
-    ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" Class":"No Class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. ${esc(nutLine())}</div>`}</section>`}
+    ${kDiets.length?by.map(r=>`<div class="cnt" style="margin-top:6px">${esc(r?r+" class":"No class")}</div>${kDiets.filter(x=>(x.room||"")===r).map(x=>`<div><b>${esc(x.name)}</b> ${esc(x.line)}</div>`).join("")}`).join(""):`<div class="cnt">No child has a confirmed allergy or dietary line. ${esc(nutLine())}</div>`}</section>`}
 function kDietDoc(){const L=kDiets||[];return {type:"report",acc:"smallgroup",title:"Allergies and dietary needs",meta:[longDate(iso(new Date())),nutLine()],
-  blocks:[...new Set(L.map(x=>x.room||""))].map(r=>dTable(r?r+" Class":"No Class",L.filter(x=>(x.room||"")===r).map(x=>[x.name,x.line]),{head:["Child","Allergy or dietary need"],widths:[.3,.7]}))}}
-// a Class list for a substitute, each child with their small group and their allergy or dietary line
+  blocks:[...new Set(L.map(x=>x.room||""))].map(r=>dTable(r?r+" class":"No class",L.filter(x=>(x.room||"")===r).map(x=>[x.name,x.line]),{head:["Child","Allergy or dietary need"],widths:[.3,.7]}))}}
+// a class list for a substitute, each child with their small group and their allergy or dietary line
 function classListDoc(room){const rs=kidList().filter(c=>kidAt(c)&&(room==="All"||c.classroom===room));const rooms=room==="All"?[...new Set(rs.map(c=>c.classroom||""))]:[room];
-  return {type:"report",acc:"smallgroup",title:room==="All"?"Class lists":room+" Class list",meta:[longDate(iso(new Date())),nutLine()],
-    blocks:rooms.map(r=>dTable(rooms.length>1?(r?r+" Class":"No Class"):"",rs.filter(c=>(c.classroom||"")===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first)).map(c=>[kidName(c),c.group||"",dietLine(c)]),{head:["Child","Small group","Allergy or dietary need"],widths:[.32,.2,.48]}))}}
+  return {type:"report",acc:"smallgroup",title:room==="All"?"Class lists":room+" class list",meta:[longDate(iso(new Date())),nutLine()],
+    blocks:rooms.map(r=>dTable(rooms.length>1?(r?r+" class":"No class"):"",rs.filter(c=>(c.classroom||"")===r).sort((a,b)=>(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first)).map(c=>[kidName(c),c.group||"",dietLine(c)]),{head:["Child","Small group","Allergy or dietary need"],widths:[.32,.2,.48]}))}}
 function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&v!=null&&v!==false);
   return `<div class="kgrid" style="margin-top:8px">${rows.map(([k,v])=>`<div><span class="lbl">${esc(ENROLL_LABELS[k]||k.replace(/_/g," "))}</span><div style="white-space:pre-line">${esc(v===true?"Yes":v)}</div></div>`).join("")}</div>`}
 // the state licensing forms, filled with what the family typed, for the family to sign at the visit. The filling is shared with the Family page.
@@ -13714,18 +13714,18 @@ function kidEditHtml(c){
     :`<div class="actions"><button class="btn small ghost" data-kstatus="at" data-id="${esc(c.id)}">At our school again</button></div>`}
     ${hist.length?`<div class="khist">${hist.map(h=>`<div>${esc(longDate(h.date||h.at))}, ${esc(h.what)}${h.by?", "+esc(h.by):""}</div>`).join("")}</div>`:""}`;
 }
-// a child's move to another Class or small group, noted on the child with the day and who made it. Moving children
+// a child's move to another class or small group, noted on the child with the day and who made it. Moving children
 // together does exactly this for each child ticked. The child keeps their id, so every observation, plan, conference
 // and portfolio stays with them.
 function kidSetRoom(c,room){const was=c.classroom;if(was===room)return false;c.classroom=room;if(c.group&&!GROUPS.some(g=>g.name===c.group&&g.room===c.classroom))c.group="";kidNote(c,`Moved from ${was||"no class"} to ${c.classroom}`);return true}
 function kidSetGroup(c,group){if((c.group||"")===(group||""))return false;c.group=group;kidNote(c,c.group?`Joined ${c.group}`:"No small group");return true}
-/* Move children, the director's, on the Children page. Children are picked by Class, small group or next year, the ones
-   to move are ticked, and the new Class and small group are chosen. One review shows every change before it is saved. */
+/* Move children, the director's, on the Children page. Children are picked by class, small group or next year, the ones
+   to move are ticked, and the new class and small group are chosen. One review shows every change before it is saved. */
 const kMoveBy={room:"Class",group:"Small group",next:"Next year"};
 function kMoveList(){const m=kMove;if(!m)return [];
   return kidsAt().filter(c=>m.by==="room"?(m.val?c.classroom===m.val:!CLASSROOMS.includes(c.classroom)):m.by==="group"?(c.group||"")===m.val:kidNext(c)===m.val)
     .sort((a,b)=>(CLASSROOMS.indexOf(a.classroom)-CLASSROOMS.indexOf(b.classroom))||(a.group||"").localeCompare(b.group||"")||a.first.localeCompare(b.first))}
-const kMoveWhere=(room,group)=>[room?room+" Class":"No class",group?group+" group":"no small group"].join(", ");
+const kMoveWhere=(room,group)=>[room?room+" class":"No class",group?group+" group":"no small group"].join(", ");
 function kMovePlan(){const m=kMove;if(!m)return [];
   return [...m.ticked].map(id=>children.get(id)).filter(c=>c&&kidAt(c)).sort((a,b)=>(CLASSROOMS.indexOf(a.classroom)-CLASSROOMS.indexOf(b.classroom))||a.first.localeCompare(b.first))
     .map(c=>{const from=[c.classroom||"",c.group||""],to=[m.room,m.group];return {c,from,to,same:from[0]===to[0]&&from[1]===to[1]}})}
@@ -13736,7 +13736,7 @@ function kMoveHtml(){const m=kMove;
       <div style="margin-top:6px">${plan.map(x=>`<div class="kmvrow"><b>${esc(kidName(x.c))}</b>${x.same?`<span class="cnt">Stays as it is, already in ${esc(kMoveWhere(x.from[0],x.from[1]))}</span>`:`<span class="cnt">From ${esc(kMoveWhere(x.from[0],x.from[1]))}</span><span class="cnt">To ${esc(kMoveWhere(x.to[0],x.to[1]))}</span>`}</div>`).join("")}</div>
       <div class="actions"><button class="btn small" data-kmvsave="1" ${moves.length?"":"disabled"}>${moves.length===1?"Save the move":"Save "+moves.length+" moves"}</button><button class="btn small ghost" data-kmvback="1">Change the moves</button></div></section>`}
   const list=kMoveList(),n=m.ticked.size,allOn=list.length&&list.every(c=>m.ticked.has(c.id));
-  const vals=m.by==="room"?[...CLASSROOMS.map(r=>[r,r+" Class"]),...(kidsAt().some(c=>!CLASSROOMS.includes(c.classroom))?[["","No class chosen"]]:[])]
+  const vals=m.by==="room"?[...CLASSROOMS.map(r=>[r,r+" class"]),...(kidsAt().some(c=>!CLASSROOMS.includes(c.classroom))?[["","No class chosen"]]:[])]
     :m.by==="group"?[...GROUPS.map(g=>[g.name,g.name+(g.room?", "+g.room:"")]),["","No small group"]]:[...Object.entries(NEXTPLAN),["","Not decided"]];
   const groups=GROUPS.filter(g=>g.room===m.room).map(g=>g.name);
   return `<section class="card" id="kmove"><div class="secthead"><h3 style="font-size:17px">Move children</h3><button class="linkbtn" data-kmvclose="1">Close</button></div>
@@ -13800,7 +13800,7 @@ document.addEventListener("input",e=>{if(view==="children"&&e.target.id==="kq"){
    scores or words that rate or compare a child. Educators change it, proofread it and mark it Ready. It is kept on the child's record by school year, so it is
    in the nightly backup, and it reaches the family only when the director shares it, as it reads at that moment. */
 const TS_SECTIONS=[["who","Who this child is"],["play","How they play and learn"],["friends","Friends and relationships"],["working","What they are working on"],["helps","What helps"]];
-const TS_HINT={who:"Who {first} is at our school, and what {first} loves and brings to the Class.",play:"How {first} plays, explores and learns.",friends:"{first}'s friends, and how {first} is with other children and the educators.",working:"What {first} is practicing and growing in now.",helps:"What helps {first}, at the start of the day, somewhere new and in a hard moment."};
+const TS_HINT={who:"Who {first} is at our school, and what {first} loves and brings to the class.",play:"How {first} plays, explores and learns.",friends:"{first}'s friends, and how {first} is with other children and the educators.",working:"What {first} is practicing and growing in now.",helps:"What helps {first}, at the start of the day, somewhere new and in a hard moment."};
 // words that rate or compare a child stay out of the summary. The educators' DRDP words stay, since they make learning
 // visible, and everyday words such as hides behind her friend or energy levels are not ratings.
 const TS_RATING=/\b(scor(e|es|ed|ing)|ratings?|rated|meets? expectations|exceeds? expectations|below expectations|above average|below average|ahead of (his|her|their|other|most|the other)\b|behind (other children|his peers|her peers|their peers|peers|most children)|advanced for (his|her|their|a) age|developmentally delayed|(is|are|seems?) (behind|ahead))\b/i;
@@ -13836,7 +13836,7 @@ function tsPrompt(c,src){let room=60000;const take=xs=>xs.map(x=>x.text.slice(0,
 
 Write it only from the educators' own words below, from ${c.first}'s observations, portfolio and conference notes. Keep their words and phrasing wherever you can, joined into short, warm, plain sentences. Never add an event, a skill, a feeling, a quote, a name or anything else the educators did not write, and never guess. When the notes say nothing for a part, leave that part as an empty string.
 Keep any DRDP measure or level the educators wrote, in their words, and never add one. Never use scores, ratings or words that rate or compare a child, such as ahead of peers, behind peers, advanced for age, meets or exceeds. Never diagnose or label a child.
-Call the child ${c.first}. Other children keep the initial the notes give them. Say educator, never teacher, and Class, never classroom. Never use a colon, a semicolon, an em dash or an en dash. Write paragraphs, with no lists or headings.
+Call the child ${c.first}. Other children keep the initial the notes give them. Say educator, never teacher, and class, never classroom. Never use a colon, a semicolon, an em dash or an en dash. Write paragraphs, with no lists or headings.
 
 The parts are
 who, Who this child is. Who ${c.first} is at our school, and what ${c.first} loves and brings.
@@ -13897,7 +13897,7 @@ function transitionDoc(c,given){const x=tsOf(c)||{},s=given||x.sections||{},age=
   // each paragraph keeps its own lines, and the part's heading stays with its first one
   const blocks=TS_SECTIONS.filter(([k])=>has(s[k])).flatMap(([k,l])=>String(s[k]).trim().split(/\n\s*\n/).filter(has).map((p,i)=>dText(i?"":l,p.trim())));
   if(!blocks.length)blocks.push(dText("","Nothing is written in this summary yet."));
-  const meta=[["Child",kidName(c)],["Age",age],["Next year",({k:"Kindergarten",tk:"TK"})[kidNext(c)]||""],["Class",c.classroom?c.classroom+" Class":""],["Date",longDate(iso(new Date()))]].filter(m=>m[1]);
+  const meta=[["Child",kidName(c)],["Age",age],["Next year",({k:"Kindergarten",tk:"TK"})[kidNext(c)]||""],["Class",c.classroom?c.classroom+" class":""],["Date",longDate(iso(new Date()))]].filter(m=>m[1]);
   return {display:true,type:"report",acc:"story",title:"Transition summary",meta,blocks}}
 document.addEventListener("input",e=>{const t=e.target;if(view!=="child"||!t.dataset||!t.dataset.ts)return;const c=children.get(kidOpen);if(!c)return;
   const x=tsOf(c),w=tsWait[c.id]=tsWait[c.id]||{sections:{}};w.sections[t.dataset.ts]=t.value;
@@ -14043,13 +14043,13 @@ function setupTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   return `<section class="card" id="setuptoday" style="margin-top:14px"><details class="fold" data-fold="today:setup" ${foldOpen.has("today:setup")?"open":""}><summary class="foldhead"><h3 style="font-size:17px;display:inline">Not set up yet</h3><span class="cnt">${L.length}</span></summary><div class="foldbody">
     <div class="tlist">${L.map(x=>`<div class="prow"><b>${esc(x.name)}</b><span class="cnt">${esc(x.why)}</span></div>`).join("")}</div>
     <div class="hint">Reminders turn on when an educator opens TREE from the icon on their phone's Home Screen and signs in. This list goes once everyone is set up.</div><div class="actions"><button class="linkbtn" data-tview="settings">Sign-ins</button></div></div></details></section>`}
-/* Team meetings on Today, for that Class team and the director, and once for the director a month whose first Monday is
+/* Team meetings on Today, for that class team and the director, and once for the director a month whose first Monday is
    a school closure, to choose another day for the PD staff meeting */
 let meetSt={loaded:false,team:[],ask:[]};setInterval(()=>{meetSt.loaded=false},15*60e3);
 async function loadMeetToday(){if(!window.FP_API||meetSt.loading)return;meetSt.loading=true;try{const j=await window.FP_API("/api/staff/g/pd/today",{});meetSt.team=j.team||[];meetSt.ask=j.ask||[]}catch(e){meetSt.team=[];meetSt.ask=[]}meetSt.loading=false;meetSt.loaded=true;if(view==="today"&&!document.activeElement?.closest?.("#main"))renderMain()}
 function meetTodayHtml(){if(!window.FP_HOSTED||isKitchenUser()||!(window.FP_NAME&&window.FP_NAME()))return"";if(!meetSt.loaded){loadMeetToday();return""}
   const asked=LS.get("tree.meetask",{})||{};const ask=isDirector()&&!VIEW_AS?meetSt.ask.filter(a=>!asked[a.ym]):[];
-  const t=meetSt.team.map(x=>`<div class="prow"><div><b>${esc(x.room)} Class team meeting</b><div class="cnt">${x.start?esc(clockTime(x.start))+(x.end?" to "+esc(clockTime(x.end)):""):"Today"}${(x.carried||[]).length?`, ${x.carried.length} next step${x.carried.length===1?"":"s"} open`:""}</div></div><button class="btn small ghost" data-meetopen="${esc(x.id)}">Open the agenda</button></div>`).join("");
+  const t=meetSt.team.map(x=>`<div class="prow"><div><b>${esc(x.room)} class team meeting</b><div class="cnt">${x.start?esc(clockTime(x.start))+(x.end?" to "+esc(clockTime(x.end)):""):"Today"}${(x.carried||[]).length?`, ${x.carried.length} next step${x.carried.length===1?"":"s"} open`:""}</div></div><button class="btn small ghost" data-meetopen="${esc(x.id)}">Open the agenda</button></div>`).join("");
   const a=ask.map(x=>{const mo=parseIso(x.firstMonday).toLocaleDateString("en-US",{month:"long"});return `<div class="ref" style="margin-top:8px" id="meetask-${esc(x.ym)}"><b>The first Monday of ${esc(mo)}, ${esc(longDate(x.firstMonday))}, is a school closure.</b><div>Choose another day for the PD staff meeting.</div>
     <div class="actions"><input type="date" id="meetday-${esc(x.ym)}" min="${esc(x.ym)}-01" max="${esc(x.ym)}-31"><button class="btn small" data-meetmove="${esc(x.ym)}">Use this day</button><button class="linkbtn" data-meetnone="${esc(x.ym)}">No all-staff meeting this month</button></div></div>`}).join("");
   if(!t&&!a)return"";
@@ -14057,7 +14057,7 @@ function meetTodayHtml(){if(!window.FP_HOSTED||isKitchenUser()||!(window.FP_NAME
 document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-meetopen],[data-meetmove],[data-meetnone]");if(!b)return;
   if(b.dataset.meetopen){LS.set("tree.pdwant",b.dataset.meetopen);goView("stpdd");return}
   const ym=b.dataset.meetmove||b.dataset.meetnone;const date=b.dataset.meetnone?"none":($("#meetday-"+ym)||{}).value;if(!date){toast("Choose the day first.");return}
-  try{await window.FP_API("/api/staff/g/pd/move",{ym,date});const asked=LS.get("tree.meetask",{})||{};asked[ym]=1;LS.set("tree.meetask",asked);toast(date==="none"?"No all-staff meeting that month. Each Class team meets every open Monday.":"The PD staff meeting moves to that day.");meetSt.loaded=false;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
+  try{await window.FP_API("/api/staff/g/pd/move",{ym,date});const asked=LS.get("tree.meetask",{})||{};asked[ym]=1;LS.set("tree.meetask",asked);toast(date==="none"?"No all-staff meeting that month. Each class team meets every open Monday.":"The PD staff meeting moves to that day.");meetSt.loaded=false;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 /* A note from the director, to all staff or to one person, shows on Today that day for the people it is for. A note to
    all staff also shows on the staff room display that day. The director writes it here. */
 let staffNotesSt={loaded:false,notes:[],sent:[],busy:false};setInterval(()=>{staffNotesSt.loaded=false},5*60e3);
@@ -14105,9 +14105,9 @@ function signinsHtml(){
     <details class="fold" data-fold="set:sghow" ${foldOpen.has("set:sghow")?"open":""}><summary class="foldhead"><span class="cnt">How sign-ins work</span></summary><div class="foldbody">
     <div class="hint">Each educator signs in with their first name. The first time, they type the six number start code shown beside their name, then choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     <div class="hint">Leaving our school is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div></div></details>
-    ${L.length?`<div class="sglist">${L.map(a=>`<details class="sgrow" data-sgopen="${esc(a.name)}" ${signins.open===a.name?"open":""}><summary><b>${esc(a.name)}</b><span class="cnt">${esc(a.room?a.room:a.kitchen?"Kitchen":a.director?"Director":"No Class")}</span><span class="cnt sglast">${a.leaveOn?"Leaves "+esc(sgDay(a.leaveOn)):a.lastAt?esc(sgDay(a.lastAt)):"Never signed in"}</span></summary>
+    ${L.length?`<div class="sglist">${L.map(a=>`<details class="sgrow" data-sgopen="${esc(a.name)}" ${signins.open===a.name?"open":""}><summary><b>${esc(a.name)}</b><span class="cnt">${esc(a.room?a.room:a.kitchen?"Kitchen":a.director?"Director":"No class")}</span><span class="cnt sglast">${a.leaveOn?"Leaves "+esc(sgDay(a.leaveOn)):a.lastAt?esc(sgDay(a.lastAt)):"Never signed in"}</span></summary>
       <div class="sgbody">${notSetUp(a)&&a.lastAt?`<div class="cnt warnline">${esc(notSetUp(a))}</div>`:""}${a.lastAt?`<div class="cnt">Last signed in ${esc(longDate(iso(new Date(a.lastAt))))}</div>`:""}${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}
-        <label class="sgf"><span>Class</span><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+        <label class="sgf"><span>Class</span><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
         <label class="radio"><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""}><span>Director</span></label>
         <label class="radio"><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""}><span>Kitchen sign-in</span></label>
         <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. ${String(a.name).toLowerCase()===String(myName()||"").toLowerCase()?"This is your own TREE sign-in, so reminders can reach you. Open TREE from its Home Screen icon on your phone and allow reminders when it asks. To sign in with four numbers of your own, sign out and sign in with your name and this code. Your Render passcode keeps working as a backup.":`Give it to ${esc(a.name)} for their first sign-in.`}</span>`}</div>
@@ -14231,7 +14231,7 @@ function tidyTodayHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";i
       <span class="actions" style="margin:0"><button class="btn small ghost" data-tsee="${esc(x.thread)}">Open the thread</button><button class="btn small" data-tidyfix="thread|${esc(x.thread)}|${esc(x.planId)}">Remove the link</button></span></div>`).join("")}
     ${T.photos.length?`<div class="lbl" style="margin-top:10px">Photos that may be missing from an observation</div><div class="hint">Each photo was picked for the observation named beside it, which has no photo now. Leftovers, such as a photo from a form that was never kept or a photo that was replaced, stay in the tree@ Drive and off this list.</div>
       ${T.photos.slice(0,tidyMore).map(x=>`<div class="prow" style="align-items:flex-start;flex-wrap:wrap"><a href="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" target="_blank" rel="noopener"><img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" alt="A photo that may belong with an observation" loading="lazy" style="width:84px;height:84px;object-fit:cover;border-radius:8px;background:var(--bg)"></a>
-        <div style="min-width:0;flex:1"><b>${esc(x.day?longDate(x.day):"An observation")}${x.by?", kept by "+esc(x.by):""}</b><div class="cnt">${esc([x.classroom?x.classroom+" Class":"",x.noticed].filter(Boolean).join(". "))}</div></div>
+        <div style="min-width:0;flex:1"><b>${esc(x.day?longDate(x.day):"An observation")}${x.by?", kept by "+esc(x.by):""}</b><div class="cnt">${esc([x.classroom?x.classroom+" class":"",x.noticed].filter(Boolean).join(". "))}</div></div>
         <span class="actions" style="margin:0"><button class="btn small ghost" data-obsgo="${esc(x.notice)}">Open the observation</button><button class="btn small" data-tidyfix="photo|${esc(x.id)}|attach|${esc(x.notice)}">Put it back on the observation</button><button class="linkbtn" data-tidyfix="photo|${esc(x.id)}|keep">Keep</button></span></div>`).join("")}
       ${T.photos.length>tidyMore?`<div class="actions"><button class="linkbtn" data-tidymore="1">Show more</button></div>`:""}`:""}</section>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-tidyfix],[data-tidyattach],[data-tidymore]");if(!t||view!=="today"||!tidyInfo)return;const d=t.dataset;
@@ -14272,7 +14272,7 @@ function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastA
     ${readableHtml()}</section>`}
 /* Readable copies. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her
    TREE quietly makes the Word and PDF files it already prints and keeps them in Google Drive, in TREE readable copies
-   beside the backups. There is one folder for each Class and one for the school, and former children and former
+   beside the backups. There is one folder for each class and one for the school, and former children and former
    educators have their own. Each file is made by the same print as its button, handed back here instead of saved, and
    sent on one at a time. The mailbox script trashes last week's set only once the whole new one has arrived.
    Evaluations, journals, check-ins and growth are never among them, since they are kept only for the director. A phone
@@ -14302,12 +14302,12 @@ function readableHtml(){const r=readableInfo||{},at=r.lastAt,day=ms=>whenAt(ms,{
   return `<div class="lbl" style="margin-top:14px">Readable copies</div>
     <div class="prow"><div><b>${at?"Last readable copies "+esc(day(at)):"No readable copies yet"}</b><div class="cnt">${esc(lines.join(" "))}</div><div class="cnt" id="rc-now" aria-live="polite">${esc(rcText())}</div></div></div>
     ${!rcDrive()?`<div class="cnt">Readable copies are kept in Google Drive beside the photos, and TREE's Google Drive is not set up yet.</div>`:rcBig()?`<div class="actions"><button class="btn small ghost" data-rcnow="1" ${rcNow?"disabled":""}>Make readable copies now</button></div>`:`<div class="cnt">A phone never makes them. Open TREE on a computer or iPad to make them now.</div>`}
-    <div class="hint">Once a week, the first time you open TREE on a computer or iPad after Sunday night, TREE quietly saves readable copies beside the backups. They are the Word and PDF files TREE already prints, with a folder for each Class and one for the school. Former children and former educators have their own folders. They hold each child's portfolio, this year's plans by week, threads, projects, team inquiries, conference notes and each educator's records page. Each week's set replaces the last one once it is whole. Evaluations, journals, check-ins and health details, such as the flu shot and immunizations, stay out, since they are kept only for you.</div>`}
-// every file in the set, each made by its own print. The folder is the Class, or School for the rest.
+    <div class="hint">Once a week, the first time you open TREE on a computer or iPad after Sunday night, TREE quietly saves readable copies beside the backups. They are the Word and PDF files TREE already prints, with a folder for each class and one for the school. Former children and former educators have their own folders. They hold each child's portfolio, this year's plans by week, threads, projects, team inquiries, conference notes and each educator's records page. Each week's set replaces the last one once it is whole. Evaluations, journals, check-ins and health details, such as the flu shot and immunizations, stay out, since they are kept only for you.</div>`}
+// every file in the set, each made by its own print. The folder is the class, or School for the rest.
 function rcJobs(){const F=r=>CLASSROOMS.includes(r)?r+" Class":"School",out=[];
   for(const c of [...children.values()].filter(c=>c&&!c.deleted&&c.first).sort((a,b)=>kidName(a).localeCompare(kidName(b))))
     if(portfolioItems(c).length)out.push({folder:kidAt(c)?F(c.classroom):"Former children",name:`Portfolio ${c.first}${c.last?" "+c.last:""}`,docs:()=>portfolioDocs(c)});
-  // this school year's plans, one file for each Class and week, as the week's plans download makes them
+  // this school year's plans, one file for each class and week, as the week's plans download makes them
   const y0=schoolYearStart(),wk=new Map();
   for(const p of plans.values())if(p&&p.id!=="example"&&!p.deleted&&FORMS[p.type]&&p.type!=="notice"&&p.weekOf>=y0){const r=CLASSROOMS.includes(p.classroom)?p.classroom:"",k=p.weekOf+"|"+r;if(!wk.has(k))wk.set(k,[]);wk.get(k).push(p)}
   for(const [k,ps] of [...wk].sort((a,b)=>a[0].localeCompare(b[0]))){const [w,r]=k.split("|");out.push({folder:F(r),name:`Fulton Community School plans week of ${w}${r?" "+r:""}`,docs:()=>ps})}
@@ -14380,7 +14380,7 @@ async function rcMake(manual){
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
         for(const ext of [".pdf",".docx"]){await rcIdle();await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null),sig)}}}
     catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The educators' records could not be read. "+((e&&e.message)||"")}
-    // each conference as it prints, in the child's Class, or Former children. One whose record and child have not
+    // each conference as it prints, in the child's class, or Former children. One whose record and child have not
     // changed is copied, every file it made last time.
     try{await rcConferences(async(list,make)=>{rcNow.total+=list.length*2;rcShow();
       for(const x of list){const c=children.get(x.childId),folder=!c?"School":kidAt(c)?(CLASSROOMS.includes(c.classroom)?c.classroom+" Class":"School"):"Former children";
@@ -14448,7 +14448,7 @@ function setStatus(t,x){try{
   if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
   if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
   if(t==="Educators")return plural(rosterNames().length,"educator");
-  if(t==="Team meetings")return "Each Class, the Mondays without the all-staff meeting";
+  if(t==="Team meetings")return "Each class, the Mondays without the all-staff meeting";
   if(t==="Small groups")return plural(GROUPS.length,"group");
   if(t==="Garden group")return gardenGroupName()+(gardeners().length?", "+gardeners().join(", "):", held by you");
   if(t==="Classes")return CLASSROOMS.join(", ");
@@ -14527,16 +14527,16 @@ function renderSettings(){
   <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
-  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of Classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
+  <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
-    <div class="actions"><input type="text" id="c-new" placeholder="A new Class" style="width:200px"><button class="btn small" id="c-add">Add a Class</button></div>${oneListsNote()}</section>
-  <section class="card"><div class="lbl">Garden group</div><div class="hint">Beside the Classes. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any Class. It shows on each Class whose children are in it, and never counts as that Class's plan for reminders. The Garden educator leads it, a role you give in Educators beside the person's own role.</div>
+    <div class="actions"><input type="text" id="c-new" placeholder="A new class" style="width:200px"><button class="btn small" id="c-add">Add a class</button></div>${oneListsNote()}</section>
+  <section class="card"><div class="lbl">Garden group</div><div class="hint">Beside the classes. A garden plan is an Individual plan whose focus is a garden or yard space, with children from any class. It shows on each class whose children are in it, and never counts as that class's plan for reminders. The Garden educator leads it, a role you give in Educators beside the person's own role.</div>
     <label class="sgf"><span>Name</span><input type="text" id="gg-name" value="${esc(gardenGroupName())}" aria-label="Garden group name" style="flex:1"></label>
     <div class="cnt">${gardeners().length?`Garden educator: ${esc(gardeners().join(", "))}.`:"No one holds the Garden educator role yet, so you hold it."}</div></section>
   <section class="card"><div class="lbl">Small groups</div><div class="hint">Each group's class and lead educator. An educator can lead more than one group.</div>
-    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No Class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
+    <div class="sglist">${GROUPS.map((g,i)=>`<details class="sgrow" data-rowkey="g:${esc(g.name||i)}" ${rowOpen==="g:"+(g.name||i)?"open":""}><summary><b>${esc(g.name||"No name")}</b><span class="cnt">${esc(g.room||"No class")}</span><span class="cnt sglast">${esc(g.educator||"No lead yet")}</span></summary>
       <div class="sgbody"><label class="sgf"><span>Group</span><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Small group name" style="flex:1"></label>
-      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, Class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
+      <label class="sgf"><span>Class</span><select data-groom="${i}" aria-label="${esc(g.name||"Small group")}, class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${g.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
       <label class="sgf"><span>Lead</span><select data-ged="${i}" aria-label="${esc(g.name||"Small group")}, educator"><option value="">Not set</option>${[...new Set([...names,g.educator].filter(Boolean))].map(n=>`<option ${g.educator===n?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
       <span class="actions" style="margin:0"><button class="linkbtn" data-gdel="${i}">Remove</button></span></div></details>`).join("")}</div>
     <div class="actions"><input type="text" id="g-new" placeholder="New group name" style="width:200px"><button class="btn small" id="g-add">Add group</button></div></section>
@@ -14562,7 +14562,7 @@ function renderSettings(){
 
   <div class="actions"><span id="resetwrap"><button class="linkbtn" id="prog-reset">Restore the original lists</button></span></div>`;
   $("#main").innerHTML=h;renderRoster();
-  // each educator's role, Class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
+  // each educator's role, class, planning hour, start date and go-to team member, and which Educators parts are open, from tree-staff.js
   if($("#staffset")){staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});staffLoad.then(T=>{const el=$("#staffset .setbody")||$("#staffset");if(el&&view==="settings")T.settings(el);const tl=$("#teamset .setbody")||$("#teamset");if(tl&&view==="settings"&&T.teamSettings)T.teamSettings(tl)}).catch(()=>{const el=$("#staffset");if(el)el.innerHTML=`<div class="lbl">Educators</div><div class="hint warnline">This part did not load. Reload to try again.</div>`})}
   // links to each section at the top, since the page is long
   settingsFold();
@@ -14573,7 +14573,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.id==="g-add"){const n=val("#g-new");if(!n){toast("Type a group name first.");return}if(GROUPS.some(g=>g.name.toLowerCase()===n.toLowerCase())){toast("That group already exists.");return}GROUPS.push({name:n,room:"",educator:""});saveProgram();renderSettings();return}
   if(t.dataset.gdel!=null){GROUPS.splice(+t.dataset.gdel,1);saveProgram();renderSettings();return}
   if(t.id==="p-add"){spaceAdd(val("#p-new"));return}
-  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the Class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That Class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
+  if(t.id==="c-add"){const n=val("#c-new").replace(/\s+class$/i,"");if(!n){toast("Type the class's name first.");return}if(CLASSROOMS.some(r=>r.toLowerCase()===n.toLowerCase())){toast("That class is already on the list.");return}CLASSROOMS=[...CLASSROOMS,n];saveProgram();renderSettings();return}
   if(t.dataset.cdel!=null){const r=CLASSROOMS[+t.dataset.cdel];const kids=[...children.values()].filter(c=>c.classroom===r&&kidAt(c)).length,gs=GROUPS.filter(g=>g.room===r).length;
     if(kids||gs){toast(`${r} still has ${kids?kids+(kids===1?" child":" children"):""}${kids&&gs?" and ":""}${gs?gs+(gs===1?" small group":" small groups"):""}. Move them first.`);return}
     CLASSROOMS=CLASSROOMS.filter(x=>x!==r);saveProgram();renderSettings();return}
@@ -14593,7 +14593,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.id==="prog-reset"){$("#resetwrap").innerHTML=`<span class="confirm">Replace all lists with the originals? <button class="btn warn small" id="prog-reset-yes">Restore</button><button class="linkbtn" id="prog-reset-no">Keep mine</button></span>`;return}
   if(t.id==="prog-reset-no"){renderSettings();return}
   if(t.id==="prog-reset-yes"){const d0=JSON.parse(JSON.stringify(PDEF));
-    // the Classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
+    // the classes and small groups are the school's own lists and the spaces are the calendar's, so a reset keeps them
     d0.classrooms=CLASSROOMS.slice();d0.groups=JSON.parse(JSON.stringify(GROUPS));delete d0.places;applyProgram(Object.assign({},PROGRAM_DOC,d0));saveProgram();renderSettings();toast("Original lists restored.");return}
 });
 document.addEventListener("change",e=>{if(view!=="settings")return;const t=e.target;

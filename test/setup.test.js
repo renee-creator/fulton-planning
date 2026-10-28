@@ -29,7 +29,7 @@ test('Never signed in and Reminders off on this phone show beside each name and 
       // Sign-ins is a closed card with a short row for each person
       await s.p.evaluate(() => goView('settings')); await s.p.waitForSelector('#signins .sgrow', { state: 'attached', timeout: 15000 });
       await s.p.click('#signins .setcard > summary');
-      assert.match(await s.p.innerText('#signins'), /Cy\s+No Class\s+Never signed in/);
+      assert.match(await s.p.innerText('#signins'), /Cy\s+No class\s+Never signed in/);
       await s.p.click('#signins .sgrow[data-sgopen="Bea"] > summary');
       assert.match(await s.p.innerText('#signins .sgrow[data-sgopen="Bea"]'), /Reminders off on this phone/);
       assert.strictEqual(await s.p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'never scrolls sideways');

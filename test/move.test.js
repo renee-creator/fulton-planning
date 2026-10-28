@@ -44,8 +44,8 @@ test('Move children', async t => {
       await s.p.selectOption('[data-kmvroom]', 'West'); await s.p.selectOption('[data-kmvgroup]', 'Clover');
       await s.p.click('[data-kmvreview]'); await s.p.waitForSelector('[data-kmvsave]');
       const text = await main(s.p);
-      assert.match(text, /Review the moves/); assert.match(text, /2 children move to West Class, Clover group/);
-      assert.match(text, /Pip Test\s+From North Class, Fern group\s+To West Class, Clover group/);
+      assert.match(text, /Review the moves/); assert.match(text, /2 children move to West class, Clover group/);
+      assert.match(text, /Pip Test\s+From North class, Fern group\s+To West class, Clover group/);
       assert.match(text, /Oli Test\s+Stays as it is/);
       // nothing is saved before the moves are saved
       assert.strictEqual(kid('pip-test').classroom, 'North');
@@ -70,7 +70,7 @@ test('Move children', async t => {
       await s.p.check('[data-kmvtick="tam-test"]');
       await s.p.selectOption('[data-kmvroom]', 'North'); await s.p.selectOption('[data-kmvgroup]', 'Fern');
       await s.p.click('[data-kmvreview]'); await s.p.waitForSelector('[data-kmvsave]');
-      assert.match(await main(s.p), /Tam Test\s+From North Class, Moss group\s+To North Class, Fern group/);
+      assert.match(await main(s.p), /Tam Test\s+From North class, Moss group\s+To North class, Fern group/);
       await s.p.click('[data-kmvback]'); await s.p.waitForSelector('[data-kmvreview]');
       await s.p.click('[data-kmvreview]'); await s.p.click('[data-kmvsave]'); await s.p.waitForTimeout(2500);
       const c = kid('tam-test'); assert.strictEqual(c.classroom, 'North'); assert.strictEqual(c.group, 'Fern');
