@@ -5264,14 +5264,20 @@ function artCards(){const a=libData&&libData.artists;if(!a)return [];
   return (a.parts||[]).map(p=>{const t=p.text||"";const pic=artField(t,"Picture");
     return {id:artSlug(p.key),name:p.key,who:p.key.split(",")[0].trim(),set:artField(t,"Set").split(/,\s*/).filter(Boolean),known:artField(t,"Known as").split(/,\s*/).filter(Boolean),
       kind:(artField(t,"Print or link")||"Link").toLowerCase(),picture:/^https:\/\/[^\s"<>]+$/.test(pic)?pic:"",links:[...artField(t,"Link").matchAll(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g)].map(m=>[m[1],m[2]]),
-      pairs:artField(t,"Pairs with"),wonder:artField(t,"Wondering"),note:artField(t,"For the educator")}})}
+      pairs:artField(t,"Pairs with"),wonder:artField(t,"Wondering"),note:artField(t,"For the educator"),shown:pic?null:artShownOf(artField(t,"Shown from"))}})}
+/* A work still under copyright may name, on its Shown from line, the museum or the artist's own site and the address of the
+   image that site shows. TREE shows it on the screen straight from that site. It is never fetched by TREE, never kept and
+   never printed, and the printouts read only the Picture line. When the site does not allow it, the image hides itself and the
+   card keeps its link to the exact work. */
+function artShownOf(v){const m=String(v||"").match(/^\[([^\]]+)\]\((https:\/\/[^)\s"<>]+)\)/);return m?{from:m[1],src:m[2]}:null}
+const artShownHtml=c=>c.shown?`<figure class="art-shown" style="margin:0;display:grid;gap:4px;justify-items:start"><img src="${esc(c.shown.src)}" alt="${esc(c.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').hidden=true" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:6px;border:1px solid var(--line)"><figcaption class="cnt">Shown from ${esc(c.shown.from)}. On the screen only, never printed.</figcaption></figure>`:"";
 const artCard=id=>artCards().find(c=>c.id===id)||null;
 // the card whose words name the artist in a line from our prompts, so a wondering taken from the Artists list brings its card
 function artForLine(line){const l=String(line||"").toLowerCase();return artCards().find(c=>c.known.some(k=>k&&l.includes(k.toLowerCase())))||null}
 function artRow(c){const dir=isDirector()&&!VIEW_AS;
-  return `<details class="strow" data-artrow="${esc(c.id)}" ${artOpen===c.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-artpick="${esc(c.id)}" ${artPick.has(c.id)?"checked":""} aria-label="Choose ${esc(c.name)} to print"></label><b>${esc(c.name)}</b> <span class="cnt">${esc(c.picture?"Prints large":c.kind==="book"?"From a book":c.kind==="print"?"Public domain, picture to add":"Linked")}</span></summary>
+  return `<details class="strow" data-artrow="${esc(c.id)}" ${artOpen===c.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-artpick="${esc(c.id)}" ${artPick.has(c.id)?"checked":""} aria-label="Choose ${esc(c.name)} to print"></label><b>${esc(c.name)}</b> <span class="cnt">${esc(c.picture?"Prints large":c.kind==="book"?(c.shown?"From a book, shown on screen":"From a book"):c.kind==="print"?"Public domain, picture to add":c.shown?"Shown on screen":"Linked")}</span></summary>
     <div style="display:grid;gap:6px;margin:8px 0">
-      ${c.picture?`<img src="${esc(c.picture)}" alt="${esc(c.name)}" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;justify-self:start;border-radius:6px;border:1px solid var(--line)">`:""}
+      ${c.picture?`<img src="${esc(c.picture)}" alt="${esc(c.name)}" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;justify-self:start;border-radius:6px;border:1px solid var(--line)">`:artShownHtml(c)}
       ${c.pairs?`<div><span class="muted">Connected to.</span> ${esc(c.pairs)}</div>`:""}
       ${c.wonder?`<div><span class="muted">Our wondering.</span> ${esc(c.wonder)}</div>`:""}
       <div><span class="muted">Our routine.</span> ${esc(ART_ROUTINE)}</div>
@@ -5390,7 +5396,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
   if(kind==="artist")return `<div class="actions" style="flex-wrap:wrap">${printBtns("artistcard",esc(x.id),"Card",true)}${x.links.map(([t2,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t2)}</a>`).join("")}</div><h2>${esc(x.name)}</h2>
-    ${x.picture?`<img src="${esc(x.picture)}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:""}
+    ${x.picture?`<img src="${esc(x.picture)}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:artShownHtml(x)}
     ${x.pairs?`<div class="lbl">Connected to</div><p>${esc(x.pairs)}</p>`:""}${x.wonder?`<div class="lbl">Our wondering</div><p>${esc(x.wonder)}</p>`:""}<div class="lbl">Our routine</div><p>${esc(ART_ROUTINE)}</p>
     ${x.note?`<div class="hint"><b>For the educator.</b> ${esc(x.note)} This note never prints.</div>`:""}`;
   if(kind==="prompt")return `<div class="lbl">${esc(x.set)}</div><p style="font-size:18px">${esc(x.title)}</p><div class="hint">A wondering to carry into the day, ready to set aside whenever the children lead somewhere else.</div>`;
