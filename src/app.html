@@ -8607,7 +8607,7 @@ function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.leng
   {const fm=foodMoments(F.from,F.to).conf.find(n=>sentFit(momentBody(n),300).length>40);if(fm)lines.push("In the educators' words. "+shareScrub(sentFit(momentBody(fm),300)))}
   lines.push(F2S_FUND);return lines.join("\n\n")}
 // the families who logged time in the month, named by their children's family name, and what they gave
-function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&String(l.date||"").slice(0,7)===month);if(!ls.length)return "";
+function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&!ptConf(l)&&String(l.date||"").slice(0,7)===month);if(!ls.length)return "";
   const fams=[...new Set(ls.map(l=>{const c=children.get(l.childId);return c?(has(c.last)?"the "+c.last+" family":c.first+"'s family"):""}).filter(Boolean))].sort();
   const what=[...new Set(ls.map(l=>String(l.what||"").trim().toLowerCase()).filter(Boolean))].slice(0,4);
   const mn=parseIso(month+"-01").toLocaleDateString("en-US",{month:"long"});
@@ -9947,6 +9947,11 @@ const PT_BANK=[
   {g:"Wish list",items:[{type:"wish",title:"A fruit tree for the farm",hours:3,note:"A young fruit tree for the orchard. Ask the office which kinds fit."},{type:"wish",title:"Plants and seedlings for the garden",hours:2},{type:"wish",title:"Seeds for the season",hours:1},{type:"wish",title:"Seeds for the family seed library",hours:1,seedLibrary:true,question:"Which seeds are you bringing?",note:"Seeds saved at home or left from a packet, labeled with the plant and the year. We share them with every family, a fair share practice. The director adds them to the seed library once they arrive."},{type:"wish",title:"Rain gear in children's sizes",hours:2,note:"Waterproof rain suits, rain pants and jackets, and rain boots with no fabric lining, clean and in good shape, for children who need them."},{type:"wish",title:"Art materials",hours:1,note:"Watercolors, oil pastels, good paper."},{type:"wish",title:"Loose parts from nature",hours:1,note:"Pinecones, shells, smooth stones, wood rounds."}]}];
 const PT_KIND={task:"Volunteer task",event:"Community event",wish:"Wish list"};
 const ptLogs=()=>[...participation.values()].filter(x=>x.kind==="log"&&!x.removed);
+// what an entry counts as. An entry from before kept no type, so it reads by what it was logged for.
+const PT_LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
+const ptLogType=l=>{if(PT_LOGTYPE[l.type])return l.type;const it=l.itemId&&participation.get(l.itemId);return it&&it.type==="event"?"event":it&&it.type==="wish"?"donation":"job"};
+// a conference's hour is entered by TREE and is real even while the Family page is being tried
+const ptConf=l=>l.type==="conference"&&l.auto===true;
 // the hours a child would have by now at an even pace from mid August to the end of May
 function ptPace(goal){const t=new Date(),y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1;const a=new Date(y,7,15).getTime(),b=new Date(y+1,4,31).getTime();return Math.floor(goal*Math.min(1,Math.max(0,(t.getTime()-a)/(b-a))))}
 function ptYearStart(){const t=new Date();const y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1;return y+"-08-01"}
@@ -9957,7 +9962,7 @@ function renderParticipation(){
   const c=ptCfg(),test=!!c.test,ys=ptYearStart(),today=iso(new Date());
   const kidsOf=new Set(test?c.testers.flatMap(t=>t.children||[]):[]);
   const kids=kidsAt().filter(k=>!test||kidsOf.has(k.id)).sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||(a.first||"").localeCompare(b.first||""));
-  const logs=ptLogs().filter(l=>!!l.test===test&&(l.date||"")>=ys);
+  const logs=ptLogs().filter(l=>(ptConf(l)||!!l.test===test)&&(l.date||"")>=ys);
   const hrs=k=>logs.filter(l=>l.childId===k.id).reduce((a,l)=>a+(Number(l.hours)||0),0);
   const rows=kids.map(k=>({k,h:hrs(k)})).sort((a,b)=>a.h-b.h||(a.k.first||"").localeCompare(b.k.first||""));
   const reqs=ptItems().filter(x=>x.status==="requested");
@@ -10001,7 +10006,7 @@ function renderParticipation(){
         return `<details class="ptshort"><summary class="chiprow-label">Short of ${c.goal} hours, ${short.length}, for the fee in 1Core</summary><div class="cnt" style="white-space:pre-line;margin:6px 0" id="pt-shortlist">${esc(short.map(r=>`${kidName(r.k)}, ${r.k.classroom||""}, ${r.h} of ${c.goal} hours, ${c.goal-r.h} short`).join("\n"))}</div><button class="btn small ghost" data-ptcopyshort="1">Copy the list</button></details>`})()}
       ${rows.length?`<div class="tlist">${rows.map(({k,h})=>{const ls=logs.filter(l=>l.childId===k.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
         return `<details class="ptkid"><summary><span style="min-width:0"><b>${esc(kidName(k))}</b> <span class="cnt">${esc(k.classroom||"")}</span></span><span class="pthrs ${h>=c.goal?"done":h<ptPace(c.goal)?"behind":""}">${h} of ${c.goal}${h<c.goal&&h<ptPace(c.goal)?", behind":""}</span></summary>
-        ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
+        ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(PT_LOGTYPE[ptLogType(l)])} · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
         :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
     ${isDirector()&&!VIEW_AS?`<section class="card"><div class="secthead"><h3 style="font-size:17px">The Family page's wording</h3></div><div class="cnt">Each piece is changed in place, with every earlier version kept and Restore this version.</div>
       <div class="actions">${[["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}

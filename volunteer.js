@@ -16,6 +16,8 @@ module.exports = function volunteerModule(c) {
   const TYPES = [['anytime', 'Anytime'], ['scheduled', 'Scheduled'], ['school-day', 'School day'], ['work-day', 'Work day'], ['at-home', 'At home']];
   // each group's starting type, from the director's answer. A group not named here starts as scheduled.
   const START_TYPE = { 'quick-jobs-at-pickup': 'anytime', 'at-home': 'at-home', 'during-the-school-day': 'school-day', 'classes-and-studio': 'school-day' };
+  // the Family page's own words for the anytime jobs, used until the director writes her own in Before You Start
+  const FAMILY = { title: 'Jobs you can do anytime', lead: 'No sign-up needed. Do one whenever it suits you, then tap I did this to log your time.', anytime: 'Anytime at school', atHome: 'At home' };
   const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'job';
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').replace(/\s+/g, ' ').trim().slice(0, n || 200);
 
@@ -25,7 +27,9 @@ module.exports = function volunteerModule(c) {
       fields: [['title', 'Job name'], ['where', 'Where'], ['time', 'How long'], ['who', 'Who'], ['supplies', 'Supplies, one on each line', 'lines'],
         ['directions', 'Directions, one step on each line', 'lines'], ['take_care', 'Take care, one on each line', 'lines'], ['done_when', 'Done when, the words that follow it']] },
     { re: /^staff\/volunteer\/groups\.json$/, list: 'groups', name: 'this group', title: x => x.name, fields: [['name', 'Group name'], ['note', 'A note under the group']] },
-    { re: /^staff\/volunteer\/intro\.json$/, name: 'Before You Start', title: x => x.title, fields: [['title', 'Title'], ['lead', 'Opening lines'], ['guidelines', 'Guidelines, one on each line', 'lines']] }
+    { re: /^staff\/volunteer\/intro\.json$/, name: 'Before You Start', title: x => x.title, fields: [['title', 'Title'], ['lead', 'Opening lines'], ['guidelines', 'Guidelines, one on each line', 'lines'],
+      ['familyTitle', 'On the Family page, the title of the anytime jobs. Left empty, it reads ' + FAMILY.title], ['familyLead', 'On the Family page, the lines under that title. Left empty, they read ' + FAMILY.lead],
+      ['familyAnytime', 'On the Family page, the heading for jobs at school. Left empty, it reads ' + FAMILY.anytime], ['familyAtHome', 'On the Family page, the heading for jobs at home. Left empty, it reads ' + FAMILY.atHome]] }
   ];
   const sees = me => isDirector(me) || isOffice(me);
   const jobs = () => (get(JOBS) || {}).jobs || [];
@@ -96,6 +100,18 @@ module.exports = function volunteerModule(c) {
     if (dir) { const pd = hasPlaydough(); out.notes = {}; for (const j of all) if (!pd && flat(j).some(s => /playdough recipe/i.test(s || ''))) out.notes[j.id] = 'No playdough recipe is in the recipe library yet. This note shows only to you.'; }
     return out;
   }
+  /* ---------- the Family page ---------- */
+  // the cards a family can do with no sign-up, those whose type is anytime or at home, each whole as the library holds it
+  const forFamilyJob = j => !!j && !isFuture(j) && (j.type === 'anytime' || j.type === 'at-home');
+  const famCard = j => ({ id: j.id, title: j.title, where: j.where, time: j.time, who: j.who, supplies: j.supplies || [], directions: j.directions || [], take_care: j.take_care || [], done_when: j.done_when || '' });
+  function forFamily() {
+    if (!S.files.has(JOBS)) return null;
+    const js = jobs().filter(forFamilyJob); if (!js.length) return null;
+    const I = get(INTRO) || {}; const w = k => String(I[k] || '').trim();
+    return { title: w('familyTitle') || FAMILY.title, lead: w('familyLead') || FAMILY.lead, intro: { title: I.title || '', lead: I.lead || '', guidelines: I.guidelines || [] },
+      groups: [{ key: 'anytime', name: w('familyAnytime') || FAMILY.anytime, jobs: js.filter(j => j.type === 'anytime').map(famCard) }, { key: 'at-home', name: w('familyAtHome') || FAMILY.atHome, jobs: js.filter(j => j.type === 'at-home').map(famCard) }].filter(g => g.jobs.length) };
+  }
+  const jobForFamily = id => { const j = jobs().find(x => x && x.id === id); return forFamilyJob(j) ? j : null; };
   function saveJobs(fn) { const d = JSON.parse(JSON.stringify(get(JOBS) || { jobs: [] })); const r = fn(d); if (r && r.error) return r; put(JOBS, d); return null; }
 
   async function handle(P, body, me, req, res, { json, err }) {
@@ -138,5 +154,5 @@ module.exports = function volunteerModule(c) {
     }
     err(req, res, 404, 'That is not here.');
   }
-  return { SPECS, mayEdit, once, handle, fromFile, pointPerson, TYPES, paths: { JOBS, GROUPS, INTRO } };
+  return { SPECS, mayEdit, once, handle, fromFile, pointPerson, TYPES, forFamily, jobForFamily, paths: { JOBS, GROUPS, INTRO } };
 };

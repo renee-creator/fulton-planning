@@ -96,7 +96,7 @@ function withoutOthers(text, child, all) {
   return t;
 }
 
-module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released }) {
+module.exports = function family({ store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released, volunteer }) {
   const o = { released };
   /* the Family page's own wording, kept in the private records in staff/wording, which the director edits in place.
      The Family Questionnaire, the Family Reflections, the first steps, the packing list, the All About Me book, the
@@ -209,10 +209,28 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   const visits = () => new Set(listOf(d => d.gathering === 'garden-visit').map(d => d.id));
   const items = () => { const gv = visits(); return listOf(d => d.kind === 'item' && d.gathering !== 'garden-visit' && !(d.gatheringId && gv.has(d.gatheringId)) && (!o.released || !(d.gathering || d.gatheringId) || o.released(d))); };
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
+  // what each entry counts as. An entry from before kept no type, so it reads by what it was logged for.
+  const LOG_TYPES = ['job', 'event', 'conference', 'donation'];
+  const typeOf = l => { if (LOG_TYPES.includes(l.type)) return l.type; const r = l.itemId && recs().get(l.itemId); const it = r && !r.deleted && r.doc; return it && it.type === 'event' ? 'event' : it && it.type === 'wish' ? 'donation' : 'job'; };
+  // a conference the class team marks complete counts one hour for that child, entered by TREE once, on the conference day.
+  // A conference is real even while the Family page is being tried, so its hour shows in test mode too.
+  const isConf = l => l.type === 'conference' && l.auto === true;
+  function conferenceHours() {
+    let n = 0;
+    for (const [cid, r] of store.recs.conferences) {
+      const c = r && !r.deleted && r.doc; if (!c || c.status !== 'complete') continue;
+      const childId = c.childId || String(cid).split('--')[0];
+      const kid = store.recs.children.get(childId); if (!kid || kid.deleted) continue;
+      const id = 'lg-conf-' + String(cid).replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 80); if (recs().get(id)) continue;
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(c.confDate || '') && c.confDate <= laToday() ? c.confDate : laToday();
+      save(id, { id, kind: 'log', type: 'conference', auto: true, email: '', childId, confId: cid, what: 'Family conference', date: day, minutes: 60, hours: 1, test: false, at: nowIso() }); n++;
+    }
+    if (n) log('Conference hours added for', n, n === 1 ? 'child' : 'children');
+  }
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {
     const c = cfg(); const ys = yearStart(); const ids = new Set(f.kids.map(k => k.id)); const today = laToday();
-    const mine = logs().filter(l => ids.has(l.childId) && (l.date || '') >= ys && !!l.test === f.test);
+    const mine = logs().filter(l => ids.has(l.childId) && (l.date || '') >= ys && (isConf(l) || !!l.test === f.test));
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
@@ -221,7 +239,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && (it.type === 'wish' ? it.status !== 'requested' : (it.date && it.date <= today && it.date >= ys)) && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
     const kidsOut = hours.map(h => Object.assign(h, childExtras(f, f.kids.find(k => k.id === h.id), c, today)));
-    const entries = mine.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(l => ({ id: l.id, what: l.what, date: l.date, hours: l.hours, child: firstOf(f.kids.find(k => k.id === l.childId) || {}), childId: l.childId, mine: l.email === f.email }));
+    const entries = mine.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(l => ({ id: l.id, what: l.what, date: l.date, hours: l.hours, type: typeOf(l), child: firstOf(f.kids.find(k => k.id === l.childId) || {}), childId: l.childId, mine: l.email === f.email }));
     const anyNew = kidsOut.some(k => k.isNew);
     const pace = (() => { const t = new Date(), y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; const a = new Date(y, 7, 15).getTime(), b = new Date(y + 1, 4, 31).getTime(); return Math.floor(c.goal * Math.min(1, Math.max(0, (t.getTime() - a) / (b - a)))); })();
     const me = ((f.kids.flatMap(k => k.parents || []).find(p => p && norm(p.email) === f.email) || {}).name) || '';
@@ -233,7 +251,9 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     let piecesAll = []; try { piecesAll = pieces ? pieces() || [] : []; } catch (e) { piecesAll = []; }
     // the site map, the photo from above and the names of the spaces, never a child's photo or name
     let mapInfo = null; try { const m = siteMap ? siteMap() : null; if (m && m.ready) mapInfo = { src: photoSrc(m.photo), spots: m.spots }; } catch (e) { mapInfo = null; }
-    return { pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+    // the director's job cards a family can do with no sign-up, anytime at school or at home
+    let jobs = null; try { jobs = volunteer ? volunteer.forFamily() : null; } catch (e) { jobs = null; }
+    return { jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 
@@ -468,13 +488,16 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
   }
   function addLog(f, b) {
     const kid = f.kids.find(k => k.id === b.childId); if (!kid) return { error: 'Choose which child this counts for.' };
-    let what = String(b.what || '').trim().slice(0, 200), itemId = '', date = String(b.date || '').slice(0, 10), minutes = Number(b.minutes) || 0;
-    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || (it.date && it.date <= laToday() ? it.date : laToday()); if (!minutes) minutes = (Number(it.hours) || 1) * 60; }
+    let what = String(b.what || '').trim().slice(0, 200), itemId = '', jobId = '', date = String(b.date || '').slice(0, 10), minutes = Number(b.minutes) || 0;
+    // a family names what an entry counts as. A conference is entered by TREE, never by a family.
+    let type = ['job', 'event', 'donation'].includes(b.type) ? b.type : 'job';
+    if (b.itemId) { const r = recs().get(b.itemId); const it = r && !r.deleted && r.doc; if (!it || it.kind !== 'item') return { error: 'That is no longer listed.' }; itemId = b.itemId; what = what || it.title; date = date || (it.date && it.date <= laToday() ? it.date : laToday()); if (!minutes) minutes = (Number(it.hours) || 1) * 60; type = it.type === 'event' ? 'event' : it.type === 'wish' ? 'donation' : 'job'; }
+    else if (b.jobId) { const j = volunteer && volunteer.job(String(b.jobId)); if (!j) return { error: 'That job is no longer listed.' }; jobId = j.id; what = j.title; type = 'job'; }
     if (!what) return { error: 'Say what you did.' };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > laToday()) return { error: 'Choose the day, today or earlier.' };
     if (!(minutes > 0) || minutes > 24 * 60) return { error: 'Say how long it took.' };
     const id = newId('lg');
-    save(id, { id, kind: 'log', email: f.email, childId: kid.id, itemId, what, date, minutes, hours: hoursOf(minutes), test: f.test, at: nowIso() });
+    save(id, { id, kind: 'log', type, email: f.email, childId: kid.id, itemId, ...(jobId ? { jobId } : {}), what, date, minutes, hours: hoursOf(minutes), test: f.test, at: nowIso() });
     return { ok: true };
   }
   function removeLog(f, id) {
@@ -501,7 +524,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;
