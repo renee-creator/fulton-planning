@@ -62,7 +62,8 @@ const gdnPhotoOf=id=>{const p=((gdn&&gdn.photos)||[]).find(x=>x.plant===id);retu
 function gdnMark(p){return [p.eat==="food"?`<span class="gtag food">Food</span>`:p.eat==="partly"?`<span class="gtag gather">Partly edible</span>`:`<span class="gtag look">Look, don't eat</span>`,p.gather?`<span class="gtag gather">Gather with an educator</span>`:""].join("")}
 // a folding section with its one-line summary, open once opened
 // the recipes from the library the director shares on the Family page, food and sensory, never a draft
-function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";if(!libData){loadLibrary().then(()=>{if(view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
+function gdnRecipeShare(g){if(typeof loadLibrary!=="function")return"";// a load already under way answers at once with nothing, so only the answer with the library redraws the page
+  if(!libData){loadLibrary().then(d=>{if(d&&view==="garden")renderMain()});return `<div class="cnt">Opening the recipes…</div>`}
   const on=new Set((g.familyShare||{}).recipes||[]);const rs=(libData.recipes||[]).filter(r=>!r.draft);
   return `<div class="lbl" style="margin-top:6px">Recipes</div><div class="chips">${rs.map(r=>`<button class="chip ${on.has(r.id)?"on":""}" type="button" data-gfrecipe="${esc(r.id)}">${esc(r.title)}</button>`).join("")||`<span class="cnt">No recipes in the library yet.</span>`}</div>`}
 let gdnTEdit="";
@@ -93,6 +94,10 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
+  // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
+  if(isOffice()&&!VIEW_AS){if(!volData)volLoad();const vj=((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&(j.months||[]).includes(mm));
+    if(volData&&volData.jobs)h+=`<section class="card"><div class="lbl">Volunteer jobs for ${esc(volMonthName(mm))}</div>${vj.length?`<div class="cnt">${vj.map(j=>esc(j.title)).join(", ")}.</div>`:`<div class="cnt">No job card is marked for ${esc(volMonthName(mm))} yet. Each card's best months are chosen on the Volunteer Jobs page.</div>`}
+      <div class="actions"><button class="linkbtn" data-tview="volunteer">Open Volunteer Jobs</button></div></section>`}
   // the permaculture premises, once, at the top, beside our two guiding agreements. For educators, never a unit for children.
   {const pc=gdnPage("permaculture");if(pc){const part=k=>gdnPart("permaculture",k);
     h+=`<section class="card"><div class="lbl">Our guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${((g.agreements||{}).guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
