@@ -4534,7 +4534,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="bc3e0d2215ca";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="1bdc46e10592";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9754,6 +9754,19 @@ const PT_BANK=[
   {g:"Share a skill",items:[{type:"task",title:"Share a skill or craft with a small group",hours:2,note:"Knitting, woodworking, music, building, anything your family loves to do."},{type:"task",title:"Share a family tradition or recipe",hours:2},{type:"task",title:"Share a song or a language",hours:1,songbook:true,note:"A song your family sings, or a few words in your home language, for meeting time. Songs we sing are in our song book."}]},
   {g:"Wish list",items:[{type:"wish",title:"A fruit tree for the farm",hours:3,note:"A young fruit tree for the orchard. Ask the office which kinds fit."},{type:"wish",title:"Plants and seedlings for the garden",hours:2},{type:"wish",title:"Seeds for the season",hours:1},{type:"wish",title:"Seeds for the family seed library",hours:1,seedLibrary:true,question:"Which seeds are you bringing?",note:"Seeds saved at home or left from a packet, labeled with the plant and the year. We share them with every family, a fair share practice. The director adds them to the seed library once they arrive."},{type:"wish",title:"Rain gear in children's sizes",hours:2,note:"Waterproof rain suits, rain pants and jackets, and rain boots with no fabric lining, clean and in good shape, for children who need them."},{type:"wish",title:"Art materials",hours:1,note:"Watercolors, oil pastels, good paper."},{type:"wish",title:"Loose parts from nature",hours:1,note:"Pinecones, shells, smooth stones, wood rounds."}]}];
 const PT_KIND={task:"Volunteer task",event:"Community event",wish:"Wish list"};
+/* The ideas above as the director and the office have left them. Each keeps its place and can be renamed, given other
+   hours, a note or a question, hidden, or put back as it was. The changes are kept in participation/starters. */
+let ptBankEdit=false;
+const ptStarterKey=x=>String(x.title||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60);
+function ptBank(){const ed=(participation.get("starters")||{}).edits||{};
+  return PT_BANK.map(g=>({g:g.g,items:g.items.map(x=>{const k=ptStarterKey(x),e=ed[k]&&!ed[k].putBack?ed[k]:{};const o=Object.assign({},x,{key:k,hidden:!!e.hidden,changed:Object.keys(e).length>0});
+    for(const f of ["title","note","question"])if(typeof e[f]==="string"&&(f!=="title"||e[f].trim()))o[f]=e[f];if(Number(e.hours)>0)o.hours=Number(e.hours);return o})}))}
+function ptBankEditor(){return `<div class="cnt" style="margin:6px 0">Change any idea here. A hidden idea stays in this list and is never offered as a starting point. Put back as it was returns its first words.</div>
+  ${ptBank().map(g=>`<div class="lbl" style="margin-top:10px">${esc(g.g)}</div>${g.items.map(x=>`<div class="strow" style="display:grid;gap:6px${x.hidden?";opacity:.6":""}">
+    <div class="gsrow"><label>Idea<input type="text" id="ptb-t-${esc(x.key)}" value="${esc(x.title)}" maxlength="120"></label><label>Hours it counts for<input type="number" min="1" max="12" id="ptb-h-${esc(x.key)}" value="${esc(String(x.hours||1))}"></label></div>
+    <label class="fld-label">A note for families<textarea id="ptb-n-${esc(x.key)}" rows="2">${esc(x.note||"")}</textarea></label>
+    ${x.question!=null||x.type==="event"?`<label class="fld-label">A question when they sign up<input type="text" id="ptb-q-${esc(x.key)}" value="${esc(x.question||"")}" maxlength="200"></label>`:""}
+    <div class="actions" style="margin:0;align-items:center"><label class="nlcheck"><input type="checkbox" id="ptb-x-${esc(x.key)}" ${x.hidden?"checked":""}> Hide this idea</label><button class="btn small" data-ptbsave="${esc(x.key)}">Save</button>${x.changed?`<button class="linkbtn" data-ptbreset="${esc(x.key)}">Put back as it was</button>`:""}</div></div>`).join("")}`).join("")}`}
 const ptLogs=()=>[...participation.values()].filter(x=>x.kind==="log"&&!x.removed);
 // what an entry counts as. An entry from before kept no type, so it reads by what it was logged for.
 const PT_LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
@@ -9784,7 +9797,8 @@ function renderParticipation(){
   const itemRow=x=>{const ss=x.signups||[];return `<div class="ptitem"><div style="min-width:0">${x.songbook||/\bsong\b/i.test(x.title||"")?`<button class="linkbtn" data-tview="songs" style="float:right">Our song book</button>`:""}<b>${esc(x.title)}</b>${tag}<div class="cnt">${esc([x.type==="event"?"Community event":x.type==="wish"?"Wish list":"Task",x.date?fmtDate(x.date):"Any time",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.hours?x.hours+" hour"+(x.hours==1?"":"s"):"",x.classroom?x.classroom+" class":"",x.spots?ss.length+" of "+x.spots+" spots taken":ss.length+" signed up",x.open===false?"Closed":""].filter(Boolean).join(" · "))}</div>${ss.length?ptSignups(x,ss):""}${x.note?`<div class="cnt" style="white-space:pre-line">${esc(x.note)}</div>`:""}</div>
     <span class="actions"><button class="btn small ghost" data-ptedit="${esc(x.id)}">Change</button><button class="linkbtn" data-ptopen="${esc(x.id)}">${x.open===false?"Open it again":"Close it"}</button></span></div>`};
   const form=ptForm?`<section class="card ptform"><h3 style="font-size:17px">${ptForm.id?"Change":"Add"} a way to take part</h3>
-    ${ptForm.id?"":`<details class="ptbank"><summary class="chiprow-label">Start from an idea</summary>${PT_BANK.map((g,i)=>`<div class="cnt" style="margin-top:6px"><b>${esc(g.g)}</b></div><div class="chips">${g.items.map((x,j)=>`<button class="chip" data-ptbank="${i}|${j}" type="button">${esc(x.title)}</button>`).join("")}</div>`).join("")}</details>`}
+    ${ptForm.id?"":`<details class="ptbank"><summary class="chiprow-label">Start from an idea</summary>${ptBankEdit?ptBankEditor():ptBank().map((g,i)=>{const shown=g.items.map((x,j)=>[x,j]).filter(([x])=>!x.hidden);return shown.length?`<div class="cnt" style="margin-top:6px"><b>${esc(g.g)}</b></div><div class="chips">${shown.map(([x,j])=>`<button class="chip" data-ptbank="${i}|${j}" type="button">${esc(x.title)}</button>`).join("")}</div>`:""}).join("")}
+      <div class="actions" style="margin-top:8px"><button class="linkbtn" data-ptbedit="1">${ptBankEdit?"Done changing the ideas":"Change or hide these ideas"}</button></div></details>`}
     <div class="chips" role="group" aria-label="Kind">${[["task","Volunteer task"],["event","Community event"],["wish","Wish list"]].map(([k,l])=>`<button class="chip ${ptForm.type===k?"on":""}" data-pttype="${k}" type="button">${l}</button>`).join("")}</div>
     <label class="fld-label">What it is<input type="text" id="pt-title" value="${esc(ptForm.title||"")}" placeholder="${ptForm.type==="event"?"Ex. Family potluck":ptForm.type==="wish"?"Ex. A fruit tree for the farm":"Ex. Garden workday"}"></label>
     <div class="gsrow"><label>Day, if it has one<input type="date" id="pt-date" value="${esc(ptForm.date||"")}"></label><label>Starts<input type="time" id="pt-start" value="${esc(ptForm.start||"")}"></label><label>Ends<input type="time" id="pt-end" value="${esc(ptForm.end||"")}"></label></div>
@@ -9868,7 +9882,15 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.pttype&&ptForm){Object.assign(ptForm,ptRead());ptForm.type=d.pttype;if(!ptForm.id)ptForm.counts=d.pttype==="event";renderMain();return}
   if(d.ptedit){ptForm=Object.assign({},participation.get(d.ptedit));renderMain();$(".ptform")?.scrollIntoView({block:"start"});return}
   if(d.ptcopyshort){const t2=$("#pt-shortlist")?.textContent||"";navigator.clipboard?.writeText(t2).then(()=>toast("Copied. Paste it for the office or into 1Core."),()=>toast("Select the list and copy it."));return}
-  if(d.ptbank){const [i,j]=d.ptbank.split("|").map(Number);const x=(PT_BANK[i]||{}).items?.[j];if(x){ptForm=Object.assign({},x);renderMain()}return}
+  if(d.ptbank){const [i,j]=d.ptbank.split("|").map(Number);const x=(ptBank()[i]||{}).items?.[j];if(x&&!x.hidden){const f=Object.assign({},x);delete f.key;delete f.hidden;delete f.changed;ptForm=f;renderMain()}return}
+  if(d.ptbedit){ptBankEdit=!ptBankEdit;renderMain();return}
+  if(d.ptbsave||d.ptbreset){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const k=d.ptbsave||d.ptbreset;
+    const cur=participation.get("starters")||{};const doc={id:"starters",kind:"starters",edits:Object.assign({},cur.edits||{}),updatedAt:Date.now(),updatedBy:myName()||""};
+    // an idea put back keeps when it was put back, so the save never looks like an older copy of the record
+    if(d.ptbreset)doc.edits[k]={putBack:Date.now()};
+    else{const v=id=>($("#"+id)?.value??"");const t=v("ptb-t-"+k).trim();if(!t){toast("Give the idea a name.");return}
+      const e={title:t,note:v("ptb-n-"+k).trim(),hours:Math.max(1,Math.min(12,Math.round(Number(v("ptb-h-"+k))||1))),hidden:!!$("#ptb-x-"+k)?.checked};if($("#ptb-q-"+k))e.question=v("ptb-q-"+k).trim();doc.edits[k]=e}
+    ptSave("starters",doc).then(()=>{toast(d.ptbreset?"Put back as it was.":"Saved.");renderMain()});return}
   if(d.ptapprove){const x=participation.get(d.ptapprove);if(x)ptSave(x.id,Object.assign({},x,{status:"",open:true,test:!!c.test,approvedBy:myName()||"",updatedAt:Date.now()})).then(()=>{renderMain();toast("Posted. Families see it on the Family page.")});return}
   if(d.ptsave&&ptForm){const v=Object.assign({},ptForm,ptRead());if(!v.title){toast("Say what it is.");return}if(v.status==="requested"){v.status="";v.open=true;v.approvedBy=myName()||""}
     const id=v.id||ptNewId("it");ptSave(id,Object.assign({kind:"item",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""},participation.get(id)||{},v,{id,updatedAt:Date.now()})).then(()=>{ptForm=null;renderMain();toast("Saved. Families see it on the Family page.")});return}
