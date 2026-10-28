@@ -11496,11 +11496,11 @@ function cLayout(doc,md,A){
   }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:md.card?.46:.4)),ops)}
   return {ops,s,over,PW:PWd,PH:PHd,land:false,sq,pos};
 }
-/* The grid of a field guide card. Up to ten tiles, two across, each photo cut to the same frame so the rows line up, with the
+/* The grid of a field guide card. Up to six tiles, two across, each photo cut to the same frame so the rows line up, with the
    name centred beneath. A tile with no photo is a soft frame with the name in it. With six tiles or fewer each credit sits
    under its photo; with more, the credits share one small line at the foot of the page. */
 function cGrid(doc,md,A,gb,top,W,H,PWd,PHd){
-  const ops=[],tiles=(gb.tiles||[]).slice(0,10),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
+  const ops=[],tiles=(gb.tiles||[]).slice(0,6),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
   const rest=Object.assign({},md,{blocks:(md.blocks||[]).filter(b=>b.t!=="grid")}),ww=W*.8,wh=cWords(doc,rest,A,1,0,ww,0,null);
   const credits=tiles.map(t=>t.credit).filter(has),under=n<=6,cz=7,cl=8.6;
   const footL=!under&&credits.length?cwrap(doc,"fr",cz,"Photos. "+[...new Set(credits)].join(". ")+".",W).slice(0,4):[];
@@ -11618,7 +11618,7 @@ async function centeredDocx(ch,p,D,A){
     return [new Table({width:{size:dx.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:dx,layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({children:cols.map((c,i)=>new TableCell({width:{size:dx[i],type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:c.items.map(o=>{const r=img(o,o.w,o.h);return r?P(r,{alignment:CEN,spacing:{after:120}}):P([])})}))})]}),P([],{spacing:{after:120}})]};
   // a field guide card's grid is a two column table with no borders, each cell the photo or a soft frame, then the name
   let GRID=null;
-  const gridTable=b=>{const G=GRID||{tw:240,ih:170,cols:2,under:true,footL:[]},tiles=(b.tiles||[]).slice(0,10),cols=tiles.length>1?2:1,cw=Math.round(10080/cols);
+  const gridTable=b=>{const G=GRID||{tw:240,ih:170,cols:2,under:true,footL:[]},tiles=(b.tiles||[]).slice(0,6),cols=tiles.length>1?2:1,cw=Math.round(10080/cols);
     const cell=t=>{const im=t&&t.key&&photoCache.get(t.key);if(!t)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[P([])]});
       const kids=[];
       if(im){const r=Math.min(G.tw/im.w,G.ih/im.h);kids.push(P(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r*96/72),height:Math.round(im.h*r*96/72)}}),{alignment:CEN,spacing:{after:60}}));kids.push(P(run(t.name,"fs",12.5),{alignment:CEN,spacing:{after:G.under&&has(t.credit)?20:200}}))}

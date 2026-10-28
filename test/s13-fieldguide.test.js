@@ -1,6 +1,6 @@
 'use strict';
 // Session 13, the Garden's field guide card. It prints as a grid of photos, two across, each tile the entry's own Garden
-// photo with its name beneath, the title at the top and the closing line under the grid. Ten fit on a page and more go on
+// photo with its name beneath, the title at the top and the closing line under the grid. Six fit on a page and more go on
 // to a page marked continued. An entry with no photo has a soft tile with its name in it. The PDF, the preview and the
 // Word copy are drawn from the same layout. Made-up creatures and made-up addresses only.
 const test = require('node:test');
@@ -10,7 +10,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 
 const JPG = fs.readFileSync(path.join(__dirname, 'fixtures-standin.jpg'));
 
-test('a field guide card prints a photo grid, two across, ten to a page, with soft tiles for entries with no photo', async t => {
+test('a field guide card prints a photo grid, two across, six to a page, with soft tiles for entries with no photo', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const fx = await start({});
   t.after(() => fx.stop());
@@ -33,7 +33,7 @@ test('a field guide card prints a photo grid, two across, ten to a page, with so
     const blob = await makeDocx(docs, 'Field guide.docx', 'quiet');
     return {
       titles: docs.map(d => d.title), n: docs.map(d => d.blocks.find(x => x.t === 'grid').tiles.length), card: docs.every(d => d.centered && d.card),
-      imgs1: imgs(L1).length, soft1: soft(L1).length, cols1: [...new Set(imgs(L1).map(o => Math.round(o.x)))].length,
+      imgs1: imgs(L1).length, tileH: Math.round((imgs(L1)[0] || {}).h || 0), soft1: soft(L1).length, cols1: [...new Set(imgs(L1).map(o => Math.round(o.x)))].length,
       sameFrame: new Set(imgs(L1).map(o => Math.round(o.w) + 'x' + Math.round(o.h))).size,
       texts1: texts(L1), textsS: texts(LS), in1: inPage(L1), in2: inPage(L2), over1: L1.over,
       imgs2: imgs(L2).length, soft2: soft(L2).length,
@@ -42,15 +42,16 @@ test('a field guide card prints a photo grid, two across, ten to a page, with so
     };
   });
   assert.deepStrictEqual(r.titles, ['Who we might see in the log yard', 'Who we might see in the log yard, continued']);
-  assert.deepStrictEqual(r.n, [10, 2]);
+  assert.deepStrictEqual(r.n, [6, 6]);
   assert.ok(r.card, 'the pages are centred cards');
-  // ten tiles on the first page, two across, every photo in the same frame, and the entries without a photo as soft tiles
-  assert.strictEqual(r.imgs1 + r.soft1, 10); assert.strictEqual(r.soft1, 2); assert.strictEqual(r.cols1, 2); assert.strictEqual(r.sameFrame, 1);
-  assert.strictEqual(r.imgs2 + r.soft2, 2);
-  for (let i = 1; i <= 10; i++) assert.ok(r.texts1.includes('Creature ' + i), 'each tile names its entry');
+  // six tiles on the first page, two across, every photo in the same frame, and the entry without a photo as a soft tile
+  assert.strictEqual(r.imgs1 + r.soft1, 6); assert.strictEqual(r.soft1, 1); assert.strictEqual(r.cols1, 2); assert.strictEqual(r.sameFrame, 1);
+  assert.strictEqual(r.imgs2 + r.soft2, 6);
+  for (let i = 1; i <= 6; i++) assert.ok(r.texts1.includes('Creature ' + i), 'each tile names its entry');
   assert.ok(r.texts1.includes('We look with our eyes and leave them be.'));
-  // with ten tiles the credits share a small line at the foot, and with three each sits under its photo
-  assert.ok(r.texts1.some(x => /^Photos\. /.test(x)) && !r.texts1.some(x => /^Photo by /.test(x)));
+  // each credit sits under its photo, and the photos are taller than a wide strip
+  assert.ok(r.texts1.some(x => /^Photo by An observer/.test(x)) && !r.texts1.some(x => /^Photos\. /.test(x)));
+  assert.ok(r.tileH >= 120, 'the photos are tall enough to see the whole creature, ' + r.tileH);
   assert.ok(r.textsS.some(x => /^Photo by An observer, CC BY, iNaturalist$/.test(x)));
   assert.ok(r.in1 && r.in2, 'everything stays above the footer'); assert.strictEqual(r.over1, false);
   assert.match(r.preview, /class="csheet"/);

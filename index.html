@@ -4531,7 +4531,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="65cdcd8c9ff5";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="6346fff4baf5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5455,13 +5455,13 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 /* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
-   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Ten fit on a page, and more
+   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Six fit on a page, and more
    go on to a page of their own, its title marked continued. */
 function gdnFieldDocs(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return [];const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
   const title="Who we might see in the "+f.title.toLowerCase();
   const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.key:"",src:p?p.src:"",credit:p&&p.credit?p.credit:""}});
-  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=10)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
-    blocks:[{t:"grid",tiles:tiles.slice(i,i+10)},dText("","We look with our eyes and leave them be.")]}));
+  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=6)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
+    blocks:[{t:"grid",tiles:tiles.slice(i,i+6)},dText("","We look with our eyes and leave them be.")]}));
   return out}
 function gdnFieldDoc(key){return gdnFieldDocs(key)[0]||null}
 // an entry in the sheet that opens from Search
@@ -11304,11 +11304,11 @@ function cLayout(doc,md,A){
   }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:md.card?.46:.4)),ops)}
   return {ops,s,over,PW:PWd,PH:PHd,land:false,sq,pos};
 }
-/* The grid of a field guide card. Up to ten tiles, two across, each photo cut to the same frame so the rows line up, with the
+/* The grid of a field guide card. Up to six tiles, two across, each photo cut to the same frame so the rows line up, with the
    name centred beneath. A tile with no photo is a soft frame with the name in it. With six tiles or fewer each credit sits
    under its photo; with more, the credits share one small line at the foot of the page. */
 function cGrid(doc,md,A,gb,top,W,H,PWd,PHd){
-  const ops=[],tiles=(gb.tiles||[]).slice(0,10),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
+  const ops=[],tiles=(gb.tiles||[]).slice(0,6),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
   const rest=Object.assign({},md,{blocks:(md.blocks||[]).filter(b=>b.t!=="grid")}),ww=W*.8,wh=cWords(doc,rest,A,1,0,ww,0,null);
   const credits=tiles.map(t=>t.credit).filter(has),under=n<=6,cz=7,cl=8.6;
   const footL=!under&&credits.length?cwrap(doc,"fr",cz,"Photos. "+[...new Set(credits)].join(". ")+".",W).slice(0,4):[];
@@ -11426,7 +11426,7 @@ async function centeredDocx(ch,p,D,A){
     return [new Table({width:{size:dx.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:dx,layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({children:cols.map((c,i)=>new TableCell({width:{size:dx[i],type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:c.items.map(o=>{const r=img(o,o.w,o.h);return r?P(r,{alignment:CEN,spacing:{after:120}}):P([])})}))})]}),P([],{spacing:{after:120}})]};
   // a field guide card's grid is a two column table with no borders, each cell the photo or a soft frame, then the name
   let GRID=null;
-  const gridTable=b=>{const G=GRID||{tw:240,ih:170,cols:2,under:true,footL:[]},tiles=(b.tiles||[]).slice(0,10),cols=tiles.length>1?2:1,cw=Math.round(10080/cols);
+  const gridTable=b=>{const G=GRID||{tw:240,ih:170,cols:2,under:true,footL:[]},tiles=(b.tiles||[]).slice(0,6),cols=tiles.length>1?2:1,cw=Math.round(10080/cols);
     const cell=t=>{const im=t&&t.key&&photoCache.get(t.key);if(!t)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[P([])]});
       const kids=[];
       if(im){const r=Math.min(G.tw/im.w,G.ih/im.h);kids.push(P(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r*96/72),height:Math.round(im.h*r*96/72)}}),{alignment:CEN,spacing:{after:60}}));kids.push(P(run(t.name,"fs",12.5),{alignment:CEN,spacing:{after:G.under&&has(t.credit)?20:200}}))}

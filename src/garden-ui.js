@@ -293,13 +293,13 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 /* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
-   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Ten fit on a page, and more
+   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Six fit on a page, and more
    go on to a page of their own, its title marked continued. */
 function gdnFieldDocs(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return [];const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
   const title="Who we might see in the "+f.title.toLowerCase();
   const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.key:"",src:p?p.src:"",credit:p&&p.credit?p.credit:""}});
-  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=10)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
-    blocks:[{t:"grid",tiles:tiles.slice(i,i+10)},dText("","We look with our eyes and leave them be.")]}));
+  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=6)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
+    blocks:[{t:"grid",tiles:tiles.slice(i,i+6)},dText("","We look with our eyes and leave them be.")]}));
   return out}
 function gdnFieldDoc(key){return gdnFieldDocs(key)[0]||null}
 // an entry in the sheet that opens from Search
