@@ -418,7 +418,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -1504,7 +1504,7 @@ function inquiryShows(x, notices) { if (x.display === true) return true; if (x.d
 /* Gatherings, Second Saturday and Play Garden, are participation items marked with the gathering they belong to. The
    director and the office keep them on the Gatherings page. Every educator reads their plans, toolkits and documentation
    there too, with how many signed up for each volunteer job and never which families. */
-const GATHERING_KINDS = ['second-saturday', 'play-garden', 'garden-visit'];
+const GATHERING_KINDS = ['second-saturday', 'play-garden', 'garden-visit', 'work-day'];
 /* Gatherings stay hidden from educators until the director releases them, the whole page or one gathering at a time,
    with the switches in Settings, Releases. Families see nothing of a gathering until it is released either. The
    director and the office, who plan them, always see them. */
@@ -1519,8 +1519,8 @@ function gatheringsFor(who) {
   const jobs = all.filter(x => x.kind === 'item' && x.gatheringId);
   const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering) && (planner || gthReleased(x, conf))).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
     .map(x => ({ id: x.id, gathering: x.gathering, title: x.title || '', date: x.date || '', start: x.start || '', end: x.end || '', gardenDay: !!x.gardenDay, ready: x.open !== false, plan: x.plan || '', toolkit: x.toolkit || '', documentation: x.documentation || '', docLink: x.docLink || '',
-      coming: (x.signups || []).length, released: gthReleased(x, conf), jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length })) }));
-  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '', 'garden-visit': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
+      coming: (x.signups || []).length, released: gthReleased(x, conf), jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length, pointPerson: j.pointPerson || '' })) }));
+  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '', 'garden-visit': '', 'work-day': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
 }
 async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };
@@ -1813,6 +1813,7 @@ async function handle(req, res) {
     else if (path === '/family/book') r = familyPage.book(f, String(body.slotId || ''), String(body.childId || ''), body.on !== false);
     else if (path === '/family/reflect') r = familyPage.reflect(f, String(body.childId || ''), body.answers || {});
     else if (path === '/family/strengths') r = familyPage.strengths(f, body.text);
+    else if (path === '/family/visit') r = familyPage.offerVisit(f, body || {});
     else if (path === '/family/enroll') r = familyPage.enroll(f, String(body.childId || ''), body.data || {}, !!body.done);
     else if (path === '/family/questionnaire') r = familyPage.questionnaire(f, String(body.childId || ''), Array.isArray(body.answers) ? body.answers : []);
     else if (path === '/family/photo') { r = await familyPage.photo(f, String(body.childId || ''), body.data); if (!r.error) { json(req, res, 200, r); return; } }

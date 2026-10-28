@@ -4534,7 +4534,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="1bdc46e10592";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="c5e2fe707e3b";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4717,6 +4717,9 @@ function todayWaiting(){
   if(dir&&new Date().getDate()<=7&&!LS.get("tree.drrep-"+mNow())){const {rows,rooms}=drData();const t=rooms.map(r=>[r,drThin(rows.filter(x=>x.c.classroom===r))]).filter(([,x])=>x.length);
     if(t.length)out.push({dot:"sky",t:"DRDP, less visible so far this year",s:t.map(([r,x])=>`${r}, ${x.map(y=>DRDP_DOM[y.d]||y.d).join(" and ")}`).join(". ")+".",act:`data-tview="drdpreport" data-drrep="1"`,b:"Open"})}
   // requests from class teams wait for the director or the office to post them
+  // a family's visit idea waits for the director, and each January the list of children behind on hours
+  if(dir&&!VIEW_AS){const nv=ptVisits().filter(v=>v.status==="new").length;if(nv)out.push({dot:"mari",t:nv===1?"A family offered a visit":nv+" families offered visits",s:"Send each one to a class team, then schedule it.",act:`data-tview="participation"`,b:"Look"});
+    if(new Date().getMonth()===0){const n=ptBehindRows().length;if(n)out.push({dot:"mari",t:"The January list",s:`${n} ${n===1?"child is":"children are"} behind on hours for this time of year.`,act:`data-tview="participation"`,b:"Look"})}}
   if(isOffice())for(const x of ptItems().filter(x=>x.status==="requested"))out.push({dot:"mari",t:`Request from ${x.requestedBy||"a class team"}`,s:[x.title+".",x.date?fmtDate(x.date)+".":"",x.spots?x.spots+" people.":""].filter(Boolean).join(" "),act:`data-tview="participation"`,b:"Look"});
   // a family's strengths that fit a thread the class follows, so the team can think about inviting them
   if(!dir){const rm=myRoom();if(rm){const off=new Set(LS.get("tree.famfitOff",[]));const ths=[...threads.values()].filter(t=>(!t.room||t.room===rm)&&t.status!=="closed"&&t.status!=="resting");
@@ -5258,6 +5261,10 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
+  // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
+  if(isOffice()&&!VIEW_AS){if(!volData)volLoad();const vj=((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&(j.months||[]).includes(mm));
+    if(volData&&volData.jobs)h+=`<section class="card"><div class="lbl">Volunteer jobs for ${esc(volMonthName(mm))}</div>${vj.length?`<div class="cnt">${vj.map(j=>esc(j.title)).join(", ")}.</div>`:`<div class="cnt">No job card is marked for ${esc(volMonthName(mm))} yet. Each card's best months are chosen on the Volunteer Jobs page.</div>`}
+      <div class="actions"><button class="linkbtn" data-tview="volunteer">Open Volunteer Jobs</button></div></section>`}
   // the permaculture premises, once, at the top, beside our two guiding agreements. For educators, never a unit for children.
   {const pc=gdnPage("permaculture");if(pc){const part=k=>gdnPart("permaculture",k);
     h+=`<section class="card"><div class="lbl">Our guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${((g.agreements||{}).guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
@@ -5739,7 +5746,7 @@ function gdnFoodRuleText(){return (wordsOf("food-rule").rule||"").trim()}
    use on the Family page, shows on the Calendar and the staff room display, and its volunteer jobs are participation
    items that belong to it. Everything made here stays closed to families until the director marks the gathering ready.
    The director and the office plan them. Every educator reads the plans, toolkits and documentation. */
-const GTH_NAMES={"second-saturday":"Second Saturday","play-garden":"Play Garden","garden-visit":"Garden visits"};
+const GTH_NAMES={"second-saturday":"Second Saturday","play-garden":"Play Garden","garden-visit":"Garden visits","work-day":"Work days"};
 // the months whose Second Saturday is also the season's garden day
 const GTH_GARDEN_MONTHS={"12":"winter","03":"spring","06":"summer","09":"fall"};
 let gthForm=null,gthPg=null,gthPgAsked=false,gthDateEdit="";
@@ -5747,12 +5754,12 @@ const gthEdit=()=>isOffice()&&!VIEW_AS;
 // educators see the page once the director releases it, or one of its gatherings, in Settings, Releases
 // seen as an educator, the page opens only as it would for that educator, once the director has released it
 const gthPageOpen=()=>{if(isOffice()&&!VIEW_AS)return true;const G=window.FP_GATHERINGS;if(!G)return false;if(VIEW_AS)return !!G.page||(G.list||[]).some(x=>x.released);return !!G.open};
-function gthConf(){const c=participation.get("gatherings")||{};return Object.assign({id:"gatherings",kind:"gatherings",toolkits:{}},c,{toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},c.toolkits||{})})}
+function gthConf(){const c=participation.get("gatherings")||{};return Object.assign({id:"gatherings",kind:"gatherings",toolkits:{}},c,{toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":"","work-day":""},c.toolkits||{})})}
 // one list for everyone. The director and the office read the participation items themselves, educators the summary TREE sent
 function gthList(){if(gthEdit()){const jobs=ptItems().filter(x=>x.gatheringId);
     return ptItems().filter(x=>GTH_NAMES[x.gathering]).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999")).map(x=>Object.assign({},x,{ready:x.open!==false,jobsFull:jobs.filter(j=>j.gatheringId===x.id)}))}
   const G=window.FP_GATHERINGS||{};return (G.list||[]).filter(x=>!VIEW_AS||G.page||x.released).map(x=>Object.assign({},x,{jobsFull:null}))}
-function gthToolkits(){return gthEdit()?gthConf().toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":""},(window.FP_GATHERINGS||{}).toolkits||{})}
+function gthToolkits(){return gthEdit()?gthConf().toolkits:Object.assign({"second-saturday":"","play-garden":"","garden-visit":"","work-day":""},(window.FP_GATHERINGS||{}).toolkits||{})}
 // the garden day for a season, the Second Saturday in its first month
 function gthForSeason(key){const mm=Object.keys(GTH_GARDEN_MONTHS).find(m=>GTH_GARDEN_MONTHS[m]===key);const today=iso(new Date());
   const all=gthList().filter(g=>g.gathering==="second-saturday"&&g.date&&g.date.slice(5,7)===mm);return all.find(g=>g.date>=today)||all[all.length-1]||null}
@@ -5762,7 +5769,7 @@ function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gth
   const jobs=g.jobsFull||g.jobs||[],gv=g.gathering==="garden-visit";
   const when=[g.date?fmtDate(g.date):"No date set yet",g.start?tlabel(g.start)+(g.end?" to "+tlabel(g.end):""):""].filter(Boolean).join(" · ");
   const jobRow=j=>{const ss=j.signups||[];const taken=j.signups?ss.length:(j.taken||0);
-    return `<li><b>${esc(j.title)}</b>${j.spots?` <span class="muted">${taken} of ${j.spots}</span>`:taken?` <span class="muted">${taken} signed up</span>`:""}${ed&&ss.length?`<div class="cnt">${esc(ss.map(s=>s.who||s.family||s.email).join(", "))}</div>`:""}${ed?` <button class="linkbtn" data-gthjobdel="${esc(j.id)}">Take it off</button>`:""}</li>`};
+    return `<li><b>${esc(j.title)}</b>${j.pointPerson?` <span class="cnt">with ${esc(j.pointPerson)}</span>`:""}${j.spots?` <span class="muted">${taken} of ${j.spots}</span>`:taken?` <span class="muted">${taken} signed up</span>`:""}${ed&&ss.length?`<div class="cnt">${esc(ss.map(s=>s.who||s.family||s.email).join(", "))}</div>`:""}${ed?` <button class="linkbtn" data-gthjobdel="${esc(j.id)}">Take it off</button>`:""}</li>`};
   return `<section class="card" id="gth-${esc(g.id)}"><div class="secthead"><div style="min-width:0"><div class="lbl">${esc(GTH_NAMES[g.gathering]||"Gathering")}${g.gardenDay?", the season's garden day":""}</div><h3 style="font-size:18px;margin:2px 0">${esc(g.title||GTH_NAMES[g.gathering])}</h3><div class="cnt">${esc(when)}</div></div>
     <span class="status ${gv||g.ready&&gthIsReleased(g)?"done":"ready"}">${gv?"For the staff only":!gthIsReleased(g)?"Not released yet, only the director and the office see it":g.ready?"Ready, families see it":"Being planned, families do not see it yet"}</span></div>
     ${ed?`<label class="fld-label">The plan<textarea rows="4" data-gthf="plan" data-gthid="${esc(g.id)}">${esc(g.plan||"")}</textarea></label>
@@ -5770,7 +5777,7 @@ function gthCard(g){const today=iso(new Date()),past=g.date&&g.date<today,ed=gth
       <label class="fld-label">Its toolkit, a link<input type="url" data-gthf="toolkit" data-gthid="${esc(g.id)}" value="${esc(g.toolkit||"")}" placeholder="https://"></label>`
       :`${g.plan?`<div class="lbl">The plan</div><div style="white-space:pre-line">${esc(g.plan)}</div>`:`<div class="cnt">The plan is still to come.</div>`}${g.toolkit?`<div><a href="${esc(g.toolkit)}" target="_blank" rel="noopener">Its toolkit</a></div>`:""}`}
     ${gv?`<div class="actions">${printBtns("gthintake","","Intake form")}</div>`:`<div class="lbl" style="margin-top:8px">Volunteer jobs</div>${jobs.length?`<ul style="margin:4px 0;padding-left:18px">${jobs.map(jobRow).join("")}</ul>`:`<div class="cnt">No volunteer jobs yet.</div>`}
-    ${ed?`<div class="gsrow"><label>A job<input type="text" id="gthj-t-${esc(g.id)}" placeholder="Ex. Second Saturday helper"></label><label>Spots<input type="number" min="0" id="gthj-s-${esc(g.id)}" value="4"></label><label>Hours it counts for<input type="number" min="1" max="12" id="gthj-h-${esc(g.id)}" value="3"></label></div><div class="actions"><button class="btn small ghost" data-gthjob="${esc(g.id)}">Add the job</button></div><div class="cnt">Families sign up for a job on the Family page and log their hours after the day, never at sign up.</div>`:""}`}
+    ${ed?`<div class="gsrow"><label>A job<input type="text" id="gthj-t-${esc(g.id)}" placeholder="Ex. Second Saturday helper"></label><label>Spots<input type="number" min="0" id="gthj-s-${esc(g.id)}" value="4"></label><label>Hours it counts for<input type="number" min="1" max="12" id="gthj-h-${esc(g.id)}" value="3"></label></div><div class="actions"><button class="btn small ghost" data-gthjob="${esc(g.id)}">Add the job</button></div><div class="cnt">Families sign up for a job on the Family page and log their hours after the day, never at sign up.</div>`+gthStationForm(g):""}`}
     ${ed&&g.signups&&g.signups.length?`<div class="cnt">Coming, ${esc(g.signups.map(s=>s.who||s.family||s.email).join(", "))}</div>`:!ed&&g.coming?`<div class="cnt">${g.coming} ${g.coming==1?"family":"families"} coming</div>`:""}
     ${past||g.documentation||g.docLink?`<div class="lbl" style="margin-top:8px">Afterward</div>${ed?`<label class="fld-label">What happened, in our words<textarea rows="3" data-gthf="documentation" data-gthid="${esc(g.id)}">${esc(g.documentation||"")}</textarea></label><label class="fld-label">Photos or documentation, a link<input type="url" data-gthf="docLink" data-gthid="${esc(g.id)}" value="${esc(g.docLink||"")}" placeholder="https://"></label>${dir?`<div class="actions"><button class="linkbtn" data-gthoffer="${esc(g.id)}">Offer it for objective 8 on the Farm to School page</button></div>`:""}`
       :`${g.documentation?`<div style="white-space:pre-line">${esc(g.documentation)}</div>`:""}${g.docLink?`<div><a href="${esc(g.docLink)}" target="_blank" rel="noopener">Photos and documentation</a></div>`:""}`}`:""}
@@ -5783,12 +5790,23 @@ function gthPgHtml(){if(!isDirector()||VIEW_AS||!window.FP_API)return"";if(!gthP
       ${(p.applications||[]).length?`<details style="margin-top:6px"><summary><b>${p.applications.length} ${p.applications.length==1?"application":"applications"}</b></summary>${p.applications.map(a=>`<div class="strow"><div class="cnt">${esc(shortDate(a.at))} · ${esc(a.status==="welcomed"?"Welcomed":a.status==="declined"?"Not this time":"New")}</div>${(a.questions||[]).map(q=>`<div><b>${esc(q.label)}</b> ${esc(a.answers[q.key]===true?"Yes":a.answers[q.key]===false?"No":String(a.answers[q.key]||""))}</div>`).join("")}
         <div class="actions"><button class="linkbtn" data-gthpgst="${esc(a.id)}|welcomed">Welcomed</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|declined">Not this time</button><button class="linkbtn" data-gthpgst="${esc(a.id)}|new">New</button></div></div>`).join("")}</details>`:`<div class="cnt">No applications yet.</div>`}`}</div>`}
 let gthAt=0;
+/* A station for a gathering from one of the director's job cards, with its point person and spots. Families sign up for
+   it as for any job, and Print the station cards prints each station's card for the day, with its point person. */
+function gthStationForm(g){if(!volData){volLoad();return `<div class="cnt">Reading the job cards.</div>`}if(!volData.jobs)return "";
+  const cards=volData.jobs.filter(j=>!volFuture(j));const st=ptItems().filter(j=>j.gatheringId===g.id&&j.jobId);
+  return `<div class="lbl" style="margin-top:8px">A station from a job card</div><div class="gsrow"><label>Job card<select id="gths-c-${esc(g.id)}"><option value="">Choose a card</option>${(volData.groups||[]).filter(x=>x.id!=="future-ideas").map(gr=>`<optgroup label="${esc(gr.name)}">${cards.filter(j=>j.group===gr.id).map(j=>`<option value="${esc(j.id)}">${esc(j.title)}</option>`).join("")}</optgroup>`).join("")}</select></label>
+    <label>Point person<input type="text" id="gths-p-${esc(g.id)}" list="vol-pp" maxlength="80"></label><label>Spots<input type="number" min="0" id="gths-s-${esc(g.id)}" value="4"></label><label>Hours it counts for<input type="number" min="1" max="12" id="gths-h-${esc(g.id)}" value="3"></label></div>
+    <div class="actions"><button class="btn small ghost" data-gthstation="${esc(g.id)}">Add the station</button>${st.length?`<button class="btn small ghost" data-gthstations="${esc(g.id)}">Print the station cards</button><button class="linkbtn" data-gthstations="${esc(g.id)}" data-word="1">Word</button>`:""}</div>`}
+// a station's card as it prints, its day above the name and its point person first
+function volStationDoc(c,j,g){const d=volJobDoc(c),day=[g.title||GTH_NAMES[g.gathering]||"",g.date?fmtDate(g.date):""].filter(Boolean).join(", ");
+  if(d.centered){if(day)d.over=day;if(has(j.pointPerson))d.blocks=[{t:"sect",label:"Point person",text:j.pointPerson},...d.blocks];return d}
+  return Object.assign({},d,{meta:[...(day?[["Day",day]]:[]),...(has(j.pointPerson)?[["Point person",j.pointPerson]]:[]),...(d.meta||[])]})}
 function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!VIEW_AS,today=iso(new Date());
   // an educator reads the gatherings again each time the page opens, at most twice a minute
   if(!ed&&window.FP_API&&Date.now()-gthAt>30000){gthAt=Date.now();window.FP_API("/api/gatherings",{}).then(r=>{window.FP_GATHERINGS=r;if(view==="gatherings")renderMain()}).catch(()=>{})}
   const list=gthList(),tk=gthToolkits();
   const up=list.filter(g=>!g.date||g.date>=today),past=list.filter(g=>g.date&&g.date<today).reverse();
-  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":k==="garden-visit"?"A class or group from another school visiting our garden. Their educator fills in the intake form before the first visit, and the form stays on paper with the visiting school. A garden visit stays with the staff and never reaches families.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>${k==="garden-visit"?`<div class="actions">${printBtns("gthintake","","Visiting educator intake form")}</div>`:""}
+  const series=k=>`<div class="strow"><div class="secthead"><b>${esc(GTH_NAMES[k])}</b></div><div class="cnt">${k==="work-day"?"Days when families work beside us. Each station is a job card with its point person and spots, and its station cards print for the day.":k==="second-saturday"?"Every month. The Second Saturdays of December, March, June and September are also the seasons' garden days.":k==="garden-visit"?"A class or group from another school visiting our garden. Their educator fills in the intake form before the first visit, and the form stays on paper with the visiting school. A garden visit stays with the staff and never reaches families.":"Open to any family, with a parent or caregiver staying with each child. Its timing is still to be decided."}</div>${k==="garden-visit"?`<div class="actions">${printBtns("gthintake","","Visiting educator intake form")}</div>`:""}
     ${tk[k]?`<div><a href="${esc(tk[k])}" target="_blank" rel="noopener">The ${esc(GTH_NAMES[k])} toolkit</a></div>`:`<div class="cnt">A place for the ${esc(GTH_NAMES[k])} toolkit, once there is one.</div>`}
     ${ed?`<label class="fld-label">The toolkit, a link<input type="url" data-gthtk="${k}" value="${esc(tk[k]||"")}" placeholder="https://"></label>`:""}${k==="play-garden"&&isDirector()&&!VIEW_AS?`<div class="cnt">The Play Garden application is turned on and off in Settings, Releases, beside the Gatherings release.</div>`:""}</div>`;
   const F=gthForm;
@@ -5799,7 +5817,7 @@ function renderGatherings(){const m=$("#main"),ed=gthEdit(),dir=isDirector()&&!V
     <div class="hint">The director sets every date. It stays with the staff, on the Calendar and the staff room display, until the director marks it ready for families.</div>
     <div class="actions"><button class="btn small" data-gthsave="1">Add it</button><button class="linkbtn" data-gthcancel="1">Cancel</button></div></section>`
     :`<div class="actions"><button class="btn small" data-gthnew="1">Plan a gathering</button></div>`):"";
-  m.innerHTML=`<section class="card"><div class="lbl">Gatherings</div><div class="hint">Second Saturday, Play Garden and garden visits, each with its plan, its toolkit, its volunteer jobs and what happened afterward. Families sign up on the Family page once the director marks a gathering ready. The dates show on the Calendar.</div>
+  m.innerHTML=`${ed?volPeople():""}<section class="card"><div class="lbl">Gatherings</div><div class="hint">Second Saturday, Play Garden and garden visits, each with its plan, its toolkit, its volunteer jobs and what happened afterward. Families sign up on the Family page once the director marks a gathering ready. The dates show on the Calendar.</div>
     ${Object.keys(GTH_NAMES).map(series).join("")}</section>${form}
     ${up.map(gthCard).join("")||`<section class="card"><div class="empty">No gatherings are planned yet.</div></section>`}
     ${past.length?`<details class="card"><summary><b>Past gatherings</b> <span class="cnt">${past.length}</span></summary>${past.map(gthCard).join("")}</details>`:""}`}
@@ -5807,12 +5825,18 @@ document.addEventListener("change",e=>{if(view!=="gatherings")return;const t=e.t
   if(t.dataset.gthf){const x=participation.get(t.dataset.gthid);if(!x)return;const v=t.value.trim();if((t.dataset.gthf==="toolkit"||t.dataset.gthf==="docLink")&&v&&!/^https:\/\//.test(v)){toast("A link starts with https://");return}
     gthSave(Object.assign({},x,{[t.dataset.gthf]:v.slice(0,t.dataset.gthf==="plan"||t.dataset.gthf==="documentation"?6000:600),updatedAt:Date.now()})).then(()=>toast("Saved."));return}
   if(t.dataset.gthtk){const v=t.value.trim();if(v&&!/^https:\/\//.test(v)){toast("A link starts with https://");return}const c=gthConf();c.toolkits[t.dataset.gthtk]=v.slice(0,600);ptSave("gatherings",c).then(()=>{toast("Saved.");renderMain()})}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthnew],[data-gthcancel],[data-gthkind],[data-gthsave],[data-gthready],[data-gthjob],[data-gthjobdel],[data-gthdel],[data-gthdate],[data-gthdatesave],[data-gthdatecancel],[data-gthoffer],[data-gthpg],[data-gthpgst]");if(!t||view!=="gatherings")return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gthstation],[data-gthstations],[data-gthnew],[data-gthcancel],[data-gthkind],[data-gthsave],[data-gthready],[data-gthjob],[data-gthjobdel],[data-gthdel],[data-gthdate],[data-gthdatesave],[data-gthdatecancel],[data-gthoffer],[data-gthpg],[data-gthpgst]");if(!t||view!=="gatherings")return;const d=t.dataset;
   const keep=()=>{if(!gthForm)return;const v=id=>(document.getElementById(id)||{}).value||"";Object.assign(gthForm,{title:v("gth-title"),date:v("gth-date"),start:v("gth-start"),end:v("gth-end"),spots:v("gth-spots")})};
   if(d.gthnew){gthForm={gathering:"second-saturday",title:"Second Saturday",start:"09:00",end:"12:00"};renderMain();return}
   if(d.gthcancel){gthForm=null;renderMain();return}
-  if(d.gthkind){keep();const one=k=>k==="garden-visit"?"Garden visit":GTH_NAMES[k];const was=one(gthForm.gathering);gthForm.gathering=d.gthkind;if(!gthForm.title||gthForm.title===was)gthForm.title=one(d.gthkind);renderMain();return}
-  if(d.gthsave){keep();const F=gthForm;if(!F.title.trim()){toast("Give it a name.");return}if((F.gathering==="second-saturday"||F.gathering==="garden-visit")&&!F.date){toast("Choose the day.");return}
+  if(d.gthstations){const g=participation.get(d.gthstations);if(!g||!volData)return;const docs=ptItems().filter(j=>j.gatheringId===g.id&&j.jobId).map(j=>{const c=volData.jobs.find(x=>x.id===j.jobId);return c?volStationDoc(c,j,g):null}).filter(Boolean);
+    if(!docs.length){toast("No station has a job card yet.");return}if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(er){}
+    const n=safeFile((g.title||"Work day")+" station cards"+(g.date?" "+g.date:""));if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf");return}
+  if(d.gthstation){const g=participation.get(d.gthstation);if(!g)return;const v=id=>(document.getElementById(id)||{}).value||"";const c=(volData&&volData.jobs||[]).find(x=>x.id===v("gths-c-"+g.id));if(!c){toast("Choose a job card.");return}
+    await ptSave(ptNewId("it"),{kind:"item",type:"task",gatheringId:g.id,jobId:c.id,title:c.title,pointPerson:v("gths-p-"+g.id).trim().slice(0,80),date:g.date||"",start:g.start||"",end:g.end||"",spots:Number(v("gths-s-"+g.id))||0,hours:Math.max(1,Math.min(12,Number(v("gths-h-"+g.id))||3)),classroom:"",
+      note:(g.title||GTH_NAMES[g.gathering])+(g.date?", "+fmtDate(g.date):""),signups:[],open:g.open!==false,test:!!g.test,createdAt:Date.now(),createdBy:myName()||""});toast("Added.");renderMain();return}
+  if(d.gthkind){keep();const one=k=>k==="garden-visit"?"Garden visit":k==="work-day"?"Work day":GTH_NAMES[k];const was=one(gthForm.gathering);gthForm.gathering=d.gthkind;if(!gthForm.title||gthForm.title===was)gthForm.title=one(d.gthkind);renderMain();return}
+  if(d.gthsave){keep();const F=gthForm;if(!F.title.trim()){toast("Give it a name.");return}if((F.gathering==="second-saturday"||F.gathering==="garden-visit"||F.gathering==="work-day")&&!F.date){toast("Choose the day.");return}
     const gd=F.gathering==="second-saturday"&&!!GTH_GARDEN_MONTHS[(F.date||"").slice(5,7)];
     const id=ptNewId("it");await ptSave(id,{kind:"item",type:"event",gathering:F.gathering,gardenDay:gd,season:gd?GTH_GARDEN_MONTHS[F.date.slice(5,7)]:"",garden:F.gathering==="play-garden"||F.gathering==="garden-visit"||gd,onCalendar:true,title:F.title.trim().slice(0,120),date:F.date||"",start:F.start||"",end:F.end||"",spots:Number(F.spots)||0,classroom:"",hours:0,counts:true,plan:"",toolkit:"",documentation:"",docLink:"",note:"",signups:[],open:false,test:!!ptCfg().test,createdAt:Date.now(),createdBy:myName()||""});
     gthForm=null;toast("Added. Families do not see it until the director marks it ready.");renderMain();return}
@@ -9823,6 +9847,7 @@ function renderParticipation(){
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Ways to take part</h3>${ptForm?"":`<button class="btn small" data-ptnew="1">Add one</button>`}</div>
       ${form}${upcoming.length?upcoming.map(itemRow).join(""):`<div class="cnt">Nothing posted yet. Add a volunteer task or a community event, and families see it on the Family page.</div>`}
       ${past.length?`<details><summary class="chiprow-label">Already happened, ${past.length}</summary>${past.slice().reverse().map(itemRow).join("")}</details>`:""}</section>
+    ${ptVisitsHtml()}${ptSkillsHtml()}${ptJanuaryHtml()}
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Hours this school year</h3><span class="cnt">${rows.filter(r=>r.h>=c.goal).length} of ${rows.length} children at ${c.goal}${(()=>{const b=rows.filter(r=>r.h<ptPace(c.goal)).length;return b?`, ${b} behind for the time of year`:""})()}</span></div>
       ${(()=>{const m=new Date().getMonth();if(!(m>=3&&m<=6))return "";const short=rows.filter(r=>r.h<c.goal);if(!short.length)return "";
         return `<details class="ptshort"><summary class="chiprow-label">Short of ${c.goal} hours, ${short.length}, for the fee in 1Core</summary><div class="cnt" style="white-space:pre-line;margin:6px 0" id="pt-shortlist">${esc(short.map(r=>`${kidName(r.k)}, ${r.k.classroom||""}, ${r.h} of ${c.goal} hours, ${c.goal-r.h} short`).join("\n"))}</div><button class="btn small ghost" data-ptcopyshort="1">Copy the list</button></details>`})()}
@@ -9884,6 +9909,20 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.ptcopyshort){const t2=$("#pt-shortlist")?.textContent||"";navigator.clipboard?.writeText(t2).then(()=>toast("Copied. Paste it for the office or into 1Core."),()=>toast("Select the list and copy it."));return}
   if(d.ptbank){const [i,j]=d.ptbank.split("|").map(Number);const x=(ptBank()[i]||{}).items?.[j];if(x&&!x.hidden){const f=Object.assign({},x);delete f.key;delete f.hidden;delete f.changed;ptForm=f;renderMain()}return}
   if(d.ptbedit){ptBankEdit=!ptBankEdit;renderMain();return}
+  if(d.ptfitoff){const off=LS.get("tree.dirfamfitOff",[]);off.push(d.ptfitoff);LS.set("tree.dirfamfitOff",off.slice(-400));renderMain();return}
+  if(d.pvsched){ptVisitOpen=ptVisitOpen===d.pvsched?"":d.pvsched;renderMain();return}
+  if((d.pvsend||d.pvno||d.pvsave)&&VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.pvno){const v=participation.get(d.pvno);if(!v)return;ptSave(v.id,Object.assign({},v,{status:"declined",decidedAt:Date.now()})).then(()=>{toast("Saved. The family sees Not this time.");renderMain()});return}
+  if(d.pvsend){const v=participation.get(d.pvsend);if(!v)return;const cls=$("#pvt-"+v.id)?.value||"";const names=[...new Set((roster||[]).filter(r=>r.room===cls).map(r=>r.name))];
+    if(!names.length){toast("No educators are listed for that class.");return}
+    const text=`${v.family?v.family+"'s family":"A family"} offered a visit. ${v.who} would like to share ${v.what.replace(/[.]+$/,"")}. Talk with the director if it fits what the children are exploring.`;
+    (async()=>{try{for(const n of names)await window.FP_API("/api/notes/send",{text,to:n});await ptSave(v.id,Object.assign({},v,{status:"with-team",classroom:cls,sentAt:Date.now()}));toast("Sent to the "+cls+" class team.");renderMain()}catch(er){toast(er&&er.message||"It could not be sent.")}})();return}
+  if(d.pvsave){const v=participation.get(d.pvsave);if(!v)return;const g=id=>($("#"+id+"-"+v.id)?.value||"").trim();if(!g("pvd")){toast("Choose the day.");return}
+    const lk=g("pvl");let link=null;if(lk){const [kind,id]=lk.split(":");const x=kind==="thread"?threads.get(id):projects.get(id);if(x)link={kind,id,name:x.name}}
+    const id=ptNewId("it");const short=v.what.length>90?v.what.slice(0,90).replace(/\s+\S*$/,"")+"…":v.what;
+    const item={kind:"item",type:"task",title:"A visit, "+short,note:v.who+" shares "+v.what,date:g("pvd"),start:g("pvs"),end:g("pve"),classroom:g("pvr"),hours:Math.max(1,Math.min(12,Math.round(Number(g("pvh"))||1))),spots:0,open:false,visitId:v.id,
+      signups:[{email:v.email,family:v.family,who:v.who,at:new Date().toISOString()}],link,test:!!v.test,createdAt:Date.now(),createdBy:myName()||""};
+    ptSave(id,item).then(()=>ptSave(v.id,Object.assign({},v,{status:"scheduled",itemId:id,classroom:item.classroom}))).then(()=>{ptVisitOpen="";toast("Scheduled. The family sees the day on the Family page.");renderMain()});return}
   if(d.ptbsave||d.ptbreset){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const k=d.ptbsave||d.ptbreset;
     const cur=participation.get("starters")||{};const doc={id:"starters",kind:"starters",edits:Object.assign({},cur.edits||{}),updatedAt:Date.now(),updatedBy:myName()||""};
     // an idea put back keeps when it was put back, so the save never looks like an older copy of the record
@@ -9910,6 +9949,50 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
     Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared, and the real records put back.`)});return}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
+/* ---------- Specialty visits, family strengths and the January list ----------
+   A family offers a specialty or passion visit on the Family page. It comes to the director first. She sends it to a class
+   team as a note on each educator's Today, then schedules it, with a thread or project it supports when there is one.
+   A visitor who is not a parent, relative or guardian of a child here brings the licensing rule with it. */
+let ptVisitOpen="";
+const VISIT_LICENSING="A visitor who is not a parent, relative or legal guardian of an enrolled child needs a criminal record clearance on file before volunteering, unless a cleared staff member supervises them directly, they are here no more than 16 hours a week and they are never alone with children. This is Title 22, section 101170(b).";
+const VISIT_STATUS={new:"New, with you","with-team":"With the class team",scheduled:"Scheduled",declined:"Not this time"};
+const ptVisits=()=>[...participation.values()].filter(x=>x.kind==="visit");
+function ptVisitsHtml(){const vs=ptVisits().filter(v=>v.status!=="declined").sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));const dir=isDirector()&&!VIEW_AS;
+  if(!vs.length)return "";const today=iso(new Date());
+  const live=threadLiveList(),projs=[...projects.values()].filter(x=>x&&!x.deleted&&x.status!=="closed");
+  const row=v=>{const it=v.itemId&&participation.get(v.itemId);const sid=esc(v.id);
+    return `<div class="ptitem" style="display:block"><div><b>${esc(v.who)}</b> <span class="cnt">${esc(v.family||"")}${v.test?" · Test":""} · ${esc(VISIT_STATUS[v.status]||"New")}${it&&it.date?", "+esc(fmtDate(it.date)):""}${v.classroom?" · "+esc(v.classroom)+" class":""}</span></div>
+      <div style="white-space:pre-line">${esc(v.what)}</div>${v.when?`<div class="cnt">When it suits them. ${esc(v.when)}</div>`:""}
+      ${v.isFamily===false?`<div class="hint warnline"><b>Licensing.</b> ${esc(VISIT_LICENSING)} <a href="https://www.cdss.ca.gov/ord/entres/getinfo/pdf/ccc2.pdf" target="_blank" rel="noopener">Title 22, section 101170</a></div>`:""}
+      ${it&&it.link?`<div class="cnt">Supports the ${esc(it.link.kind)} ${esc(it.link.name)}</div>`:""}
+      ${dir&&v.status!=="scheduled"?`<div class="actions" style="flex-wrap:wrap;align-items:flex-end"><label class="fld-label" style="margin:0">Class team<select id="pvt-${sid}">${CLASSROOMS.map(r=>`<option ${r===(v.classroom||(v.classrooms||[])[0])?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
+        <button class="btn small ghost" data-pvsend="${sid}">Send it to the class team</button><button class="btn small" data-pvsched="${sid}">${ptVisitOpen===v.id?"Close":"Schedule it"}</button><button class="linkbtn" data-pvno="${sid}">Not this time</button></div>`:""}
+      ${dir&&ptVisitOpen===v.id?`<div class="gsrow"><label>Day<input type="date" id="pvd-${sid}" min="${today}"></label><label>Starts<input type="time" id="pvs-${sid}"></label><label>Ends<input type="time" id="pve-${sid}"></label></div>
+        <div class="gsrow"><label>Class<select id="pvr-${sid}">${CLASSROOMS.map(r=>`<option ${r===(v.classroom||(v.classrooms||[])[0])?"selected":""}>${esc(r)}</option>`).join("")}</select></label><label>Hours it counts for<input type="number" min="1" max="12" id="pvh-${sid}" value="1"></label>
+          <label>It supports, if it does<select id="pvl-${sid}"><option value="">Nothing named</option>${live.map(t=>`<option value="thread:${esc(t.id)}">Thread, ${esc(t.name)}</option>`).join("")}${projs.map(x=>`<option value="project:${esc(x.id)}">Project, ${esc(x.name)}</option>`).join("")}</select></label></div>
+        <div class="actions"><button class="btn small" data-pvsave="${sid}">Schedule the visit</button></div>`:""}
+      ${!dir&&v.status==="new"?`<div class="cnt">The director sends each idea on to a class team.</div>`:""}</div>`};
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Specialty and passion visits</h3></div><div class="cnt">Ideas families offer on the Family page. Each comes to the director first, then to a class team, and is then scheduled as a visit with that class. The family sees the day on the Family page and logs the time after the visit.</div>${vs.map(row).join("")}</section>`}
+const threadLiveList=()=>[...threads.values()].filter(t=>threadLive(t)&&t.status!=="closed");
+// a family's strengths beside the threads and projects that may use them, across every class, for the director to decide
+const ptWords=t=>new Set(String(t||"").toLowerCase().match(/[a-z]{4,}/g)?.filter(w=>!STOP.has(w)).map(w=>w.replace(/(ing|ers|er|es|s)$/,""))||[]);
+function ptSkillMatches(){const off=new Set(LS.get("tree.dirfamfitOff",[]));const out=[];
+  const targets=[...threadLiveList().map(t=>({kind:"thread",id:t.id,name:t.name,room:t.classroom||t.room||"",w:ptWords([t.name,t.question].filter(Boolean).join(" "))})),
+    ...[...projects.values()].filter(x=>x&&!x.deleted&&x.status!=="closed").map(x=>({kind:"project",id:x.id,name:x.name,room:x.home||"",w:ptWords([x.name,x.underneath,x.experience].filter(Boolean).join(" "))}))];
+  for(const k of kidsAt().filter(k=>k.familyStrengths&&has(k.familyStrengths.text))){const fw=ptWords(k.familyStrengths.text);
+    for(const g of targets){if(off.has(k.id+"|"+g.id))continue;const hit=[...fw].filter(w=>g.w.has(w));if(hit.length)out.push({k,g,hit})}}
+  return out.slice(0,12)}
+function ptSkillsHtml(){if(!isDirector()||VIEW_AS)return "";const ms=ptSkillMatches();if(!ms.length)return "";
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Family strengths that may fit</h3></div><div class="cnt">What families wrote they can share, beside a thread or project with words in common. You decide whether to invite them.</div>
+    ${ms.map(({k,g})=>`<div class="ptitem"><div style="min-width:0"><b>${esc(kidName(k))}'s family</b> <span class="cnt">${esc(k.classroom||"")}${k.classroom?" class":""}</span><div>${esc(firstLine(k.familyStrengths.text,160))}</div><div class="cnt">May fit the ${g.kind} ${esc(g.name)}${g.room?", "+esc(g.room)+" class":""}</div></div>
+      <span class="actions"><button class="linkbtn" data-ptfitoff="${esc(k.id+"|"+g.id)}">Not a fit</button></span></div>`).join("")}</section>`}
+// the children behind on hours for this time of year, with their families, each January for the director and the office
+function ptBehindRows(){const c=ptCfg(),ys=ptYearStart(),pace=ptPace(c.goal);const logs=ptLogs().filter(l=>(ptConf(l)||!l.test)&&(l.date||"")>=ys);
+  return kidsAt().map(k=>({k,h:logs.filter(l=>l.childId===k.id).reduce((a,l)=>a+(Number(l.hours)||0),0)})).filter(r=>r.h<pace&&r.h<c.goal).sort((a,b)=>a.h-b.h)}
+function ptJanuaryHtml(){if(new Date().getMonth()!==0)return "";const rows=ptBehindRows(),c=ptCfg();if(!rows.length)return "";
+  const text=rows.map(({k,h})=>`${kidName(k)}, ${k.classroom||"no"} class, ${h} of ${c.goal} hours. ${(k.parents||[]).map(p=>[p.name,p.email].filter(Boolean).join(" ")).filter(Boolean).join(", ")}`).join("\n");
+  return `<section class="card ptbanner"><div class="secthead"><h3 style="font-size:17px">The January list</h3></div><div class="cnt">${rows.length} ${rows.length===1?"child is":"children are"} behind on hours for this time of year, with ${ptPace(c.goal)} hours by now at an even pace. Copy the list to reach each family.</div>
+    <textarea rows="${Math.min(12,rows.length+1)}" readonly aria-label="The January list" style="width:100%;font-size:13px">${esc(text)}</textarea></section>`}
 function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note"),question:v("pt-q"),counts:$("#pt-counts")?$("#pt-counts").checked:undefined}}
 /* ---------- Volunteer Jobs ----------
    Every job card families can take on, in the director's own words, kept in the records under staff/volunteer and
@@ -9917,15 +10000,20 @@ function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-
    editor and its history, add cards, choose each card's job type and print one, some or all. Future Ideas, cards on
    hold, reach only the director. Every group and every card starts folded, and TREE keeps each one as it was left
    whenever the page redraws. Families see nothing from here yet. */
-let volData=null,volBusy=false,volPick=new Set(),volQ="",volAdd=false;
+let volData=null,volBusy=false,volPick=new Set(),volQ="",volAdd=false,volSlotFor="",volMonthOnly=false;
+const VOL_MONTHS=[["01","Jan"],["02","Feb"],["03","Mar"],["04","Apr"],["05","May"],["06","Jun"],["07","Jul"],["08","Aug"],["09","Sep"],["10","Oct"],["11","Nov"],["12","Dec"]];
+const volMonthNow=()=>iso(new Date()).slice(5,7);
+const volMonthName=mm=>new Date(2026,Number(mm)-1,15).toLocaleDateString("en-US",{month:"long"});
+// the names a point person can be chosen from, everyone on the educators list, and any other name can be typed
+const volPeople=()=>`<datalist id="vol-pp">${[...new Set((roster||[]).map(r=>r.name).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
 async function volLoad(force){if(volBusy||!window.FP_API||(volData&&!force))return volData;volBusy=true;
   try{volData=await window.FP_API("/api/staff/volunteer",{})}catch(e){if(!volData)volData={error:e&&e.message||"The job cards could not be read."}}finally{volBusy=false}
-  if(view==="volunteer")renderMain();return volData}
+  if(view==="volunteer"||view==="gatherings"||view==="garden")renderMain();return volData}
 const volGroup=id=>((volData&&volData.groups)||[]).find(g=>g.id===id)||{name:"",note:""};
 const volTypeName=k=>(((volData&&volData.types)||[]).find(x=>x.key===k)||{}).name||"";
 const volFuture=j=>j.status==="future"||j.group==="future-ideas";
 const volMatch=j=>{const q=volQ.trim().toLowerCase();return !q||[j.title,j.where,j.who,...(j.supplies||[])].join(" ").toLowerCase().includes(q)};
-const volShown=()=>((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&volMatch(j));
+const volShown=()=>((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&volMatch(j)&&(!volMonthOnly||(j.months||[]).includes(volMonthNow())));
 const volEditBtn=(path,item,label)=>`<button class="linkbtn" data-voledit="${esc(path)}" data-volitem="${esc(item||"")}">${esc(label||"Edit, with its history")}</button>`;
 function volList(items,numbered){items=(items||[]).filter(has);if(!items.length)return "";const tag=numbered?"ol":"ul";return `<${tag} style="margin:2px 0 8px;padding-left:22px">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</${tag}>`}
 function volCard(j){const dir=volData.director,fut=volFuture(j),P=volData.paths;
@@ -9941,7 +10029,18 @@ function volCard(j){const dir=volData.director,fut=volFuture(j),P=volData.paths;
       ${volData.notes&&volData.notes[j.id]?`<div class="hint">${esc(volData.notes[j.id])}</div>`:""}
       <div class="actions" style="flex-wrap:wrap;align-items:flex-end">${fut?"":printBtns("voljob",esc(j.id),"Print this card")}${volEditBtn(P.jobs,j.id)}
         <label class="fld-label" style="margin:0">Job type<select data-voltype="${esc(j.id)}">${types}</select></label>
-        ${dir&&!fut?`<button class="linkbtn" data-volmove="${esc(j.id)}" data-to="future">Move to Future Ideas</button>`:""}${back}</div></div></details>`}
+        ${dir&&!fut?`<button class="linkbtn" data-volmove="${esc(j.id)}" data-to="future">Move to Future Ideas</button>`:""}${back}</div>${fut?"":volExtras(j)}</div></details>`}
+/* A card's best months, and the slots posted from it. The director posts a slot, with its day, its point person and how
+   many helpers, and families sign up on the Family page. A slot the office prepares waits for her under Requests. */
+function volExtras(j){const dir=volData.director,today=iso(new Date());
+  const slots=ptItems().filter(x=>x.jobId===j.id&&!x.gatheringId&&(!x.date||x.date>=today)).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const st=x=>x.status==="requested"?"Waiting for the director":x.open===false?"Closed":"Posted";
+  return `<div class="lbl" style="margin-top:10px">Best months</div><div class="chips" role="group" aria-label="Best months for ${esc(j.title)}">${VOL_MONTHS.map(([mm,n])=>`<button class="chip ${(j.months||[]).includes(mm)?"on":""}" data-volmonth="${esc(j.id)}|${mm}" type="button" aria-pressed="${(j.months||[]).includes(mm)}">${n}</button>`).join("")}</div>
+    <div class="lbl" style="margin-top:10px">Slots for families</div>${slots.length?slots.map(x=>`<div class="cnt">${esc([x.date?fmtDate(x.date):"No day",x.start?tlabel(x.start)+(x.end?" to "+tlabel(x.end):""):"",x.spots?(x.signups||[]).length+" of "+x.spots+" signed up":(x.signups||[]).length+" signed up",x.pointPerson?"with "+x.pointPerson:"",st(x)].filter(Boolean).join(" · "))}</div>`).join(""):`<div class="cnt">None posted.</div>`}
+    ${volSlotFor===j.id?`<div class="gsrow" style="margin-top:6px"><label>Day<input type="date" id="vs-d" min="${today}"></label><label>Starts<input type="time" id="vs-s"></label><label>Ends<input type="time" id="vs-e"></label></div>
+      <div class="gsrow"><label>How many helpers<input type="number" min="1" id="vs-n" value="2"></label><label>Hours it counts for<input type="number" min="1" max="12" id="vs-h" value="1"></label><label>Point person<input type="text" id="vs-p" list="vol-pp" maxlength="80"></label></div>
+      <div class="actions"><button class="btn small" data-volslotsave="${esc(j.id)}">${dir?"Post it for families":"Send it to the director"}</button><button class="linkbtn" data-volslot="">Cancel</button></div>`
+      :`<div class="actions"><button class="btn small ghost" data-volslot="${esc(j.id)}">${dir?"Post a slot":"Prepare a slot for the director"}</button></div>`}`}
 function renderVolunteer(){const m=$("#main");if(!m)return;
   const head=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Volunteer Jobs</h2><div class="sub">Every job card families can take on, in our own words. Families see nothing from this page yet.</div></div>`;
   if(!volData){volLoad();m.innerHTML=head+`<section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;return}
@@ -9956,6 +10055,7 @@ function renderVolunteer(){const m=$("#main");if(!m)return;
   const shown=volShown(),n=volPick.size;
   const tools=`<section class="card"><label class="fld-label">Find a job<input type="search" id="vol-q" value="${esc(volQ)}" placeholder="A job, a place or a supply" data-noproof="1"></label>
     <div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-volprint="some" ${n?"":"disabled"}>Print the cards I chose${n?" ("+n+")":""}</button><button class="linkbtn" data-volprint="some" data-word="1" ${n?"":"disabled"}>Word, the cards I chose</button><button class="linkbtn" data-volprint="all">Print every card shown</button><button class="linkbtn" data-volprint="all" data-word="1">Word, every card shown</button>${n?`<button class="linkbtn" data-volclear="1">Clear my choices</button>`:""}</div>
+    <div class="chips" style="margin:4px 0"><button class="chip ${volMonthOnly?"on":""}" data-volmonthonly="1" type="button" aria-pressed="${volMonthOnly}">Fits ${esc(volMonthName(volMonthNow()))}</button></div>${volPeople()}
     <div class="cnt">Every card shown prints with ${esc(I.title||"Before You Start")} first. A card that fits one page prints centred, and a longer one prints on full pages.</div>
     ${volAdd?`<div class="gsrow" style="margin-top:8px"><label>Job name<input type="text" id="vol-title" maxlength="160"></label><label>Group<select id="vol-group">${volData.groups.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select></label></div>
       <div class="actions"><button class="btn small" data-voladd="save">Add the card</button><button class="linkbtn" data-voladd="cancel">Cancel</button><span class="cnt">The editor opens on it for the rest.</span></div>`:`<div class="actions"><button class="btn small ghost" data-voladd="open">Add a card</button></div>`}</section>`;
@@ -9989,10 +10089,12 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="volunte
   try{if(d.voltype){volData=await window.FP_API("/api/staff/volunteer/type",{id:d.voltype,type:t.value});toast("The job type is saved.");renderMain();return}
     if(d.volsteps){volData=await window.FP_API("/api/staff/volunteer/settings",{stepsBefore:t.checked});toast(t.checked?"Families will see the steps before they sign up.":"Families will see the steps once they sign up.");renderMain();return}}
   catch(er){toast(er&&er.message||"That did not save.");volLoad(true)}});
-document.addEventListener("click",async e=>{if(view!=="volunteer")return;const t=e.target.closest("[data-voledit],[data-volprint],[data-voladd],[data-volmove],[data-volclear],[data-volreload]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{if(view!=="volunteer")return;const t=e.target.closest("[data-voledit],[data-volprint],[data-voladd],[data-volmove],[data-volclear],[data-volreload],[data-volmonthonly],[data-volslot],[data-volslotsave],[data-volmonth]");if(!t)return;const d=t.dataset;
   if(d.volreload){volData=null;renderMain();return}
   if(d.voledit!=null){e.preventDefault();window.TREE_EDIT_PAGE(Object.assign({path:d.voledit},d.volitem?{item:d.volitem}:{}),()=>volLoad(true));return}
   if(d.volclear){volPick.clear();renderMain();return}
+  if(d.volmonthonly){volMonthOnly=!volMonthOnly;renderMain();return}
+  if(d.volslot!=null){volSlotFor=d.volslot;renderMain();return}
   if(d.volprint){const L=d.volprint==="all"?volShown():volData.jobs.filter(j=>volPick.has(j.id)&&!volFuture(j));if(!L.length){toast("Choose a card first.");return}
     await volPrint(L,!!d.word,d.volprint==="all",L.length===1&&d.volprint!=="all"?L[0].title+" job card":"Volunteer job cards");return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -10002,6 +10104,14 @@ document.addEventListener("click",async e=>{if(view!=="volunteer")return;const t
     if(d.voladd==="save"){const title=($("#vol-title")?.value||"").trim(),group=$("#vol-group")?.value||"";if(!title){toast("Give the job a name.");return}
       const r=await window.FP_API("/api/staff/volunteer/add",{title,group});volData=r;volAdd=false;renderMain();
       window.TREE_EDIT_PAGE({path:r.paths.jobs,item:r.added},()=>volLoad(true));return}
+    if(d.volmonth){const [id,mm]=d.volmonth.split("|");const j=volData.jobs.find(x=>x.id===id);if(!j)return;const ms=new Set(j.months||[]);if(ms.has(mm))ms.delete(mm);else ms.add(mm);
+      volData=await window.FP_API("/api/staff/volunteer/months",{id,months:[...ms]});renderMain();return}
+    if(d.volslotsave){const j=volData.jobs.find(x=>x.id===d.volslotsave);if(!j)return;const v=id=>($("#"+id)?.value||"").trim();
+      if(!v("vs-d")){toast("Choose the day.");return}if(v("vs-s")&&v("vs-e")&&v("vs-e")<=v("vs-s")){toast("The end comes after the start.");return}
+      const dir=volData.director;const x={kind:"item",type:"task",jobId:j.id,title:j.title,note:j.where||"",date:v("vs-d"),start:v("vs-s"),end:v("vs-e"),spots:Math.max(1,Number(v("vs-n"))||1),hours:Math.max(1,Math.min(12,Math.round(Number(v("vs-h"))||1))),
+        pointPerson:v("vs-p").slice(0,80),classroom:"",signups:[],test:!!ptCfg().test,createdAt:Date.now(),createdBy:myName()||""};
+      if(dir)x.open=true;else Object.assign(x,{status:"requested",open:false,requestedBy:myName()||"The office"});
+      await ptSave(ptNewId("it"),x);volSlotFor="";toast(dir?"Posted. Families see it on the Family page.":"Sent to the director. It reaches families once she posts it.");renderMain();return}
     if(d.volmove){const back=d.to==="active"?($(`[data-volback="${d.volmove}"]`)?.value||""):"";
       volData=await window.FP_API("/api/staff/volunteer/move",{id:d.volmove,to:d.to,group:back});toast(d.to==="future"?"Moved to Future Ideas.":"The card is active again.");renderMain();return}}
   catch(er){toast(er&&er.message||"That did not save.")}});

@@ -93,6 +93,10 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
+  // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
+  if(isOffice()&&!VIEW_AS){if(!volData)volLoad();const vj=((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&(j.months||[]).includes(mm));
+    if(volData&&volData.jobs)h+=`<section class="card"><div class="lbl">Volunteer jobs for ${esc(volMonthName(mm))}</div>${vj.length?`<div class="cnt">${vj.map(j=>esc(j.title)).join(", ")}.</div>`:`<div class="cnt">No job card is marked for ${esc(volMonthName(mm))} yet. Each card's best months are chosen on the Volunteer Jobs page.</div>`}
+      <div class="actions"><button class="linkbtn" data-tview="volunteer">Open Volunteer Jobs</button></div></section>`}
   // the permaculture premises, once, at the top, beside our two guiding agreements. For educators, never a unit for children.
   {const pc=gdnPage("permaculture");if(pc){const part=k=>gdnPart("permaculture",k);
     h+=`<section class="card"><div class="lbl">Our guiding agreements</div><ul style="margin:4px 0;padding-left:18px">${((g.agreements||{}).guiding||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>

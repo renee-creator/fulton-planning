@@ -98,7 +98,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER=local?want:DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null, strOpen=false, packOpen=null, jobFor=null;
+  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null, strOpen=false, packOpen=null, jobFor=null, visitOpen=false;
   const $=s=>document.querySelector(s);
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function api(path,body){
@@ -188,6 +188,18 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   // what each entry counts as
   const LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
   // the director's job cards a family can do with no sign-up, each whole, folded until opened. I did this logs the time.
+  // the job card behind a slot the director posted. Its steps show once a family signs up, unless she shows them before.
+  function slotCardHtml(c){const L=xs=>xs&&xs.length?`<ul style="margin:2px 0 6px;padding-left:20px">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
+    return `<details class="shared small"><summary>The job card</summary>${c.who?`<div class="muted">${esc(c.who)}</div>`:""}${(c.supplies||[]).length?`<div style="font-weight:700">Supplies</div>${L(c.supplies)}`:""}
+      ${c.full?`${(c.directions||[]).length?`<div style="font-weight:700">Directions</div><ol style="margin:2px 0 6px;padding-left:20px">${c.directions.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:""}${(c.take_care||[]).length?`<div style="font-weight:700">Take care</div>${L(c.take_care)}`:""}${c.done_when?`<p style="margin:4px 0">Done when ${esc(c.done_when)}</p>`:""}`:`<p class="muted" style="margin:4px 0">The steps show here once you sign up.</p>`}</details>`}
+  // a specialty or passion a family would share with the children. It goes to the director first, then to a class team.
+  const VISIT_WORDS={new:"With the director","with-team":"With the class team",declined:"Not this time. Thank you for offering."};
+  function visitHtml(){const vs=D.visits||[];
+    return `<section class="card"><details ${visitOpen?"open":""}><summary><b>Share a specialty or passion</b></summary><form id="fv" class="stack" style="margin-top:8px"><p class="small muted" style="margin:0">A craft, a trade, music, a language, a tradition or anything your family loves. The director reads each idea first and talks with a class team about when it fits what the children are exploring. Volunteers are never alone with children. An educator is always with the group.</p>
+      <label>What you would like to share<textarea id="fvw" rows="3" maxlength="600"></textarea></label><label>Who would visit<input type="text" id="fvn" maxlength="120"></label>
+      <fieldset style="border:0;padding:0;margin:0"><legend class="small">Is the visitor a parent, relative or guardian of a child here?</legend><label class="small"><input type="radio" name="fvf" value="yes"> Yes</label> <label class="small"><input type="radio" name="fvf" value="no"> No, a friend or guest</label></fieldset>
+      <label>When suits you, if you know<input type="text" id="fvt" maxlength="300" placeholder="Ex. Tuesday mornings"></label><div class="err" id="e5" aria-live="polite"></div><div><button class="btn">Send it to the director</button></div></form></details>
+      ${vs.length?`<div style="margin-top:8px">${vs.map(v=>`<div class="entry"><span>${esc(v.what)}</span><span class="small muted">${esc(v.status==="scheduled"?(v.date?"On "+day(v.date)+(v.start?", "+time(v.start):""):"Scheduled"):VISIT_WORDS[v.status]||"With the director")}</span></div>`).join("")}</div>`:""}</section>`}
   function jobsHtml(){const J=D.jobs;if(!J||!(J.groups||[]).length)return "";const I=J.intro||{};
     const list=(xs,ol)=>xs.length?`<${ol?"ol":"ul"} style="margin:2px 0 8px;padding-left:20px">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</${ol?"ol":"ul"}>`:"";
     const card=j=>`<details class="shared" ${jobFor===j.id?"open":""}><summary>${esc(j.title)}<span class="small muted"> · ${esc([j.where,j.time].filter(Boolean).join(" · "))}</span></summary>
@@ -217,12 +229,12 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const itemCard=it=>{const full=it.spots&&it.taken>=it.spots&&!it.mine;
       return `<div class="item"><div class="top"><div>${it.type==="wish"?"":`<span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span>`}<div><b>${esc(it.title)}</b></div>
         <div class="small muted">${esc([it.date?day(it.date):it.type==="wish"?"":"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
-        ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}${it.walk&&D.walkInfo?walkAgreeHtml(D.walkInfo):""}</div>
+        ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}${it.pointPerson?`<div class="small">Your point person is ${esc(it.pointPerson)}.</div>`:""}${it.walk&&D.walkInfo?walkAgreeHtml(D.walkInfo):""}${it.card?slotCardHtml(it.card):""}</div>
         ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">${it.type==="wish"?"You are bringing it":"You are signed up"}</div>${signFor===it.id?"":`<button class="link small" data-signup="${esc(it.id)}">Change</button> · `}<button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full||signFor===it.id?"":`<button class="btn sm" data-signup="${esc(it.id)}">${it.type==="wish"?"I can bring it":"Sign up"}</button>`}</div>
         ${it.mine&&signFor!==it.id?`<div class="small muted">${esc(whoLine(it.my,it.counts))}${it.my.answer?"<br>"+esc(it.my.answer):""}</div>`:""}
         ${signFor===it.id?signForm(it):""}</div>`};
     // a gathering, Second Saturday or Play Garden, holds its own volunteer jobs, so they show together
-    const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden"};
+    const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden","work-day":"Work day"};
     const gaths=D.open.filter(it=>GN[it.gathering]),jobsOf=g=>D.open.filter(it=>it.gatheringId===g.id);
     const ways=D.open.filter(it=>it.type!=="wish"&&!GN[it.gathering]&&!(it.gatheringId&&gaths.some(g=>g.id===it.gatheringId))),wishes=D.open.filter(it=>it.type==="wish");
     // pieces for families, read from the school's records once the director marks each one ready
@@ -238,9 +250,10 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if((G.seedLibrary||[]).length)h+=`<section class="card"><h2>Our seed library</h2><p class="small muted" style="margin:0 0 6px">Seeds we share with families. Ask at the office.</p><ul style="margin:4px 0;padding-left:18px">${G.seedLibrary.map(x=>`<li>${esc(x.name)}${x.variety?", "+esc(x.variety):""}</li>`).join("")}</ul></section>`;}
     // the site map, the photo from above and the names of the spaces, the same map TREE shows everywhere
     if(D.siteMap&&window.SiteMap)h+=`<section class="card"><h2>Our site</h2><p class="small muted" style="margin:0 0 8px">The classes, the yards, the garden and the farm, from above. Pinch or use the zoom buttons to look closer.</p><div id="fam-smap"></div></section>`;
-    if(gaths.length)h+=`<section class="card"><h2>Gatherings</h2><p class="small muted" style="margin:0 0 6px">Second Saturday each month and Play Garden, for the whole family. Sign up to come, or for a job, and log your hours after the day.</p>${gaths.map(g=>`<div class="small muted" style="margin-top:8px"><b>${esc(GN[g.gathering])}</b>${g.gardenDay?", the season's garden day":""}</div>${itemCard(g)}${jobsOf(g).map(itemCard).join("")}`).join("")}</section>`;
+    if(gaths.length)h+=`<section class="card"><h2>Gatherings</h2><p class="small muted" style="margin:0 0 6px">Second Saturday each month, Play Garden and our work days, for the whole family. Sign up to come, or for a job, and log your hours after the day.</p>${gaths.map(g=>`<div class="small muted" style="margin-top:8px"><b>${esc(GN[g.gathering])}</b>${g.gardenDay?", the season's garden day":""}</div>${itemCard(g)}${jobsOf(g).map(itemCard).join("")}`).join("")}</section>`;
     h+=jobsHtml();
     h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
+    h+=visitHtml();
     if(wishes.length)h+=`<section class="card"><h2>Our wish list</h2><p class="small muted" style="margin:0 0 6px">Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.</p>${wishes.map(itemCard).join("")}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
@@ -371,6 +384,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     $("#main").innerHTML=h;
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const fv=$("#fv");if(fv)fv.onsubmit=async e=>{e.preventDefault();$("#e5").textContent="";const f=document.querySelector('input[name="fvf"]:checked');
+      try{D=await api("/family/visit",{what:$("#fvw").value,who:$("#fvn").value,when:$("#fvt").value,isFamily:f?f.value==="yes":undefined});visitOpen=false;render()}catch(er){visitOpen=true;$("#e5").textContent=er.message}};
     const pg=$("#pacegot");if(pg)pg.onclick=()=>{LS.set("fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3),"1");render()};
     const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};
     if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};

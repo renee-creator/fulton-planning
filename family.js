@@ -234,7 +234,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
-      .map(it => { const ss = it.signups || []; return { id: it.id, type: it.type, title: it.title, note: it.note || '', walk: !!it.walk, date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), gathering: it.gathering || '', gatheringId: it.gatheringId || '', gardenDay: !!it.gardenDay, question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
+      .map(it => { const ss = it.signups || []; const mineIn = ss.some(s => s.email === f.email); let card = null; try { card = it.jobId && volunteer && volunteer.slotCard ? volunteer.slotCard(it.jobId, mineIn) : null; } catch (e) { card = null; } return { id: it.id, pointPerson: it.pointPerson || '', card, type: it.type, title: it.title, note: it.note || '', walk: !!it.walk, date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), gathering: it.gathering || '', gatheringId: it.gatheringId || '', gardenDay: !!it.gardenDay, question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
     // what this family signed up for that has happened and is not logged yet, so logging it is one tap
     const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && (it.type === 'wish' ? it.status !== 'requested' : (it.date && it.date <= today && it.date >= ys)) && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
@@ -253,7 +253,10 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     let mapInfo = null; try { const m = siteMap ? siteMap() : null; if (m && m.ready) mapInfo = { src: photoSrc(m.photo), spots: m.spots }; } catch (e) { mapInfo = null; }
     // the director's job cards a family can do with no sign-up, anytime at school or at home
     let jobs = null; try { jobs = volunteer ? volunteer.forFamily() : null; } catch (e) { jobs = null; }
-    return { jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+    // the specialty or passion visits this family offered, and where each one stands
+    const visits = listOf(d => d.kind === 'visit' && d.email === f.email && !!d.test === f.test).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+      .map(v => { const r = v.itemId && recs().get(v.itemId); const it = r && !r.deleted && r.doc; return { id: v.id, what: v.what, status: v.status || 'new', date: it ? it.date || '' : '', start: it ? it.start || '' : '' }; });
+    return { visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
       welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 
@@ -486,6 +489,18 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     const r = addRecipe(f.email, { kind: 'recipe', title: b.title, sensory: false, source: 'A family', ingredients: lines(b.ingredients), steps: lines(b.steps), notes: lines(b.story) });
     if (r.error) return r; log('A family shared a recipe'); return { ok: true };
   }
+  // a family offers a specialty or passion visit. It goes to the director first, who sends it to a class team and then
+  // schedules it. Whether the visitor is a parent, relative or guardian of an enrolled child decides the licensing note.
+  function offerVisit(f, b) {
+    const what = String(b.what || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (!what) return { error: 'Say what you would like to share.' };
+    const who = String(b.who || '').replace(/\s+/g, ' ').trim().slice(0, 120); if (!who) return { error: 'Say who would visit.' };
+    if (typeof b.isFamily !== 'boolean') return { error: 'Say whether the visitor is a parent, relative or guardian of a child here.' };
+    if (listOf(d => d.kind === 'visit' && d.email === f.email && ['new', 'with-team'].includes(d.status)).length >= 5) return { error: 'You have five ideas waiting already. The director will be in touch.' };
+    const names = [...new Set(f.kids.map(k => [k.first, k.last].filter(Boolean).join(' ')))].join(' and ');
+    const id = newId('vi');
+    save(id, { id, kind: 'visit', status: 'new', email: f.email, family: names, childIds: f.kids.map(k => k.id), classrooms: [...new Set(f.kids.map(k => k.classroom).filter(Boolean))], what, who, isFamily: b.isFamily, when: String(b.when || '').trim().slice(0, 300), test: f.test, at: nowIso() });
+    log('A family offered a specialty visit'); return { ok: true };
+  }
   function addLog(f, b) {
     const kid = f.kids.find(k => k.id === b.childId); if (!kid) return { error: 'Choose which child this counts for.' };
     let what = String(b.what || '').trim().slice(0, 200), itemId = '', jobId = '', date = String(b.date || '').slice(0, 10), minutes = Number(b.minutes) || 0;
@@ -524,7 +539,7 @@ module.exports = function family({ store, log, sign, noteChange, scheduleSave, m
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;

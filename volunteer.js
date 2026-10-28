@@ -112,6 +112,12 @@ module.exports = function volunteerModule(c) {
       groups: [{ key: 'anytime', name: w('familyAnytime') || FAMILY.anytime, jobs: js.filter(j => j.type === 'anytime').map(famCard) }, { key: 'at-home', name: w('familyAtHome') || FAMILY.atHome, jobs: js.filter(j => j.type === 'at-home').map(famCard) }].filter(g => g.jobs.length) };
   }
   const jobForFamily = id => { const j = jobs().find(x => x && x.id === id); return forFamilyJob(j) ? j : null; };
+  // the card behind a slot the director posted. The steps show before a family signs up only when she has chosen that.
+  function slotCard(id, signed) {
+    const j = jobs().find(x => x && x.id === id); if (!j) return null;
+    const full = signed || !!(get(JOBS) || {}).stepsBefore; const c = famCard(j);
+    return full ? Object.assign(c, { full: true }) : { id: c.id, title: c.title, where: c.where, time: c.time, who: c.who, supplies: c.supplies, full: false };
+  }
   function saveJobs(fn) { const d = JSON.parse(JSON.stringify(get(JOBS) || { jobs: [] })); const r = fn(d); if (r && r.error) return r; put(JOBS, d); return null; }
 
   async function handle(P, body, me, req, res, { json, err }) {
@@ -147,6 +153,13 @@ module.exports = function volunteerModule(c) {
       saveJobs(d => { const x = d.jobs.find(y => y.id === j.id); x.status = toFuture ? 'future' : 'active'; x.group = gid; x.updatedAt = Date.now(); x.updatedBy = me; });
       log('Volunteer job card', j.id, toFuture ? 'moved to Future Ideas' : 'made active', 'by', me); json(req, res, 200, view(me)); return;
     }
+    // the months a card fits best, which the Garden page and the library use to raise it at the right time of year
+    if (P === 'volunteer/months') {
+      const j = job(String(body.id || '')); if (!j || (isFuture(j) && !dir)) { err(req, res, 404, 'That card is not here.'); return; }
+      const months = [...new Set((Array.isArray(body.months) ? body.months : []).map(String).filter(m => /^(0[1-9]|1[0-2])$/.test(m)))].sort();
+      saveJobs(d => { const x = d.jobs.find(y => y.id === j.id); x.months = months; x.updatedAt = Date.now(); x.updatedBy = me; });
+      json(req, res, 200, view(me)); return;
+    }
     // whether families see a job's full steps before they sign up, the director's switch
     if (P === 'volunteer/settings') {
       if (!dir) { err(req, res, 403, 'The director sets this.'); return; }
@@ -154,5 +167,5 @@ module.exports = function volunteerModule(c) {
     }
     err(req, res, 404, 'That is not here.');
   }
-  return { SPECS, mayEdit, once, handle, fromFile, pointPerson, TYPES, forFamily, jobForFamily, paths: { JOBS, GROUPS, INTRO } };
+  return { SPECS, mayEdit, once, handle, fromFile, pointPerson, TYPES, forFamily, jobForFamily, slotCard, paths: { JOBS, GROUPS, INTRO } };
 };
