@@ -4531,7 +4531,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="2d04d216864d";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="65cdcd8c9ff5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5454,8 +5454,16 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   if((gdn.animals||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,...(x.card?[dText("",x.card)]:[]),...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...credit]};
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
-function gdnFieldDoc(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return null;const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
-  return asCard({display:true,type:"report",acc:"story",title:"Who we might see in the "+f.title.toLowerCase(),meta:[],blocks:[dList("",es.map(x=>gdnName(x)+(x.know?". "+x.know:""))),dText("","We look with our eyes and leave them be.")]})}
+/* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
+   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Ten fit on a page, and more
+   go on to a page of their own, its title marked continued. */
+function gdnFieldDocs(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return [];const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
+  const title="Who we might see in the "+f.title.toLowerCase();
+  const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.key:"",src:p?p.src:"",credit:p&&p.credit?p.credit:""}});
+  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=10)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
+    blocks:[{t:"grid",tiles:tiles.slice(i,i+10)},dText("","We look with our eyes and leave them be.")]}));
+  return out}
+function gdnFieldDoc(key){return gdnFieldDocs(key)[0]||null}
 // an entry in the sheet that opens from Search
 function gdnEntrySheet(x){const kind=x.kind||((gdn.plants||[]).includes(x)?"plant":(gdn.animals||[]).includes(x)?"animal":"");
   const body=kind==="plant"?`${gdnPhotoHtml(x)}<div class="cnt">${esc(x.where||(gdnBed(x.bed)||{}).name||"")}</div>${x.taste?`<div class="gsafe">${esc(x.taste)}</div>`:""}${x.opens?`<p>${esc(x.opens)}</p>`:""}${(x.wonder||[]).length?`<ul class="gwonder">${x.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`:kind==="animal"?gdnAnimalHtml(x):gdnWildRow(x).replace(/^<details[^>]*>/,"<div>").replace(/<summary>[\s\S]*?<\/summary>/,"").replace(/<\/details>$/,"</div>");
@@ -5474,8 +5482,8 @@ function gdnPrintFold(){const sets=gdnSets();if(!sets.length)return "";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gguideall]");if(!t)return;const ps=((gdn&&gdn.plants)||[]).filter(p=>!p.planned||isDirector());ps.forEach(p=>t.dataset.gguideall==="1"?gdnPrintSel.add(p.id):gdnPrintSel.delete(p.id));renderMain()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.gpsel)return;if(t.checked)gdnPrintSel.add(t.dataset.gpsel);else gdnPrintSel.delete(t.dataset.gpsel);renderMain()});
 function gdnSetDocs(key){const [k,which]=key.split("|");const set=gdnSets().find(x=>x[0]===k);if(!set)return [];const items=set[2].filter(x=>which==="all"||gdnPrintSel.has(x.id));
-  return items.map(x=>x.field?gdnFieldDoc(x.field.space||x.field.title):gdnEntryDoc(x)).filter(Boolean)}
-window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=gdnFieldDoc;window.gdnSets=gdnSets;
+  return items.flatMap(x=>x.field?gdnFieldDocs(x.field.space||x.field.title):[gdnEntryDoc(x)]).filter(Boolean)}
+window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=gdnFieldDoc;window.gdnFieldDocs=gdnFieldDocs;window.gdnSets=gdnSets;
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
@@ -10618,7 +10626,7 @@ async function decodeImage(blob){
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs,quiet){const say=quiet?()=>{}:progress;
-  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
+  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="grid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0,got=0;const n=want.length;if(n)say(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
@@ -11277,6 +11285,9 @@ function cLayout(doc,md,A){
     cWords(doc,md,A,s,(pos==="right"?CM:CM+pw+30)+ww/2,ww,top+Math.max(0,(H-wh)/2),ops);
     return {ops,s,over,PW:PWd,PH:PHd,land,sq,pos};
   }
+  // a grid of photos, two across, each with its name beneath, and the closing words under the grid
+  const gb=(md.blocks||[]).find(b=>b.t==="grid");
+  if(gb){const G=cGrid(doc,md,A,gb,top,W,H,PWd,PHd);G.ops.forEach(o=>ops.push(o));return {ops,s:1,over:G.over,PW:PWd,PH:PHd,land:false,sq,pos,grid:G.grid}}
   if(ps.length){const ww=W*.88;let minP=H*(sq?.55:2/3);
     s=CSCALES.filter(k=>k<=cap[0]).find(k=>meas(k,ww)<=H-minP-gap);
     // when the words still do not fit, the photo gives a little room before anything is called too long
@@ -11292,6 +11303,32 @@ function cLayout(doc,md,A){
     cWords(doc,md,A,s,PWd/2,ww,wy,ops);
   }else{const ww=W*.8;s=CSCALES.filter(k=>k<=cap[2]).find(k=>meas(k,ww)<=H);if(!s){s=.8;over=true}const wh=meas(s,ww);cWords(doc,md,A,s,PWd/2,ww,top+Math.max(0,(H-wh)*(md.bare?.45:md.card?.46:.4)),ops)}
   return {ops,s,over,PW:PWd,PH:PHd,land:false,sq,pos};
+}
+/* The grid of a field guide card. Up to ten tiles, two across, each photo cut to the same frame so the rows line up, with the
+   name centred beneath. A tile with no photo is a soft frame with the name in it. With six tiles or fewer each credit sits
+   under its photo; with more, the credits share one small line at the foot of the page. */
+function cGrid(doc,md,A,gb,top,W,H,PWd,PHd){
+  const ops=[],tiles=(gb.tiles||[]).slice(0,10),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
+  const rest=Object.assign({},md,{blocks:(md.blocks||[]).filter(b=>b.t!=="grid")}),ww=W*.8,wh=cWords(doc,rest,A,1,0,ww,0,null);
+  const credits=tiles.map(t=>t.credit).filter(has),under=n<=6,cz=7,cl=8.6;
+  const footL=!under&&credits.length?cwrap(doc,"fr",cz,"Photos. "+[...new Set(credits)].join(". ")+".",W).slice(0,4):[];
+  const tw=(W-g*(cols-1))/cols,nz=12.5,nlh=nz*1.3;
+  const nameL=t=>cwrap(doc,"fs",nz,t.name,tw-6).slice(0,2),credL=t=>under&&has(t.credit)?cwrap(doc,"fr",cz,t.credit,tw-6).slice(0,2):[];
+  const rowsL=[];for(let r=0;r<rows;r++){const R=tiles.slice(r*cols,r*cols+cols);rowsL.push({R,nh:Math.max(...R.map(t=>nameL(t).length))*nlh,ch:Math.max(0,...R.map(t=>credL(t).length))*cl})}
+  const room=H-wh-22-(footL.length?footL.length*cl+10:0)-rowsL.reduce((a,r)=>a+r.nh+r.ch+6+rg,0)+rg;
+  const ih=Math.max(40,Math.min(tw*.72,room/rows)),over=room/rows<40;
+  const used=rows*ih+rowsL.reduce((a,r)=>a+r.nh+r.ch+6+rg,0)-rg,y0=top+Math.max(0,(H-used-wh-22-(footL.length?footL.length*cl+10:0))*.4);
+  let y=y0;const tint=mixW(A.t,.35);
+  rowsL.forEach(({R,nh,ch})=>{const x0=CM+(W-(R.length*tw+(R.length-1)*g))/2;
+    R.forEach((t,i)=>{const x=x0+i*(tw+g),im=t.key&&photoCache.get(t.key);
+      if(im)ops.push({t:"img",x,y,w:tw,h:ih,key:t.key,src:t.src,cover:true,grid:true,iw:im.w,ih:im.h});
+      else{ops.push({t:"rect",x,y,w:tw,h:ih,r:8,fill:tint});nameL(t).forEach((l,j,L2)=>ops.push({t:"text",x:x+tw/2,y:y+ih/2+nz*.35+(j-(L2.length-1)/2)*nlh,k:"fs",s:nz,c:D_MUTED,txt:l}))}
+      if(im)nameL(t).forEach((l,j)=>ops.push({t:"text",x:x+tw/2,y:y+ih+6+j*nlh+nz*.9,k:"fs",s:nz,c:D_INK,txt:l}));
+      credL(t).forEach((l,j)=>ops.push({t:"text",x:x+tw/2,y:y+ih+6+nh+j*cl+cz,k:"fr",s:cz,c:D_MUTED,txt:l}))});
+    y+=ih+6+nh+ch+rg});
+  cWords(doc,rest,A,1,PWd/2,ww,y+10,ops);
+  footL.forEach((l,i)=>ops.push({t:"text",x:PWd/2,y:PHd-52-(footL.length-1-i)*cl,k:"fr",s:cz,c:D_MUTED,txt:l}));
+  return {ops,over,grid:{tw,ih,cols,under,footL}};
 }
 // a moment sheet keeps everything that was written, so words that do not fit beside the photo go on to a second sheet
 function cFlow(doc,md,A){
@@ -11387,8 +11424,22 @@ async function centeredDocx(ch,p,D,A){
     const cols=[];for(const o of [...items].sort((a,b)=>a.x-b.x)){const c=cols.find(c=>Math.abs(c.x-o.x)<2);if(c)c.items.push(o);else cols.push({x:o.x,w:o.w,items:[o]})}
     const tw=cols.reduce((n,c)=>n+c.w,0)+10*(cols.length-1),dx=cols.map(c=>Math.round(TW*Math.min(1,tw/504)*c.w/tw)+100);
     return [new Table({width:{size:dx.reduce((a,b)=>a+b,0),type:WidthType.DXA},columnWidths:dx,layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({children:cols.map((c,i)=>new TableCell({width:{size:dx[i],type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.CENTER,children:c.items.map(o=>{const r=img(o,o.w,o.h);return r?P(r,{alignment:CEN,spacing:{after:120}}):P([])})}))})]}),P([],{spacing:{after:120}})]};
+  // a field guide card's grid is a two column table with no borders, each cell the photo or a soft frame, then the name
+  let GRID=null;
+  const gridTable=b=>{const G=GRID||{tw:240,ih:170,cols:2,under:true,footL:[]},tiles=(b.tiles||[]).slice(0,10),cols=tiles.length>1?2:1,cw=Math.round(10080/cols);
+    const cell=t=>{const im=t&&t.key&&photoCache.get(t.key);if(!t)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[P([])]});
+      const kids=[];
+      if(im){const r=Math.min(G.tw/im.w,G.ih/im.h);kids.push(P(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r*96/72),height:Math.round(im.h*r*96/72)}}),{alignment:CEN,spacing:{after:60}}));kids.push(P(run(t.name,"fs",12.5),{alignment:CEN,spacing:{after:G.under&&has(t.credit)?20:200}}))}
+      else kids.push(P(run(t.name,"fs",12.5,D_MUTED),{alignment:CEN,shading:{type:ShadingType.CLEAR,fill:hex(mixW(A.t,.35)),color:"auto"},spacing:{before:120,after:200,line:Math.round(G.ih*.55*20),lineRule:"atLeast"}}));
+      if(G.under&&has(t.credit))kids.push(P(run(t.credit,"fr",7,D_MUTED),{alignment:CEN,spacing:{after:200}}));
+      return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,verticalAlign:VerticalAlign.TOP,children:kids})};
+    const rows=[];for(let i=0;i<tiles.length;i+=cols)rows.push(new TableRow({cantSplit:true,children:Array.from({length:cols},(_,k)=>cell(tiles[i+k]))}));
+    const out=[new Table({width:{size:10080,type:WidthType.DXA},columnWidths:Array(cols).fill(cw),layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows})];
+    if(G.footL&&G.footL.length)out.push(P(run(G.footL.join(" "),"fr",7,D_MUTED),{alignment:CEN,spacing:{before:120,after:120}}));
+    return out};
   const words=(md,s)=>{const out=[],B=md.blocks||[];B.forEach((b,i)=>{
-    if(b.t==="para")String(b.text).split("\n").filter(has).forEach(l=>out.push(P(run(l,"fr",12.5*s),{alignment:CEN,spacing:{after:90,line:Math.round(12.5*s*1.45*20),lineRule:"atLeast"}})));
+    if(b.t==="grid")out.push(...gridTable(b),P([],{spacing:{after:120}}));
+    else if(b.t==="para")String(b.text).split("\n").filter(has).forEach(l=>out.push(P(run(l,"fr",12.5*s),{alignment:CEN,spacing:{after:90,line:Math.round(12.5*s*1.45*20),lineRule:"atLeast"}})));
     else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote")out.push(P(run("•","fr",9,A.c),{alignment:CEN,spacing:{after:40}}));
       out.push(P(run("“"+b.words+"”","bm",15*s),{alignment:CEN,spacing:{after:has(b.by)?20:100,line:Math.round(15*s*1.28*20),lineRule:"atLeast"}}));
       if(has(b.by))out.push(P(run(b.by,"fr",9.5*s,D_MUTED),{alignment:CEN,spacing:{after:100}}))}
@@ -11397,7 +11448,7 @@ async function centeredDocx(ch,p,D,A){
       if(has(b.label))out.push(P(new TextRun({text:ct(doc,b.label).replace(/[.]+$/,"").toUpperCase(),font:word("fs"),bold:heavy("fs"),size:Math.round(9.2*Math.min(s,1.25)*2),color:hex(deep(A.c)),characterSpacing:Math.round(9.2*.16*20)}),{alignment:CEN,spacing:{before:i>0?Math.round(20*s*20):0,after:80}}));
       const ls=[...(has(b.text)?String(b.text).split("\n").filter(has):[]),...(b.lines||[]).filter(has)];ls.forEach((l,j)=>out.push(P(run(l,wk,z),{alignment:CEN,spacing:{before:!has(b.label)&&j===0&&i>0?Math.round(20*s*20):0,after:j===ls.length-1?60:0,line:Math.round(z*1.6*20),lineRule:"atLeast"}})))}
     else if(b.t==="small"){out.push(P(run(b.label,"fs",9,deep(A.c)),{alignment:CEN,spacing:{before:80,after:40}}));(b.lines||[]).forEach(l=>out.push(P(run(l,"fr",9.5,D_MUTED),{alignment:CEN})))}});return out};
-  F.sheets.forEach((md,si)=>{const L=F.pages[si];
+  F.sheets.forEach((md,si)=>{const L=F.pages[si];GRID=L.grid||null;
     let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
     if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
     if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
@@ -11413,7 +11464,7 @@ async function centeredDocx(ch,p,D,A){
       ch.push(new Table({width:{size:TWL,type:WidthType.DXA},columnWidths:right?[ww,pw]:[pw,ww],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({children:right?[wc,pc]:[pc,wc]})]}));shrink=1;
       if(foot)ch.push(P(run(foot,"fr",8.5,D_MUTED),{alignment:CEN,spacing:{before:200}}));return}
     // a full page photo has no Word twin, so the Word page keeps the photo above the words
-    const ims=L.full?[(()=>{const o=L.ops.find(x=>x.t==="img");if(!o)return null;const r=Math.min(504/o.iw,(L.sq?330:430)/o.ih);return Object.assign({},o,{w:o.iw*r,h:o.ih*r})})()].filter(Boolean):L.ops.filter(o=>o.t==="img");
+    const ims=L.full?[(()=>{const o=L.ops.find(x=>x.t==="img");if(!o)return null;const r=Math.min(504/o.iw,(L.sq?330:430)/o.ih);return Object.assign({},o,{w:o.iw*r,h:o.ih*r})})()].filter(Boolean):L.ops.filter(o=>o.t==="img"&&!o.grid);
     if(L.pos==="below"){ch.push(...words(md,L.s));ch.push(...photoTable(ims))}else{ch.push(...photoTable(ims));ch.push(...words(md,L.s))}
     if(foot)ch.push(P(run(foot,"fr",8.5,D_MUTED),{alignment:CEN,spacing:{before:200}}));
   });
@@ -11561,7 +11612,7 @@ async function printsClick(t){
   if(kind==="song"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x)],x.title);return true}
   if(kind==="recipe"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;await out([recipeDocFor(x)],x.title);return true}
   if(kind==="gentry"){if(!gdnOk())return true;const x=gdnEntry(t.dataset.id);if(x)await out([gdnEntryDoc(x)],gdnName(x));return true}
-  if(kind==="gfield"){if(!gdnOk())return true;const d=gdnFieldDoc(t.dataset.id);if(d)await out([d],"Field guide card "+t.dataset.id);return true}
+  if(kind==="gfield"){if(!gdnOk())return true;const ds=gdnFieldDocs(t.dataset.id);if(ds.length)await out(ds,"Field guide card "+t.dataset.id);return true}
   if(kind==="gset"){if(!gdnOk())return true;const docs=gdnSetDocs(t.dataset.id);if(!docs.length){toast("Tick one or more first.");return true}const set=gdnSets().find(x=>x[0]===t.dataset.id.split("|")[0]);await out(docs,(set?set[1]:"Garden cards")+(t.dataset.id.endsWith("|all")?"":" chosen"));return true}
   if(kind==="gseason"){if(!gdnOk())return true;const S=(gdn.seasons||[]).find(x=>x.key===t.dataset.id);if(!S)return true;await out([gdnSeasonDoc(S)],S.name+" in our garden");return true}
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}

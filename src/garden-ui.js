@@ -292,8 +292,16 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   if((gdn.animals||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,...(x.card?[dText("",x.card)]:[]),...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...credit]};
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
-function gdnFieldDoc(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return null;const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
-  return asCard({display:true,type:"report",acc:"story",title:"Who we might see in the "+f.title.toLowerCase(),meta:[],blocks:[dList("",es.map(x=>gdnName(x)+(x.know?". "+x.know:""))),dText("","We look with our eyes and leave them be.")]})}
+/* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
+   prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Ten fit on a page, and more
+   go on to a page of their own, its title marked continued. */
+function gdnFieldDocs(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return [];const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
+  const title="Who we might see in the "+f.title.toLowerCase();
+  const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.key:"",src:p?p.src:"",credit:p&&p.credit?p.credit:""}});
+  const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=10)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
+    blocks:[{t:"grid",tiles:tiles.slice(i,i+10)},dText("","We look with our eyes and leave them be.")]}));
+  return out}
+function gdnFieldDoc(key){return gdnFieldDocs(key)[0]||null}
 // an entry in the sheet that opens from Search
 function gdnEntrySheet(x){const kind=x.kind||((gdn.plants||[]).includes(x)?"plant":(gdn.animals||[]).includes(x)?"animal":"");
   const body=kind==="plant"?`${gdnPhotoHtml(x)}<div class="cnt">${esc(x.where||(gdnBed(x.bed)||{}).name||"")}</div>${x.taste?`<div class="gsafe">${esc(x.taste)}</div>`:""}${x.opens?`<p>${esc(x.opens)}</p>`:""}${(x.wonder||[]).length?`<ul class="gwonder">${x.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`:kind==="animal"?gdnAnimalHtml(x):gdnWildRow(x).replace(/^<details[^>]*>/,"<div>").replace(/<summary>[\s\S]*?<\/summary>/,"").replace(/<\/details>$/,"</div>");
@@ -312,8 +320,8 @@ function gdnPrintFold(){const sets=gdnSets();if(!sets.length)return "";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gguideall]");if(!t)return;const ps=((gdn&&gdn.plants)||[]).filter(p=>!p.planned||isDirector());ps.forEach(p=>t.dataset.gguideall==="1"?gdnPrintSel.add(p.id):gdnPrintSel.delete(p.id));renderMain()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.gpsel)return;if(t.checked)gdnPrintSel.add(t.dataset.gpsel);else gdnPrintSel.delete(t.dataset.gpsel);renderMain()});
 function gdnSetDocs(key){const [k,which]=key.split("|");const set=gdnSets().find(x=>x[0]===k);if(!set)return [];const items=set[2].filter(x=>which==="all"||gdnPrintSel.has(x.id));
-  return items.map(x=>x.field?gdnFieldDoc(x.field.space||x.field.title):gdnEntryDoc(x)).filter(Boolean)}
-window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=gdnFieldDoc;window.gdnSets=gdnSets;
+  return items.flatMap(x=>x.field?gdnFieldDocs(x.field.space||x.field.title):[gdnEntryDoc(x)]).filter(Boolean)}
+window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=gdnFieldDoc;window.gdnFieldDocs=gdnFieldDocs;window.gdnSets=gdnSets;
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
