@@ -96,6 +96,26 @@ module.exports = function garden(o) {
     // the family seed library, the seeds we share with families, by name only
     const seedLibrary = (glog().seeds || []).filter(x => x && x.share && x.name).map(x => ({ name: x.name, variety: x.variety || '', from: x.from === 'donated' ? 'donated' : x.from === 'bought' ? 'bought' : 'saved' }));
     return { season: sh.season, recipes: sh.recipes, seedLibrary, agreements: (s.agreements || {}).families || null, guiding: (s.agreements || {}).guiding || [], guide: (s.plants || []).filter(p => !p.hidden && !p.planned).map(p => ({ id: p.id, common: p.common, eat: p.eat, taste: p.taste || '', gather: !!p.gather, words: (p.words || {}).child || '', photo: ((glog().photos || []).find(x => x.plant === p.id && x.ok) || {}).id || '' })) }; };
+  /* The plants on our site for the whole community, the Family page and the public page, once the Garden is ready: each
+     plant's card in the children's words, its full plant page, and the field guide for each yard. A photo is our own,
+     kept once the face check found no face, or the stand-in with its credit. Never a child, a name or anything else. */
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function community() {
+    const s = setup(); if (!s || !s.ready) return null; const L = glog();
+    const ownOf = id => ((L.photos || []).filter(x => x && x.plant === id && x.ok).slice(-1)[0] || {}).id || '';
+    const photoOf = x => { const own = ownOf(x.id); if (own) return { own };
+      const ph = x.photo && x.photo.url ? x.photo : null; return ph ? { url: ph.url, credit: ['Photo by ' + (ph.by || 'an iNaturalist observer'), ph.license, ph.source || 'iNaturalist'].filter(Boolean).join(', '), link: ph.link || '' } : null; };
+    const bedName = id => ((s.beds || []).find(b => b && b.id === id) || {}).name || '';
+    const plants = (s.plants || []).filter(p => p && !p.hidden && !p.planned).map(p => ({ id: p.id, common: p.common || '', botanical: p.botanical || '', child: (p.words || {}).child || '', eat: p.eat || '', taste: p.taste || '', gather: !!p.gather,
+      page: [bedName(p.bed) ? 'Grows in ' + bedName(p.bed) : '', (p.uses || []).length ? 'Uses, ' + p.uses.join(', ') : '', (p.care || []).filter(c => c && c.text).map(c => 'In ' + (MONTHS[+c.month - 1] || '') + ', ' + String(c.text).replace(/[.]+$/, '')).join('. '),
+        (p.ready || []).length ? 'Harvest or gather in ' + p.ready.map(m => MONTHS[+m - 1]).filter(Boolean).join(', ') : '', (p.wildlife || []).length ? 'Feeds ' + p.wildlife.join(', ') : '', (p.words || {}).adult || ''].filter(Boolean).map(x => String(x).replace(/[.]+$/, '')).join('. ') + '.',
+      photo: photoOf(p) }));
+    const entry = id => { const x = (s.plants || []).find(y => y.id === id) || (s.animals || []).find(y => y.id === id) || (s.wild || []).find(y => y.id === id); if (!x || x.hidden || x.planned) return null;
+      const line = (x.words || {}).child || x.card || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
+      return { name: x.common || x.name || x.title || '', line: String(line || ''), photo: photoOf(x) }; };
+    const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
+    return { plants, fieldGuides };
+  }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, wanted: s.wantedSpaces || [],
@@ -285,5 +305,5 @@ module.exports = function garden(o) {
     if (!all.length) return null; const n = Math.floor(Date.parse(day + 'T12:00:00Z') / 864e5) % all.length; const { kind, x } = all[n];
     const own = (L.photos || []).filter(p => p.plant === x.id && p.ok).slice(-1)[0];
     return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || x.card || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
-  return { handle, view, forFamily, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
+  return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
 };

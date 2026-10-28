@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fulton Community School Places and Plants</title>
+<!-- The public page for the whole community, with no sign-in. It holds the museums and cultural places near us and the
+     plants on our site, once the director turns it on in Settings, Releases. The server sends nothing else of TREE. -->
+<style>
+@font-face{font-family:Andika;src:url(fonts/Andika-Regular.ttf)}
+@font-face{font-family:Andika;font-weight:700;src:url(fonts/Andika-Bold.ttf)}
+:root{--bg:#fbf8f0;--paper:#fff;--ink:#1b2920;--muted:#46564c;--line:#d8dccf;--moss:#2b5a40;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Andika,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:0;color:var(--moss)}h2{font-size:19px;margin:0 0 8px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
+.muted{color:var(--muted)}.small{font-size:14px}a{color:var(--moss)}summary{cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="margin:6px 0 14px"><div class="eyebrow">Fulton Community School</div><h1>Places and plants</h1><p class="muted" style="margin:4px 0 0">Museums and cultural places near us, and the plants and creatures on our site, for every family in our community.</p></header>
+  <main id="main"><section class="card"><p class="muted" style="margin:0">Opening.</p></section></main>
+</div>
+<script src="community.js"></script>
+<script>
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const want=(qs.get("server")||"").replace(/\/+$/,"");
+  const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+  const SERVER=local?want:"https://fulton-planning.onrender.com";
+  const C=window.TREE_COMMUNITY,st=C.state(),el=document.getElementById("main");let data=null;
+  const s=document.createElement("style");s.textContent=C.CSS;document.head.appendChild(s);
+  const draw=()=>{el.innerHTML=C.html(data,st,SERVER)||`<section class="card"><p class="muted" style="margin:0">Nothing is shared here yet.</p></section>`};
+  C.bind(el,st,draw);
+  fetch(SERVER+"/public/community",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"This page is not open yet.");data=j;draw()})
+    .catch(e=>{el.innerHTML=`<section class="card"><p style="margin:0">${String(e.message||"This page is not open yet.").replace(/[<>&]/g,"")}</p></section>`});
+})();
+</script>
+</body>
+</html>
