@@ -1103,6 +1103,7 @@ module.exports = function staffModule(o) {
     s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'],
     s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
+    museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'],
     s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });

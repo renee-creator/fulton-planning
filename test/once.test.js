@@ -38,7 +38,7 @@ test('one-time steps run once and are recorded', async () => {
 
 test('a second start finds the steps done and changes nothing', async () => {
   const more = put => {
-    put('settings/once.json', { id: 'once', done: { planDefaults: '2026-10-24T00:00:00Z', educatorList: '2026-10-24T00:00:00Z', presenting2027: '2026-10-24T00:00:00Z', trainingLinks: '2026-10-25T00:00:00Z', kyr2026: '2026-10-25T00:00:00Z', prepDirector: '2026-10-25T00:00:00Z', oneLists: '2026-10-25T00:00:00Z', dutiesEmail: '2026-10-25T00:00:00Z', lovejoyBooks: '2026-10-25T00:00:00Z', gardenAgreements: '2026-10-25T00:00:00Z', presentingFixes: '2026-10-25T00:00:00Z', helpSession11: '2026-10-25T00:00:00Z', schoolWords: '2026-10-26T00:00:00Z', freeStories: '2026-10-27T00:00:00Z' , volunteerJobs: '2026-10-28T00:00:00Z' } });
+    put('settings/once.json', { id: 'once', done: { planDefaults: '2026-10-24T00:00:00Z', educatorList: '2026-10-24T00:00:00Z', presenting2027: '2026-10-24T00:00:00Z', trainingLinks: '2026-10-25T00:00:00Z', kyr2026: '2026-10-25T00:00:00Z', prepDirector: '2026-10-25T00:00:00Z', oneLists: '2026-10-25T00:00:00Z', dutiesEmail: '2026-10-25T00:00:00Z', lovejoyBooks: '2026-10-25T00:00:00Z', gardenAgreements: '2026-10-25T00:00:00Z', presentingFixes: '2026-10-25T00:00:00Z', helpSession11: '2026-10-25T00:00:00Z', schoolWords: '2026-10-26T00:00:00Z', freeStories: '2026-10-27T00:00:00Z' , volunteerJobs: '2026-10-28T00:00:00Z', museums: '2026-10-28T00:00:00Z' } });
     put('settings/plandefaults.json', { id: 'plandefaults', people: { Ann: 'none' } });
     put('settings/notify.json', { id: 'notify', start: '2026-10-19', people: { Ann: { plans: 'weekly' } } });
   };

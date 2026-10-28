@@ -2,7 +2,7 @@
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
-  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
+  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Museums and cultural places","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
@@ -19,6 +19,7 @@ function setStatus(t,x){try{
   if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
   if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
   if(t==="Artists")return libData&&libData.artists?plural((libData.artists.parts||[]).length,"artist"):"In the records";
+  if(t==="Museums and cultural places")return libData&&libData.places?plural(mqPlaces().length,"place"):"In the records";
   if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
   if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
   if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
@@ -113,6 +114,8 @@ function renderSettings(){
     ${libData&&libData.provocations?`<div class="cnt">${(libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).map(p=>esc(p.key)+", "+libLines(p.text).length).join(". ")}.</div><div class="actions">${pageEditBtn(libData.provocations.path,"Edit the bank, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Artists</div><div class="hint">One card for each artist, on the Artists page under Documentation and attached to plans. Each names the work, what it sits beside on our site, the wondering and a note for the educator that never prints. A Picture line holds a public domain image only, and it prints large.</div>
     ${libData&&libData.artists?`<div class="cnt">${plural((libData.artists.parts||[]).length,"artist")}, ${(libData.artists.parts||[]).filter(x=>/^\*\*Picture\.\*\*\s*https:/mi.test(x.text||"")).length} with a picture to print large.</div><div class="actions">${pageEditBtn(libData.artists.path,"Edit the Artists page, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
+  <section class="card"><div class="lbl">Museums and cultural places</div><div class="hint">Places to visit near us, one line each with its own site, its town and its tags, on the Museums and cultural places page under Documentation. Each area is a part of the list.</div>
+    ${libData&&libData.places?`<div class="cnt">${plural(mqPlaces().length,"place")} in ${plural(mqAreas().length,"area")}${libData.places.shown?", shown to educators":", only you see the page"}.</div><div class="actions">${pageEditBtn(libData.places.path,"Edit the list, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
     ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
       <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>
