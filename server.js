@@ -418,7 +418,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -467,6 +467,7 @@ function onceDone(id) { const r = store.recs.settings.get('once'); return !!(r &
 let onceBusy = null;
 function runOnce() {
   if (!store.ready) return;
+  confHoursSoon();
   if (onceBusy) { onceBusy.again = true; return; }
   const run = { again: false }; onceBusy = run;
   const mark = id => { const r = store.recs.settings.get('once'); const doc = r && !r.deleted && r.doc ? r.doc : { done: {} };
@@ -638,7 +639,10 @@ const KEY_PROBLEM = 'GitHub rejected the access key, so changes cannot be saved.
 const SAVE_WAIT = 'Changes are taking longer than usual to reach GitHub. They are kept on the server and saving keeps trying, so keep working, and avoid closing the app for a few minutes.';
 function isRateLimit(r) { return r.status === 429 || (r.status === 403 && (/rate limit|abuse/i.test((r.json && r.json.message) || '') || !!(r.headers && (r.headers['retry-after'] || r.headers['x-ratelimit-remaining'] === '0')))); }
 let rev = 0; const changeLog = []; const BOOT_ID = crypto.randomBytes(6).toString('hex');
-function noteChange(kind, id) { rev++; changeLog.push({ rev, kind, id }); if (changeLog.length > 5000) changeLog.splice(0, 1000); }
+function noteChange(kind, id) { rev++; changeLog.push({ rev, kind, id }); if (changeLog.length > 5000) changeLog.splice(0, 1000); if (kind === 'conferences') confHoursSoon(); }
+// a conference marked complete adds its hour to the child's participation, a moment after the save
+let confHoursTimer = null;
+function confHoursSoon() { clearTimeout(confHoursTimer); confHoursTimer = setTimeout(() => { try { if (store.ready) familyPage.conferenceHours(); } catch (e) { log('Conference hours not added,', e.message); } }, 1500); if (confHoursTimer.unref) confHoursTimer.unref(); }
 
 let loading = null;
 // how much room the records use. GitHub asks for under 1 GB and strongly recommends under 5 GB. Its own count includes

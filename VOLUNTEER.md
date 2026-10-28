@@ -5,7 +5,7 @@ Renee's decisions for the volunteer module, from the TREE Volunteer Module Brief
 ## Steps
 
 1. The Volunteer Jobs library and printing, for the director and the office. Approved October 28, 2026.
-2. The Family page with anytime jobs, the full card on a phone and hours entries by type. Waits for her yes.
+2. The Family page with anytime jobs, the full card on a phone and hours entries by type. Approved October 28, 2026. A conference marked complete adds one hour for its child.
 3. Scheduled slots, work days as gatherings, specialty visits, skills suggestions, seasonal jobs and the January list. Waits for her yes.
 4. The word class with a lowercase c across all of TREE, its own step. Approved October 28, 2026. A first word of a label keeps its capital, and the readable copies folders keep their names.
 5. The Participation page's starter ideas, each one something she can edit or hide herself, its own step.

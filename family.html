@@ -98,7 +98,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
   const SERVER=local?want:DEFAULT_SERVER;
   const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
-  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null, strOpen=false, packOpen=null;
+  let token=LS.get("fam-token"), D=null, logFor=null, signFor=null, strOpen=false, packOpen=null, jobFor=null;
   const $=s=>document.querySelector(s);
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function api(path,body){
@@ -185,6 +185,22 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(fresh&&!strOpen)return head+`<div style="white-space:pre-line">${esc(t)}</div><div class="small muted" style="margin-top:6px">Saved ${esc(new Date(k.strengthsAt).toLocaleDateString("en-US",{month:"long",day:"numeric"}))}. <button class="link small" id="stredit">Change</button></div></section>`;
     return head+`<p class="small muted" style="margin:0 0 8px">${t&&!strOpen?"Anything new your family would like to share this season? Your last answer is below.":"Something you know, love to do, or could share with the children, such as a craft, a language, music, building or cooking. Educators may invite you in when it fits what the children are exploring."}</p>
       <textarea id="str" rows="4" maxlength="3000" aria-label="What our family can share">${esc(t)}</textarea><div style="margin-top:8px"><button class="btn sm" id="strsave">Save</button>${t&&!strOpen?` <button class="btn sm ghost" id="strkeep">Keep it as it is</button>`:""} <span class="small muted" id="strmsg"></span></div></section>`}
+  // what each entry counts as
+  const LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
+  // the director's job cards a family can do with no sign-up, each whole, folded until opened. I did this logs the time.
+  function jobsHtml(){const J=D.jobs;if(!J||!(J.groups||[]).length)return "";const I=J.intro||{};
+    const list=(xs,ol)=>xs.length?`<${ol?"ol":"ul"} style="margin:2px 0 8px;padding-left:20px">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</${ol?"ol":"ul"}>`:"";
+    const card=j=>`<details class="shared" ${jobFor===j.id?"open":""}><summary>${esc(j.title)}<span class="small muted"> · ${esc([j.where,j.time].filter(Boolean).join(" · "))}</span></summary>
+      ${j.who?`<div class="small muted" style="margin:4px 0 6px">${esc(j.who)}</div>`:""}
+      ${j.supplies.length?`<div class="small" style="font-weight:700">Supplies</div>${list(j.supplies)}`:""}
+      ${j.directions.length?`<div class="small" style="font-weight:700">Directions</div>${list(j.directions,true)}`:""}
+      ${j.take_care.length?`<div class="small" style="font-weight:700">Take care</div>${list(j.take_care)}`:""}
+      ${j.done_when?`<p style="margin:4px 0 8px">Done when ${esc(j.done_when)}</p>`:""}
+      ${jobFor===j.id?`<div class="stack">${kidPick("jk-"+j.id)}<div class="row"><label>The day<input type="date" id="jd-${esc(j.id)}" max="${today()}" value="${today()}"></label><label>How long it took, in hours<input type="number" min="0.25" step="0.25" id="jh-${esc(j.id)}" value="1"></label></div>
+        <div class="err" id="je-${esc(j.id)}" aria-live="polite"></div><div><button class="btn sm" data-jobsave="${esc(j.id)}">Save</button> <button class="link" data-jobcancel="1">Cancel</button></div></div>`:`<div><button class="btn sm" data-jobdid="${esc(j.id)}">I did this</button></div>`}</details>`;
+    return `<section class="card"><h2>${esc(J.title)}</h2>${J.lead?`<p class="small muted" style="margin:0 0 8px">${esc(J.lead)}</p>`:""}
+      ${(I.guidelines||[]).length?`<details class="shared"><summary>${esc(I.title||"Before You Start")}</summary>${I.lead?`<p class="small" style="margin:4px 0">${esc(I.lead)}</p>`:""}${list(I.guidelines)}</details>`:""}
+      ${J.groups.map(g=>`<h3 style="margin:12px 0 4px;font-size:16px">${esc(g.name)}</h3>${g.jobs.map(card).join("")}`).join("")}</section>`}
   function partHtml(){const ks=D.children;let h="";
     h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
       <p class="small muted" style="margin:8px 0 0">Each child takes part for ${D.goal} hours a year. Every entry rounds up to the next whole hour.</p></section>`;
@@ -223,16 +239,18 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     // the site map, the photo from above and the names of the spaces, the same map TREE shows everywhere
     if(D.siteMap&&window.SiteMap)h+=`<section class="card"><h2>Our site</h2><p class="small muted" style="margin:0 0 8px">The classes, the yards, the garden and the farm, from above. Pinch or use the zoom buttons to look closer.</p><div id="fam-smap"></div></section>`;
     if(gaths.length)h+=`<section class="card"><h2>Gatherings</h2><p class="small muted" style="margin:0 0 6px">Second Saturday each month and Play Garden, for the whole family. Sign up to come, or for a job, and log your hours after the day.</p>${gaths.map(g=>`<div class="small muted" style="margin-top:8px"><b>${esc(GN[g.gathering])}</b>${g.gardenDay?", the season's garden day":""}</div>${itemCard(g)}${jobsOf(g).map(itemCard).join("")}`).join("")}</section>`;
+    h+=jobsHtml();
     h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">Nothing is posted right now. New ways to take part will appear here.</p>`}</section>`;
     if(wishes.length)h+=`<section class="card"><h2>Our wish list</h2><p class="small muted" style="margin:0 0 6px">Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.</p>${wishes.map(itemCard).join("")}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
       <div class="row"><label>The day<input type="date" id="ld" max="${today()}" value="${today()}"></label><label>How long, in hours<input type="number" min="0.25" step="0.25" id="lm" value="1"></label></div>
+      <label>It counts as<select id="lt">${[["job","A job"],["event","A community event"],["donation","A donation"]].map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></label>
       ${kidPick("lk")}<div class="err" id="e3" aria-live="polite"></div><div><button class="btn">Log it</button></div></form></section>`;
     // a family recipe, sent to the director, who adds it to our recipe library. We are nut free.
     h+=`<section class="card"><details><summary><b>Share a family recipe</b></summary><form id="frc" class="stack" style="margin-top:8px"><p class="small muted" style="margin:0">The director reads each recipe before it joins our recipe library. We are nut free, so please share recipes without nuts. You can log the time it took above, as you would any way of taking part.</p>
       <label>The recipe's name<input type="text" id="rcn" maxlength="120"></label><label>Ingredients, one on each line<textarea id="rci" rows="5"></textarea></label><label>Steps, one on each line<textarea id="rcs" rows="5"></textarea></label><label>Its story, if you like<textarea id="rct" rows="2" placeholder="Who makes it, and when"></textarea></label>
       <div class="err" id="e4" aria-live="polite"></div><div><button class="btn">Send it</button></div></form></details></section>`;
-    h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
+    h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(LOGTYPE[x.type]||"Job")} · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
     return h}
   // the school's newsletter, as the director posted it, the latest open and earlier months below
   function newsHtml(){const ns=D.menu.news||[];if(!ns.length)return "";
@@ -352,7 +370,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};
-    const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){$("#e3").textContent=er.message}};
     const pg=$("#pacegot");if(pg)pg.onclick=()=>{LS.set("fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3),"1");render()};
     const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};
     if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};
@@ -379,6 +397,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       else if(d.signoff){D=await api("/family/signup",{itemId:d.signoff,on:false});render()}
       else if(d.logit){logFor=logFor===d.logit?null:d.logit;render()}
       else if(d.logcancel){logFor=null;render()}
+      else if(d.jobdid){jobFor=jobFor===d.jobdid?null:d.jobdid;render()}
+      else if(d.jobcancel){jobFor=null;render()}
+      else if(d.jobsave){const id=d.jobsave;try{D=await api("/family/log",{jobId:id,childId:$("#jk-"+id).value,date:$("#jd-"+id).value,minutes:Math.round((Number($("#jh-"+id).value)||0)*60)});jobFor=null;render()}catch(er){const x=$("#je-"+id);if(x)x.textContent=er.message}}
       else if(d.logsave){const id=d.logsave;D=await api("/family/log",{itemId:id,childId:$("#lk-"+id).value,minutes:Math.round((Number($("#lh-"+id).value)||0)*60)});logFor=null;render()}
       else if(d.unlog){D=await api("/family/unlog",{id:d.unlog});render()}
       else if(d.tab){tab=d.tab;LS.set("fam-tab",tab);render();window.scrollTo(0,0)}
