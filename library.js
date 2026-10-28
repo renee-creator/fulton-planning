@@ -15,6 +15,9 @@ module.exports = function library(o) {
      photo from the piazza, kept once the face check on the device finds no face, stands for an item with no picture, or
      in place of one when the director chooses, and every sheet using it updates. staff/library/pictures.json keeps them. */
   const PICS = 'staff/library/pictures.json';
+  // the museums and cultural places near us, one page with a part for each area, and the director's switch that shows it
+  // to educators
+  const PLACES = 'staff/library/places/museums.md', PLACES_SET = 'staff/library/places/settings.json';
   const pictures = () => { const out = {};
     for (const p of S.imgs.keys()) { const m = p.match(/^staff\/library\/images\/([a-z0-9_]+)\.(png|jpe?g|webp)$/i); if (m) out[m[1].toLowerCase()] = { from: 'library', path: p }; }
     for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
@@ -45,11 +48,13 @@ module.exports = function library(o) {
     const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
     const pr = item('staff/library/prompts/provocations.md');
     const ar = item('staff/library/prompts/artists.md');
+    // the museums and cultural places, the director's alone until she shows the page to educators
+    const pl = item(PLACES), plShown = !!(get(PLACES_SET) || {}).show, plSees = isDirector(me) || (plShown && !isKitchen(me));
     const fm = get('staff/library/farms.json');
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? { title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown } : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -95,6 +100,8 @@ module.exports = function library(o) {
   async function handle(P, body, me, req, res, { json, err, send }) {
     const dir = isDirector(me), kit = isKitchen(me);
     if (P === 'library') { json(req, res, 200, list(me)); return; }
+    if (P === 'library/places/show') { if (!dir) { err(req, res, 403, 'The director shows this page to educators.'); return; }
+      put(PLACES_SET, { show: !!body.on, at: Date.now(), by: me }); log('Museums and cultural places', body.on ? 'shown to educators' : 'kept with the director', 'by', me); json(req, res, 200, list(me)); return; }
     // a picture from the picture library, read from the records the first time it is asked for
     if (P === 'library/img') { const k = String(body.name || '').toLowerCase(); const x = pictures()[k]; if (!x || x.from !== 'library') { err(req, res, 404, 'That picture is not here.'); return; }
       try { const buf = await o.readImage(x.path); send(req, res, 200, { 'Content-Type': /\.png$/i.test(x.path) ? 'image/png' : /\.webp$/i.test(x.path) ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } return; }

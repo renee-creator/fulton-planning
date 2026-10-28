@@ -1291,6 +1291,7 @@ function renderMain(){
   if(view==="gatherings"){renderGatherings();return}
   if(view==="songs"){renderSongs();return}
   if(view==="artists"){renderArtists();return}
+  if(view==="museums"){renderMuseums();return}
   if(view==="threads"){renderThreads();return}
   if(view==="projects"){renderProjects();return}
   if(view==="inquiries"){renderInquiries();return}
@@ -4191,10 +4192,10 @@ function renderStaff(){const m=$("#main");if(!m)return;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
-  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["artists","Artists"],["kitchen","Kitchen"]],
+  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["artists","Artists"],["museums","Museums and cultural places"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["volunteer","Volunteer Jobs"],["drdpreport","DRDP report"]]};
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",gatherings:"docs",recipes:"docs",songs:"docs",artists:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",gatherings:"docs",recipes:"docs",songs:"docs",artists:"docs",museums:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -4249,7 +4250,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   // the Educators pages sit under four tabs, for the director and every educator, and the pages of the open one show
   // beneath, so a phone shows the page itself on the first screen
@@ -4847,7 +4848,7 @@ let guideList=null,guideBusy=false,guideSel="",guidePrev="today";
 /* The libraries for plans, read from the server: recipes, the song book, read-alouds and the bank of provocations and
    curiosity prompts, each a page in the private records the director edits in place with its history. */
 let libData=null,libBusy=false;
-async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","artists","settings"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();return libData}
+async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","artists","museums","settings"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();return libData}
 const libLines=t=>String(t||"").split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].trim());
 // the bank, under a plan's questions, as wonderings an educator can tap in or ignore
 function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libData.provocations;if(!pv)return "";
@@ -5315,6 +5316,68 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-arts
   if(d.artmod){if(typeof goView==="function"){goView("stpd");setTimeout(()=>{const b=document.querySelector('[data-stmod="m:looking-together"]');if(b)b.click()},800)}return}
   if(d.artprint){const L=d.artprint==="all"?artShown():artCards().filter(c=>artPick.has(c.id));if(!L.length){toast("Choose an artist first.");return}
     const docs=L.map(artistDoc),n=safeFile(L.length===1?L[0].name+" card":"Artist cards");await loadPhotos(docs);if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")}});
+/* ---------- Museums and cultural places ----------
+   The director's list of museums and cultural places near us, one page in the records, staff/library/places/museums.md,
+   with a part for each area. Each place is one line, its name linked to its own site, its town, a few words and its tags,
+   such as Native or Free (children 12 and under). The page filters by area and by tag, and searches. One place prints as
+   a centred card, and an area, the places chosen or every place shown print as a list. Only the director sees the page
+   until she shows it to educators. */
+let mqArea="All",mqTag="All",mqQ="";const mqPick=new Set();
+const MQ_LINE=/^- \[(.+?)\]\((https?:\/\/[^)\s]+)\),\s*(.+?)(?<!\bSt)\.\s+(.*?)\s*\*([^*]+?)\.\*\s*$/;
+// a tag such as Free (youth 17 and under) is the tag Free, with who gets in free beside it
+const mqTagOf=t=>{const m=String(t).trim().match(/^([^(]+?)\s*(?:\((.+)\))?$/);return m?{tag:m[1].trim(),note:(m[2]||"").trim()}:{tag:String(t).trim(),note:""}};
+function mqPlaces(){const p=libData&&libData.places;if(!p)return [];const out=[];
+  for(const part of p.parts||[]){let kind="";
+    for(const l of String(part.text||"").split("\n")){const h=l.match(/^###\s+(.+)$/);if(h){kind=h[1].trim();continue}
+      const m=l.match(MQ_LINE);if(!m)continue;
+      out.push({id:artSlug(part.key+" "+m[1]),area:part.key,kind,name:m[1],url:m[2],town:m[3],about:m[4],tags:m[5].split(/,\s*(?![^()]*\))/).map(mqTagOf).filter(x=>x.tag)})}}
+  return out}
+const mqAreas=()=>((libData&&libData.places&&libData.places.parts)||[]).map(p=>p.key);
+function mqTags(){const n=new Map();for(const x of mqPlaces())for(const t of x.tags)n.set(t.tag,(n.get(t.tag)||0)+1);return [...n.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).map(e=>e[0])}
+const mqTagText=x=>x.tags.map(t=>t.note?`${t.tag} (${t.note})`:t.tag).join(", ");
+function mqShown(){const q=mqQ.trim().toLowerCase();return mqPlaces().filter(x=>(mqArea==="All"||x.area===mqArea)&&(mqTag==="All"||x.tags.some(t=>t.tag===mqTag))&&(!q||[x.name,x.town,x.about,mqTagText(x)].join(" ").toLowerCase().includes(q)))}
+function mqRow(x){return `<div class="strow" style="display:grid;gap:3px"><div><label class="radio" style="display:inline-flex;margin-right:6px"><input type="checkbox" data-mqpick="${esc(x.id)}" ${mqPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.name)} to print"></label><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="cnt">${esc(x.town)}</span></div>
+  <div>${esc(x.about)}</div><div class="cnt">${esc(mqTagText(x))}</div><div class="actions" style="margin:2px 0 0">${printBtns("mqplace",esc(x.id),"Print this place")}</div></div>`}
+function renderMuseums(){const m=$("#main");if(!m)return;
+  const head=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Museums and cultural places</h2><div class="sub">Places to visit with children and families, each with what it holds.</div></div>`;
+  if(!libData){loadLibrary();m.innerHTML=head+`<section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;return}
+  const p=libData.places,dir=isDirector()&&!VIEW_AS;
+  if(!p){m.innerHTML=head+`<section class="card"><div class="cnt">${dir?"The list comes into the records once, the next time TREE starts. It shows here after that.":"This page is not open yet."}</div></section>`;return}
+  const all=mqPlaces(),list=mqShown(),areas=mqAreas(),n=mqPick.size;
+  const btn=(k,v,cur,label)=>`<button data-${k}="${esc(v)}" aria-pressed="${cur===v}">${esc(label||v)}</button>`;
+  const director=dir?`<section class="card"><label class="nlcheck"><input type="checkbox" data-mqshow="1" ${p.shown?"checked":""}> Show this page to educators</label><div class="cnt">${p.shown?"Every educator can read the list and print from it. Only you change it.":"Only you see this page for now."}</div>
+    <div class="actions">${pageEditBtn(p.path,"Edit the list, with its history")}</div></section>`:"";
+  const tools=`<section class="card">${p.lead?`<div class="cnt" style="margin-bottom:8px">${esc(p.lead)}</div>`:""}
+    <div class="lbl">Area</div><div class="tseg" role="group" aria-label="Area" style="margin:4px 0 8px;flex-wrap:wrap">${["All",...areas].map(a=>btn("mqarea",a,mqArea)).join("")}</div>
+    <div class="lbl">Tag</div><div class="tseg" role="group" aria-label="Tag" style="margin:4px 0 8px;flex-wrap:wrap">${["All",...mqTags()].map(t=>btn("mqtag",t,mqTag)).join("")}</div>
+    <label class="fld-label">Find a place<input type="search" id="mq-q" value="${esc(mqQ)}" placeholder="A place, a town or what it holds" data-noproof="1"></label>
+    <div class="cnt">${list.length} of ${all.length} places shown.</div>
+    <div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-mqprint="some" ${n?"":"disabled"}>Print the places I chose${n?" ("+n+")":""}</button><button class="linkbtn" data-mqprint="some" data-word="1" ${n?"":"disabled"}>Word, the places I chose</button><button class="linkbtn" data-mqprint="all" ${list.length?"":"disabled"}>Print every place shown</button><button class="linkbtn" data-mqprint="all" data-word="1" ${list.length?"":"disabled"}>Word, every place shown</button>${n?`<button class="linkbtn" data-mqclear="1">Clear my choices</button>`:""}</div></section>`;
+  const filtered=mqArea!=="All"||mqTag!=="All"||!!mqQ.trim();
+  const groups=areas.map(a=>{const xs=list.filter(x=>x.area===a);if(!xs.length)return "";let kind="";
+    const rows=xs.map(x=>{const h=x.kind&&x.kind!==kind?`<div class="lbl" style="margin-top:10px">${esc(x.kind)}</div>`:"";kind=x.kind;return h+mqRow(x)}).join("");
+    return `<details class="card" data-mqgroup="${esc(a)}" ${filtered?"open":""}><summary style="cursor:pointer"><b>${esc(a)}</b> <span class="cnt">${xs.length} ${xs.length===1?"place":"places"}</span></summary>
+      <div class="actions" style="margin:4px 0 6px">${printBtns("mqarea",esc(a),"Print this area")}</div>${rows}</details>`}).join("");
+  m.innerHTML=head+director+tools+(groups||`<section class="card"><div class="empty">No place matches.</div></section>`)}
+// one place as a centred card, with its area above the name and its town beneath
+function mqPlaceDoc(x){const card=asCard({display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[dText("",x.about),dText("What it holds",mqTagText(x)),dText("Its own site",x.url)]},{sub:x.town});if(card)card.over=x.area;return card}
+// places as a list, a sheet for each area, left aligned with room between places
+function mqListDocs(xs){const out=[];for(const a of mqAreas()){const ps=xs.filter(x=>x.area===a);if(!ps.length)continue;let kind="";const blocks=[];
+    for(const x of ps){if(x.kind&&x.kind!==kind){blocks.push(dSub(x.kind));kind=x.kind}blocks.push(dItem(x.name,x.about+"\n"+x.url,mqTagText(x),[x.town]))}
+    out.push({display:true,type:"report",acc:"story",title:a,meta:[["Museums and cultural places",(libData.places.lead||"").split(".")[0]]],blocks})}
+  return out}
+async function mqPrint(docs,word,name){if(!docs.length)return;const n=safeFile(name);if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")}
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="mq-q"&&view==="museums"){mqQ=e.target.value;const c=e.target.selectionStart;renderMain();const i=$("#mq-q");if(i){i.focus();try{i.setSelectionRange(c,c)}catch(er){}}}});
+document.addEventListener("change",async e=>{const t=e.target;if(view!=="museums"||!t||!t.dataset)return;
+  if(t.dataset.mqpick){if(t.checked)mqPick.add(t.dataset.mqpick);else mqPick.delete(t.dataset.mqpick);renderMain();return}
+  if(t.dataset.mqshow){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+    try{libData=await window.FP_API("/api/staff/library/places/show",{on:t.checked});toast(t.checked?"Educators can see this page now.":"Only you see this page now.");renderAll()}catch(er){toast(er&&er.message||"That did not save.");loadLibrary(true)}}});
+document.addEventListener("click",async e=>{if(view!=="museums")return;const t=e.target.closest("[data-mqarea],[data-mqtag],[data-mqprint],[data-mqclear]");if(!t||t.dataset.print)return;const d=t.dataset;
+  if(d.mqarea){mqArea=d.mqarea;renderMain();return}
+  if(d.mqtag){mqTag=d.mqtag;renderMain();return}
+  if(d.mqclear){mqPick.clear();renderMain();return}
+  if(d.mqprint){const L=d.mqprint==="all"?mqShown():mqPlaces().filter(x=>mqPick.has(x.id));if(!L.length){toast("Choose a place first.");return}
+    await mqPrint(mqListDocs(L),!!d.word,d.mqprint==="all"&&mqArea!=="All"?mqArea:"Museums and cultural places")}});
 /* ---------- Attach to a plan ----------
    One optional Attach on a plan reaches every library: recipes, songs, read-alouds, provocations and the materials
    guides. The three or four best matches show first, drawn from the plan's own words, its space or focus, this week's
@@ -11894,6 +11957,8 @@ async function printsClick(t){
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
   if(kind==="voljob"){if(!volData)await volLoad();const j=((volData&&volData.jobs)||[]).find(x=>x.id===t.dataset.id);if(j)await volPrint([j],word,false,j.title+" job card");return true}
   if(kind==="volintro"){if(!volData)await volLoad();if(volData&&volData.intro)await volPrint([],word,true,volData.intro.title||"Before You Start");return true}
+  if(kind==="mqplace"){if(!libData)await loadLibrary();const x=mqPlaces().find(y=>y.id===t.dataset.id);if(x)await out([mqPlaceDoc(x)],x.name);return true}
+  if(kind==="mqarea"){if(!libData)await loadLibrary();const xs=mqShown().filter(y=>y.area===t.dataset.id);if(xs.length)await out(mqListDocs(xs),t.dataset.id);return true}
   if(kind==="artistcard"){if(!libData)await loadLibrary();const c=artCard(t.dataset.id);if(!c)return true;await out([artistDoc(c)],c.name+" card");return true}
   if(kind==="bookcard"){if(!libData)await loadLibrary();const x=(libData.books||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([bookCardDoc(x)],x.title+" card");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
@@ -14374,7 +14439,7 @@ let setOpen="";
 /* Settings, for the director. Each card is a closed dropdown with its name and a one-line status, under five headings,
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
-  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
+  ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Museums and cultural places","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
@@ -14392,6 +14457,7 @@ function setStatus(t,x){try{
   if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
   if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
   if(t==="Artists")return libData&&libData.artists?plural((libData.artists.parts||[]).length,"artist"):"In the records";
+  if(t==="Museums and cultural places")return libData&&libData.places?plural(mqPlaces().length,"place"):"In the records";
   if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
   if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
   if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
@@ -14486,6 +14552,8 @@ function renderSettings(){
     ${libData&&libData.provocations?`<div class="cnt">${(libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).map(p=>esc(p.key)+", "+libLines(p.text).length).join(". ")}.</div><div class="actions">${pageEditBtn(libData.provocations.path,"Edit the bank, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Artists</div><div class="hint">One card for each artist, on the Artists page under Documentation and attached to plans. Each names the work, what it sits beside on our site, the wondering and a note for the educator that never prints. A Picture line holds a public domain image only, and it prints large.</div>
     ${libData&&libData.artists?`<div class="cnt">${plural((libData.artists.parts||[]).length,"artist")}, ${(libData.artists.parts||[]).filter(x=>/^\*\*Picture\.\*\*\s*https:/mi.test(x.text||"")).length} with a picture to print large.</div><div class="actions">${pageEditBtn(libData.artists.path,"Edit the Artists page, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
+  <section class="card"><div class="lbl">Museums and cultural places</div><div class="hint">Places to visit near us, one line each with its own site, its town and its tags, on the Museums and cultural places page under Documentation. Each area is a part of the list.</div>
+    ${libData&&libData.places?`<div class="cnt">${plural(mqPlaces().length,"place")} in ${plural(mqAreas().length,"area")}${libData.places.shown?", shown to educators":", only you see the page"}.</div><div class="actions">${pageEditBtn(libData.places.path,"Edit the list, with its history")}</div>`:(loadLibrary(),`<div class="cnt">Reading</div>`)}</section>
   <section class="card"><div class="lbl">Materials library</div><div class="hint">Tap-to-add materials on the plans, grouped by kind.</div>
     ${Object.entries(MATERIALS).map(([cat,list])=>`<div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="secthead"><b>${esc(cat)}</b><button class="linkbtn" data-mcatdel="${esc(cat)}">Remove group</button></div>
       <div class="chips">${list.map((m,i)=>`<span class="rname">${esc(m)}<button data-mdel="${esc(cat)}|${i}" aria-label="Remove ${esc(m)}">&times;</button></span>`).join("")}</div>
