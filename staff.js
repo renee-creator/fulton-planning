@@ -441,6 +441,7 @@ module.exports = function staffModule(o) {
     const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''));
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo', 'library/img', 'library/picture'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
     if (P === 'library/picture' && isNewHire(me)) return deny('A new educator reads the libraries.');
+    if (P === 'volunteer' || P.startsWith('volunteer/')) { await VOL.handle(P, body, me, req, res, { json, err }); return; }
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
@@ -475,7 +476,8 @@ module.exports = function staffModule(o) {
     if (P === 'wording') { if (isKitchen(me)) return deny(); json(req, res, 200, { docs: wordingAll() }); return; }
     if (P === 'page' || P === 'page/save' || P === 'page/restore') {
       // the kitchen edits a recipe and nothing else, so a module named alongside a recipe's path is refused
-      if (!dir && !(isKitchen(me) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || '')))) return deny('The director edits this page.');
+      // the office edits the volunteer jobs too, every card but those kept in Future Ideas
+      if (!dir && !(isKitchen(me) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''))) && !(!body.module && VOL.mayEdit(me, String(body.path || ''), String(body.item || '')))) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
       if (recordSpec(p)) {
         const item = String(body.item || ''); if (!recordTarget(p, item)) { err(req, res, 404, 'That is not here.'); return; }
@@ -987,6 +989,8 @@ module.exports = function staffModule(o) {
   let PR = null;
   // the Garden and the yards, in garden.js, kept beside the educator records
   // the library asks whether a PD module is shown to educators, so a link to a module waiting as a draft stays with the director
+  // the Volunteer Jobs library, in volunteer.js, its words edited with the same Edit, history and restore as a record
+  const VOL = require('./volunteer.js')({ get, put, S, log, isDirector, isOffice, saveRecord }); RECORD_EDIT.push(...VOL.SPECS);
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
@@ -1187,5 +1191,5 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me), ...PA.calendar(f, t, me)] : []; } catch (e) { return []; } }, paths: PA, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() + '.' + PA.rev() };
+  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits, volunteerJobs: () => VOL.once() }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me), ...PA.calendar(f, t, me)] : []; } catch (e) { return []; } }, paths: PA, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() + '.' + PA.rev() };
 };

@@ -1304,6 +1304,7 @@ function renderMain(){
   if(view==="settings"){renderSettings();return}
   if(view==="search"){renderSearchAll();return}
   if(view==="participation"){if(!isOffice()){view="children";renderMain();return}renderParticipation();return}
+  if(view==="volunteer"){if(!isOffice()){view="children";renderMain();return}renderVolunteer();return}
   if(view==="drdpreport"){if(!isDirector()){view="children";renderMain();return}renderDrdpReport();return}
   if(view==="children"){renderChildren();return}
   if(view==="child"){renderChild();return}
@@ -4176,7 +4177,8 @@ let staffLoad=null;
 // with each earlier version kept and Restore this version. TREE reads the wording again once it is saved.
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!isDirector()||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+// the office edits the volunteer jobs too
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=__STAFF_V__","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4190,9 +4192,9 @@ function renderStaff(){const m=$("#main");if(!m)return;
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["artists","Artists"],["kitchen","Kitchen"]],
-  children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["drdpreport","DRDP report"]]};
+  children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["volunteer","Volunteer Jobs"],["drdpreport","DRDP report"]]};
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",gatherings:"docs",recipes:"docs",songs:"docs",artists:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",gatherings:"docs",recipes:"docs",songs:"docs",artists:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
@@ -4247,7 +4249,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
+  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
   // the Educators pages sit under four tabs, for the director and every educator, and the pages of the open one show
   // beneath, so a phone shows the page itself on the first screen
@@ -10011,6 +10013,100 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
 function ptRead(){const v=id=>($("#"+id)?.value||"").trim();return {title:v("pt-title"),date:v("pt-date"),start:v("pt-start"),end:v("pt-end"),hours:Number(v("pt-hours"))||0,spots:Number(v("pt-spots"))||0,classroom:v("pt-class"),note:v("pt-note"),question:v("pt-q"),counts:$("#pt-counts")?$("#pt-counts").checked:undefined}}
+/* ---------- Volunteer Jobs ----------
+   Every job card families can take on, in the director's own words, kept in the records under staff/volunteer and
+   received through /api/staff/volunteer. The director and the office read the library, edit any card with the one
+   editor and its history, add cards, choose each card's job type and print one, some or all. Future Ideas, cards on
+   hold, reach only the director. Every group and every card starts folded, and TREE keeps each one as it was left
+   whenever the page redraws. Families see nothing from here yet. */
+let volData=null,volBusy=false,volPick=new Set(),volQ="",volAdd=false;
+async function volLoad(force){if(volBusy||!window.FP_API||(volData&&!force))return volData;volBusy=true;
+  try{volData=await window.FP_API("/api/staff/volunteer",{})}catch(e){if(!volData)volData={error:e&&e.message||"The job cards could not be read."}}finally{volBusy=false}
+  if(view==="volunteer")renderMain();return volData}
+const volGroup=id=>((volData&&volData.groups)||[]).find(g=>g.id===id)||{name:"",note:""};
+const volTypeName=k=>(((volData&&volData.types)||[]).find(x=>x.key===k)||{}).name||"";
+const volFuture=j=>j.status==="future"||j.group==="future-ideas";
+const volMatch=j=>{const q=volQ.trim().toLowerCase();return !q||[j.title,j.where,j.who,...(j.supplies||[])].join(" ").toLowerCase().includes(q)};
+const volShown=()=>((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&volMatch(j));
+const volEditBtn=(path,item,label)=>`<button class="linkbtn" data-voledit="${esc(path)}" data-volitem="${esc(item||"")}">${esc(label||"Edit, with its history")}</button>`;
+function volList(items,numbered){items=(items||[]).filter(has);if(!items.length)return "";const tag=numbered?"ol":"ul";return `<${tag} style="margin:2px 0 8px;padding-left:22px">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</${tag}>`}
+function volCard(j){const dir=volData.director,fut=volFuture(j),P=volData.paths;
+  const facts=[j.where,j.time,j.who].filter(has).map(esc).join(" · ");
+  const types=volData.types.map(t=>`<option value="${esc(t.key)}" ${j.type===t.key?"selected":""}>${esc(t.name)}</option>`).join("");
+  const back=fut&&dir?`<label class="fld-label" style="margin:0">Group it goes back to<select data-volback="${esc(j.id)}">${volData.groups.filter(g=>g.id!=="future-ideas").map(g=>`<option value="${esc(g.id)}" ${g.id===j.group?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label><button class="btn small ghost" data-volmove="${esc(j.id)}" data-to="active">Make it active</button>`:"";
+  return `<details class="strow" data-volrow="j:${esc(j.id)}"><summary style="cursor:pointer">${fut?"":`<label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-volpick="${esc(j.id)}" ${volPick.has(j.id)?"checked":""} aria-label="Choose ${esc(j.title)} to print"></label>`}<b>${esc(j.title)}</b> <span class="cnt">${esc(volTypeName(j.type))}</span></summary>
+    <div style="margin:8px 0 4px">${facts?`<div class="cnt" style="margin-bottom:6px">${facts}</div>`:""}
+      ${(j.supplies||[]).filter(has).length?`<div class="lbl">Supplies</div>${volList(j.supplies)}`:""}
+      ${(j.directions||[]).filter(has).length?`<div class="lbl">Directions</div>${volList(j.directions,true)}`:""}
+      ${(j.take_care||[]).filter(has).length?`<div class="lbl">Take care</div>${volList(j.take_care)}`:""}
+      ${has(j.done_when)?`<p style="margin:4px 0 8px">Done when ${esc(j.done_when)}</p>`:""}
+      ${volData.notes&&volData.notes[j.id]?`<div class="hint">${esc(volData.notes[j.id])}</div>`:""}
+      <div class="actions" style="flex-wrap:wrap;align-items:flex-end">${fut?"":printBtns("voljob",esc(j.id),"Print this card")}${volEditBtn(P.jobs,j.id)}
+        <label class="fld-label" style="margin:0">Job type<select data-voltype="${esc(j.id)}">${types}</select></label>
+        ${dir&&!fut?`<button class="linkbtn" data-volmove="${esc(j.id)}" data-to="future">Move to Future Ideas</button>`:""}${back}</div></div></details>`}
+function renderVolunteer(){const m=$("#main");if(!m)return;
+  const head=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Volunteer Jobs</h2><div class="sub">Every job card families can take on, in our own words. Families see nothing from this page yet.</div></div>`;
+  if(!volData){volLoad();m.innerHTML=head+`<section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;return}
+  if(volData.error){m.innerHTML=head+`<section class="card"><div class="hint warnline">${esc(volData.error)}</div><div class="actions"><button class="btn small ghost" data-volreload="1">Try again</button></div></section>`;return}
+  if(!volData.loaded){m.innerHTML=head+`<section class="card"><div class="cnt">The job cards come into the records once, the next time TREE starts. They show here after that.</div></section>`;return}
+  const dir=volData.director,P=volData.paths,I=volData.intro||{title:"",lead:"",guidelines:[]};
+  const intro=`<details class="card" data-volrow="intro"><summary style="cursor:pointer"><b>${esc(I.title||"Before You Start")}</b></summary>
+    ${has(I.lead)?`<p>${esc(I.lead)}</p>`:""}${volList(I.guidelines)}
+    <div class="actions">${printBtns("volintro","",`Print ${esc(I.title||"Before You Start")}`)}${volEditBtn(P.intro,"")}</div></details>`;
+  const steps=dir?`<section class="card"><label class="nlcheck"><input type="checkbox" data-volsteps="1" ${volData.stepsBefore?"checked":""}> Families see the full steps before they sign up</label>
+    <div class="cnt">When this is off, families see where, how long, who and the supplies, then the steps once they sign up. It takes effect when the Family page shows job cards.</div></section>`:"";
+  const shown=volShown(),n=volPick.size;
+  const tools=`<section class="card"><label class="fld-label">Find a job<input type="search" id="vol-q" value="${esc(volQ)}" placeholder="A job, a place or a supply" data-noproof="1"></label>
+    <div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-volprint="some" ${n?"":"disabled"}>Print the cards I chose${n?" ("+n+")":""}</button><button class="linkbtn" data-volprint="some" data-word="1" ${n?"":"disabled"}>Word, the cards I chose</button><button class="linkbtn" data-volprint="all">Print every card shown</button><button class="linkbtn" data-volprint="all" data-word="1">Word, every card shown</button>${n?`<button class="linkbtn" data-volclear="1">Clear my choices</button>`:""}</div>
+    <div class="cnt">Every card shown prints with ${esc(I.title||"Before You Start")} first. A card that fits one page prints centred, and a longer one prints on full pages.</div>
+    ${volAdd?`<div class="gsrow" style="margin-top:8px"><label>Job name<input type="text" id="vol-title" maxlength="160"></label><label>Group<select id="vol-group">${volData.groups.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select></label></div>
+      <div class="actions"><button class="btn small" data-voladd="save">Add the card</button><button class="linkbtn" data-voladd="cancel">Cancel</button><span class="cnt">The editor opens on it for the rest.</span></div>`:`<div class="actions"><button class="btn small ghost" data-voladd="open">Add a card</button></div>`}</section>`;
+  const groups=volData.groups.filter(g=>g.id!=="future-ideas").map(g=>{const js=shown.filter(j=>j.group===g.id);if(!js.length&&volQ.trim())return "";
+    return `<details class="card" data-volrow="g:${esc(g.id)}" ${volQ.trim()?"open":""}><summary style="cursor:pointer"><b>${esc(g.name)}</b> <span class="cnt">${js.length} ${js.length===1?"card":"cards"}</span></summary>
+      ${has(g.note)?`<p class="cnt" style="font-style:italic">${esc(g.note)}</p>`:""}<div class="actions" style="margin:0 0 6px">${volEditBtn(P.groups,g.id,"Edit the group's name and note")}</div>
+      ${js.map(volCard).join("")||`<div class="cnt">No cards in this group yet.</div>`}</details>`}).join("");
+  const fg=volData.groups.find(g=>g.id==="future-ideas"),fut=dir?volData.jobs.filter(volFuture):[];
+  const future=dir?`<details class="card" data-volrow="future"><summary style="cursor:pointer"><b>${esc(fg?fg.name:"Future Ideas")}</b> <span class="cnt">${fut.length} ${fut.length===1?"card":"cards"}, only you see these</span></summary>
+    ${fg&&has(fg.note)?`<p class="cnt" style="font-style:italic">${esc(fg.note)}</p>`:""}${fg?`<div class="actions" style="margin:0 0 6px">${volEditBtn(P.groups,fg.id,"Edit the group's name and note")}</div>`:""}
+    ${fut.map(volCard).join("")||`<div class="cnt">No cards on hold.</div>`}</details>`:"";
+  m.innerHTML=head+intro+steps+tools+(groups||`<section class="card"><div class="empty">No job matches.</div></section>`)+future}
+// a card as it prints. One that fits a page prints centred, with its group above the title and where, how long and who
+// beneath it. A longer card keeps the full page, left aligned with more room.
+function volFit(md){try{if(!window.jspdf)return true;const doc=planDoc({unit:"pt",format:"letter"});const F=cFlow(doc,cReady(md),accOf(md.acc)||ACC.story);return !F.over&&F.pages.length===1&&!(F.pages[0].s<.9)}catch(e){return true}}
+function volJobDoc(j){const g=volGroup(j.group).name,L=x=>(x||[]).filter(has);
+  const blocks=[...(L(j.supplies).length?[dList("Supplies",L(j.supplies))]:[]),...(L(j.directions).length?[dList("Directions",L(j.directions),true)]:[]),...(L(j.take_care).length?[dList("Take care",L(j.take_care))]:[]),...(has(j.done_when)?[dText("","Done when "+j.done_when)]:[])];
+  const meta=[["Where",j.where],["How long",j.time],["Who",j.who]].filter(r=>has(r[1]));
+  const card=asCard({display:true,type:"report",acc:"story",title:j.title,meta:[],blocks:blocks.map(b=>b.numbered?Object.assign({},b,{items:b.items.map((x,i)=>(i+1)+". "+x)}):b)},{sub:[j.where,j.time,j.who].filter(has).join("  ·  ")});
+  if(card&&card.centered&&g)card.over=g;
+  return card&&card.centered&&volFit(card)?card:{display:true,type:"report",acc:"story",title:j.title,meta,blocks}}
+function volIntroDoc(){const I=volData.intro||{};const blocks=[...(has(I.lead)?[dText("",I.lead)]:[]),dList("",(I.guidelines||[]).filter(has))];
+  const card=asCard({display:true,type:"report",acc:"story",title:I.title||"Before You Start",meta:[],blocks},{sub:""});
+  return card&&card.centered&&volFit(card)?card:{display:true,type:"report",acc:"story",title:I.title||"Before You Start",meta:[],blocks}}
+async function volPrint(list,word,withIntro,name){if(!list.length&&!withIntro)return;
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(e){}
+  const docs=[...(withIntro?[volIntroDoc()]:[]),...list.map(volJobDoc)];const n=safeFile(name);if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")}
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="vol-q"&&view==="volunteer"){volQ=e.target.value;const c=e.target.selectionStart;renderMain();const i=$("#vol-q");if(i){i.focus();try{i.setSelectionRange(c,c)}catch(er){}}}});
+document.addEventListener("change",async e=>{const t=e.target;if(view!=="volunteer"||!t||!t.dataset)return;const d=t.dataset;
+  if(d.volpick){if(t.checked)volPick.add(d.volpick);else volPick.delete(d.volpick);renderMain();return}
+  try{if(d.voltype){volData=await window.FP_API("/api/staff/volunteer/type",{id:d.voltype,type:t.value});toast("The job type is saved.");renderMain();return}
+    if(d.volsteps){volData=await window.FP_API("/api/staff/volunteer/settings",{stepsBefore:t.checked});toast(t.checked?"Families will see the steps before they sign up.":"Families will see the steps once they sign up.");renderMain();return}}
+  catch(er){toast(er&&er.message||"That did not save.");volLoad(true)}});
+document.addEventListener("click",async e=>{if(view!=="volunteer")return;const t=e.target.closest("[data-voledit],[data-volprint],[data-voladd],[data-volmove],[data-volclear],[data-volreload]");if(!t)return;const d=t.dataset;
+  if(d.volreload){volData=null;renderMain();return}
+  if(d.voledit!=null){e.preventDefault();window.TREE_EDIT_PAGE(Object.assign({path:d.voledit},d.volitem?{item:d.volitem}:{}),()=>volLoad(true));return}
+  if(d.volclear){volPick.clear();renderMain();return}
+  if(d.volprint){const L=d.volprint==="all"?volShown():volData.jobs.filter(j=>volPick.has(j.id)&&!volFuture(j));if(!L.length){toast("Choose a card first.");return}
+    await volPrint(L,!!d.word,d.volprint==="all",L.length===1&&d.volprint!=="all"?L[0].title+" job card":"Volunteer job cards");return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.voladd==="open"){volAdd=true;renderMain();$("#vol-title")?.focus();return}
+  if(d.voladd==="cancel"){volAdd=false;renderMain();return}
+  try{
+    if(d.voladd==="save"){const title=($("#vol-title")?.value||"").trim(),group=$("#vol-group")?.value||"";if(!title){toast("Give the job a name.");return}
+      const r=await window.FP_API("/api/staff/volunteer/add",{title,group});volData=r;volAdd=false;renderMain();
+      window.TREE_EDIT_PAGE({path:r.paths.jobs,item:r.added},()=>volLoad(true));return}
+    if(d.volmove){const back=d.to==="active"?($(`[data-volback="${d.volmove}"]`)?.value||""):"";
+      volData=await window.FP_API("/api/staff/volunteer/move",{id:d.volmove,to:d.to,group:back});toast(d.to==="future"?"Moved to Future Ideas.":"The card is active again.");renderMain();return}}
+  catch(er){toast(er&&er.message||"That did not save.")}});
 function evAttachedHtml(p,locked){const refs=(p.evidenceRefs||[]).filter(r=>r.kind==="plan"&&plans.has(r.id));if(!refs.length)return "";
   return `<details class="evsrc"><summary class="cnt">Attached from other plans, ${refs.length}</summary>${refs.map(r=>{const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);
     return `<div style="margin-top:6px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><div class="evclamp" style="white-space:pre-line">${esc(pl.fields?.[r.k]||"")}</div><div class="actions"><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button>${locked?"":`<button class="linkbtn" data-evoff="plan|${esc(pl.id)}">Take off</button>`}</div></div>`}).join("")}</details>`}
@@ -11796,6 +11892,8 @@ async function printsClick(t){
   if(kind==="gguidekids"||kind==="gguideadults"||kind==="gplant"){if(!gdnOk())return true;const who=kind==="gguideadults"?"adults":kind==="gplant"?(gdnGuide==="children"?"children":"adults"):"children";const id=kind==="gplant"?t.dataset.id:"";await out(gdnGuideDoc(who,id),kind==="gplant"?`${who==="children"?"Plant card":"Full plant page"} ${(gdnPlant(id)||{}).common||""}`:who==="children"?"Fulton Community School plant cards":"Fulton Community School full plant pages");return true}
   if(kind==="recdemo"||kind==="recdemoposter"){if(!libData)await loadLibrary();const x=libRecipe(t.dataset.id);if(!x)return true;const size=kind==="recdemoposter"?"poster":"letter";
     const n=safeFile(`Demonstration ${x.title}${size==="poster"?" poster":""}`);if(word)await saveFile(await demoWord(x,size),n+".docx");else await saveFile(await demoPdf(x,size),n+".pdf");return true}
+  if(kind==="voljob"){if(!volData)await volLoad();const j=((volData&&volData.jobs)||[]).find(x=>x.id===t.dataset.id);if(j)await volPrint([j],word,false,j.title+" job card");return true}
+  if(kind==="volintro"){if(!volData)await volLoad();if(volData&&volData.intro)await volPrint([],word,true,volData.intro.title||"Before You Start");return true}
   if(kind==="artistcard"){if(!libData)await loadLibrary();const c=artCard(t.dataset.id);if(!c)return true;await out([artistDoc(c)],c.name+" card");return true}
   if(kind==="bookcard"){if(!libData)await loadLibrary();const x=(libData.books||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([bookCardDoc(x)],x.title+" card");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}

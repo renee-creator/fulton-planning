@@ -519,6 +519,8 @@ ONCE.push(['planDefaults', () => {
 ONCE.push(['schoolWords', () => staff.once.schoolWords({ welcome: require('./family.js').DEFAULT_WELCOME })]);
 ONCE.push(['trainingLinks', () => staff.once.trainingLinks()]);
 ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
+// the director's volunteer job cards, copied once from once/volunteer-jobs.json into the records, word for word
+ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 // steps that change records already there from a list of changes kept in the private records. A record in the main
 // records changes through the save queue.
 function recsEdit(path, fn) {

@@ -1,0 +1,2062 @@
+{
+  "intro": {
+    "title": "Before You Start",
+    "lead": "Every job card below lists where the work happens, how long it takes, who can do it, what you need, the steps, what to watch for and how you know you are done.",
+    "guidelines": [
+      "Sign up for school-day jobs in TREE. Some jobs, like reading at drop off and the pickup jobs, can be done anytime.",
+      "Check in with your assigned point person when you arrive.",
+      "Questions depend on the job. Ask your point person, and when in doubt, ask Renee.",
+      "Garden tools are in the Barn or the Garden shed. Ask Kannha before using any power tool.",
+      "Wash your hands before and after every job, and after touching animals, manure or compost.",
+      "Volunteers are never alone with children. An educator is always with the group.",
+      "At work days, children stay with their own grown-up and away from power tools.",
+      "Only adults open gates and doors.",
+      "Wear closed-toe shoes and work gloves for outdoor jobs.",
+      "Take a water break every 30 minutes and lift with your legs.",
+      "All pulled weeds, prunings, leaves and old plants go to the goats.",
+      "Do not take or post photos of children.",
+      "Put every tool, wagon and loose part back where you found it.",
+      "Log your hours on the TREE family page after you finish the job."
+    ]
+  },
+  "categories": [
+    {
+      "category": "Garden and Orchard",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Spread Wood Chips",
+          "where": "Pathways, bare soil, under gazebos and climbing structures",
+          "time": "1 to 3 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Wheelbarrows or garden carts",
+            "Pitchforks, shovels and rakes",
+            "Work gloves"
+          ],
+          "directions": [
+            "Ask staff which areas need chips first.",
+            "Fill a wheelbarrow from the chip pile with a pitchfork.",
+            "Dump small piles across the area so you are not dragging chips far.",
+            "Rake the chips into an even layer about 3 inches deep on pathways and bare soil.",
+            "Under climbing structures and swings, spread chips about 9 inches deep for a soft landing.",
+            "Keep chips 2 inches back from tree trunks and gazebo posts."
+          ],
+          "take_care": [
+            "Lift with your legs and keep wheelbarrow loads light enough to steer.",
+            "Watch for children's feet around pitchforks."
+          ],
+          "done_when": "no bare soil shows and the fall zones are deep and even."
+        },
+        {
+          "title": "Top Dress Beds with Compost and Straw",
+          "where": "Garden beds",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Finished compost from the compost pile and a wheelbarrow",
+            "Straw bale",
+            "Shovels, buckets and hand rakes",
+            "Work gloves"
+          ],
+          "directions": [
+            "Ask staff which beds are ready.",
+            "Pull any weeds first and feed them to the goats.",
+            "Spread compost about 1 inch deep across the bed, working around any plants.",
+            "Shake straw loose and lay a thin layer over the compost, keeping it off plant stems.",
+            "Water the bed gently."
+          ],
+          "take_care": [
+            "Stay on the paths and do not step in the beds."
+          ],
+          "done_when": "each bed has a layer of compost covered with straw."
+        },
+        {
+          "title": "Prepare and Plant Beds for the Season",
+          "where": "Garden beds",
+          "time": "1 to 3 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Seedlings or seed packets set out by staff",
+            "Trowels, hand rakes and a watering can",
+            "Plant tags and a garden marker",
+            "Work gloves"
+          ],
+          "directions": [
+            "Ask staff which bed to plant and what goes in it.",
+            "Clear old plants and weeds. Old plants and weeds go to the goats.",
+            "Loosen the soil with a hand rake.",
+            "Plant at the spacing on the seed packet or plant tag.",
+            "Label every row or plant with its name and the date.",
+            "Water gently until the soil is damp a few inches down."
+          ],
+          "take_care": [
+            "Give leftover seed packets to Renee for the seed library."
+          ],
+          "done_when": "the bed is planted, labeled and watered."
+        },
+        {
+          "title": "Start Seed Trays",
+          "where": "Garden or outdoor piazza",
+          "time": "1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Seed trays or small pots",
+            "Seed starting mix",
+            "Seeds chosen by staff",
+            "Plant tags, marker and a spray bottle"
+          ],
+          "directions": [
+            "Fill trays with damp seed starting mix and press it down lightly.",
+            "Plant 2 or 3 seeds per cell at the depth on the packet.",
+            "Cover lightly with mix and mist the top.",
+            "Label each tray with the plant name and the date.",
+            "Set the trays where staff ask."
+          ],
+          "take_care": [
+            "Children love this job. Let them drop the seeds while you guide."
+          ],
+          "done_when": "every tray is seeded, labeled and misted."
+        },
+        {
+          "title": "Fill Seed Trays for a Small Group",
+          "where": "Garden or outdoor piazza",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Empty seed trays",
+            "Finished compost from the compost pile",
+            "A wheelbarrow or large tub",
+            "Hose or watering can",
+            "Trowel or small scoop"
+          ],
+          "directions": [
+            "Bring compost from the compost pile to your work spot in a wheelbarrow or tub.",
+            "Wet the compost and mix it with your hands until it feels like a wrung-out sponge.",
+            "Fill each tray to the top.",
+            "Press the compost down firmly with your fingers.",
+            "Fill again to the top and press lightly.",
+            "Stack the trays where your point person asks, ready for a small group to plant."
+          ],
+          "take_care": [
+            "Wash hands after handling compost."
+          ],
+          "done_when": "every tray is full, firm and damp, ready for children to plant."
+        },
+        {
+          "title": "Weed Beds, Tree Rings and the Fence Line",
+          "where": "Garden beds, tree rings, piazza and front fence",
+          "time": "30 minutes and up",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Hand weeders and trowels",
+            "Buckets",
+            "Work gloves"
+          ],
+          "directions": [
+            "Ask staff which area to weed.",
+            "Pull weeds from the root, loosening the soil with a hand weeder.",
+            "Fill buckets with weeds and carry them to the goat yard.",
+            "Leave any plant you are unsure of and ask staff."
+          ],
+          "take_care": [
+            "Poison hemlock and poison oak grow on our site. Do not touch either. Tell staff where you see them.",
+            "Keep trash out of the goat buckets."
+          ],
+          "done_when": "the area is clear and the weeds are delivered to the goats."
+        },
+        {
+          "title": "Plant and Water Fruit Trees",
+          "where": "Orchard and yards",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Trees chosen by staff",
+            "Shovels and a wheelbarrow",
+            "Compost, wood chips and a hose"
+          ],
+          "directions": [
+            "Dig a hole twice as wide as the root ball and just as deep.",
+            "Loosen circling roots gently.",
+            "Set the tree so the top of the root ball sits level with the ground.",
+            "Backfill with the soil you dug out and firm it with your hands.",
+            "Water deeply, then spread wood chips in a ring, keeping them back from the trunk."
+          ],
+          "take_care": [
+            "Call staff before digging near pipes, drip lines or fences."
+          ],
+          "done_when": "the tree stands straight, is watered and has a mulch ring."
+        },
+        {
+          "title": "Prune Orchard Fruit Trees",
+          "where": "Tire Swing Yard orchard",
+          "time": "2 to 3 hours",
+          "who": "Adults only, with staff",
+          "supplies": [
+            "Clean, sharp hand pruners and loppers",
+            "Pruning saw",
+            "Gloves and safety glasses",
+            "Tarp for cuttings"
+          ],
+          "directions": [
+            "Prune only the trees and branches Renee has marked.",
+            "Remove dead, broken and crossing branches first.",
+            "Cut just outside the branch collar, never flush with the trunk.",
+            "Step back often to look at the shape of the tree.",
+            "Gather cuttings on the tarp and bring them to the goats."
+          ],
+          "take_care": [
+            "Keep children outside the work zone while cutting.",
+            "Never stand on a ladder alone."
+          ],
+          "done_when": "the marked trees are pruned and cuttings are cleared."
+        },
+        {
+          "title": "Renew the Strawberry Beds",
+          "where": "Strawberry beds",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Trowels, hand pruners and small pots",
+            "Compost",
+            "Work gloves"
+          ],
+          "directions": [
+            "Find strong runners with small new plants at the tips.",
+            "Pin each new plant into an open spot or into a small pot of soil.",
+            "Remove plants that are old, woody or not producing.",
+            "Weed the bed and add a thin layer of compost.",
+            "Water gently."
+          ],
+          "take_care": [
+            "Leave any fruit for the children to find."
+          ],
+          "done_when": "the bed is filled with young plants and old ones are removed."
+        },
+        {
+          "title": "Save, Clean and Packet Seeds",
+          "where": "Garden or a covered table",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Dry seed heads and pods cut by staff",
+            "Trays, small bowls and a fine screen",
+            "Paper envelopes and a marker"
+          ],
+          "directions": [
+            "Rub seed heads over a tray to loosen the seeds.",
+            "Shake the seeds through a screen to remove chaff.",
+            "Spread seeds on a tray to finish drying.",
+            "Fill envelopes and label each with the plant name, the year and where it grew.",
+            "Bring envelopes to Renee for the seed library in her office."
+          ],
+          "take_care": [
+            "Keep each kind of seed separate."
+          ],
+          "done_when": "seeds are clean, dry and labeled."
+        },
+        {
+          "title": "Tend the Pollinator Garden and Dye Bed",
+          "where": "Pollinator garden and botanical dye bed",
+          "time": "1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Hand pruners and hand weeders",
+            "Buckets and a watering can",
+            "Drying screens or baskets for dye flowers"
+          ],
+          "directions": [
+            "Weed around the plants.",
+            "Cut spent flowers to keep plants blooming, leaving some seed heads for the birds.",
+            "Ask staff which dye flowers are ready to harvest.",
+            "Spread harvested flowers on screens to dry."
+          ],
+          "take_care": [
+            "Bees are busy here. Move slowly and give them room."
+          ],
+          "done_when": "the beds are weeded and dye flowers are drying."
+        },
+        {
+          "title": "Weave the Willow Dome",
+          "where": "Willow dome",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Hand pruners",
+            "Soft garden twine"
+          ],
+          "directions": [
+            "Bend long new shoots and weave them into the dome walls.",
+            "Tie shoots loosely where they need support.",
+            "Trim shoots that block the doorway or poke inward at eye height.",
+            "Save long cut shoots for staff to replant or use in the Studio."
+          ],
+          "take_care": [
+            "Winter is the best time, while the willow is bare."
+          ],
+          "done_when": "the dome is woven, the doorway is clear and no shoots poke inward."
+        },
+        {
+          "title": "Repair Drip Lines, Hoses and Nozzles",
+          "where": "Garden beds and yards",
+          "time": "1 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Drip tubing, emitters, couplings and goof plugs",
+            "Hole punch for drip line",
+            "Hose menders, washers and nozzles",
+            "Utility knife"
+          ],
+          "directions": [
+            "Ask staff to run the system so you can see leaks and dry spots.",
+            "Cut out damaged tubing and join it with a coupling.",
+            "Plug unused holes and add emitters where plants are dry.",
+            "Replace worn hose washers and broken nozzles.",
+            "Run the water again to check your work."
+          ],
+          "take_care": [
+            "Turn the water off before cutting any line."
+          ],
+          "done_when": "every bed gets water and nothing leaks."
+        },
+        {
+          "title": "Walk and Check the Irrigation",
+          "where": "Garden, orchard and yards",
+          "time": "1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Flags or bright tape",
+            "Notepad or phone for notes"
+          ],
+          "directions": [
+            "Ask Renee to run each zone while you walk it.",
+            "Look for leaks, puddles, sprays where there should be drips, and dry plants.",
+            "Mark each problem with a flag or tape.",
+            "Write down the zone, the spot and the problem.",
+            "Give the list to Renee."
+          ],
+          "take_care": [],
+          "done_when": "every zone is walked and the problem list is with Renee."
+        },
+        {
+          "title": "Flush Lines and Clean Filters",
+          "where": "Irrigation valves and line ends",
+          "time": "1 hour",
+          "who": "Adults only",
+          "supplies": [
+            "Bucket and an old toothbrush",
+            "Replacement filter screens and end caps"
+          ],
+          "directions": [
+            "With the water off, unscrew each filter and scrub the screen clean.",
+            "Replace any torn screens and screw filters back on.",
+            "Open the end of each drip line.",
+            "Run the zone until the water runs clear.",
+            "Close the line ends tightly."
+          ],
+          "take_care": [
+            "Turn the water off before opening any filter."
+          ],
+          "done_when": "filters are clean and every line runs clear."
+        },
+        {
+          "title": "Add Drip to New Plantings",
+          "where": "New beds, trees and the fence line",
+          "time": "1 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Drip tubing, emitters, stakes and couplings",
+            "Hole punch for drip line"
+          ],
+          "directions": [
+            "Plan the run with Renee.",
+            "Lay tubing from the nearest line to the new plants.",
+            "Add an emitter at the base of each plant, or two for trees.",
+            "Stake the tubing so it stays put and is not a tripping hazard.",
+            "Run the zone and check that every plant gets water."
+          ],
+          "take_care": [],
+          "done_when": "every new plant has its own emitter and nothing leaks."
+        },
+        {
+          "title": "Check Irrigation Timers",
+          "where": "Irrigation controllers",
+          "time": "30 minutes",
+          "who": "Adults only, with Renee",
+          "supplies": [
+            "Fresh batteries"
+          ],
+          "directions": [
+            "Replace batteries in each timer.",
+            "With Renee, adjust run times for the season.",
+            "Write the new schedule on a card kept by the controller."
+          ],
+          "take_care": [],
+          "done_when": "every timer has fresh batteries and the season's schedule."
+        },
+        {
+          "title": "Rake Leaves for the Goats",
+          "where": "Yards and orchard",
+          "time": "1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Leaf rakes and tarps",
+            "Wheelbarrow"
+          ],
+          "directions": [
+            "Rake leaves onto a tarp.",
+            "Drag the tarp to the goat yard.",
+            "Feed the leaves to the goats a little at a time."
+          ],
+          "take_care": [
+            "Leave some leaves under shrubs for insects and birds."
+          ],
+          "done_when": "pathways are clear and the leaves are with the goats."
+        },
+        {
+          "title": "Repair and Care for Garden Tools",
+          "where": "Covered table",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Wire brush and sandpaper",
+            "Linseed oil and rags",
+            "Sharpening file"
+          ],
+          "directions": [
+            "Scrub dirt and rust off metal parts with the wire brush.",
+            "Sharpen the edges of shovels, hoes and pruners with the file.",
+            "Sand rough wooden handles smooth.",
+            "Rub a thin coat of linseed oil into the handles.",
+            "Set aside any tool that cannot be fixed and tell staff."
+          ],
+          "take_care": [
+            "Oily rags can catch fire. Lay them flat to dry outside before throwing them away."
+          ],
+          "done_when": "tools are clean, sharp and oiled."
+        },
+        {
+          "title": "Children's Helper Station",
+          "where": "Garden and yards on work days",
+          "time": "As long as they like",
+          "who": "Children with their grown-up",
+          "supplies": [
+            "Small buckets for weeds",
+            "A bin for special rocks"
+          ],
+          "directions": [
+            "Carry small handfuls of weeds to the goats.",
+            "Hunt for special rocks for the sensory garden and put them in the bin."
+          ],
+          "take_care": [
+            "Children stay with their grown-up and away from power tools."
+          ],
+          "done_when": "the weeds are with the goats and the rock bin has new treasures."
+        }
+      ]
+    },
+    {
+      "category": "Animal Care",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Muck the Goat Yard and Chicken Coop",
+          "where": "Goat yard and chicken coop",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Pitchforks, flat shovels and a wheelbarrow",
+            "Fresh straw",
+            "Gloves and closed-toe boots"
+          ],
+          "directions": [
+            "Renee will open the yard and move the animals.",
+            "Fork out soiled bedding and manure into the wheelbarrow.",
+            "Spread it around trees and on resting beds, never on beds with crops close to harvest.",
+            "Spread fresh straw in the shelters.",
+            "Latch every gate behind you."
+          ],
+          "take_care": [
+            "Wash hands well when you finish."
+          ],
+          "done_when": "shelters are clean, freshly bedded and every gate is latched."
+        },
+        {
+          "title": "Refresh the Chicken Nesting Boxes",
+          "where": "Chicken coop",
+          "time": "30 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Fresh straw or nesting material",
+            "Small bucket and gloves"
+          ],
+          "directions": [
+            "Collect any eggs first and set them somewhere safe.",
+            "Remove old nesting material.",
+            "Brush out the boxes.",
+            "Fill each box with fresh straw.",
+            "Bring the eggs to the indoor piazza."
+          ],
+          "take_care": [
+            "Follow our chicken hygiene steps and wash hands after."
+          ],
+          "done_when": "every box has clean straw."
+        },
+        {
+          "title": "Clean the Rabbit Hutches",
+          "where": "Rabbit hutches",
+          "time": "30 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Fresh bedding",
+            "Small shovel, bucket and brush"
+          ],
+          "directions": [
+            "Your point person will move the rabbits to a safe pen.",
+            "Remove soiled bedding and spread it around trees or on resting beds.",
+            "Brush the floor of the hutch clean.",
+            "Add fresh bedding and refill hay and water.",
+            "Return the rabbits and latch the doors."
+          ],
+          "take_care": [
+            "Rabbits startle easily. Move slowly and keep voices soft."
+          ],
+          "done_when": "hutches are clean, stocked and latched."
+        },
+        {
+          "title": "Scrub Water Buckets and Feeders",
+          "where": "Animal yards",
+          "time": "30 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Scrub brushes",
+            "Hose with a spray nozzle"
+          ],
+          "directions": [
+            "Empty one bucket or feeder at a time so animals always have water.",
+            "Scrub out algae and dirt.",
+            "Rinse well and refill with fresh water."
+          ],
+          "take_care": [
+            "Use only water and a brush, no soap."
+          ],
+          "done_when": "every bucket is clean and full."
+        },
+        {
+          "title": "Pick Up and Stack Hay",
+          "where": "Hay storage",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Truck or trailer, if you have one",
+            "Gloves and long sleeves",
+            "Pallets to keep bales off the ground"
+          ],
+          "directions": [
+            "Ask staff how many bales and where to pick them up.",
+            "Lift bales by the strings with gloves on.",
+            "Stack bales on pallets with the cut side up, tightly and no higher than staff ask."
+          ],
+          "take_care": [
+            "Keep children away from stacks while you work."
+          ],
+          "done_when": "the hay is stacked dry and off the ground."
+        },
+        {
+          "title": "Build Goat Enrichment",
+          "where": "Goat yard",
+          "time": "2 to 4 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Large stumps, cable spools or untreated lumber",
+            "Drill, screws and saw",
+            "Measuring tape"
+          ],
+          "directions": [
+            "Plan the platform, ramp or climbing stumps with staff.",
+            "Use untreated wood only.",
+            "Build it solid enough that it does not wobble when a goat jumps on it.",
+            "Place it away from fences so goats cannot jump out.",
+            "Sand any rough edges."
+          ],
+          "take_care": [
+            "Ask Kannha before using power tools.",
+            "Pick up every screw and scrap before the goats come back in."
+          ],
+          "done_when": "the goats have a new, steady place to climb."
+        },
+        {
+          "title": "Refresh Sheldon's Enclosure",
+          "where": "Tortoise enclosure",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Soil and sand mix chosen by staff",
+            "Flat stones and a shelter",
+            "Seeds or plants of safe greens such as dandelion, clover and plantain"
+          ],
+          "directions": [
+            "Your point person will move Sheldon to a safe spot.",
+            "Remove old food and droppings.",
+            "Loosen and top up the soil so he can dig.",
+            "Check that the walls and cover are secure.",
+            "Plant safe greens and set flat stones in a sunny spot for basking."
+          ],
+          "take_care": [
+            "Children feed and observe Sheldon but do not touch him."
+          ],
+          "done_when": "the enclosure is clean, secure and planted."
+        },
+        {
+          "title": "Repair Fencing, Gates and Latches",
+          "where": "Animal yards",
+          "time": "1 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Fence pliers, wire and staples",
+            "Replacement latches and hinges",
+            "Drill and screws"
+          ],
+          "directions": [
+            "Walk the fence line with staff and mark loose wire, gaps and broken boards.",
+            "Tighten or replace wire and boards.",
+            "Fix hinges so gates swing freely and close on their own.",
+            "Make sure every latch closes firmly and sits out of children's reach."
+          ],
+          "take_care": [
+            "Renee will move the animals to another yard while you work.",
+            "Ask Kannha before using power tools."
+          ],
+          "done_when": "every fence is tight and every gate latches."
+        },
+        {
+          "title": "Goat Care Day",
+          "where": "Goat yard",
+          "time": "2 hours",
+          "who": "Adults only, led by Renee or a goat keeper she approves",
+          "supplies": [
+            "Hoof trimmers and brushes",
+            "Halters and leads",
+            "First aid kit for animals"
+          ],
+          "directions": [
+            "The leader shows each step.",
+            "Brush each goat and check its coat and eyes.",
+            "Hold goats calmly while the leader trims hooves.",
+            "Note anything that looks wrong for staff."
+          ],
+          "take_care": [
+            "Children may watch from outside the fence."
+          ],
+          "done_when": "each goat is brushed and checked and hooves are trimmed."
+        }
+      ]
+    },
+    {
+      "category": "Yards and Play Spaces",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Haul, Sift and Level Sand",
+          "where": "Sandboxes",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Mesh sifters and buckets",
+            "Rakes and shovels",
+            "New sand, if staff have it"
+          ],
+          "directions": [
+            "Sift the top layer to remove leaves, twigs and rocks.",
+            "Add new sand if needed and rake it in.",
+            "Level the sand so it covers the floor of the box evenly.",
+            "Return sand toys to their bin."
+          ],
+          "take_care": [
+            "Watch for anything sharp while sifting and give it to staff."
+          ],
+          "done_when": "the sand is clean, deep and level."
+        },
+        {
+          "title": "Gather and Deliver Stumps and Logs",
+          "where": "Yards",
+          "time": "1 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Truck or trailer",
+            "Hand truck and work gloves"
+          ],
+          "directions": [
+            "Check with staff before bringing wood, so it is the right kind and size.",
+            "Choose sound, untreated wood without rot or nails.",
+            "Unload where staff ask."
+          ],
+          "take_care": [
+            "Large rounds are heavy. Roll them and use two people."
+          ],
+          "done_when": "the wood is delivered and placed."
+        },
+        {
+          "title": "Build Stump Circles and Seating",
+          "where": "Yards and garden",
+          "time": "2 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Stumps of similar height",
+            "Shovels, a level and tamper"
+          ],
+          "directions": [
+            "Mark the circle with staff.",
+            "Dig a shallow bed for each stump so it sits flat.",
+            "Set each stump and tamp soil around it until it does not rock.",
+            "Check heights so children can sit with their feet on the ground."
+          ],
+          "take_care": [
+            "Sand off splinters on the tops."
+          ],
+          "done_when": "every stump is steady and smooth."
+        },
+        {
+          "title": "Sand Splinters on Wood",
+          "where": "Fences, gazebos, benches and play structures",
+          "time": "1 hour",
+          "who": "Adults only",
+          "supplies": [
+            "Sandpaper, medium and fine grit",
+            "Sanding block and dust rag"
+          ],
+          "directions": [
+            "Run a gloved hand carefully along wooden edges to find rough spots.",
+            "Sand with medium grit, then smooth with fine grit.",
+            "Wipe away the dust.",
+            "Tell staff about any cracked or loose boards."
+          ],
+          "take_care": [],
+          "done_when": "the wood feels smooth to bare hands."
+        },
+        {
+          "title": "Check and Tighten Bolts",
+          "where": "Play structures and swings",
+          "time": "1 hour",
+          "who": "Adults only",
+          "supplies": [
+            "Wrench and socket set",
+            "Notepad"
+          ],
+          "directions": [
+            "Check every bolt, chain and connection on structures and swings.",
+            "Tighten anything loose.",
+            "Write down anything cracked, rusted or missing and give the list to staff."
+          ],
+          "take_care": [
+            "Do not remove any part. Staff will handle replacements."
+          ],
+          "done_when": "everything is tight and the list is with staff."
+        },
+        {
+          "title": "Power Wash and Blow Leaves",
+          "where": "Concrete areas and pathways",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Power washer and hose",
+            "Leaf blower",
+            "Eye and ear protection"
+          ],
+          "directions": [
+            "Clear the area of children and materials.",
+            "Blow leaves and loose debris off the concrete first.",
+            "Power wash in long, even passes.",
+            "Let the area dry before children return."
+          ],
+          "take_care": [
+            "Ask Kannha before using the power washer or blower. Only adults operate them.",
+            "Wet concrete is slippery. Put up a cone or tell staff."
+          ],
+          "done_when": "the concrete is clean and dry."
+        },
+        {
+          "title": "Scrub Outdoor Tables",
+          "where": "Outdoor piazza and yards",
+          "time": "1 hour",
+          "who": "Adults only",
+          "supplies": [
+            "Buckets and scrub brushes",
+            "Dish soap",
+            "Hose and gloves"
+          ],
+          "directions": [
+            "Clear the tables.",
+            "Scrub tops, benches and edges with soapy water.",
+            "Rinse well with the hose.",
+            "Let the tables air dry."
+          ],
+          "take_care": [
+            "Rinse away all the soap so tables are not slippery."
+          ],
+          "done_when": "every table is scrubbed, rinsed and dry."
+        },
+        {
+          "title": "Organize the Sheds and Outdoor Materials",
+          "where": "The Barn and Garden shed",
+          "time": "1 to 2 hours",
+          "who": "Adults only, with staff",
+          "supplies": [
+            "Bins, labels and a marker",
+            "Broom"
+          ],
+          "directions": [
+            "Empty one section at a time and sweep it.",
+            "Sort materials into groups.",
+            "Store heavy items low and sharp tools out of reach.",
+            "Label shelves and bins.",
+            "Set aside broken items for the dump run."
+          ],
+          "take_care": [],
+          "done_when": "everything has a labeled home."
+        },
+        {
+          "title": "Paint Signs for Outdoor Materials",
+          "where": "Covered table",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Wood boards or slices",
+            "Outdoor paint, brushes and sealer"
+          ],
+          "directions": [
+            "Ask staff for the list of signs needed.",
+            "Paint the background and let it dry.",
+            "Letter the sign clearly. Children can add drawings.",
+            "Seal the sign when it is dry."
+          ],
+          "take_care": [],
+          "done_when": "signs are sealed and ready to hang."
+        },
+        {
+          "title": "Repair or Build Fences, Benches and Gazebos",
+          "where": "Yards",
+          "time": "2 to 4 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Lumber and hardware chosen with staff",
+            "Power tools, after checking with Kannha"
+          ],
+          "directions": [
+            "Plan the project with staff and agree on materials.",
+            "Work when children are not in that yard.",
+            "Clean up every nail, screw and offcut.",
+            "Sand all edges."
+          ],
+          "take_care": [],
+          "done_when": "the project is solid, smooth and the area is clean."
+        },
+        {
+          "title": "Plant the Front Fence Hedgerow",
+          "where": "Front fence",
+          "time": "1 to 2 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Perennials chosen by staff, safe for children and goats",
+            "Comfrey divisions",
+            "Shovels, compost and a hose"
+          ],
+          "directions": [
+            "Follow the markers along the fence for spacing.",
+            "Dig a hole for each plant and add a scoop of compost.",
+            "Plant, firm the soil and water right away.",
+            "Transplant comfrey into the marked spots."
+          ],
+          "take_care": [],
+          "done_when": "every marker has a plant and everything is watered."
+        },
+        {
+          "title": "Line the Fence Lines with Compost",
+          "where": "Fence lines in the Log Yard, Tire Swing Yard, West Yard and North Yard",
+          "time": "1 to 3 hours",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Finished compost from the compost pile",
+            "Wheelbarrows, shovels and rakes",
+            "Buckets for weeds",
+            "Work gloves"
+          ],
+          "directions": [
+            "Ask your point person which fence lines to start with.",
+            "Pull weeds along the fence and bring them to the goats.",
+            "Loosen the soil along the fence with a rake.",
+            "Spread compost in a band about 18 inches wide and 2 to 3 inches deep along the fence.",
+            "Rake it smooth and keep it clear of gates."
+          ],
+          "take_care": [
+            "Watch for poison oak along fences. Do not touch it and tell your point person."
+          ],
+          "done_when": "every fence line in the yard has an even band of compost, ready for future planting."
+        },
+        {
+          "title": "Gather Lost Items and Trash in the Yards",
+          "where": "All yards and the outdoor piazza",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Two buckets or bags, one for trash and one for found items",
+            "Work gloves"
+          ],
+          "directions": [
+            "Walk each yard slowly, including under bushes, along fences and in the sandbox edges.",
+            "Pick up papers, bits of trash and broken pieces of things.",
+            "Collect socks, clothing, misplaced toys and loose parts in the found items bucket.",
+            "Return loose parts and toys to their home in that yard when you know where they belong.",
+            "Bring everything else to the lost and found to sort."
+          ],
+          "take_care": [
+            "Wear gloves and leave anything sharp or unsafe for your point person."
+          ],
+          "done_when": "the yards are clear and found items are at the lost and found."
+        },
+        {
+          "title": "Make a Dump Run",
+          "where": "School to the dump",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Truck or trailer",
+            "Tarp and straps"
+          ],
+          "directions": [
+            "Load only items staff have set aside.",
+            "Cover and strap the load.",
+            "Keep receipts for the office."
+          ],
+          "take_care": [],
+          "done_when": "the pile is gone and receipts are turned in."
+        }
+      ]
+    },
+    {
+      "category": "Culinary Atelier and Kitchen",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Remove Labels from Glass Jars",
+          "where": "Kitchen or at home",
+          "time": "1 to 2 hours",
+          "who": "Adults",
+          "supplies": [
+            "Tub of warm water",
+            "Scraper, scrub sponge, baking soda and cooking oil",
+            "Drying rack"
+          ],
+          "directions": [
+            "Soak jars in warm water until labels loosen.",
+            "Peel and scrape off the labels.",
+            "Rub leftover glue with a paste of baking soda and oil.",
+            "Wash jars with soap and dry them upside down.",
+            "Keep lids with their jars."
+          ],
+          "take_care": [],
+          "done_when": "jars are label-free, clean and dry."
+        },
+        {
+          "title": "Wash Toys and Tidy Outdoor Piazza Materials",
+          "where": "Kitchen and outdoor piazza",
+          "time": "1 to 2 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Mesh laundry bags",
+            "Kitchen dishwasher",
+            "Clean towels",
+            "Bins for sorting"
+          ],
+          "directions": [
+            "Gather toys and materials from the outdoor piazza, such as Legos and other small plastic pieces.",
+            "Sort small toys into mesh laundry bags and close them tightly.",
+            "Check that the kitchen dishwasher is free. When it is not in use, run the bags through it. If it is busy, wash the toys by hand in warm soapy water and rinse.",
+            "Spread toys on clean towels to air dry completely.",
+            "Throw away broken pieces and small parts that have come loose.",
+            "Put toys and materials back in their bins on the outdoor piazza, sorted and easy for children to reach."
+          ],
+          "take_care": [
+            "Toys must be fully dry before they go back in their bins."
+          ],
+          "done_when": "toys are clean, dry and back in place, and the outdoor piazza materials are tidy."
+        },
+        {
+          "title": "Scrub and Set Up the Mud Kitchen",
+          "where": "Mud kitchen",
+          "time": "1 hour",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Stiff brushes and buckets",
+            "Hose"
+          ],
+          "directions": [
+            "Scrub pots, pans and utensils.",
+            "Rinse and let them dry in the sun.",
+            "Set aside anything broken or sharp.",
+            "Arrange the kitchen at child height with tools easy to see and reach."
+          ],
+          "take_care": [],
+          "done_when": "the mud kitchen is clean and ready to play."
+        },
+        {
+          "title": "Prepare Herbs and Fruit for the Dehydrator",
+          "where": "Culinary atelier",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Harvest baskets",
+            "Cutting boards and knives",
+            "Dehydrator trays and labeled jars"
+          ],
+          "directions": [
+            "Harvest herbs or fruit with staff.",
+            "Rinse and pat dry.",
+            "Slice fruit evenly so it dries at the same rate.",
+            "Lay pieces in a single layer on the trays.",
+            "Label with the name and date."
+          ],
+          "take_care": [
+            "Food made or preserved by children is shared as an addition and never goes on the menu."
+          ],
+          "done_when": "trays are full and labeled."
+        },
+        {
+          "title": "Wash and Fold Cloth Napkins and Towels",
+          "where": "At home",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Bag of napkins and towels from the take-home bin by the front office"
+          ],
+          "directions": [
+            "Wash with unscented, mild detergent.",
+            "Dry fully.",
+            "Fold neatly and return them to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "everything is back clean and folded."
+        },
+        {
+          "title": "Sew Cloth Napkins",
+          "where": "At home",
+          "time": "1 to 3 hours",
+          "who": "Adults",
+          "supplies": [
+            "Cotton fabric, thread and a sewing machine"
+          ],
+          "directions": [
+            "Cut squares about 12 inches across.",
+            "Fold the edges under twice and hem.",
+            "Press and return them to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "napkins are hemmed and pressed."
+        },
+        {
+          "title": "Add a Family Recipe",
+          "where": "At home",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Your recipe"
+          ],
+          "directions": [
+            "Write the ingredients and steps in simple words.",
+            "Note any steps children can do, such as stirring, measuring or kneading.",
+            "Share the story behind the recipe if you like.",
+            "Add it on the TREE family page."
+          ],
+          "take_care": [
+            "Recipes must be vegetarian and nut free."
+          ],
+          "done_when": "your recipe is in TREE."
+        }
+      ]
+    },
+    {
+      "category": "During the School Day",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Read a Story at Drop Off",
+          "where": "Your child's class",
+          "time": "15 minutes",
+          "who": "With an educator",
+          "supplies": [
+            "A picture book from home or from the class library"
+          ],
+          "directions": [
+            "Check in with an educator when you arrive.",
+            "Sit in the reading area and begin. Children will gather as they arrive.",
+            "Pause to ask what children notice in the pictures.",
+            "Read one or two short books, then say goodbye."
+          ],
+          "take_care": [],
+          "done_when": "the story is read and children have moved into their morning."
+        },
+        {
+          "title": "Tell a Story in Your Home Language",
+          "where": "Meeting time",
+          "time": "20 minutes",
+          "who": "With an educator",
+          "supplies": [
+            "A book, song or story from your family"
+          ],
+          "directions": [
+            "Plan a day with the class team.",
+            "Share a story, song or rhyme in your language.",
+            "Teach children a word or two to say with you.",
+            "Leave the book for the class to explore, if you can."
+          ],
+          "take_care": [],
+          "done_when": "children have heard and tried your language."
+        },
+        {
+          "title": "Help a Small Group Cook",
+          "where": "Culinary atelier",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Your recipe, approved by the class team, and its ingredients",
+            "Aprons, bowls, measuring cups and child-safe tools"
+          ],
+          "directions": [
+            "Sign up in TREE and share your recipe with the class team for approval.",
+            "Wash hands, tie back long hair and put on an apron.",
+            "Have children wash hands too.",
+            "Let children measure, pour, stir, knead, cut with child-safe knives and taste.",
+            "You handle the stove and sharp knives while the educator stays with the children.",
+            "Clean up together."
+          ],
+          "take_care": [
+            "All food is vegetarian and nut free.",
+            "What children cook is shared as an addition and never goes on the menu."
+          ],
+          "done_when": "the food is shared and the space is clean."
+        },
+        {
+          "title": "Bake Bread or Press Tortillas",
+          "where": "Culinary atelier",
+          "time": "1 to 2 hours",
+          "who": "With an educator",
+          "supplies": [
+            "Flour or masa and the ingredients for your recipe",
+            "Bowls, tortilla press or rolling pins, and a comal or oven"
+          ],
+          "directions": [
+            "Plan the recipe with the class team.",
+            "Let children mix, knead, shape or press the dough.",
+            "Talk about what they notice as the dough changes.",
+            "You handle the oven and the hot comal.",
+            "Share the bread or tortillas together."
+          ],
+          "take_care": [],
+          "done_when": "everyone has tasted what they made."
+        },
+        {
+          "title": "Explore the Weekly Produce Bin",
+          "where": "Culinary atelier or outdoor piazza",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "The produce bin, trays, baskets and magnifiers"
+          ],
+          "directions": [
+            "Let children open the bin and take things out one at a time.",
+            "Ask what they notice, how it smells and where it might have grown.",
+            "Sort produce in ways the children choose.",
+            "Wash produce together and bring it to the kitchen."
+          ],
+          "take_care": [
+            "Produce is food, never an art material."
+          ],
+          "done_when": "the bin is explored, washed and delivered to the kitchen."
+        },
+        {
+          "title": "Dry Herbs or Fruit with a Small Group",
+          "where": "Culinary atelier",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Herbs or fruit, dehydrator trays and child-safe knives"
+          ],
+          "directions": [
+            "Children rinse and pick leaves from stems.",
+            "Adults slice firm fruit. Children cut soft fruit with child-safe knives, with close support.",
+            "Children lay pieces on trays.",
+            "Check on the trays over the next days and notice the changes together."
+          ],
+          "take_care": [],
+          "done_when": "trays are filled and children can follow the drying."
+        },
+        {
+          "title": "Make Playdough with a Small Group",
+          "where": "Culinary atelier",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Our playdough recipe and pantry staples",
+            "Flowers or dye plants from the garden, never food",
+            "Bowls, a pot and spoons"
+          ],
+          "directions": [
+            "Children measure and mix the dry ingredients.",
+            "Adults cook the dough on the stove.",
+            "Children knead it as it cools.",
+            "Steep or crush flowers and dye plants and work them in for color.",
+            "Store in a labeled jar."
+          ],
+          "take_care": [],
+          "done_when": "the dough is colored and stored."
+        },
+        {
+          "title": "Garden with a Small Group",
+          "where": "Garden",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Child-size tools, watering cans and harvest baskets"
+          ],
+          "directions": [
+            "Ask the educator what the group is working on.",
+            "Show children how to hold tools and dig gently.",
+            "Ask questions more than you explain.",
+            "Practice our agreement, pick with purpose and leave some for others."
+          ],
+          "take_care": [],
+          "done_when": "the group's garden job is finished and tools are put away."
+        },
+        {
+          "title": "Feed the Goats and Collect Eggs with Children",
+          "where": "Goat yard and chicken coop",
+          "time": "30 minutes",
+          "who": "With an educator",
+          "supplies": [
+            "Approved scraps and weeds",
+            "Egg basket"
+          ],
+          "directions": [
+            "Follow our animal hygiene steps.",
+            "Show children how to offer food on a flat hand.",
+            "Collect eggs gently, count them together and bring them to the indoor piazza.",
+            "Wash hands when finished."
+          ],
+          "take_care": [
+            "Animals never eat people food or produce from our garden beds."
+          ],
+          "done_when": "animals are fed, eggs are inside and hands are washed."
+        },
+        {
+          "title": "Look for Birds and Insects",
+          "where": "Yards and garden",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Phone with Merlin Bird ID or iNaturalist",
+            "Magnifiers, clipboards and pencils"
+          ],
+          "directions": [
+            "Walk slowly and listen first.",
+            "Ask children what they hear and see.",
+            "Use the app to explore together, after children share their own ideas.",
+            "Children can draw what they find."
+          ],
+          "take_care": [
+            "Look but do not touch insects that sting or spiders."
+          ],
+          "done_when": "the group has shared what they discovered."
+        },
+        {
+          "title": "Join a Small Group in the Studio",
+          "where": "Studio",
+          "time": "1 hour",
+          "who": "With the atelierista",
+          "supplies": [
+            "Clay, yarn, fabric or paint set out by the atelierista"
+          ],
+          "directions": [
+            "Follow the atelierista's plan.",
+            "Work alongside children with the material.",
+            "Describe what you see children doing rather than praising.",
+            "Help clean and put materials away."
+          ],
+          "take_care": [],
+          "done_when": "the Studio is ready for the next group."
+        },
+        {
+          "title": "Play Music or Sing with a class",
+          "where": "Meeting time or outdoors",
+          "time": "30 minutes",
+          "who": "With an educator",
+          "supplies": [
+            "Your instrument or voice"
+          ],
+          "directions": [
+            "Plan a time with the class team.",
+            "Play a short song and let children listen.",
+            "Invite children to sing, move or try a simple part.",
+            "Let children see and touch the instrument if it is safe to."
+          ],
+          "take_care": [],
+          "done_when": "children have heard and played music with you."
+        },
+        {
+          "title": "Help at Lunch",
+          "where": "Class lunch area",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "None needed"
+          ],
+          "directions": [
+            "Wash hands.",
+            "Help children set the tables.",
+            "Sit with children and talk about their morning.",
+            "Lunch is family style. Help children pass bowls and serve themselves.",
+            "Help wipe tables after."
+          ],
+          "take_care": [
+            "Bring nothing from home to share at lunch."
+          ],
+          "done_when": "tables are cleaned after the meal."
+        },
+        {
+          "title": "Help Children Write and Mail Letters",
+          "where": "Class or Studio",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Paper, envelopes, stamps and pencils"
+          ],
+          "directions": [
+            "Ask children who they want to write to.",
+            "Write down children's words when they ask.",
+            "Help address envelopes.",
+            "Walk with the group to the mailbox."
+          ],
+          "take_care": [],
+          "done_when": "letters are mailed."
+        },
+        {
+          "title": "Build with Large Loose Parts",
+          "where": "Yards",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Planks, crates, tires and other loose parts"
+          ],
+          "directions": [
+            "Watch first to see what children are building.",
+            "Help lift heavy pieces when asked.",
+            "Ask questions about their plans.",
+            "Help put loose parts back at the end."
+          ],
+          "take_care": [
+            "Support the children's ideas and let them lead."
+          ],
+          "done_when": "loose parts are back in place."
+        },
+        {
+          "title": "Bring a Specialty or Passion",
+          "where": "A class, the Studio, the garden or the kitchen",
+          "time": "30 minutes to 1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Real tools and materials from your work or hobby"
+          ],
+          "directions": [
+            "Share your idea in TREE.",
+            "Meet with the class team to connect your visit to what children are exploring.",
+            "Plan for a small group.",
+            "Ask children what they notice and wonder before you share what you know.",
+            "Leave a tool, seed or question so the investigation can continue."
+          ],
+          "take_care": [],
+          "done_when": "children have explored with you and have something to keep wondering about."
+        }
+      ]
+    },
+    {
+      "category": "Classes and Studio",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Scrub Chairs and Deep Clean a class",
+          "where": "Classes",
+          "time": "2 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Soapy water, rags and scrub brushes",
+            "Buckets"
+          ],
+          "directions": [
+            "Wipe chairs, with extra care on the undersides.",
+            "Wipe shelves after removing materials.",
+            "Spot clean walls and floors.",
+            "Return materials exactly where they were, or ask the educator."
+          ],
+          "take_care": [],
+          "done_when": "the class is clean and materials are back in place."
+        },
+        {
+          "title": "Repair and Sort Books",
+          "where": "Class library",
+          "time": "1 to 2 hours",
+          "who": "Adults",
+          "supplies": [
+            "Book tape and glue",
+            "Bins and labels"
+          ],
+          "directions": [
+            "Tape torn pages and loose covers.",
+            "Set aside books beyond repair.",
+            "Sort by category such as animals, plants, feelings and stories.",
+            "Label the bins."
+          ],
+          "take_care": [],
+          "done_when": "books are mended and sorted."
+        },
+        {
+          "title": "Make Blank Books",
+          "where": "Class or at home",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Cardstock and white paper",
+            "Stapler, hole punch, binding rings or yarn"
+          ],
+          "directions": [
+            "Stack white paper between two sheets of cardstock.",
+            "Fold in half or keep flat.",
+            "Bind with staples, rings or yarn.",
+            "Check for sharp edges."
+          ],
+          "take_care": [],
+          "done_when": "books are bound and safe to handle."
+        },
+        {
+          "title": "Mend Dress-Up Clothes",
+          "where": "At home",
+          "time": "1 to 2 hours",
+          "who": "Adults",
+          "supplies": [
+            "Needle, thread, sewing machine and fabric patches"
+          ],
+          "directions": [
+            "Pick up the mending bag from the take-home bin by the front office.",
+            "Repair seams, holes and loose buttons.",
+            "Wash if needed and return it to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "everything is mended and back."
+        },
+        {
+          "title": "Prepare Clay and Sort Art Materials",
+          "where": "Studio",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Clay, wire cutter, airtight bags and bins"
+          ],
+          "directions": [
+            "Cut clay into balls the size the atelierista asks.",
+            "Knead out air bubbles.",
+            "Store clay in airtight bags.",
+            "Sort art materials into labeled bins."
+          ],
+          "take_care": [],
+          "done_when": "clay is ready and materials are sorted."
+        },
+        {
+          "title": "Mount Children's Artwork",
+          "where": "Classes or Studio",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Mat board, glue sticks, frames or clips"
+          ],
+          "directions": [
+            "Ask the educator which pieces to mount.",
+            "Center each piece on its backing.",
+            "Keep names and documentation with each piece."
+          ],
+          "take_care": [],
+          "done_when": "work is mounted and given to the educator."
+        },
+        {
+          "title": "Organize Closets and Restock Supplies",
+          "where": "Supply closets",
+          "time": "1 to 2 hours",
+          "who": "Adults",
+          "supplies": [
+            "Bins, labels and a supply list"
+          ],
+          "directions": [
+            "Empty one shelf at a time.",
+            "Group like items.",
+            "Label shelves.",
+            "Write a list of what is running low for the office."
+          ],
+          "take_care": [],
+          "done_when": "shelves are labeled and the list is turned in."
+        },
+        {
+          "title": "Deep Clean and Rearrange the Piazzas",
+          "where": "Indoor and outdoor piazzas",
+          "time": "2 to 3 hours",
+          "who": "Adults only",
+          "supplies": [
+            "Buckets of soapy water and rags",
+            "Bins for sorting"
+          ],
+          "directions": [
+            "Remove all materials from the shelves.",
+            "Wipe every surface and shelf with soapy water.",
+            "With your point person, arrange clear areas such as a reading nook and a building area.",
+            "Leave open pathways so children can move freely and educators can see the whole space.",
+            "Return materials sorted and at child height."
+          ],
+          "take_care": [],
+          "done_when": "the piazza is clean, arranged and easy to supervise."
+        },
+        {
+          "title": "Cut Paper for the classes and Studio",
+          "where": "Class, Studio or at home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Paper and cardstock from the take-home bin or the Studio",
+            "Paper cutter or sharp scissors"
+          ],
+          "directions": [
+            "Ask your point person what sizes are needed, such as half sheets, squares or strips.",
+            "Cut neatly and stack by size.",
+            "Sort by color.",
+            "Return stacks to the Studio or the take-home bin."
+          ],
+          "take_care": [
+            "Keep the paper cutter closed and out of children's reach."
+          ],
+          "done_when": "paper is cut, sorted and returned."
+        },
+        {
+          "title": "Sharpen Pencils",
+          "where": "Class, Studio or at home",
+          "time": "20 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Pencils and colored pencils",
+            "Pencil sharpener"
+          ],
+          "directions": [
+            "Sharpen each pencil to a good point.",
+            "Set aside pencils too short to hold.",
+            "Sort colored pencils by color.",
+            "Return them to their cups."
+          ],
+          "take_care": [],
+          "done_when": "every pencil is sharp and sorted."
+        },
+        {
+          "title": "Wash Paintbrushes and Paint Cups",
+          "where": "Class or Studio",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Warm water, mild soap and a tub"
+          ],
+          "directions": [
+            "Rinse paint from brushes, cups and palettes.",
+            "Wash gently with soap and rinse well.",
+            "Reshape brush tips with your fingers.",
+            "Lay brushes flat or bristles up to dry."
+          ],
+          "take_care": [],
+          "done_when": "brushes and cups are clean and drying."
+        },
+        {
+          "title": "Refill Art Supplies",
+          "where": "Class or Studio",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Paint, glue, tape and paper from the supply closet"
+          ],
+          "directions": [
+            "Check paint cups, glue bottles and tape dispensers.",
+            "Refill or replace anything low or empty.",
+            "Test markers and glue sticks and set aside dried ones.",
+            "Write a list of anything that needs to be ordered."
+          ],
+          "take_care": [],
+          "done_when": "the art shelf is stocked and the list is with your point person."
+        },
+        {
+          "title": "Refresh the Dramatic Play Area",
+          "where": "Class",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Soapy water, rags and baskets"
+          ],
+          "directions": [
+            "Wipe dishes, food sets and props.",
+            "Fold and hang dress-up clothes.",
+            "Set aside anything torn for the mending bag.",
+            "Arrange materials so children can see and reach them."
+          ],
+          "take_care": [],
+          "done_when": "the area is clean and inviting."
+        },
+        {
+          "title": "Water Indoor Plants",
+          "where": "Classes and indoor piazza",
+          "time": "15 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [
+            "Small watering can"
+          ],
+          "directions": [
+            "Feel the soil. Water only plants that are dry an inch down.",
+            "Water slowly until a little drains out.",
+            "Pick off dead leaves."
+          ],
+          "take_care": [],
+          "done_when": "every dry plant is watered."
+        },
+        {
+          "title": "Clean Windows and Mirrors",
+          "where": "Classes and piazzas",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Vinegar and water spray and soft cloths"
+          ],
+          "directions": [
+            "Spray the cloth, not the glass.",
+            "Wipe windows, doors and mirrors at child height.",
+            "Polish dry."
+          ],
+          "take_care": [],
+          "done_when": "the glass is clear at children's eye level."
+        },
+        {
+          "title": "Make Picture Labels for Bins",
+          "where": "Class or at home",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Cardstock, marker and clear packing tape or labels",
+            "Photos or drawings of the materials"
+          ],
+          "directions": [
+            "Ask the educator which bins need labels.",
+            "Make each label with a picture of the material and its name in clear print.",
+            "Cover with clear tape so it lasts.",
+            "Attach labels to bins and the matching shelf spot."
+          ],
+          "take_care": [
+            "Use pictures of materials only, never children."
+          ],
+          "done_when": "each bin and its shelf spot match."
+        },
+        {
+          "title": "Wipe Out Cubbies",
+          "where": "Classes",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Bucket of soapy water and rags",
+            "Dry towels"
+          ],
+          "directions": [
+            "Ask the educator which cubbies to clean and when.",
+            "Work on one cubby at a time so each child's things stay together.",
+            "Take everything out and set it on a clean towel.",
+            "Wipe the cubby inside and out, including hooks and the shelf above.",
+            "Dry it fully.",
+            "Put each child's things back in their own cubby."
+          ],
+          "take_care": [
+            "Never move belongings between cubbies. Give anything left loose to the educator."
+          ],
+          "done_when": "every cubby is clean, dry and holds its own child's things."
+        },
+        {
+          "title": "Sort the Lost and Found",
+          "where": "Lost and found",
+          "time": "30 minutes",
+          "who": "Adults",
+          "supplies": [
+            "Bags or bins for sorting",
+            "Trash and recycling bins"
+          ],
+          "directions": [
+            "Sort items into clothing, toys and loose parts, and trash.",
+            "Return anything with a name to that child's cubby.",
+            "Put clothing and socks in the laundry.",
+            "Return toys and loose parts to their class or the piazza.",
+            "Throw away trash and broken pieces, recycling what you can."
+          ],
+          "take_care": [],
+          "done_when": "the lost and found is sorted and everything is where it belongs."
+        },
+        {
+          "title": "Wash and Match Socks",
+          "where": "Laundry or at home",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Found and spare socks",
+            "Unscented, mild detergent"
+          ],
+          "directions": [
+            "Wash and dry the socks.",
+            "Match pairs and fold them together.",
+            "Set aside socks with holes or no match.",
+            "Put pairs in the spare clothes bin."
+          ],
+          "take_care": [],
+          "done_when": "socks are clean, paired and put away."
+        },
+        {
+          "title": "Fold and Arrange Laundry and Towels",
+          "where": "Laundry, classes and piazzas",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Clean laundry, spare clothes and towels",
+            "Bins or shelves for each kind"
+          ],
+          "directions": [
+            "Fold clean towels, cloths and spare clothes.",
+            "Sort spare clothes by size.",
+            "Stack towels and cloths where each class and the piazza keep them.",
+            "Arrange shelves so the most used items are easiest to reach."
+          ],
+          "take_care": [],
+          "done_when": "laundry is folded, sorted and neatly put away."
+        },
+        {
+          "title": "Declutter and Put Away in a class",
+          "where": "Classes",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Baskets or bins",
+            "A box for items to return elsewhere"
+          ],
+          "directions": [
+            "Ask the educator which areas to start with.",
+            "Gather materials that are out of place.",
+            "Return each item to its labeled bin or shelf.",
+            "Put items that belong to another class or the piazza in the return box and deliver them.",
+            "Set aside broken items for the educator to decide."
+          ],
+          "take_care": [
+            "Leave children's work in progress and documentation exactly where it is."
+          ],
+          "done_when": "every material is in its home and shelves are tidy."
+        },
+        {
+          "title": "Declutter and Put Away in the Piazzas",
+          "where": "Indoor and outdoor piazzas",
+          "time": "30 minutes to 1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Baskets or bins",
+            "A box for items to return elsewhere"
+          ],
+          "directions": [
+            "Gather materials that are out of place.",
+            "Return each item to its shelf or bin.",
+            "Put items that belong to a class in the return box and deliver them.",
+            "Set aside broken items for your point person."
+          ],
+          "take_care": [
+            "Leave children's work in progress exactly where it is."
+          ],
+          "done_when": "the piazza is tidy and every material is in its home."
+        }
+      ]
+    },
+    {
+      "category": "Quick Jobs at Pickup",
+      "note": "No sign-up needed. Do these anytime and log your time after.",
+      "jobs": [
+        {
+          "title": "File Artwork",
+          "where": "Class",
+          "time": "15 minutes",
+          "who": "Adults",
+          "supplies": [],
+          "directions": [
+            "Ask an educator for the artwork to file.",
+            "File each piece in the child's folder."
+          ],
+          "take_care": [],
+          "done_when": "the pile is filed."
+        },
+        {
+          "title": "Sweep the Outdoor Piazza",
+          "where": "Outdoor piazza",
+          "time": "15 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [],
+          "directions": [
+            "Sweep leaves and sand toward the edges.",
+            "Pick up loose parts and return them."
+          ],
+          "take_care": [],
+          "done_when": "the piazza is swept."
+        },
+        {
+          "title": "Dig Out Bushes or Pull Weeds",
+          "where": "Pathways",
+          "time": "20 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [],
+          "directions": [
+            "Ask staff which plants to remove.",
+            "Dig out roots with a trowel or shovel.",
+            "Put weeds in the goat bucket."
+          ],
+          "take_care": [],
+          "done_when": "the marked plants are out."
+        },
+        {
+          "title": "Collect Eggs",
+          "where": "Chicken coop",
+          "time": "10 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [],
+          "directions": [
+            "Collect eggs gently into the basket.",
+            "Bring them to the indoor piazza. Outside school hours, families may take some home.",
+            "Wash hands."
+          ],
+          "take_care": [],
+          "done_when": "eggs are inside."
+        },
+        {
+          "title": "Organize the Library",
+          "where": "Class library",
+          "time": "20 minutes",
+          "who": "Adults",
+          "supplies": [],
+          "directions": [
+            "Return books to their labeled bins.",
+            "Face covers forward."
+          ],
+          "take_care": [],
+          "done_when": "books are back in their bins."
+        },
+        {
+          "title": "Return Wagons, Tools and Loose Parts",
+          "where": "Yards and garden",
+          "time": "15 minutes",
+          "who": "Adults, children welcome with their grown-up",
+          "supplies": [],
+          "directions": [
+            "Walk the yards and garden.",
+            "Return everything to its home."
+          ],
+          "take_care": [],
+          "done_when": "everything is put away."
+        }
+      ]
+    },
+    {
+      "category": "At Home",
+      "note": "",
+      "jobs": [
+        {
+          "title": "Cut Collage Pieces",
+          "where": "At home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Magazines, catalogs and scissors"
+          ],
+          "directions": [
+            "Cut out pictures, colors and textures.",
+            "Sort into envelopes by color or theme.",
+            "Return to the Studio."
+          ],
+          "take_care": [],
+          "done_when": "envelopes are full and sorted."
+        },
+        {
+          "title": "Peel Crayon Wrappers",
+          "where": "At home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Bag of crayons from the take-home bin by the front office"
+          ],
+          "directions": [
+            "Soak crayons in warm water if wrappers stick.",
+            "Peel, sort by color and return them to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "the bag is peeled and sorted."
+        },
+        {
+          "title": "Collect Natural Loose Parts",
+          "where": "At home and outdoors",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Baskets or bags"
+          ],
+          "directions": [
+            "Gather dried flowers, seed pods, pinecones and acorns.",
+            "Bake acorns and pinecones on low heat to clear out insects.",
+            "Bring them to the class in a labeled bag."
+          ],
+          "take_care": [
+            "Collect only from places where gathering is allowed."
+          ],
+          "done_when": "loose parts are delivered."
+        },
+        {
+          "title": "Collect Recycled Materials",
+          "where": "At home",
+          "time": "Ongoing",
+          "who": "Adults",
+          "supplies": [
+            "A bag or box"
+          ],
+          "directions": [
+            "Save clean bottle caps, corks, fabric scraps and small boxes.",
+            "Rinse and dry everything.",
+            "Bring them in when a class asks."
+          ],
+          "take_care": [],
+          "done_when": "materials are clean and delivered."
+        },
+        {
+          "title": "Fold Small Seed Envelopes",
+          "where": "At home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Letter paper, scissors, a ruler and glue sticks"
+          ],
+          "directions": [
+            "Fold a sheet of letter paper in half, then in half again. Cut along the folds to make four small pieces.",
+            "Hold one piece with a short side at the top.",
+            "Fold the left and right edges in about half an inch and crease them well.",
+            "Run a glue stick along the bottom 2 inches of each side flap.",
+            "Fold the bottom edge up 2 inches over the glued flaps and press firmly. This makes the pocket.",
+            "Fold the top down over the pocket to close it. Leave the top unglued so seeds can go in later.",
+            "Bring the envelopes to Renee for the seed library."
+          ],
+          "take_care": [],
+          "done_when": "envelopes are folded and returned."
+        },
+        {
+          "title": "Wind Yarn and Cut Fabric",
+          "where": "At home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Yarn and fabric scraps from the take-home bin",
+            "Scissors"
+          ],
+          "directions": [
+            "Wind loose yarn into small balls.",
+            "Cut fabric scraps into squares and strips for weaving and collage.",
+            "Sort by color into bags.",
+            "Return them to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "yarn is wound and fabric is cut and sorted."
+        },
+        {
+          "title": "Cut Cardboard for Building",
+          "where": "At home",
+          "time": "30 minutes and up",
+          "who": "Adults",
+          "supplies": [
+            "Clean cardboard boxes",
+            "Box cutter or strong scissors"
+          ],
+          "directions": [
+            "Cut boxes into flat panels, strips and squares.",
+            "Cut small slots in some pieces so children can slide them together.",
+            "Check for staples and tape and remove them.",
+            "Bring the pieces in a bag or box."
+          ],
+          "take_care": [
+            "Keep box cutters away from children."
+          ],
+          "done_when": "the cardboard is cut and delivered."
+        },
+        {
+          "title": "Make Playdough at Home",
+          "where": "At home",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Our playdough recipe from TREE",
+            "Pantry staples from your kitchen"
+          ],
+          "directions": [
+            "Follow our recipe.",
+            "Color it with flowers or dye plants, never food.",
+            "Knead until smooth.",
+            "Store in a labeled, airtight container and bring it to the class."
+          ],
+          "take_care": [
+            "Keep it nut free."
+          ],
+          "done_when": "the playdough is delivered fresh."
+        },
+        {
+          "title": "Wash Dress-Up Clothes and Cloth Materials",
+          "where": "At home",
+          "time": "1 hour",
+          "who": "Adults",
+          "supplies": [
+            "Bag of dress-up clothes or cloth materials from the take-home bin"
+          ],
+          "directions": [
+            "Wash with unscented, mild detergent.",
+            "Dry fully.",
+            "Fold and return to the take-home bin."
+          ],
+          "take_care": [],
+          "done_when": "everything is back clean and folded."
+        }
+      ]
+    },
+    {
+      "category": "Future Ideas",
+      "note": "This card is on hold until we have a woodworking area.",
+      "jobs": [
+        {
+          "title": "Help at the Woodworking Bench",
+          "where": "Woodworking area",
+          "time": "1 hour",
+          "who": "With an educator",
+          "supplies": [
+            "Safety glasses",
+            "Real hammers, saws and hand drills",
+            "Soft wood scraps, nails and a vise"
+          ],
+          "directions": [
+            "Work with one or two children at a time.",
+            "Everyone wears safety glasses.",
+            "Show how to hold the tool, then let children try.",
+            "Secure wood in the vise before sawing.",
+            "Count tools back in at the end."
+          ],
+          "take_care": [],
+          "done_when": "tools are counted and put away."
+        }
+      ]
+    }
+  ]
+}
