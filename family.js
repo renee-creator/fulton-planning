@@ -103,6 +103,10 @@ module.exports = function family({ community, store, log, sign, noteChange, sche
      enrollment form's words and the Admission Tuition Agreement. */
   const WD = require('./wording.js');
   const words = id => (wording ? wording(id) : { title: '', parts: [] });
+  // the Family page's own words, as the director wrote them in staff/wording/family-page-text.md, each part as it first
+  // read until she writes it
+  const FT = require('./family-text.js');
+  const familyTexts = () => { const out = FT.defaults(); const W = WD.map(words('family-page-text')); for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim(); return out; };
   const QUESTIONS = () => WD.list(words('family-questionnaire')).map(([, t]) => t);
   const REFLECTIONS = () => WD.list(words('family-reflections'));
   const CHECKS = () => WD.list(words('family-checklist')).map(([k, t]) => { const ps = WD.paras(t); const ls = WD.links(t); return [k, ps[0] || '', (ps[1] && !WD.links(ps[1]).length) ? ps[1] : '', ls]; });
@@ -259,7 +263,7 @@ module.exports = function family({ community, store, log, sign, noteChange, sche
     // the museums and the plants on our site, each part once the director turns it on for families
     let communityInfo = null; try { communityInfo = community ? community() : null; } catch (e) { communityInfo = null; }
     return { community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
-      welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
+      texts: familyTexts(), welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 
   function save(id, doc) { const cur = recs().get(id); recs().set(id, { doc, sha: cur && cur.sha, path: `${KIND}/${id}.json`, local: true }); noteChange(KIND, id); scheduleSave(KIND, id); }

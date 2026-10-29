@@ -85,6 +85,8 @@ module.exports = function staffModule(o) {
   const get = p => { const r = S.files.get(p); return r ? r.doc : null; };
   function put(p, doc) { const r = S.files.get(p); S.files.set(p, { doc, sha: r && r.sha, local: true }); soon(p); return doc; }
   // a Markdown piece is kept as its own text
+  // pages of the school's own words that start from the words TREE first showed, until the director writes them
+  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage };
   function putText(p, text) { const r = S.files.get(p); S.files.set(p, { text, sha: r && r.sha, local: true }); soon(p); return text; }
   function soon(p) { clearTimeout(S.timers.get(p)); const t = setTimeout(() => { S.timers.delete(p); flush(p).catch(e => log('Educator record not saved', p, e.message)); }, 1200); if (t.unref) t.unref(); S.timers.set(p, t); }
   function flush(p) {
@@ -536,6 +538,8 @@ module.exports = function staffModule(o) {
         else r = saveRecord(me, p, item, body);
         if (r.error && !r.findings) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
       }
+      // a page of the school's own words that TREE keeps defaults for starts from them the first time the director opens it
+      if (P === 'page' && dir && editable(p) && !S.files.get(p) && STARTERS[p]) putText(p, STARTERS[p]());
       if (!editable(p) || !S.files.get(p)) { err(req, res, 404, 'That page is not here.'); return; }
       if (P === 'page') { json(req, res, 200, pageOut(p)); return; }
       let r;

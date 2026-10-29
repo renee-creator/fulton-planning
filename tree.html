@@ -4631,7 +4631,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="438a6c0d0186";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="fa39e2708d6e";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -10093,7 +10093,7 @@ function renderParticipation(){
         ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(PT_LOGTYPE[ptLogType(l)])} · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
         :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
     ${isDirector()&&!VIEW_AS?`<section class="card"><div class="secthead"><h3 style="font-size:17px">The Family page's wording</h3></div><div class="cnt">Each piece is changed in place, with every earlier version kept and Restore this version.</div>
-      <div class="actions">${[["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}
+      <div class="actions">${[["family-page-text","The Family page's own words"],["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Welcome letter for new families</h3></summary>
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
       <textarea id="pt-welcome" aria-label="The welcome letter" rows="16" style="width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px">${esc(c.welcome||String(wordsOf("school-words")["Family welcome letter"]||""))}</textarea>

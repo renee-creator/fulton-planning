@@ -96,3 +96,35 @@ test('walk safety opens in Edit, and a licensing line keeps the rule it comes fr
   await s.p.evaluate(() => goView('walks')); await s.p.waitForSelector('[data-pageedit="staff/walks.json"]', { timeout: 15000, state: 'attached' });
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('the Family page\'s own words start as they read and change when the director writes them', async t => {
+  const fam0 = put => { put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'pip.family@example.test', children: ['pip'] }] });
+    put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', parents: [{ email: 'pip.family@example.test' }] }); };
+  const r = await dee(t, fam0); if (!r) { t.skip('Playwright is not installed here'); return; }
+  const { fx, s } = r;
+  const c = await fx.as('', '/family/code', { email: 'pip.family@example.test' });
+  const fam = (await fx.as('', '/family/login', { email: 'pip.family@example.test', code: c.body.code })).body.token;
+  let d = (await fx.as(fam, '/family/data', {})).body;
+  assert.match(d.texts['Participation hours'], /takes part for \{goal\} hours a year/);
+  assert.match(d.texts['Toilet learning at our school'], /very individual[\s\S]*\n\nPower struggles/);
+  // the first time the director opens the page it starts from the words as they read
+  const tok = (await fx.login('Dee', 'director-pass-1')).token;
+  const P = 'staff/wording/family-page-text.md';
+  const o = (await fx.as(tok, '/api/staff/page', { path: P })).body;
+  assert.strictEqual(o.parts.length, 47); assert.strictEqual(o.parts.find(p => p.heading === 'Our wish list').body, 'Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.');
+  const parts = o.parts.map(p => ({ body: p.heading === 'Our wish list' ? 'Things the school would love. Bringing one counts toward your hours.' : p.body }));
+  const sv = await fx.as(tok, '/api/staff/page/save', { path: P, title: o.title, parts, note: 'Shorter', stamp: o.stamp, keep: true });
+  assert.strictEqual(sv.status, 200, JSON.stringify(sv.body));
+  d = (await fx.as(fam, '/family/data', {})).body;
+  assert.strictEqual(d.texts['Our wish list'], 'Things the school would love. Bringing one counts toward your hours.');
+  // a family's page fills in the names and numbers
+  const br = await (await require('./fixture.js').browser()).launch(); t.after(() => br.close());
+  const p = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errors = []; p.on('pageerror', e => errors.push(e.message));
+  await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
+  await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('text=Taking part', { timeout: 10000 }); await p.click('text=Taking part'); await p.waitForTimeout(800);
+  const txt = await p.evaluate(() => document.body.innerText);
+  assert.match(txt, /Each child takes part for \d+ hours a year\./);
+  assert.doesNotMatch(txt, /\{[a-z]+\}/, 'every fill-in is filled');
+  assert.deepStrictEqual(errors, []);
+  assert.deepStrictEqual(s.errors, []);
+});
