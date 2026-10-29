@@ -11,7 +11,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
-module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, educatorNames, keepInDrive, digest, onNotice }) {
+module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSave, cacheFile, accountFor, educatorNames, keepInDrive, digest, onNotice, isDirector }) {
   const KEY = () => String(process.env.KAYMBU_INBOX_KEY || '').trim();
   const PHOTO_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
   const seen = new Set();   // Moments being kept right now, so a second copy of the same email waits its turn
@@ -301,6 +301,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     // the educator named in the subject comes first, since the Kaymbu sign-in belongs to the class
     // a newsletter is written by the class, so it carries an educator only from a small group or the subject, never from whoever forwarded it
     const by = sub.educator || (board ? '' : sharedBy(name, email));
+    // the director sends educators' moments over from her own account, so a name that came only from her sending it is
+    // kept on the moment, and TREE's readings never write it as the one who saw or said it
+    const sentBy = !sub.educator && !board && !!by && !!(isDirector && isDirector(by));
     const have = new Set(live('notices').map(n => n.kaymbu && n.kaymbu.key).filter(Boolean));
     // photos sent with the same title and note may each show different children, so the named children are suggested
     // for an educator to choose from, photo by photo, rather than tagged on every photo
@@ -344,7 +347,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const sg = m.smallGroup || sub.smallGroup || (kidGroup ? String(kidGroup.name) : '');
         const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
-          kaymbu: { v: 3, ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), mail: String(sent), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
+          kaymbu: { v: 3, ...(sentBy && mBy === by ? { sentBy: 1 } : {}), ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), mail: String(sent), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
           updatedByName: mBy };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true });
         noteChange('notices', id); scheduleSave('notices', id);
@@ -367,6 +370,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     let n = 0;
     for (const [id, r] of store.recs.notices) {
       const d0 = r.doc; // a Kept by an educator changed by hand stays as they chose
+      // a moment the director sent over, named only because she sent it, is marked so readings never credit her words
+      if (!r.deleted && d0 && d0.kaymbu && d0.by && !d0.kaymbu.sentBy && !d0.kaymbu.sentChecked && isDirector && isDirector(d0.by)) {
+        const first = String(d0.by).trim().split(/\s+/)[0].replace(/[^A-Za-z'-]/g, '');
+        const named = first && new RegExp('(^|[^A-Za-z])' + first + '([^A-Za-z]|$)', 'i').test(String(d0.kaymbu.subject || ''));
+        d0.kaymbu = Object.assign({}, d0.kaymbu, named ? { sentChecked: 1 } : { sentBy: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       if (!r.deleted && d0 && d0.kaymbu && d0.by && !d0.editedBy && !accountFor(d0.by) && isClassName(d0.by)) { d0.by = ''; if (d0.updatedByName && isClassName(d0.updatedByName)) d0.updatedByName = ''; noteChange('notices', id); scheduleSave('notices', id); n++; }
       // a moment whose subject named only a small group was kept with no class, and is placed in that group's class now,
       // with the group's educator when it has none, whoever has edited it since

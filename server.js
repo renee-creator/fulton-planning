@@ -428,7 +428,7 @@ async function mailCode(to, code) {
 }
 const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
+const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -1597,7 +1597,7 @@ async function displayFeed() {
   const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
   let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
-  const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.by),
+  const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.kaymbu && n.kaymbu.sentBy ? '' : n.by),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
   // the reflection educators write once a week has passed, Final remarks on an Individual plan and After the week on a Small Group plan
   const sinceWeek = addDay(mondayFor(laDayOf(now)), -21);
@@ -1619,7 +1619,7 @@ async function displayFeed() {
       if (!squash(src).includes(squash(q))) continue;
       lensSeen.add(m.planId + '|' + squash(q));
       lensMoments.push({ id: sc.id + '.' + m.planId + '.' + lensMoments.length, lens: trim(sc.lensName, 80), quote: trim(q, 300), language: trim(m.language, 40),
-        found: p ? PLAN_NAME[p.type] || 'plan' : 'observation', by: firstName(p ? p.educator : n.by), room: p ? p.classroom || '' : roomsOf(n)[0] || '', week: p ? p.weekOf || '' : n.week || '', at: n ? n.at || 0 : 0 });
+        found: p ? PLAN_NAME[p.type] || 'plan' : 'observation', by: firstName(p ? p.educator : (n.kaymbu && n.kaymbu.sentBy ? '' : n.by)), room: p ? p.classroom || '' : roomsOf(n)[0] || '', week: p ? p.weekOf || '' : n.week || '', at: n ? n.at || 0 : 0 });
     }
   }
   // threads the school is following now, with the last words that joined them

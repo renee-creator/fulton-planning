@@ -1996,7 +1996,7 @@ const kidDrdpItems=c=>Object.entries((c.drdp&&c.drdp.items)||{}).map(([id,x])=>O
 function drdpSource(kind,rec){
   if(kind==="slides"){const src=slideSources(rec);
     const text=[has(rec.title)?"Slide title. "+rec.title:"",has(rec.text)?"What the team understood. "+rec.text:"",...(rec.quotes||[]).map(q=>(q.name?q.name+" said, ":"A child said, ")+q.words),
-      ...src.map(n=>`Observation kept by ${n.by||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
+      ...src.map(n=>`Observation kept by ${obsBy(n)||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
     return {text,photos:slidePhotos(rec).map(id=>notices.get(id)).filter(Boolean),kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:rec.title||"A slide"}}
   return {text:`Observation kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
     photos:rec.photo?[rec]:[],kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:momentHeading(rec)||firstLine(rec.noticed,60)};
@@ -3986,7 +3986,7 @@ ${STYLE}
 Return only the sentences.
 
 What the educators wrote.
-${src.map(n=>`Kept by ${n.by||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`).join("\n")}`;
+${src.map(n=>`Kept by ${obsBy(n)||"an educator"} on ${shortDate(n.at)}. ${n.noticed}${has(n.wonder)?" What the educator wondered. "+n.wonder:""}`).join("\n")}`;
   try{const r=await sample(prompt,{modelTier:"default",cache:false});slideSug[s.id]=String(r.text||"").replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["“]|["”]$/g,"").replace(/\s*[—–]\s*/g,", ").trim()||undefined;if(!slideSug[s.id])toast("No draft this time. Nothing changed.")}
   catch(e){delete slideSug[s.id];toast(assistError(e||"unknown","The slide is unchanged."))}
   if(view==="slide")renderSlide();
@@ -4676,7 +4676,7 @@ const BIN_TO={classroom:{obs:"observation",produce:"web.environment",prep:"indoo
   individual:{obs:"observation",produce:"materials",prep:"materials",question:"questions"},
   smallgroup:{produce:"materials",prep:"materials",question:"questions"}};
 function binPieces(b,room){const held=binHeld(b,room),ideas=binIdeas().filter(i=>held[i.id]),out=[];
-  for(const n of binMoments(room,b.id))out.push({key:"o:"+n.id,kind:"obs",noticeId:n.id,text:`${shortDate(n.at).replace(/, \d{4}$/,"")}, ${n.by||"an educator"}. ${noticeText(n)}`});
+  for(const n of binMoments(room,b.id))out.push({key:"o:"+n.id,kind:"obs",noticeId:n.id,text:`${shortDate(n.at).replace(/, \d{4}$/,"")}, ${obsBy(n)||"an educator"}. ${noticeText(n)}`});
   for(const it of b.items||[])out.push({key:"p:"+binName(it),kind:"produce",text:binName(it)+((it.farms||[]).length?", from "+it.farms.map(farmWithTown).join(" or "):"")});
   for(const i of ideas)out.push({key:"i:"+i.id,kind:i.kind==="prep"?"prep":"question",ideaId:i.id,text:String(i.text||"").trim()});
   return out.filter(x=>x.text)}
@@ -7210,7 +7210,10 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-comb],[dat
 document.addEventListener("input",e=>{if(e.target.id!=="comb-q"||!comb)return;comb.q=e.target.value;const pos=e.target.selectionStart;combPaint();const q=$("#comb-q");if(q){q.focus();try{q.setSelectionRange(pos,pos)}catch(er){}}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&comb){comb=null;combPaint()}});
 // a notice is read by the same machinery that reads plans, so it is evidence in the same way
-function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||momentRooms(n)[0]||"",rooms:momentRooms(n),educator:n.by||"",group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
+// who saw an observation, for TREE's readings. A Kaymbu moment the director only sent over keeps her name on the card, and
+// TREE never writes her as the one who saw or said it
+const obsBy=n=>n&&n.kaymbu&&n.kaymbu.sentBy?"":String((n&&n.by)||"");
+function noticeAsPlan(n){return n?{id:n.id,type:"notice",weekOf:n.week||mondayOf(new Date(n.at||Date.now())),classroom:n.classroom||momentRooms(n)[0]||"",rooms:momentRooms(n),educator:obsBy(n),group:"",setting:[],languages:[...(n.languages||[])],docplan:[],groups:[],status:"ready",
   fields:{noticed:n.noticed||"",wonder:n.wonder||""},createdAt:n.at,updatedAt:n.updatedAt||n.at,notice:n}:null}
 const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 // anything the app can quote, whether it was a plan or a moment
@@ -7745,7 +7748,7 @@ async function momentsRead(){
   if(mBusy||!sample||!isDirector())return;
   const all=momentsIn();
   if(all.length<3){rToast("Keep a few more observations first.");return}
-  const d=capDigest(onePerPostN(all).slice(0,160).map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",by:n.by||"",noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,400)},noticeExtras(n))),150000);
+  const d=capDigest(onePerPostN(all).slice(0,160).map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",by:obsBy(n),noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,400)},noticeExtras(n))),150000);
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom==="none"?"All":nRoom;
@@ -9823,7 +9826,7 @@ function iqVal(x,key){const [k,id]=key.split(":");
   return String(x[k]||"")}
 // everything the inquiry draws on, in the educators' own words, newest first
 function inqDigest(x){const out=[];const ns=inqNotices(x).slice(0,30);
-  if(ns.length){out.push("Observations.");for(const n of ns)out.push(`${shortDate(n.at)}, ${n.by||"an educator"}${momentRoomsText(n)?", "+momentRoomsText(n):""}. ${noticeText(n)}`)}
+  if(ns.length){out.push("Observations.");for(const n of ns)out.push(`${shortDate(n.at)}, ${obsBy(n)||"an educator"}${momentRoomsText(n)?", "+momentRoomsText(n):""}. ${noticeText(n)}`)}
   for(const id of x.threads||[]){const t=threads.get(id);if(!t)continue;out.push(`Thread ${t.name}.${t.question?" Its question. "+t.question:""}${has(t.notes)?" The team's notes on it. "+String(t.notes).trim().slice(0,1500):""}`);
     for(const e of [...(t.evidence||[])].sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,10))if(!notices.has(e.planId)&&has(e.text))out.push(`From a plan, week of ${e.week}. ${e.text}`)}
   for(const id of x.projects||[]){const p=projects.get(id);if(!p)continue;out.push(`Project ${p.name}.${projUnder(p)?" What may lie underneath. "+projUnder(p):""}${projIntent(p)?" The educators' intent. "+projIntent(p):""}`)}
@@ -14245,7 +14248,7 @@ function tsFlush(id){clearTimeout(tsTimer[id]);const w=tsWait[id];delete tsWait[
 function tsSources(c){const seen=new Set(),obs=[];
   for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!inqHolds(n.id))){const k=(n.group||n.id)+"|"+String(n.noticed||"").trim();if(seen.has(k))continue;seen.add(k);
     const a=focusText(String(n.noticed||"").trim(),c),b=focusText(String(n.wonder||"").trim(),c);if(!has(a)&&!has(b))continue;
-    obs.push({at:n.at||0,text:`${longDate(iso(new Date(n.at||Date.now())))}, ${n.by||"an educator"}. ${a}${has(b)?"\nI wonder. "+b:""}`})}
+    obs.push({at:n.at||0,text:`${longDate(iso(new Date(n.at||Date.now())))}, ${obsBy(n)||"an educator"}. ${a}${has(b)?"\nI wonder. "+b:""}`})}
   const pieces=kidSlides(c).filter(s=>kidInPortfolio(c,"slides",s.id)).map(s=>{const q=(s.quotes||[]).filter(x=>String(x.name||"").replace(/ \[\?\]$/,"")===c.first&&has(x.words)).map(x=>`${c.first} said "${x.words}"`);
     return {at:s.at||0,text:[slideTitle(s),focusText(String(s.text||"").trim(),c),...q].filter(has).join("\n")}}).filter(x=>has(x.text));
   const confs=kidConfs(c).map(x=>{const f=x.fields||{};const parts=Object.entries(TS_CONF).filter(([k])=>has(f[k])).map(([k,l])=>`${l}. ${focusText(String(f[k]).trim(),c)}`);
