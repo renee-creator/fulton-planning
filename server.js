@@ -1397,7 +1397,7 @@ async function suggestThreadFor(id) {
     const added = (t.evidence || []).filter(e => e && e.via === 'suggest' && e.why).slice(-3).map(e => ({ words: String(e.text || '').slice(0, 140), why: String(e.why).slice(0, 140) }));
     const no = []; for (const [, nr] of store.recs.notices) { const nd = nr.doc; if (nr.deleted || !nd) continue; for (const w of nd.threadNoWhy || []) if (w && w.id === tid) no.push({ words: [nd.noticed, nd.wonder].filter(Boolean).join(' ').slice(0, 140), why: String(w.why || '').slice(0, 140), at: w.at || 0 }); }
     const turnedDown = no.sort((a, b) => b.at - a.at).slice(0, 3).map(({ words, why }) => ({ words, why }));
-    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
+    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), team_notes: String(t.notes || '').trim().slice(0, 600), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
   if (!live.length) return;
   const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
   if (docs.some(d => d.threadSuggestKey === keyNow)) return;
@@ -1446,6 +1446,8 @@ async function suggestForProject(pid, key) {
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
   const tname = id => { const d = store.recs.threads.get(id); return d && d.doc ? String(d.doc.name || '').slice(0, 80) : ''; };
+  // the team's notes on each thread say how the team approaches it, so the reading weighs them
+  about.threads = [...tids].map(id => { const d = store.recs.threads.get(id); return d && d.doc ? { name: tname(id), question: String(d.doc.question || '').slice(0, 200), team_notes: String(d.doc.notes || '').trim().slice(0, 600) } : null; }).filter(Boolean);
   const prompt = `Educators at a preschool are following this project.\n${JSON.stringify(about)}\nThese observations were kept in threads the project follows. A thread can follow more than one project, so many of them belong to other work.\n${JSON.stringify(ask.map(c => ({ id: c.id, thread: tname(c.thread), words: c.words })))}\nName only the observations whose words clearly show the children doing, saying or wondering about what this project is about. When in doubt, leave it out. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence"}]}, and {"fits":[]} when none clearly fit.`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });

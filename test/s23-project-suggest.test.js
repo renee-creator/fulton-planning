@@ -54,7 +54,8 @@ test('the project shows its own, and the director adds a suggestion, turns one d
   await s.p.click('[data-projno="x1|n3"]'); await s.p.waitForTimeout(300);
   await s.p.click('[data-projadd="x1|n1"]'); await s.p.waitForTimeout(300);
   assert.deepStrictEqual(await s.p.evaluate(() => [projNotices(projects.get('x1')).map(n => n.id), projWaiting(projects.get('x1')).length, threadNotices(threads.get('t1')).map(n => n.id).sort()]), [['n1', 'n0'], 0, ['n1', 'n2', 'n3']], 'its thread keeps every one');
-  assert.doesNotMatch(await s.p.innerText('#main'), /Observations TREE found/);
+  await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
+  assert.match(await s.p.innerText('#main'), /Nothing is waiting\. Find observations for this project reads now/, 'the list is empty, its button stays');
   await new Promise(r => setTimeout(r, 2500));
   const x = JSON.parse(fs.readFileSync(path.join(fx.dir, 'projects/x1.json'), 'utf8'));
   assert.deepStrictEqual([x.evidence.map(e => [e.planId, e.via, e.by]), x.suggestNo.map(a => a.id), x.foundNo], [[['n1', 'suggest', 'Dee']], ['n3'], ['n3']]);

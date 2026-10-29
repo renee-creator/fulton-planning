@@ -1937,7 +1937,7 @@ const webSug={};
 const THREAD_GUIDE="\nThis plan follows the threads below. Keep the writing connected to them. Build on each thread's question, its moments and the last reflection on it, and name the connection where the plan's own words support it. Use only what is written here and in the plan. Never invent children, quotes, events or materials.";
 function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);if(!ths.length)return"";
   return "\n\nThreads this plan follows. Each question is the educators' hypothesis, never the children's voice. Quotes, moments and reflections are educators' own words."+THREAD_GUIDE+"\n"+ths.map(t=>{const last=threadLastRemarks(t,p.id);
-    return JSON.stringify({name:t.name,question:t.question||"",seen:weeksSpan(t.weeks||[])||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text),
+    return JSON.stringify({name:t.name,question:t.question||"",team_notes:tNotes(t),seen:weeksSpan(t.weeks||[])||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text),
       moments:threadNotices(t).slice(0,8).map(n=>[String(n.noticed||"").trim(),has(n.wonder)?"I wonder. "+String(n.wonder).trim():""].filter(Boolean).join(" ")),
       last_reflection:last?last.text:""})}).join("\n")}
 function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
@@ -4627,7 +4627,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="47bee79368e3";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="65dbd62d6408";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5166,7 +5166,7 @@ This week's reading of threads ${JSON.stringify(th?{summary:th.summary||"",threa
 This week's reading of observations ${JSON.stringify(mo?{summary:mo.summary||"",patterns:(mo.patterns||[]).map(p=>({name:p.name,why:p.why||""})),questions:mo.questions||[]}:{})}
 This week's lens readings ${JSON.stringify(lens)}
 Observations kept each week, oldest first, for the weeks ${tr.weeks.join(", ")}. ${JSON.stringify(tr.obs)}
-Each followed thread, with the status the team gave it and its observations each week, oldest first ${JSON.stringify(tr.threads.map(t=>({thread:t.name,status:TSTATUS[t.status]||"Emerging",counts:t.counts})))}
+Each followed thread, with the status the team gave it and its observations each week, oldest first ${JSON.stringify(tr.threads.map(t=>({thread:t.name,status:TSTATUS[t.status]||"Emerging",team_notes:tNotes(threads.get(t.id)),counts:t.counts})))}
 The reports of the weeks before, newest first ${JSON.stringify(before)}
 Our threads use these words, and the report uses only them. Emerging is an interest just appearing. Growing is one children return to more and more. Deepening is one where children's thinking is going further. Resting is one children have stepped away from for now.
 Write four parts in those words, each one to three short sentences, compared with the weeks before where you can. Name the threads by name. Where a thread's status and what the observations show differ, say so, so the team can look again.
@@ -5843,7 +5843,7 @@ Return only JSON {"thin": false, "items": [{"from": "prompt", "id": "the id of o
 
 Observation.
 ${String(f.observation||"").slice(0,2000)}
-${f.intent||f.intentions?"\nIntent.\n"+String(f.intent||f.intentions).slice(0,800)+"\n":""}${ths.length?"\nThreads this plan follows, each question the educators' hypothesis.\n"+ths.map(t=>t.name+(t.question?". "+t.question:"")).join("\n")+"\n":""}${season?"\nSeason. "+season+"\n":""}${prod?"\nThis week's produce bin. "+prod+"\n":""}
+${f.intent||f.intentions?"\nIntent.\n"+String(f.intent||f.intentions).slice(0,800)+"\n":""}${ths.length?"\nThreads this plan follows, each question the educators' hypothesis.\n"+ths.map(t=>t.name+(t.question?". "+t.question:"")+(tNotes(t)?" The team's notes on it. "+tNotes(t):"")).join("\n")+"\n":""}${season?"\nSeason. "+season+"\n":""}${prod?"\nThis week's produce bin. "+prod+"\n":""}
 Our prompts, each as id, then => and its words.
 ${bank.map(b=>b.id+" => "+b.text).join("\n")}`;
   try{const out=await sample.json(prompt,{cache:false});const items=[],seen=new Set();
@@ -8093,7 +8093,7 @@ async function momentsRead(){
   const ids=new Set(d.map(x=>x.id));
   mBusy=true;renderMain();
   const room=nRoom==="none"?"All":nRoom;
-  const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),closed:t.status==="closed"}));
+  const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),team_notes:tNotes(t),closed:t.status==="closed"}));
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm${room==="All"?"":", in the "+room+" class"}. Each observation was written in the minute it happened. They span many weeks and they are not in any order of importance.
 Name what these moments keep returning to. A pattern is something children are working on across several moments, in different places or with different educators. Use only what the moments say. ${PHOTO_RULE}
 Rules. Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never use words such as beautiful, detailed, careful, or advanced. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A pattern name is a short phrase of 2 to 6 words that reads like a label on a wall, under 44 characters, with no full stop. Only use an id from the list. Return only the JSON, with no other text.
@@ -9246,7 +9246,7 @@ async function binSuggest(b,room){
 This week's bin, with the farm each item came from.
 ${(b.items||[]).map(it=>`${binName(it)}, from ${(it.farms||[]).join(" or ")||"a local farm"}`).join("\n")}
 ${counts.length?"\nWhat has come before. "+counts.join(". ")+".":""}
-${ths.length?"\nThreads the "+room+" class is following, in the educators' own words.\n"+ths.map(t=>`${t.name}${t.question?". "+t.question:""}`).join("\n"):""}
+${ths.length?"\nThreads the "+room+" class is following, in the educators' own words.\n"+ths.map(t=>`${t.name}${t.question?". "+t.question:""}${tNotes(t)?" The team's notes on it. "+tNotes(t):""}`).join("\n"):""}
 ${prs.length?"\nProjects the class is part of.\n"+prs.map(p=>p.name).join("\n"):""}
 ${past.length?"\nWhat educators noticed at earlier unboxings.\n"+past.map(n=>firstLine(n.noticed,240)).join("\n"):""}
 ${binIdeas().length?"\nQuestions the team already holds. Do not repeat these.\n"+binIdeas().slice(0,20).map(i=>i.text).join("\n"):""}
@@ -9436,7 +9436,7 @@ async function foundRead(kind,x){if(!sample||!isDirector())return -1;
   const ids=new Set(d.map(o=>o.id));
   const about=kind==="project"
     ?`a project the team is following. A project is the team's reading of a deeper question children are working on. An observation belongs when what children did or said in it speaks to that question. Sharing a topic or a material alone is not enough.
-The project ${JSON.stringify({name:x.name||"",experience_it_grew_from:x.experience||"",what_may_lie_underneath:projUnder(x),our_intent:projIntent(x),classes:x.home?foundRooms(kind,x):"the whole school",threads:projThreads(x).map(o=>({name:o.t.name,question:o.t.question||""}))})}`
+The project ${JSON.stringify({name:x.name||"",experience_it_grew_from:x.experience||"",what_may_lie_underneath:projUnder(x),our_intent:projIntent(x),classes:x.home?foundRooms(kind,x):"the whole school",threads:projThreads(x).map(o=>({name:o.t.name,question:o.t.question||"",team_notes:tNotes(o.t)}))})}`
     :`a team inquiry, where the team thinks through a question about children's development and its own practice.
 The inquiry ${JSON.stringify({question:x.name||"",what_the_team_sees:x.see||"",when_and_where:x.whenwhere||"",hypotheses:inqOpenHyps(x).map(h=>h.text),what_to_watch_for:x.watch||"",belongs_to:x.room?x.room+" class":"the whole school"})}
 ${IQ_POLICY}
@@ -10609,7 +10609,7 @@ async function projDraft(x,k){if(!sample)return;const key=x.id+k;projStr[key]={s
   const other=k==="intent"?["What may lie underneath",projUnder(x)]:["Our intent as educators",projIntent(x)];
   const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, write a new "${PSTD[k][0]}" for a project.
 The standard for this part. ${PSTD[k][1]}
-The project ${JSON.stringify({name:x.name||"",the_experience_it_grew_from:x.experience||"",[other[0]]:other[1]||"",threads:projThreads(x).map(o=>({name:o.t.name,question:o.t.question||""}))})}
+The project ${JSON.stringify({name:x.name||"",the_experience_it_grew_from:x.experience||"",[other[0]]:other[1]||"",threads:projThreads(x).map(o=>({name:o.t.name,question:o.t.question||"",team_notes:tNotes(o.t)}))})}
 Earlier ${k==="intent"?"intents":"readings"}, oldest first, each with what changed the team's thinking ${JSON.stringify(early)}
 Observations kept for the project, newest first. since_the_last marks those kept after the last earlier one.
 ${obs.map(o=>JSON.stringify(o)).join("\n")}
@@ -10669,7 +10669,7 @@ ${STYLE}
 Return JSON {"branches": [{"name": "", "materials": ""}], "why": one sentence naming which parts of the project the directions grew from}
 
 Project ${JSON.stringify(info)}
-Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question||"",classroom:t.classroom||"",quotes:(t.evidence||[]).slice(-8).map(e=>e.text),possible_next_provocations:t.next||[]})))}`;
+Threads in the project ${JSON.stringify(ths.map(t=>({name:t.name,question:t.question||"",classroom:t.classroom||"",quotes:(t.evidence||[]).slice(-8).map(e=>e.text),possible_next_provocations:t.next||[],team_notes:tNotes(t)})))}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false});
     const c=v=>String(v||"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
@@ -12251,6 +12251,8 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 
 /* ---------- Threads and overview ---------- */
 const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
+// the team's notes on a thread say how the team approaches it and its process, so TREE reads them wherever it reads the thread
+const tNotes=t=>String((t&&t.notes)||"").trim().slice(0,800);
 const TSTATUS={emerging:"Emerging",growing:"Growing",deepening:"Deepening",resting:"Resting",closed:"Closed"};
 const STOP=new Set("a an and are as at be been being but by can could did do does each for from had has have he her his how i if in into is it its just like many may me more most my new no not of on one or other our out over own same she so some such than that the their them then there these they this those through to too under up very was we were what when where which while who why will with would you your about after again also all any around because before both down during few further here him himself itself let made make makes making might much must nor off once only ourselves she should since still themselves until upon us use used using week weeks children child childrens group groups educator educators teacher teachers plan plans classroom small others another several began begin continue continued continuing day days time times support supporting supports offer offering offered added adding explore exploring explored exploration ideas idea thinking materials material work working provide providing allow allowing invite inviting different ways way across each things thing seem seems kept keep back during now next last first second third two three morning afternoon".split(" "));
 let GNAMES=new Set(GROUPS.flatMap(g=>g.name.toLowerCase().split(" ")).concat(["glory"]));
@@ -12680,7 +12682,7 @@ async function findThreads(){
   if(d.length<full.length)rToast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   scanBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
-  const tracked=[...threads.values()].filter(t=>threadLive(t)&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question,closed:t.status==="closed"}));
+  const tracked=[...threads.values()].filter(t=>threadLive(t)&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question,team_notes:tNotes(t),closed:t.status==="closed"}));
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classes":"the "+tRoom+" class"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and observations, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
 Rules. Use only what the plans and entries say. ${PHOTO_RULE} Never invent children, quotes, or events. Report only threads supported by at least two separate records. A single observation, however striking, is never enough on its own to raise a thread, and neither is a single plan. Where a moment has been seen only once, leave it out and it will be found later if it returns. Return at most 8 threads, those best supported by the plans first. Give at most 4 evidence items per thread, each from a different plan where possible. Each evidence item must use a planId from the list and copy exact words from that plan. Keep the answer compact. Return only the JSON, with no other text.

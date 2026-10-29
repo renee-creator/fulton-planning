@@ -9,7 +9,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 
 const day = 864e5;
 const more = put => {
-  put('threads/t1.json', { id: 't1', name: 'Water and mud', classroom: 'West', question: 'Where does the water go?', status: 'deepening', evidence: [] });
+  put('threads/t1.json', { id: 't1', name: 'Water and mud', classroom: 'West', question: 'Where does the water go?', status: 'deepening', evidence: [], notes: 'We follow the water before we name it.' });
   for (let i = 0; i < 8; i++) put(`notices/n${i}.json`, { id: 'n' + i, noticed: 'Poured water down the hill again ' + i, at: Date.now() - i * 4 * day, threadId: 't1', classroom: 'West', by: 'Ann' });
   put('notices/m1.json', { id: 'm1', noticed: 'Built a tall tower in the block area.', at: Date.now() - day, classroom: 'North', by: 'Bea' });
 };
@@ -33,7 +33,7 @@ test('the week\'s reading ends with a report for the school and each class, and 
   assert.ok(await s.p.evaluate(() => (() => { const st = weeklySteps(), i = st.findIndex(x => x.startsWith('report|')); return i > 0 && st.slice(i).every(x => x.startsWith('report|')) && st.includes('report|All'); })()), 'the report is the last part of the reading');
   await s.p.evaluate(async () => { for (const r of ['All', 'West', 'North']) await weeklyReport(r); });
   const q = asked.find(b => /short weekly report/.test(b) && /the West class/.test(b));
-  assert.ok(q); assert.match(q, /Water and mud/); assert.match(q, /\\"status\\":\\"Deepening\\"/, 'the thread\'s own status'); assert.match(q, /Emerging is an interest just appearing/); assert.doesNotMatch(q, /tall tower/, 'a class report reads only its class');
+  assert.ok(q); assert.match(q, /Water and mud/); assert.match(q, /\\"status\\":\\"Deepening\\"/, 'the thread\'s own status'); assert.match(q, /Emerging is an interest just appearing/); assert.match(q, /We follow the water before we name it/, 'the team\'s notes on the thread'); assert.doesNotMatch(q, /tall tower/, 'a class report reads only its class');
   await new Promise(r => setTimeout(r, 2500));
   const wk = await s.p.evaluate(() => mondayOf(new Date()));
   const w = JSON.parse(fs.readFileSync(path.join(fx.dir, `reports/${wk}-West.json`), 'utf8'));
