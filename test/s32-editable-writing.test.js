@@ -158,3 +158,35 @@ test('the Educators pages\' own words, each training\'s note, the checklist and 
   assert.deepStrictEqual(a.errors, []);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('a new Help answer, the welcome and philosophy and each reading open in Edit with history', async t => {
+  const r = await dee(t, put => { put('staff/help.json', { id: 'help', list: [{ id: 'h01', q: 'How do I keep an observation?', a: ['Tap Keep.'], roles: ['educator', 'director'] }] });
+    put('staff/readings.json', { list: [{ id: 'r02', title: 'The Pedagogy of Listening', source: 'Carlina Rinaldi', why: 'Listening is where documentation starts.', url: 'https://example.test/r' }] }); }); if (!r) { t.skip('Playwright is not installed here'); return; }
+  const { fx, s } = r;
+  const tok = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  // a new Help answer
+  assert.strictEqual((await fx.as(ann, '/api/staff/help/add', { q: 'How do I print?' })).status, 403);
+  const a = (await fx.as(tok, '/api/staff/help/add', { q: 'How do I print a thread?' })).body;
+  assert.ok(a.added); const h = (await fx.as(tok, '/api/staff/page', { path: 'staff/help.json', item: a.added })).body;
+  assert.strictEqual(h.parts[0].body, 'How do I print a thread?');
+  const sv = await fx.as(tok, '/api/staff/page/save', { path: 'staff/help.json', item: a.added, stamp: h.stamp, parts: [{ body: 'How do I print a thread?' }, { body: 'Open Threads.\nTap Print this thread.' }], note: 'New answer', keep: true });
+  assert.strictEqual(sv.status, 200, JSON.stringify(sv.body));
+  assert.deepStrictEqual((await fx.as(tok, '/api/staff/help', {})).body.list.find(x => x.id === a.added).a, ['Open Threads.', 'Tap Print this thread.']);
+  // the welcome and philosophy, with history
+  const w = (await fx.as(tok, '/api/staff/page', { path: 'staff/school.json' })).body;
+  assert.deepStrictEqual(w.parts.map(p => p.heading), ['Your welcome', 'Our philosophy, drawn from the Program Philosophy']);
+  const ws = await fx.as(tok, '/api/staff/page/save', { path: 'staff/school.json', stamp: w.stamp, parts: [{ body: 'Welcome to our school.' }, { body: w.parts[1].body }], note: 'Welcome', keep: true });
+  assert.strictEqual(ws.status, 200, JSON.stringify(ws.body));
+  assert.strictEqual((await fx.as(ann, '/api/staff/boot', {})).body.school.welcome, 'Welcome to our school.');
+  assert.strictEqual((await fx.as(tok, '/api/staff/page', { path: 'staff/school.json' })).body.history.length, 1);
+  // a reading's words
+  const rd = (await fx.as(tok, '/api/staff/page', { path: 'staff/readings.json', item: 'r02' })).body;
+  assert.ok(rd.parts.some(p => p.heading === 'Why we read it'));
+  const rs = await fx.as(tok, '/api/staff/page/save', { path: 'staff/readings.json', item: 'r02', stamp: rd.stamp, parts: rd.parts.map(p => ({ body: p.heading === 'Why we read it' ? 'Listening is where all our documentation starts.' : p.body })), note: 'Why', keep: true });
+  assert.strictEqual(rs.status, 200, JSON.stringify(rs.body));
+  const list = (await fx.as(tok, '/api/staff/g/readings', {})).body.list;
+  assert.deepStrictEqual([list.find(x => x.id === 'r02').why, list.find(x => x.id === 'r02').url], ['Listening is where all our documentation starts.', 'https://example.test/r'], 'its link stays');
+  // the buttons
+  assert.match(await s.p.evaluate(() => { helpData = null; return new Promise(ok => { loadHelp(true); setTimeout(() => ok(helpHtml('')), 1500); }); }), /data-helpadd/);
+  assert.deepStrictEqual(s.errors, []);
+});

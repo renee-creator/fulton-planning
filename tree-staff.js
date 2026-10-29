@@ -292,7 +292,7 @@ function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,in
   if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={W,W2,tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
+T._={W,W2,peBtn:(a,b,c)=>peBtn(a,b,c),tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
@@ -533,8 +533,8 @@ function welcomeHtml(p,dir){const sc=B.school;const lens=B.lens;
     ${md(sc.philosophy||"")}
     ${lens&&lens.name?`<h4 style="margin:12px 0 4px">This year's lens, ${H(lens.name)}</h4><div class="stmd"><p>${H(lens.description)}</p></div>`:""}
     ${dir?welcomeEditInner():(p.pd&&p.pd.read||{}).welcome?`<div class="actions">${chip("ok","Read")}</div>`:`<div class="actions"><button class="btn small ghost" data-stread="welcome">I have read the welcome and philosophy</button></div>`}`)}
-const welcomeEditInner=()=>`<details style="margin-top:10px"><summary class="linkbtn">Edit the welcome and philosophy</summary><label class="fld-label" style="margin-top:8px">Your welcome<textarea id="stw-welcome" rows="4">${H(B.school.welcome)}</textarea></label>
-  <label class="fld-label">Philosophy, drawn from the Program Philosophy<textarea id="stw-phil" rows="10">${H(B.school.philosophy)}</textarea></label><div class="actions"><button class="btn small" data-stwsave="1">Save</button></div></details>`;
+// the welcome and philosophy open in the one Edit, with their history and Restore
+const welcomeEditInner=()=>`<div class="actions" style="margin-top:10px">${peBtn("staff/school.json","Edit the welcome and philosophy, with its history")}</div>`;
 const welcomeEditHtml=()=>card("Welcome and philosophy",welcomeEditInner());
 function checklist(p,pcs,start){const pw=p.paperwork||{},rd=(p.pd&&p.pd.read)||{},dn=(p.pd&&p.pd.done)||{};const lic=pcs.licensing||[],how=pcs.howto||[];
   const papersDone=PAPERS().filter(x=>!x.director&&x.k!=="immun").every(x=>((pw[x.k]||{}).files||[]).length||(x.ack&&(pw[x.k]||{}).ack))&&((p.items||{}).clearance||{}).date;
@@ -1582,12 +1582,14 @@ Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await 
     <div class="stgrid" style="margin-top:8px"><div class="stmod"><b>DRDP reference</b><div class="cnt">Every measure by domain, its definition and every level in the official wording, with examples from our own documentation.</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="m:drdpref">Open</button></div></div>${ready.map(x=>`<div class="stmod"><b>${H(x.title)}</b><div class="cnt">${H(x.desc)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${x.slug==="licensing"||x.slug==="howto"?x.slug:"m:"+x.slug}">Open</button>${x.waiting?chip("soonish","Only you see it"):""}${stat(x)}${fit&&fit.slug===x.slug?chip("soonish","Fits your focus"):""}</div></div>`).join("")}</div>
 `)};
 /* the readings library, grouped by area of practice, each a link to its publisher. The library added since waits for the director. */
+// after the director changes a reading's words, the list is read again
+Gr.reloadReadings=()=>loadReadings(true);
 async function loadReadings(force){if(!st.rlib||force){try{st.rlib=await ga("readings")}catch(e){st.rlib={list:[]}}}return st.rlib}
 // a book shows In our library when we have it on site. An article opens in a new tab and shows its publisher and
 // year. The director turns In our library on site on or off for each book, and changes or removes any entry.
 const isBookR=x=>x&&x.library&&x.kind!=="article";
 const readingMeta=x=>x.kind==="article"?[[x.author,[x.source,x.year].filter(Boolean).join(", ")].filter(Boolean).join(". "),x.note].filter(Boolean):[x.cite||x.source||"",x.note||""].filter(Boolean);
-const readingRow=x=>`<div class="strow"><div>${x.url?treeReadLink(x.url,x.title):`<b>${H(x.title)}</b>`}${x.onSite&&isBookR(x)?` <span class="stchip ok">In our library</span>`:""}${x.check?" "+chip("soonish","Link to check"):x.confirmed&&isDir()?` <span class="cnt">Confirmed ${H(fd(x.confirmed))}</span>`:""}</div>${readingMeta(x).map(t=>`<div class="cnt">${H(t)}</div>`).join("")}${x.supports&&x.kind!=="article"?`<div class="cnt">${H(x.supports)}</div>`:""}${x.why?`<div class="cnt"><i>Why it matters to our practice.</i> ${H(x.why)}</div>`:""}${isDir()&&x.library?`<div class="actions" style="margin:4px 0 0">${isBookR(x)?`<label class="radio" style="margin:0"><input type="checkbox" data-grlonsite="${H(x.id)}" ${x.onSite?"checked":""}><span>In our library on site</span></label>`:""}<button class="linkbtn" data-grledit="${H(x.id)}">Change</button><button class="linkbtn" data-grlremove="${H(x.id)}">Remove</button></div>`:""}${st.rlEdit===x.id?readingForm(x):""}</div>`;
+const readingRow=x=>`<div class="strow">${isDir()&&x.id&&X.peBtn?`<div style="float:right">${X.peBtn("staff/readings.json","Edit its words",x.id)}</div>`:""}<div>${x.url?treeReadLink(x.url,x.title):`<b>${H(x.title)}</b>`}${x.onSite&&isBookR(x)?` <span class="stchip ok">In our library</span>`:""}${x.check?" "+chip("soonish","Link to check"):x.confirmed&&isDir()?` <span class="cnt">Confirmed ${H(fd(x.confirmed))}</span>`:""}</div>${readingMeta(x).map(t=>`<div class="cnt">${H(t)}</div>`).join("")}${x.supports&&x.kind!=="article"?`<div class="cnt">${H(x.supports)}</div>`:""}${x.why?`<div class="cnt"><i>Why it matters to our practice.</i> ${H(x.why)}</div>`:""}${isDir()&&x.library?`<div class="actions" style="margin:4px 0 0">${isBookR(x)?`<label class="radio" style="margin:0"><input type="checkbox" data-grlonsite="${H(x.id)}" ${x.onSite?"checked":""}><span>In our library on site</span></label>`:""}<button class="linkbtn" data-grledit="${H(x.id)}">Change</button><button class="linkbtn" data-grlremove="${H(x.id)}">Remove</button></div>`:""}${st.rlEdit===x.id?readingForm(x):""}</div>`;
 // the form to add or change a book or an article in the library, for the director
 function readingForm(x){x=x||{kind:st.rlEdit==="new-article"?"article":"book",modules:[],areas:[]};const ms=(st.mods&&st.mods.modules)||{};
   return `<div class="gq" data-grlform="${H(x.id||"")}"><div class="kfields"><label>Kind<select data-grlf="kind"><option value="book" ${x.kind!=="article"?"selected":""}>Book</option><option value="article" ${x.kind==="article"?"selected":""}>Article to read online</option></select></label>

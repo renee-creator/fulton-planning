@@ -357,6 +357,10 @@ module.exports = function staffModule(o) {
     { re: GARDEN, part: 'guides', list: 'fieldGuides', key: 'space', name: 'this field guide', title: x => x.title, fields: [['title', 'Title'], ['intro', 'A line under the title']] },
     { re: GARDEN, part: 'safety', obj: 'safety', name: 'What edible means', title: () => 'What edible means', fields: [['edible', 'What edible means, one on each line', 'lines'],
       ['checkFirst.text', 'Check first, one on each line', 'lines'], ['mushrooms', 'Mushrooms']] },
+    // the welcome and philosophy a new educator reads first
+    { re: /^staff\/school\.json$/, name: 'the welcome and philosophy', title: () => 'Welcome and philosophy', fields: [['welcome', 'Your welcome'], ['philosophy', 'Our philosophy, drawn from the Program Philosophy']] },
+    // a reading in the readings library, its words, while its link, areas and modules stay in the library's own form
+    { re: /^staff\/readings\.json$/, list: 'list', name: 'this reading', title: x => x.title, fields: x => pick(x, [['title', 'Title'], ['author', 'Author'], ['source', 'Source'], ['cite', 'How we cite it'], ['supports', 'What it supports'], ['why', 'Why we read it'], ['note', 'A note']], ['title', 'why']) },
     // walk safety, on the walks page and in each walk invitation. A licensing line keeps the rule it comes from
     { re: /^staff\/walks\.json$/, name: 'walk safety', title: () => 'Walk safety', fields: [['checklist', 'Before we leave, one on each line', 'lines'], ['agreements', 'The children\'s walk agreements, one on each line', 'lines'],
       ['rule', 'Safety comes first, one on each line', 'lines'], ['families', 'Families on walks, one on each line', 'lines'], ['licensing', 'What licensing asks, one on each line', 'texts']] },
@@ -416,7 +420,7 @@ module.exports = function staffModule(o) {
         setPath(x, k, vals[k].map((l, i) => { const same = old.find(o => o && o.text === l); return Object.assign({}, same || (old[i] && typeof old[i] === 'object' ? old[i] : {}), { text: l }); })); }
       else setPath(x, k, vals[k]); }
     if (!T.sp.list || T.sp.part) { d.updatedAt = Date.now(); d.updatedBy = me; }
-    put(p, d); pieceCache = null; log('School writing changed', p, item || '', 'by', me);
+    put(p, d); pieceCache = null; if (typeof G !== 'undefined' && G && G.invalidate) G.invalidate(); log('School writing changed', p, item || '', 'by', me);
     return { ok: true, page: recordOut(p, item) };
   }
 
@@ -568,8 +572,14 @@ module.exports = function staffModule(o) {
     // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
     // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches
     // only a new educator the director marked experienced.
-    if (P === 'help' || P === 'help/ready') {
+    if (P === 'help' || P === 'help/ready' || P === 'help/add') {
       if (P === 'help/ready') { if (!dir) return deny('The director marks Help ready.'); put(HELP_READY, { id: 'helpready', on: !!body.on, at: today(), by: me }); }
+      // a new Help answer starts with its question and its first step, and the director writes the rest in Edit
+      if (P === 'help/add') { if (!dir) return deny('Only the director adds a Help answer.'); const hd = Object.assign({ id: 'help', list: [] }, get(HELP) || {}); const L = hd.list || [];
+        let n = L.length + 1; const ids = new Set(L.map(x => x && x.id)); while (ids.has('h' + String(n).padStart(2, '0'))) n++;
+        const q = String(body.q || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!q) return err(req, res, 400, 'Write the question first.');
+        const x = { id: 'h' + String(n).padStart(2, '0'), q, a: ['Write the first step here.'], roles: ['educator', 'director'], words: '', addedBy: me, addedAt: Date.now() };
+        put(HELP, Object.assign({}, hd, { list: [...L, x] })); json(req, res, 200, Object.assign({}, helpFor(me), { added: x.id })); return; }
       json(req, res, 200, helpFor(me)); return;
     }
     if (P === 'familypieces' || P === 'familypieces/ready') {

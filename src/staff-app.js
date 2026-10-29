@@ -199,7 +199,7 @@ function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,in
   if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={W,W2,tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
+T._={W,W2,peBtn:(a,b,c)=>peBtn(a,b,c),tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
@@ -440,8 +440,8 @@ function welcomeHtml(p,dir){const sc=B.school;const lens=B.lens;
     ${md(sc.philosophy||"")}
     ${lens&&lens.name?`<h4 style="margin:12px 0 4px">This year's lens, ${H(lens.name)}</h4><div class="stmd"><p>${H(lens.description)}</p></div>`:""}
     ${dir?welcomeEditInner():(p.pd&&p.pd.read||{}).welcome?`<div class="actions">${chip("ok","Read")}</div>`:`<div class="actions"><button class="btn small ghost" data-stread="welcome">I have read the welcome and philosophy</button></div>`}`)}
-const welcomeEditInner=()=>`<details style="margin-top:10px"><summary class="linkbtn">Edit the welcome and philosophy</summary><label class="fld-label" style="margin-top:8px">Your welcome<textarea id="stw-welcome" rows="4">${H(B.school.welcome)}</textarea></label>
-  <label class="fld-label">Philosophy, drawn from the Program Philosophy<textarea id="stw-phil" rows="10">${H(B.school.philosophy)}</textarea></label><div class="actions"><button class="btn small" data-stwsave="1">Save</button></div></details>`;
+// the welcome and philosophy open in the one Edit, with their history and Restore
+const welcomeEditInner=()=>`<div class="actions" style="margin-top:10px">${peBtn("staff/school.json","Edit the welcome and philosophy, with its history")}</div>`;
 const welcomeEditHtml=()=>card("Welcome and philosophy",welcomeEditInner());
 function checklist(p,pcs,start){const pw=p.paperwork||{},rd=(p.pd&&p.pd.read)||{},dn=(p.pd&&p.pd.done)||{};const lic=pcs.licensing||[],how=pcs.howto||[];
   const papersDone=PAPERS().filter(x=>!x.director&&x.k!=="immun").every(x=>((pw[x.k]||{}).files||[]).length||(x.ack&&(pw[x.k]||{}).ack))&&((p.items||{}).clearance||{}).date;
