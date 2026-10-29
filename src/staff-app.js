@@ -71,6 +71,8 @@ function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^
 function md(text){const L=String(text||"").replace(/\r/g,"").split("\n");let h="",i=0;
   while(i<L.length){const l=L[i];
     if(!l.trim()){i++;continue}
+    // a picture on its own line, such as a diagram or a screen in a PD module, with its caption beneath
+    let g=l.trim().match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);if(g){h+=`<figure class="pmimg" style="margin:12px 0">${pic(g[2],g[1])}${g[1]?`<figcaption class="cnt" style="text-align:center">${inline(g[1])}</figcaption>`:""}</figure>`;i++;continue}
     let m=l.match(/^(#{1,4})\s+(.*)$/);if(m){const n=Math.min(4,m[1].length+1);h+=`<h${n}>${inline(m[2])}</h${n}>`;i++;continue}
     if(/^\s*\|/.test(l)){const rows=[];while(i<L.length&&/^\s*\|/.test(L[i])){rows.push(L[i]);i++}
       const cells=r=>r.trim().replace(/^\||\|$/g,"").split("|").map(c=>c.trim());const body=rows.filter(r=>!/^\s*\|?\s*:?-{2,}/.test(r));

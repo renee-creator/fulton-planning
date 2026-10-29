@@ -119,7 +119,7 @@ module.exports = function staffModule(o) {
       // the Family Handbook's editions are read here too, beside the Policies and Procedures
       const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
       // the pictures in the policies are read only when someone opens them
-      for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
+      for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images|staff\/pd\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
       const seen = new Set(want.map(f => f.path));
       for (const p of [...S.files.keys()]) if (/\.md$/.test(p) && !seen.has(p)) S.files.delete(p);
       // a file already read at this version is kept as it is, and the rest are read six at a time

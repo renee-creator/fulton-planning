@@ -298,6 +298,10 @@ A module's printables are in staff/pd/printables, one file a module named for it
 
 Slides from this module, on the director's module page, makes a slide set in our own print style from the module as it stands, a title slide with the module's question, Why it matters, one slide for each part of the Reading with its first lines, Try this week, the reflection questions and Plus and delta, as PDF and Word. A change to the module changes the slides. The original deck stays under Original materials.
 
+### Pictures in a module
+
+A module can hold pictures, such as a diagram or a screen from TREE, each on its own line in the Markdown as ![Its caption](staff/pd/images/its-name.png). The pictures are kept in the private records under staff/pd/images and read through the same signed-in route as the pictures in the Policies and Procedures, so only signed-in staff can open them. On the module page each shows at full width with its caption beneath. Slides from this module gives each picture in the Reading a slide of its own after its part, with the caption as the slide's title.
+
 ### Prints for outside audiences
 
 Each Presenting entry's Prints choose who they are for, Our team or Outside audiences. An entry marked external starts on Outside audiences. The director clears each chosen moment for outside audiences with its own tick, apart from what educators see, and prints for outside audiences carry only cleared moments, with no names, and name Fulton Community School & Farm as the source. Faces are softened on everything handed out, as before.
