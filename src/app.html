@@ -7843,6 +7843,14 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-projout],[
     x.setAside=[...(x.setAside||[]),...ids.filter(id=>!have.has(id)).map(id=>({id,by:whoAmI(),at:Date.now()}))];saveProject(x);toast("Taken out of this project. Its threads stay as they are.")}
   else{const n=notices.get(nid);const ids=new Set(n?noteGroup(n).map(g=>g.id):[nid]);x.setAside=(x.setAside||[]).filter(a=>a&&!ids.has(a.id));saveProject(x);toast("Back in the project.")}
   renderMain()},true);
+// Find observations for this project reads the last eight weeks now, the same reading the week's reading does
+const projFinding={};
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-pfind]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(!isDirector()||VIEW_AS)return;const id=t.dataset.pfind,x=projects.get(id);if(!x||projFinding[id])return;
+  projFinding[id]=true;renderMain();const before=projWaiting(x).length;let n=-1;try{n=await foundRead("project",projects.get(id)||x)}catch(err){n=-1}
+  delete projFinding[id];const y=projects.get(id)||x;const now=projWaiting(y).length;
+  toast(n<0?"TREE could not read just now. Try again in a moment.":now>before?`TREE found ${now-before} that may belong. They are under Observations TREE found.`:"TREE found nothing new that fits this project.");
+  if(view==="projects"&&projId===id)renderMain()},true);
 // the observations TREE suggests from a project's threads, still waiting for the director
 // one list for the project, from the week's reading and from the project's threads, each observation once
 const projNo=x=>new Set([...(x.suggestNo||[]).map(a=>a&&a.id),...(x.foundNo||[])].filter(Boolean));
@@ -10594,8 +10602,11 @@ function renderProject(x){
     <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<div class="actions" style="margin:-6px 0 0"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div>`:"")).join("")}</div>
     ${dir&&aside.length?`<details style="margin-top:10px"><summary class="cnt" style="cursor:pointer">Not part of this project, ${aside.length}</summary>${aside.map(({a,n})=>`<div class="cnt">${esc(momentHeading(n)||firstLine(noticeText(n),80))}, ${esc(shortDate(n.at))}. Taken out by ${esc(a.by||"the director")} on ${esc(shortDate(a.at))}. <button class="linkbtn" data-projback="${esc(x.id)}|${esc(a.id)}">Put it back</button></div>`).join("")}</details>`:""}</section>`;}
   if(isDirector()&&!VIEW_AS){const sg=projWaiting(x);projSuggestSoon(x);
-    if(sg.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations TREE found</h3><span class="cnt">${sg.length}</span></div>
-    <div class="hint">Observations that may belong to this project, from the week's reading of recent observations and from the project's threads. Nothing joins until you add it, and Not this one stops TREE offering it again.</div>
+    const busy=projFinding[x.id];
+    h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations TREE found</h3>${sg.length?`<span class="cnt">${sg.length}</span>`:""}</div>
+    <div class="hint">Observations that may belong to this project, from the last eight weeks of observations and from the project's threads. Nothing joins until you add it, and Not this one stops TREE offering it again.</div>
+    <div class="actions">${busy?`<span class="cnt">TREE is reading the last eight weeks of observations for this project.</span>`:`<button class="btn small ghost" data-pfind="${esc(x.id)}">Find observations for this project</button>`}</div>
+    ${!sg.length&&!busy?`<div class="cnt">Nothing is waiting. Find observations for this project reads now, and the week's reading does it each week.</div>`:""}
     ${sg.length>1?`<div class="actions"><button class="btn small" data-projaddall="${esc(x.id)}">Add all ${sg.length}</button></div>`:""}
     <div style="display:grid;gap:12px">${sg.map(({s,n})=>{const t=!s.weekly&&threads.get(s.thread);return noticeCard(n)+`<div class="nfsuggest" style="margin:-6px 0 0"><span>${t?`From the thread <b>${esc(t.name)}</b>.`:"From the week's reading."}${has(s.why)?" "+esc(/[.!?]$/.test(s.why)?s.why:s.why+"."):""}</span><span class="actions"><button class="btn small" data-projadd="${esc(x.id)}|${esc(n.id)}">Add it</button><button class="linkbtn" data-projno="${esc(x.id)}|${esc(n.id)}">Not this one</button></span></div>`}).join("")}</div></section>`}
   {const iq=inqsOfProject(x.id);if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries alongside it</div>
