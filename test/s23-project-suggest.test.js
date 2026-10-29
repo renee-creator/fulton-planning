@@ -1,7 +1,7 @@
 'use strict';
 // A thread can follow more than one project, so a project shows only the observations kept for it and those the director
-// added. TREE reads the project's threads and the ones that fit wait for the director with Add to project, Add all and
-// Not this. Made-up names only.
+// added. TREE reads the project's threads, and what fits waits with what the week's reading found, in one list with
+// Add it, Add all and Not this one. Made-up names only.
 const test = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
@@ -48,20 +48,24 @@ test('the project shows its own, and the director adds a suggestion, turns one d
   await s.p.waitForSelector('[data-projadd="x1|n1"]', { timeout: 15000, state: 'attached' });
   assert.deepStrictEqual(await s.p.evaluate(() => projNotices(projects.get('x1')).map(n => n.id)), ['n0'], 'the thread observations are not in the project yet');
   const txt = await s.p.innerText('#main');
-  assert.match(txt, /From its threads, waiting for you/); assert.doesNotMatch(txt, /rain run down the gutter/, 'one that does not fit is not suggested');
+  assert.match(txt, /Observations TREE found/); assert.doesNotMatch(txt, /rain run down the gutter/, 'one that does not fit is not suggested');
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
+  assert.match(await s.p.innerText('#main'), /From the thread Water and mud\. They made a mud pie/);
   await s.p.click('[data-projno="x1|n3"]'); await s.p.waitForTimeout(300);
   await s.p.click('[data-projadd="x1|n1"]'); await s.p.waitForTimeout(300);
   assert.deepStrictEqual(await s.p.evaluate(() => [projNotices(projects.get('x1')).map(n => n.id), projWaiting(projects.get('x1')).length, threadNotices(threads.get('t1')).map(n => n.id).sort()]), [['n1', 'n0'], 0, ['n1', 'n2', 'n3']], 'its thread keeps every one');
-  assert.doesNotMatch(await s.p.innerText('#main'), /From its threads, waiting for you/);
+  assert.doesNotMatch(await s.p.innerText('#main'), /Observations TREE found/);
   await new Promise(r => setTimeout(r, 2500));
   const x = JSON.parse(fs.readFileSync(path.join(fx.dir, 'projects/x1.json'), 'utf8'));
-  assert.deepStrictEqual([x.evidence.map(e => [e.planId, e.via, e.by]), x.suggestNo.map(a => a.id)], [[['n1', 'suggest', 'Dee']], ['n3']]);
+  assert.deepStrictEqual([x.evidence.map(e => [e.planId, e.via, e.by]), x.suggestNo.map(a => a.id), x.foundNo], [[['n1', 'suggest', 'Dee']], ['n3'], ['n3']]);
   // Add all, from a fresh suggestion
-  await s.p.evaluate(() => { const x = projects.get('x1'); x.suggestNo = []; x.suggest = [{ id: 'n3', why: 'Softening the mud.', thread: 't1' }, { id: 'n2', why: 'Rain.', thread: 't1' }]; renderMain(); });
+  // one list, the week's reading and the threads together, each observation once
+  await s.p.evaluate(() => { const x = projects.get('x1'); x.suggestNo = []; x.foundNo = []; x.suggest = [{ id: 'n3', why: 'Softening the mud.', thread: 't1' }]; x.found = { at: Date.now(), items: [{ id: 'n2', why: 'Water moving.' }, { id: 'n3', why: 'Again.' }] }; renderMain(); });
+  await s.p.waitForSelector('text=From the week\'s reading', { state: 'attached' });
+  assert.strictEqual(await s.p.evaluate(() => projWaiting(projects.get('x1')).length), 2);
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
   await s.p.click('[data-projaddall="x1"]'); await s.p.waitForTimeout(300);
-  assert.deepStrictEqual(await s.p.evaluate(() => projNotices(projects.get('x1')).map(n => n.id)), ['n3', 'n2', 'n1', 'n0']);
+  assert.deepStrictEqual(await s.p.evaluate(() => [projNotices(projects.get('x1')).map(n => n.id), projects.get('x1').found.items.length]), [['n3', 'n2', 'n1', 'n0'], 0]);
   assert.deepStrictEqual(s.errors, []);
   // an educator sees the project's own observations, and nothing waiting
   const a = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => a.close());

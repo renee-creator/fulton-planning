@@ -4579,7 +4579,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="25fe56a83e7b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="56b83bf9f1b2";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8149,8 +8149,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-projout],[
   else{const n=notices.get(nid);const ids=new Set(n?noteGroup(n).map(g=>g.id):[nid]);x.setAside=(x.setAside||[]).filter(a=>a&&!ids.has(a.id));saveProject(x);toast("Back in the project.")}
   renderMain()},true);
 // the observations TREE suggests from a project's threads, still waiting for the director
-function projWaiting(x){const own=new Set(projNotices(x).map(n=>n.id)),out=projAside(x),no=new Set((x.suggestNo||[]).map(a=>a&&a.id));
-  return (x.suggest||[]).map(s=>({s,n:s&&notices.get(s.id)})).filter(o=>o.n&&!own.has(o.n.id)&&!out.has(o.n.id)&&!no.has(o.n.id))}
+// one list for the project, from the week's reading and from the project's threads, each observation once
+const projNo=x=>new Set([...(x.suggestNo||[]).map(a=>a&&a.id),...(x.foundNo||[])].filter(Boolean));
+function projWaiting(x){const own=new Set(projNotices(x).map(n=>n.id)),out=projAside(x),no=projNo(x),seen=new Set();
+  const all=[...(x.suggest||[]),...(((x.found||{}).items)||[]).map(f=>({id:f.id,why:f.why,weekly:true}))];
+  return all.map(s=>({s,n:s&&notices.get(s.id)})).filter(o=>{if(!o.n||own.has(o.n.id)||out.has(o.n.id)||no.has(o.n.id))return false;const k=o.n.group||o.n.id;if(seen.has(k))return false;seen.add(k);return true})}
 // the director's page asks the server to read the project's threads, at most once in ten minutes for each project
 const projRead={},projReadAt={};
 function projSuggestSoon(x){if(!isDirector()||VIEW_AS||!db||!(x.threads||[]).length)return;const id=x.id;if(projRead[id]==="busy"||Date.now()-(projReadAt[id]||0)<6e5)return;
@@ -8164,10 +8167,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-projadd],[
   const [pid,nid]=String(t.dataset.projadd||t.dataset.projaddall||t.dataset.projno).split("|");const x=projects.get(pid);if(!x)return;
   const wait=projWaiting(x),pick=t.dataset.projaddall?wait:wait.filter(o=>o.n.id===nid);if(!pick.length)return;
   const ids=o=>noteGroup(o.n).map(g=>g.id),now=Date.now(),by=whoAmI();
-  if(t.dataset.projno)x.suggestNo=[...(x.suggestNo||[]),...pick.flatMap(o=>ids(o).map(id=>({id,by,at:now})))];
-  else{const have=new Set(evNoticeIds(x.evidence));x.evidence=[...(x.evidence||[]),...pick.flatMap(o=>ids(o).filter(id=>!have.has(id)).map(id=>({planId:id,via:"suggest",why:o.s.why||"",from:o.s.thread||"",by,at:now})))]}
-  const done=new Set(pick.flatMap(ids));x.suggest=(x.suggest||[]).filter(s=>s&&!done.has(s.id));saveProject(x);
-  toast(t.dataset.projno?"It stays in its thread and is not suggested for this project again.":pick.length>1?"All "+pick.length+" added to the project.":"Added to the project.");renderMain()},true);
+  if(t.dataset.projno){x.suggestNo=[...(x.suggestNo||[]),...pick.flatMap(o=>ids(o).map(id=>({id,by,at:now})))];x.foundNo=[...(x.foundNo||[]),...pick.flatMap(ids)].slice(-300)}
+  else{const have=new Set(evNoticeIds(x.evidence));x.evidence=[...(x.evidence||[]),...pick.flatMap(o=>ids(o).filter(id=>!have.has(id)).map(id=>{const n=notices.get(id)||o.n;
+    return Object.assign({planId:id,via:o.s.weekly?"weekly":"suggest",why:o.s.why||"",by,at:now},o.s.weekly?{week:n.week||mondayOf(new Date(n.at||now)),text:firstLine(n.noticed,240)}:{from:o.s.thread||""})}))]}
+  const done=new Set(pick.flatMap(ids));x.suggest=(x.suggest||[]).filter(s=>s&&!done.has(s.id));if(x.found)x.found=Object.assign({},x.found,{items:(x.found.items||[]).filter(i=>i&&!done.has(i.id))});saveProject(x);
+  toast(t.dataset.projno?"TREE will not offer it for this project again.":pick.length>1?"All "+pick.length+" added to the project.":"Added to the project.");renderMain()},true);
 function saveProjectSoon(x){projects.set(x.id,x);clearTimeout(pTimers[x.id]);pTimers[x.id]=setTimeout(()=>saveProject(x),700)}
 function projectOfThread(tid){for(const x of projects.values())if((x.threads||[]).some(l=>l.id===tid))return x;return null}
 function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
@@ -9279,7 +9283,7 @@ function inqStartForm(){const f=iqForm;const t=(f.threads||[])[0]&&threads.get(f
    not offered again. */
 const foundHave=(kind,x)=>new Set((kind==="project"?projNotices(x):inqNotices(x)).map(n=>n.id));
 function foundRooms(kind,x){if(kind==="inquiry")return x.room?[x.room]:[];if(!x.home)return [];const r=projRooms(x);if(!r.includes(x.home))r.push(x.home);return r}
-function foundPool(kind,x){const since=Date.now()-56*864e5,have=foundHave(kind,x),no=new Set(x.foundNo||[]),rooms=foundRooms(kind,x),seen=new Set();
+function foundPool(kind,x){const since=Date.now()-56*864e5,have=foundHave(kind,x),no=kind==="project"?projNo(x):new Set(x.foundNo||[]),rooms=foundRooms(kind,x),seen=new Set();
   return [...notices.values()].filter(n=>(n.at||0)>=since&&!have.has(n.id)&&!no.has(n.id)&&has(n.noticed)&&(!rooms.length||rooms.some(r=>momentIn(n,r))))
     .sort((a,b)=>(b.at||0)-(a.at||0)).filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return true}).slice(0,120)}
 function foundSet(kind,x,found){x.found=found;if(!db)return kind==="project"?saveProject(x):saveInquiry(x);
@@ -10263,7 +10267,7 @@ function projectCard(x){
   return `<article class="thread"><div class="secthead"><h3>${esc(x.name)}</h3><span class="status st-${x.status==="active"?"growing":x.status==="resting"?"resting":"closed"}">${PSTATUS[x.status]||"Active"}</span></div>
     ${projUnder(x)?`<div class="q">${esc(firstLine(projUnder(x),220))}</div>`:""}
     <div class="cnt">${[x.home?x.home+" class":"School-wide",projRooms(x).filter(r=>r!==x.home).length?"joined by "+projRooms(x).filter(r=>r!==x.home).join(" and "):"",ths.length+" thread"+(ths.length===1?"":"s"),ws.length?`${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""].filter(Boolean).map(esc).join(" · ")}</div>
-    ${(()=>{const k=isDirector()?foundWaiting("project",x).length:0;return k?`<div class="cnt warnline">${k} observation${k===1?"":"s"} TREE found wait for you</div>`:""})()}
+    ${(()=>{const k=isDirector()?projWaiting(x).length:0;return k?`<div class="cnt warnline">${k} observation${k===1?"":"s"} TREE found wait for you</div>`:""})()}
     <div class="actions"><button class="btn small" data-popen="${esc(x.id)}">Open project</button></div></article>`;
 }
 function renderProjects(){
@@ -10325,7 +10329,7 @@ function renderProject(x){
     <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
-  h+=foundHtml("project",x);
+  // the observations TREE found for a project are listed once, with its threads' suggestions, under Observations
   const foldAt=h.length;
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   {const sts=projStories(x);h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length?sts.length+" to read aloud with children":"Read aloud with children"}</span></div>${sts.length?`<div class="actions" style="flex-wrap:wrap">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}${stReviewed(y)?"":", draft"}</button>`).join("")}</div>`:""}<div class="actions"><button class="btn small ghost" data-storyproj="${esc(x.id)}">Make a story</button></div></section>`}
@@ -10364,11 +10368,10 @@ function renderProject(x){
     <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<div class="actions" style="margin:-6px 0 0"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div>`:"")).join("")}</div>
     ${dir&&aside.length?`<details style="margin-top:10px"><summary class="cnt" style="cursor:pointer">Not part of this project, ${aside.length}</summary>${aside.map(({a,n})=>`<div class="cnt">${esc(momentHeading(n)||firstLine(noticeText(n),80))}, ${esc(shortDate(n.at))}. Taken out by ${esc(a.by||"the director")} on ${esc(shortDate(a.at))}. <button class="linkbtn" data-projback="${esc(x.id)}|${esc(a.id)}">Put it back</button></div>`).join("")}</details>`:""}</section>`;}
   if(isDirector()&&!VIEW_AS){const sg=projWaiting(x);projSuggestSoon(x);
-    if(sg.length||projRead[x.id]==="busy")h+=`<section class="card"><div class="lbl">From its threads, waiting for you</div>
-    <div class="hint">TREE read the observations of this project's threads and these look like they fit the project. A thread can follow more than one project, so nothing joins this one until you add it. Not this leaves it in its thread.</div>
-    ${projRead[x.id]==="busy"&&!sg.length?`<div class="cnt">TREE is reading this project's threads.</div>`:""}
+    if(sg.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations TREE found</h3><span class="cnt">${sg.length}</span></div>
+    <div class="hint">Observations that may belong to this project, from the week's reading of recent observations and from the project's threads. Nothing joins until you add it, and Not this one stops TREE offering it again.</div>
     ${sg.length>1?`<div class="actions"><button class="btn small" data-projaddall="${esc(x.id)}">Add all ${sg.length}</button></div>`:""}
-    <div style="display:grid;gap:12px">${sg.map(({s,n})=>{const t=threads.get(s.thread);return noticeCard(n)+`<div class="nfsuggest" style="margin:-6px 0 0"><span>From the thread <b>${esc(t?t.name:"a thread")}</b>.${has(s.why)?" "+esc(/[.!?]$/.test(s.why)?s.why:s.why+"."):""}</span><span class="actions"><button class="btn small" data-projadd="${esc(x.id)}|${esc(n.id)}">Add to project</button><button class="linkbtn" data-projno="${esc(x.id)}|${esc(n.id)}">Not this</button></span></div>`}).join("")}</div></section>`}
+    <div style="display:grid;gap:12px">${sg.map(({s,n})=>{const t=!s.weekly&&threads.get(s.thread);return noticeCard(n)+`<div class="nfsuggest" style="margin:-6px 0 0"><span>${t?`From the thread <b>${esc(t.name)}</b>.`:"From the week's reading."}${has(s.why)?" "+esc(/[.!?]$/.test(s.why)?s.why:s.why+"."):""}</span><span class="actions"><button class="btn small" data-projadd="${esc(x.id)}|${esc(n.id)}">Add it</button><button class="linkbtn" data-projno="${esc(x.id)}|${esc(n.id)}">Not this one</button></span></div>`}).join("")}</div></section>`}
   {const iq=inqsOfProject(x.id);if(iq.length)h+=`<section class="card"><div class="lbl">Team inquiries alongside it</div>
     <div class="hint">Questions about practice and development the team is thinking through with this project in mind.</div>
     <div class="evid">${iq.map(q=>`<div><button class="linkbtn" data-iqopen="${esc(q.id)}"><b>${esc(q.name||"Untitled")}</b></button> <span class="cnt">${esc(inqScope(q))}</span>${inqOpenHyps(q).length?`<div class="muted">${esc(firstLine(inqOpenHyps(q).slice(-1)[0].text,200))}</div>`:""}</div>`).join("")}</div></section>`}
