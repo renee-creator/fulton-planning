@@ -10598,8 +10598,8 @@ function renderProject(x){
   {const ns=projNotices(x),dir=isDirector()&&!VIEW_AS,aside=((x.setAside)||[]).map(a=>({a,n:notices.get(a.id)})).filter(o=>o.n);
     const shown=new Set();const firsts=dir?ns.filter(n=>{const k=n.group||n.id;if(shown.has(k))return false;shown.add(k);return true}):[];const first=new Set(firsts.map(n=>n.id));
     if(ns.length||aside.length)h+=`<section class="card"><div class="lbl">Observations</div>
-    <div class="hint">Observations educators kept for this project, in the order they happened.${dir?" Not part of this project takes one out of the project only, and its threads stay as they are.":""}</div>
-    <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<div class="actions" style="margin:-6px 0 0"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div>`:"")).join("")}</div>
+    <div class="hint">Observations educators kept for this project, in the order they happened.${dir?" More under an observation holds Not part of this project, which takes it out of the project only. Its threads stay as they are, and it waits at the end of this list to put back.":""}</div>
+    <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<details class="pmore" id="pmore-${esc(n.id)}" style="margin:-6px 0 0"><summary class="cnt" style="cursor:pointer">More</summary><div class="actions"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div></details>`:"")).join("")}</div>
     ${dir&&aside.length?`<details style="margin-top:10px"><summary class="cnt" style="cursor:pointer">Not part of this project, ${aside.length}</summary>${aside.map(({a,n})=>`<div class="cnt">${esc(momentHeading(n)||firstLine(noticeText(n),80))}, ${esc(shortDate(n.at))}. Taken out by ${esc(a.by||"the director")} on ${esc(shortDate(a.at))}. <button class="linkbtn" data-projback="${esc(x.id)}|${esc(a.id)}">Put it back</button></div>`).join("")}</details>`:""}</section>`;}
   if(isDirector()&&!VIEW_AS){const sg=projWaiting(x);projSuggestSoon(x);
     const busy=projFinding[x.id];
