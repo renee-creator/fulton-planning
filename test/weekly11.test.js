@@ -24,7 +24,7 @@ test('the week\'s reading covers each Class, observations, projects and inquirie
   const steps = src.slice(src.indexOf('function weeklySteps('), src.indexOf('async function weeklyStep('));
   assert.match(steps, /\["All",\.\.\.CLASSROOMS\]/, 'the whole school and each Class');
   for (const k of ['threads|', 'lens|', 'moments|', 'project|', 'inquiry|']) assert.ok(steps.includes('"' + k + '"'), k);
-  assert.match(src, /foundHtml\("project",x\)/);
+  assert.ok(src.includes('((x.found||{}).items)'), 'a project lists what the reading found in its one list');
   assert.match(src, /foundHtml\("inquiry",x\)/);
 });
 
