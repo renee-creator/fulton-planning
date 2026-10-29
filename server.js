@@ -1418,6 +1418,46 @@ async function suggestThreadFor(id) {
   log(picks.length ? `Thread suggested for ${lead.id}${docs.length > 1 ? ' and ' + (docs.length - 1) + ' more photos' : ''}, ${picks.map(p => (store.recs.threads.get(p.id) || {}).doc.name).join(' and ')}` : `No thread fits ${lead.id}`);
 }
 
+/* ---------- observations from a project's threads that fit the project ----------
+   A thread can follow more than one project, so its observations join a project only when the director adds them. When the
+   director opens a project, the quick model reads the observations of its threads that are not in it yet and names the ones
+   that clearly fit, each with a short reason. The answer goes back to the director's page as a suggestion only. */
+async function suggestForProject(pid, key) {
+  const pr = store.recs.projects.get(pid); const x = pr && !pr.deleted && pr.doc; if (!x) return { none: true };
+  const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); if (!tids.size) return { suggest: [], key: 'none' };
+  const fromEv = new Map();
+  for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) fromEv.set(e.planId || e.id, id); }
+  const skip = new Set([...(x.evidence || []).map(e => e && (e.planId || e.id)), ...(x.setAside || []).map(a => a && a.id), ...(x.suggestNo || []).map(a => a && a.id)].filter(Boolean));
+  const seen = new Set(), cands = [];
+  for (const [nid, nr] of store.recs.notices) { const n = nr.doc; if (nr.deleted || !n) continue;
+    const tid = n.threadId && tids.has(n.threadId) ? n.threadId : fromEv.get(nid); if (!tid) continue;
+    const docs = noticeGroupDocs(n); const lead = docs[0] || n; if (seen.has(lead.id)) continue; seen.add(lead.id);
+    if (docs.some(d => d.projectId === x.id || skip.has(d.id))) continue;
+    const words = [...new Set(docs.map(d => [d.noticed, d.wonder].filter(Boolean).join('\n').trim()).filter(Boolean))].join('\n').trim();
+    if (words.split(/\s+/).filter(Boolean).length < 6) continue;
+    cands.push({ id: lead.id, thread: tid, at: lead.at || 0, words: words.slice(0, 400) }); }
+  cands.sort((a, b) => b.at - a.at); const ask = cands.slice(0, 40);
+  if (!ask.length) return { suggest: [], key: 'none' };
+  const about = { name: String(x.name || '').slice(0, 120), experience: String(x.experience || '').slice(0, 500), underneath: String(x.underneath || '').slice(0, 400), intent: String(x.intent != null ? x.intent : (x.decision && x.decision.why) || '').slice(0, 400) };
+  const keyNow = sha(JSON.stringify(about) + '|' + ask.map(c => c.id + ':' + c.words.length).join(',')).toString('hex').slice(0, 16);
+  if (key && key === keyNow) return { same: true, key: keyNow };
+  if (!anthropicKey()) return { off: true };
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
+  const tname = id => { const d = store.recs.threads.get(id); return d && d.doc ? String(d.doc.name || '').slice(0, 80) : ''; };
+  const prompt = `Educators at a preschool are following this project.\n${JSON.stringify(about)}\nThese observations were kept in threads the project follows. A thread can follow more than one project, so many of them belong to other work.\n${JSON.stringify(ask.map(c => ({ id: c.id, thread: tname(c.thread), words: c.words })))}\nName only the observations whose words clearly show the children doing, saying or wondering about what this project is about. When in doubt, leave it out. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence"}]}, and {"fits":[]} when none clearly fit.`;
+  let out = null;
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });
+    if (res.status !== 200) return { busy: true };
+    const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { return { busy: true }; }
+  const byId = new Map(ask.map(c => [c.id, c]));
+  const clean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  const suggest = (Array.isArray(out && out.fits) ? out.fits : []).filter(f => f && byId.has(f.id)).map(f => ({ id: f.id, why: clean(f.why), thread: byId.get(f.id).thread, at: now }));
+  log(`Project ${pid} read against its threads, ${suggest.length} of ${ask.length} fit`);
+  return { suggest, key: keyNow };
+}
+
 // sites the newsletter's suggested reading may come from
 const READING_SITES = ['developingchild.harvard.edu', 'earlychildhood.stanford.edu', 'reggiochildren.it', 'reggioalliance.org', 'healthychildren.org', 'aap.org', 'zerotothree.org', 'naeyc.org', 'cdc.gov', 'first5california.com', 'cde.ca.gov', 'extension.psu.edu', 'childmind.org', 'pbs.org', 'kidshealth.org', 'eatright.org', 'myplate.gov', 'janetlansbury.com', 'rie.org', 'understood.org'];
 
@@ -1588,14 +1628,14 @@ async function displayFeed() {
       return { id: t.id, name: trim(t.name, 80), question: trim(t.question, 220), room: t.classroom || '', weeks: (t.weeks || []).length, words: newest ? trim(newest[0].text, 220) : '',
         photo: latestPhoto(n => n.threadId === t.id || evIds.has(n.id)) }; });
   const projects = live('projects').filter(x => x.status !== 'closed').sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 8)
-    .map(x => { const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean));
-      // a project's photos include every observation its threads hold, as tagged or as Find threads attached them, as on its page
+    .map(x => {
+      // a project's photos are its own observations, tagged for it or added to it by the director, as on its page
       const evIds = new Set((x.evidence || []).map(e => e && (e.planId || e.id)).filter(Boolean));
-      for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) evIds.add(e.planId || e.id); }
+      const out = new Set((x.setAside || []).map(a => a && a.id).filter(Boolean));
       const rooms = [...new Set([x.home, ...(x.classrooms || []).map(c => c && c.room)].filter(Boolean))];
       return { id: x.id, name: trim(x.name, 80), experience: trim(x.experience, 260), underneath: trim(x.underneath, 260), intent: trim(x.intent != null ? x.intent : (x.decision && x.decision.why), 260), rooms,
         threads: (x.threads || []).map(t => { const d = t && store.recs.threads.get(t.id); return d && !d.deleted ? trim(d.doc.name, 60) : ''; }).filter(Boolean).slice(0, 4),
-        photo: latestPhoto(n => n.projectId === x.id || (n.threadId && tids.has(n.threadId)) || evIds.has(n.id)) }; });
+        photo: latestPhoto(n => (n.projectId === x.id || evIds.has(n.id)) && !out.has(n.id)) }; });
   const prog = store.recs.settings.get('program'); const pv = prog && !prog.deleted && prog.doc ? prog.doc : {};
   const lensList = Array.isArray(pv.lenses) && pv.lenses.length ? pv.lenses : pv.lens ? [Object.assign({ year: true }, pv.lens)] : [];
   // a lens shows its whole description beside its questions, with a photo from a moment it found lately when there is one
@@ -2156,6 +2196,8 @@ async function handle(req, res) {
     cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
     json(req, res, 200, Object.assign({ familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }, changed ? { changed: true } : {})); return;
   }
+  if (path === '/api/projects/suggest') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the threads for a project.'); return; }
+    json(req, res, 200, await suggestForProject(String(body.id || ''), String(body.key || ''))); return; }
   if (path === '/api/transition/nextschool') {
     const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;
     const ts = k && k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary[String(body.year || '')] : null;

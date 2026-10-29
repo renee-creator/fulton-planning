@@ -1,6 +1,5 @@
 'use strict';
-// An observation that reached a project through one of its threads, and does not belong there, is taken out of the
-// project by the director with Not part of this project. Its threads stay as they are, and Put it back returns it.
+// An observation kept for a project, that does not belong there, is taken out of the project by the director with Not part of this project. Its threads stay as they are, and Put it back returns it.
 // Made-up names only.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -10,8 +9,8 @@ const { start, browser, signedIn } = require('./fixture.js');
 const more = put => {
   put('threads/t1.json', { id: 't1', name: 'Water and mud', classroom: 'West', question: 'Where does the water go?', evidence: [] });
   put('projects/x1.json', { id: 'x1', name: 'The mud kitchen', home: 'West', status: 'active', createdAt: Date.now() - 5 * 864e5, createdBy: 'Ann', classrooms: [{ room: 'West' }], threads: [{ id: 't1', at: Date.now() - 4 * 864e5 }] });
-  put('notices/n1.json', { id: 'n1', noticed: 'Poured water down the hill and watched it pool.', at: Date.now() - 864e5, threadId: 't1', classroom: 'West', by: 'Ann' });
-  put('notices/n2.json', { id: 'n2', noticed: 'Sang the goodbye song at pickup.', at: Date.now() - 2 * 864e5, threadId: 't1', classroom: 'West', by: 'Ann' });
+  put('notices/n1.json', { id: 'n1', noticed: 'Poured water down the hill and watched it pool.', at: Date.now() - 864e5, threadId: 't1', projectId: 'x1', classroom: 'West', by: 'Ann' });
+  put('notices/n2.json', { id: 'n2', noticed: 'Sang the goodbye song at pickup.', at: Date.now() - 2 * 864e5, threadId: 't1', projectId: 'x1', classroom: 'West', by: 'Ann' });
 };
 
 test('Not part of this project takes an observation out of the project only, and Put it back returns it', async t => {
