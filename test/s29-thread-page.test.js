@@ -17,10 +17,12 @@ test('a thread\'s page shows its photos and the parts its print shows, with Prin
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => goView('threads')); await s.p.waitForSelector('#th-t1', { timeout: 15000, state: 'attached' });
+  assert.strictEqual(await s.p.$$eval('#th-t1 details.tpart', ds => ds.filter(d => d.open).length), 0, 'every part starts closed');
+  await s.p.$$eval('#th-t1 details.tpart', ds => ds.forEach(d => { d.open = true; }));
   const card = await s.p.$eval('#th-t1', el => ({ text: el.innerText, imgs: el.querySelectorAll('.tmoments img').length, print: !!el.querySelector('.secthead [data-print="thread"],.secthead button') }));
   assert.strictEqual(card.imgs, 3, 'its photos');
   assert.ok(card.print, 'Print this thread at the top');
-  assert.match(card.text, /Moments along the way[\s\S]*Languages children are using[\s\S]*What we might offer next[\s\S]*Offer pipes and funnels[\s\S]*Team notes/i);
+  assert.match(card.text, /Moments along the way, 3 photos[\s\S]*Languages children are using, 2[\s\S]*What we might offer next, 5[\s\S]*Offer pipes and funnels[\s\S]*Try sand[\s\S]*Team notes/i);
   assert.match(card.text, /Print this thread/);
   // a lens passage from a photo observation shows its photo
   assert.match(await s.p.evaluate(() => lensMomentHtml({ planId: 'p0', text: 'Poured water down the hill', section: 'noticed' })), /<img/);

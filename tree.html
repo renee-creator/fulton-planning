@@ -142,6 +142,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .tabdrop{margin:2px 0 6px}.tabdrop>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;cursor:pointer;border:1.5px solid var(--moss);border-radius:999px;padding:9px 16px;font-weight:700;color:var(--moss);background:var(--paper);min-height:44px;box-sizing:border-box}.tabdrop>summary::-webkit-details-marker{display:none}.tabdrop>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;margin-top:-4px}.tabdrop[open]>summary::after{transform:rotate(-135deg);margin-top:4px}.tabdrop-list{display:grid;gap:2px;margin-top:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px}.tabdrop-list .sub{text-align:left;width:100%;min-height:42px}
 .pfhide{display:none!important}
 .iqtnotes{margin:2px 0 10px 12px;padding:8px 12px;border-left:3px solid var(--line);font-size:14.5px}
+.tpart{margin-top:8px}.tpart>summary{cursor:pointer}
 .tmoments{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:6px 0}.tmom{display:flex;flex-direction:column;gap:4px;text-align:left;text-decoration:none;color:inherit;padding:0}
 .tmom img{width:100%;height:150px;object-fit:cover;border-radius:10px;background:var(--bg)}.tmomh{font-size:13px;font-weight:700}.tmomt{font-size:13px;color:var(--muted);line-height:1.35}
 .wrpart{margin:10px 0}.wrpart .lbl{margin-bottom:2px}.wrtab{width:100%;border-collapse:collapse;margin:6px 0}.wrtab td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -4627,7 +4628,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="0d9a5cb04392";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="edb3d1dd2420";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -12419,10 +12420,10 @@ document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.matches||!d.ma
   const t=threads.get(d.dataset.tobs);if(t)box.innerHTML=threadNotices(t).map(noticeCard).join("")},true);
 // where a followed thread is now, and its moments along the way with their photos, as its print shows them
 function threadNowHtml(t){let h="";
-  const lr=threadLastRemarks(t);if(lr)h+=`<div class="chiprow-label" style="margin-top:10px">Where it is now</div><div class="evid"><div>“${esc(lr.text)}”<span class="src">${esc(pBy(byLine(lr.p)))}</span></div></div>`;
+  const lr=threadLastRemarks(t);if(lr)h+=`<details class="tpart" id="tp-now-${esc(t.id)}"><summary class="chiprow-label">Where it is now</summary><div class="evid"><div>“${esc(lr.text)}”<span class="src">${esc(pBy(byLine(lr.p)))}</span></div></div></details>`;
   const ns=threadNotices(t).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0)),posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
   const ph=spread(posts,6);
-  if(ph.length)h+=`<div class="chiprow-label" style="margin-top:10px">Moments along the way</div><div class="tmoments">${ph.map(n=>`<button class="tmom linkbtn" data-mjump="${esc(n.id)}" title="Open this observation"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"><span class="tmomh">${esc([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "))}</span><span class="tmomt">${esc(firstLine(momentBody(n)||n.noticed,140))}</span></button>`).join("")}</div>${posts.length>ph.length?`<details data-tobs="${esc(t.id)}"><summary class="chiprow-label" style="cursor:pointer">All ${threadNotices(t).length} observations in this thread</summary><div style="display:grid;gap:12px;margin-top:8px"></div></details>`:""}`;
+  if(ph.length)h+=`<details class="tpart" id="tp-mom-${esc(t.id)}"><summary class="chiprow-label">Moments along the way, ${ph.length} photo${ph.length===1?"":"s"}</summary><div class="tmoments">${ph.map(n=>`<button class="tmom linkbtn" data-mjump="${esc(n.id)}" title="Open this observation"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"><span class="tmomh">${esc([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "))}</span><span class="tmomt">${esc(firstLine(momentBody(n)||n.noticed,140))}</span></button>`).join("")}</div></details>${posts.length>ph.length?`<details data-tobs="${esc(t.id)}"><summary class="chiprow-label" style="cursor:pointer">All ${threadNotices(t).length} observations in this thread</summary><div style="display:grid;gap:12px;margin-top:8px"></div></details>`:""}`;
   return h}
 function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(isTracked&&t.id&&tEdit===t.id)return `<article class="thread" id="th-${t.id}">${threadEditHtml(t)}</article>`;
@@ -12437,15 +12438,15 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   h+=evidenceHtml(t);
   if(isTracked&&t.id)h+=threadNowHtml(t);
   if(linked.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
-  if((t.languages||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">Languages children are using</div><div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
-  if((t.next||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">What we might offer next</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.slice(0,4).map(n=>`<li>${esc(n)}</li>`).join("")}</ul>${t.next.length>4?`<details><summary class="chiprow-label" style="cursor:pointer">${t.next.length-4} more</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.slice(4).map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`:""}`;
+  if((t.languages||[]).length)h+=`<details class="tpart" id="tp-lang-${esc(t.id||t.name)}"><summary class="chiprow-label">Languages children are using, ${t.languages.length}</summary><div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div></details>`;
+  if((t.next||[]).length)h+=`<details class="tpart" id="tp-next-${esc(t.id||t.name)}"><summary class="chiprow-label">What we might offer next, ${t.next.length}</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
   if(isTracked){
     const pr=projectOfThread(t.id);const openProjects=[...projects.values()].filter(x=>x.status!=="closed");
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     const notesBox=`<textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>`;
     // Undo follow is for a thread followed by mistake, so it stays only for the first day and never on a thread a project holds
     const undoable=!pr&&Date.now()-(t.createdAt||0)<864e5;
-    h+=`${has(t.notes)?`<div class="chiprow-label" style="margin-top:10px">Team notes</div>${notesBox}`:""}
+    h+=`${has(t.notes)?`<details class="tpart" id="tp-notes-${esc(t.id)}"><summary class="chiprow-label">Team notes</summary>${notesBox}</details>`:""}
       <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button>
       ${moreMenu(`<label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
       ${has(t.notes)?"":`<div style="flex-basis:100%">${notesBox}</div>`}
