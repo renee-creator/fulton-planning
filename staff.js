@@ -85,6 +85,13 @@ module.exports = function staffModule(o) {
   const get = p => { const r = S.files.get(p); return r ? r.doc : null; };
   function put(p, doc) { const r = S.files.get(p); S.files.set(p, { doc, sha: r && r.sha, local: true }); soon(p); return doc; }
   // a Markdown piece is kept as its own text
+  // pages of the school's own words that start from the words TREE first showed, until the director writes them
+  const ST = require('./staff-text.js');
+  const edDefs = () => ({ items: ITEMS, papers: PAPERS, checklist: CHECKLIST, modules: (typeof G !== 'undefined' && G && G.MODULE_LIST) || [] });
+  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage, [ST.PAGE]: () => ST.startPage(edDefs()) };
+  // the Educators pages' own words, as the director wrote them, each part as it first read until she writes it
+  function edTexts() { const out = ST.defaults(edDefs()); let W = {}; try { W = require('./wording.js').map(wordingDoc('educator-pages-text')); } catch (e) {}
+    for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim(); return out; }
   function putText(p, text) { const r = S.files.get(p); S.files.set(p, { text, sha: r && r.sha, local: true }); soon(p); return text; }
   function soon(p) { clearTimeout(S.timers.get(p)); const t = setTimeout(() => { S.timers.delete(p); flush(p).catch(e => log('Educator record not saved', p, e.message)); }, 1200); if (t.unref) t.unref(); S.timers.set(p, t); }
   function flush(p) {
@@ -328,17 +335,60 @@ module.exports = function staffModule(o) {
     { re: /^staff\/garden\/setup\.json$/, name: 'the Garden\'s own words', title: () => 'The Garden', fields: [['agreements.guiding', 'Our guiding agreements, one on each line', 'lines'], ['agreements.children.title', 'The children\'s agreements, title'], ['agreements.children.items', 'The children\'s agreements, one on each line', 'lines'],
       ['agreements.families.title', 'The families\' agreements, title'], ['agreements.families.intro', 'The families\' agreements, opening line'], ['agreements.families.items', 'The families\' agreements, one on each line', 'lines'], ['nochemicals', 'No chemicals'], ['handwash.text', 'Handwashing']] }
   ];
-  const recordSpec = p => RECORD_EDIT.find(x => x.re.test(p)) || null;
+  // the rest of the Garden's writing, an animal, a creature or hazard, a sign, a plant's own words, a field guide, the
+  // safety box and who lives near us, each opened from its own card. A part shows only when the item has it
+  const GARDEN = /^staff\/garden\/setup\.json$/;
+  const has = (x, k) => { const v = at(x, k); return v != null && v !== '' && !(Array.isArray(v) && !v.length); };
+  const pick = (x, list, always) => list.filter(([k]) => (always || []).includes(k) || has(x, k));
+  const FAMILY = [['family.male', 'A male is called'], ['family.female', 'A female is called'], ['family.young', 'A young one is called'], ['family.group', 'A group is called']];
+  RECORD_EDIT.push(
+    { re: GARDEN, part: 'animals', list: 'animals', name: 'this animal', title: x => x.name, fields: x => pick(x, [['opens', 'What opens our eyes'], ['eats', 'What they eat'], ['never', 'Never feed'], ['graze', 'Grazing'],
+      ['handling', 'Gentle hands and handling'], ['health', 'Health and hand washing'], ['herd', 'Our herd'], ['flock', 'Our flock'], ['eggs', 'Our eggs, one on each line', 'lines'], ['vocab', 'Words we use, one on each line', 'lines'],
+      ['wonder', 'What we wonder, one on each line', 'lines'], ['breeds', 'Breeds, one on each line, the breed, a full stop, then what to notice', 'breeds'], ...FAMILY,
+      ['card.title', 'The card, its title'], ['card.know', 'The card, what to know'], ['card.wonder', 'The card, a wondering'], ['card.rule', 'The card, our rule'], ['card.family', 'The card, family words']],
+      ['opens', 'eats', 'never', 'handling', 'health', 'wonder', 'vocab']) },
+    { re: GARDEN, part: 'wild', list: 'wild', name: 'this entry', title: x => x.name, fields: x => pick(x, [['name', 'Name'], ['scientific', 'Scientific name'], ['know', 'How to know it'], ['worth', 'Worth knowing'],
+      ['tracks', 'Tracks'], ['scat', 'Scat'], ['adults', 'For adults'], ['children', 'For children'], ['safety', 'Our safety line'], ['wonder', 'What we wonder, one on each line', 'lines'], ...FAMILY,
+      ['sign.title', 'Its sign, title'], ['sign.rule', 'Its sign, the rule'], ['sign.description', 'Its sign, what it says'], ['sign.clues', 'Its sign, the clues'], ['sign.wonder', 'Its sign, a wondering'], ['sign.warning', 'Its sign, the warning'], ['sign.line', 'Its sign, the last line']],
+      ['name', 'know', 'worth', 'children', 'safety', 'wonder']) },
+    { re: GARDEN, part: 'signs', list: 'signs', name: 'this sign', title: x => x.title, fields: [['title', 'Title'], ['question', 'The question'], ['wonder', 'The wondering'], ['place', 'Where it hangs']] },
+    { re: GARDEN, part: 'plants', list: 'plants', name: 'this plant\'s words', title: x => x.common, fields: [['opens', 'What opens our eyes'], ['wonder', 'What we wonder, one on each line', 'lines'],
+      ['where', 'Where it grows'], ['ready', 'Months to harvest or gather, as numbers 1 to 12, one on each line', 'months']] },
+    { re: GARDEN, part: 'guides', list: 'fieldGuides', key: 'space', name: 'this field guide', title: x => x.title, fields: [['title', 'Title'], ['intro', 'A line under the title']] },
+    { re: GARDEN, part: 'safety', obj: 'safety', name: 'What edible means', title: () => 'What edible means', fields: [['edible', 'What edible means, one on each line', 'lines'],
+      ['checkFirst.text', 'Check first, one on each line', 'lines'], ['mushrooms', 'Mushrooms']] },
+    // the welcome and philosophy a new educator reads first
+    { re: /^staff\/school\.json$/, name: 'the welcome and philosophy', title: () => 'Welcome and philosophy', fields: [['welcome', 'Your welcome'], ['philosophy', 'Our philosophy, drawn from the Program Philosophy']] },
+    // a reading in the readings library, its words, while its link, areas and modules stay in the library's own form
+    { re: /^staff\/readings\.json$/, list: 'list', name: 'this reading', title: x => x.title, fields: x => pick(x, [['title', 'Title'], ['author', 'Author'], ['source', 'Source'], ['cite', 'How we cite it'], ['supports', 'What it supports'], ['why', 'Why we read it'], ['note', 'A note']], ['title', 'why']) },
+    // walk safety, on the walks page and in each walk invitation. A licensing line keeps the rule it comes from
+    { re: /^staff\/walks\.json$/, name: 'walk safety', title: () => 'Walk safety', fields: [['checklist', 'Before we leave, one on each line', 'lines'], ['agreements', 'The children\'s walk agreements, one on each line', 'lines'],
+      ['rule', 'Safety comes first, one on each line', 'lines'], ['families', 'Families on walks, one on each line', 'lines'], ['licensing', 'What licensing asks, one on each line', 'texts']] },
+    { re: GARDEN, part: 'near', obj: 'nearUs', name: 'Who lives near us', title: () => 'Who lives near us', fields: [['note', 'What it says']] });
+  // one record can hold several lists of writing, such as the Garden's animals and creatures. An item named list|id is
+  // that list's item, and a spec with a part answers only for its own list
+  const itemPart = item => { const m = String(item || '').match(/^([a-zA-Z]+)\|(.*)$/); return m ? { part: m[1], id: m[2] } : { part: '', id: String(item || '') }; };
+  const recordSpec = (p, item) => { const ip = itemPart(item); return RECORD_EDIT.find(x => x.re.test(p) && (x.part || '') === ip.part) || null; };
+  // a spec's fields can depend on the item, so an animal shows only the parts it has
+  const fieldsOf = (sp, x) => typeof sp.fields === 'function' ? sp.fields(x) : sp.fields;
+  const BREED_LINE = b => [b.breed, b.notice].filter(Boolean).join('. ');
   const REC_HIST = (p, item) => 'staff/pd/history/record--' + p.slice(6).replace(/\.json$/, '').replace(/\//g, '--') + (item ? '--' + String(item).replace(/[^a-z0-9-]/gi, '') : '') + '.json';
   const at = (o, k) => k.split('.').reduce((t, x) => (t && typeof t === 'object' ? t[x] : undefined), o);
   function setPath(o, k, v) { const ks = k.split('.'); let t = o; for (const x of ks.slice(0, -1)) { if (!t[x] || typeof t[x] !== 'object') t[x] = {}; t = t[x]; } t[ks[ks.length - 1]] = v; }
-  function recordTarget(p, item) { const sp = recordSpec(p), d = get(p); if (!sp || !d) return null; const x = sp.list ? (d[sp.list] || []).find(y => y && y.id === item) : d; return x ? { sp, d, x } : null; }
-  const recValues = (sp, x) => Object.fromEntries(sp.fields.map(([k, , t]) => { const v = at(x, k); return [k, t === 'lines' ? (Array.isArray(v) ? v.map(String) : []) : String(v == null ? '' : v)]; }));
-  const recText = (sp, vals) => sp.fields.map(([k, label, t]) => label + '\n' + (t === 'lines' ? vals[k].join('\n') : vals[k])).join('\n\n');
+  function recordTarget(p, item) { const sp0 = recordSpec(p, item), d = get(p); if (!sp0 || !d) return null; const id = itemPart(item).id;
+    const x = sp0.list ? (d[sp0.list] || []).find(y => y && y[sp0.key || 'id'] === id) : sp0.obj ? at(d, sp0.obj) : d; if (!x) return null;
+    const sp = Object.assign({}, sp0, { fields: fieldsOf(sp0, x) }); return { sp, d, x }; }
+  const recValues = (sp, x) => Object.fromEntries(sp.fields.map(([k, , t]) => { const v = at(x, k);
+    if (t === 'breeds') return [k, (Array.isArray(v) ? v : []).map(BREED_LINE)];
+    if (t === 'months') return [k, (Array.isArray(v) ? v : []).map(m => String(+m))];
+    if (t === 'texts') return [k, (Array.isArray(v) ? v : []).map(o => String(o && typeof o === 'object' ? o.text || '' : o || ''))];
+    return [k, t === 'lines' ? (Array.isArray(v) ? v.map(String) : []) : String(v == null ? '' : v)]; }));
+  const isLines = t => t === 'lines' || t === 'breeds' || t === 'months' || t === 'texts';
+  const recText = (sp, vals) => sp.fields.map(([k, label, t]) => label + '\n' + (isLines(t) ? vals[k].join('\n') : vals[k])).join('\n\n');
   function recordOut(p, item) {
     const T = recordTarget(p, item); if (!T) return null; const vals = recValues(T.sp, T.x); const h = get(REC_HIST(p, item)) || {};
     return { path: p, item: item || '', stamp: stampOf(JSON.stringify(vals)), kind: 'record', name: T.sp.name, title: String(T.sp.title(T.x) || ''), fixedTitle: true,
-      parts: T.sp.fields.map(([k, label, t]) => ({ heading: label, body: t === 'lines' ? vals[k].join('\n') : vals[k] })), note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '',
+      parts: T.sp.fields.map(([k, label, t]) => ({ heading: label, body: isLines(t) ? vals[k].join('\n') : vals[k] })), note: h.note || '', updatedAt: h.updatedAt || 0, updatedBy: h.updatedBy || '',
       history: (h.history || []).map(e => ({ at: e.at, by: e.by, note: e.note, text: e.text })) };
   }
   function saveRecord(me, p, item, b, restoring) {
@@ -351,17 +401,26 @@ module.exports = function staffModule(o) {
     else {
       const given = Array.isArray(b.parts) ? b.parts : [];
       vals = Object.fromEntries(T.sp.fields.map(([k, , t], i) => { const g = given[i] && given[i].body != null ? String(given[i].body).replace(/\r/g, '') : null; if (g == null) return [k, was[k]];
-        return [k, t === 'lines' ? g.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 60).map(l => l.slice(0, 2000)) : g.trim().slice(0, 20000)]; }));
+        if (t === 'months') return [k, g.split(/[\n,]/).map(l => parseInt(l, 10)).filter(m => m >= 1 && m <= 12).map(String)];
+        return [k, isLines(t) ? g.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 60).map(l => l.slice(0, 2000)) : g.trim().slice(0, 20000)]; }));
       const found = b.keep ? [] : W.check(recText(T.sp, was), recText(T.sp, vals)); if (found.length) return { error: 'Some new wording may not follow the writing rules.', findings: found, gentle: true };
     }
     if (JSON.stringify(vals) === JSON.stringify(was)) return { ok: true, same: true, page: recordOut(p, item) };
     const hp = REC_HIST(p, item); const h = Object.assign({ path: p, item: item || '', history: [] }, get(hp) || {});
     h.history = [...(h.history || []), { values: was, text: recText(T.sp, was), at: h.updatedAt || 0, by: h.updatedBy || '', note: h.note || '' }].slice(-100);
     Object.assign(h, { note, updatedAt: Date.now(), updatedBy: me }); put(hp, h);
-    const d = JSON.parse(JSON.stringify(T.d)); const x = T.sp.list ? d[T.sp.list].find(y => y && y.id === item) : d;
-    for (const [k] of T.sp.fields) setPath(x, k, vals[k]);
-    if (!T.sp.list) { d.updatedAt = Date.now(); d.updatedBy = me; }
-    put(p, d); pieceCache = null; log('School writing changed', p, item || '', 'by', me);
+    const id = itemPart(item).id;
+    const d = JSON.parse(JSON.stringify(T.d)); const x = T.sp.list ? d[T.sp.list].find(y => y && y[T.sp.key || 'id'] === id) : T.sp.obj ? at(d, T.sp.obj) : d;
+    for (const [k, , t] of T.sp.fields) {
+      if (t === 'breeds') { const old = Array.isArray(at(x, k)) ? at(x, k) : [];
+        setPath(x, k, vals[k].map(l => { const i = l.indexOf('. '); const breed = (i < 0 ? l : l.slice(0, i)).trim(), notice = i < 0 ? '' : l.slice(i + 2).trim();
+          return Object.assign({}, old.find(b => b && String(b.breed).toLowerCase() === breed.toLowerCase()) || {}, { breed, notice }); })); }
+      else if (t === 'months') setPath(x, k, vals[k].map(m => String(m).padStart(2, '0')));
+      else if (t === 'texts') { const old = Array.isArray(at(x, k)) ? at(x, k) : [];
+        setPath(x, k, vals[k].map((l, i) => { const same = old.find(o => o && o.text === l); return Object.assign({}, same || (old[i] && typeof old[i] === 'object' ? old[i] : {}), { text: l }); })); }
+      else setPath(x, k, vals[k]); }
+    if (!T.sp.list || T.sp.part) { d.updatedAt = Date.now(); d.updatedBy = me; }
+    put(p, d); pieceCache = null; if (typeof G !== 'undefined' && G && G.invalidate) G.invalidate(); log('School writing changed', p, item || '', 'by', me);
     return { ok: true, page: recordOut(p, item) };
   }
 
@@ -459,7 +518,8 @@ module.exports = function staffModule(o) {
       const mine = person(me); const o = opened();
       json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {}, takesPart: G.takesPart(me), kitchen: isKitchen(me), goTo: goToOf(me) },
         open: o, can: canFor(me), goTo: goToName(), activeSupervision: school().activeSupervision || null,
-        defs: { items: itemsChecked(), papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
+        defs: (() => { const T = edTexts(); return { items: itemsChecked().map(it => it.note ? Object.assign({}, it, { note: T['Training, ' + it.label] || it.note }) : it),
+          papers: PAPERS.map(x => x.why ? Object.assign({}, x, { why: T['Paper, ' + x.form] || x.why }) : x), checklist: CHECKLIST.map((c, i) => T['New Educator checklist, item ' + (i + 1)] || c), drills: DRILL_TYPES, remind: REMIND_TYPES, texts: T, growth: ST.GROWTH }; })(),
         school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName(), ...(dir ? { teamMeetings: school().teamMeetings || {}, quietMonths: school().quietMonths || [] } : {}) },
         whosWho: whosWho(), lens: lensNow(), paired: pairedWith(me), today: today(), people: dir ? staffNames().sort() : [] });
       return;
@@ -479,7 +539,7 @@ module.exports = function staffModule(o) {
       // the office edits the volunteer jobs too, every card but those kept in Future Ideas
       if (!dir && !(isKitchen(me) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''))) && !(!body.module && VOL.mayEdit(me, String(body.path || ''), String(body.item || '')))) return deny('The director edits this page.');
       const p = body.module ? ([...S.files.keys()].filter(k => k.startsWith('staff/pd/modules/') && k.slice(17).replace(/^\d+-/, '') === String(body.module) + '.md').sort().pop() || '') : String(body.path || '');
-      if (recordSpec(p)) {
+      if (recordSpec(p, body.item)) {
         const item = String(body.item || ''); if (!recordTarget(p, item)) { err(req, res, 404, 'That is not here.'); return; }
         if (P === 'page') { json(req, res, 200, recordOut(p, item)); return; }
         let r;
@@ -488,6 +548,8 @@ module.exports = function staffModule(o) {
         else r = saveRecord(me, p, item, body);
         if (r.error && !r.findings) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return;
       }
+      // a page of the school's own words that TREE keeps defaults for starts from them the first time the director opens it
+      if (P === 'page' && dir && editable(p) && !S.files.get(p) && STARTERS[p]) putText(p, STARTERS[p]());
       if (!editable(p) || !S.files.get(p)) { err(req, res, 404, 'That page is not here.'); return; }
       if (P === 'page') { json(req, res, 200, pageOut(p)); return; }
       let r;
@@ -510,8 +572,14 @@ module.exports = function staffModule(o) {
     // the New Educator first-weeks sequence and the welcome letter that opens the PD library, one Markdown file each in
     // staff/newed. A draft shows only to the director until she marks it ready. A part for experienced educators reaches
     // only a new educator the director marked experienced.
-    if (P === 'help' || P === 'help/ready') {
+    if (P === 'help' || P === 'help/ready' || P === 'help/add') {
       if (P === 'help/ready') { if (!dir) return deny('The director marks Help ready.'); put(HELP_READY, { id: 'helpready', on: !!body.on, at: today(), by: me }); }
+      // a new Help answer starts with its question and its first step, and the director writes the rest in Edit
+      if (P === 'help/add') { if (!dir) return deny('Only the director adds a Help answer.'); const hd = Object.assign({ id: 'help', list: [] }, get(HELP) || {}); const L = hd.list || [];
+        let n = L.length + 1; const ids = new Set(L.map(x => x && x.id)); while (ids.has('h' + String(n).padStart(2, '0'))) n++;
+        const q = String(body.q || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!q) return err(req, res, 400, 'Write the question first.');
+        const x = { id: 'h' + String(n).padStart(2, '0'), q, a: ['Write the first step here.'], roles: ['educator', 'director'], words: '', addedBy: me, addedAt: Date.now() };
+        put(HELP, Object.assign({}, hd, { list: [...L, x] })); json(req, res, 200, Object.assign({}, helpFor(me), { added: x.id })); return; }
       json(req, res, 200, helpFor(me)); return;
     }
     if (P === 'familypieces' || P === 'familypieces/ready') {
@@ -994,7 +1062,7 @@ module.exports = function staffModule(o) {
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
-  const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
+  const G = require('./growth.js')({ edWords: () => edTexts(), get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id), putText, piecesChanged: () => { pieceCache = null; } });
   // PD paths and assignments, beside the PD library's modules
   const PA = require('./paths.js')({ get, put, log, S, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder: (l, me) => newedOrder(l, me), goToName, reminders });

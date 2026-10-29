@@ -47,7 +47,7 @@
           ${img(p.photo, p.common)}${p.child ? `<p>${esc(p.child)}</p>` : ''}<p class="small"><b>${esc(eat(p))}</b>${p.gather ? '. Gather with an educator.' : ''}</p>${p.page && p.page !== '.' ? `<p class="small">${esc(p.page)}</p>` : ''}</details>`).join('')}` : ''}
         ${(c.plants.fieldGuides || []).length ? `<div class="small" style="font-weight:700;margin-top:10px">Who we might see in each yard</div>${c.plants.fieldGuides.map(f => `<details class="cm-area"><summary><b>${esc(f.title)}</b> <span class="small muted">${f.entries.length}</span></summary>
           <div class="cm-grid">${f.entries.map(e => `<div class="cm-tile">${src(base, e.photo) ? `<img src="${esc(src(base, e.photo))}" alt="${esc(e.name)}" loading="lazy">` : '<div class="cm-soft"></div>'}<b class="small">${esc(e.name)}</b>${e.line ? `<div class="small">${esc(e.line)}</div>` : ''}${e.photo && e.photo.credit ? `<div class="small muted">${esc(e.photo.credit)}</div>` : ''}</div>`).join('')}</div>
-          <p class="small muted">We look with our eyes and leave them be.</p></details>`).join('')}` : ''}
+          <p class="small muted">${esc(f.intro || 'We look with our eyes and leave them be.')}</p></details>`).join('')}` : ''}
       </details></section>`;
     }
     return h;

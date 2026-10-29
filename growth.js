@@ -16,6 +16,8 @@ module.exports = function growthModule(c) {
   const { get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, putText, piecesChanged } = c;
   const isFormer = n => !!n && !!c.isFormerEducator && c.isFormerEducator(n);
+  // the director's own words for the PD library's descriptions, until a module is written
+  const edWords = c.edWords;
   const DAY = 864e5;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
   const txt = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, n || 4000);
@@ -158,7 +160,7 @@ module.exports = function growthModule(c) {
     return out; };
   // the library's list, the design's modules in order, then modules written since, in their own order
   const libraryList = me => { const dir = isDirector(me); const m = modules();
-    const base = MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: m[k] && (dir || published(k)) ? m[k].title : t, desc: m[k] && m[k].desc && (dir || published(k)) ? m[k].desc : d, areas: a, ready: k === 'licensing' || k === 'howto' || (dir ? !!m[k] : published(k)), waiting: !!(dir && m[k] && waitingOf(k)), minutes: (m[k] || {}).minutes || 0 }));
+    const base = MODULE_LIST.map(([k, t, d, a]) => ({ slug: k, title: m[k] && (dir || published(k)) ? m[k].title : t, desc: m[k] && m[k].desc && (dir || published(k)) ? m[k].desc : ((edWords && edWords()['PD library, ' + t]) || d), areas: a, ready: k === 'licensing' || k === 'howto' || (dir ? !!m[k] : published(k)), waiting: !!(dir && m[k] && waitingOf(k)), minutes: (m[k] || {}).minutes || 0 }));
     const more = Object.values(m).filter(x => !MODULE_LIST.some(l => l[0] === x.slug) && (dir || published(x.slug))).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
       .map(x => ({ slug: x.slug, title: x.title, desc: x.desc, areas: x.serves, ready: true, waiting: !!(dir && waitingOf(x.slug)), minutes: x.minutes }));
     return [...base, ...more]; };
@@ -866,5 +868,5 @@ module.exports = function growthModule(c) {
 
   const planStarted = name => { const pl = (growth(name).plans || {})[thisYear()]; return !!pl && !!(String(((pl.wentWell || {}).text) || '').trim() || (pl.goals || []).some(g => String(g.text || '').trim()) || pl.feedback); };
   const hasGrowth = name => !!get(gPath(name)) || !!get(jPath(name));
-  return { planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, allowed, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; restCache = null; }, AREAS, schedule, periodOf };
+  return { MODULE_LIST, planStarted, momentsOf, hasGrowth, handle, calendarExtra, tick, applySeed, displayMoments, momentFile, takesPart, allowed, people, growth, gPath, jPath, modules, published, readingsFor, rev: () => rev, invalidate() { modCache = null; restCache = null; }, AREAS, schedule, periodOf };
 };
