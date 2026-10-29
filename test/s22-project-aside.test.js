@@ -20,6 +20,7 @@ test('Not part of this project takes an observation out of the project only, and
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => openProject('x1')); await s.p.waitForSelector('[data-projout="x1|n2"]', { timeout: 15000, state: 'attached' });
   await s.p.click('summary:has-text("Observations")');
+  await s.p.click('#pmore-n2 > summary');
   assert.match(await s.p.innerText('#main'), /Sang the goodbye song/);
   await s.p.click('[data-projout="x1|n2"]'); await s.p.waitForTimeout(500);
   const txt = await s.p.innerText('#main');

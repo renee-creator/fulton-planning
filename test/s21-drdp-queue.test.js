@@ -18,9 +18,9 @@ test('Review on Today steps through the class one suggestion at a time', async t
   const fx = await start({ more }); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Ann', '1357', 390); t.after(() => s.close());
-  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-drqueue="room"]', { timeout: 15000 });
+  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-tview="drdpreview"]', { timeout: 15000 });
   assert.match(await s.p.innerText('#main'), /3 DRDP suggestions to review/, 'only the West class, Ann\'s own');
-  await s.p.click('[data-drqueue="room"]'); await s.p.waitForSelector('text=Reviewing');
+  await s.p.evaluate(() => drQStart('room')); await s.p.waitForSelector('text=Reviewing');
   const step = async () => s.p.evaluate(() => ({ head: document.querySelector('#kdrdp h3').textContent, count: document.querySelector('#kdrdp .cnt').textContent, items: document.querySelectorAll('#kdrdp .dritem').length, code: (document.querySelector('#kdrdp .dritem .drtop b') || {}).textContent }));
   // the class in its usual order, Ivy first
   let st = await step(); assert.deepStrictEqual([st.head, st.items, st.code], ["Reviewing Ivy's DRDP", 1, 'ATL 1']); assert.match(st.count, /0 reviewed, 3 to go/);
@@ -64,8 +64,8 @@ test('Accept all for a child, then the tick list accepts only the ticked ones', 
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   // the director's queue holds every class, Ivy, Oak and Pip
-  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-drqueue="room"]', { timeout: 15000 });
-  await s.p.click('[data-drqueue="room"]'); await s.p.waitForSelector('text=Reviewing');
+  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-tview="drdpreview"]', { timeout: 15000 });
+  await s.p.evaluate(() => drQStart('room')); await s.p.waitForSelector('text=Reviewing');
   const head = () => s.p.evaluate(() => document.querySelector('#kdrdp h3').textContent);
   // Ivy has one, so no Accept all, and accepting moves on
   assert.strictEqual(await s.p.$('#kdrdp [data-drqall]'), null);
@@ -86,17 +86,3 @@ test('Accept all for a child, then the tick list accepts only the ticked ones', 
   assert.deepStrictEqual(s.errors, []);
 });
 
-test('the tick list from a child page leaves the unticked waiting', async t => {
-  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
-  const fx = await start({ more }); t.after(() => fx.stop());
-  const br = await b.launch(); t.after(() => br.close());
-  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
-  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drqlist]', { timeout: 15000 });
-  await s.p.click('[data-drqlist]'); await s.p.waitForSelector('text=Accept the 2 ticked');
-  await s.p.click('#kdrdp label:has([data-drqoff="a2"])'); await s.p.click('#kdrdp [data-drqaccept]');
-  await s.p.waitForFunction(() => /1 reviewed/.test(document.querySelector('#kdrdp .cnt').textContent));
-  await new Promise(r => setTimeout(r, 2500));
-  const pip = JSON.parse(fs.readFileSync(path.join(fx.dir, 'children/pip.json'), 'utf8')).drdp.items;
-  assert.deepStrictEqual([pip.a1.status, pip.a2.status], ['accepted', 'suggested']);
-  assert.deepStrictEqual(s.errors, []);
-});

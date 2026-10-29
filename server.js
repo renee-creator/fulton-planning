@@ -31,9 +31,10 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation'];
-// records only the director sees and changes. The monthly family newsletter is made in the director's view.
-const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports'];
+// records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
+// reading report is the director's, and each class team reads its own class's through /api/reports/mine.
+const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
 // a project's wall is the director's. Educators receive the project without it, and their saves keep it as it is.
 const forViewer = (kind, doc, director) => (kind === 'projects' && !director && doc && doc.wall !== undefined) ? Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'wall')) : doc;
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
@@ -412,7 +413,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -427,7 +428,7 @@ async function mailCode(to, code) {
 }
 const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
+const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -1396,7 +1397,7 @@ async function suggestThreadFor(id) {
     const added = (t.evidence || []).filter(e => e && e.via === 'suggest' && e.why).slice(-3).map(e => ({ words: String(e.text || '').slice(0, 140), why: String(e.why).slice(0, 140) }));
     const no = []; for (const [, nr] of store.recs.notices) { const nd = nr.doc; if (nr.deleted || !nd) continue; for (const w of nd.threadNoWhy || []) if (w && w.id === tid) no.push({ words: [nd.noticed, nd.wonder].filter(Boolean).join(' ').slice(0, 140), why: String(w.why || '').slice(0, 140), at: w.at || 0 }); }
     const turnedDown = no.sort((a, b) => b.at - a.at).slice(0, 3).map(({ words, why }) => ({ words, why }));
-    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
+    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), team_notes: String(t.notes || '').trim().slice(0, 600), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
   if (!live.length) return;
   const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
   if (docs.some(d => d.threadSuggestKey === keyNow)) return;
@@ -1427,7 +1428,7 @@ async function suggestForProject(pid, key) {
   const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); if (!tids.size) return { suggest: [], key: 'none' };
   const fromEv = new Map();
   for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) fromEv.set(e.planId || e.id, id); }
-  const skip = new Set([...(x.evidence || []).map(e => e && (e.planId || e.id)), ...(x.setAside || []).map(a => a && a.id), ...(x.suggestNo || []).map(a => a && a.id)].filter(Boolean));
+  const skip = new Set([...(x.evidence || []).map(e => e && (e.planId || e.id)), ...(x.setAside || []).map(a => a && a.id), ...(x.suggestNo || []).map(a => a && a.id), ...(x.foundNo || [])].filter(Boolean));
   const seen = new Set(), cands = [];
   for (const [nid, nr] of store.recs.notices) { const n = nr.doc; if (nr.deleted || !n) continue;
     const tid = n.threadId && tids.has(n.threadId) ? n.threadId : fromEv.get(nid); if (!tid) continue;
@@ -1445,6 +1446,8 @@ async function suggestForProject(pid, key) {
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
   const tname = id => { const d = store.recs.threads.get(id); return d && d.doc ? String(d.doc.name || '').slice(0, 80) : ''; };
+  // the team's notes on each thread say how the team approaches it, so the reading weighs them
+  about.threads = [...tids].map(id => { const d = store.recs.threads.get(id); return d && d.doc ? { name: tname(id), question: String(d.doc.question || '').slice(0, 200), team_notes: String(d.doc.notes || '').trim().slice(0, 600) } : null; }).filter(Boolean);
   const prompt = `Educators at a preschool are following this project.\n${JSON.stringify(about)}\nThese observations were kept in threads the project follows. A thread can follow more than one project, so many of them belong to other work.\n${JSON.stringify(ask.map(c => ({ id: c.id, thread: tname(c.thread), words: c.words })))}\nName only the observations whose words clearly show the children doing, saying or wondering about what this project is about. When in doubt, leave it out. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence"}]}, and {"fits":[]} when none clearly fit.`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });
@@ -1594,7 +1597,7 @@ async function displayFeed() {
   const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
   let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
-  const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.by),
+  const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.kaymbu && n.kaymbu.sentBy ? '' : n.by),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
   // the reflection educators write once a week has passed, Final remarks on an Individual plan and After the week on a Small Group plan
   const sinceWeek = addDay(mondayFor(laDayOf(now)), -21);
@@ -1616,7 +1619,7 @@ async function displayFeed() {
       if (!squash(src).includes(squash(q))) continue;
       lensSeen.add(m.planId + '|' + squash(q));
       lensMoments.push({ id: sc.id + '.' + m.planId + '.' + lensMoments.length, lens: trim(sc.lensName, 80), quote: trim(q, 300), language: trim(m.language, 40),
-        found: p ? PLAN_NAME[p.type] || 'plan' : 'observation', by: firstName(p ? p.educator : n.by), room: p ? p.classroom || '' : roomsOf(n)[0] || '', week: p ? p.weekOf || '' : n.week || '', at: n ? n.at || 0 : 0 });
+        found: p ? PLAN_NAME[p.type] || 'plan' : 'observation', by: firstName(p ? p.educator : (n.kaymbu && n.kaymbu.sentBy ? '' : n.by)), room: p ? p.classroom || '' : roomsOf(n)[0] || '', week: p ? p.weekOf || '' : n.week || '', at: n ? n.at || 0 : 0 });
     }
   }
   // threads the school is following now, with the last words that joined them
@@ -2196,6 +2199,10 @@ async function handle(req, res) {
     cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
     json(req, res, 200, Object.assign({ familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }, changed ? { changed: true } : {})); return;
   }
+  if (path === '/api/reports/mine') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const room = isDirector(me.name) ? '' : String((accountFor(me.name) || {}).room || '');
+    const list = []; for (const [, r] of store.recs.reports) { const d = r && !r.deleted && r.doc; if (d && (isDirector(me.name) || (room && d.room === room))) list.push(d); }
+    list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || ''))); json(req, res, 200, { room, reports: list.slice(0, 26) }); return; }
   if (path === '/api/projects/suggest') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the threads for a project.'); return; }
     json(req, res, 200, await suggestForProject(String(body.id || ''), String(body.key || ''))); return; }
   if (path === '/api/transition/nextschool') {
