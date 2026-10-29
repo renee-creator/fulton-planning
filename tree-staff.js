@@ -101,6 +101,10 @@
 "use strict";
 const T={};window.TreeStaff=T;
 let B=null;
+// the Educators pages' own words, which the director writes, with names filled in
+const W=(k,v)=>String(((B&&B.defs&&B.defs.texts)||{})[k]||"").replace(/\{(\w+)\}/g,(m,n)=>v&&v[n]!=null?String(v[n]):m);
+// a part of two paragraphs, its title and its question
+const W2=k=>{const ps=W(k).split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);return [ps[0]||"",ps.slice(1).join(" ")]};
 const st={who:"",doc:null,people:null,drills:null,pd:null,pol:{},polSec:"",polEdit:false,polHist:-1,fhYear:"",polAcks:null,piece:"",mod:"",newWho:"",adding:false,group:false,busy:"",viewer:null};
 const api=(p,b)=>window.FP_API("/api/staff/"+p,b||{});
 const fail=e=>toast((e&&(e.message||e.error))||"That did not work. Check the connection and try again.");
@@ -189,7 +193,9 @@ const report=(title,meta,blocks)=>({display:true,type:"report",acc:"story",title
 async function out(kind,docs,name){try{if(kind==="word")await makeDocx(docs,safeFile(name)+".docx");else await makePdf(docs,safeFile(name)+".pdf")}catch(e){fail(e)}}
 
 /* ---------- data ---------- */
-async function boot(force){if(!B||force){B=await api("boot");}return B}
+// after the director changes the Educators pages' own words, they are read again
+T.reboot=async()=>{await boot(true)};
+async function boot(force){if(!B||force){B=await api("boot");if(window.TREE_GROWTH_WORDS)window.TREE_GROWTH_WORDS()}return B}
 async function loadPerson(name){st.doc=await api("person",{name});st.who=name;return st.doc}
 async function save(doc,msg){try{st.doc=await api("save",{name:doc.name,doc});if(msg)toast(msg);return st.doc}catch(e){fail(e);return null}}
 async function loadPeople(){const r=await api("people");st.people=r.people;st.drills=r.drills;return r}
@@ -286,7 +292,7 @@ function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,in
   if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
+T._={W,W2,tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
@@ -303,13 +309,13 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
 // the onboarding path a new educator receives, First weeks unless the director chooses another onboarding path
 const onbSelect=(id,cur,attr)=>{const L=((pa.data||{}).paths||[]).filter(p=>p.onboarding);return L.length>1?`<label>Onboarding path<select ${attr||`id="${id}"`}>${L.map(p=>`<option value="${p.id==="firstweeks"?"":H(p.id)}" ${(cur||"")===(p.id==="firstweeks"?"":p.id)?"selected":""}>${H(p.title)}</option>`).join("")}</select></label>`:""};
 function addNewHtml(){const names=B.people||[];
-  return card("Add a new educator",st.adding?`<div class="hint">They sign in with their first name before their first day and reach only the New Educator section. You turn on full access once their clearances are in.</div>
+  return card("Add a new educator",st.adding?`<div class="hint">${H(W("Add a new educator"))}</div>
     <div class="kfields"><label>First name<input type="text" id="stn-name" placeholder="First name"></label><label>Class<select id="stn-room"><option value="">No class</option>${CLASSROOMS.map(r=>`<option>${H(r)}</option>`).join("")}</select></label>
       <label>Role<select id="stn-role"><option value="educator">Educator</option><option value="apprentice">Apprentice</option></select></label><label>Start date<input type="date" id="stn-start"></label><label class="radio" style="grid-column:span 2"><input type="checkbox" id="stn-exp"><span>An experienced educator, who also reads the part for experienced educators</span></label>
       ${onbSelect("stn-onb","")}</div><div class="hint">${B.goTo?H(B.goTo)+" is the go-to person for every new educator.":"Name the go-to person for new educators in Settings."}</div>
     <div class="actions"><button class="btn small" data-stnew="add">Add</button><button class="linkbtn" data-stnew="cancel">Cancel</button></div>`:`<div class="actions" style="margin:0"><button class="btn small ghost" data-stnew="open">Add a new educator</button></div>`)}
 function groupHtml(){const names=B.people||[];
-  return card("Record a training for a group",st.group?`<div class="hint">For an in-house Pediatric First Aid and CPR class, or the yearly emergency and disaster plan training. Everyone chosen gets the same date, and the class roster is kept with each record.</div>
+  return card("Record a training for a group",st.group?`<div class="hint">${H(W("Record a training for a group"))}</div>
     <div class="kfields"><label>Training<select id="stg-item">${ITEMS().filter(i=>["cpr","eplan","hsa","hs16","mandated","water","rcwater","activesup"].includes(i.k)).map(i=>`<option value="${i.k}">${H(i.label)}</option>`).join("")}</select></label><label>Date<input type="date" id="stg-date" value="${today()}"></label></div>
     <div class="chips" style="margin-top:8px">${names.map(n=>`<button class="chip on" type="button" data-stgname="${H(n)}">${H(n)}</button>`).join("")}</div>
     <div class="actions"><span class="cnt" id="stg-roster">No roster yet</span><button class="btn small ghost" data-stgroup="roster">Upload the roster</button><button class="btn small" data-stgroup="save">Record for everyone chosen</button><button class="linkbtn" data-stgroup="cancel">Cancel</button></div>`:
@@ -336,7 +342,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
       <div class="kfields"><label>Date${it.k==="hs16"?" completed":""}<input type="date" data-stitem="${it.k}" data-f="date" value="${H(r.date||"")}"></label>${it.months||it.k==="water"?`<label>Expires, if the card says<input type="date" data-stitem="${it.k}" data-f="expires" value="${H(r.expires||"")}"></label>`:""}</div>
       <div class="stfiles">${fileList(p,r.files,who)}<button class="btn small ghost" data-stup="item|${it.k}">Upload a photo or PDF</button>${dir?`<button class="linkbtn" data-stlink="item|${it.k}">Link one in Drive</button>`:""}</div></div>`}).join("");
   const fl=fluState(p),f=(p.flu||{})[fl.season]||{};
-  const imm=`<div class="strow"><div class="sttop"><b>Flu vaccine, ${H(fl.season)} to ${H(+fl.season+1)}</b>${chip(fl.s,fl.t)}</div><div class="cnt">Due each year between August 1 and December 1.</div>
+  const imm=`<div class="strow"><div class="sttop"><b>Flu vaccine, ${H(fl.season)} to ${H(+fl.season+1)}</b>${chip(fl.s,fl.t)}</div><div class="cnt">${H(W("The flu vaccine, when it is due"))}</div>
       <div class="kfields"><label>On file<select data-stflu="status"><option value="">Not yet</option>${[["vaccinated","Flu shot"],["declined","Declined in writing"],["medical","Medical exemption"]].map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select></label><label>Date<input type="date" data-stflu="date" value="${H(f.date||"")}"></label></div>
       <div class="stfiles">${fileList(p,f.files,who)}<button class="btn small ghost" data-stup="flu|${fl.season}">Upload a photo or PDF</button></div></div>
     ${["pertussis","measles"].map(k=>{const r=(p.once||{})[k]||{};const s=onceState(r);return `<div class="strow"><div class="sttop"><b>${k==="pertussis"?"Pertussis, whooping cough":"Measles"}</b>${chip(s.s,s.t)}</div><div class="cnt">Recorded once.</div>
@@ -345,10 +351,10 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
   const u=p.units||{},sem=semester(),semRec=((u.semesters||{})[sem])||{};const below=u.completed!==undefined&&u.completed!==""&&Number(u.completed)<12;
   const units=`<div class="kfields"><label>Early childhood units completed<input type="number" min="0" max="200" step="0.5" data-stunits="completed" value="${H(u.completed??"")}"></label></div>
     ${below?`<div class="strow"><div class="sttop"><b>Proof of enrollment, ${H(semLabel(sem)||"this semester")}</b>${(semRec.files||[]).length?chip("ok","On file"):chip(sem?"soon":"missing",sem?"Upload this semester":"Next semester")}</div>
-      <div class="cnt">Below twelve units, upload proof of enrollment each semester until you reach twelve.</div>${sem?`<div class="stfiles">${fileList(p,semRec.files,who)}<button class="btn small ghost" data-stup="sem|${sem}">Upload proof of enrollment</button></div>`:""}</div>`:""}
+      <div class="cnt">${H(W("Proof of enrollment, below twelve units"))}</div>${sem?`<div class="stfiles">${fileList(p,semRec.files,who)}<button class="btn small ghost" data-stup="sem|${sem}">Upload proof of enrollment</button></div>`:""}</div>`:""}
     <div class="stfiles">${fileList(p,u.files,who)}<button class="btn small ghost" data-stup="units|">Upload transcripts</button></div>`;
   const hy=hoursYear(p);
-  const hours=`<div class="hint">Only courses from Department-approved sources count toward the 12 continuing hours required each year from October 1, 2027. Licensing at Fulton Community School, PD modules and PD days count toward our own professional development hours.</div>
+  const hours=`<div class="hint">${H(W("Continuing hours, what counts"))}</div>
     <div class="actions"><span class="stchip ${hy.approved>=12?"ok":"missing"}">${r1(hy.approved)} of 12 approved hours this school year</span><span class="stchip missing">${r1(hy.fulton)} hours of our own PD</span></div>
     ${hy.list.length?`<div class="tablewrap"><table class="grid2" style="min-width:520px"><thead><tr><th>Date</th><th>Course</th><th>Hours</th><th>Counts toward</th><th></th></tr></thead><tbody>${[...hy.list].sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(h=>`<tr><td>${H(fd(h.date))}</td><td>${H(h.title)}<div class="stfiles">${fileList(p,h.files,who)}${h.by==="TREE"?"":`<button class="linkbtn" data-stup="hours|${H(h.id)}">Upload proof</button>`}</div></td><td>${H(h.hours)}</td><td>${h.approved?"The 12 approved hours":"Our PD hours"}</td><td>${h.by==="TREE"?"":`<button class="linkbtn" data-sthdel="${H(h.id)}">Remove</button>`}</td></tr>`).join("")}</tbody></table></div>`:""}
     <div class="kfields" style="margin-top:8px"><label>Course<input type="text" id="sth-title" placeholder="Name of the course"></label><label>Date<input type="date" id="sth-date" value="${today()}"></label><label>Hours<input type="number" id="sth-hours" min="0.25" step="0.25" value="1"></label></div>
@@ -365,13 +371,13 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
     ${card("Records and certificates",itemsHtml+(dir?chosenHtml(p):""))}
     ${await noticesRecCard(who,dir,mine)}
     ${await noticesNewCard(who,dir)}
-    ${card("Immunizations",`<div class="hint">California requires everyone who works at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995. Records and exemptions are seen only by ${mine?"you":"the educator"} and the director.</div>${imm}`)}
+    ${card("Immunizations",`<div class="hint">${H(W("Immunizations, on a records page",{who:mine?"you":"the educator"}))}</div>${imm}`)}
     ${card("Early childhood units",units)}
     ${card("Continuing hours, this school year",hours)}
     ${p.policy?polRecordCard(p.policy,mine):""}
     ${careFor(p)?card("Licensing at Fulton Community School",`<div class="actions" style="margin:0"><span class="stchip ${doneN===pcs.length&&pcs.length?"ok":"missing"}">${doneN} of ${pcs.length} pieces read</span><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Open the pieces</button></div>`):""}
     ${dir&&!mine?licensingListHtml(p,pcs):""}
-    ${focus.length?card("Suggested Focus Until Next Time",`<div class="hint">A licensing item marked Let's review together becomes a suggested focus, which ${mine?"you":"the educator"} and the director confirm together.</div>${focus.map(f=>`<div class="strow"><div class="sttop"><b>${H(f.label)}</b>${f.educatorOk&&f.directorOk?chip("ok","Confirmed together"):chip("soonish","Suggested")}</div>
+    ${focus.length?card("Suggested Focus Until Next Time",`<div class="hint">${H(W("Suggested Focus Until Next Time",{who:mine?"you":"the educator"}))}</div>${focus.map(f=>`<div class="strow"><div class="sttop"><b>${H(f.label)}</b>${f.educatorOk&&f.directorOk?chip("ok","Confirmed together"):chip("soonish","Suggested")}</div>
       <div class="actions" style="margin:0">${(mine||!dir)?(!f.educatorOk?`<button class="btn small ghost" data-stfocus="${H(f.id)}">Confirm</button>`:`<span class="cnt">You confirmed ${H(fms(f.educatorOk))}</span>`):`<span class="cnt">${f.educatorOk?"Educator confirmed":"Waiting for the educator"}</span>`}${dir?`<button class="btn small ghost" data-stfocus="${H(f.id)}">${f.directorOk?"Undo your confirmation":"Confirm as director"}</button>`:""}</div></div>`).join("")}${B.can&&B.can.growth?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-tview="stci">Focus Until Next Time and check-ins</button></div>`:""}`):""}`)}
 const whoRole=p=>p.role||(B.whosWho.find(w=>w.name===p.name)||{}).role||"Educator";
 const roomName=p=>{const r=p.room||(B.whosWho.find(w=>w.name===p.name)||{}).room||(p.name===meName()?B.me.room:"");return r?r+" class":""};
@@ -382,7 +388,7 @@ function licensingListHtml(p,pcs){const L=pcs.filter(x=>x.list==="title22"||x.li
       <div class="tseg" role="group" aria-label="${H(x.title)}"><button data-streview="${H(x.id)}|inplace" aria-pressed="${!!(r&&r.mark==="inplace")}">In place</button><button data-streview="${H(x.id)}|review" aria-pressed="${!!(r&&r.mark==="review")}">Let's review together</button></div>
       ${done&&done.answer?`<details><summary class="cnt">Their answer to the one question</summary><div class="stq" style="margin-top:6px;white-space:pre-line">${H(done.answer)}</div></details>`:""}</div>`};
   const marked=L.filter(x=>rv[x.id]).length;
-  return card("Licensing and Safety",`<div class="hint">Go over the list together at the August PD day and when a new educator starts. Let's review together adds a suggested Focus Until Next Time, which you confirm together.</div>
+  return card("Licensing and Safety",`<div class="hint">${H(W("Licensing and Safety"))}</div>
     <h4 style="margin:10px 0 0">Title 22 requirements</h4>${L.filter(x=>x.list==="title22").map(row).join("")}<h4 style="margin:12px 0 0">Our own procedures</h4>${L.filter(x=>x.list==="procedure").map(row).join("")}`,`${marked} of ${L.length} marked`)}
 
 /* October 1, 2027 */
@@ -394,7 +400,7 @@ async function page27(my){if(!D())return pageRecords(my);await loadPeople();cons
     card("Who is ready",`<div class="actions" style="margin:0 0 8px"><span class="stchip ${ready===rows.length?"ok":"soon"}">${ready} of ${rows.length} have both today</span></div>
       <div class="tablewrap"><table class="grid2" style="min-width:640px"><thead><tr><th>Educator</th><th>Pediatric first aid and CPR</th><th>16 hours of health and safety</th><th>Approved hours this year</th><th>Our PD hours</th></tr></thead><tbody>
       ${rows.map(r=>`<tr data-stperson="${H(r.p.name)}" style="cursor:pointer"><td><b>${H(r.p.name)}</b><div class="cnt">${H(r.p.role)}</div></td><td>${chip(r.c.s,r.c.t)}</td><td>${r.h.date?chip("ok","Done "+fd(r.h.date)):chip("missing","Not yet")}</td><td>${r1(r.hy.approved)} of 12</td><td>${r1(r.hy.fulton)}</td></tr>`).join("")}</tbody></table></div>
-      <div class="hint" style="margin-top:6px">Only courses from Department-approved sources count toward the 12 hours. The required topics are emergency and disaster preparedness, building and premises safety including bodies of water and traffic, safe sleep, prevention of shaken baby syndrome and child maltreatment, transporting children safely, infectious diseases, food and allergy emergencies, hazardous materials and biocontaminants, and giving medication with family consent.</div>`,printBar("oct27")))}
+      <div class="hint" style="margin-top:6px">${H(W("Continuing hours, the required topics"))}</div>`,printBar("oct27")))}
 
 /* the drill log */
 async function pageDrills(my){if(!D())return pageRecords(my);await loadPeople();const L=st.drills||[];const last=L.map(d=>d.date).sort().pop();const due=last?addMonths(last,3):"";
@@ -435,7 +441,7 @@ async function noticesNewCard(who,dir){let d;try{d=await loadNotices(who)}catch(
   const rows=d.defs.newhire.map(x=>{const a=(d.mine.acks||{})[x.id];
     return `<div class="strow"><div class="sttop"><b>${H(x.title)}</b>${x.how==="packet"?chip("ok","In the hiring packet"):a?chip("ok","Received "+fd(a.day)):chip("missing","Not yet")}</div><div class="cnt">${H(x.agency)}. ${H(x.when)}.</div>
       <div class="stfiles"><a class="linkbtn" href="${H(x.id==="kyr"?d.link:x.url)}" target="_blank" rel="noopener">The official page</a>${x.how==="packet"?`<span class="cnt">This is a filled-in form. It stays in the paper and QuickBooks Workforce hiring packet.</span>`:mine&&!a?`<button class="btn small" data-ntcack="${H(x.id)}">I have received this notice</button>`:""}${dir?" "+ntcStatus(x):""}</div></div>`}).join("");
-  return card("Notices for a new educator",`${!d.ready?`<div class="hint warnline">A draft. Only you see it until you mark Required notices ready.</div>`:""}<div class="hint">Each notice comes from the agency that publishes it. Read it on the official page, or on the copy the director gives you, then say you have received it.</div>${rows}
+  return card("Notices for a new educator",`${!d.ready?`<div class="hint warnline">A draft. Only you see it until you mark Required notices ready.</div>`:""}<div class="hint">${H(W("Notices for a new educator"))}</div>${rows}
     <div class="kfields" style="margin-top:8px">${ntcLang(who,d.mine.lang,d.defs.langs)}</div>${ntcEmergency(who,d.mine.emergency,d.defs.rules)}`)}
 // the records page shows the dates, the language and the emergency contact
 async function noticesRecCard(who,dir,mine){let d;try{d=await loadNotices(who)}catch(e){return ""}
@@ -453,8 +459,8 @@ async function pageNotices(my){const dir=D();const d=await loadNotices(meName(),
     <div class="cnt">Each January a reminder asks you to check the posters and give this notice by February 1. <a href="${H(r.notice)}" target="_blank" rel="noopener">The Know Your Rights notice</a>, <a href="${H(r.url)}" target="_blank" rel="noopener">the Labor Commissioner's letter</a> and <a href="${H(r.postings)}" target="_blank" rel="noopener">Workplace Postings</a>, where each other language is listed.</div>`):"";
   draw(my,head("Policies and Procedures","Required notices","The notices and posters the official agency pages ask of an employer of our size, each linked to its official page. Notice text is never copied here.")+
     (dir?card("For staff",`<div class="actions" style="margin:0">${d.ready?chip("ok","Ready, staff see it"):chip("soon","A draft, only you see it")}<button class="btn small ghost" data-ntcready="${d.ready?"0":"1"}">${d.ready?"Back to draft":"Mark it ready"}</button></div>`):"")+
-    card("Workplace posters",`<div class="hint">The posters still hang in the staff area. This list is for finding and replacing them.</div>${d.defs.posters.map(ntcRow).join("")}`)+
-    card("New hire notices",`<div class="hint">Shown in the New Educator section. A filled-in form stays in the paper and QuickBooks Workforce hiring packet.</div>${d.defs.newhire.map(ntcRow).join("")}`)+give)}
+    card("Workplace posters",`<div class="hint">${H(W("Workplace posters"))}</div>${d.defs.posters.map(ntcRow).join("")}`)+
+    card("New hire notices",`<div class="hint">${H(W("New hire notices"))}</div>${d.defs.newhire.map(ntcRow).join("")}`)+give)}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-ntcack],[data-ntcemsave],[data-ntcgivesave],[data-ntcready]");if(!t)return;
   if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
   try{
@@ -485,7 +491,7 @@ async function pageNew(my){const dir=D();let who=meName();
   draw(my,`${head("New Educator",dir?who+", New Educator":"Welcome to Fulton Community School",dir?`What ${H(who)} sees in their New Educator section, with your marks.`:"Onboarding is designed so you arrive on your first day knowing what to expect, with your paperwork in order and a colleague ready to support you. Everything you complete here lands on your records page, so nothing is entered twice.")}
     ${dir?`<div class="actions" style="margin:0 0 10px">${st.people.filter(x=>x.newHire||x.newEd).map(x=>`<button class="pill" aria-pressed="${x.name===who}" data-stnewwho="${H(x.name)}">${H(x.name)}</button>`).join("")}</div>`:""}
     ${card("Your first two months",`<div class="cnt">${H([start?"Start date "+fd(start):"The director adds your start date",starting?"Starting-point conversation with the director around "+fd(starting):""].filter(Boolean).join(". "))}${start?".":""}</div>
-      ${goTo?`<div style="margin-top:6px"><b>${H(goTo)}</b> is the go-to person for every new educator. ${dir?H(goTo)+" answers their questions, walks them through paperwork and routines, and checks in briefly at the end of each of their first weeks. The educators on their class team help on the floor every day.":`${H(goTo)} answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks. The educators on your class team help you on the floor every day. You can bring ${H(goTo)} into your starting-point conversation if you like.`}</div>`:`<div class="cnt" style="margin-top:6px">The director names the go-to person in Settings.</div>`}
+      ${goTo?`<div style="margin-top:6px"><b>${H(goTo)}</b> is the go-to person for every new educator. ${H(W(dir?"The go-to person, for the director":"The go-to person, for a new educator",{goTo}))}</div>`:`<div class="cnt" style="margin-top:6px">The director names the go-to person in Settings.</div>`}
       ${dir?`<div class="kfields" style="margin-top:6px">${onbSelect("",pr.onboarding,`data-stprof="${H(who)}|onboarding"`)}</div>`:""}
       ${dir?`<div class="actions">${(st.people.find(x=>x.name===who)||{}).newHire?`<button class="btn small" data-staccess="full" data-who="${H(who)}">Turn on full access to the school, the children and their work</button>`:`<span class="cnt">Full access is on.</span><button class="linkbtn" data-staccess="limit" data-who="${H(who)}">Limit to the New Educator section</button>`}</div>`:""}`)}
     ${await neCard(who,dir)}
@@ -495,12 +501,12 @@ async function pageNew(my){const dir=D();let who=meName();
     ${(()=>{const f=window.TREE_SMAP_FOLD?window.TREE_SMAP_FOLD("smap-ne",{open:true,label:"The site map"}):"";return f?card("Our site",`<div class="hint">The classes, the yards, the garden and the farm, from above. Tap a space to find its name, and pinch or use the zoom buttons to look closer.</div>${f}`):""})()}
     ${card("Who's who",`<div class="tablewrap"><table class="grid2" style="min-width:360px"><thead><tr><th>Name</th><th>Role</th><th>Class</th></tr></thead><tbody>${B.whosWho.map(w=>`<tr><td><b>${H(w.name)}</b></td><td>${H(w.role)}</td><td>${H(w.room?w.room+" class":"")}</td></tr>`).join("")}</tbody></table></div>
       ${!dir?`<div class="actions">${(p.pd&&p.pd.read||{}).whoswho?chip("ok","Read"):`<button class="btn small ghost" data-stread="whoswho">I have read Who's who</button>`}</div>`:""}`)}
-    ${card("Paperwork",`<div class="hint">Each form has a blank copy to download and print, and a place to upload the completed form as a photo or PDF. Uploads save to the school's Google Drive. Payroll and tax forms are completed in QuickBooks Workforce.</div>${papers.map(paperRow).join("")}
-      <div class="strow"><div class="sttop"><b>Social Security card and driver's license</b>${idr.done?chip("ok","Seen and filed"):chip("missing","Not yet")}</div><div class="cnt">Shown to the director in person and copied for the paper personnel file only. They are never uploaded to TREE.</div>
+    ${card("Paperwork",`<div class="hint">${H(W("Paperwork"))}</div>${papers.map(paperRow).join("")}
+      <div class="strow"><div class="sttop"><b>Social Security card and driver's license</b>${idr.done?chip("ok","Seen and filed"):chip("missing","Not yet")}</div><div class="cnt">${H(W("Social Security card and driver's license"))}</div>
         ${dir?`<label class="radio"><input type="checkbox" data-stdirpaper="idseen" ${idr.done?"checked":""}><span>Seen and filed</span></label>`:""}</div>`,printBar("paperwork"))}
-    ${card("Immunizations",`<div class="hint">California requires everyone who works or volunteers at a child care center to be immunized against influenza, pertussis and measles, under Health and Safety Code 1596.7995.</div>
+    ${card("Immunizations",`<div class="hint">${H(W("Immunizations, for a new educator"))}</div>
       <ul style="margin:6px 0;padding-left:20px"><li>The flu vaccine is due each year between August 1 and December 1.</li><li>Someone still gathering records can work for up to 30 days after signing a written statement that they are immunized.</li><li>A physician's written statement can exempt someone for medical reasons or show existing immunity.</li><li>Someone can decline the flu vaccine in writing. This applies to the flu vaccine only.</li><li>Someone hired after December 1 and before August 1 does not need the flu vaccine in their first year.</li></ul>
-      <div class="cnt">Records or exemptions are kept in the personnel file. In TREE they are seen only by you and the director.</div><div class="actions"><button class="btn small ghost" data-tview="strec">Add them on ${dir?"the":"your"} records page</button></div>`)}
+      <div class="cnt">${H(W("Immunizations, where they are kept"))}</div><div class="actions"><button class="btn small ghost" data-tview="strec">Add them on ${dir?"the":"your"} records page</button></div>`)}
     ${card("Trainings",`<ul style="margin:0;padding-left:20px"><li>Mandated reporter training within 90 days of hire, renewed every two years</li><li>Pediatric First Aid and CPR, which we run in house</li><li>Health and safety training, 16 hours, needed by every caregiving educator by October 1, 2027</li><li>Emergency and disaster plan training, before the first day of work</li><li>Healthy Schools Act training each year, for anyone who uses sanitizers or disinfectants</li><li>Water safety certificate, required of every educator because of creek walks</li><li>Licensing at Fulton Community School, in the PD library, done in short pieces during nap</li></ul>
       <div class="actions"><button class="btn small ghost" data-tview="strec">Upload certificates</button><button class="btn small ghost" data-tview="stpd" data-stmod="licensing">Licensing at Fulton Community School</button></div>`)}
     ${card("The New Educator sequence",seqHtml(wk,pcs,p),start?`Week ${Math.min(wk,8)} of 8`:"")}`)}
@@ -1439,6 +1445,8 @@ const AREA_WORDS={img:/child|children'?s? (thinking|theor|ideas)|competent|capab
   obs:/observ|document|photo|notic|wonder|panel|portfolio|slide|stor(y|ies)/i,cur:/plan|curricul|inquir|project|thread|small group|intent|investigat/i,fam:/famil|parent|conference|home/i,team:/team|colleague|collaborat|co-educator|communit|support (each|one)/i,refl:/reflect|feedback|grow|learn|journal|training|course|PD\b|professional/i};
 const suggestArea=t=>{let best="",n=0;for(const [k,re] of Object.entries(AREA_WORDS)){const m=(String(t||"").match(new RegExp(re.source,"gi"))||[]).length;if(m>n){n=m;best=k}}return best};
 // the August form's other answers, kept as written in the Reflection part
+// what went well, the two ways to begin a Growth Plan
+const WENT=[["last","What went well for me last year"],["new","What has gone well in my first weeks here, or in my work before coming here"]];
 const REFL=[["difficult","What was difficult for me"],["proud","A moment I'm proud of"],["natural","What comes naturally"],["drains","What drains me"],["pattern","A pattern I keep noticing"],["why","Why these goals"]];
 async function planPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().people[0]||{}).name||"";const name=who();if(!name){draw(my,head("Educators","Growth Plan")+card("No educator yet",`<div class="hint">Educators appear here once they have a sign-in.</div>`));return}
   const d=await doc(name,true);const y=yr();const pl=Object.assign({wentWell:{choice:"last",text:""},goals:[],challenges:"",need:{director:"",team:"",training:""},feedback:""},(d.plans||{})[y]||{});pl.reflection=Object.assign({},pl.reflection||{});
@@ -1451,7 +1459,7 @@ async function planPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().people
   const people=dir?B().people.map(x=>x.name):[];const isNew=d.profile&&d.profile.startDate&&X.daysTo(d.profile.startDate,today())<365;
   draw(my,head(dir?"Growth Plan":"My Growth Plan","Educator Reflection and Growth Plan",`This plan begins ${dir?"their":"your"} year. It shapes ${dir?"their":"your"} check-ins, ${dir?"their":"your"} journal and ${dir?"their":"your"} evaluation, and it is ${dir?"theirs":"yours"} to return to.`)+
     (dir?pills("gsel",people,name)+`<div class="cnt" style="margin:-4px 0 10px">${pl.source==="august"?"Entered from the August plan, exactly as written.":pl.source==="tree"?"Started in TREE.":"Not entered yet. Enter the August plan exactly as written, or leave it for them to start in TREE."}</div>`:"")+
-    card("1. What went well",`${seg("data-gpww",[["last","What went well for me last year"],["new","What has gone well in my first weeks here, or in my work before coming here"]],p.wentWell.choice||"last")}${isNew&&p.wentWell.choice!=="new"?`<div class="cnt" style="margin-top:4px">New educators can choose the second.</div>`:""}<textarea rows="4" id="gp-ww" style="margin-top:8px;width:100%" aria-label="What went well">${H(p.wentWell.text||"")}</textarea>`)+
+    card("1. What went well",`${seg("data-gpww",WENT,p.wentWell.choice||"last")}${isNew&&p.wentWell.choice!=="new"?`<div class="cnt" style="margin-top:4px">New educators can choose the second.</div>`:""}<textarea rows="4" id="gp-ww" style="margin-top:8px;width:100%" aria-label="What went well">${H(p.wentWell.text||"")}</textarea>`)+
     card("2. Reflection",`<div class="hint">Kept as written and seen only by ${dir?"the educator and you":"you and the director"}.</div>${REFL.map(([k,l])=>`<label class="fld-label">${H(l)}<textarea rows="3" data-gprefl="${k}">${H((p.reflection||{})[k]||"")}</textarea></label>`).join("")}`)+
     card("3. My goals for this year, two or three",`<div class="hint">Each goal links to one of the eight areas. TREE suggests the area from the words, and ${dir?"the educator confirms":"you confirm"} it.</div><div style="display:grid;gap:8px">${p.goals.map(goalHtml).join("")}</div>${p.goals.length<3?`<div class="actions"><button class="btn small ghost" data-gpadd="1">Add a third goal</button></div>`:""}`)+
     card("4. Challenges I'm anticipating",`<div class="hint">Kept as written and seen only by ${dir?"the educator and you":"you and the director"}.</div><textarea rows="3" id="gp-ch" style="width:100%" aria-label="Challenges">${H(p.challenges||"")}</textarea>`)+
@@ -1489,7 +1497,15 @@ const Q=[["temp","Professional temperature, about 2 minutes","How has the last m
   ["goals","Growth Plan check, about 3 minutes","A line on where they are with their Growth Plan goals."],
   ["support","One support, about 2 minutes","One support they need from you or their teammates."],
   ["focus","Focus Until Next Time, about 5 minutes","The educator names what they want to focus on first. You add what you have seen, and the two of you settle on one focus together."]];
+/* the Growth questions take the director's own words from the Educators pages' own words, each list kept in place so every
+   use reads the same words. A part of two paragraphs keeps the title above the question. */
+function growthWords(){const b=X.boot&&X.boot(),G=b&&b.defs&&b.defs.growth,W=X.W,W2=X.W2;if(!G||typeof W!=="function")return;
+  const one=(list,map)=>list.forEach(x=>{const k=map[x[0]];if(!k)return;const t=W(k).trim();if(!t)return;x[1]=t});
+  const two=(list,map)=>list.forEach(x=>{const k=map[x[0]];if(!k)return;const [a,b]=W2(k);if(a)x[1]=a;if(b)x[2]=b});
+  one(WENT,G.went||{});one(REFL,G.refl||{});two(PROMPTS,G.prompts||{});two(Q,G.checkin||{});two(AFTER,G.after||{})}
+window.TREE_GROWTH_WORDS=growthWords;
 const AFTER=[["followup","Follow-up notes","Specific actions, agreements and timelines, with any leadership follow-up."],["align","Team alignment","How aligned the team is in routines, expectations and communication, from 1 to 5."],["effect","Check-in effectiveness","How well the check-in served them, from 1 to 5."]];
+growthWords();
 const rate=(attr,v)=>`<div class="tseg" role="group">${[1,2,3,4,5].map(n=>`<button data-${attr}="${n}" aria-pressed="${+v===n}">${n}</button>`).join("")}</div>`;
 const tm=t=>t?X.hourText(t):"";
 const dur=n=>n===90?"an hour and a half":n===60?"an hour":n%60===0?(n/60)+" hours":n>60?Math.floor(n/60)+" hours and "+(n%60)+" minutes":n+" minutes";

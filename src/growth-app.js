@@ -236,6 +236,8 @@ const AREA_WORDS={img:/child|children'?s? (thinking|theor|ideas)|competent|capab
   obs:/observ|document|photo|notic|wonder|panel|portfolio|slide|stor(y|ies)/i,cur:/plan|curricul|inquir|project|thread|small group|intent|investigat/i,fam:/famil|parent|conference|home/i,team:/team|colleague|collaborat|co-educator|communit|support (each|one)/i,refl:/reflect|feedback|grow|learn|journal|training|course|PD\b|professional/i};
 const suggestArea=t=>{let best="",n=0;for(const [k,re] of Object.entries(AREA_WORDS)){const m=(String(t||"").match(new RegExp(re.source,"gi"))||[]).length;if(m>n){n=m;best=k}}return best};
 // the August form's other answers, kept as written in the Reflection part
+// what went well, the two ways to begin a Growth Plan
+const WENT=[["last","What went well for me last year"],["new","What has gone well in my first weeks here, or in my work before coming here"]];
 const REFL=[["difficult","What was difficult for me"],["proud","A moment I'm proud of"],["natural","What comes naturally"],["drains","What drains me"],["pattern","A pattern I keep noticing"],["why","Why these goals"]];
 async function planPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().people[0]||{}).name||"";const name=who();if(!name){draw(my,head("Educators","Growth Plan")+card("No educator yet",`<div class="hint">Educators appear here once they have a sign-in.</div>`));return}
   const d=await doc(name,true);const y=yr();const pl=Object.assign({wentWell:{choice:"last",text:""},goals:[],challenges:"",need:{director:"",team:"",training:""},feedback:""},(d.plans||{})[y]||{});pl.reflection=Object.assign({},pl.reflection||{});
@@ -248,7 +250,7 @@ async function planPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().people
   const people=dir?B().people.map(x=>x.name):[];const isNew=d.profile&&d.profile.startDate&&X.daysTo(d.profile.startDate,today())<365;
   draw(my,head(dir?"Growth Plan":"My Growth Plan","Educator Reflection and Growth Plan",`This plan begins ${dir?"their":"your"} year. It shapes ${dir?"their":"your"} check-ins, ${dir?"their":"your"} journal and ${dir?"their":"your"} evaluation, and it is ${dir?"theirs":"yours"} to return to.`)+
     (dir?pills("gsel",people,name)+`<div class="cnt" style="margin:-4px 0 10px">${pl.source==="august"?"Entered from the August plan, exactly as written.":pl.source==="tree"?"Started in TREE.":"Not entered yet. Enter the August plan exactly as written, or leave it for them to start in TREE."}</div>`:"")+
-    card("1. What went well",`${seg("data-gpww",[["last","What went well for me last year"],["new","What has gone well in my first weeks here, or in my work before coming here"]],p.wentWell.choice||"last")}${isNew&&p.wentWell.choice!=="new"?`<div class="cnt" style="margin-top:4px">New educators can choose the second.</div>`:""}<textarea rows="4" id="gp-ww" style="margin-top:8px;width:100%" aria-label="What went well">${H(p.wentWell.text||"")}</textarea>`)+
+    card("1. What went well",`${seg("data-gpww",WENT,p.wentWell.choice||"last")}${isNew&&p.wentWell.choice!=="new"?`<div class="cnt" style="margin-top:4px">New educators can choose the second.</div>`:""}<textarea rows="4" id="gp-ww" style="margin-top:8px;width:100%" aria-label="What went well">${H(p.wentWell.text||"")}</textarea>`)+
     card("2. Reflection",`<div class="hint">Kept as written and seen only by ${dir?"the educator and you":"you and the director"}.</div>${REFL.map(([k,l])=>`<label class="fld-label">${H(l)}<textarea rows="3" data-gprefl="${k}">${H((p.reflection||{})[k]||"")}</textarea></label>`).join("")}`)+
     card("3. My goals for this year, two or three",`<div class="hint">Each goal links to one of the eight areas. TREE suggests the area from the words, and ${dir?"the educator confirms":"you confirm"} it.</div><div style="display:grid;gap:8px">${p.goals.map(goalHtml).join("")}</div>${p.goals.length<3?`<div class="actions"><button class="btn small ghost" data-gpadd="1">Add a third goal</button></div>`:""}`)+
     card("4. Challenges I'm anticipating",`<div class="hint">Kept as written and seen only by ${dir?"the educator and you":"you and the director"}.</div><textarea rows="3" id="gp-ch" style="width:100%" aria-label="Challenges">${H(p.challenges||"")}</textarea>`)+
@@ -286,7 +288,15 @@ const Q=[["temp","Professional temperature, about 2 minutes","How has the last m
   ["goals","Growth Plan check, about 3 minutes","A line on where they are with their Growth Plan goals."],
   ["support","One support, about 2 minutes","One support they need from you or their teammates."],
   ["focus","Focus Until Next Time, about 5 minutes","The educator names what they want to focus on first. You add what you have seen, and the two of you settle on one focus together."]];
+/* the Growth questions take the director's own words from the Educators pages' own words, each list kept in place so every
+   use reads the same words. A part of two paragraphs keeps the title above the question. */
+function growthWords(){const b=X.boot&&X.boot(),G=b&&b.defs&&b.defs.growth,W=X.W,W2=X.W2;if(!G||typeof W!=="function")return;
+  const one=(list,map)=>list.forEach(x=>{const k=map[x[0]];if(!k)return;const t=W(k).trim();if(!t)return;x[1]=t});
+  const two=(list,map)=>list.forEach(x=>{const k=map[x[0]];if(!k)return;const [a,b]=W2(k);if(a)x[1]=a;if(b)x[2]=b});
+  one(WENT,G.went||{});one(REFL,G.refl||{});two(PROMPTS,G.prompts||{});two(Q,G.checkin||{});two(AFTER,G.after||{})}
+window.TREE_GROWTH_WORDS=growthWords;
 const AFTER=[["followup","Follow-up notes","Specific actions, agreements and timelines, with any leadership follow-up."],["align","Team alignment","How aligned the team is in routines, expectations and communication, from 1 to 5."],["effect","Check-in effectiveness","How well the check-in served them, from 1 to 5."]];
+growthWords();
 const rate=(attr,v)=>`<div class="tseg" role="group">${[1,2,3,4,5].map(n=>`<button data-${attr}="${n}" aria-pressed="${+v===n}">${n}</button>`).join("")}</div>`;
 const tm=t=>t?X.hourText(t):"";
 const dur=n=>n===90?"an hour and a half":n===60?"an hour":n%60===0?(n/60)+" hours":n>60?Math.floor(n/60)+" hours and "+(n%60)+" minutes":n+" minutes";

@@ -86,7 +86,12 @@ module.exports = function staffModule(o) {
   function put(p, doc) { const r = S.files.get(p); S.files.set(p, { doc, sha: r && r.sha, local: true }); soon(p); return doc; }
   // a Markdown piece is kept as its own text
   // pages of the school's own words that start from the words TREE first showed, until the director writes them
-  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage };
+  const ST = require('./staff-text.js');
+  const edDefs = () => ({ items: ITEMS, papers: PAPERS, checklist: CHECKLIST, modules: (typeof G !== 'undefined' && G && G.MODULE_LIST) || [] });
+  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage, [ST.PAGE]: () => ST.startPage(edDefs()) };
+  // the Educators pages' own words, as the director wrote them, each part as it first read until she writes it
+  function edTexts() { const out = ST.defaults(edDefs()); let W = {}; try { W = require('./wording.js').map(wordingDoc('educator-pages-text')); } catch (e) {}
+    for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim(); return out; }
   function putText(p, text) { const r = S.files.get(p); S.files.set(p, { text, sha: r && r.sha, local: true }); soon(p); return text; }
   function soon(p) { clearTimeout(S.timers.get(p)); const t = setTimeout(() => { S.timers.delete(p); flush(p).catch(e => log('Educator record not saved', p, e.message)); }, 1200); if (t.unref) t.unref(); S.timers.set(p, t); }
   function flush(p) {
@@ -509,7 +514,8 @@ module.exports = function staffModule(o) {
       const mine = person(me); const o = opened();
       json(req, res, 200, { me: { name: me, director: dir, newHire: isNewHire(me), newEd: inNewEd(me), room: roomOf(me), role: whoRole(me), profile: mine.profile || {}, takesPart: G.takesPart(me), kitchen: isKitchen(me), goTo: goToOf(me) },
         open: o, can: canFor(me), goTo: goToName(), activeSupervision: school().activeSupervision || null,
-        defs: { items: itemsChecked(), papers: PAPERS, checklist: CHECKLIST, drills: DRILL_TYPES, remind: REMIND_TYPES },
+        defs: (() => { const T = edTexts(); return { items: itemsChecked().map(it => it.note ? Object.assign({}, it, { note: T['Training, ' + it.label] || it.note }) : it),
+          papers: PAPERS.map(x => x.why ? Object.assign({}, x, { why: T['Paper, ' + x.form] || x.why }) : x), checklist: CHECKLIST.map((c, i) => T['New Educator checklist, item ' + (i + 1)] || c), drills: DRILL_TYPES, remind: REMIND_TYPES, texts: T, growth: ST.GROWTH }; })(),
         school: { welcome: school().welcome || '', philosophy: school().philosophy || '', formLinks: school().formLinks || {}, remindDays: school().remindDays || 30, remind: school().remind || {}, goTo: goToName(), ...(dir ? { teamMeetings: school().teamMeetings || {}, quietMonths: school().quietMonths || [] } : {}) },
         whosWho: whosWho(), lens: lensNow(), paired: pairedWith(me), today: today(), people: dir ? staffNames().sort() : [] });
       return;
@@ -1046,7 +1052,7 @@ module.exports = function staffModule(o) {
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
-  const G = require('./growth.js')({ get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
+  const G = require('./growth.js')({ edWords: () => edTexts(), get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id), putText, piecesChanged: () => { pieceCache = null; } });
   // PD paths and assignments, beside the PD library's modules
   const PA = require('./paths.js')({ get, put, log, S, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder: (l, me) => newedOrder(l, me), goToName, reminders });

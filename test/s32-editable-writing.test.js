@@ -128,3 +128,33 @@ test('the Family page\'s own words start as they read and change when the direct
   assert.deepStrictEqual(errors, []);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('the Educators pages\' own words, each training\'s note, the checklist and the Growth questions open in Edit', async t => {
+  const r = await dee(t); if (!r) { t.skip('Playwright is not installed here'); return; }
+  const { fx, s } = r;
+  const tok = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  let b = (await fx.as(ann, '/api/staff/boot', {})).body;
+  assert.match(b.defs.texts['Paperwork'], /^Each form has a blank copy/);
+  const P = 'staff/wording/educator-pages-text.md';
+  assert.notStrictEqual((await fx.as(ann, '/api/staff/page', { path: P })).status, 200, 'only the director');
+  const o = (await fx.as(tok, '/api/staff/page', { path: P })).body;
+  const heads = o.parts.map(p => p.heading);
+  for (const h of ['Paperwork', 'Training, Pediatric First Aid and CPR', 'Paper, Personnel Record', 'New Educator checklist, item 1', 'PD library, Documentation', 'Journal prompt, joy', 'Check-in, plus delta']) assert.ok(heads.includes(h), h);
+  const change = { 'Paperwork': 'Each form has a blank copy. Upload the completed form.', 'Training, Pediatric First Aid and CPR': 'We run it here each spring', 'New Educator checklist, item 3': 'Welcome and philosophy read together', 'Journal prompt, joy': 'A moment of joy\n\nA moment this week that made me smile.' };
+  const parts = o.parts.map(p => ({ body: change[p.heading] != null ? change[p.heading] : p.body }));
+  const sv = await fx.as(tok, '/api/staff/page/save', { path: P, title: o.title, parts, note: 'Our words', stamp: o.stamp, keep: true });
+  assert.strictEqual(sv.status, 200, JSON.stringify(sv.body));
+  b = (await fx.as(ann, '/api/staff/boot', {})).body;
+  assert.strictEqual(b.defs.texts['Paperwork'], 'Each form has a blank copy. Upload the completed form.');
+  assert.strictEqual(b.defs.items.find(i => i.k === 'cpr').note, 'We run it here each spring');
+  assert.strictEqual(b.defs.checklist[2], 'Welcome and philosophy read together'); assert.strictEqual(b.defs.checklist.length, 11);
+  assert.strictEqual(b.defs.papers.find(x => x.k === 'lic501').why, 'Gives Licensing your work history and contact information', 'an unchanged part reads as before');
+  // the Growth questions take the new words on the page
+  const br = await (await require('./fixture.js').browser()).launch(); t.after(() => br.close());
+  const a = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => a.close());
+  await a.p.evaluate(() => goView('stjour')); await a.p.waitForSelector('#main input[type=password]', { timeout: 15000 }); await a.p.fill('#main input[type=password]', '1357'); await a.p.click('#main button:has-text("Open")');
+  await a.p.waitForSelector('text=A moment of joy', { timeout: 15000 });
+  assert.match(await a.p.innerText('#main'), /A moment this week that made me smile\./);
+  assert.deepStrictEqual(a.errors, []);
+  assert.deepStrictEqual(s.errors, []);
+});
