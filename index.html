@@ -144,7 +144,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .tmoments{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:6px 0}.tmom{display:flex;flex-direction:column;gap:4px;text-align:left;text-decoration:none;color:inherit;padding:0}
 .tmom img{width:100%;height:150px;object-fit:cover;border-radius:10px;background:var(--bg)}.tmomh{font-size:13px;font-weight:700}.tmomt{font-size:13px;color:var(--muted);line-height:1.35}
 .wrpart{margin:10px 0}.wrpart .lbl{margin-bottom:2px}.wrtab{width:100%;border-collapse:collapse;margin:6px 0}.wrtab td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:middle}
-.wrspark{display:block}.wrtab td.cnt{white-space:nowrap;font-size:12px}.wrword{font-size:13px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--paper2,#eef1e8)}.wr-growing,.wr-new{color:var(--moss)}.wr-fading,.wr-quiet{color:var(--muted)}
+.wrspark{display:block}.wrtab td.cnt{white-space:nowrap;font-size:12px}
 @media print{body:has(.wrrep) header,body:has(.wrrep) nav,body:has(.wrrep) .wrbar,body:has(.wrrep) #fab,body:has(.wrrep) .bottomnav{display:none!important}}.pfmore{margin:8px 0}section.pfdone>details.autofold>summary b{font-family:var(--display);font-size:17px}
 .sethead{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 4px 6px;font-weight:700}.setcard>summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;cursor:pointer;list-style:none;min-height:30px}.setcard>summary::-webkit-details-marker{display:none}.setcard>summary b{font-size:16px}.setcard[open]>summary{margin-bottom:10px}.setbody>.lbl:first-child{display:none}section.card.inset{box-shadow:none;border:1px solid var(--line);margin:10px 0 0}
 .sglist{display:grid;gap:0;border-top:1px solid var(--line)}.sgrow{border-bottom:1px solid var(--line)}.sgrow>summary{display:grid;grid-template-columns:minmax(5.5em,1fr) auto auto;align-items:baseline;gap:2px 12px;padding:10px 4px;cursor:pointer;list-style:none;min-height:44px;box-sizing:border-box}.sgrow>summary::-webkit-details-marker{display:none}.sgrow>summary b{overflow-wrap:anywhere}.sgrow .sglast{text-align:right;min-width:6.5em}.sgbody{display:grid;gap:8px;padding:4px 4px 12px}.sgf{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.sgf>span:first-child{min-width:5.5em;color:var(--muted);font-size:13px}.sgf select{width:auto}
@@ -4626,7 +4626,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="c68848e27f69";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="9936d99b3aec";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5144,48 +5144,50 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-kser
    own class's on Today. The details stay in the readings they came from, one tap away. */
 let reports=new Map(),wrMine=null,wrWeek="",wrRoom="";
 const WR_WEEKS=6;
+// the report's parts are the words our threads use for where a thread is
+const WR_PARTS=[["emerging","Emerging"],["growing","Growing"],["deepening","Deepening"],["resting","Resting"]];
 const wrWeeksBack=wk=>{const out=[];const d=parseIso(wk);for(let i=WR_WEEKS-1;i>=0;i--){const x=new Date(d);x.setDate(x.getDate()-7*i);out.push(iso(x))}return out};
 // observations a week, for the class or the whole school, and for each followed thread, over the last six weeks
 function wrTrends(room,wk){const weeks=wrWeeksBack(wk),idx=new Map(weeks.map((w,i)=>[w,i]));
   const per=list=>{const c=weeks.map(()=>0);for(const n of list){const i=idx.get(mondayOf(new Date(n.at||0)));if(i!=null)c[i]++}return c};
   const obs=per([...notices.values()].filter(n=>momentIn(n,room)));
-  const ths=[...threads.values()].filter(t=>t&&t.status!=="closed"&&!t.unfollowed&&(room==="All"||t.classroom===room)).map(t=>({id:t.id,name:t.name||"A thread",room:t.classroom||"",counts:per(threadNotices(t))})).filter(t=>t.counts.some(Boolean));
+  const ths=[...threads.values()].filter(t=>t&&t.status!=="closed"&&!t.unfollowed&&(room==="All"||t.classroom===room)).map(t=>({id:t.id,name:t.name||"A thread",room:t.classroom||"",status:t.status||"emerging",counts:per(threadNotices(t))}));
   return {weeks,obs,threads:ths}}
-function wrTrendWord(c){const last=(c[c.length-1]+c[c.length-2])/2,before=c.slice(0,-2).reduce((a,b)=>a+b,0)/Math.max(1,c.length-2);
-  if(!before&&last)return "new";if(last>before*1.3&&last>=1)return "growing";if(last<before*0.5)return before?"fading":"quiet";return "steady"}
 async function weeklyReport(room){if(!sample||!isDirector())return {ok:false};
   const wk=mondayOf(new Date());const tr=wrTrends(room,wk);
   const lens=[...scans.values()].filter(s=>s&&s.kind==="lens"&&String(s.room||"").endsWith("-"+room)).map(s=>({lens:s.lensName||"",summary:s.summary||"",gaps:s.gaps||[],team_questions:s.teamQuestions||[]}));
   const th=scans.get(room),mo=scans.get("moments-"+room);
   if(!th&&!mo&&!lens.length&&!tr.obs.some(Boolean))return {ok:true};
-  const before=[...reports.values()].filter(r=>r.room===room&&r.week<wk).sort((a,b)=>b.week.localeCompare(a.week)).slice(0,3).map(r=>({week:r.week,growing:r.growing,new:r.new,quiet:r.quiet,support:r.support}));
+  const before=[...reports.values()].filter(r=>r.room===room&&r.week<wk).sort((a,b)=>b.week.localeCompare(a.week)).slice(0,3).map(r=>Object.assign({week:r.week,support:r.support},...WR_PARTS.map(([k])=>({[k]:r[k]||""}))));
   const where=room==="All"?"the whole school":"the "+room+" class";
   const prompt=`You are writing a short weekly report for the educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool, on this week's reading of ${where}. It should help the team see how the children's work is changing, or not, so they can support it. Keep the nuance and leave out the detail.
 This week's reading of threads ${JSON.stringify(th?{summary:th.summary||"",threads:(th.threads||[]).map(t=>({name:t.name,question:t.question||""}))}:{})}
 This week's reading of observations ${JSON.stringify(mo?{summary:mo.summary||"",patterns:(mo.patterns||[]).map(p=>({name:p.name,why:p.why||""})),questions:mo.questions||[]}:{})}
 This week's lens readings ${JSON.stringify(lens)}
 Observations kept each week, oldest first, for the weeks ${tr.weeks.join(", ")}. ${JSON.stringify(tr.obs)}
-Each followed thread's observations each week, oldest first ${JSON.stringify(tr.threads.map(t=>({thread:t.name,counts:t.counts})))}
+Each followed thread, with the status the team gave it and its observations each week, oldest first ${JSON.stringify(tr.threads.map(t=>({thread:t.name,status:TSTATUS[t.status]||"Emerging",counts:t.counts})))}
 The reports of the weeks before, newest first ${JSON.stringify(before)}
-Write four parts, each one to three short sentences, compared with the weeks before where you can.
+Our threads use these words, and the report uses only them. Emerging is an interest just appearing. Growing is one children return to more and more. Deepening is one where children's thinking is going further. Resting is one children have stepped away from for now.
+Write four parts in those words, each one to three short sentences, compared with the weeks before where you can. Name the threads by name. Where a thread's status and what the observations show differ, say so, so the team can look again.
+"emerging" is what is just appearing.
 "growing" is what children are returning to more than before.
-"new" is what appeared this week.
-"quiet" is what children have stopped returning to, or what is read less than before. Say so plainly when nothing has.
+"deepening" is where children's thinking is going further.
+"resting" is what children have stepped away from. Say so plainly when nothing has.
 "support" is one to three questions or ideas for the team that follow from what children are doing, each one sentence.
 Use only what is given here. Never invent children, quotes or events, and never name a child. Write any reading of children's thinking as a hypothesis, with words such as perhaps or it may be. ${STYLE}
-Return JSON {"growing": text, "new": text, "quiet": text, "support": [text]}`;
+Return JSON {"emerging": text, "growing": text, "deepening": text, "resting": text, "support": [text]}`;
   let out=null;try{out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"weekly-report"})}catch(e){return {ok:false}}
   const c=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s+/g,". ").trim();
-  if(!out||!(out.growing||out.new||out.quiet))return {ok:false};
-  const doc={id:wk+"-"+room,week:wk,room,createdAt:Date.now(),by:whoAmI(),growing:c(out.growing),new:c(out.new),quiet:c(out.quiet),support:(Array.isArray(out.support)?out.support:[out.support]).map(c).filter(Boolean).slice(0,3),
-    weeks:tr.weeks,obs:tr.obs,threads:tr.threads.map(t=>({id:t.id,name:t.name,counts:t.counts}))};
+  if(!out||!WR_PARTS.some(([k])=>out[k]))return {ok:false};
+  const doc={id:wk+"-"+room,week:wk,room,createdAt:Date.now(),by:whoAmI(),support:(Array.isArray(out.support)?out.support:[out.support]).map(c).filter(Boolean).slice(0,3),
+    weeks:tr.weeks,obs:tr.obs,threads:tr.threads.map(t=>({id:t.id,name:t.name,status:t.status,counts:t.counts}))};
+  for(const [k] of WR_PARTS)doc[k]=c(out[k]);
   reports.set(doc.id,doc);if(db)await db.doc("reports/"+doc.id).set(doc).catch(()=>{});return {ok:true}}
 // the reports this person may read, the director every one, a class team its own class's
 function wrList(){if(isDirector()&&!VIEW_AS)return [...reports.values()];return (wrMine&&wrMine.reports)||[]}
 function wrLoadMine(){if(isDirector()&&!VIEW_AS)return;if(wrMine||!window.FP_API)return;wrMine={reports:[]};window.FP_API("/api/reports/mine",{}).then(r=>{wrMine=r||{reports:[]};if(view==="wreport"||view==="today")renderMain()}).catch(()=>{wrMine=null})}
 function wrSpark(c){const w=96,h=22,max=Math.max(1,...c),step=w/Math.max(1,c.length-1);const pts=c.map((v,i)=>`${(i*step).toFixed(1)},${(h-2-(v/max)*(h-4)).toFixed(1)}`).join(" ");
   return `<svg class="wrspark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(c.join(", "))} a week"><polyline points="${pts}" fill="none" stroke="var(--moss)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`}
-const WR_WORD={growing:"Growing",new:"New",steady:"Steady",fading:"Fading",quiet:"Quiet"};
 function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;const all=wrList();
   const rooms=dir?["All",...CLASSROOMS]:[...new Set(all.map(r=>r.room))];if(!rooms.includes(wrRoom))wrRoom=rooms[0]||"";
   const weeks=[...new Set(all.filter(r=>r.room===wrRoom).map(r=>r.week))].sort().reverse();if(!weeks.includes(wrWeek))wrWeek=weeks[0]||"";
@@ -5198,12 +5200,13 @@ function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;cons
 function wrHtml(r,title){const part=(h,t)=>has(t)?`<div class="wrpart"><div class="lbl">${h}</div><div>${esc(t)}</div></div>`:"";
   const prev=wrList().filter(x=>x.room===r.room&&x.week<r.week).sort((a,b)=>b.week.localeCompare(a.week))[0];
   return `<section class="card wrrep"><div class="secthead"><h3 style="font-size:19px">${esc(title)}</h3><span class="cnt">Week of ${esc(fmtDate(r.week))}${prev?`, compared with the weeks before`:", the first report, so there is nothing to compare with yet"}</span></div>
-    ${part("Growing",r.growing)}${part("New",r.new)}${part("Gone quiet",r.quiet)}
+    ${WR_PARTS.map(([k,l])=>part(l,r[k])).join("")}
     ${(r.support||[]).length?`<div class="wrpart"><div class="lbl">To support the work</div><ul style="margin:4px 0 0;padding-left:20px">${r.support.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Week by week</h3><span class="cnt">The six weeks to ${esc(fmtDate(r.week))}</span></div>
       <table class="wrtab"><tbody><tr><td>Observations kept</td><td>${wrSpark(r.obs||[])}</td><td class="cnt">${esc((r.obs||[]).join(", "))}</td><td></td></tr>
-      ${(r.threads||[]).map(t=>{const w=wrTrendWord(t.counts);return `<tr><td>${threads.has(t.id)?`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`:esc(t.name)}</td><td>${wrSpark(t.counts)}</td><td class="cnt">${esc(t.counts.join(", "))}</td><td><span class="wrword wr-${w}">${WR_WORD[w]}</span></td></tr>`}).join("")}</tbody></table>
-      <div class="cnt">Observations each week, oldest first. A thread's line counts the observations it holds.</div>
+      ${(r.threads||[]).map(t=>{const was=prev&&(prev.threads||[]).find(o=>o.id===t.id);const st=t.status&&TSTATUS[t.status];
+        return `<tr><td>${threads.has(t.id)?`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`:esc(t.name)}</td><td>${wrSpark(t.counts)}</td><td class="cnt">${esc(t.counts.join(", "))}</td><td>${st?`<span class="status st-${esc(t.status)}">${esc(st)}</span>${was&&was.status&&was.status!==t.status&&TSTATUS[was.status]?`<div class="cnt">was ${esc(TSTATUS[was.status])}</div>`:""}`:""}</td></tr>`}).join("")}</tbody></table>
+      <div class="cnt">Observations each week, oldest first. A thread's line counts the observations it holds, and its word is the status the team gave it.</div>
       <div class="actions">${r.room==="All"||isDirector()?`<button class="linkbtn" data-tview="threads">Threads</button><button class="linkbtn" data-tview="moments">Observations</button><button class="linkbtn" data-tview="lens">The lens</button>`:`<button class="linkbtn" data-tview="threads">Threads</button><button class="linkbtn" data-tview="moments">Observations</button>`}</div></section>`}
 document.addEventListener("click",e=>{if(view!=="wreport")return;const t=e.target.closest("[data-wrroom],[data-wrprint]");if(!t)return;
   if(t.dataset.wrroom){wrRoom=t.dataset.wrroom;wrWeek="";renderMain();return}
@@ -5212,7 +5215,7 @@ document.addEventListener("change",e=>{if(view!=="wreport"||!e.target.dataset.wr
 // on Today, the newest report for the class, or for the director after the week's reading
 function wrTodayItem(){const dir=isDirector()&&!VIEW_AS;wrLoadMine();const wk=mondayOf(new Date());
   const mine=wrList().filter(r=>r.week===wk&&(dir?r.room==="All":true));if(!mine.length||LS.get("tree.wrseen")===wk)return null;
-  const r=mine[0];return {dot:"sky",t:dir?"This week's reading report":`This week's reading report for the ${r.room} class`,s:firstLine(r.growing||r.new||"",90),act:`data-tview="wreport" data-wrseen="${esc(wk)}"`,b:"Read"}}
+  const r=mine[0];return {dot:"sky",t:dir?"This week's reading report":`This week's reading report for the ${r.room} class`,s:firstLine(WR_PARTS.map(([k])=>r[k]).find(has)||"",90),act:`data-tview="wreport" data-wrseen="${esc(wk)}"`,b:"Read"}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wrseen]");if(t)LS.set("tree.wrseen",t.dataset.wrseen)},true);
 let weeklyRec,weeklyBusy=false;
 const rToast=m=>{if(!weeklyBusy)toast(m)};
