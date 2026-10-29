@@ -4631,7 +4631,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4aaf310b6c51";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="fa44c014e184";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5651,7 +5651,10 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
   if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
     return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
-  if((gdn.animals||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,...(x.card?[dText("",x.card)]:[]),...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...credit]};
+  // an animal's card is kept in parts, what to know, a wondering, its family words and our rule, each its own line
+  if((gdn.animals||[]).includes(x)){const c=x.card&&typeof x.card==="object"?x.card:{know:x.card||""};
+    return {display:true,type:"report",acc:"story",title:c.title||x.name,meta:[],blocks:[...photo,...(c.know?[dText("",c.know)]:[]),...(c.wonder?[dText("",c.wonder)]:[]),...(c.family?[dText("",c.family)]:[]),
+      ...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...(c.rule?[Object.assign(dText("",c.rule),{strong:true})]:[]),...credit]}}
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 /* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
@@ -12932,6 +12935,12 @@ function proofEls(){const m=proofMain();if(!m)return [];const locked=m.classList
   return [...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&el.type!=="search"&&!el.disabled&&(!el.readOnly||locked)&&!el.closest(".proof,[data-noproof]")&&String(el.value).trim().length>=3)}
 const proofFields=()=>proofSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean);
 const proofHash=()=>proofEls().map(el=>el.value).join("\u0001");
+// the words TREE has already proofread, remembered on this device by their exact words, so printing or sending again
+// proofreads only what is new or changed since
+const proofKey=t=>{let h=5381;const s=String(t||"").trim();for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return s.length+":"+(h>>>0).toString(36)};
+let proofOk=new Set(LS.get("tree.proofok",[])||[]);
+function proofRemember(texts){for(const t of texts)if(String(t||"").trim())proofOk.add(proofKey(t));const a=[...proofOk];if(a.length>4000){proofOk=new Set(a.slice(-3000))}LS.set("tree.proofok",[...proofOk])}
+const proofNew=()=>proofEls().filter(el=>!proofOk.has(proofKey(el.value)));
 // a box takes the fix and saves the way it always does; the welcome letter and the bin note save here, since they have their own save buttons
 function proofApply(k,v){const el=proofFind(proofSels[+k]);if(!el||!el.isConnected)return false;const m=$("#main");
   // a saved conference form opens to edit, as pressing its Edit would
@@ -12964,12 +12973,12 @@ Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","fro
 
 ${F.map(f=>`<text id="${f.k}">\n${f.text}\n</text>`).join("\n\n")}`;
 const proofFixes=(out,F)=>{const by=new Map(F.map(f=>[f.k,f]));return (Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from))};
-async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=proofFields();
+async function proofRun(gate,save){proofSels=(gate?proofNew():proofEls()).map(proofSel);const F=proofFields();
   if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
   const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
   try{const out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
     const fixes=proofFixes(out,F).map(x=>Object.assign(x,{label:by.get(x.k).label}));
-    if(!fixes.length)proofClean=hash;
+    if(!fixes.length){proofClean=hash;proofRemember(F.map(f=>f.text))}
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
     proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e||"unknown","Try again in a minute.")}}
   proofPaint()}
@@ -12977,7 +12986,7 @@ function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=pro
   if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
 // the action the check was holding goes ahead
 let proofPassing=false;
-function proofPass(gate){proofClean=proofHash();if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
+function proofPass(gate){proofClean=proofHash();proofRemember(proofSels.map(proofFind).filter(el=>el&&el.isConnected).map(el=>el.value));if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
   if(t.id==="tproof"){if(proof&&proof.busy)return;proofRoot=null;
     // on the Conferences page the writing is inside the page TREE shows it in
@@ -12994,15 +13003,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
 const PROOF_GATES='[data-tsready="1"],#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
 document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
-  proofRoot=null;if(!proofEls().length||proofHash()===proofClean)return;
+  proofRoot=null;if(!proofNew().length||proofHash()===proofClean)return;
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b),(b.textContent||"Save").trim().slice(0,30)||"Save")},true);
 // the Conferences page asks before a conference is marked complete. It hands over its own page and what to do after.
 window.TREE_PROOF=(root,label,go)=>{if(!proofOnSave())return false;if(proof&&proof.busy)return true;proofRoot=root;
-  if(!proofEls().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
+  if(!proofNew().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
 document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proofOnSave()&&b.matches(SAVE_GATES))return;proofRoot=null;
   if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
-  if(!proofEls().length||proofHash()===proofClean)return;
+  if(!proofNew().length||proofHash()===proofClean)return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b))},true);
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes

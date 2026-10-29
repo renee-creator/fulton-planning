@@ -9,6 +9,8 @@
    second copy, so a bed names the space it sits in. Fulton uses no herbicides or pesticides, and nothing here suggests
    one. A Look, don't eat plant never appears as something children gather or taste. */
 module.exports = function garden(o) {
+  // an animal's card keeps its words in parts, so its line is what to know
+  const cardKnow = x => !x || !x.card ? '' : typeof x.card === 'object' ? String(x.card.know || '') : String(x.card);
   const { get, put, log, isDirector, isKitchen, nameKey, roomOf, today, addDays, mondayOf, staffNames } = o;
   const SETUP = 'staff/garden/setup.json', LOG = 'staff/garden/log.json';
   const setup = () => get(SETUP) || null;
@@ -111,7 +113,7 @@ module.exports = function garden(o) {
         (p.ready || []).length ? 'Harvest or gather in ' + p.ready.map(m => MONTHS[+m - 1]).filter(Boolean).join(', ') : '', (p.wildlife || []).length ? 'Feeds ' + p.wildlife.join(', ') : '', (p.words || {}).adult || ''].filter(Boolean).map(x => String(x).replace(/[.]+$/, '')).join('. ') + '.',
       photo: photoOf(p) }));
     const entry = id => { const x = (s.plants || []).find(y => y.id === id) || (s.animals || []).find(y => y.id === id) || (s.wild || []).find(y => y.id === id); if (!x || x.hidden || x.planned) return null;
-      const line = (x.words || {}).child || x.card || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
+      const line = (x.words || {}).child || cardKnow(x) || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
       return { name: x.common || x.name || x.title || '', line: String(line || ''), photo: photoOf(x) }; };
     const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', intro: f.intro || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
     return { plants, fieldGuides };
@@ -304,6 +306,6 @@ module.exports = function garden(o) {
     const all = [...(s.plants || []).filter(p => !p.planned && !p.hidden).map(p => ({ kind: 'plant', x: p })), ...(s.animals || []).map(a => ({ kind: 'animal', x: a })), ...(s.wild || []).map(w => ({ kind: w.kind || 'wildlife', x: w }))];
     if (!all.length) return null; const n = Math.floor(Date.parse(day + 'T12:00:00Z') / 864e5) % all.length; const { kind, x } = all[n];
     const own = (L.photos || []).filter(p => p.plant === x.id && p.ok).slice(-1)[0];
-    return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || x.card || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
+    return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || cardKnow(x) || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
   return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
 };

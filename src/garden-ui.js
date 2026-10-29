@@ -296,7 +296,10 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
   if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
     return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
-  if((gdn.animals||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,...(x.card?[dText("",x.card)]:[]),...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...credit]};
+  // an animal's card is kept in parts, what to know, a wondering, its family words and our rule, each its own line
+  if((gdn.animals||[]).includes(x)){const c=x.card&&typeof x.card==="object"?x.card:{know:x.card||""};
+    return {display:true,type:"report",acc:"story",title:c.title||x.name,meta:[],blocks:[...photo,...(c.know?[dText("",c.know)]:[]),...(c.wonder?[dText("",c.wonder)]:[]),...(c.family?[dText("",c.family)]:[]),
+      ...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...(c.rule?[Object.assign(dText("",c.rule),{strong:true})]:[]),...credit]}}
   if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
   return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 /* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
