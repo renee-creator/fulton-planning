@@ -123,6 +123,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .pmenu{position:relative;display:inline-block}.pmenu>summary{list-style:none;cursor:pointer}.pmenu>summary::-webkit-details-marker{display:none}.pmenu-list{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:180px;display:grid;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px 10px}.pmenu-list .linkbtn{text-align:left;padding:8px 2px;min-height:36px}
 .tabdrop{margin:2px 0 6px}.tabdrop>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;cursor:pointer;border:1.5px solid var(--moss);border-radius:999px;padding:9px 16px;font-weight:700;color:var(--moss);background:var(--paper);min-height:44px;box-sizing:border-box}.tabdrop>summary::-webkit-details-marker{display:none}.tabdrop>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;margin-top:-4px}.tabdrop[open]>summary::after{transform:rotate(-135deg);margin-top:4px}.tabdrop-list{display:grid;gap:2px;margin-top:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px}.tabdrop-list .sub{text-align:left;width:100%;min-height:42px}
 .pfhide{display:none!important}
+.iqtnotes{margin:2px 0 10px 12px;padding:8px 12px;border-left:3px solid var(--line);font-size:14.5px}
 .tmoments{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:6px 0}.tmom{display:flex;flex-direction:column;gap:4px;text-align:left;text-decoration:none;color:inherit;padding:0}
 .tmom img{width:100%;height:150px;object-fit:cover;border-radius:10px;background:var(--bg)}.tmomh{font-size:13px;font-weight:700}.tmomt{font-size:13px;color:var(--muted);line-height:1.35}
 .wrpart{margin:10px 0}.wrpart .lbl{margin-bottom:2px}.wrtab{width:100%;border-collapse:collapse;margin:6px 0}.wrtab td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -9741,7 +9742,7 @@ function renderInquiry(x){
   h+=`<section class="card"><div class="lbl">Connected work</div>
     <div class="hint">What feeds this inquiry, and where it reaches.</div>
     <div class="chiprow-label">Threads</div>
-    ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${esc(t.id)}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${esc(t.id)}">Take out</button></div>`).join(""):`<div class="cnt">None yet.</div>`}
+    ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${esc(t.id)}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${esc(t.id)}">Take out</button></div>${has(t.notes)?`<div class="iqtnotes"><div class="chiprow-label">Team notes on the thread</div><div style="white-space:pre-line">${esc(t.notes)}</div><button class="linkbtn" data-tsee="${esc(t.id)}">Edit on the thread</button></div>`:""}`).join(""):`<div class="cnt">None yet.</div>`}
     ${freeT.length?`<label class="tlink">Add a thread<select data-iqaddth="1"><option value="">Choose a thread</option>${freeT.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.classroom?" · "+esc(t.classroom):""}</option>`).join("")}</select></label>`:""}
     <div class="chiprow-label" style="margin-top:8px">Projects</div>
     ${prs.length?prs.map(p=>`<div class="ref" style="background:var(--marigold-soft)"><div class="actions"><button class="linkbtn" data-popen="${esc(p.id)}"><b>${esc(p.name)}</b></button><button class="linkbtn" data-iqprrm="${esc(p.id)}">Take out</button></div>
@@ -9794,6 +9795,7 @@ function inquiryDoc(x,long){
   if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
   const obs=long?ns:ns.slice(0,3);
   if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true))})}
+  for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
   if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",[shortDate(e.at)])))}}
   const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
   if(x.lookAgain)meta.push(["Look again",fmtDate(x.lookAgain)]);
@@ -9822,7 +9824,7 @@ function iqVal(x,key){const [k,id]=key.split(":");
 // everything the inquiry draws on, in the educators' own words, newest first
 function inqDigest(x){const out=[];const ns=inqNotices(x).slice(0,30);
   if(ns.length){out.push("Observations.");for(const n of ns)out.push(`${shortDate(n.at)}, ${n.by||"an educator"}${momentRoomsText(n)?", "+momentRoomsText(n):""}. ${noticeText(n)}`)}
-  for(const id of x.threads||[]){const t=threads.get(id);if(!t)continue;out.push(`Thread ${t.name}.${t.question?" Its question. "+t.question:""}`);
+  for(const id of x.threads||[]){const t=threads.get(id);if(!t)continue;out.push(`Thread ${t.name}.${t.question?" Its question. "+t.question:""}${has(t.notes)?" The team's notes on it. "+String(t.notes).trim().slice(0,1500):""}`);
     for(const e of [...(t.evidence||[])].sort((a,b)=>String(b.week||"").localeCompare(String(a.week||""))).slice(0,10))if(!notices.has(e.planId)&&has(e.text))out.push(`From a plan, week of ${e.week}. ${e.text}`)}
   for(const id of x.projects||[]){const p=projects.get(id);if(!p)continue;out.push(`Project ${p.name}.${projUnder(p)?" What may lie underneath. "+projUnder(p):""}${projIntent(p)?" The educators' intent. "+projIntent(p):""}`)}
   for(const p of inqPlans(x).slice(0,6)){const k=AFTER_KEY[p.type];const f=p.fields||{};const bits=[f.observation,k&&f[k]].filter(has).map(v=>String(v).slice(0,600));if(bits.length)out.push(`${planTitle(p)}, week of ${p.weekOf}. ${bits.join(" ")}`)}
