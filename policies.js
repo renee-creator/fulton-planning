@@ -221,7 +221,7 @@ module.exports = function policies(o) {
     }
     if (P === 'policies/img') {
       const p = path.posix.normalize(String(body.path || ''));
-      const okPlace = (p.startsWith('staff/policies/') && docOk('teacher')) || (p.startsWith(FH) && docOk('family'));
+      const okPlace = (p.startsWith('staff/policies/') && docOk('teacher')) || (p.startsWith(FH) && docOk('family')) || p.startsWith('staff/pd/images/');
       if (!okPlace || !/\.(png|jpe?g|gif|webp)$/i.test(p)) { err(req, res, 404, 'That picture is not here.'); return; }
       try { const buf = await readImage(p); send(req, res, 200, { 'Content-Type': /\.png$/i.test(p) ? 'image/png' : /\.gif$/i.test(p) ? 'image/gif' : /\.webp$/i.test(p) ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=86400' }, buf); }
       catch (e) { err(req, res, 404, 'That picture is not here.'); }

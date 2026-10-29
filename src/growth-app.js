@@ -569,7 +569,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
     ${other.map(x=>card(x.heading,md(x.body))).join("")}${printCard(m,prints,dir)}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
-    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);window.scrollTo(0,0)};
+    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);try{if(typeof fillPics==="function")fillPics()}catch(er){}window.scrollTo(0,0)};
 /* Slides from a module, in our own print style. A title slide with the module's question, why it matters, one slide for
    each part of the Reading with its first lines, Try this week, the reflection questions and plus delta. They follow
    the module as it stands, so a change to the module changes the slides. */
@@ -608,9 +608,11 @@ function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:tr
   const q=(String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"";
   const out=[slide(m.title,[(m.serves||[]).length?"Serves "+(m.serves||[]).map(areaName).filter(Boolean).join(" and ")+".":"",q],{bare:false})];
   if(why)out.push(slide("Why it matters",[firstSentences(String(why.body).split(/\n\s*\n/)[0],3)]));
-  if(rd){const parts=String(rd.body).split(/^###\s+/m).slice(1);for(const p2 of parts){const i=p2.indexOf("\n");const h=p2.slice(0,i<0?p2.length:i).trim();const body=i<0?"":p2.slice(i+1);
+  if(rd){const parts=String(rd.body).split(/^###\s+/m).slice(1);for(const p2 of parts){const i=p2.indexOf("\n");const h=p2.slice(0,i<0?p2.length:i).trim();const raw=i<0?"":p2.slice(i+1);
+      // a picture in this part gets a slide of its own after the part's words, with its caption as the title
+      const PIC=/^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;const pics=raw.split("\n").map(l=>l.match(PIC)).filter(Boolean);const body=raw.split("\n").filter(l=>!PIC.test(l)).join("\n");
       const items=body.split(/\n/).filter(l=>/^\s*([-*]|\d+\.)\s+/.test(l));const lines=items.length?plainLines(items.join("\n")).slice(0,5).map(l=>firstSentences(l,1)):[firstSentences(plainLines(body).join(" "),3)];
-      if(h)out.push(slide(h,lines))}}
+      if(h)out.push(slide(h,lines));for(const g of pics)out.push(Object.assign(slide(g[1]||h,[]),{blocks:[{t:"photo",key:"pdimg:"+g[2],full:true,maxH:430}],_pic:g[2]}))}}
   if(tr)out.push(slide("Try this week",[firstSentences(plainLines(tr.body).join(" "),3)]));
   if(rf)out.push(slide("Reflect",plainLines(rf.body).slice(0,5)));
   out.push(slide("Plus and delta",["What went well today?","What would we change?"]));
@@ -621,7 +623,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmre
     if(!pick.length){toast("Tick one or more first, or print all.");return}progress("Making the file");
     await out(d.word?"word":"pdf",pick.map(x=>printDoc(m,x)),m.title+(pick.length===1?", "+pick[0].title:" printables"));return}
   if(d.gmorigrm||d.gmorigback){const [slug,id]=(d.gmorigrm||d.gmorigback).split("|");try{await api(d.gmorigrm?"pd/original/remove":"pd/original/restore",{slug,id});toast(d.gmorigrm?"Taken off this module's list. Put back brings it back.":"Back on this module's list.");redraw()}catch(er){toast(er.message||"That could not be changed.")}return}
-  if(d.gmslides){const ms=await loadMods();const m=ms.modules[d.gmslides];if(!m)return;progress("Making the slides");await out(d.word?"word":"pdf",moduleSlides(m),m.title+" slides");return}
+  if(d.gmslides){const ms=await loadMods();const m=ms.modules[d.gmslides];if(!m)return;progress("Making the slides");let sl=moduleSlides(m);
+    // each picture is read through the sign-in and handed to the print as it is, and a picture that cannot be read leaves its slide out
+    const keep=[];for(const s of sl){if(!s._pic){keep.push(s);continue}try{const pd=await picData(s._pic);photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic;keep.push(s)}catch(er){}}
+    await out(d.word?"word":"pdf",keep,m.title+" slides");return}
   if(d.gmorig){const [slug,id]=d.gmorig.split("|");progress("Opening the file");try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/original",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug,id})});if(!r.ok){toast("The file could not be opened.");return}
     const u=URL.createObjectURL(await r.blob());const a=document.createElement("a");a.href=u;a.download=id;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(er){toast("The file could not be opened.")}return}
   if(d.gmrest){st.restView=d.gmrest;redraw();return}
