@@ -4631,7 +4631,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="b81308c6745b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="4aaf310b6c51";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4712,7 +4712,7 @@ new MutationObserver(()=>{placeSubnav();phoneFoldSoon()}).observe(document.getEl
 const PF_MAIN={moments:"Observations kept",strec:"Records and certificates",stnew:"First weeks checklist",newsletter:"Topic for families",lens:"A closer reading",threads:"Threads"};
 const pfOpen=new Set(),pfAll=new Set();let pfT=null;
 function phoneFoldSoon(){clearTimeout(pfT);pfT=setTimeout(phoneFold,60)}
-function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySelector("#nf-card,.nfmore")||(view==="plans"&&currentId)||view==="settings"||view==="today")return;
+function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySelector("#nf-card,.nfmore")||(view==="plans"&&currentId)||view==="settings"||view==="today"||view==="drdpreview")return;
   if(document.documentElement.scrollHeight<=window.innerHeight*3)return;
   const head=x=>{const h=x.querySelector(":scope > .lbl, :scope > h2, :scope > h3, :scope > .chiprow-label, :scope > .secthead .lbl, :scope > .secthead h3, :scope > .secthead h2, :scope > .head-row h3, :scope > .head-row h2");return h?h.textContent.trim():""};
   const secs=[...m.querySelectorAll(":scope > section.card, :scope > section.review, :scope > section:not([class]), :scope > div.card")].filter(x=>!x.classList.contains("pfdone")&&head(x));

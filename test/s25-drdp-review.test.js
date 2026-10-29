@@ -33,8 +33,9 @@ test('Review on Today opens every suggestion on one page, and the ticked ones ar
   assert.strictEqual(await s.p.evaluate(() => view), 'drdpreview', 'still on the page');
   // untick one, accept the rest
   await tick(s.p, 'pip|a2'); await s.p.waitForSelector('text=Accept the 2 ticked');
-  await s.p.click('[data-drpacc]'); await s.p.waitForFunction(() => !document.querySelector('[data-drpoff="pip|a1"]'));
-  assert.deepStrictEqual(await s.p.evaluate(() => [...document.querySelectorAll('[data-drpoff]')].map(x => [x.dataset.drpoff, x.checked])), [['pip|a2', false]], 'the unticked one stays, unticked');
+  await s.p.click('[data-drpacc]');
+  // the saves land, and the page settles with the unticked one waiting, unticked
+  await s.p.waitForFunction(() => JSON.stringify([...document.querySelectorAll('[data-drpoff]')].map(x => [x.dataset.drpoff, x.checked])) === JSON.stringify([['pip|a2', false]]), null, { timeout: 15000 });
   assert.deepStrictEqual(s.errors, []);
   await new Promise(r => setTimeout(r, 2500));
   const pip = items(fx, 'pip'), ivy = items(fx, 'ivy');

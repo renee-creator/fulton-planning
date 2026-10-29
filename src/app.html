@@ -4379,7 +4379,7 @@ new MutationObserver(()=>{placeSubnav();phoneFoldSoon()}).observe(document.getEl
 const PF_MAIN={moments:"Observations kept",strec:"Records and certificates",stnew:"First weeks checklist",newsletter:"Topic for families",lens:"A closer reading",threads:"Threads"};
 const pfOpen=new Set(),pfAll=new Set();let pfT=null;
 function phoneFoldSoon(){clearTimeout(pfT);pfT=setTimeout(phoneFold,60)}
-function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySelector("#nf-card,.nfmore")||(view==="plans"&&currentId)||view==="settings"||view==="today")return;
+function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySelector("#nf-card,.nfmore")||(view==="plans"&&currentId)||view==="settings"||view==="today"||view==="drdpreview")return;
   if(document.documentElement.scrollHeight<=window.innerHeight*3)return;
   const head=x=>{const h=x.querySelector(":scope > .lbl, :scope > h2, :scope > h3, :scope > .chiprow-label, :scope > .secthead .lbl, :scope > .secthead h3, :scope > .secthead h2, :scope > .head-row h3, :scope > .head-row h2");return h?h.textContent.trim():""};
   const secs=[...m.querySelectorAll(":scope > section.card, :scope > section.review, :scope > section:not([class]), :scope > div.card")].filter(x=>!x.classList.contains("pfdone")&&head(x));
