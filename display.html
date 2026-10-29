@@ -213,6 +213,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
   // the gatherings coming up, Second Saturday and Play Garden, with the jobs still looking for help
   function gatheringsHtml(G){const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden"};
     return `<div class="body"><div class="kind">Gatherings with families</div><h1>Coming up</h1><div class="days">${G.map(g=>`<div class="day"><h2>${esc(dayName(g.date))}${g.start?", "+esc(new Date("2000-01-01T"+g.start).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}).replace(/\s?([AP])M$/,(m,x)=>" "+x.toLowerCase()+"m")):""}</h2><div class="small"><b>${esc(g.title||GN[g.gathering]||"A gathering")}</b>${g.gardenDay?", a seasonal garden day":""}${g.ready?"":", still being planned"}</div>${g.jobs.length?`<div class="small">${esc(g.jobs.map(j=>j.title+(j.open!=null?(j.open?", "+j.open+" open":", full"):"")).join(" · "))}</div>`:""}</div>`).join("")}</div></div>`}
+  // a quote for the day, in its own words, with who said it
+  function quoteHtml(x){return `<div class="body quiet"><div class="kind">A thought for today</div><div class="words" style="max-width:34ch;font-style:italic">\u201c${esc(x.words)}\u201d</div><div class="when">${esc(x.by||"")}</div></div>`}
   function noteHtml(x){return `<div class="body quiet"><div class="kind">A note from ${esc(x.by||"the director")}</div><div class="words" style="white-space:pre-line;max-width:40ch">${esc(x.text)}</div></div>`}
   function inquiryHtml(x){const b=[["What we see",x.see],["What we are trying",x.tries.join("\n")],["What we are watching for",x.watch]].filter(v=>v[1]);
     return `<div class="body"><div class="kind">Team inquiry <span>${esc(x.room?x.room+" class":"whole school")}</span></div><h1>${esc(x.name)}</h1>
@@ -244,6 +246,8 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     const PR=(feed.proud||[]).map(x=>({k:"reflection",cls:"t",id:"pr"+x.id,html:()=>proudHtml(x)}));
     const n=Math.max(P.length,T.length,I.length,D.length,S.length,SL.length,R.length,L.length,PR.length);for(let i=0;i<n;i++){if(P[i])O.push(P[i]);if(SL[i])O.push(SL[i]);if(R[i])O.push(R[i]);if(PR[i])O.push(PR[i]);if(S[i])O.push(S[i]);if(D[i])O.push(D[i]);if(T[i])O.push(T[i]);if(L[i])O.push(L[i]);if(I[i])O.push(I[i])}
     if(feed.week&&feed.week.length)O.push({k:"week",id:"week",cls:"t",html:()=>weekHtml(feed.week)});
+    // the day's quotes spread through the turn, never two together
+    (feed.quotes||[]).forEach((q,i)=>O.splice(Math.min(O.length,Math.round((i+1)*O.length/((feed.quotes||[]).length+1))+i),0,{k:"quote",id:"q"+q.id,cls:"t",html:()=>quoteHtml(q)}));
     (feed.birthdays||[]).forEach((n,i)=>O.unshift({k:"birthday",id:"b"+i,cls:"t",html:()=>birthdayHtml(n)}));
     (feed.notes||[]).forEach(x=>O.unshift({k:"note",id:"n"+x.id,cls:"t",html:()=>noteHtml(x)}));
     if((feed.gatherings||[]).length)O.push({k:"week",id:"gath",cls:"t",html:()=>gatheringsHtml(feed.gatherings)});

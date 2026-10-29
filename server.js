@@ -1716,7 +1716,10 @@ async function displayFeed() {
   let plant = null; try { const x = staff.garden.ofTheDay(today); if (x) plant = { id: x.id, kind: x.kind, common: x.name, botanical: x.botanical, words: x.words, wonder: x.wonder, eat: x.eat, gather: false, photo: x.photo && x.photo.own && ID_RE.test(x.photo.own) ? { src: photoSrc(x.photo.own) } : x.photo && /^https:\/\/(inaturalist-open-data\.s3\.amazonaws\.com|static\.inaturalist\.org)\//.test(x.photo.url || '') ? { src: x.photo.url, credit: x.photo.credit } : null }; } catch (e) {}
   // the gatherings coming in the next eight weeks, Second Saturday and Play Garden, with the jobs still looking for help
   let gatherings = []; try { const end = addDay(today, 56); gatherings = gatheringsFor('').list.filter(g => g.date && g.date >= today && g.date <= end).slice(0, 4).map(g => ({ id: g.id, title: trim(g.title, 90), date: g.date, start: g.start, gathering: g.gathering, gardenDay: g.gardenDay, ready: g.ready, jobs: g.jobs.map(j => ({ title: trim(j.title, 60), open: j.spots ? Math.max(0, j.spots - j.taken) : null })) })); } catch (e) { gatherings = []; }
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings };
+  // three quotes a day from the director's list, the same all day
+  const QT = require('./quotes-text.js'); let quotes = [];
+  try { quotes = QT.forDay(QT.list(staff.wordingDoc('display-quotes')), today, 3).map(([words, by], i) => ({ id: today + '-' + i, words: trim(words, 300), by: trim(by, 80) })); } catch (e) {}
+  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings, quotes };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
 // initial, initials, or no names at all. The educators' words never change otherwise.

@@ -179,7 +179,8 @@ module.exports = function garden(o) {
       // a photo of our own for any Garden entry, a plant, an animal, wildlife or a sign, takes the stand-in photo's place everywhere
       const p = entryOf(s, body.plant); if (!p || !/^[a-z0-9]{12}-garden-(entry|photo|plant)[a-z0-9-]*\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
       if (body.noFace !== true) { err(req, res, 400, 'A plant photo is kept only once the face check finds no face.'); return; }
-      saveL(L => { L.photos.push({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }); }); return back();
+      // a photo of one named animal, such as one goat in the herd, is kept with the animal and the name
+      const who = txt(body.name, 60); saveL(L => { L.photos.push(Object.assign({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }, who ? { name: who } : {})); }); return back();
     }
     if (P === 'garden/compost') {
       const what = txt(body.what, 160); if (!what) { err(req, res, 400, 'Say what went in, or that it was turned or used.'); return; }

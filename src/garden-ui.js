@@ -254,17 +254,22 @@ const GDN_KIND={wildlife:"Our regular visitors",track:"Tracks and scat",mushroom
 const gdnEntry=id=>{if(!gdn)return null;return (gdn.plants||[]).find(x=>x.id===id)||(gdn.animals||[]).find(x=>x.id===id)||(gdn.wild||[]).find(x=>x.id===id)||(gdn.signs||[]).find(x=>x.id===id)||null};
 const gdnName=x=>x?(x.common||x.name||x.title||""):"";
 // our own photo when there is one, otherwise the stand-in, with its credit
-function gdnPhotoSrc(x){const own=((gdn&&gdn.photos)||[]).filter(p=>p.plant===x.id).slice(-1)[0];if(own&&window.FP_ORIGINAL_URL)return {src:window.FP_ORIGINAL_URL(own.id),own:true,key:"go-"+own.id};
+function gdnPhotoSrc(x){const own=((gdn&&gdn.photos)||[]).filter(p=>p.plant===x.id&&!p.name).slice(-1)[0];if(own&&window.FP_ORIGINAL_URL)return {src:window.FP_ORIGINAL_URL(own.id),own:true,key:"go-"+own.id};
   const ph=x.photo&&x.photo.url?x.photo:null;return ph?{src:ph.url,credit:["Photo by "+(ph.by||"an iNaturalist observer"),ph.license,ph.source||"iNaturalist"].filter(Boolean).join(", "),link:ph.link||"",key:"gi-"+x.id}:null}
 function gdnPhotoHtml(x){const p=gdnPhotoSrc(x);if(!p)return "";return `<div class="gentph"><img src="${esc(p.src)}" alt="${esc(gdnName(x))}" loading="lazy">${p.credit?`<div class="cnt">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)}</a>`:esc(p.credit)}. Our own photo can take its place.</div>`:`<div class="cnt">Our own photo.</div>`}</div>`}
 const gdnList=(l,items)=>items&&items.length?`<div class="lbl">${esc(l)}</div><ul style="margin:2px 0 6px;padding-left:18px">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
 const gdnFam=f=>f&&Object.values(f).some(Boolean)?`<div class="cnt">${[f.male&&"Male, "+f.male,f.female&&"female, "+f.female,f.young&&"young, "+f.young,f.group&&"a group is a "+f.group].filter(Boolean).map(esc).join(". ")}.</div>`:"";
 // the director's Change for one part of the Garden's writing, opened in the one Edit with its history and Restore
 const gdnChange=(item,label)=>typeof pageEditBtn==="function"?pageEditBtn("staff/garden/setup.json",label||"Change",item):"";
+// each named animal with its own photo beside its name, the newest one kept for that name
+const gdnNamePhoto=(a,n)=>((gdn&&gdn.photos)||[]).filter(p=>p.plant===a.id&&p.name&&p.name.toLowerCase()===String(n).toLowerCase()).slice(-1)[0];
+function gdnNameRow(a,n,extra){const ph=gdnNamePhoto(a,n),dir=isDirector()&&!VIEW_AS;
+  return `<span class="gname">${ph&&window.FP_ORIGINAL_URL?`<img src="${esc(window.FP_ORIGINAL_URL(ph.id))}" alt="${esc(n)}" loading="lazy">`:`<span class="gname-none" aria-hidden="true"></span>`}<span><b>${esc(n)}</b>${extra?`<span class="cnt">${esc(extra)}</span>`:""}${dir?`<button class="linkbtn" data-gphoto="${esc(a.id)}" data-gname="${esc(n)}">${ph?"A new photo":"Add a photo"}</button>`:""}</span></span>`}
 function gdnAnimalHtml(a){const names=(a.names||[]).map(n=>typeof n==="string"?n:n.name+(n.breed?", "+n.breed:"")).filter(Boolean);
+  const named=(a.names||[]).map(n=>typeof n==="string"?{name:n}:n).filter(n=>n&&n.name),inBreed=n=>(a.breeds||[]).some(b=>(b.goats||[]).includes(n.name));
   return `${gdnPhotoHtml(a)}${a.health?`<div class="gsafe"><b>Health first.</b> ${esc(a.health)}</div>`:""}${a.graze?`<div class="cnt">${esc(a.graze)}</div>`:""}${a.opens?`<div style="margin-top:4px">${esc(a.opens)}</div>`:""}
     ${(a.wonder||[]).length?`<ul class="gwonder">${a.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}${a.eats?`<div class="cnt"><b>Eats.</b> ${esc(a.eats)}</div>`:""}${a.never?`<div class="cnt"><b>Never.</b> ${esc(a.never)}</div>`:""}${a.handling?`<div class="cnt">${esc(a.handling)}</div>`:""}
-    ${(a.breeds||[]).length?`<div class="lbl">Our herd</div>${a.breeds.map(b=>`<div class="cnt"><b>${esc(b.breed)}</b>, ${esc((b.goats||[]).join(", "))}. ${esc(b.notice||"")}</div>`).join("")}`:names.length?`<div class="cnt">${esc(names.join(", "))}</div>`:""}
+    ${(a.breeds||[]).length?`<div class="lbl">Our herd</div>${a.breeds.map(b=>`<div class="cnt"><b>${esc(b.breed)}</b>. ${esc(b.notice||"")}</div><div class="gnames">${(b.goats||[]).map(n=>gdnNameRow(a,n)).join("")}</div>`).join("")}${named.filter(n=>!inBreed(n)).length?`<div class="gnames">${named.filter(n=>!inBreed(n)).map(n=>gdnNameRow(a,n.name,n.breed)).join("")}</div>`:""}`:named.length?`<div class="gnames">${named.map(n=>gdnNameRow(a,n.name,n.breed)).join("")}</div>`:names.length?`<div class="cnt">${esc(names.join(", "))}</div>`:""}
     ${a.flock?`<div class="cnt">A flock of ${esc(a.flock)} chickens.</div>`:""}${gdnList("Our eggs",a.eggs)}${(a.vocab||[]).length?`<div class="cnt"><b>Words.</b> ${esc(a.vocab.join(", "))}</div>`:""}${gdnFam(a.family)}
     <div class="actions"><button class="btn small ghost" data-gphoto="${esc(a.id)}">Add our photo</button>${printBtns("gentry",esc(a.id),"Animal page, PDF")}${gdnChange("animals|"+a.id)}</div>`}
 function gdnWildRow(w){return `<details class="gwild" id="ge-${esc(w.id)}"><summary><b>${esc(w.name)}</b> <i class="cnt">${esc(w.scientific||"")}</i>${w.kind==="hazard"?` <span class="gtag look">Keep away</span>`:w.kind==="mushroom"?` <span class="gtag look">Never pick or taste</span>`:""}</summary>
@@ -372,7 +377,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gphoto||d.gmapup){const f=await gdnPickPhoto();if(!f)return;toast("Checking the photo");const blob=await shrinkImage(f);
     if(!(await gdnFaceFree(blob).catch(()=>false))){toast(d.gmapup?"A face was found in that picture, so it is not kept. Choose a picture with no people.":"A face was found, so the photo is not kept. Our Garden photos never show children.");return}
     const id=await window.FP_KEEP_ORIGINAL(blob,d.gmapup?"garden-map.jpg":"garden-entry.jpg");
-    if(d.gmapup)await gdnCall("map",{photo:id},"The site map is kept.");else await gdnCall("photo",{plant:d.gphoto,id,noFace:true,season:GDN_MONTHS[new Date().getMonth()]},"Kept.");return}
+    if(d.gmapup)await gdnCall("map",{photo:id},"The site map is kept.");else await gdnCall("photo",{plant:d.gphoto,id,noFace:true,season:GDN_MONTHS[new Date().getMonth()],...(d.gname?{name:d.gname}:{})},"Kept.");return}
   if(d.gtadd){const m=d.gtadd,q=s=>document.querySelector(`[${s}="${m}"]`);await gdnCall("task",{month:m,text:q("data-gtnew").value,stage:q("data-gtstage").value,bed:q("data-gtbed").value,weekday:q("data-gtday").value},"Added.");return}
   if(d.gtedit){gdnTEdit=gdnTEdit===d.gtedit?"":d.gtedit;renderMain();return}
   if(d.gtesave){const box=t.closest("li,.gtask");const f=k=>{const x=box&&box.querySelector(`[data-gte="${k}"]`);return x?x.value:undefined};
