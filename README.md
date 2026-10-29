@@ -120,7 +120,9 @@ A plan can begin from a pattern in What these observations keep returning to, fr
 
 Only the director changes a project. Educators read it, add a thread to it, keep observations for it, and start plans from it. The server refuses any other change to a project from anyone else.
 
-An observation reaches a project through one of its threads, so an observation not kept for the project can still show on its page. Under Observations, the director's Not part of this project takes it out of that project only. Its threads keep it as they are. A folded list, Not part of this project, shows each one taken out, who took it out and when, with Put it back.
+A project holds the observations kept for it and those the director added to it. A thread can follow more than one project, so the rest of a thread's observations do not show on a project by themselves. When the director opens a project, the quick model reads the observations of its threads that are not in it yet and names the ones that clearly fit, each with a short reason. They wait under From its threads, waiting for you, with Add to project, Add all and Not this. Not this leaves the observation in its thread, and it is not suggested for that project again. Nothing joins a project without a tap, and the threads keep every observation as they are. The reading runs again only when the project or its threads' observations change. Educators see the project's own observations and nothing waiting.
+
+Under Observations, the director's Not part of this project takes one out of that project only. Its threads keep it as they are. A folded list, Not part of this project, shows each one taken out, who took it out and when, with Put it back.
 
 ## Team inquiries
 
