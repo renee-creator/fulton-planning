@@ -286,7 +286,7 @@ function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,in
   if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart};
+T._={tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;
@@ -1772,7 +1772,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
     ${other.map(x=>card(x.heading,md(x.body))).join("")}${printCard(m,prints,dir)}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
-    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);try{if(typeof fillPics==="function")fillPics()}catch(er){}window.scrollTo(0,0)};
+    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish On my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);try{if(X.fillPics)X.fillPics()}catch(er){}window.scrollTo(0,0)};
 /* Slides from a module, in our own print style. A title slide with the module's question, why it matters, one slide for
    each part of the Reading with its first lines, Try this week, the reflection questions and plus delta. They follow
    the module as it stands, so a change to the module changes the slides. */
@@ -1828,7 +1828,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmre
   if(d.gmorigrm||d.gmorigback){const [slug,id]=(d.gmorigrm||d.gmorigback).split("|");try{await api(d.gmorigrm?"pd/original/remove":"pd/original/restore",{slug,id});toast(d.gmorigrm?"Taken off this module's list. Put back brings it back.":"Back on this module's list.");redraw()}catch(er){toast(er.message||"That could not be changed.")}return}
   if(d.gmslides){const ms=await loadMods();const m=ms.modules[d.gmslides];if(!m)return;progress("Making the slides");let sl=moduleSlides(m);
     // each picture is read through the sign-in and handed to the print as it is, and a picture that cannot be read leaves its slide out
-    const keep=[];for(const s of sl){if(!s._pic){keep.push(s);continue}try{const pd=await picData(s._pic);photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic;keep.push(s)}catch(er){}}
+    const keep=[];for(const s of sl){if(!s._pic){keep.push(s);continue}try{const pd=await X.picData(s._pic);photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic;keep.push(s)}catch(er){}}
     await out(d.word?"word":"pdf",keep,m.title+" slides");return}
   if(d.gmorig){const [slug,id]=d.gmorig.split("|");progress("Opening the file");try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/original",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug,id})});if(!r.ok){toast("The file could not be opened.");return}
     const u=URL.createObjectURL(await r.blob());const a=document.createElement("a");a.href=u;a.download=id;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(er){toast("The file could not be opened.")}return}
