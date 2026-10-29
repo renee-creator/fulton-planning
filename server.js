@@ -1427,7 +1427,7 @@ async function suggestForProject(pid, key) {
   const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); if (!tids.size) return { suggest: [], key: 'none' };
   const fromEv = new Map();
   for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) fromEv.set(e.planId || e.id, id); }
-  const skip = new Set([...(x.evidence || []).map(e => e && (e.planId || e.id)), ...(x.setAside || []).map(a => a && a.id), ...(x.suggestNo || []).map(a => a && a.id)].filter(Boolean));
+  const skip = new Set([...(x.evidence || []).map(e => e && (e.planId || e.id)), ...(x.setAside || []).map(a => a && a.id), ...(x.suggestNo || []).map(a => a && a.id), ...(x.foundNo || [])].filter(Boolean));
   const seen = new Set(), cands = [];
   for (const [nid, nr] of store.recs.notices) { const n = nr.doc; if (nr.deleted || !n) continue;
     const tid = n.threadId && tids.has(n.threadId) ? n.threadId : fromEv.get(nid); if (!tid) continue;
