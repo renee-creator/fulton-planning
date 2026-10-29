@@ -4618,7 +4618,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="7819270914e7";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="a86c1c180cfb";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -10351,7 +10351,7 @@ function renderProject(x){
     <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
   if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea>${projStrHtml(x,"closure")}</section>`;
 
-  const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span></div>`).join("")}</div></details>`:""};
+  const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span>${has(r.why)?`<div class="muted">What changed our thinking. ${esc(r.why)}</div>`:""}</div>`).join("")}</div></details>`:""};
   h+=`<section class="card"><div class="lbl">Where it came from</div>
     ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${esc(dt.id)}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The question the team is following there. ${esc(dt.question)}</div>`:""}</div>`:""}
     <label class="fld-label">The experience it grew from<textarea data-pf="experience" rows="2" placeholder="What happened, and what children felt or showed">${esc(x.experience||"")}</textarea></label>
@@ -10360,12 +10360,12 @@ function renderProject(x){
     <div class="hint">The deeper question or understanding the team thinks children are working on. Write it as a hypothesis, and revise it as documentation comes in.</div>
     <textarea data-pf="underneath" rows="2" placeholder="Ex. Perhaps children are working out whether something can go away and still exist">${esc(projUnder(x))}</textarea>
     ${projStrHtml(x,"underneath")}
-    <div class="actions"><button class="linkbtn" data-prev="underneath">Keep this as an earlier reading and write a new one</button></div>${earlierHtml("underneath")}</section>
+    ${projKeepHtml(x,"underneath")}${earlierHtml("underneath")}</section>
   <section class="card"><div class="lbl">Our intent as educators</div>
     <div class="hint">What we hope children may come to understand, and what we want to learn ourselves. It is held loosely and it changes with the work.</div>
     <textarea data-pf="intent" rows="2">${esc(projIntent(x))}</textarea>
     ${projStrHtml(x,"intent")}
-    <div class="actions"><button class="linkbtn" data-prev="intent">Keep this as an earlier intent and write a new one</button></div>${earlierHtml("intent")}
+    ${projKeepHtml(x,"intent")}${earlierHtml("intent")}
     <label class="fld-label">Who decided to follow it as a project<input type="text" data-pd="who" value="${esc(x.decision?.who||"")}" placeholder="Ex. The West team at Monday planning"></label></section>`;
 
   // the observations TREE found for a project are listed once, with its threads' suggestions, under Observations
@@ -10482,11 +10482,39 @@ const projStr={},projSug={};
 const projVal=(x,k)=>String(k==="intent"?projIntent(x):k==="underneath"?projUnder(x):x[k]||"");
 function projStrHtml(x,k){
   if(!sample)return"";const sg=projStr[x.id+k];
-  if(!sg)return `<div class="actions"><button class="btn small ghost" data-pstr="${k}">Strengthen wording</button></div>`;
-  if(sg.status==="working")return `<div class="sugg"><b>TREE is rewriting this section</b><div class="muted">Reading your entry</div></div>`;
+  const canDraft=k==="underneath"||k==="intent";
+  if(!sg)return `<div class="actions">${canDraft&&!projVal(x,k).trim()?`<button class="btn small" data-pdraft="${k}">Draft from the evidence</button>`:`<button class="btn small ghost" data-pstr="${k}">Strengthen wording</button>`}</div>`;
+  if(sg.status==="working")return sg.draft?`<div class="sugg"><b>TREE is drafting from the evidence</b><div class="muted">Reading the project's observations, threads and earlier ${k==="intent"?"intents":"readings"}</div></div>`:`<div class="sugg"><b>TREE is rewriting this section</b><div class="muted">Reading your entry</div></div>`;
+  if(sg.draft&&sg.status==="ready")return `<div class="sugg"><b>Drafted by TREE from the evidence</b><textarea id="pstr-${k}" rows="4">${esc(sg.text)}</textarea><div class="cnt">Read it and change anything here. Nothing goes in until you choose Use this.</div><div class="actions"><button class="btn small" data-pstryes="${k}">Use this</button><button class="btn small ghost" data-pstrno="${k}">Not now</button><button class="linkbtn" data-pdraft="${k}">Try another version</button></div></div>`;
   if(sg.status==="error")return `<div class="sugg"><b class="err">Strengthen did not work</b><div>${esc(sg.error)}</div><div class="actions"><button class="btn small ghost" data-pstr="${k}">Try again</button><button class="linkbtn" data-pstrno="${k}">Close</button></div></div>`;
   return `<div class="sugg"><b>Suggested wording</b><textarea id="pstr-${k}" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. Your original stays until you choose Use this.</div><div class="actions"><button class="btn small" data-pstryes="${k}">Use this</button><button class="btn small ghost" data-pstrno="${k}">Keep mine</button><button class="linkbtn" data-pstr="${k}">Try another version</button></div></div>`;
 }
+// Keep this as an earlier reading first asks what changed the team's thinking, which stays with the earlier reading
+const projKeep={};
+function projKeepHtml(x,k){const word=k==="intent"?"intent":"reading";
+  if(!projKeep[x.id+k])return `<div class="actions"><button class="linkbtn" data-prev="${k}">Keep this as an earlier ${word} and write a new one</button></div>`;
+  return `<div class="sugg"><b>What changed our thinking?</b><textarea id="pkw-${k}" rows="2" placeholder="Ex. On the creek walks children kept testing what floats, more than where the water goes"></textarea>
+    <div class="cnt">This stays with the earlier ${word}, with today's date.</div>
+    <div class="actions"><button class="btn small" data-pkeepgo="${k}|draft">Keep it and draft a new one</button><button class="btn small ghost" data-pkeepgo="${k}|">Keep it, we will write the new one</button><button class="linkbtn" data-pkeepno="${k}">Cancel</button></div></div>`}
+// TREE drafts a new reading or intent from the project's observations, threads and earlier ones, with why each changed
+async function projDraft(x,k){if(!sample)return;const key=x.id+k;projStr[key]={status:"working",draft:true};renderMain();
+  const early=projEarlier(x,k).map(r=>({date:shortDate(r.at),text:r.text,what_changed_our_thinking:r.why||""}));
+  const since=(projEarlier(x,k).slice(-1)[0]||{}).at||0;
+  const obs=projNotices(x).slice(0,40).map(n=>({date:shortDate(n.at),since_the_last:(n.at||0)>since,noticed:String(n.noticed||"").slice(0,500),wonder:String(n.wonder||"").slice(0,200)}));
+  const other=k==="intent"?["What may lie underneath",projUnder(x)]:["Our intent as educators",projIntent(x)];
+  const prompt=`You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based preschool in Santa Rosa, California, write a new "${PSTD[k][0]}" for a project.
+The standard for this part. ${PSTD[k][1]}
+The project ${JSON.stringify({name:x.name||"",the_experience_it_grew_from:x.experience||"",[other[0]]:other[1]||"",threads:projThreads(x).map(o=>({name:o.t.name,question:o.t.question||""}))})}
+Earlier ${k==="intent"?"intents":"readings"}, oldest first, each with what changed the team's thinking ${JSON.stringify(early)}
+Observations kept for the project, newest first. since_the_last marks those kept after the last earlier one.
+${obs.map(o=>JSON.stringify(o)).join("\n")}
+Write the new one. Build on the earlier ones and on what changed the team's thinking, and let the observations since the last one show where the thinking has moved. Use only what the project, the observations and the team's words say. Never invent children, quotes, materials or events. Write it as a hypothesis, tentatively, with words such as perhaps or it may be. One to three sentences. ${STYLE}
+Return only the new text, with no preface.`;
+  let out="",code="";
+  try{const r=await sample(prompt,{modelTier:"default",cache:false});out=(r.text||"").trim()}catch(err){code=err?.code||"unknown"}
+  out=out.replace(/^(here is|here's)[^\n]*\n+/i,"").replace(/^["\u201c]|["\u201d]$/g,"").replace(/\s*[\u2014\u2013]\s*/g,", ").trim();
+  projStr[key]=out?{status:"ready",text:out,draft:true}:{status:"error",error:assistError(code||"empty_completion","Nothing was changed.")};
+  if(view==="projects"&&projId===x.id)renderMain()}
 async function projStrengthen(x,k){
   const cur=projVal(x,k).trim();
   if(!cur){toast("Write a few words first, then strengthen them.");return}
@@ -10609,8 +10637,16 @@ async function projectsClick(t){
   const x=projId&&projects.get(projId);if(!x)return false;
   if(t.dataset.prev){const key=t.dataset.prev;const cur=(key==="intent"?projIntent(x):projUnder(x)).trim();
     if(!cur){toast("Write the current one first.");return true}
-    x.earlier=x.earlier||{};x.earlier[key]=[...(x.earlier[key]||[]),{text:cur,at:Date.now(),by:whoAmI()}];x[key]="";saveProject(x);renderMain();
-    const ta=document.querySelector(`[data-pf="${key}"]`);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}toast("Kept with today's date. Write the new one.");return true}
+    projKeep[x.id+key]=true;renderMain();const ta=$("#pkw-"+key);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}return true}
+  if(t.dataset.pkeepno){delete projKeep[x.id+t.dataset.pkeepno];renderMain();return true}
+  if(t.dataset.pkeepgo){const [key,draft]=t.dataset.pkeepgo.split("|");const why=($("#pkw-"+key)?.value||"").trim();const cur=(key==="intent"?projIntent(x):projUnder(x)).trim();
+    if(!why){toast("Write a few words on what changed your thinking first.");$("#pkw-"+key)?.focus();return true}
+    if(cur){x.earlier=x.earlier||{};x.earlier[key]=[...(x.earlier[key]||[]),{text:cur,at:Date.now(),by:whoAmI(),why}];x[key]="";saveProject(x)}
+    delete projKeep[x.id+key];delete projStr[x.id+key];
+    if(draft){projDraft(x,key);toast("Kept with today's date. TREE is drafting the new one.")}
+    else{renderMain();const ta=document.querySelector(`[data-pf="${key}"]`);if(ta){ta.scrollIntoView({block:"center"});ta.focus()}toast("Kept with today's date. Write the new one.")}
+    return true}
+  if(t.dataset.pdraft){projDraft(x,t.dataset.pdraft);return true}
   if(t.id==="pw-assist"){projWebAssist(x);return true}
   if(t.id==="pw-sgno"){delete projSug[x.id];renderMain();return true}
   if(t.id==="pw-sgyes"){const d=projSug[x.id]?.branches;if(d){x.web=Object.assign({},x.web,{branches:JSON.parse(JSON.stringify(d))});saveProject(x);delete projSug[x.id];renderMain();toast("Directions updated. Edit any part below.")}return true}
