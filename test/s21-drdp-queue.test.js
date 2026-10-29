@@ -57,3 +57,46 @@ test('a child\'s page reviews only that child, and leaving ends the queue', asyn
   await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('text=Waiting for review');
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('Accept all for a child, then the tick list accepts only the ticked ones', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  // the director's queue holds every class, Ivy, Oak and Pip
+  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-drqueue="room"]', { timeout: 15000 });
+  await s.p.click('[data-drqueue="room"]'); await s.p.waitForSelector('text=Reviewing');
+  const head = () => s.p.evaluate(() => document.querySelector('#kdrdp h3').textContent);
+  // Ivy has one, so no Accept all, and accepting moves on
+  assert.strictEqual(await s.p.$('#kdrdp [data-drqall]'), null);
+  assert.match(await s.p.innerText('#kdrdp'), /See all 4 as a list/);
+  // the tick list, all ticked, untick Oak's and accept the rest of what is left
+  await s.p.click('#kdrdp [data-drqtick]'); await s.p.waitForSelector('#kdrdp [data-drqaccept]');
+  assert.match(await s.p.innerText('#kdrdp'), /Accept the 4 ticked/);
+  await s.p.click('#kdrdp label:has([data-drqoff="c1"])'); await s.p.waitForSelector('text=Accept the 3 ticked');
+  await s.p.click('#kdrdp [data-drqone]'); await s.p.waitForSelector('#kdrdp [data-draccept]');
+  await s.p.click('#kdrdp [data-draccept]'); await s.p.waitForFunction(() => /1 reviewed/.test(document.querySelector('#kdrdp .cnt').textContent));
+  // Accept all for Pip
+  const who = await head(); const kid = /Pip/.test(who) ? 'pip' : 'oak';
+  if (kid === 'oak') { await s.p.click('#kdrdp [data-drqskip]'); await s.p.waitForFunction(() => /Pip/.test(document.querySelector('#kdrdp h3').textContent)); }
+  await s.p.click('#kdrdp [data-drqall="pip"]'); await s.p.waitForFunction(() => /3 reviewed/.test(document.querySelector('#kdrdp .cnt').textContent));
+  await new Promise(r => setTimeout(r, 2500));
+  const items = id => JSON.parse(fs.readFileSync(path.join(fx.dir, `children/${id}.json`), 'utf8')).drdp.items;
+  assert.deepStrictEqual([items('ivy').b1.status, items('pip').a1.status, items('pip').a2.status, items('oak').c1.status], ['accepted', 'accepted', 'accepted', 'suggested']);
+  assert.deepStrictEqual(s.errors, []);
+});
+
+test('the tick list from a child page leaves the unticked waiting', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drqlist]', { timeout: 15000 });
+  await s.p.click('[data-drqlist]'); await s.p.waitForSelector('text=Accept the 2 ticked');
+  await s.p.click('#kdrdp label:has([data-drqoff="a2"])'); await s.p.click('#kdrdp [data-drqaccept]');
+  await s.p.waitForFunction(() => /1 reviewed/.test(document.querySelector('#kdrdp .cnt').textContent));
+  await new Promise(r => setTimeout(r, 2500));
+  const pip = JSON.parse(fs.readFileSync(path.join(fx.dir, 'children/pip.json'), 'utf8')).drdp.items;
+  assert.deepStrictEqual([pip.a1.status, pip.a2.status], ['accepted', 'suggested']);
+  assert.deepStrictEqual(s.errors, []);
+});
