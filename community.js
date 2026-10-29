@@ -50,11 +50,23 @@
           <p class="small muted">${esc(f.intro || 'We look with our eyes and leave them be.')}</p></details>`).join('')}` : ''}
       </details></section>`;
     }
+    // the farm animals, each a fold with its card and each named animal with its photo beside its name, on the Family page
+    if (c && c.plants && (c.plants.animals || []).length) {
+      const img = (p, alt) => src(base, p) ? `<img src="${esc(src(base, p))}" alt="${esc(alt)}" loading="lazy" class="cm-img">${p.credit ? `<div class="small muted">${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)}</a>` : esc(p.credit)}</div>` : ''}` : '';
+      h += `<section class="card cm"><details ${st.animalsOpen ? 'open' : ''} data-cmfold="animals"><summary><h2 style="display:inline">Our animals</h2></summary>
+        ${c.plants.animals.map(a => `<details class="cm-area"><summary><b>${esc(a.name)}</b>${a.names.length ? ` <span class="small muted">${a.names.length}</span>` : ''}</summary>
+          ${img(a.photo, a.name)}${[a.know, a.wonder, a.family].filter(Boolean).map(t => `<p>${esc(t)}</p>`).join('')}${a.rule ? `<p><b>${esc(a.rule)}</b></p>` : ''}
+          ${a.breeds.map(b => `<p class="small"><b>${esc(b.breed)}</b>${b.notice ? '. ' + esc(b.notice) : ''}</p>`).join('')}
+          ${a.names.length ? `<div class="cm-names">${a.names.map(n => `<div class="cm-name">${src(base, n.photo) ? `<img src="${esc(src(base, n.photo))}" alt="${esc(n.name)}" loading="lazy">` : '<span class="cm-name-none" aria-hidden="true"></span>'}<span><b>${esc(n.name)}</b>${n.breed ? ` <span class="small muted">${esc(n.breed)}</span>` : ''}</span></div>`).join('')}</div>` : ''}
+          ${a.words.length ? `<p class="small"><b>Words.</b> ${esc(a.words.join(', '))}</p>` : ''}${a.health ? `<p class="small"><b>Health first.</b> ${esc(a.health)}</p>` : ''}</details>`).join('')}
+      </details></section>`;
+    }
     return h;
   }
   const CSS = '.cm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.cm-chip{border:1px solid #c9c1ad;background:#fff;border-radius:999px;padding:4px 10px;font:inherit;font-size:14px;cursor:pointer}.cm-chip.on{background:#2f5d46;color:#fff;border-color:#2f5d46}'
     + '.cm-area{border-top:1px solid #e3dccb;padding:6px 0}.cm-area>summary{cursor:pointer}.cm-place{padding:6px 0;border-bottom:1px dashed #e3dccb}.cm-img{width:100%;max-width:420px;border-radius:10px;display:block;margin:6px 0}'
     + '.cm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:6px}.cm-tile{min-width:0}.cm-tile img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}.cm-soft{width:100%;aspect-ratio:4/3;border-radius:10px;background:#efe9da}'
+    + '.cm-names{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}.cm-name{display:flex;align-items:center;gap:8px;min-width:0}.cm-name img,.cm-name-none{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none}.cm-name-none{background:#efe9da}'
     + '.cm input[type=search]{display:block;width:100%;box-sizing:border-box;margin:4px 0;padding:8px;border:1px solid #c9c1ad;border-radius:8px;font:inherit}';
   // the chips, the search and the folds, with draw to draw again after a choice
   function bind(el, st, draw) {
@@ -62,5 +74,5 @@
     el.addEventListener('input', e => { if (e.target.id !== 'cm-q') return; st.q = e.target.value; const at = e.target.selectionStart; draw(); const i = el.querySelector('#cm-q'); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (er) {} } });
     el.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.cmfold) st[d.dataset.cmfold + 'Open'] = d.open; }, true);
   }
-  root.TREE_COMMUNITY = { html, bind, places, CSS, state: () => ({ area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false }) };
+  root.TREE_COMMUNITY = { html, bind, places, CSS, state: () => ({ area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false, animalsOpen: false }) };
 })(typeof window !== 'undefined' ? window : this);

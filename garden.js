@@ -9,6 +9,8 @@
    second copy, so a bed names the space it sits in. Fulton uses no herbicides or pesticides, and nothing here suggests
    one. A Look, don't eat plant never appears as something children gather or taste. */
 module.exports = function garden(o) {
+  // an animal's card keeps its words in parts, so its line is what to know
+  const cardKnow = x => !x || !x.card ? '' : typeof x.card === 'object' ? String(x.card.know || '') : String(x.card);
   const { get, put, log, isDirector, isKitchen, nameKey, roomOf, today, addDays, mondayOf, staffNames } = o;
   const SETUP = 'staff/garden/setup.json', LOG = 'staff/garden/log.json';
   const setup = () => get(SETUP) || null;
@@ -102,7 +104,7 @@ module.exports = function garden(o) {
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function community() {
     const s = setup(); if (!s || !s.ready) return null; const L = glog();
-    const ownOf = id => ((L.photos || []).filter(x => x && x.plant === id && x.ok).slice(-1)[0] || {}).id || '';
+    const ownOf = id => ((L.photos || []).filter(x => x && x.plant === id && x.ok && !x.name).slice(-1)[0] || {}).id || '';
     const photoOf = x => { const own = ownOf(x.id); if (own) return { own };
       const ph = x.photo && x.photo.url ? x.photo : null; return ph ? { url: ph.url, credit: ['Photo by ' + (ph.by || 'an iNaturalist observer'), ph.license, ph.source || 'iNaturalist'].filter(Boolean).join(', '), link: ph.link || '' } : null; };
     const bedName = id => ((s.beds || []).find(b => b && b.id === id) || {}).name || '';
@@ -111,10 +113,19 @@ module.exports = function garden(o) {
         (p.ready || []).length ? 'Harvest or gather in ' + p.ready.map(m => MONTHS[+m - 1]).filter(Boolean).join(', ') : '', (p.wildlife || []).length ? 'Feeds ' + p.wildlife.join(', ') : '', (p.words || {}).adult || ''].filter(Boolean).map(x => String(x).replace(/[.]+$/, '')).join('. ') + '.',
       photo: photoOf(p) }));
     const entry = id => { const x = (s.plants || []).find(y => y.id === id) || (s.animals || []).find(y => y.id === id) || (s.wild || []).find(y => y.id === id); if (!x || x.hidden || x.planned) return null;
-      const line = (x.words || {}).child || x.card || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
+      const line = (x.words || {}).child || cardKnow(x) || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
       return { name: x.common || x.name || x.title || '', line: String(line || ''), photo: photoOf(x) }; };
     const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', intro: f.intro || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
-    return { plants, fieldGuides };
+    // each animal's card in its parts, and each named animal with its own photo beside its name
+    const namedOf = (id, n) => ((L.photos || []).filter(x => x && x.plant === id && x.ok && x.name && x.name.toLowerCase() === String(n).toLowerCase()).slice(-1)[0] || {}).id || '';
+    const animals = (s.animals || []).filter(a => a && !a.hidden && !a.planned && a.name).map(a => { const c = a.card && typeof a.card === 'object' ? a.card : { know: a.card || '' };
+      const listed = (a.names || []).map(n => typeof n === 'string' ? { name: n } : n).filter(n => n && n.name);
+      const seen = new Set(), names = [];
+      for (const b of a.breeds || []) for (const n of b.goats || []) if (n && !seen.has(n)) { seen.add(n); names.push({ name: n, breed: b.breed || '' }); }
+      for (const n of listed) if (!seen.has(n.name)) { seen.add(n.name); names.push({ name: n.name, breed: n.breed || '' }); }
+      return { id: a.id, name: a.name, know: String(c.know || ''), wonder: String(c.wonder || ''), family: String(c.family || ''), rule: String(c.rule || ''), health: a.health || '', words: (a.vocab || []).filter(Boolean),
+        breeds: (a.breeds || []).filter(b => b && b.breed).map(b => ({ breed: b.breed, notice: b.notice || '' })), photo: photoOf(a), names: names.map(n => Object.assign(n, { photo: namedOf(a.id, n.name) ? { own: namedOf(a.id, n.name) } : null })) }; });
+    return { plants, fieldGuides, animals };
   }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
@@ -177,7 +188,8 @@ module.exports = function garden(o) {
       // a photo of our own for any Garden entry, a plant, an animal, wildlife or a sign, takes the stand-in photo's place everywhere
       const p = entryOf(s, body.plant); if (!p || !/^[a-z0-9]{12}-garden-(entry|photo|plant)[a-z0-9-]*\.(jpe?g|png)$/i.test(body.id || '')) { err(req, res, 400, 'Choose the plant and the photo.'); return; }
       if (body.noFace !== true) { err(req, res, 400, 'A plant photo is kept only once the face check finds no face.'); return; }
-      saveL(L => { L.photos.push({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }); }); return back();
+      // a photo of one named animal, such as one goat in the herd, is kept with the animal and the name
+      const who = txt(body.name, 60); saveL(L => { L.photos.push(Object.assign({ id: body.id, plant: p.id, season: txt(body.season, 40), at: Date.now(), by: me, ok: true }, who ? { name: who } : {})); }); return back();
     }
     if (P === 'garden/compost') {
       const what = txt(body.what, 160); if (!what) { err(req, res, 400, 'Say what went in, or that it was turned or used.'); return; }
@@ -304,6 +316,6 @@ module.exports = function garden(o) {
     const all = [...(s.plants || []).filter(p => !p.planned && !p.hidden).map(p => ({ kind: 'plant', x: p })), ...(s.animals || []).map(a => ({ kind: 'animal', x: a })), ...(s.wild || []).map(w => ({ kind: w.kind || 'wildlife', x: w }))];
     if (!all.length) return null; const n = Math.floor(Date.parse(day + 'T12:00:00Z') / 864e5) % all.length; const { kind, x } = all[n];
     const own = (L.photos || []).filter(p => p.plant === x.id && p.ok).slice(-1)[0];
-    return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || x.card || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
+    return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || cardKnow(x) || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
   return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
 };

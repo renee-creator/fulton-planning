@@ -88,7 +88,7 @@ module.exports = function staffModule(o) {
   // pages of the school's own words that start from the words TREE first showed, until the director writes them
   const ST = require('./staff-text.js');
   const edDefs = () => ({ items: ITEMS, papers: PAPERS, checklist: CHECKLIST, modules: (typeof G !== 'undefined' && G && G.MODULE_LIST) || [] });
-  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage, [ST.PAGE]: () => ST.startPage(edDefs()) };
+  const STARTERS = { [require('./family-text.js').PAGE]: require('./family-text.js').startPage, [ST.PAGE]: () => ST.startPage(edDefs()), [require('./quotes-text.js').PAGE]: require('./quotes-text.js').startPage };
   // the Educators pages' own words, as the director wrote them, each part as it first read until she writes it
   function edTexts() { const out = ST.defaults(edDefs()); let W = {}; try { W = require('./wording.js').map(wordingDoc('educator-pages-text')); } catch (e) {}
     for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim(); return out; }

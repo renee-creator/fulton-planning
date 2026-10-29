@@ -124,6 +124,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .tabdrop{margin:2px 0 6px}.tabdrop>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;cursor:pointer;border:1.5px solid var(--moss);border-radius:999px;padding:9px 16px;font-weight:700;color:var(--moss);background:var(--paper);min-height:44px;box-sizing:border-box}.tabdrop>summary::-webkit-details-marker{display:none}.tabdrop>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;margin-top:-4px}.tabdrop[open]>summary::after{transform:rotate(-135deg);margin-top:4px}.tabdrop-list{display:grid;gap:2px;margin-top:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px}.tabdrop-list .sub{text-align:left;width:100%;min-height:42px}
 .pfhide{display:none!important}
 .iqtnotes{margin:2px 0 10px 12px;padding:8px 12px;border-left:3px solid var(--line);font-size:14.5px}
+.gnames{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 10px}.gname{display:flex;gap:8px;align-items:center;min-width:150px}.gname img,.gname-none{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex:none}.gname>span{display:flex;flex-direction:column;font-size:14px}
 .tpart{margin-top:8px}.tpart>summary{cursor:pointer}
 .tmoments{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:6px 0}.tmom{display:flex;flex-direction:column;gap:4px;text-align:left;text-decoration:none;color:inherit;padding:0}
 .tmom img{width:100%;height:150px;object-fit:cover;border-radius:10px;background:var(--bg)}.tmomh{font-size:13px;font-weight:700}.tmomt{font-size:13px;color:var(--muted);line-height:1.35}
@@ -13117,6 +13118,12 @@ function proofEls(){const m=proofMain();if(!m)return [];const locked=m.classList
   return [...m.querySelectorAll("textarea,input")].filter(el=>(el.tagName==="TEXTAREA"||((el.type==="text"||!el.type)&&String(el.value).trim().split(/\s+/).length>=3))&&el.type!=="search"&&!el.disabled&&(!el.readOnly||locked)&&!el.closest(".proof,[data-noproof]")&&String(el.value).trim().length>=3)}
 const proofFields=()=>proofSels.map(proofFind).map((el,i)=>el&&el.isConnected&&String(el.value).trim()?{k:String(i),label:proofLabel(el),text:el.value}:null).filter(Boolean);
 const proofHash=()=>proofEls().map(el=>el.value).join("\u0001");
+// the words TREE has already proofread, remembered on this device by their exact words, so printing or sending again
+// proofreads only what is new or changed since
+const proofKey=t=>{let h=5381;const s=String(t||"").trim();for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return s.length+":"+(h>>>0).toString(36)};
+let proofOk=new Set(LS.get("tree.proofok",[])||[]);
+function proofRemember(texts){for(const t of texts)if(String(t||"").trim())proofOk.add(proofKey(t));const a=[...proofOk];if(a.length>4000){proofOk=new Set(a.slice(-3000))}LS.set("tree.proofok",[...proofOk])}
+const proofNew=()=>proofEls().filter(el=>!proofOk.has(proofKey(el.value)));
 // a box takes the fix and saves the way it always does; the welcome letter and the bin note save here, since they have their own save buttons
 function proofApply(k,v){const el=proofFind(proofSels[+k]);if(!el||!el.isConnected)return false;const m=$("#main");
   // a saved conference form opens to edit, as pressing its Edit would
@@ -13149,12 +13156,12 @@ Each text has an id. Answer with JSON only, {"fixes":[{"id":"the text's id","fro
 
 ${F.map(f=>`<text id="${f.k}">\n${f.text}\n</text>`).join("\n\n")}`;
 const proofFixes=(out,F)=>{const by=new Map(F.map(f=>[f.k,f]));return (Array.isArray(out?.fixes)?out.fixes:[]).map(x=>({k:String(x.id||""),from:String(x.from||""),to:String(x.to||""),why:String(x.why||"").slice(0,40)})).filter(x=>by.has(x.k)&&x.from&&x.from!==x.to&&by.get(x.k).text.includes(x.from))};
-async function proofRun(gate,save){proofSels=proofEls().map(proofSel);const F=proofFields();
+async function proofRun(gate,save){proofSels=(gate?proofNew():proofEls()).map(proofSel);const F=proofFields();
   if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
   const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
   try{const out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
     const fixes=proofFixes(out,F).map(x=>Object.assign(x,{label:by.get(x.k).label}));
-    if(!fixes.length)proofClean=hash;
+    if(!fixes.length){proofClean=hash;proofRemember(F.map(f=>f.text))}
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
     proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e||"unknown","Try again in a minute.")}}
   proofPaint()}
@@ -13162,7 +13169,7 @@ function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=pro
   if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
 // the action the check was holding goes ahead
 let proofPassing=false;
-function proofPass(gate){proofClean=proofHash();if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
+function proofPass(gate){proofClean=proofHash();proofRemember(proofSels.map(proofFind).filter(el=>el&&el.isConnected).map(el=>el.value));if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
   if(t.id==="tproof"){if(proof&&proof.busy)return;proofRoot=null;
     // on the Conferences page the writing is inside the page TREE shows it in
@@ -13179,15 +13186,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
 const PROOF_GATES='[data-tsready="1"],#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
 document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
-  proofRoot=null;if(!proofEls().length||proofHash()===proofClean)return;
+  proofRoot=null;if(!proofNew().length||proofHash()===proofClean)return;
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b),(b.textContent||"Save").trim().slice(0,30)||"Save")},true);
 // the Conferences page asks before a conference is marked complete. It hands over its own page and what to do after.
 window.TREE_PROOF=(root,label,go)=>{if(!proofOnSave())return false;if(proof&&proof.busy)return true;proofRoot=root;
-  if(!proofEls().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
+  if(!proofNew().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
 document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proofOnSave()&&b.matches(SAVE_GATES))return;proofRoot=null;
   if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
-  if(!proofEls().length||proofHash()===proofClean)return;
+  if(!proofNew().length||proofHash()===proofClean)return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b))},true);
 // writing for families keeps the school's words even when a draft slips, educator for teacher and commas for colons and dashes
@@ -14849,7 +14856,7 @@ function releasesHtml(){if(!isDirector()||VIEW_AS)return"";const c=gthConf(),pag
     <div style="margin-top:10px">${gthPgHtml()}</div><div class="cnt">The Play Garden application stays off until the licensing office answers on capacity.</div></section>${communityRelHtml()}`}
 /* The museums and the plants on our site, for the whole community. Each part waits for its own switch here. The plants
    also wait for the Garden to be marked ready, and the public page holds nothing else of TREE. */
-const COMM_SW=[["show","Museums and cultural places for every educator, under Documentation"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages and field guides"],["public","The public page, with the museums and the plants, for anyone with the link"]];
+const COMM_SW=[["show","Museums and cultural places for every educator, under Documentation"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages, field guides and our animals"],["public","The public page, with the museums and the plants, for anyone with the link"]];
 function communityRelHtml(){if(!libData){loadLibrary();return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="cnt">Reading</div></section>`}
   const P=libData.places,sw=(P&&P.switches)||{};const link=new URL("places.html",location.href).href;
   return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="hint">The museums and cultural places near us and the plants on our site. Each part stays with you until you turn it on. The plants show once the Garden is marked ready.</div>
@@ -14864,7 +14871,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||(!t
 function displayHtml(){if(!isDirector()||!window.FP_API)return"";if(!displayAsked){displayAsked=true;displayCall("")}
   const d=displayInfo,link=displayLink(),seen=d&&d.seenAt?whenAt(d.seenAt,{weekday:"long"}):"";
   return `<section class="card" id="display-card"><div class="lbl">Staff room display</div>
-    <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div>
+    <div class="hint">A screen for the staff room that turns slowly through recent observations with photos, the threads and projects the school is following, this year's lens, team inquiries you choose to share, the week ahead and today's food, with three quotes a day from your list. Nobody can change anything from it. It rests from 7 at night to 6 in the morning.</div><div class="actions">${pageEditBtn("staff/wording/display-quotes.md","Edit the quotes, with their history")}</div>
     ${!d?`<div class="cnt">Checking…</div>`:link?`<div class="prow"><div style="min-width:0;flex:1"><b>The display is on</b><div class="cnt">Made ${esc(shortDate(d.madeAt))}${d.madeBy?" by "+esc(d.madeBy):""}.${seen?" The screen last checked in "+esc(seen)+".":" No screen has opened it yet."}</div>
       <textarea id="display-link" aria-label="Staff room display link" rows="2" readonly style="margin-top:6px;font-size:13px">${esc(link)}</textarea></div></div>
       <div class="actions"><button class="btn small" data-dispcopy="1">Copy the link</button><a class="btn small" href="${esc(link)}&amp;preview=1" target="_blank" rel="noopener">Preview it now</a><button class="linkbtn" data-dispnew="1">Make a new link</button><button class="linkbtn" data-dispoff="1">Turn the display off</button></div>
