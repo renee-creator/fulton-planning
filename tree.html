@@ -141,6 +141,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .pmenu{position:relative;display:inline-block}.pmenu>summary{list-style:none;cursor:pointer}.pmenu>summary::-webkit-details-marker{display:none}.pmenu-list{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:180px;display:grid;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px 10px}.pmenu-list .linkbtn{text-align:left;padding:8px 2px;min-height:36px}
 .tabdrop{margin:2px 0 6px}.tabdrop>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;cursor:pointer;border:1.5px solid var(--moss);border-radius:999px;padding:9px 16px;font-weight:700;color:var(--moss);background:var(--paper);min-height:44px;box-sizing:border-box}.tabdrop>summary::-webkit-details-marker{display:none}.tabdrop>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;margin-top:-4px}.tabdrop[open]>summary::after{transform:rotate(-135deg);margin-top:4px}.tabdrop-list{display:grid;gap:2px;margin-top:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px}.tabdrop-list .sub{text-align:left;width:100%;min-height:42px}
 .pfhide{display:none!important}
+.tmoments{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:6px 0}.tmom{display:flex;flex-direction:column;gap:4px;text-align:left;text-decoration:none;color:inherit;padding:0}
+.tmom img{width:100%;height:150px;object-fit:cover;border-radius:10px;background:var(--bg)}.tmomh{font-size:13px;font-weight:700}.tmomt{font-size:13px;color:var(--muted);line-height:1.35}
 .wrpart{margin:10px 0}.wrpart .lbl{margin-bottom:2px}.wrtab{width:100%;border-collapse:collapse;margin:6px 0}.wrtab td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:middle}
 .wrspark{display:block}.wrtab td.cnt{white-space:nowrap;font-size:12px}.wrword{font-size:13px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--paper2,#eef1e8)}.wr-growing,.wr-new{color:var(--moss)}.wr-fading,.wr-quiet{color:var(--muted)}
 @media print{body:has(.wrrep) header,body:has(.wrrep) nav,body:has(.wrrep) .wrbar,body:has(.wrrep) #fab,body:has(.wrrep) .bottomnav{display:none!important}}.pfmore{margin:8px 0}section.pfdone>details.autofold>summary b{font-family:var(--display);font-size:17px}
@@ -4624,7 +4626,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="c94b21539640";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="c68848e27f69";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -10876,6 +10878,9 @@ function lensLinks(p){
 }
 function lensMomentHtml(m){
   const p=rec(m.planId);if(!p)return"";const mk=lensMarked(p);
+  const on=p.notice&&notices.get(m.planId);
+  if(on&&on.photo)return `<div class="lmoment"><div class="nw-row"><button class="nw-thumb linkbtn" data-mjump="${esc(on.id)}" title="Open this observation"><img src="${esc(photoThumb(on))}" alt="Photo kept with this observation" loading="lazy"></button><div><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}</div></div>
+    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
   return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}
     ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
 }
@@ -12402,27 +12407,36 @@ function threadEditHtml(t){return `<div class="tedit" style="display:grid;gap:8p
     <div class="actions"><button class="btn small" data-tesave="${esc(t.id)}">Save changes</button><button class="linkbtn" data-tecancel="1">Cancel</button></div></div>`}
 document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.matches||!d.matches("details[data-tobs]")||!d.open)return;const box=d.querySelector(":scope>div");if(!box||box.childElementCount)return;
   const t=threads.get(d.dataset.tobs);if(t)box.innerHTML=threadNotices(t).map(noticeCard).join("")},true);
+// where a followed thread is now, and its moments along the way with their photos, as its print shows them
+function threadNowHtml(t){let h="";
+  const lr=threadLastRemarks(t);if(lr)h+=`<div class="chiprow-label" style="margin-top:10px">Where it is now</div><div class="evid"><div>“${esc(lr.text)}”<span class="src">${esc(pBy(byLine(lr.p)))}</span></div></div>`;
+  const ns=threadNotices(t).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0)),posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
+  const ph=spread(posts,6);
+  if(ph.length)h+=`<div class="chiprow-label" style="margin-top:10px">Moments along the way</div><div class="tmoments">${ph.map(n=>`<button class="tmom linkbtn" data-mjump="${esc(n.id)}" title="Open this observation"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"><span class="tmomh">${esc([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "))}</span><span class="tmomt">${esc(firstLine(momentBody(n)||n.noticed,140))}</span></button>`).join("")}</div>${posts.length>ph.length?`<details data-tobs="${esc(t.id)}"><summary class="chiprow-label" style="cursor:pointer">All ${threadNotices(t).length} observations in this thread</summary><div style="display:grid;gap:12px;margin-top:8px"></div></details>`:""}`;
+  return h}
 function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(isTracked&&t.id&&tEdit===t.id)return `<article class="thread" id="th-${t.id}">${threadEditHtml(t)}</article>`;
   const on=new Set(t.weeks||[]);
   const linked=isTracked&&t.id?threadLinkedPlans(t):[];linked.forEach(p=>on.add(p.weekOf));
-  let h=`<article class="thread"${isTracked&&t.id?` id="th-${t.id}"`:""}><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span></div>`;
+  let h=`<article class="thread"${isTracked&&t.id?` id="th-${t.id}"`:""}><div class="secthead"><h3>${esc(t.name)}</h3><span class="status st-${t.status||"emerging"}">${TSTATUS[t.status]||"Emerging"}</span>${isTracked&&t.id?`<span class="actions">${printBtns("thread",t.id,"Print this thread")}</span>`:""}</div>`;
   if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
   h+=originHtml(t,isTracked);
   if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" class",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
+  if(isTracked&&t.id&&(t.evidence||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">In educators' words</div>`;
   h+=evidenceHtml(t);
+  if(isTracked&&t.id)h+=threadNowHtml(t);
   if(linked.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">${linked.length} plan${linked.length>1?"s":""} connected by educators</summary><div class="evid" style="margin-top:8px">${linked.map(p=>`<div><span class="src"><button class="linkbtn" data-open="${esc(p.id)}">Week of ${fmtDate(p.weekOf)}</button> \u00b7 ${[FORMS[p.type].name,planWho(p),p.classroom&&p.classroom+" class"].filter(Boolean).map(esc).join(" \u00b7 ")}</span></div>`).join("")}</div></details>`;
-  if((t.languages||[]).length)h+=`<div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
-  if((t.next||[]).length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">Possible next provocations</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`;
+  if((t.languages||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">Languages children are using</div><div class="chips">${t.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`;
+  if((t.next||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">What we might offer next</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.slice(0,4).map(n=>`<li>${esc(n)}</li>`).join("")}</ul>${t.next.length>4?`<details><summary class="chiprow-label" style="cursor:pointer">${t.next.length-4} more</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">${t.next.slice(4).map(n=>`<li>${esc(n)}</li>`).join("")}</ul></details>`:""}`;
   if(isTracked){
     const pr=projectOfThread(t.id);const openProjects=[...projects.values()].filter(x=>x.status!=="closed");
     if(pr)h+=`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>${sample&&!t.story?". Its stories are written on the project page.":""}</div></div>`;
     const notesBox=`<textarea data-tnotes="${esc(t.id)}" rows="2" placeholder="Team notes on this thread">${esc(t.notes||"")}</textarea>`;
     // Undo follow is for a thread followed by mistake, so it stays only for the first day and never on a thread a project holds
     const undoable=!pr&&Date.now()-(t.createdAt||0)<864e5;
-    h+=`${has(t.notes)?notesBox:""}
-      <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button>${printBtns("thread",t.id,"Thread PDF")}
+    h+=`${has(t.notes)?`<div class="chiprow-label" style="margin-top:10px">Team notes</div>${notesBox}`:""}
+      <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button>
       ${moreMenu(`<label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
       ${has(t.notes)?"":`<div style="flex-basis:100%">${notesBox}</div>`}
       <button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
