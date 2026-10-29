@@ -31,9 +31,10 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation'];
-// records only the director sees and changes. The monthly family newsletter is made in the director's view.
-const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports'];
+// records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
+// reading report is the director's, and each class team reads its own class's through /api/reports/mine.
+const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
 // a project's wall is the director's. Educators receive the project without it, and their saves keep it as it is.
 const forViewer = (kind, doc, director) => (kind === 'projects' && !director && doc && doc.wall !== undefined) ? Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'wall')) : doc;
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
@@ -412,7 +413,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -2196,6 +2197,10 @@ async function handle(req, res) {
     cf.updatedAt = new Date().toISOString(); r.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
     json(req, res, 200, Object.assign({ familySummary: cf.familySummary || null, printPieces: cf.printPieces || [], evidenceLayout: cf.evidenceLayout || '', familyDrdp: !!cf.familyDrdp }, changed ? { changed: true } : {})); return;
   }
+  if (path === '/api/reports/mine') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const room = isDirector(me.name) ? '' : String((accountFor(me.name) || {}).room || '');
+    const list = []; for (const [, r] of store.recs.reports) { const d = r && !r.deleted && r.doc; if (d && (isDirector(me.name) || (room && d.room === room))) list.push(d); }
+    list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || ''))); json(req, res, 200, { room, reports: list.slice(0, 26) }); return; }
   if (path === '/api/projects/suggest') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the threads for a project.'); return; }
     json(req, res, 200, await suggestForProject(String(body.id || ''), String(body.key || ''))); return; }
   if (path === '/api/transition/nextschool') {
