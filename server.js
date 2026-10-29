@@ -113,7 +113,8 @@ function photoKey(id) { const e = Date.now() + 12 * 36e5; return e.toString(36) 
 function communityOut(who) {
   const c = staff.community(who); if (!c) return null;
   const ph = x => !x ? null : x.own ? { src: photoSrc(x.own) } : { src: x.url, credit: x.credit || '', link: x.link || '' };
-  const plants = c.plants ? { plants: c.plants.plants.map(p => Object.assign({}, p, { photo: ph(p.photo) })), fieldGuides: c.plants.fieldGuides.map(f => ({ title: f.title, entries: f.entries.map(e => Object.assign({}, e, { photo: ph(e.photo) })) })) } : null;
+  const plants = c.plants ? { plants: c.plants.plants.map(p => Object.assign({}, p, { photo: ph(p.photo) })), fieldGuides: c.plants.fieldGuides.map(f => ({ title: f.title, intro: f.intro || '', entries: f.entries.map(e => Object.assign({}, e, { photo: ph(e.photo) })) })),
+    animals: who === 'family' ? (c.plants.animals || []).map(a => Object.assign({}, a, { photo: ph(a.photo), names: a.names.map(n => Object.assign({}, n, { photo: ph(n.photo) })) })) : [] } : null;
   return { places: c.places, plants };
 }
 function photoSrc(id) { return '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(photoKey(id)); }

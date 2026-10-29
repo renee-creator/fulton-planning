@@ -104,7 +104,7 @@ module.exports = function garden(o) {
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function community() {
     const s = setup(); if (!s || !s.ready) return null; const L = glog();
-    const ownOf = id => ((L.photos || []).filter(x => x && x.plant === id && x.ok).slice(-1)[0] || {}).id || '';
+    const ownOf = id => ((L.photos || []).filter(x => x && x.plant === id && x.ok && !x.name).slice(-1)[0] || {}).id || '';
     const photoOf = x => { const own = ownOf(x.id); if (own) return { own };
       const ph = x.photo && x.photo.url ? x.photo : null; return ph ? { url: ph.url, credit: ['Photo by ' + (ph.by || 'an iNaturalist observer'), ph.license, ph.source || 'iNaturalist'].filter(Boolean).join(', '), link: ph.link || '' } : null; };
     const bedName = id => ((s.beds || []).find(b => b && b.id === id) || {}).name || '';
@@ -116,7 +116,16 @@ module.exports = function garden(o) {
       const line = (x.words || {}).child || cardKnow(x) || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
       return { name: x.common || x.name || x.title || '', line: String(line || ''), photo: photoOf(x) }; };
     const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', intro: f.intro || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
-    return { plants, fieldGuides };
+    // each animal's card in its parts, and each named animal with its own photo beside its name
+    const namedOf = (id, n) => ((L.photos || []).filter(x => x && x.plant === id && x.ok && x.name && x.name.toLowerCase() === String(n).toLowerCase()).slice(-1)[0] || {}).id || '';
+    const animals = (s.animals || []).filter(a => a && !a.hidden && !a.planned && a.name).map(a => { const c = a.card && typeof a.card === 'object' ? a.card : { know: a.card || '' };
+      const listed = (a.names || []).map(n => typeof n === 'string' ? { name: n } : n).filter(n => n && n.name);
+      const seen = new Set(), names = [];
+      for (const b of a.breeds || []) for (const n of b.goats || []) if (n && !seen.has(n)) { seen.add(n); names.push({ name: n, breed: b.breed || '' }); }
+      for (const n of listed) if (!seen.has(n.name)) { seen.add(n.name); names.push({ name: n.name, breed: n.breed || '' }); }
+      return { id: a.id, name: a.name, know: String(c.know || ''), wonder: String(c.wonder || ''), family: String(c.family || ''), rule: String(c.rule || ''), health: a.health || '', words: (a.vocab || []).filter(Boolean),
+        breeds: (a.breeds || []).filter(b => b && b.breed).map(b => ({ breed: b.breed, notice: b.notice || '' })), photo: photoOf(a), names: names.map(n => Object.assign(n, { photo: namedOf(a.id, n.name) ? { own: namedOf(a.id, n.name) } : null })) }; });
+    return { plants, fieldGuides, animals };
   }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();

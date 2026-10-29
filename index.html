@@ -4632,7 +4632,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="5c318a2ba4a5";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="d78703a056c9";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -14679,7 +14679,7 @@ function releasesHtml(){if(!isDirector()||VIEW_AS)return"";const c=gthConf(),pag
     <div style="margin-top:10px">${gthPgHtml()}</div><div class="cnt">The Play Garden application stays off until the licensing office answers on capacity.</div></section>${communityRelHtml()}`}
 /* The museums and the plants on our site, for the whole community. Each part waits for its own switch here. The plants
    also wait for the Garden to be marked ready, and the public page holds nothing else of TREE. */
-const COMM_SW=[["show","Museums and cultural places for every educator, under Documentation"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages and field guides"],["public","The public page, with the museums and the plants, for anyone with the link"]];
+const COMM_SW=[["show","Museums and cultural places for every educator, under Documentation"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages, field guides and our animals"],["public","The public page, with the museums and the plants, for anyone with the link"]];
 function communityRelHtml(){if(!libData){loadLibrary();return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="cnt">Reading</div></section>`}
   const P=libData.places,sw=(P&&P.switches)||{};const link=new URL("places.html",location.href).href;
   return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="hint">The museums and cultural places near us and the plants on our site. Each part stays with you until you turn it on. The plants show once the Garden is marked ready.</div>
