@@ -2193,7 +2193,7 @@ function openObservation(id){const n0=notices.get(id);if(!n0){toast("That observ
   goView("moments");
   // a photo of a post that is folded away under the post's first card opens its fold
   const show=tries=>{const el=find();if(!el){if(tries>0)setTimeout(()=>show(tries-1),150);else toast("That observation could not be found on Observations.");return}
-    const d=el.closest("details");if(d&&!d.open)d.open=true;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
+    pfReveal(el);el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)};
   setTimeout(()=>show(8),120)}
 /* a reading of our own links to its place in TREE, such as tree:hb/language-parameters for a section of the Teacher
    Policies and Procedures, tree:fh/behavior-and-discipline for the Family Handbook, or tree:stories for a page */
@@ -4579,7 +4579,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="04472338dbfb";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="25fe56a83e7b";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4685,6 +4685,12 @@ function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySel
     items.slice(keep).forEach(c=>c.classList.add("pfhide"));
     const b=document.createElement("button");b.className="btn small ghost pfmore";b.type="button";b.textContent=`Show all ${items.length}`;b.dataset.pfkey=key;
     if(list.tagName==="TBODY"){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=20;td.append(b);tr.append(td);list.append(tr)}else list.append(b)}}
+// a jump to one card unfolds what the phone folded around it, the long list it is in and any folded part
+function pfReveal(el){if(!el)return el;for(let x=el;x&&x!==document.body;x=x.parentElement){
+    if(x.classList&&x.classList.contains("pfhide")){const l=x.parentElement;if(!l)continue;const b=[...l.querySelectorAll(":scope > .pfmore, :scope > tr .pfmore")][0];if(b)pfAll.add(b.dataset.pfkey);
+      [...l.children].forEach(c=>c.classList.remove("pfhide"));if(b)(b.closest("tr")||b).remove()}
+    if(x.tagName==="DETAILS"&&!x.open)x.open=true}
+  return el}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".pfmore");if(!b)return;pfAll.add(b.dataset.pfkey);const l=b.closest("tbody")||b.parentElement;[...l.children].forEach(c=>c.classList.remove("pfhide"));(b.closest("tr")||b).remove()});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("autofold")){if(d.open)pfOpen.add(d.dataset.pf);else pfOpen.delete(d.dataset.pf)}},true);
 // the director looks after every classroom, so no one classroom is theirs, whatever a plan last used on this device
@@ -8022,7 +8028,7 @@ function noticesClick(t){
   if(t.id==="mread"){momentsRead();return true}
   // an observation past the thirty shown, or outside the class and range, is brought into view rather than refused
   if(t.dataset.mjump&&view!=="moments"){openObservation(t.dataset.mjump);return true}
-  if(t.dataset.mjump){const id=t.dataset.mjump,go=()=>{const el=document.getElementById("nw-"+id);if(!el)return false;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400);return true};
+  if(t.dataset.mjump){const id=t.dataset.mjump,go=()=>{const el=pfReveal(document.getElementById("nw-"+id));if(!el)return false;el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400);return true};
     if(go())return true;if(!notices.has(id)){toast("That observation was removed.");return true}
     const at=()=>{let k=0;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>n.id===id);if(i>=0)return k+i;k+=g.items.length}return -1};
     let i=at();if(i<0){nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";LS.set("fps.mrange",mRange);i=at()}
@@ -13784,7 +13790,7 @@ function kMoveHtml(){const m=kMove;
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.kid){if(t.dataset.drdpfocus||kidOpen!==t.dataset.kid){kidTab=t.dataset.drdpfocus?"drdp":t.dataset.ktab||"overview";LS.set("tree.kidtab",kidTab)}kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);goView("child");return}
   if(t.dataset.tconfchild){embedRoute.conferences="child="+t.dataset.tconfchild;embedGo.conferences=true;goView("conferences");return}
-  if(t.dataset.mjumpto){const n=notices.get(t.dataset.mjumpto);if(n){const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}}return}
+  if(t.dataset.mjumpto){const n=notices.get(t.dataset.mjumpto);if(n){const el=pfReveal(document.getElementById("nw-"+n.id));if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}}return}
   if(view!=="children"&&view!=="child")return;
   if(t.dataset.kshow){kShow=t.dataset.kshow;renderChildren();return}
   if(t.dataset.kdocgo&&t.dataset.kid){kidOpen=t.dataset.kid;LS.set("tree.kid",kidOpen);kidTab="docs";LS.set("tree.kidtab",kidTab);goView("child");return}
