@@ -79,3 +79,20 @@ test('every part of the Garden\'s writing opens in Edit, keeps its history and c
   assert.match(await s.p.$eval('#main', el => el.textContent), /We never spray anything on our site\./);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('walk safety opens in Edit, and a licensing line keeps the rule it comes from', async t => {
+  const r = await dee(t, put => put('staff/walks.json', { id: 'walks', ready: true, checklist: ['Every child wears a vest.'], agreements: ['Find your partner.'], rule: ['Safety comes first.'], families: ['Families are welcome.'],
+    licensing: [{ text: 'One adult for every six children near water.', source: 'Title 22' }], photos: [] })); if (!r) { t.skip('Playwright is not installed here'); return; }
+  const { fx, s } = r;
+  const tok = (await fx.login('Dee', 'director-pass-1')).token;
+  const o = (await fx.as(tok, '/api/staff/page', { path: 'staff/walks.json' })).body;
+  assert.deepStrictEqual(o.parts.map(p => p.heading), ['Before we leave, one on each line', 'The children\'s walk agreements, one on each line', 'Safety comes first, one on each line', 'Families on walks, one on each line', 'What licensing asks, one on each line']);
+  const parts = o.parts.map((p, i) => ({ body: i === 0 ? 'Every child wears a vest.\nCount the children.' : i === 4 ? 'One adult for every six children near any water.' : p.body }));
+  const sv = await fx.as(tok, '/api/staff/page/save', { path: 'staff/walks.json', stamp: o.stamp, parts, note: 'Count first', keep: true });
+  assert.strictEqual(sv.status, 200, JSON.stringify(sv.body));
+  const w = (await fx.as(tok, '/api/staff/walks', {})).body;
+  assert.deepStrictEqual(w.checklist, ['Every child wears a vest.', 'Count the children.']);
+  assert.deepStrictEqual(w.licensing.map(l => [l.text, l.source]), [['One adult for every six children near any water.', 'Title 22']]);
+  await s.p.evaluate(() => goView('walks')); await s.p.waitForSelector('[data-pageedit="staff/walks.json"]', { timeout: 15000, state: 'attached' });
+  assert.deepStrictEqual(s.errors, []);
+});

@@ -350,6 +350,9 @@ module.exports = function staffModule(o) {
     { re: GARDEN, part: 'guides', list: 'fieldGuides', key: 'space', name: 'this field guide', title: x => x.title, fields: [['title', 'Title'], ['intro', 'A line under the title']] },
     { re: GARDEN, part: 'safety', obj: 'safety', name: 'What edible means', title: () => 'What edible means', fields: [['edible', 'What edible means, one on each line', 'lines'],
       ['checkFirst.text', 'Check first, one on each line', 'lines'], ['mushrooms', 'Mushrooms']] },
+    // walk safety, on the walks page and in each walk invitation. A licensing line keeps the rule it comes from
+    { re: /^staff\/walks\.json$/, name: 'walk safety', title: () => 'Walk safety', fields: [['checklist', 'Before we leave, one on each line', 'lines'], ['agreements', 'The children\'s walk agreements, one on each line', 'lines'],
+      ['rule', 'Safety comes first, one on each line', 'lines'], ['families', 'Families on walks, one on each line', 'lines'], ['licensing', 'What licensing asks, one on each line', 'texts']] },
     { re: GARDEN, part: 'near', obj: 'nearUs', name: 'Who lives near us', title: () => 'Who lives near us', fields: [['note', 'What it says']] });
   // one record can hold several lists of writing, such as the Garden's animals and creatures. An item named list|id is
   // that list's item, and a spec with a part answers only for its own list
@@ -367,8 +370,9 @@ module.exports = function staffModule(o) {
   const recValues = (sp, x) => Object.fromEntries(sp.fields.map(([k, , t]) => { const v = at(x, k);
     if (t === 'breeds') return [k, (Array.isArray(v) ? v : []).map(BREED_LINE)];
     if (t === 'months') return [k, (Array.isArray(v) ? v : []).map(m => String(+m))];
+    if (t === 'texts') return [k, (Array.isArray(v) ? v : []).map(o => String(o && typeof o === 'object' ? o.text || '' : o || ''))];
     return [k, t === 'lines' ? (Array.isArray(v) ? v.map(String) : []) : String(v == null ? '' : v)]; }));
-  const isLines = t => t === 'lines' || t === 'breeds' || t === 'months';
+  const isLines = t => t === 'lines' || t === 'breeds' || t === 'months' || t === 'texts';
   const recText = (sp, vals) => sp.fields.map(([k, label, t]) => label + '\n' + (isLines(t) ? vals[k].join('\n') : vals[k])).join('\n\n');
   function recordOut(p, item) {
     const T = recordTarget(p, item); if (!T) return null; const vals = recValues(T.sp, T.x); const h = get(REC_HIST(p, item)) || {};
@@ -401,6 +405,8 @@ module.exports = function staffModule(o) {
         setPath(x, k, vals[k].map(l => { const i = l.indexOf('. '); const breed = (i < 0 ? l : l.slice(0, i)).trim(), notice = i < 0 ? '' : l.slice(i + 2).trim();
           return Object.assign({}, old.find(b => b && String(b.breed).toLowerCase() === breed.toLowerCase()) || {}, { breed, notice }); })); }
       else if (t === 'months') setPath(x, k, vals[k].map(m => String(m).padStart(2, '0')));
+      else if (t === 'texts') { const old = Array.isArray(at(x, k)) ? at(x, k) : [];
+        setPath(x, k, vals[k].map((l, i) => { const same = old.find(o => o && o.text === l); return Object.assign({}, same || (old[i] && typeof old[i] === 'object' ? old[i] : {}), { text: l }); })); }
       else setPath(x, k, vals[k]); }
     if (!T.sp.list || T.sp.part) { d.updatedAt = Date.now(); d.updatedBy = me; }
     put(p, d); pieceCache = null; log('School writing changed', p, item || '', 'by', me);

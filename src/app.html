@@ -4280,8 +4280,8 @@ window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"
 const pageEditBtn=(path,label,item)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-pageedit="${esc(path)}"${item?` data-pageitem="${esc(item)}"`:""}>${esc(label||"Edit")}</button>`:"";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-pageedit]");if(!t)return;e.preventDefault();e.stopPropagation();
   // the Garden's words are read with the Garden, so the Garden is read again after a save
-  const garden=t.dataset.pageedit==="staff/garden/setup.json"&&typeof gdnCall==="function";
-  window.TREE_EDIT_PAGE(Object.assign({path:t.dataset.pageedit},t.dataset.pageitem?{item:t.dataset.pageitem}:{}),garden?async()=>{await gdnCall("",{})}:undefined)},true);
+  const garden=t.dataset.pageedit==="staff/garden/setup.json"&&typeof gdnCall==="function",walks=t.dataset.pageedit==="staff/walks.json";
+  window.TREE_EDIT_PAGE(Object.assign({path:t.dataset.pageedit},t.dataset.pageitem?{item:t.dataset.pageitem}:{}),garden?async()=>{await gdnCall("",{})}:walks?async()=>{walkInfo=null;renderMain()}:undefined)},true);
 const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-wordsedit="${esc(id)}">${esc(label||"Edit the wording")}</button>`:"";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
@@ -5741,7 +5741,7 @@ function renderWalks(){const m=$("#main");if(walkInfo===null){loadWalks();m.inne
   const list=a=>`<ul style="margin:4px 0;padding-left:20px">${(a||[]).map(x=>`<li style="margin:4px 0">${esc(x)}</li>`).join("")}</ul>`;
   const choices=dir?walkPhotoChoices():[];
   m.innerHTML=`<div class="head"><span class="eyebrow">Walks</span><h2 style="margin-top:4px">Walk safety</h2><div class="sub">Creek walks and walks to the garden or the farm. Safety comes first on every walk.</div></div>
-  ${dir?`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${w.ready?"Ready, educators and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-walkready="${w.ready?"0":"1"}">${w.ready?"Back to draft":"Mark it ready"}</button></div></section>`:""}
+  ${dir?`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${w.ready?"Ready, educators and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-walkready="${w.ready?"0":"1"}">${w.ready?"Back to draft":"Mark it ready"}</button>${pageEditBtn("staff/walks.json","Edit walk safety, with its history")}</div></section>`:""}
   <section class="card"><div class="secthead"><h3 style="font-size:17px">Before we walk</h3><span class="actions" style="margin:0">${printBtns("walkcheck","","PDF")}</span></div>${list(w.checklist)}
     <div class="lbl" style="margin-top:8px">${esc((w.backpack||{}).title||"The emergency backpack")}</div>${list((w.backpack||{}).items)}<button class="linkbtn" data-hbopen="${esc((w.backpack||{}).id||"")}">In the Policies and Procedures</button></section>
   <section class="card"><h3 style="font-size:17px">Safety comes first</h3><div>${esc((w.rule||[]).join(" "))}</div></section>
