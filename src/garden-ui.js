@@ -83,10 +83,11 @@ function gdnTaskForm(ek,t){const plan=t.kind==="month"||t.kind==="repeat",beds=(
     ${plan||t.kind==="animal"?`<label>Repeats<select data-gte="weekday"><option value="0">${t.kind==="animal"?"Every school day":"Once this month"}</option>${["Monday","Tuesday","Wednesday","Thursday","Friday"].map((d,i)=>`<option value="${i+1}" ${wd===i+1?"selected":""}>Every ${d}</option>`).join("")}</select></label>`:""}</div>
     ${t.kind==="care"?`<div class="hint">This is part of the plant's care, so the change shows every year in this month.</div>`:t.kind==="animal"?`<div class="hint">This is part of the animals' care, so the change shows on every day it repeats.</div>`:""}
     <div class="actions"><button class="btn small" data-gtesave="${esc(ek)}">Save</button></div>`}
-function gardenTodayHtml(){if(isKitchenUser())return "";if(gdn===null)loadGarden();if(!gdnOk())return "";const list=(gdn.today||[]).filter(t=>t.kind!=="month"||!t.done);if(!list.length)return "";
-  const left=list.filter(t=>!t.done).length;
+function gardenTodayHtml(){if(isKitchenUser())return "";if(gdn===null)loadGarden();if(!gdnOk())return "";// a task ticked done or passed leaves Today, and stays on the Garden page to undo
+  const all=gdn.today||[],list=all.filter(t=>!t.done);if(!all.length)return "";
+  const left=list.length;
   return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">In the garden today</h3><button class="linkbtn" data-tview="garden">Garden</button></div><div class="cnt">${left?left+" to do":"All done"}${!gdn.ready?". A draft, only you see it":""}</div>
-    <div class="gtasks">${list.slice(0,8).map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div></section>`}
+    ${list.length?`<div class="gtasks">${list.slice(0,8).map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div>`:""}</section>`}
 function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){loadGarden();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Garden</div></section>`;return}
   if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
   const g=gdn,dir=isDirector()&&!VIEW_AS,kit=isKitchenUser(),day=iso(new Date()),mm=day.slice(5,7),room=myRoom();
