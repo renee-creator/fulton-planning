@@ -113,13 +113,13 @@ module.exports = function garden(o) {
     const entry = id => { const x = (s.plants || []).find(y => y.id === id) || (s.animals || []).find(y => y.id === id) || (s.wild || []).find(y => y.id === id); if (!x || x.hidden || x.planned) return null;
       const line = (x.words || {}).child || x.card || (x.sign && typeof x.sign === 'object' ? x.sign.description : x.sign) || x.know || '';
       return { name: x.common || x.name || x.title || '', line: String(line || ''), photo: photoOf(x) }; };
-    const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
+    const fieldGuides = (s.fieldGuides || []).map(f => ({ title: f.title || f.space || '', intro: f.intro || '', entries: (f.entries || []).map(entry).filter(Boolean) })).filter(f => f.title && f.entries.length);
     return { plants, fieldGuides };
   }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, wanted: s.wantedSpaces || [],
-      today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null };
+      today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null, nochemicals: s.nochemicals || '' };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
     if (dir) Object.assign(out, { familyShare: s.familyShare || { season: '', recipes: [] }, offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });

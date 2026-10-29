@@ -4278,7 +4278,10 @@ window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/v
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
 const pageEditBtn=(path,label,item)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-pageedit="${esc(path)}"${item?` data-pageitem="${esc(item)}"`:""}>${esc(label||"Edit")}</button>`:"";
-document.addEventListener("click",e=>{const t=e.target.closest("[data-pageedit]");if(!t)return;e.preventDefault();e.stopPropagation();window.TREE_EDIT_PAGE(Object.assign({path:t.dataset.pageedit},t.dataset.pageitem?{item:t.dataset.pageitem}:{}))},true);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pageedit]");if(!t)return;e.preventDefault();e.stopPropagation();
+  // the Garden's words are read with the Garden, so the Garden is read again after a save
+  const garden=t.dataset.pageedit==="staff/garden/setup.json"&&typeof gdnCall==="function";
+  window.TREE_EDIT_PAGE(Object.assign({path:t.dataset.pageedit},t.dataset.pageitem?{item:t.dataset.pageitem}:{}),garden?async()=>{await gdnCall("",{})}:undefined)},true);
 const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data-wordsedit="${esc(id)}">${esc(label||"Edit the wording")}</button>`:"";
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
