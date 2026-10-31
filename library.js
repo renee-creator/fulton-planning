@@ -64,12 +64,15 @@ module.exports = function library(o) {
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
+const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachios?|macadamias?|brazil nuts?|pine nuts?|nut butters?|peanut butter|almond (?:milk|flour|butter))\b/i;
   function add(me, b, from) {
     const kind = b.kind; const dir = kind === 'exploration' ? '' : Object.keys(DIRS).find(k => DIRS[k] === kind); if (!dir) return { error: 'Choose what to add.' };
     const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 120); if (!title) return { error: 'Give it a name.' };
     const boss = from !== 'family' && isDirector(me), kit = from !== 'family' && isKitchen(me);
     if (kind !== 'recipe' && kind !== 'book' && !boss) return { error: 'Only the director adds to the song book and the read-alouds.' };
     if (kind === 'book' && !boss && from !== 'family' && kit) return { error: 'Books are suggested by educators, families and the director.' };
+    // we are a nut free school, so a recipe never names a nut, whoever adds it
+    if (kind === 'recipe' && NUTS.test([title, b.ingredients, b.tools, b.steps, b.dairyFree, b.glutenFree, b.notes, b.lead].join(' '))) return { error: 'We are nut free, so a recipe never uses nuts.' };
     let id = slug(title); while (S.files.has(`staff/library/${dir}/${id}.md`)) id += '-2';
     const draft = (kind === 'recipe' && !boss && !kit) || (kind === 'book' && !boss);
     const meta = [`library: ${kind}`];

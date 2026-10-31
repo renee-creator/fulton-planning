@@ -207,14 +207,15 @@ module.exports = function growthModule(c) {
     const k = +ym.slice(0, 4) * 12 + +ym.slice(5, 7);
     const list = []; const ps = people();
     const slots = new Map();
-    for (const n of ps) { const pr = profileOf(n); const mode = pr.checkin || (pr.planHour ? 'slot' : 'asneeded'); if (mode === 'slot' && pr.planHour) { if (!slots.has(pr.planHour)) slots.set(pr.planHour, []); slots.get(pr.planHour).push(n); } }
+    const modeOf = pr => pr.noMondays ? 'asneeded' : (pr.checkin || (pr.planHour ? 'slot' : 'asneeded'));
+    for (const n of ps) { const pr = profileOf(n); const mode = modeOf(pr); if (mode === 'slot' && pr.planHour) { if (!slots.has(pr.planHour)) slots.set(pr.planHour, []); slots.get(pr.planHour).push(n); } }
     for (const [hr, ns] of [...slots].sort()) {
       // one from each class steps off, and the order rotates from month to month so the same person is never always last
       const sorted = ns.sort((a, b) => ROOMS().indexOf(roomOf(a)) - ROOMS().indexOf(roomOf(b)) || a.localeCompare(b));
       const r = k % sorted.length; const order = sorted.slice(r).concat(sorted.slice(0, r));
       order.forEach((n, i) => list.push({ name: n, date: day1, time: hhmm(toMin(hr) + i * (+sc.minutes || 20)), minutes: +sc.minutes || 20, kind: 'slot' }));
     }
-    const second = ps.filter(n => (profileOf(n).checkin || '') === 'second').sort();
+    const second = ps.filter(n => modeOf(profileOf(n)) === 'second').sort();
     // the short second-Monday check-ins are set around every class team meeting that day, since the director is at them
     if (second.length) { const r = k % second.length; const mins = +sc.minutes || 20;
       const busy = teamDays(day2, day2).length ? ROOMS().map(teamTimes).filter(([a, b]) => a && b).map(([a, b]) => [toMin(a), toMin(b)]) : [];
@@ -588,7 +589,9 @@ module.exports = function growthModule(c) {
     if (P === 'checkin/book') {
       if (!dir) return deny(); const g = growth(who);
       if (body.remove) g.booked = (g.booked || []).filter(x => x.id !== body.remove);
-      else { if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.'); g.booked = [...(g.booked || []), { id: rid('b'), date: body.date, time: /^\d{2}:\d{2}$/.test(body.time || '') ? body.time : '' }]; }
+      else { if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.');
+        if (profileOf(who).noMondays && new Date(body.date + 'T12:00:00Z').getUTCDay() === 1) return err(req, res, 400, `${who} does not work Mondays. Choose another day.`);
+        g.booked = [...(g.booked || []), { id: rid('b'), date: body.date, time: /^\d{2}:\d{2}$/.test(body.time || '') ? body.time : '' }]; }
       put(gPath(who), g); bump(); json(req, res, 200, forViewer(who, me)); return;
     }
     if (P === 'schedule') { const ym = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : today().slice(0, 7); const s = await schedule(ym); if (s && !dir) s.list = s.list.filter(x => nameKey(x.name) === nameKey(me)); json(req, res, 200, s || {}); return; }

@@ -345,7 +345,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         // the educator is the one named in the subject, then the lead of the moment's small group, and only then whoever
         // sent the email, since a small group always says who it belongs to
         const sg = m.smallGroup || sub.smallGroup || (kidGroup ? String(kidGroup.name) : '');
-        const mBy = m.by || sub.educator || groupLead(sg, room) || by || '';
+        const mBy = groupLead(sg, room) || m.by || sub.educator || by || '';
         const group = (many.get(sameNote(m)) || 0) > 1 && (kids.ids.length + kids.maybe.length) > 0;
         const needs = group || !kids.ids.length || kids.unsure.length > 0 || kids.maybe.length > 0;
         // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
@@ -392,14 +392,14 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const rs = readSubject(d0.kaymbu.subject);
         if (rs.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; if (!d0.by && rs.educator) d0.by = rs.educator; noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
-      // a moment in a small group that has no educator, or only the director's name because she sent it, takes the
-      // group's lead educator, unless someone has changed it by hand
-      if (!r.deleted && d0 && d0.kaymbu && d0.smallGroup && !d0.editedBy && (!d0.by || d0.kaymbu.sentBy)) {
+      // a moment in a small group always carries the group's lead, whatever the subject says or who sent it. Only a name
+      // chosen by hand in Kept by stays, and other changes, such as tagging children, never stop it.
+      if (!r.deleted && d0 && d0.kaymbu && d0.smallGroup && !d0.kaymbu.byHand) {
         const lead = groupLead(d0.smallGroup, d0.classroom);
         if (lead && lead !== d0.by) { d0.by = lead; d0.kaymbu = Object.assign({}, d0.kaymbu); delete d0.kaymbu.sentBy; noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
       // a moment kept before the subject's educator was read takes that educator, once, unless an educator has changed it by hand
-      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && !(d0.smallGroup && groupLead(d0.smallGroup, d0.classroom)) && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }

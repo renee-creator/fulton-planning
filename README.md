@@ -732,3 +732,13 @@ Left as they are for now, to come back to.
 
 Every change to TREE updates the matching Help answer as part of the same change. When a commit adds, renames or moves a button, a page or a step that a Help answer describes, the same commit also carries the new wording for that answer, as a one-time step in server.js that rewrites the answer in staff/help.json at the server's start through the save queue, recorded in settings/once. Record files are never pushed while the server runs, so this is how the answer changes. A new feature adds its own answer the same way. The commit message names the answers it changed.
 
+## October 31 changes
+
+- **Donated lines.** On the Farm to School page, a donated line, such as a donated FEED bin, a line marked donated or one with no price, waits under Donated, your call. It stays out of the grant figures until the director chooses Count it or Leave it out, one line at a time.
+- **Mondays.** Someone marked as not working Mondays is met as needed, never scheduled on a Monday, and a check-in booked on a Monday for them is refused.
+- **Title 22 each year.** A licensing mark, In place or Let's review together, belongs to the school year it was made in, from August. Each school year starts unmarked, with last year's mark shown beside each piece.
+- **Deeper Dive.** The check-in prep card is called Deeper Dive.
+- **Nut free.** The server refuses a recipe that names a nut, whoever adds it.
+- **Calendar print.** Print on the Calendar prints the day, week or month showing, each day with its events and space sign-ups in time order.
+- **Changes to a kept observation** are the educator's own draft as she types, on any device, until Save changes. Everyone else sees the kept observation. Cancel asks before her changes are thrown away.
+- **Kaymbu names.** A moment in a small group always carries the group's lead, even when the subject names someone else, unless its name was chosen by hand in Kept by. Changing Kept by renames only the photo opened, and the others in the email from the educator's own class with no small group.
