@@ -753,3 +753,8 @@ Every change to TREE updates the matching Help answer as part of the same change
 - **A new team inquiry** starts off the staff room display until the director turns it on.
 - **Family copy of a transition summary.** The director sees the family's copy before it is shared. Every other child's name, known to TREE or not, becomes "friends" or "a friend", while staff, small groups and classes stay.
 - **Facilitator scripts** in a Presenting entry are seen only by its presenters and the director. Other educators read the plan without them.
+- **Final remarks** wait on Today for the last three weeks only. Older ones are let go.
+- **Grouped Observations.** By small group, By educator and the other groupings list every group at once, folded with its count, twelve at a time inside. With one class chosen, only its small groups are listed.
+- **Delete a draft.** An educator deletes her own observation draft with Delete, after a question.
+- **Growth on a phone.** The Growth pages stay as buttons, so Journal is one tap away, and Enter after the passcode opens the journal. The section menu reads Educators, then the section.
+- **Phone buttons.** The round plus, Proofread and The evidence stand in one column at the right, and TREE's messages show above them. Typing in a box hides the bottom menu and the floating buttons until the box is left.

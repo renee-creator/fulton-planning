@@ -924,3 +924,6 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.d
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();
   window.TREE_PAGEEDIT({module:t.dataset.gmedit},async()=>{st.mods=null;redraw()})});
 })();
+// Go or Enter on the phone keyboard after the passcode opens the journal, as Open does (October 31, 2026)
+document.addEventListener("keydown",e=>{if(e.key!=="Enter"||!e.target||(e.target.id!=="gj-pass"&&e.target.id!=="gfj-pass"))return;e.preventDefault();
+  const b=document.querySelector(e.target.id==="gj-pass"?"[data-gjopen]":"[data-gfjopen]");if(b)b.click()});
