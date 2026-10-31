@@ -63,7 +63,8 @@ module.exports = function presentingModule(c) {
     const keep = ['id', 'title', 'subtitle', 'question', 'audience', 'date', 'start', 'end', 'place', 'dateNote', 'minutes', 'mode', 'audienceType', 'format', 'presenters', 'status', 'presentedOn', 'plan', 'chosen', 'followup', 'agendas', 'edit', 'mine'];
     const safe = Object.fromEntries(keep.map(k => [k, out[k]]));
     safe.readings = (e.readings || []).filter(r => r.kind !== 'drive').map(r => ({ id: r.id, kind: r.kind, title: r.title, url: r.url, source: r.source || '', note: r.note || '' }));
-    safe.plan = (e.plan || []).map(s => Object.assign({}, s, { readings: (s.readings || []).filter(id => safe.readings.some(r => r.id === id)) }));
+    // the facilitator script is only for the presenters and the director (October 31, 2026)
+    safe.plan = (e.plan || []).map(s => { const o = Object.assign({}, s, { readings: (s.readings || []).filter(id => safe.readings.some(r => r.id === id)) }); delete o.script; return o; });
     return safe;
   }
 

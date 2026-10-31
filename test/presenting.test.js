@@ -46,7 +46,7 @@ test('an educator receives an entry only as a presenter, until it is presented, 
   // a presenter works on the entry, and leaves the presenters and names to the director
   assert.strictEqual((await call(h.staff, 'Ann', 'pres/item', { id: trace.id, list: 'notes', item: { text: 'PRIVATE note' } })).status, 200);
   await call(h.staff, 'Ann', 'pres/item', { id: trace.id, list: 'readings', item: { kind: 'drive', url: 'https://drive.google.com/file/d/x', title: 'PRIVATE guide' } });
-  await call(h.staff, 'Ann', 'pres/item', { id: trace.id, list: 'plan', item: { title: 'Opening', minutes: 20, do: 'Look at the panels in pairs.' } });
+  await call(h.staff, 'Ann', 'pres/item', { id: trace.id, list: 'plan', item: { title: 'Opening', minutes: 20, do: 'Look at the panels in pairs.', script: 'PRIVATE script. Ask what they notice first.' } });
   assert.strictEqual((await call(h.staff, 'Ann', 'pres/save', { id: trace.id, fields: { presenters: ['Ann', 'Bea'] } })).status, 403);
   assert.strictEqual((await call(h.staff, 'Ann', 'pres/presented', { id: trace.id })).status, 403);
   // presented: Bea reads it, without the notes, meetings, evidence or Drive files
@@ -54,7 +54,8 @@ test('an educator receives an entry only as a presenter, until it is presented, 
   const r = await call(h.staff, 'Bea', 'pres/get', { id: trace.id });
   assert.strictEqual(r.status, 200); assert.strictEqual(r.body.edit, false);
   assert.ok(!/PRIVATE/.test(JSON.stringify(r.body))); assert.ok(!('notes' in r.body) && !('meetings' in r.body) && !('evidence' in r.body) && !('look' in r.body));
-  assert.strictEqual(r.body.plan[0].title, 'Opening');
+  assert.strictEqual(r.body.plan[0].title, 'Opening'); assert.ok(!('script' in r.body.plan[0]), 'the facilitator script is only for the presenters and the director');
+  assert.match((await call(h.staff, 'Ann', 'pres/get', { id: trace.id })).body.plan[0].script, /Ask what they notice/, 'the presenter still has it');
   assert.strictEqual((await call(h.staff, 'Bea', 'pres/item', { id: trace.id, list: 'notes', item: { text: 'x' } })).status, 403);
   assert.strictEqual((await call(h.staff, 'Neo', 'pres/get', { id: trace.id })).status, 403, 'a new educator before full access');
 });
