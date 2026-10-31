@@ -15,7 +15,7 @@ const more = put => {
   // the director sent it, so it carries her name only because she sent it, in Bea's small group
   put('notices/g1.json', { id: 'g1', noticed: 'Fed the goats hay by hand.', at: Date.now() - 864e5, classroom: 'North', smallGroup: 'Marigold', by: 'Dee', kaymbu: k('kg1', { sentBy: 1 }) });
   // a name changed by hand stays as chosen
-  put('notices/g2.json', { id: 'g2', noticed: 'Climbed the log twice.', at: Date.now() - 864e5, classroom: 'North', smallGroup: 'Marigold', by: 'Ann', editedBy: 'Ann', kaymbu: k('kg2') });
+  put('notices/g2.json', { id: 'g2', noticed: 'Climbed the log twice.', at: Date.now() - 864e5, classroom: 'North', smallGroup: 'Marigold', by: 'Ann', editedBy: 'Ann', kaymbu: k('kg2', { byHand: 1 }) });
   // one email with no name, a North photo and a West photo, neither in a small group
   put('notices/m1.json', { id: 'm1', noticed: 'Poured water from the pitcher.', at: Date.now() - 36e5, classroom: 'North', by: '', kaymbu: k('km1', { mail: '1700000000001' }) });
   put('notices/m2.json', { id: 'm2', noticed: 'Cut the squash with a butter knife.', at: Date.now() - 36e5, classroom: 'West', by: '', kaymbu: k('km2', { mail: '1700000000001' }) });
