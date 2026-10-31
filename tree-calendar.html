@@ -384,7 +384,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
         <h2 id="title" aria-live="polite"></h2>
         <div class="right">
           <div class="seg" role="group" aria-label="View"><button type="button" data-view="next" aria-pressed="false">From today</button><button type="button" data-view="day" aria-pressed="false">Day</button><button type="button" data-view="week" aria-pressed="false">Week</button><button type="button" data-view="month" aria-pressed="false">Month</button></div>
-          <button class="btn" type="button" id="btn-new"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="long">Sign up for a space</span><span class="short">Sign up</span></button>
+          <button class="btn small ghost" type="button" id="btn-print">Print</button><button class="btn" type="button" id="btn-new"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="long">Sign up for a space</span><span class="short">Sign up</span></button>
         </div>
       </div>
       <div class="notice" id="notice" hidden></div>
@@ -827,6 +827,21 @@ function titleText(){
   if(a.slice(0,7)===b.slice(0,7)) return fmt(a,{month:"long"})+" "+Number(a.slice(8))+" to "+Number(b.slice(8))+", "+b.slice(0,4);
   return fmt(a,{month:"long",day:"numeric"})+" to "+fmt(b,{month:"long",day:"numeric"})+", "+b.slice(0,4);
 }
+/* Print gives one clean page of what is showing, the week or the month, each school day with its events and space
+   sign-ups in time order, and nothing else */
+function printCal(){
+  if(!S.data||!S.range)return;const idx=buildIndex();const {from,to}=S.range;
+  const keep=d=>weekendsOn()||(dow(d)!==0&&dow(d)!==6);
+  const inMonth=d=>S.view!=="month"||d.slice(0,7)===S.anchor.slice(0,7);
+  const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const days=[];if(S.view==="day")days.push(S.anchor);else for(let d=from;d<=to;d=addDays(d,1))if(keep(d)&&inMonth(d))days.push(d);
+  const line=x=>{const ev=x.kind==="event";const tm=x.start==null?(ev?"All day":"All week"):span(x.start,x.end);
+    const what=ev?x.ev.title:x.space.name+(forOf(x.bk)?", "+forOf(x.bk):"");return `<tr><td class="t">${esc(tm)}</td><td>${esc(what)}</td></tr>`};
+  const body=days.map(d=>{const v=idx.get(d)||{allDay:[],timed:[]};const rows=v.allDay.concat(v.timed.slice().sort((a,b)=>a.start-b.start));
+    return rows.length?`<section><h3>${esc(fmt(d,{weekday:"long",month:"long",day:"numeric"}))}</h3><table>${rows.map(line).join("")}</table></section>`:""}).filter(Boolean).join("");
+  const w=window.open("","_blank");if(!w){toast("Allow pop-ups for TREE to print the calendar.");return}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titleText())}</title><style>body{font-family:system-ui,sans-serif;color:#222;margin:28px}h2{text-align:center;font-weight:600;margin:0 0 18px}section{break-inside:avoid;margin:0 0 12px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:2px}table{width:100%;border-collapse:collapse;font-size:13px}td{padding:2px 6px;vertical-align:top}td.t{width:120px;color:#555;white-space:nowrap}@page{margin:14mm}</style></head><body><h2>${esc(titleText())}</h2>${body||"<p>Nothing scheduled.</p>"}</body></html>`);
+  w.document.close();w.focus();setTimeout(()=>w.print(),300)}
 function render(){
   $("title").textContent=titleText();
   document.querySelectorAll(".seg [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===S.view)));
@@ -1110,6 +1125,7 @@ async function connectCalendar(i, address){
 function wire(){
   $("nav-prev").onclick=()=>step(-1); $("nav-next").onclick=()=>step(1); $("nav-today").onclick=()=>go(null,today());
   document.querySelectorAll(".seg [data-view]").forEach(b=>b.onclick=()=>go(b.dataset.view));
+$("btn-print").onclick=printCal;
   $("btn-new").onclick=()=>openBookDialog({});
   $("btn-settings").onclick=openSettings; $("btn-signout").onclick=signOut;
   $("spaces-all").onclick=()=>{ S.hiddenCals.clear(); S.hiddenSpaces.clear(); saveHidden(); render(); };

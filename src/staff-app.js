@@ -302,10 +302,15 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
 const whoRole=p=>p.role||(B.whosWho.find(w=>w.name===p.name)||{}).role||"Educator";
 const roomName=p=>{const r=p.room||(B.whosWho.find(w=>w.name===p.name)||{}).room||(p.name===meName()?B.me.room:"");return r?r+" class":""};
 const hourText=h=>clockTime(h);
-function licensingListHtml(p,pcs){const L=pcs.filter(x=>x.list==="title22"||x.list==="procedure");const rv=p.review||{};
+function licensingListHtml(p,pcs){const L=pcs.filter(x=>x.list==="title22"||x.list==="procedure");
+  // a mark counts for the school year it was made in, from August. Last year's shows beside it, to read.
+  const yrOf=t=>{const d=new Date(t||Date.now());const y=d.getFullYear();return d.getMonth()>=7?y:y-1};const thisYr=yrOf();
+  const rv0=p.review||{},rv={},past={};for(const [k,r] of Object.entries(rv0)){const y=r.year!=null?r.year:yrOf(r.at);if(y===thisYr)rv[k]=r;else past[k]=Object.assign({},r,{year:y})}
+  for(const [y,m] of Object.entries(p.reviewPast||{}))if(+y===thisYr-1)for(const [k,r] of Object.entries(m||{}))if(!past[k])past[k]=Object.assign({},r,{year:+y});
+  const pastLine=x=>{const r=past[x.id];return r&&r.year===thisYr-1?`<div class="cnt">Last school year, ${r.year} to ${r.year+1}, ${r.mark==="review"?"Let's review together":"In place"}.</div>`:""};
   const row=x=>{const r=rv[x.id];const done=(p.pd&&p.pd.done||{})[x.id];
     return `<div class="strow"><div class="sttop"><b>${H(x.title)}</b><span class="actions" style="margin:0">${done?chip("ok","Read "+fms(done.at)):chip("missing","Not read yet")}</span></div><div class="cnt">${H(x.source)}</div>
-      <div class="tseg" role="group" aria-label="${H(x.title)}"><button data-streview="${H(x.id)}|inplace" aria-pressed="${!!(r&&r.mark==="inplace")}">In place</button><button data-streview="${H(x.id)}|review" aria-pressed="${!!(r&&r.mark==="review")}">Let's review together</button></div>
+      <div class="tseg" role="group" aria-label="${H(x.title)}"><button data-streview="${H(x.id)}|inplace" aria-pressed="${!!(r&&r.mark==="inplace")}">In place</button><button data-streview="${H(x.id)}|review" aria-pressed="${!!(r&&r.mark==="review")}">Let's review together</button></div>${pastLine(x)}
       ${done&&done.answer?`<details><summary class="cnt">Their answer to the one question</summary><div class="stq" style="margin-top:6px;white-space:pre-line">${H(done.answer)}</div></details>`:""}</div>`};
   const marked=L.filter(x=>rv[x.id]).length;
   return card("Licensing and Safety",`<div class="hint">${H(W("Licensing and Safety"))}</div>

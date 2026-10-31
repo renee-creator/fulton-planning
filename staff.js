@@ -897,7 +897,11 @@ module.exports = function staffModule(o) {
       if (!dir) return deny('Only the director marks the licensing list.');
       const piece = (pieces().licensing || []).find(x => x.id === body.piece); if (!piece) { err(req, res, 400, 'That item is not on the list.'); return; }
       const doc = person(who); doc.review = Object.assign({}, doc.review);
-      if (!body.mark) delete doc.review[piece.id]; else doc.review[piece.id] = { mark: body.mark === 'review' ? 'review' : 'inplace', at: Date.now(), by: me };
+      // each mark belongs to the school year it was made in, from August, so each year starts unmarked and last year's stays to read
+      const yr = t => { const d = new Date(t || Date.now()); const y = d.getUTCFullYear(); return d.getUTCMonth() >= 7 ? y : y - 1; };
+      const was = doc.review[piece.id]; const now = yr();
+      if (was && (was.year != null ? was.year : yr(was.at)) !== now) { const py = was.year != null ? was.year : yr(was.at); doc.reviewPast = Object.assign({}, doc.reviewPast); doc.reviewPast[py] = Object.assign({}, doc.reviewPast[py], { [piece.id]: Object.assign({}, was, { year: py }) }); }
+      if (!body.mark) delete doc.review[piece.id]; else doc.review[piece.id] = { mark: body.mark === 'review' ? 'review' : 'inplace', at: Date.now(), by: me, year: now };
       // Let's review together becomes a suggested Focus Until Next Time, which the two confirm together
       doc.focus = (doc.focus || []).filter(f => !(f.piece === piece.id && !f.educatorOk));
       if (body.mark === 'review') doc.focus.push({ id: 'f' + crypto.randomBytes(4).toString('hex'), piece: piece.id, label: piece.title, at: Date.now(), by: me, directorOk: 0, educatorOk: 0 });

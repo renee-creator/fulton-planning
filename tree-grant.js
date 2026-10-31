@@ -92,6 +92,7 @@ function renderGrant0(){
       ${o.from?`<div class="cnt">From the email ${esc(o.from)}</div>`:""}</div>
       <div class="actions" style="flex:none">${r?`<button class="btn small" data-grevuse="${esc(o.id)}">Use this reading</button><button class="linkbtn" data-grevkeep="${esc(o.id)}">Keep what is there</button>`:`<button class="btn small" data-gok="${esc(o.id)}">It is right</button><button class="linkbtn" data-gdel="${esc(o.id)}">Take out</button>`}</div></div>`}).join("")}</div></details>`;
 
+  h+=gDonatedHtml();
   h+=gUnsureHtml();
   // objectives 1 to 4, what was bought and from whom
   h+=`${gCardO("food","California food bought, objectives 1 to 4",gMoney(sum(lines))+" from "+pr.length+" producer"+(pr.length===1?"":"s"))}
@@ -288,6 +289,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
   if(d.grevuse){const o=grantRecs.get(d.grevuse),r=o&&o.revision;if(!r||!db)return;
     const patch={items:r.items||[],fulfilled:r.fulfilled||o.fulfilled||"",subtotal:r.subtotal??null,delivery:r.delivery??null,total:r.total??null,distributor:r.distributor||o.distributor||"",noDate:r.noDate?true:{__delete__:true},revision:{__delete__:true},review:!!r.noDate,checkedBy:whoAmI(),checkedAt:Date.now()};
     try{await db.doc("grant/"+o.id).update(patch);toast("The new reading is used.")}catch(err){toast("Could not save that.")}renderGrant();return}
+  // the director counts a donated line or leaves it out, each one on its own
+  if(d.gdon){const [id,i]=d.gdon.split("|");const v=d.gdv==="count"?"count":"out";if(!db)return;
+    if(i==="p"){const rec=grantRecs.get("purchases");const it=rec&&(rec.list||{})[id];if(!it)return;try{await db.doc("grant/purchases").update({list:{[id]:Object.assign({},it,{donation:v})}})}catch(err){toast("Could not save that.");return}}
+    else{const o=grantRecs.get(id);if(!o)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{donation:v}):x);try{await db.doc("grant/"+id).update({items})}catch(err){toast("Could not save that.");return}}
+    toast(v==="count"?"Counted in the grant figures.":"Left out of the grant figures.");renderGrant();return}
   // the director places a line, meals or education, and it is not asked again
   if(d.gplace){const [id,i]=d.gplace.split("|");const o=grantRecs.get(id);if(!o||!db)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{use:d.gv,useSet:true}):x);
     try{await db.doc("grant/"+id).update({items});toast(d.gv==="education"?"Counted for student education.":"Counted for meals.")}catch(err){toast("Could not save that.")}renderGrant();return}

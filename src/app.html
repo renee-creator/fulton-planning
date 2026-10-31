@@ -4169,15 +4169,20 @@ function sdClean(x){const c=jclone(Object.assign({},x,{pick:undefined,siblings:u
 function serverDraftSoon(){clearTimeout(sdT);sdT=setTimeout(serverDraftNow,1200)}
 function serverDraftNow(){clearTimeout(sdT);sdT=null;
   if(VIEW_AS||!db||!window.FP_HOSTED||!me())return;const f=noticeForm;if(!f)return;
-  const lead=f.pick?f.pick[0]:f;if(!lead||notices.has(lead.id)||notices.has(f.id))return;  // a kept observation being changed is not a draft
-  const rest=[...(f.pick?f.pick.slice(1):[]),...nQueue],all=[f,lead,...(lead.siblings||[]),...rest];
-  const words=String(f.noticed||"").trim()||String(f.wonder||"").trim()||all.some(x=>x&&x.photo&&(x.photo.id||x.photo.pending));
+  const lead=f.pick?f.pick[0]:f;if(!lead)return;
+  // changes to a kept observation are a draft too, the educator's own, until Save changes. Everyone else sees the kept one.
+  const kept=notices.get(lead.id)||notices.get(f.id);
+  if(kept){const k=x=>JSON.stringify(["noticed","wonder","children","classroom","smallGroup","threadId","projectId","languages","by"].map(n=>x&&x[n]||""));
+    const changed=k(lead)!==k(kept)||(lead.siblings||[]).some(x=>notices.has(x.id)&&k(x)!==k(notices.get(x.id)));
+    if(!changed){if(lead.draftId&&drafts.has(lead.draftId))serverDraftEnd(lead.draftId);return}}
+  const rest=kept?[]:[...(f.pick?f.pick.slice(1):[]),...nQueue],all=[f,lead,...(lead.siblings||[]),...rest];
+  const words=kept||String(f.noticed||"").trim()||String(f.wonder||"").trim()||all.some(x=>x&&x.photo&&(x.photo.id||x.photo.pending));
   if(!words)return;
   const id=f.draftId||lead.draftId||("d"+String(lead.id).replace(/[^a-z0-9]/gi,""));
   for(const x of [f,lead,...rest])if(x)x.draftId=id;
   const was=drafts.get(id);
   const form=sdClean(f.pick?Object.assign({},lead,{noticed:f.noticed,wonder:f.wonder}):lead);if(lead.siblings)form.siblings=lead.siblings.map(sdClean);
-  const doc={id,by:whoAmI(),startedAt:(was&&was.startedAt)||Date.now(),updatedAt:Date.now(),form,queue:rest.map(sdClean)};
+  const doc={id,by:whoAmI(),startedAt:(was&&was.startedAt)||Date.now(),updatedAt:Date.now(),form,queue:rest.map(sdClean),...(kept?{editOf:kept.id}:{})};
   drafts.set(id,doc);Promise.resolve(db.doc("drafts/"+id).set(doc)).catch(()=>{})}
 // the draft leaves the records once its observation is kept, or the educator throws it away
 function serverDraftEnd(id){if(!id)return;clearTimeout(sdT);sdT=null;drafts.delete(id);if(db&&!VIEW_AS)Promise.resolve(db.doc("drafts/"+id).delete()).catch(()=>{})}
@@ -4186,12 +4191,15 @@ function openDraft(id){const d=drafts.get(id);if(!d||!d.form)return;
   if(noticeForm&&noticeForm.draftId!==id)serverDraftNow();
   const mark=x=>{x=jclone(x);x.draftId=id;if(x.photo&&x.photo.id)x.photo.status="done";if(x.siblings)x.siblings=x.siblings.map(mark);return x};
   noticeForm=Object.assign(mark(d.form),{restored:true});nQueue=(d.queue||[]).map(mark);
+  // changes to a kept observation are laid over the kept one, so Save changes sends only what changed
+  if(d.editOf&&notices.has(d.editOf)){noticeBase.set(d.editOf,jclone(notices.get(d.editOf)));for(const x of noticeForm.siblings||[])if(notices.has(x.id))noticeBase.set(x.id,jclone(notices.get(x.id)))}
+  else if(d.editOf){serverDraftEnd(id);noticeForm=null;nQueue=[];toast("That observation was removed, so the changes are let go.");renderMain();return}
   view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop()}
 function draftCardHtml(d,dir){const f=d.form||{},n=1+(f.siblings||[]).length+(d.queue||[]).length,mine=draftIsMine(d);
   const words=String(f.noticed||"").trim();const img=f.photo&&f.photo.id?photoThumb(f):"";
   return `<div class="origin" style="display:flex;gap:12px;align-items:center">${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">`:""}
     <div style="flex:1;min-width:0"><div>${words?esc(words.length>120?words.slice(0,120)+"…":words):`<span class="muted">No words written yet</span>`}</div>
-    <div class="cnt">${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
+    <div class="cnt">${d.editOf?"Changes to a kept observation, ":""}${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
     <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
 /* ---------- Words kept as drafts in the records ----------
    A box whose words reach the records only when a button is pressed, such as Start a project, Final remarks on Today,
@@ -7587,12 +7595,12 @@ function changeKeptBy(v){const f=noticeForm;if(!f||!v)return;
   const lead=notices.get(f.id)||f;
   if(!lead.kaymbu){toast("Kept by "+v+" once you save the changes.");return}
   const kb=kBatchOf(lead),was=new Map();
-  for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v)){was.set(x.id,x.by||"");const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
-  for(const x of mine){const b=noticeBase.get(x.id);if(b)b.by=v}
+  // the photo opened takes the name chosen. The others in the email take it only when they are in no small group and in the educator's own class.
+  for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v&&(ids.has(x.id)||kmailMine(x)))){was.set(x.id,x.by||"");const base=jclone(x);x.by=v;if(ids.has(x.id))x.kaymbu=Object.assign({},x.kaymbu,{byHand:1});x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
+  for(const x of mine){if(x.kaymbu)x.kaymbu=Object.assign({},x.kaymbu,{byHand:1});const b=noticeBase.get(x.id);if(b)b.by=v}
   const others=[...was.keys()].filter(id=>!ids.has(id));
   if(!others.length){toast("Kept by "+v+".");return}
-  const all=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb).length;
-  toastAct(`Kept by ${v} on all ${all} photos from that email.`,"Undo, just this one",()=>{
+  toastAct(`Kept by ${v} on ${was.size} photos from that email, the ones from your class with no small group.`,"Undo, just this one",()=>{
     for(const id of others){const x=notices.get(id);if(!x)continue;const base=jclone(x);x.by=was.get(id);x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
     if(view==="moments"&&!noticeForm)renderMain();toast("Kept by "+v+" on this observation only.")})}
 function noticeBrowseHtml(){
@@ -7918,6 +7926,11 @@ function noticesClick(t){
   if(t.id==="nf-cancel"){const was=noticeForm;
     const isNew=was&&!notices.has(was.id),typed=isNew&&(String($("#nf-noticed")?.value??was.noticed??"").trim()||String($("#nf-wonder")?.value??was.wonder??"").trim()),hasPh=isNew&&formPhotos(was).some(x=>x.photo);
     if((typed||hasPh)&&!confirm(was.photo&&nQueue.length?"Skip this photo? It and anything written about it will not be kept.":"Throw away this observation? Its photos and anything written will not be kept."))return true;
+    // changes to a kept observation are asked about too, and thrown away only on yes
+    if(was&&!isNew){const k0=notices.get(was.id)||{};const nw=String($("#nf-noticed")?.value??was.noticed??""),ww=String($("#nf-wonder")?.value??was.wonder??"");
+      const ch=nw.trim()!==String(k0.noticed||"").trim()||ww.trim()!==String(k0.wonder||"").trim()||JSON.stringify(was.children||[])!==JSON.stringify(k0.children||[])||!!(was.draftId&&drafts.has(was.draftId));
+      if(ch&&!confirm("Throw away your changes? The observation stays as it was kept."))return true;
+      clearTimeout(sdT);sdT=null;if(was.draftId)serverDraftEnd(was.draftId)}
     const did=was&&was.draftId;noticeForm=null;
     for(const x of [...((was&&was.pick)||[]),...((was&&was.siblings)||[])])if(!notices.has(x.id)){nBlobs.delete(x.id);nPreview.delete(x.id)}
     if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
@@ -7956,7 +7969,7 @@ function noticesClick(t){
       saveNotice(s,had?noticeBase.get(s.id):undefined);noticeBase.delete(s.id)});
     saveNotice(n,editing?noticeBase.get(n.id):undefined);noticeBase.delete(n.id);noticeForm=null;
     const onPhone=waitingToSend(n.id);
-    if(editing){showKept(n);toast(onPhone?DRAFT_NOTE:"Changes saved.");return true}
+    if(editing){serverDraftEnd(did);showKept(n);toast(onPhone?DRAFT_NOTE:"Changes saved.");return true}
     if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderAll();jumpTop();toast(onPhone?DRAFT_NOTE:"Kept. The next photo is open.");return true}
     serverDraftEnd(did);
     // the moment the educator just wrote should be the first thing they see, not an empty page
@@ -8170,9 +8183,12 @@ const gOrders=()=>[...grantRecs.values()].filter(x=>x&&x.kind==="order").sort((a
 // every purchase line in a range, from FEED orders and purchases added by hand
 function gLinesAll(from,to){const out=[];
   for(const o of gOrders()){const day=o.fulfilled||o.placed||"";if(day<from||day>to)continue;(o.items||[]).forEach((x,i)=>out.push(Object.assign({},x,{day,order:o.order,distributor:o.distributor||"FEED Cooperative",src:o.id,i,review:!!o.review,kind:x.kind||o.kindOf||"",caGrown:o.caGrown===false?false:x.caGrown})))}
-  for(const p of gList("purchases")){if(!p.date||p.date<from||p.date>to)continue;out.push({day:p.date,item:p.item,producer:p.producer,unit:p.unit||"",qty:Number(p.qty)||1,price:Number(p.total)||0,total:Number(p.total)||0,use:p.use||"meals",distributor:p.distributor||"Direct",manual:p.id,kind:p.kind||""})}
-  out.forEach(x=>{x.kind=gKindOf(x);x.ca=x.kind==="local"});
+  for(const p of gList("purchases")){if(!p.date||p.date<from||p.date>to)continue;out.push({day:p.date,item:p.item,producer:p.producer,unit:p.unit||"",qty:Number(p.qty)||1,price:Number(p.total)||0,total:Number(p.total)||0,use:p.use||"meals",distributor:p.distributor||"Direct",manual:p.id,kind:p.kind||"",note:p.note||"",donation:p.donation||""})}
+  out.forEach(x=>{x.kind=gKindOf(x);x.ca=x.kind==="local";
+    // a donated line, such as a donated FEED bin, counts only when the director says so, each time
+    x.donated=gDonated(x);if(x.donated&&x.donation!=="count")x.ca=false});
   return out.sort((a,b)=>a.day.localeCompare(b.day))}
+const gDonated=x=>/\bdonat|\bgift(ed)?\b|no charge|free of charge|complimentary/i.test([x.item,x.note,x.unit].join(" "))||(x.total!=null&&x.total!==""&&Number(x.total)<=0&&Number(x.qty||1)>0);
 // the grant counts California farms and food hubs only
 const gLines=(from,to)=>gLinesAll(from,to).filter(x=>x.ca);
 // how far the food travels, straight line from each producer's town to the school, and the county it comes from
@@ -8380,6 +8396,7 @@ function renderGrant0(){
       ${o.from?`<div class="cnt">From the email ${esc(o.from)}</div>`:""}</div>
       <div class="actions" style="flex:none">${r?`<button class="btn small" data-grevuse="${esc(o.id)}">Use this reading</button><button class="linkbtn" data-grevkeep="${esc(o.id)}">Keep what is there</button>`:`<button class="btn small" data-gok="${esc(o.id)}">It is right</button><button class="linkbtn" data-gdel="${esc(o.id)}">Take out</button>`}</div></div>`}).join("")}</div></details>`;
 
+  h+=gDonatedHtml();
   h+=gUnsureHtml();
   // objectives 1 to 4, what was bought and from whom
   h+=`${gCardO("food","California food bought, objectives 1 to 4",gMoney(sum(lines))+" from "+pr.length+" producer"+(pr.length===1?"":"s"))}
@@ -8606,6 +8623,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],
   if(d.grevuse){const o=grantRecs.get(d.grevuse),r=o&&o.revision;if(!r||!db)return;
     const patch={items:r.items||[],fulfilled:r.fulfilled||o.fulfilled||"",subtotal:r.subtotal??null,delivery:r.delivery??null,total:r.total??null,distributor:r.distributor||o.distributor||"",noDate:r.noDate?true:{__delete__:true},revision:{__delete__:true},review:!!r.noDate,checkedBy:whoAmI(),checkedAt:Date.now()};
     try{await db.doc("grant/"+o.id).update(patch);toast("The new reading is used.")}catch(err){toast("Could not save that.")}renderGrant();return}
+  // the director counts a donated line or leaves it out, each one on its own
+  if(d.gdon){const [id,i]=d.gdon.split("|");const v=d.gdv==="count"?"count":"out";if(!db)return;
+    if(i==="p"){const rec=grantRecs.get("purchases");const it=rec&&(rec.list||{})[id];if(!it)return;try{await db.doc("grant/purchases").update({list:{[id]:Object.assign({},it,{donation:v})}})}catch(err){toast("Could not save that.");return}}
+    else{const o=grantRecs.get(id);if(!o)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{donation:v}):x);try{await db.doc("grant/"+id).update({items})}catch(err){toast("Could not save that.");return}}
+    toast(v==="count"?"Counted in the grant figures.":"Left out of the grant figures.");renderGrant();return}
   // the director places a line, meals or education, and it is not asked again
   if(d.gplace){const [id,i]=d.gplace.split("|");const o=grantRecs.get(id);if(!o||!db)return;const items=(o.items||[]).map((x,k)=>k===+i?Object.assign({},x,{use:d.gv,useSet:true}):x);
     try{await db.doc("grant/"+id).update({items});toast(d.gv==="education"?"Counted for student education.":"Counted for meals.")}catch(err){toast("Could not save that.")}renderGrant();return}
@@ -8991,6 +9013,12 @@ function gUnsure(){const out=[];
       let why=hint?`${word} ${are} in ${hint}`:known&&!used?`${word} ${are} not on the menu in the ${back} days after ${they} came`:"";
       if(why)out.push({o,i,x,why})})}
   return out}
+// donated lines wait for the director, and stay out of the figures until she counts them
+function gDonatedHtml(){const S=gSet();const L=gLinesAll(S.start||"0000","9999").filter(x=>x.donated&&!x.donation);if(!L.length)return"";
+  return `${gCardO("donated","Donated, your call",L.length+" line"+(L.length===1?"":"s")+" to decide",true)}
+    <div class="cnt" style="margin-bottom:8px">These came as a donation, or with no price. Each stays out of the grant figures until you count it.</div>
+    ${gFold(L.map(x=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(x.item||"A line")}</b> <span class="cnt">${esc(x.producer||x.distributor||"")} · ${esc(fmtDate(x.day))}${x.total!=null&&x.total!==""?" · "+gMoney(x.total):""}</span></div>
+      <div class="gmarks" style="flex:none"><button class="chip-btn" data-gdon="${esc(x.src||x.manual)}|${x.src?x.i:"p"}" data-gdv="count">Count it</button><button class="chip-btn" data-gdon="${esc(x.src||x.manual)}|${x.src?x.i:"p"}" data-gdv="out">Leave it out</button></div></div>`),6)}</div></details>`}
 function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
   return `${gCardO("mealsedu","Meals or education?",L.length+" line"+(L.length===1?"":"s")+" to place",true)}
     <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>

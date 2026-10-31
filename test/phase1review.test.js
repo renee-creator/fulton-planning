@@ -38,7 +38,7 @@ test('phase one changes in the page code', () => {
   const staff = fs.readFileSync(path.join(__dirname, '..', 'staff.js'), 'utf8');
   assert.doesNotMatch(src, /data-confshare/, 'conference notes are never shared with families');
   assert.match(fam, /const shared = \[\];/);
-  assert.match(fam, /FAMILY_SHOW_CODE/, 'a test mode code shows only on a test server');
+  assert.match(fam, /return \{ ok: true, test: true, code \}/, 'in test mode a tester sees the code on the page (Oct 31)');
   assert.doesNotMatch(staff, /randomBytes\(3\)\.toString\('hex'\)/, 'start codes are six numbers');
   assert.doesNotMatch(kay, /r\.deleted = true; r\.local = true; noteChange\('notices', id\); scheduleSave\('notices', id\); n\+\+; continue;/, 'linked Moments are never removed');
   assert.match(src, /suggest\.map\(id=>\{const c=children\.get\(id\);return c\?Object\.assign\(\{\},c,\{id\}\):null\}\)/, 'each suggested name stays with its own child');
