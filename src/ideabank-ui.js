@@ -26,7 +26,9 @@ const IB_STANCE=[["Arrive and stay","Choose a spot and stay in it. Coming and go
   ["Plan so you can say yes","Set up the space so mess, noise, risk and collapse are welcome. Towers fall, paint mixes to brown and clay cracks. These are part of the work, and our relaxed body tells children so."],
   ["Wonder alongside","Use I notice, I wonder and It reminds me of. Leave room for silence. Discovering alongside children often matters more than knowing the answer."],
   ["Children close the cycle","Setting up and closing belong to the children. They carry materials out, wash their own brushes, wipe the table, sweep, and return every tool to its home for the next friend. We set up so this is easy. A wash bucket or low sink, a damp sponge at each table, a drying rack and a labeled home for each tool. Closing happens on the floor with the children, as part of the work. Nothing waits for an educator to put away later."],
+  ["Expected and still guided","Much of what children do fits their age and stage (developmentally appropriate). Twos bite and grab, threes say no, fours test who is in and who is out. We understand the reason, and we still guide, so everyone stays safe and included (socially acceptable). Understanding and guiding go together."],
   ["Connected to","Art of Presence and Language (PD) · The Image of the Child lens"]];
+const IB_DEV_NOTE="A behavior can be expected for a child's age and stage (developmentally appropriate) and still need our guidance, so everyone stays safe and included (socially acceptable). We understand the reason and we still guide.";
 const IB_STANCE_LEAD="Every card in the Idea bank begins with us. Children read our faces, our bodies and our voices before they touch a material. How we are present decides whether an invitation opens up or closes.";
 (()=>{const st=document.createElement("style");st.textContent=`.ibwrap{display:grid;grid-template-columns:210px minmax(0,330px) minmax(0,1fr);gap:14px;align-items:start}
 .ibnav{display:grid;gap:12px}.ibnav .ibh{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#666)}
@@ -115,10 +117,11 @@ function ibStanceHtml(){return `<section class="card ibcardv"><span class="eyebr
 function ibSeeingHtml(){const B=(ib.behaviors||[]),q=ibSt.bq.trim().toLowerCase();const list=B.filter(b=>!q||(b.label+" "+(b.keywords||[]).join(" ")).toLowerCase().includes(q));const b=B.find(x=>x.id===ibSt.bsel);
   const rows=b?ibMatch(b.needs||[],Object.fromEntries((b.supports||[]).map(s=>[s,b.mode==="avoid"?"avoid":b.mode==="both"?"both":"seek"])),b.mode,12):[];
   return `<section class="card ibcardv"><span class="eyebrow">Search by what is happening</span><h2 style="margin:4px 0 8px">What are you seeing?</h2>
-    <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. Try the first steps and write down what happened. If it keeps happening after what we tried, open a team inquiry. One hard moment is never an inquiry.</p>
+    <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. Try the first steps and write down what happened. If it keeps happening after what we tried, open a team inquiry. One hard moment is never an inquiry.</p><p class="ibset">${esc(IB_DEV_NOTE)}</p>
     <label class="lbl" for="ib-bq">Describe it in a word or two</label><input type="search" id="ib-bq" value="${esc(ibSt.bq)}" placeholder="throwing, biting, covering ears, climbing on tables" data-noproof="1">
     <div class="chips" style="margin-top:8px">${list.map(x=>`<button class="chip ${x.id===ibSt.bsel?"on":""}" type="button" data-ibbeh="${esc(x.id)}">${esc(x.label)}</button>`).join("")||`<span class="cnt">Nothing matches those words. Try another word.</span>`}</div>
     ${b?`<h3>${esc(b.label)}</h3><p>${esc(b.what_we_might_see||"")}</p><h3>What the child might be seeking</h3><p>${esc(b.might_be_seeking||"")}</p>
+      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3><p>${esc(b.development)}</p>${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}</div>`:""}`:""}
       <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3><p>${esc(b.keep_safe||"")}</p>
       <div class="chips">${[...(b.needs||[]),...(b.supports||[])].map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
       ${ibFromUsHtml(b.from_us||[])}${ibTriedHtml(b)}
@@ -251,7 +254,9 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
   const us=x.ibUs||[],before=(x.tried||[]).filter(t=>t&&has(t.step));
   const triedHtml=before.length?`<section class="card"><div class="lbl">What we tried before this inquiry</div><div class="hint">The first steps the class tried and wrote down under What are you seeing?</div>
     ${before.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,t.at?shortDate(t.at):""].filter(has).join(", "))}</div></div>`).join("")}</section>`:"";
-  return `${triedHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+  const devHtml=`<section class="card"><div class="lbl">Could this fit this child's age and stage (developmental stage)?</div><div class="hint">Think about development first. ${esc(IB_DEV_NOTE)}</div>
+    ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}</section>`;
+  return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
     ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
@@ -262,6 +267,7 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
     <section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
     ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}
+document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!isDirector())return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.ibiqtry){const c=ibCard(d.ibiqtry);if(!c||(x.tries||[]).some(o=>o.idea===c.id))return;const r=ibMatch(x.ibNeeds||[],x.ibSys||{},x.ibMode,40).find(y=>y.card.id===c.id);

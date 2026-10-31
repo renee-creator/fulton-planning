@@ -108,7 +108,7 @@ test('the Idea bank in TREE', async t => {
     for (const w of ['What the child might be seeking', 'First steps', 'Keeping everyone safe', 'Ideas that may help', 'Can feed']) assert.match(txt, new RegExp(w));
     await s.p.click('[data-ibinq="throwing-objects"]'); await wait(400);
     const f = await s.p.evaluate(() => iqForm && { n: iqForm.ibNeeds, s: iqForm.ibSys, name: iqForm.name });
-    assert.ok(f.n.includes('Moving things through the air')); assert.strictEqual(f.s['Body pressure and heavy work (proprioception)'], 'seek'); assert.strictEqual(f.name, 'Throwing things');
+    assert.ok(f.n.includes('Moving things through the air (trajectory schema)')); assert.strictEqual(f.s['Body pressure and heavy work (proprioception)'], 'seek'); assert.strictEqual(f.name, 'Throwing things');
     assert.deepStrictEqual(s.errors, []); await s.close();
     // an educator writes what was tried first, then may open a team inquiry when it keeps happening
     const a = await signedIn(fx, br, 'Ann', '1357', 1280);
@@ -132,13 +132,15 @@ test('the Idea bank in TREE', async t => {
   await t.test('the inquiry pickers save with the inquiry, and We\'ll try this', async () => {
     const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1280);
     await s.p.evaluate(async () => { await ibLoad(); openInquiry('q1'); }); await s.p.waitForSelector('[data-ibiqneed]', { timeout: 15000 });
-    await s.p.click('[data-ibiqneed="Knocking down and changing things"]'); await wait(200);
+    await s.p.click('[data-ibiqneed="Knocking down and changing things (transformation schema)"]'); await wait(200);
     await s.p.click('[data-ibiqmode="avoid"]'); await wait(200);
+    await s.p.fill('[data-ibiqdev]', 'Common at two. Still guided.'); await wait(1200);
+    assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').ibDev), 'Common at two. Still guided.');
     await s.p.click('[data-ibiqsys="Listening and sound (auditory)"]'); await wait(300);
     assert.ok(await s.p.evaluate(() => document.querySelectorAll('[data-ibiqtry]').length > 0), 'possibilities show');
     const file = path.join(fx.dir, 'inquiries/q1.json');
     let d = null; for (let i = 0; i < 60; i++) { await wait(250); try { d = JSON.parse(fs.readFileSync(file, 'utf8')); if (d.ibSys) break; } catch (e) {} }
-    assert.deepStrictEqual(d.ibNeeds, ['Knocking down and changing things']); assert.deepStrictEqual(d.ibSys, { 'Listening and sound (auditory)': 'avoid' }); assert.strictEqual(d.ibMode, 'avoid');
+    assert.deepStrictEqual(d.ibNeeds, ['Knocking down and changing things (transformation schema)']); assert.deepStrictEqual(d.ibSys, { 'Listening and sound (auditory)': 'avoid' }); assert.strictEqual(d.ibMode, 'avoid');
     assert.match(await s.p.evaluate(() => document.querySelector('[data-ibiqtry]').closest('.prow').innerText), /Can feed|Supports/);
     await s.close();
     // an educator reads the pickers, and the team's choice to try a card is added and kept
