@@ -13,7 +13,7 @@ const GUIDE = '<!--\nstatus: draft\ngroup: Sculpture\narea: Art\nsource: A test 
 test('the records are seeded once from the approved file', async () => {
   const h = await loaded(PEOPLE);
   const r = await call(h.staff, 'Ann', 'ideabank');
-  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.cards.length, SEED.cards.length); assert.strictEqual(r.body.behaviors.length, 48);
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.cards.length, SEED.cards.length); assert.strictEqual(r.body.behaviors.length, 49);
   assert.strictEqual(r.body.needs.length, 13); assert.strictEqual(r.body.supports.length, 13); assert.strictEqual(r.body.levels.length, 5);
   await wait(1500); assert.ok(h.writes.some(w => /staff\/library\/ideabank\/cards\.json$/.test(w)) && h.writes.some(w => /behaviors\.json$/.test(w)), 'both are written to the records');
   assert.strictEqual((await call(h.staff, 'Kit', 'ideabank')).status, 403, 'the kitchen does not receive it');
@@ -121,7 +121,7 @@ test('every card closes with the children, and educators write what they tried b
   assert.ok(SEED.behaviors.every(b => (b.from_us || []).length >= 2), 'every behavior names what the child might need from us');
   const h = await loaded(PEOPLE);
   let r = await call(h.staff, 'Bo', 'ideabank');
-  assert.strictEqual(r.body.fromUs.length, 26); assert.ok(r.body.fromUs.some(u => u.name === 'Acknowledgment of effort' && /good job/.test(u.look)));
+  assert.strictEqual(r.body.fromUs.length, 27); assert.ok(r.body.fromUs.some(u => u.name === 'Acknowledgment of effort (encouragement)' && /good job/.test(u.look)));
   assert.ok(SEED.behaviors.every(b => b.from_us.every(n => r.body.fromUs.some(u => u.name === n))), 'behaviors use only names TREE knows');
   assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), false, 'nothing tried yet');
   assert.strictEqual((await call(h.staff, 'Bo', 'ideabank/tried', { behavior: 'biting', room: 'North', step: 'Offered a chewy tube.' })).status, 400, 'what happened is written too');
