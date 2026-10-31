@@ -884,7 +884,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   window.TREE_SHARED={ get:()=>({ data:{ children:JSON.parse(JSON.stringify(Store.data.children||{})), conferences:JSON.parse(JSON.stringify(Store.data.conferences||{})), settings:JSON.parse(JSON.stringify(Store.data.settings||{})) }, rev:Store.rev, bootId:Store.bootId, fileKey:Store.fileKey, director:!!Auth.director, wording:window.FP_WORDS||{} }),
     on:fn=>{ Store.listeners.add(fn); return ()=>Store.listeners.delete(fn); }, ready:()=>Store.ready };
   function saveBanner(msg, warn){ let b=document.getElementById("save-banner"); if(!msg){ if(b) b.remove(); return; } if(!b){ b=document.createElement("div"); b.id="save-banner"; b.setAttribute("role","alert"); b.style.cssText=(warn?"background:#8a5a00;":"background:var(--danger);")+"color:#fff;padding:10px 16px;font-weight:600;text-align:center"; document.body.prepend(b); } b.textContent=warn? msg : msg+" Plans can still be read, but nothing new is saved until this is fixed."; b.style.background=warn?"#8a5a00":"var(--danger)"; }
-  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; window.FP_WORDS=j.wording||{};window.FP_GARDENERS=Array.isArray(j.gardenEducators)?j.gardenEducators:[];window.FP_GATHERINGS=j.gatherings||null; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
+  async function loadAll(){ const j=await api("/api/data"); saveBanner(j.saveError||j.saveWarn, !j.saveError); takeFileKey(j.fileKey); if(j.storage)window.FP_STORAGE=j.storage; window.FP_WORDS=j.wording||{};window.FP_MYPLANS=j.myPlans||"";window.FP_GARDENERS=Array.isArray(j.gardenEducators)?j.gardenEducators:[];window.FP_GATHERINGS=j.gatherings||null; Store.data={plans:{},threads:{},scans:{},settings:{},projects:{},notices:{},children:{},conferences:{},slides:{},stories:{},...j.data}; Store.rev=j.rev; Store.bootId=j.bootId; if(typeof j.director==="boolean"){ Auth.director=j.director; LS.set("fp-director",j.director?"1":null); } Auth.office=!!j.office;const wasK=!!Auth.kitchen; Auth.kitchen=!!j.kitchen; LS.set("fp-kitchen",j.kitchen?"1":null); if(wasK!==Auth.kitchen){ location.reload(); return; }
     /* a new educator reaches only the New Educator section until the director turns on full access */
     window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); if(j.staff&&j.staff.loading) staffAgain(0); obReapply(); }
   /* signed in while the educator records were still loading after an update, TREE asks again until Educators can open */
@@ -1473,6 +1473,13 @@ async function flushSaves(){
         catch(e){if(e&&e.status===404){doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)))}else throw e}
         // what the server now holds, with anything typed since the save left laid on top
         if(doc){const rest=pdiff(sent,p);planBase.set(id,jclone(doc));replaceInPlace(p,papply(jclone(doc),rest||{}))}}
+      else if(p.type==="classroom"&&/^c-/.test(id)){
+        // a teammate may have started this week's Classroom plan a moment ago. Then her plan is kept, and what was typed here joins it.
+        const got=await db.doc("plans/"+id).create(JSON.parse(JSON.stringify(p)));
+        if(got&&got.createdAt!==p.createdAt){const m=jclone(got);m.fields=Object.assign({},got.fields||{});
+          for(const [k,v] of Object.entries(p.fields||{})){const a=String(m.fields[k]||"").trim(),b=String(v||"").trim();if(b&&!a)m.fields[k]=v;else if(b&&a&&a!==b&&!a.includes(b))m.fields[k]=a+"\n\n"+b}
+          planBase.set(id,jclone(got));serverIds.add(id);replaceInPlace(p,m);p.updatedAt=Date.now();pendingSaves.add(id);dirty=true;toast("A teammate started this plan a moment ago. Your words were added to it.");continue}
+        if(got){planBase.set(id,jclone(got));serverIds.add(id)}}
       else{doc=await db.doc("plans/"+id).set(JSON.parse(JSON.stringify(p)));if(doc){planBase.set(id,jclone(doc));serverIds.add(id)}}
       if((plans.get(id)?.updatedAt||0)<=stamp){pendingSaves.delete(id);planDraftDone(id)}}catch(e){ok=false;if(!e||e.code==="unavailable"||e.code==="server_error"||e.code==="rate_limited"){planWait.add(id);planDraftNow(id)}}}
   }finally{flushing=false}
@@ -1522,7 +1529,7 @@ const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
 function planMissing(p){if(!sendable(p))return [];const F=FORMS[p.type];return SEND_NEED[p.type].filter(k=>!String((p.fields||{})[k]||"").trim()).map(k=>({k,label:(F.fields.find(f=>f.k===k)||{}).label||k}))}
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
-function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(m&&mine.length?mine:all).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
 /* Director feedback. Only the director writes it, the educator is told when a note is waiting, and can reply under it. */
 const myName=()=>{const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";return (isShared(s)?"":s)||me()||""};
 const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
@@ -2096,9 +2103,9 @@ function navBack(){const prev=NAVS.pop();if(!prev)return false;const s=prev.s;
   if(s.view==="conferences"||s.view==="calendar")embedGo[s.view]=false;
   navCur={s,k:JSON.stringify(s),y:prev.y};renderNav();renderMain();drawBack();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,prev.y||0)));return true}
-window.addEventListener("popstate",()=>{navBack()});
-// moving between sections, or between the pages of one section, starts a fresh trail. Back then only returns from a page opened from another.
-document.addEventListener("click",e=>{const t=e.target.closest("[data-tsec],#tsubnav .subrow button.sub");if(!t)return;NAVS.length=0;navCur=null},true);
+// the phone's own Back steps back through every screen, sections too, and with nothing behind it goes to Today before it
+// ever leaves TREE. The Back at the top of the page shows only on a page opened from somewhere.
+window.addEventListener("popstate",()=>{if(navBack())return;if(view!=="today")goView("today")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-navback]");if(!t)return;e.stopImmediatePropagation();try{history.back()}catch(err){navBack()}},true);
 window.addEventListener("scroll",()=>{if(navCur&&JSON.stringify(navState())===navCur.k)navCur.y=scrollY},{passive:true});
 const navObs=new MutationObserver(()=>queueMicrotask(navTrack));
@@ -4712,7 +4719,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="f3fc2a0836f2";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="57852b014a1e";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4879,7 +4886,7 @@ function todayWaiting(){
   // observations started and not kept yet wait as drafts
   {const k=typeof draftsList==="function"?draftsList().filter(draftIsMine).length:0;
    if(k&&!VIEW_AS)out.push({dot:"mari",t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
-  const due=dueList();for(const p of due.list.slice(0,3))
+  const due=dueList();for(const p of due.list.slice(0,isDirector()?5:20))
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check",q:"photo|"+n.id});
@@ -5051,7 +5058,7 @@ document.addEventListener("click",e=>{
   const k=e.target.closest("[data-tqkid]");if(k&&tqKids){const [pid,cid]=k.dataset.tqkid.split("|");const a=tqKids[pid]||(tqKids[pid]=[]);const i=a.indexOf(cid);i>=0?a.splice(i,1):a.push(cid);k.classList.toggle("on");return}
   const s=e.target.closest("[data-tqsave]");if(!s)return;const [kind,id,v]=s.dataset.tqsave.split("|");
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
-  if(kind==="rem"){const p=plans.get(id);const txt=($("#tqtext")?.value||"").trim();if(!p)return;if(!txt){toast("Write the "+FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]).label.toLowerCase()+" first.");return}
+  if(kind==="rem"){const p=plans.get(id);const txt=($("#tqtext")?.value||"").trim();if(!p)return;if(!isDirector()&&!isMine(p,me())){toast("These are "+(p.educator||"another educator")+"'s Final remarks to write.");return}if(!txt){toast("Write the "+FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]).label.toLowerCase()+" first.");return}
     p.fields[AFTER_KEY[p.type]]=txt;persist(p);toast("Saved to the plan.")}
   else if(kind==="photo"){const n=notices.get(id);const txt=($("#tqtext")?.value||"").trim();if(!n||!txt)return;const base=jclone(n);n.noticed=txt;n.editedBy=whoAmI();n.editedAt=Date.now();saveNotice(n,base);toast("Saved.")}
   else if(kind==="kay"){const n=notices.get(id);if(!n||!tqKids)return;const room=tqRoom||momentRooms(n)[0]||"";
@@ -5422,7 +5429,7 @@ function renderToday(){
     <div class="sub">${room?esc(room)+" class":isDirector()?"All classes":"Across the school"}${mg.length?" · "+mg.map(g=>esc(g.name)).join(" and ")+" group"+(mg.length>1?"s":""):""}</div></section>
   <div class="quick" style="margin-top:14px">
     <button data-tview="slides"><b>Make documentation</b><span>${isDirector()?"A slide or a wall from observations":"A slide from observations"}</span></button>
-    ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any class</span></button>`:isOffice()||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
+    ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any class</span></button>`:isOffice()||window.FP_MYPLANS==="none"||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
@@ -6861,7 +6868,9 @@ document.addEventListener("click",e=>{
   if(t.dataset.f2sq)LS.set("tree.f2sq-"+t.dataset.f2sq,"1");
   if(t.dataset.drrep)LS.set("tree.drrep-"+mNow(),"1");
   if(t.dataset.gopen){gOpen[t.dataset.gopen]=true;LS.set("fps.gopen",gOpen)}
-  if(t.dataset.tview){e.stopImmediatePropagation();if(t.dataset.tview==="conferences"||t.dataset.tview==="calendar"){embedRoute[t.dataset.tview]="";embedGo[t.dataset.tview]=true}goView(t.dataset.tview);return}
+  if(t.dataset.tview){e.stopImmediatePropagation();
+    // a link to one module or list in the PD library opens that module, not the library
+    if(t.dataset.stmod!=null)LS.set("tree.stmod",t.dataset.stmod);if(t.dataset.tview==="conferences"||t.dataset.tview==="calendar"){embedRoute[t.dataset.tview]="";embedGo[t.dataset.tview]=true}goView(t.dataset.tview);return}
   if(t.dataset.tback){e.stopImmediatePropagation();currentId=null;renderList();renderMain();jumpTop();return}
   if(t.dataset.tthisweek){e.stopImmediatePropagation();week=planWeekNow();currentId=null;renderAll();return}
   if(t.dataset.newmoment){e.stopImmediatePropagation();document.getElementById("newnotice").click();return}
@@ -6891,7 +6900,9 @@ document.addEventListener("click",async e=>{
     // a Classroom plan belongs to the class shown on the page, and a class has one each week, so a second tap opens the first
     if(t.dataset.new==="classroom"){const room=t.dataset.room||myRoom()||boardRoom();const had=[...plans.values()].find(p=>p.type==="classroom"&&p.weekOf===week&&p.classroom===room&&p.id!=="example");
       if(had){view="plans";LS.set("fps.view",view);renderNav();currentId=had.id;renderList();renderMain();jumpTop();return}
-      view="plans";LS.set("fps.view",view);renderNav();const np=newPlan("classroom",{classroom:room});plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
+      view="plans";LS.set("fps.view",view);renderNav();const np=newPlan("classroom",{classroom:room});
+      // a class has one Classroom plan a week, so its name is the class and the week. Two teammates starting at once write in the same one.
+      if(room)np.id=("c-"+room+"-"+week).toLowerCase().replace(/[^a-z0-9-]+/g,"-");plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
     view="plans";LS.set("fps.view",view);renderNav();const np=fromLastWeek(newPlan(t.dataset.new));plans.set(np.id,np);currentId=np.id;persist(np);renderList();renderMain();jumpTop();return}
   if(t.dataset.open&&notices.has(t.dataset.open)){const n=notices.get(t.dataset.open);noticeForm=null;view="plans";LS.set("fps.view",view);currentId=null;nRoom=n.classroom||"All";renderNav();noticeForm=Object.assign({},n);renderMain();jumpTop();return}
   if(t.dataset.open){view="plans";LS.set("fps.view",view);renderNav();currentId=t.dataset.open;const op=plans.get(currentId);if(op&&op.weekOf!==week){week=op.weekOf;renderWeek()}renderList();renderMain();if(t.dataset.jump){const ta=t.dataset.jump==="fb"?$("#fbsec"):$("#f-"+t.dataset.jump);if(ta){ta.scrollIntoView({block:"center"});if(t.dataset.jump!=="fb")ta.focus()}}else jumpTop();return}
@@ -9469,7 +9480,7 @@ function saveInquiry(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();inquiries.se
 const iqTimers={};
 function saveInquirySoon(x){inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>saveInquiry(x),700)}
 function newInquiry(extra){return Object.assign({id:uid(),name:"",room:myRoom()||"",status:"open",createdAt:Date.now(),createdBy:whoAmI(),
-  see:"",whenwhere:"",hyps:[],tries:[],watch:"",lookAgain:"",looks:[],obs:[],threads:[],projects:[],lensId:"",lensNotes:{}},extra||{})}
+  see:"",whenwhere:"",hyps:[],tries:[],watch:"",lookAgain:"",looks:[],obs:[],threads:[],projects:[],lensId:"",lensNotes:{},display:false},extra||{})}
 const inqOf=x=>x&&!x.deleted;
 const inqAll=()=>[...inquiries.values()].filter(inqOf);
 // an inquiry's observations are its own, each connected thread's, and the observations those threads keep as evidence
@@ -9486,7 +9497,7 @@ function inqPlans(x){const m=new Map();
     for(const e of t.evidence||[]){const p=plans.get(e.planId);if(p&&p.id!=="example"&&PLAN_TYPES.includes(p.type))m.set(p.id,p)}}
   return [...m.values()].sort((a,b)=>b.weekOf.localeCompare(a.weekOf))}
 const inqLens=x=>x.lensId&&LENSES.find(l=>l.id===x.lensId);
-// the staff room display shows an open inquiry unless the director turns it off. One whose observations name a single child stays off until she turns it on.
+// a new inquiry starts off the staff room display, and the director turns on the ones to share. One made before October 31 shows unless she turned it off, and one naming a single child stays off.
 const inqOnDisplay=x=>x.display===true||(x.display!==false&&inqChildren(x).length!==1);
 const inqOpenHyps=x=>(x.hyps||[]).filter(h=>!h.aside&&has(h.text));
 const inqCurric=x=>(x.tries||[]).filter(t=>t.curriculum&&has(t.text));
@@ -10308,8 +10319,15 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.ptclear&&isDirector()){if(!t.dataset.sure){t.dataset.sure="1";t.textContent="Clear every test entry";return}
     const tests=[...participation.values()].filter(x=>x.test&&(x.kind==="log"||x.kind==="item"||x.kind==="slot"||x.kind==="undo"));
     // what a tester changed on a real child or conference goes back to how it was before testing
-    const undo=tests.filter(x=>x.kind==="undo").map(u=>u.prev?db.doc(u.target+"/"+u.tid).set(Object.assign({},u.prev)):db.doc(u.target+"/"+u.tid).delete());
-    Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared, and the real records put back.`)});return}
+    // only the parts a tester changed go back, so what staff added since stays. A record a tester made is taken away.
+    // A copy kept the old way, of the whole record, is let go without putting anything back.
+    const undo=tests.filter(x=>x.kind==="undo"&&Array.isArray(x.keys)).map(u=>{
+      if(u.existed===false)return db.doc(u.target+"/"+u.tid).delete();
+      // each part is taken away first and then put back whole, so nothing added inside it since is left behind
+      const del={},put={};for(const k of u.keys){const w=(u.was||{})[k];del[k]={__delete__:true};if(w!=null)put[k]=w}
+      if(!u.keys.length)return null;const ref=db.doc(u.target+"/"+u.tid);
+      return ref.update(del).then(()=>Object.keys(put).length?ref.update(put):null).catch(()=>{})}).filter(Boolean);
+    Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared. What testers changed on real records is put back, and everything staff added since stays.`)});return}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
 /* ---------- Specialty visits, family strengths and the January list ----------
@@ -13096,17 +13114,18 @@ const proofFixes=(out,F)=>{const by=new Map(F.map(f=>[f.k,f]));return (Array.isA
 async function proofRun(gate,save){proofSels=(gate?proofNew():proofEls()).map(proofSel);const F=proofFields();
   if(!F.length){if(gate){proofPass(gate);return}toast("Nothing is written on this page yet.");return}
   const hash=proofHash();proof={busy:true,fixes:[],gate,hash,save};proofPaint();
-  try{const out=await askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})});const by=new Map(F.map(f=>[f.k,f]));
+  // proofreading never holds anyone up. Without an answer in ten seconds, it says so and lets them go on.
+  try{const out=await Promise.race([askRead(proofPrompt(F),{modelTier:"complex",cache:false,purpose:"proofread",...(save?{quick:true}:{})}),new Promise((_,no)=>setTimeout(()=>no(new Error("Proofreading is taking too long.")),10000))]);const by=new Map(F.map(f=>[f.k,f]));
     const fixes=proofFixes(out,F).map(x=>Object.assign(x,{label:by.get(x.k).label}));
     if(!fixes.length){proofClean=hash;proofRemember(F.map(f=>f.text))}
     if(gate&&!fixes.length){proof=null;proofPaint();proofPass(gate);return}
-    proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":assistError(e||"unknown","Try again in a minute.")}}
+    proof={busy:false,fixes,gate,hash,save}}catch(e){proof={busy:false,fixes:[],gate,save,error:save?"":gate?"Nothing was checked this time. You can go ahead.":assistError(e||"unknown","Try again in a minute.")}}
   proofPaint()}
 function proofAccept(i){const f=proof.fixes[i];if(!f||f.done)return;const el=proofFind(proofSels[+f.k]);const cur=el?el.value:"";
   if(!cur.includes(f.from)){f.done=true;f.left=true;return}proofApply(f.k,cur.replace(f.from,f.to));f.done=true}
 // the action the check was holding goes ahead
 let proofPassing=false;
-function proofPass(gate){proofClean=proofHash();proofRemember(proofSels.map(proofFind).filter(el=>el&&el.isConnected).map(el=>el.value));if(typeof gate==="function"){proofRoot=null;gate();return}const b=proofFind(gate);proofRoot=null;if(!b)return;proofPassing=true;try{b.click()}finally{proofPassing=false}}
+function proofPass(gate){proofClean=proofHash();proofRemember(proofSels.map(proofFind).filter(el=>el&&el.isConnected).map(el=>el.value));if(typeof gate==="function"){proofRoot=null;gate();return}let b=proofFind(gate);if(!b&&typeof gate==="string"){try{b=document.querySelector(gate)}catch(e){}}proofRoot=null;if(!b){toast("Press it once more to go ahead.");return}proofPassing=true;try{b.click()}finally{proofPassing=false}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[data-proofno],[data-proofall],[data-proofx],[data-proofgo],[data-proofshow],#tproof");if(!t)return;e.stopImmediatePropagation();const d=t.dataset;
   if(t.id==="tproof"){if(proof&&proof.busy)return;proofRoot=null;
     // on the Conferences page the writing is inside the page TREE shows it in
@@ -13121,14 +13140,14 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-proofok],[
   if(d.proofgo!=null){const g=proof.gate;proof=null;proofPaint();proofPass(g)}},true);
 // the moments writing leaves TREE: posting to the Family page, sending a plan to the director, printing, copying for Kaymbu
 const PROOF_GATES='[data-tsready="1"],#sendplan,[data-nlpost],[data-nlpdf],[data-nlword],[data-gbn="post"],[data-gbn="copy"],[data-print],[data-afsend]';
-document.addEventListener("click",e=>{if(proofPassing||!proofOnSave())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
+document.addEventListener("click",e=>{if(proofPassing||!proofOnSave()||isKitchenUser())return;const b=e.target.closest(SAVE_GATES);if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proof&&proof.busy){e.preventDefault();e.stopImmediatePropagation();return}
   proofRoot=null;if(!proofNew().length||proofHash()===proofClean)return;
   e.preventDefault();e.stopImmediatePropagation();proofRun(proofSel(b),(b.textContent||"Save").trim().slice(0,30)||"Save")},true);
 // the Conferences page asks before a conference is marked complete. It hands over its own page and what to do after.
 window.TREE_PROOF=(root,label,go)=>{if(!proofOnSave())return false;if(proof&&proof.busy)return true;proofRoot=root;
   if(!proofNew().length||proofHash()===proofClean){proofRoot=null;return false}proofRun(go,label||"Save");return true};
-document.addEventListener("click",e=>{if(proofPassing)return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
+document.addEventListener("click",e=>{if(proofPassing||isKitchenUser())return;const b=e.target.closest(PROOF_GATES+',[data-nlkaymbu]');if(!b||b.disabled||!$("#main")?.contains(b))return;
   if(proofOnSave()&&b.matches(SAVE_GATES))return;proofRoot=null;
   if(b.matches("[data-nlkaymbu]")&&typeof nlKaymbu!=="undefined"&&nlKaymbu)return;
   if(!proofNew().length||proofHash()===proofClean)return;
@@ -14262,7 +14281,16 @@ function tsHtml(c){const x=tsOf(c),s=(x&&x.sections)||{},dr=tsDrafts[c.id]||{},b
     <div class="actions">${x&&x.status==="ready"?`<button class="btn small ghost" data-tsready="0">Back to draft</button>`:`<button class="btn small" data-tsready="1" ${any?"":"disabled"}>Mark ready</button>`}${any?printBtns("transition",c.id,"PDF")+printBtns("transitionnext",c.id,"Copy for the next school, PDF"):""}</div>
     <div class="cnt">${tsShareText(c,x)}</div></section>`}
 // the director shares it on the Details tab, under Shared with the family, and the office sees where it stands
-function tsShareRow(c){const x=tsOf(c);if(!tsAny(x))return "";const dir=isDirector()&&!VIEW_AS;
+// before a summary goes to a family, the director reads the family's exact copy. Each name TREE took out is listed, and
+// she can change any words. What she shares is what the family reads.
+let tsPreview=null;
+function tsPreviewHtml(c){const p=tsPreview;return `<section class="card" style="border:2px solid var(--moss)"><div class="lbl">What ${esc(c.first)}'s family will read</div>
+  <div class="cnt">Other children's names are taken out and read as a friend. Read each part, change anything that is not right, then share.</div>
+  ${TS_SECTIONS.map(([k,l])=>{const v=p.sections[k]||"";if(!String(v).trim())return "";const f=(p.found||{})[k]||[];
+    return `<label class="fld-label">${esc(l)}<textarea data-tsfam="${k}" rows="4">${esc(v)}</textarea></label>${f.length?`<div class="cnt">Taken out here, ${esc(f.join(", "))}.</div>`:""}`}).join("")}
+  <div class="actions"><button class="btn small" data-tsfamgo="${esc(c.id)}">Share this with the family</button><button class="linkbtn" data-tsfamx="1">Back</button></div></section>`}
+document.addEventListener("input",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.tsfam;if(k&&tsPreview)tsPreview.sections[k]=e.target.value});
+function tsShareRow(c){if(tsPreview&&tsPreview.cid===c.id)return tsPreviewHtml(c);const x=tsOf(c);if(!tsAny(x))return "";const dir=isDirector()&&!VIEW_AS;
   if(x.shared)return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ${esc(shortDate(new Date(x.shared.at).getTime()))}${tsChanged(x)?" · changed since":""}</span></span>${dir?`<span class="actions" style="margin:0">${tsChanged(x)&&x.status==="ready"?`<button class="linkbtn" data-tsshare="${esc(c.id)}">Share again</button>`:""}<button class="linkbtn" data-tsunshare="${esc(c.id)}">Stop sharing</button></span>`:""}</div>`;
   if(x.status==="ready")return `<div class="ptlog"><span>Transition summary<span class="cnt"> · ready, not shared yet</span></span>${dir?`<button class="btn small ghost" data-tsshare="${esc(c.id)}">Share it</button>`:""}</div>`;
   return `<div class="cnt">The transition summary is still a draft. It can be shared once it is marked ready.</div>`}
@@ -14295,13 +14323,17 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-tsdraft],[
     tsPatch(c,{status:"ready",readyAt:Date.now(),readyBy:whoAmI()});toast("Marked ready.");tsRender();return}
   if(d.tsready==="0"){tsPatch(c,{status:"draft"});tsRender()}});
 // only the director shares it on the Family page, as it reads now, and only she stops sharing it. The server keeps the same rule.
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-tsfamgo],[data-tsfamx]");if(!t)return;
+  if(t.dataset.tsfamx){tsPreview=null;renderMain();return}
+  const c=children.get(t.dataset.tsfamgo),x=tsOf(c);if(!c||!x||!tsPreview||VIEW_AS||!isDirector())return;
+  const fam=Object.fromEntries(TS_SECTIONS.map(([k])=>[k,String(tsPreview.sections[k]||"").trim()]));
+  tsPatch(c,{shared:{at:new Date().toISOString(),by:whoAmI(),plan:kidNext(c),sections:Object.fromEntries(TS_SECTIONS.map(([k])=>[k,String((x.sections||{})[k]||"").trim()])),family:fam}});
+  tsPreview=null;renderMain();toast("The transition summary is on the Family page, as you read it.")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-tsshare],[data-tsunshare]");if(!t)return;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!isDirector())return;
   const c=children.get(t.dataset.tsshare||t.dataset.tsunshare),x=tsOf(c);if(!c||!x)return;
   if(t.dataset.tsshare){if(x.status!=="ready"){toast("Mark the summary ready first.");return}
-    if(!confirm(`Share ${c.first}'s transition summary on the Family page? ${c.first}'s family will see it as it reads now.`))return;
-    tsPatch(c,{shared:{at:new Date().toISOString(),by:whoAmI(),plan:kidNext(c),sections:Object.fromEntries(TS_SECTIONS.map(([k])=>[k,String((x.sections||{})[k]||"").trim()]))}});
-    renderMain();toast("The transition summary is on the Family page.");return}
+    tsFlush(c.id);window.FP_API("/api/transition/familycopy",{id:c.id,year:tsYear()}).then(j=>{tsPreview={cid:c.id,sections:j.sections||{},found:j.found||{}};renderMain()},er=>toast(er&&er.message||"The family's copy could not be made. Check your connection."));return}
   if(!confirm(`Stop sharing ${c.first}'s transition summary? It comes off the Family page.`))return;
   tsPatch(c,{shared:{__delete__:true}});renderMain();toast("The transition summary is no longer shared.")});
 
@@ -14489,8 +14521,9 @@ function signinsHtml(){
         <span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at our school</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving our school</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span>
       </div></details>`).join("")}</div>`:`<div class="empty">No one has a sign-in yet.</div>`}
     ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left our school. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
-    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
+    <div class="actions"><input type="text" id="sg-new" placeholder="First name" style="width:160px"><select id="sg-newroom" style="width:auto" aria-label="Class"><option value="">Class</option>${CLASSROOMS.map(r=>`<option>${r}</option>`).join("")}</select><label class="cnt">First day <input type="date" id="sg-newstart" style="width:auto"></label><button class="btn small" id="sg-add" ${signins.busy?"disabled":""}>Add educator</button>
       ${missing.length?`<button class="btn small ghost" id="sg-addall" ${signins.busy?"disabled":""}>Add everyone on the educators list (${missing.length})</button>`:""}</div>
+    ${((staffInfo()||{}).open||{}).newed?"":`<div class="hint warnline">The New Educator section is off, so a new educator who signs in sees nothing yet. <button class="btn small ghost" data-stsw="newed|1">Turn it on</button></div>`}
     ${signins.render.length?`<div class="cnt">Passcodes set on Render still work for ${esc(signins.render.join(", "))}.</div>`:""}</section>`;
 }
 // a short row opens its person's or item's choices, one at a time, and stays open when the page is drawn again
@@ -14500,7 +14533,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.cla
 // Add educator here adds a new hire, the same way as adding from Educators. Each sees only the New Educator section
 // until the director turns on school and children's work access.
 async function sgNewHires(list){if(!list.length)return;signins.busy=true;if(view==="settings")renderSettings();const added=[];
-  const codes={};try{for(const x of list){const r=await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator"});added.push(x.name);if(r&&r.start)codes[x.name]=r.start}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
+  const codes={};try{for(const x of list){const r=await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator",...(x.startDate?{startDate:x.startDate}:{})});added.push(x.name);if(r&&r.start)codes[x.name]=r.start}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
   try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||signins.list}catch(e){}
   signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name and start code, then choose four numbers. ${added.map(n=>codes[n]?n+"\u2019s start code is "+codes[n]+".":"").filter(Boolean).join(" ")} ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
 async function signinCall(path,body,msg){signins.busy=true;try{const j=await window.FP_API(path,body);signins.list=j.accounts||signins.list;if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}signins.busy=false;if(view==="settings")renderSettings()}
@@ -14517,7 +14550,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   if(t.dataset.sgdel){const w=document.getElementById("sgdel-"+t.dataset.sgdel.replace(/[^A-Za-z]/g,""));if(w)w.innerHTML=`<span class="confirm">Remove ${esc(t.dataset.sgdel)}'s sign-in, added by mistake? <button class="btn warn small" data-sgdelyes="${esc(t.dataset.sgdel)}">Remove</button><button class="linkbtn" data-sgkeep="1">Keep</button></span>`;return}
   if(t.dataset.sgkeep){renderSettings();return}
   if(t.dataset.sgdelyes){signinCall("/api/accounts/remove",{name:t.dataset.sgdelyes},"Removed. Their plans and observations stay.");return}
-  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}sgNewHires([{name:n,room:$("#sg-newroom")?.value||""}]);return}
+  if(t.id==="sg-add"){const n=($("#sg-new")?.value||"").trim();if(!n){toast("Type the educator's first name.");return}sgNewHires([{name:n,room:$("#sg-newroom")?.value||"",startDate:$("#sg-newstart")?.value||""}]);return}
   if(t.id==="sg-addall"){const known=new Set(signins.list.map(a=>a.name.toLowerCase()));sgNewHires(roster.filter(r=>r&&r.name&&!known.has(r.name.toLowerCase())&&/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(r.name)).map(r=>({name:r.name,room:r.room||""})));return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="settings"||!signins.list)return;

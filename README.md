@@ -743,3 +743,12 @@ Every change to TREE updates the matching Help answer as part of the same change
 - **Changes to a kept observation** are the educator's own draft as she types, on any device, until Save changes. Everyone else sees the kept observation. Cancel asks before her changes are thrown away.
 - **Kaymbu names.** A moment in a small group always carries the group's lead, even when the subject names someone else, unless its name was chosen by hand in Kept by. Changing Kept by renames only the photo opened, and the others in the email from the educator's own class with no small group.
 - **Family page test code.** In test mode a tester's code shows right on the family page, with no email, as before October 26. Families still cannot sign in while test mode is on.
+- **Clear test entries** takes back only the parts a tester typed, so later work on the same child stays. Older test records that held a whole copy are removed once, never restored.
+- **Final remarks** on Today and the plan list are each educator's own plans only. The director still sees every plan waiting.
+- **One Classroom plan a week.** Each room's Classroom plan for a week has one id, so teammates starting it together write in the same plan.
+- **New hire modules.** A module link opens that module.
+- **First day** is set in Sign-ins for a new educator, and a new educator with no first day is flagged there.
+- **Back** on a phone steps back one page at a time inside TREE.
+- **Proofreading** gives up after 10 seconds and the words stay as typed. The kitchen sign-in skips it.
+- **A new team inquiry** starts off the staff room display until the director turns it on.
+- **Family copy of a transition summary.** The director sees the family's copy before it is shared. Every other child's name, known to TREE or not, becomes "friends" or "a friend", while staff, small groups and classes stay.
