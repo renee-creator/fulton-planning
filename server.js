@@ -2138,8 +2138,21 @@ async function handle(req, res) {
         const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
         const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'fromThread', 'threads', 'projects', 'obs', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
         return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && Array.isArray(d.threads) && d.threads.includes(d.fromThread) && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
+      // an educator may also open one from What are you seeing? in the Idea bank, once the class has written the first steps it tried for
+      // that behavior and what happened. It carries the behavior's needs and senses, what was tried, and nothing written yet.
+      const fromBehaviorOk = d => { if (!d || typeof d !== 'object' || typeof d.ibFrom !== 'string') return false;
+        let ok = false; try { ok = staff.ideabank.canOpen(d.ibFrom, d.room || ''); } catch (e) { ok = false; } if (!ok) return false;
+        const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
+        const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'ibFrom', 'ibNeeds', 'ibSys', 'ibMode', 'ibUs', 'tried', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
+        const N = staff.ideabank.NEEDS || [], Y = staff.ideabank.SUPPORTS || [], U = staff.ideabank.US || [];
+        const list = (v, L) => v == null || (Array.isArray(v) && v.every(x => L.includes(x)));
+        const sysOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Object.entries(v).every(([k, m]) => Y.includes(k) && (m === 'seek' || m === 'avoid')));
+        const triedOk = v => v == null || (Array.isArray(v) && v.length <= 60 && v.every(t => t && typeof t === 'object' && String(t.step || '').length <= 400 && String(t.happened || '').length <= 1200));
+        return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && list(d.ibNeeds, N) && list(d.ibUs, U) && sysOk(d.ibSys) && triedOk(d.tried)
+          && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
       if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromThreadOk(body.data)) { log('Team inquiry opened from a thread by', me.name, id); }
-      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'Only the director starts a team inquiry.'); return; }
+      else if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromBehaviorOk(body.data)) { log('Team inquiry opened from the Idea bank by', me.name, id, body.data.ibFrom); }
+      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'A team inquiry opens once the class has tried the first steps and written what happened. Write each try under What are you seeing? in the Idea bank.'); return; }
       else {
       const OPEN = ['obs', 'threads', 'projects', 'tries', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;

@@ -4647,9 +4647,9 @@ function todayWaiting(){
   {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
     const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
     out.push({dot:"sky",t:"Might belong in a thread",s:`${firstLine(n.noticed,50)}${/[.!?…]$/.test(firstLine(n.noticed,50))?"":"."} The thread ${ss[0].t.name}.`,act:`data-nwedit="${n.id}"`,b:"Look"});if(seenG.size>=6)break}}
-  // a team inquiry an educator opened from a thread, for the director to lead
+  // a team inquiry an educator opened from a thread or from What are you seeing?, for the director to lead
   if(dir)for(const x of inqAll().filter(x=>x.startedBy&&!x.directorSeen).slice(0,4))
-    out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
+    out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:x.fromThread?`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`:`From What are you seeing? in the Idea bank, after the class wrote what it tried. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
   // a team inquiry the team meant to look at again
   {const rm=myRoom(),day=iso(new Date());for(const x of inqAll().filter(x=>x.status==="open"&&x.lookAgain&&x.lookAgain<=day&&(dir||!rm||!x.room||x.room===rm)).slice(0,4))
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}

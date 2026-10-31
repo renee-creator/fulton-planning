@@ -110,12 +110,23 @@ test('the Idea bank in TREE', async t => {
     const f = await s.p.evaluate(() => iqForm && { n: iqForm.ibNeeds, s: iqForm.ibSys, name: iqForm.name });
     assert.ok(f.n.includes('Moving things through the air')); assert.strictEqual(f.s['Body pressure and heavy work (proprioception)'], 'seek'); assert.strictEqual(f.name, 'Throwing things');
     assert.deepStrictEqual(s.errors, []); await s.close();
-    // an educator sends the director a suggestion instead
+    // an educator writes what was tried first, then may open a team inquiry when it keeps happening
     const a = await signedIn(fx, br, 'Ann', '1357', 1280);
     await a.p.evaluate(async () => { await ibLoad(); ibSt.mode = 'seeing'; ibSt.bsel = 'throwing-objects'; goView('ideabank'); }); await wait(400);
-    await a.p.click('[data-ibinq="throwing-objects"]'); await wait(800);
-    const sg = (await fx.as(dee, '/api/staff/ideabank', {})).body.suggestions; assert.ok(sg.some(x => x.kind === 'inquiry' && x.behavior === 'throwing-objects' && x.by === 'Ann'));
-    await a.close();
+    assert.strictEqual(await a.p.$('[data-ibinq="throwing-objects"]'), null, 'no inquiry before a try is written');
+    assert.match(await a.p.$eval('#ibright', el => el.innerText), /What the child might need from us/);
+    await a.p.click('[data-ibtryopen="throwing-objects"]'); await wait(200);
+    await a.p.fill('#ib-trh', 'Threw beanbags at the target for a while, then blocks again at cleanup.');
+    await a.p.click('[data-ibtry="throwing-objects"]'); await a.p.waitForSelector('[data-ibinq="throwing-objects"]', { timeout: 10000 });
+    await a.p.click('[data-ibinq="throwing-objects"]'); await wait(300);
+    assert.strictEqual(await a.p.evaluate(() => !!iqForm), false, 'the box is checked first');
+    await a.p.check('#ib-keeps'); await a.p.click('[data-ibinq="throwing-objects"]'); await wait(400);
+    const g = await a.p.evaluate(() => iqForm && { by: iqForm.startedBy, tried: iqForm.tried.length, us: iqForm.ibUs, display: iqForm.display });
+    assert.strictEqual(g.by, 'Ann'); assert.strictEqual(g.tried, 1); assert.ok(g.us.length >= 2); assert.strictEqual(g.display, false);
+    await a.p.click('[data-iqmake="1"]'); await wait(2500);
+    const dirQ = path.join(fx.dir, 'inquiries'); const kept = fs.readdirSync(dirQ).map(f => JSON.parse(fs.readFileSync(path.join(dirQ, f), 'utf8')));
+    assert.ok(kept.some(x => x.ibFrom === 'throwing-objects' && x.startedBy === 'Ann' && x.tried.length === 1), 'the server keeps the inquiry the educator opened');
+    assert.deepStrictEqual(a.errors, []); await a.close();
   });
 
   await t.test('the inquiry pickers save with the inquiry, and We\'ll try this', async () => {

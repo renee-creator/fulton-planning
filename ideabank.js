@@ -9,7 +9,9 @@
    adds a card from a blank template of its type, removes one, which stays under removed to put back, and marks cards
    highlighted for families. Educators suggest a new idea or a change to a card, and a suggestion waits for the director,
    who approves it or sets it aside, as a book suggestion does. An educator who looks up a behavior can ask the director
-   to start a team inquiry with it, which waits with the suggestions.
+   to start a team inquiry with it, which waits with the suggestions. Educators record the first steps they tried for a
+   behavior and what happened, and once their class has, an educator there can open a team inquiry with it when it keeps
+   happening. One hard moment is never an inquiry.
 
    Families reach only the home side of a card, its title and its sections, through the Family page. They never receive
    the educator sections, what a card feeds or supports, its setting or the behaviors. */
@@ -17,24 +19,53 @@ const fs = require('fs'), path = require('path');
 module.exports = function ideabank(o) {
   const { S, get, put, log, isDirector, isKitchen, nameKey } = o;
   const CARDS = 'staff/library/ideabank/cards.json', BEH = 'staff/library/ideabank/behaviors.json';
-  const SET = 'staff/library/ideabank/settings.json', SUG = 'staff/library/ideabank/suggestions.json';
+  const SET = 'staff/library/ideabank/settings.json', SUG = 'staff/library/ideabank/suggestions.json', TRIED = 'staff/library/ideabank/tried.json';
   const SEED = path.join(__dirname, 'once', 'ideabank.json');
   // the thirteen needs a card can feed, the thirteen senses and body systems it can support, and the five settings
   const NEEDS = ['Moving things through the air', 'Knocking down and changing things', 'Heavy work and strong force', 'Enclosing and hiding', 'Carrying and moving things', 'Joining and separating', 'Spinning and rolling', 'Height and risk', 'Power and being capable', 'Belonging and having a place', 'Seeking sensation', 'Avoiding sensation', 'Calm and grounding'];
   const SUPPORTS = ['Touch (tactile)', 'Body pressure and heavy work (proprioception)', 'Movement and balance (vestibular)', 'Noticing body signals (interoception)', 'Listening and sound (auditory)', 'Smell (olfactory)', 'Seeing and judging space (visual-spatial)', 'Both hands working together (bilateral coordination)', 'Crossing the middle of the body (midline crossing)', 'Hand strength and grasp (fine motor)', 'Whole-body strength and coordination (gross motor)', 'Planning a new movement (motor planning)', 'Calming and alerting (self-regulation)'];
+  // what a child might need from us, the third question of a team inquiry, each with what it can look like
+  const FROM_US = [
+    ['To be seen and noticed', 'Notice the child before anything goes wrong. Greet the child by name, sit near the play and say what you see. A child who is seen often has less need to be seen in a hard way.'],
+    ['Connection with a trusted adult', 'One educator stays close for a while. Small moments every day add up. A warm hello, time side by side, a shared joke.'],
+    ['Acknowledgment of effort', 'Describe what the child did and how hard they worked. "You kept turning the lid until it opened." Specific words about effort take the place of good job and great, which judge the result and end the conversation.'],
+    ['To be heard', 'Ask for the child\'s idea and take it seriously. Write it down, try it, bring it to meeting time. A child whose ideas count has less to push against.'],
+    ['Choices and a say', 'Offer two real choices the child can live with. Let the child decide what can be theirs to decide, such as which cup, which path or who carries the basket. Sharing power often settles a power struggle.'],
+    ['Doing it myself', 'Slow down and let the child do the zipper, the pouring or the carrying. Set things where the child can reach them. Step in only when the child asks.'],
+    ['A real job that matters', 'Give the child work the group truly needs, such as feeding the chickens, carrying the water or setting the table. Real responsibility tells a child they are capable.'],
+    ['Knowing what comes next', 'Keep the rhythm of the day steady and show it. A picture schedule, a word about what comes next, the same song before cleanup. Tell the child early when something will be different.'],
+    ['Help with transitions', 'Give a short warning before a change and a job to carry through it. The child can bring something along, carry the basket or ring the bell. Walk beside the child through it.'],
+    ['More time', 'Let the work go on longer. Save it on a shelf to return to tomorrow. Some children need a long stretch before they can go deep.'],
+    ['A faster pace', 'Keep waiting short. Move to the next part sooner, offer the next step as soon as the child is ready and keep meeting time brief. Long waits are hard for a quick mind and a busy body.'],
+    ['More to think about', 'Offer real complexity. A harder problem, a new tool, a question with no easy answer, a book with more to it, a project that lasts. A child who is bored may be asking to be stretched.'],
+    ['Simpler steps', 'Make it smaller. Fewer materials, one step at a time, a picture of what comes first. Simplify the words too, with short sentences and time to answer.'],
+    ['Words for big feelings', 'Name the feeling simply and calmly. "You are so angry the tower fell." Stay close while it passes. Talking about it comes later, once the body is calm.'],
+    ['A skill to practice', 'Teach the words or the move the child is missing, such as asking for a turn, saying stop or joining a game. Practice in calm moments, in play and with puppets, then help in the real moment.'],
+    ['A way into play with friends', 'Help the child find a role in play that is already happening. Join in together, offer a job inside the game, then step back as friends take over.'],
+    ['A smaller group', 'Offer time with one or two friends in place of the whole class. A small group is easier to read and easier to join.'],
+    ['Space to be alone', 'Keep a cozy corner, a tent or a sitting spot where a child can be apart and still be seen. Time alone is a choice, offered with warmth.'],
+    ['Room to move', 'Offer big movement before stillness is asked for. Carrying, climbing, pushing a wheelbarrow, running in the yard. Let the child stand, kneel or move at meeting time.'],
+    ['Less noise, light or crowding', 'Look at the room through the child\'s senses. Lower the voices and the lights, open more space, move the play away from the busiest path, offer ear muffs.'],
+    ['Rest, food, water or a body break', 'Check the body first. Offer water, snack, a rest on a cushion or heavy work outside. Many hard moments ease once the body has what it needs.'],
+    ['Clear and steady limits', 'Keep a few simple agreements and hold them the same way every time, calmly and kindly. Every adult on the team says the same words. Steady limits help a child feel safe.'],
+    ['Help to repair', 'After a hard moment, help the child make it right, such as rebuilding the tower, bringing a cold cloth or checking on a friend. Repair keeps the child\'s place in the group.'],
+    ['Their interests in the room', 'Bring what the child loves into the space, such as trucks, bugs, a favorite story or a song. A child who finds their interests here has a reason to settle and stay.'],
+    ['Home and family in the room', 'Bring the child\'s home in, such as a family photo, words from the home language or a song from home. Belonging grows when a child sees their family here.'],
+    ['Time to settle after a change', 'A new sibling, a move, a new class or a change at home can unsettle a child for weeks. Talk with the family, keep routines steady and stay close. Patience is part of the plan.']];
+  const US = FROM_US.map(x => x[0]);
   const LEVELS = ['Open to all', 'Educator nearby', 'Adult at the table', 'Small group only', 'One adult with one or two children'];
   // each kind of card, the groups it can belong to, and the sections a blank card of that kind starts with, in order
   const TYPES = {
     medium: { groups: ['Paint', 'Drawing', 'Color and print', 'Shaping', 'Building', 'Paper and joining', 'Textiles', 'Elements and mixing', 'Light and looking', 'Sound and movement', 'Story and play', 'Living things', 'Movement and risky play'],
-      sections: [['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
+      sections: [['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
     area: { groups: ['Indoor spaces', 'Shared spaces', 'Outdoor spaces'],
-      sections: [['A starting point', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Adding over time', 'numbered'], ['Signs it needs more', 'bullets'], ['Toward meaningful', 'text']] },
+      sections: [['A starting point', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Adding over time', 'numbered'], ['Signs it needs more', 'bullets'], ['Toward meaningful', 'text']] },
     interest: { groups: ['Children\'s interests'],
-      sections: [['What it might look like', 'text'], ['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
+      sections: [['What it might look like', 'text'], ['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
     year: { groups: ['Across the year on our site'],
-      sections: [['Through the year', 'bullets'], ['Invitations', 'bullets'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
+      sections: [['Through the year', 'bullets'], ['Invitations', 'bullets'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
     ready: { groups: ['Ready for today'],
-      sections: [['What you need', 'text'], ['Set it up', 'text'], ['Your presence', 'text'], ['Why it works on hard days', 'text'], ['If it takes off', 'text']] } };
+      sections: [['What you need', 'text'], ['Set it up', 'text'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Why it works on hard days', 'text'], ['If it takes off', 'text']] } };
   const HOME = [['What you need', 'text'], ['Ways to try it', 'bullets'], ['Your child\'s role', 'text'], ['Wonder together', 'lines'], ['What your child is learning', 'text'], ['Bring it to school', 'text'], ['Good to know', 'text']];
   const blankSec = ([h, style]) => style === 'text' ? { h, style, text: '' } : { h, style, items: [] };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'idea';
@@ -46,6 +77,13 @@ module.exports = function ideabank(o) {
   const behaviors = () => ((get(BEH) || {}).behaviors || []).filter(b => b && b.id);
   const settings = () => Object.assign({ highlights: {}, familyOn: false }, get(SET) || {});
   const sugs = () => Object.assign({ list: [] }, get(SUG) || {});
+  const triedAll = () => ((get(TRIED) || {}).list || []).filter(t => t && t.behavior);
+  // the day a try happened, on our clock
+  const dayOf = at => new Date(at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  // the tries a class wrote for a behavior, with what happened. The whole school counts as its own place.
+  const triedOf = (behavior, room) => triedAll().filter(t => t.behavior === behavior && (t.room || '') === (room || '') && String(t.happened || '').trim());
+  // an educator opens a team inquiry from a behavior once the class has written what it tried and what happened
+  const canOpen = (behavior, room) => !!behaviors().find(b => b.id === behavior) && triedOf(behavior, room).length > 0;
   // the approved cards and behaviors, written into the records the first time they hold none, and never again
   function seed() {
     if (S.files.has(CARDS) && S.files.has(BEH)) return false;
@@ -88,7 +126,8 @@ module.exports = function ideabank(o) {
       needs: NEEDS, supports: SUPPORTS, levels: LEVELS, types: Object.fromEntries(Object.entries(TYPES).map(([k, v]) => [k, v.groups])),
       suggestions: (sg.list || []).filter(x => x && x.status === 'waiting' && mine(x)),
       decided: dir ? [] : (sg.list || []).filter(x => x && x.status !== 'waiting' && mine(x) && x.decidedAt && Date.now() - x.decidedAt < 30 * 864e5),
-      removed: dir ? (doc().removed || []).map(r => ({ id: r.card.id, title: r.card.title, at: r.at, by: r.by })) : [], familyOn: !!st.familyOn, director: dir };
+      removed: dir ? (doc().removed || []).map(r => ({ id: r.card.id, title: r.card.title, at: r.at, by: r.by })) : [], familyOn: !!st.familyOn, director: dir,
+      fromUs: FROM_US.map(([name, look]) => ({ name, look })), tried: triedAll().filter(t => Date.now() - t.at < 180 * 864e5) };
   }
   // the home side of every card that has one, and the director's highlights, for the Family page
   function forFamily() {
@@ -137,6 +176,23 @@ module.exports = function ideabank(o) {
     put(SET, Object.assign({}, st, { id: 'ideabank-settings', highlights: h })); return { ok: true };
   }
 
+  /* ---------- what the team tried ---------- */
+  // an educator records a first step tried for a behavior and what happened. No child is named. Once the class has
+  // written what it tried, an educator there can open a team inquiry with it, so one hard moment never becomes one.
+  function tried(me, b) {
+    const bh = behaviors().find(y => y.id === b.behavior); if (!bh) return { error: 'Choose what you are seeing first.' };
+    const step = one(b.step, 400), happened = one(b.happened, 1200); if (!step) return { error: 'Choose or write what you tried.' }; if (!happened) return { error: 'Write what happened when you tried it.' };
+    const x = { id: 'tr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), behavior: bh.id, room: one(b.room, 40), step, happened, by: one(me, 80), at: Date.now() };
+    x.day = dayOf(x.at);
+    const t = get(TRIED) || {}; put(TRIED, Object.assign({}, t, { id: 'ideabank-tried', list: [...(t.list || []).slice(-1500), x] }));
+    log('Idea bank try recorded for', bh.id, 'by', me); return { ok: true, id: x.id };
+  }
+  function untried(me, id) {
+    const t = get(TRIED) || {}; const L = (t.list || []).slice(); const i = L.findIndex(x => x && x.id === id); if (i < 0) return { error: 'That try is not here.' };
+    if (!isDirector(me) && nameKey(L[i].by) !== nameKey(me)) return { error: 'Only the educator who wrote it, or the director, removes it.' };
+    L.splice(i, 1); put(TRIED, Object.assign({}, t, { list: L })); return { ok: true };
+  }
+
   /* ---------- suggestions ---------- */
   // an educator's new idea, a change to one part of a card, or a behavior the team might take up as a team inquiry
   function suggest(me, b) {
@@ -178,6 +234,8 @@ module.exports = function ideabank(o) {
     const done = r => { if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); };
     if (P === 'ideabank') { json(req, res, 200, list(me)); return; }
     if (P === 'ideabank/suggest') { done(suggest(me, body || {})); return; }
+    if (P === 'ideabank/tried') { done(tried(me, body || {})); return; }
+    if (P === 'ideabank/untried') { done(untried(me, String((body || {}).id || ''))); return; }
     if (!dir) { err(req, res, 403, 'The director makes this change. You can suggest it instead.'); return; }
     if (P === 'ideabank/add') { done(addCard(me, body || {})); return; }
     if (P === 'ideabank/remove') { done(removeCard(me, String(body.id || ''))); return; }
@@ -187,5 +245,5 @@ module.exports = function ideabank(o) {
     if (P === 'ideabank/decide') { done(decide(me, body || {}, saveRecord)); return; }
     err(req, res, 404, 'Not found');
   }
-  return { seed, list, forFamily, familyOn, handle, SPEC, NEEDS, SUPPORTS, LEVELS, CARDS, BEH };
+  return { seed, list, forFamily, familyOn, canOpen, handle, SPEC, NEEDS, SUPPORTS, LEVELS, US, CARDS, BEH };
 };

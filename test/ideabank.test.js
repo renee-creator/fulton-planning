@@ -115,3 +115,22 @@ test('the materials guides no longer appear', async () => {
   assert.strictEqual((await call(h.staff, 'Dee', 'page', { path: 'staff/guides/clay.md' })).status, 404, 'the guide no longer opens in the editor');
   await wait(1500); assert.ok(!h.writes.some(w => /staff\/guides\//.test(w)), 'its file stays as it is');
 });
+
+test('every card closes with the children, and educators write what they tried before an inquiry', async () => {
+  assert.ok(SEED.cards.every(c => c.sections.some(s => s.h === 'Closing it together' && s.text.trim())), 'every card has Closing it together');
+  assert.ok(SEED.behaviors.every(b => (b.from_us || []).length >= 2), 'every behavior names what the child might need from us');
+  const h = await loaded(PEOPLE);
+  let r = await call(h.staff, 'Bo', 'ideabank');
+  assert.strictEqual(r.body.fromUs.length, 26); assert.ok(r.body.fromUs.some(u => u.name === 'Acknowledgment of effort' && /good job/.test(u.look)));
+  assert.ok(SEED.behaviors.every(b => b.from_us.every(n => r.body.fromUs.some(u => u.name === n))), 'behaviors use only names TREE knows');
+  assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), false, 'nothing tried yet');
+  assert.strictEqual((await call(h.staff, 'Bo', 'ideabank/tried', { behavior: 'biting', room: 'North', step: 'Offered a chewy tube.' })).status, 400, 'what happened is written too');
+  r = await call(h.staff, 'Bo', 'ideabank/tried', { behavior: 'biting', room: 'North', step: 'Offered a chewy tube.', happened: 'Calmer for the morning, then it happened again at lunch.' });
+  assert.strictEqual(r.status, 200); assert.strictEqual(r.body.tried.length, 1);
+  assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), true);
+  assert.strictEqual(h.staff.ideabank.canOpen('biting', 'West'), false, 'each class writes its own');
+  const id = r.body.tried[0].id;
+  assert.strictEqual((await call(h.staff, 'Ann', 'ideabank/untried', { id })).status, 400, 'another educator does not remove it');
+  assert.strictEqual((await call(h.staff, 'Dee', 'ideabank/untried', { id })).status, 200);
+  assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), false);
+});

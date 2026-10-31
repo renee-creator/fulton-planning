@@ -25,7 +25,7 @@ const IB_STANCE=[["Arrive and stay","Choose a spot and stay in it. Coming and go
   ["Hands off the product","Model how to care for a brush, wedge clay or thread a needle, then step back. We never draw, fix or finish a child's work. The ideas belong to the children."],
   ["Plan so you can say yes","Set up the space so mess, noise, risk and collapse are welcome. Towers fall, paint mixes to brown and clay cracks. These are part of the work, and our relaxed body tells children so."],
   ["Wonder alongside","Use I notice, I wonder and It reminds me of. Leave room for silence. Discovering alongside children often matters more than knowing the answer."],
-  ["Care for the space together","Setting up and cleaning up are shared work. Children prepare materials, return tools and reset the space for the next friend."],
+  ["Children close the cycle","Setting up and closing belong to the children. They carry materials out, wash their own brushes, wipe the table, sweep, and return every tool to its home for the next friend. We set up so this is easy. A wash bucket or low sink, a damp sponge at each table, a drying rack and a labeled home for each tool. Closing happens on the floor with the children, as part of the work. Nothing waits for an educator to put away later."],
   ["Connected to","Art of Presence and Language (PD) · The Image of the Child lens"]];
 const IB_STANCE_LEAD="Every card in the Idea bank begins with us. Children read our faces, our bodies and our voices before they touch a material. How we are present decides whether an invitation opens up or closes.";
 (()=>{const st=document.createElement("style");st.textContent=`.ibwrap{display:grid;grid-template-columns:210px minmax(0,330px) minmax(0,1fr);gap:14px;align-items:start}
@@ -115,14 +115,31 @@ function ibStanceHtml(){return `<section class="card ibcardv"><span class="eyebr
 function ibSeeingHtml(){const B=(ib.behaviors||[]),q=ibSt.bq.trim().toLowerCase();const list=B.filter(b=>!q||(b.label+" "+(b.keywords||[]).join(" ")).toLowerCase().includes(q));const b=B.find(x=>x.id===ibSt.bsel);
   const rows=b?ibMatch(b.needs||[],Object.fromEntries((b.supports||[]).map(s=>[s,b.mode==="avoid"?"avoid":b.mode==="both"?"both":"seek"])),b.mode,12):[];
   return `<section class="card ibcardv"><span class="eyebrow">Search by what is happening</span><h2 style="margin:4px 0 8px">What are you seeing?</h2>
-    <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. If it keeps happening, start a team inquiry.</p>
+    <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. Try the first steps and write down what happened. If it keeps happening after what we tried, open a team inquiry. One hard moment is never an inquiry.</p>
     <label class="lbl" for="ib-bq">Describe it in a word or two</label><input type="search" id="ib-bq" value="${esc(ibSt.bq)}" placeholder="throwing, biting, covering ears, climbing on tables" data-noproof="1">
     <div class="chips" style="margin-top:8px">${list.map(x=>`<button class="chip ${x.id===ibSt.bsel?"on":""}" type="button" data-ibbeh="${esc(x.id)}">${esc(x.label)}</button>`).join("")||`<span class="cnt">Nothing matches those words. Try another word.</span>`}</div>
     ${b?`<h3>${esc(b.label)}</h3><p>${esc(b.what_we_might_see||"")}</p><h3>What the child might be seeking</h3><p>${esc(b.might_be_seeking||"")}</p>
       <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3><p>${esc(b.keep_safe||"")}</p>
       <div class="chips">${[...(b.needs||[]),...(b.supports||[])].map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
-      ${VIEW_AS?"":`<div class="actions"><button class="btn small" data-ibinq="${esc(b.id)}">Start a team inquiry with this</button></div>`}
+      ${ibFromUsHtml(b.from_us||[])}${ibTriedHtml(b)}
       <h3>Ideas that may help</h3>${rows.map(r=>ibRowHtml(r)).join("")||`<div class="cnt">No card shares these needs yet.</div>`}`:""}</section>`}
+// what the child might need from us, each with what it can look like
+function ibFromUsHtml(names){const L=(ib.fromUs||[]).filter(u=>names.includes(u.name));if(!L.length)return "";
+  return `<h3>What the child might need from us</h3>${L.map(u=>`<p><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}`}
+// the first steps the class tried for this behavior, on which days, and the way to a team inquiry once there are two days
+const ibTriedOf=(b,room)=>(ib.tried||[]).filter(t=>t.behavior===b.id&&(room==null||(t.room||"")===room)).sort((x,y)=>(y.at||0)-(x.at||0));
+function ibTriedHtml(b){const dir=isDirector(),room=myRoom()||"";
+  const mine=ibTriedOf(b,dir?null:room),ready=ibTriedOf(b,room).some(t=>has(t.happened));
+  const rows=mine.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,shortDate(t.at)].filter(has).join(", "))}${!VIEW_AS&&(dir||String(t.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase())?` <button class="linkbtn" data-ibuntry="${esc(t.id)}">Remove</button>`:""}</div></div>`).join("");
+  const form=VIEW_AS?"":`<details ${ibSt.tryOpen===b.id?"open":""}><summary class="linkbtn" data-ibtryopen="${esc(b.id)}">We tried this</summary><div class="kfields">
+    <label>What we tried<select id="ib-trs">${(b.first_steps||[]).map(f=>`<option>${esc(f)}</option>`).join("")}<option value="">Something else, written below</option></select></label>
+    <label>Something else<input type="text" id="ib-tro"></label>
+    <label>What happened<textarea id="ib-trh" rows="3"></textarea></label></div>
+    <div class="hint">Leave children's names out. Write what you saw.</div><div class="actions"><button class="btn small" data-ibtry="${esc(b.id)}">Save the try</button></div></details>`;
+  const inq=VIEW_AS?"":dir?`<button class="btn small" data-ibinq="${esc(b.id)}">Start a team inquiry with this</button>`
+    :ready?`<label class="cnt"><input type="checkbox" id="ib-keeps"> It keeps happening after what we tried</label><button class="btn small" data-ibinq="${esc(b.id)}">Open a team inquiry with this</button>`
+    :`<span class="cnt">A team inquiry opens once your class has tried the first steps and written what happened.</span>`;
+  return `<h3>What we tried</h3><div class="hint">Try the first steps, then write down what happened. The director sees every try.</div>${rows||`<div class="cnt">Nothing written yet.</div>`}${form}<div class="actions">${inq}</div>`}
 function ibSugHtml(){if(!ib)return "";const dir=ibDir(),L=ib.suggestions||[],done=ib.decided||[];if(!L.length&&!done.length)return "";
   const body=x=>x.kind==="new"?`<b>A new idea, ${esc(x.title)}</b><div class="cnt">${esc((IB_KIND[x.type]||"")+", "+x.group)}</div><div style="white-space:pre-line">${esc(x.text)}</div>`
     :x.kind==="change"?`<b>A change to ${esc(x.cardTitle||"")}, ${esc(x.label||"")}</b><div style="white-space:pre-line">${esc(x.text)}</div>`
@@ -161,7 +178,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t||!t.dataset)return
   if(t.dataset.ibpick){if(t.checked)ibPick.add(t.dataset.ibpick);else ibPick.delete(t.dataset.ibpick);renderMain();return}
   if(t.dataset.ibtype){const g=$("#"+t.dataset.ibtype+"-group");if(g&&ib)g.innerHTML=((ib.types||{})[t.value]||[]).map(x=>`<option>${esc(x)}</option>`).join("");return}
   if(t.dataset.ibsgf){const c=ibCard(t.dataset.ibsgf),ta=$("#ib-sgt");if(c&&ta){const v=ibAt(c,t.value);ta.value=Array.isArray(v)?v.join("\n"):v||""}return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily],[data-ibtry],[data-ibuntry],[data-ibtryopen]");if(!t)return;const d=t.dataset;
   if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
@@ -180,9 +197,18 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.ibuse){const p=plans.get(ibSt.fromPlan),c=ibCard(d.ibuse);if(!p||!c)return;if(!(p.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id)){p.attached=[...(p.attached||[]),{kind:"idea",id:c.id,title:c.title}];persist(p)}
     toastAct(c.title+" is attached to the plan.","Back to the plan",()=>{ibSt.fromPlan="";currentId=p.id;goView("plans",{keepPlan:true})});renderMain();return}
-  if(d.ibinq){const b=(ib.behaviors||[]).find(x=>x.id===d.ibinq);if(!b)return;const mode=b.mode==="avoid"?"avoid":"seek";
-    if(isDirector()){startInquiry({name:b.label,ibNeeds:(b.needs||[]).slice(),ibSys:Object.fromEntries((b.supports||[]).map(s=>[s,mode])),ibMode:mode,ibFrom:b.id});return}
-    try{ib=await window.FP_API("/api/staff/ideabank/suggest",{kind:"inquiry",behavior:b.id,room:myRoom()});ibIndex=null;toast("Sent. The director sees your suggestion to start a team inquiry.");renderMain()}catch(er){toast(er&&er.message||"That did not send.")}return}
+  if(d.ibinq){const b=(ib.behaviors||[]).find(x=>x.id===d.ibinq);if(!b)return;const mode=b.mode==="avoid"?"avoid":"seek",dir=isDirector(),room=myRoom()||"";
+    const tried=ibTriedOf(b,dir?null:room).slice().reverse().map(t=>({step:t.step,happened:t.happened||"",by:t.by,at:t.at,room:t.room||""}));
+    const base={name:b.label,ibNeeds:(b.needs||[]).slice(),ibSys:Object.fromEntries((b.supports||[]).map(s=>[s,mode])),ibMode:mode,ibUs:(b.from_us||[]).slice(),ibFrom:b.id,tried};
+    if(dir){startInquiry(base);return}
+    if(!ibTriedOf(b,room).some(t=>has(t.happened))){toast("Write what you tried and what happened first.");return}
+    if(!$("#ib-keeps")||!$("#ib-keeps").checked){toast("A team inquiry is for something that keeps happening after what we tried. Check the box if it does.");return}
+    startInquiry(Object.assign(base,{room,startedBy:whoAmI(),display:false}));return}
+  if(d.ibtryopen){ibSt.tryOpen=ibSt.tryOpen===d.ibtryopen?"":d.ibtryopen;return}
+  if(d.ibtry){const sel=$("#ib-trs").value,other=($("#ib-tro").value||"").trim(),happened=($("#ib-trh").value||"").trim(),step=other||sel;
+    if(!step){toast("Choose or write what you tried.");return}if(!happened){toast("Write what happened when you tried it.");return}
+    try{ib=await window.FP_API("/api/staff/ideabank/tried",{behavior:d.ibtry,room:myRoom()||"",step,happened});ibIndex=null;ibSt.tryOpen="";toast("Saved. The team can see what was tried.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  if(d.ibuntry){if(!confirm("Remove this try?"))return;try{ib=await window.FP_API("/api/staff/ideabank/untried",{id:d.ibuntry});ibIndex=null;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
   const call=async(path,body,ok)=>{try{ib=await window.FP_API("/api/staff/ideabank/"+path,body);ibIndex=null;if(ok)toast(ok);renderMain();return ib}catch(er){toast(er&&er.message||"That did not save.");return null}};
   if(d.ibfamily!=null){await call("family",{on:d.ibfamily==="1"},d.ibfamily==="1"?"Families see Ideas to try at home now.":"Ideas to try at home is hidden from families.");return}
   if(d.ibhigh){const [id,on]=d.ibhigh.split("|");await call("highlight",{id,on:on==="1"},on==="1"?"Highlighted. Families see it first.":"Taken off the highlights.");return}
@@ -214,28 +240,36 @@ async function ibPrintDocs(spec){if(!ib)await ibLoad();const i=String(spec||"").
 const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const one=ids.length===1&&ibCard(ids[0]);return one?(spec.startsWith("home|")&&one.home?one.home.title:one.title+" Idea bank card"):"Idea bank cards"};
 
 /* ---------- a team inquiry ----------
-   Two hypothesis pickers, what the child might be trying to get and which senses or body systems might be asking for
+   What the class tried before the inquiry opened, when it came from What are you seeing?, then three hypothesis
+   pickers. What the child might need from us is the third, each choice with what it can look like. The first two are what the child might be trying to get and which senses or body systems might be asking for
    more or for less, saved with the inquiry. Possibilities to try lists matching cards with why each connects, and
    We'll try this adds the card's title and link to What we will try. Nothing is added unless the team chooses. */
 function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
   const dir=isDirector()&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
   const sysLabel=n=>sys[n]?n+(sys[n]==="avoid"?", finding it too much":", seeking more"):n;
   const rows=ibMatch(needs,sys,mode,14);const tried=new Set((x.tries||[]).map(t=>t.idea).filter(Boolean));
-  return `<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+  const us=x.ibUs||[],before=(x.tried||[]).filter(t=>t&&has(t.step));
+  const triedHtml=before.length?`<section class="card"><div class="lbl">What we tried before this inquiry</div><div class="hint">The first steps the class tried and wrote down under What are you seeing?</div>
+    ${before.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,t.at?shortDate(t.at):""].filter(has).join(", "))}</div></div>`).join("")}</section>`:"";
+  return `${triedHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
     ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
     <div class="chips">${(ib.supports||[]).map(n=>`<button class="chip ${sys[n]?"on":""}" type="button" aria-pressed="${!!sys[n]}" data-ibiqsys="${esc(n)}" ${dir?"":"disabled"}>${esc(sysLabel(n))}</button>`).join("")}</div>
+    <div class="lbl" style="margin-top:12px">What might this child need from us?</div><div class="hint">Behavior often asks something of the adults. Choose what the team wonders about.</div>
+    <div class="chips">${(ib.fromUs||[]).map(u=>`<button class="chip ${us.includes(u.name)?"on":""}" type="button" aria-pressed="${us.includes(u.name)}" data-ibiqus="${esc(u.name)}" ${dir?"":"disabled"}>${esc(u.name)}</button>`).join("")}</div>
+    ${(ib.fromUs||[]).filter(u=>us.includes(u.name)).map(u=>`<p class="ibtip"><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}
     ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
     <section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
     ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.ibiqtry){const c=ibCard(d.ibiqtry);if(!c||(x.tries||[]).some(o=>o.idea===c.id))return;const r=ibMatch(x.ibNeeds||[],x.ibSys||{},x.ibMode,40).find(y=>y.card.id===c.id);
     x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(r&&r.why?" "+r.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];saveInquiry(x);renderMain();toast("Added to What we will try.");return}
   if(!isDirector())return;
   if(d.ibiqneed){const a=(x.ibNeeds||[]).slice(),i=a.indexOf(d.ibiqneed);if(i>=0)a.splice(i,1);else a.push(d.ibiqneed);x.ibNeeds=a}
   if(d.ibiqmode)x.ibMode=d.ibiqmode;
+  if(d.ibiqus){const a=(x.ibUs||[]).slice(),i=a.indexOf(d.ibiqus);if(i>=0)a.splice(i,1);else a.push(d.ibiqus);x.ibUs=a}
   if(d.ibiqsys){const s=Object.assign({},x.ibSys||{}),mode=x.ibMode==="avoid"?"avoid":"seek";if(s[d.ibiqsys]===mode)delete s[d.ibiqsys];else s[d.ibiqsys]=mode;x.ibSys=s}
   saveInquirySoon(x);renderMain()});
 
