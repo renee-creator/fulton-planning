@@ -282,7 +282,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
   if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace],[data-gfoffer],[data-gfofferno]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gdon],[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace],[data-gfoffer],[data-gfofferno]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
   if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,noDate:{__delete__:true},checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
   // the director counts an observation or plan for a food education goal, or sets it aside. Pressing the same choice again clears it.
   // a new reading of an order already checked, used in place of the lines kept, or set aside

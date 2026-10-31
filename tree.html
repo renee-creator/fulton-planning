@@ -2940,7 +2940,7 @@ function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0;
   if(n)toast(n===1?"1 accepted.":n+" accepted.");drdpEdit="";renderMain();window.scrollTo(0,0)}
 document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen]");if(!t)return;e.preventDefault();e.stopPropagation();
   if(t.dataset.drpopen){kidOpen=t.dataset.drpopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
-  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);if(o)drpAccept([{c:o.c,xs:o.wait}]);return}
+  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?o.wait.filter(x=>!drpOff.has(o.c.id+"|"+x.id)):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
   drpAccept(drpKids().map(o=>({c:o.c,xs:drpOn(o)})))},true);
 document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
 function drdpKid(){return children.get(kidOpen)}
@@ -4712,7 +4712,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8d8420427d4d";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="f3fc2a0836f2";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8687,7 +8687,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","3f6bbe1f77").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","51c9c0cbcb").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the

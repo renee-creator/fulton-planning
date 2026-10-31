@@ -65,6 +65,9 @@ test('the smaller review items', async t => {
     assert.deepStrictEqual(before.donated, ['FEED Bin, donated']);
     assert.ok(!before.counted.includes('FEED Bin, donated'));
     assert.strictEqual(await s.p.evaluate(() => /Donated, your call/.test(gDonatedHtml())), true);
+    await s.p.evaluate(() => goView('grant')); await s.p.waitForSelector('[data-gdon][data-gdv="count"]', { timeout: 15000 });
+    await s.p.click('[data-gdon][data-gdv="count"]');
+    assert.ok(await wait(() => { const o = JSON.parse(fs.readFileSync(path.join(fx.dir, 'grant/o1.json'), 'utf8')); return o.items[1].donation === 'count'; }), 'Count it is kept');
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 
@@ -90,4 +93,16 @@ test('the smaller review items', async t => {
     assert.ok(await wait(() => !drafts().some(d => d.editOf === 'kept1')), 'and the draft leaves');
     assert.deepStrictEqual(s2.errors, []); await s2.close();
   });
+});
+
+// October 31, 2026. A draft kept in the records is loaded again when the server starts, so a restart never hides it.
+test('drafts are loaded again when the server starts', async () => {
+  const fx = await start({ more: put => put('drafts/dstart1.json', { id: 'dstart1', by: 'Ann', form: { id: 'nstart1', noticed: 'Saved before a restart.' } }) });
+  try {
+    const ann = (await fx.login('Ann', '1357')).token, bea = (await fx.login('Bea', '1357')).token;
+    const seen = async t => Object.keys(((await fx.as(t, '/api/data')).body.data || {}).drafts || {});
+    let ok = false; for (let i = 0; i < 40 && !ok; i++) { ok = (await seen(ann)).includes('dstart1'); if (!ok) await new Promise(r => setTimeout(r, 250)); }
+    assert.ok(ok, 'her draft is there after a start');
+    assert.ok(!(await seen(bea)).includes('dstart1'), 'and only hers');
+  } finally { await fx.stop(); }
 });
