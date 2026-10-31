@@ -160,6 +160,8 @@ test('the Idea bank in TREE', async t => {
     await fx.as(dee, '/api/staff/ideabank/highlight', { id: 'clay', on: true });
     const c = await fx.as('', '/family/code', { email: 'pip.family@example.test' });
     const fam = (await fx.as('', '/family/login', { email: 'pip.family@example.test', code: c.body.code })).body.token;
+    assert.strictEqual((await fx.as(fam, '/family/ideas', {})).body.off, true, 'off until the director turns it on');
+    await fx.as(dee, '/api/staff/ideabank/family', { on: true });
     const r = (await fx.as(fam, '/family/ideas', {})).body;
     assert.deepStrictEqual(r.highlights, ['clay']); assert.ok(r.cards.length > 100);
     assert.doesNotMatch(JSON.stringify(r), /"feeds"|"supports"|"setting"|"seeks"|"behaviors"|Your presence|Ways it can grow/);

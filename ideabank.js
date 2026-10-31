@@ -44,7 +44,7 @@ module.exports = function ideabank(o) {
   const doc = () => get(CARDS) || { cards: [] };
   const cards = () => (doc().cards || []).filter(c => c && c.id);
   const behaviors = () => ((get(BEH) || {}).behaviors || []).filter(b => b && b.id);
-  const settings = () => Object.assign({ highlights: {} }, get(SET) || {});
+  const settings = () => Object.assign({ highlights: {}, familyOn: false }, get(SET) || {});
   const sugs = () => Object.assign({ list: [] }, get(SUG) || {});
   // the approved cards and behaviors, written into the records the first time they hold none, and never again
   function seed() {
@@ -88,11 +88,12 @@ module.exports = function ideabank(o) {
       needs: NEEDS, supports: SUPPORTS, levels: LEVELS, types: Object.fromEntries(Object.entries(TYPES).map(([k, v]) => [k, v.groups])),
       suggestions: (sg.list || []).filter(x => x && x.status === 'waiting' && mine(x)),
       decided: dir ? [] : (sg.list || []).filter(x => x && x.status !== 'waiting' && mine(x) && x.decidedAt && Date.now() - x.decidedAt < 30 * 864e5),
-      removed: dir ? (doc().removed || []).map(r => ({ id: r.card.id, title: r.card.title, at: r.at, by: r.by })) : [], director: dir };
+      removed: dir ? (doc().removed || []).map(r => ({ id: r.card.id, title: r.card.title, at: r.at, by: r.by })) : [], familyOn: !!st.familyOn, director: dir };
   }
   // the home side of every card that has one, and the director's highlights, for the Family page
   function forFamily() {
-    const st = settings(), all = cards().filter(c => c.home && Array.isArray(c.home.sections));
+    const st = settings(); if (!st.familyOn) return { off: true, highlights: [], cards: [] };
+    const all = cards().filter(c => c.home && Array.isArray(c.home.sections));
     const clean = s => s.style === 'text' ? { h: s.h, style: 'text', text: String(s.text || '') } : { h: s.h, style: s.style, items: (s.items || []).map(String) };
     return { highlights: all.filter(c => (st.highlights || {})[c.id]).map(c => c.id),
       cards: all.map(c => ({ id: c.id, group: c.group, title: c.home.title || c.title, sections: c.home.sections.map(clean) })) };
@@ -123,6 +124,12 @@ module.exports = function ideabank(o) {
     const d = JSON.parse(JSON.stringify(doc())); const i = (d.removed || []).findIndex(r => r.card && r.card.id === id); if (i < 0) return { error: 'That card is not here.' };
     const [r] = d.removed.splice(i, 1); d.cards.push(r.card); d.updatedAt = Date.now(); d.updatedBy = me; put(CARDS, d); log('Idea bank card put back', id, 'by', me); return { ok: true };
   }
+  // families see Ideas to try at home only once the director turns it on
+  function familySwitch(me, on) {
+    const st = settings(); put(SET, Object.assign({}, st, { id: 'ideabank-settings', familyOn: !!on, familyBy: me, familyAt: Date.now() }));
+    log('Ideas to try at home', on ? 'turned on' : 'turned off', 'by', me); return { ok: true };
+  }
+  const familyOn = () => !!settings().familyOn;
   function highlight(me, id, on) {
     const c = cards().find(x => x.id === id); if (!c) return { error: 'That card is not here.' };
     if (on && !c.home) return { error: 'Only a card with an At home side reaches families.' };
@@ -175,9 +182,10 @@ module.exports = function ideabank(o) {
     if (P === 'ideabank/add') { done(addCard(me, body || {})); return; }
     if (P === 'ideabank/remove') { done(removeCard(me, String(body.id || ''))); return; }
     if (P === 'ideabank/restore') { done(restoreCard(me, String(body.id || ''))); return; }
+    if (P === 'ideabank/family') { done(familySwitch(me, !!body.on)); return; }
     if (P === 'ideabank/highlight') { done(highlight(me, String(body.id || ''), !!body.on)); return; }
     if (P === 'ideabank/decide') { done(decide(me, body || {}, saveRecord)); return; }
     err(req, res, 404, 'Not found');
   }
-  return { seed, list, forFamily, handle, SPEC, NEEDS, SUPPORTS, LEVELS, CARDS, BEH };
+  return { seed, list, forFamily, familyOn, handle, SPEC, NEEDS, SUPPORTS, LEVELS, CARDS, BEH };
 };

@@ -144,10 +144,11 @@ function renderIdeaBank(){const m=$("#main");if(!m)return;
   const counts={};for(const x of ibCards())counts[x.group]=(counts[x.group]||0)+1;
   const filt=!!(st.q||st.needs.length||st.sups.length||st.levels.length);
   const nav=`<nav class="ibnav" aria-label="Idea bank groups">${IB_NAV.map(([h,gs])=>`<div><div class="ibh">${esc(h)}</div>${gs.filter(g=>counts[g]).map(g=>`<button class="ibg" type="button" data-ibgroup="${esc(g)}" aria-current="${!filt&&st.group===g}"><span>${esc(g)}</span><span class="cnt">${counts[g]}</span></button>`).join("")}</div>`).join("")}</nav>`;
-  const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`;
+  const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`
+  const famSwitch=ib&&ib.director&&!VIEW_AS?`<section class="card"><div class="lbl">Ideas to try at home</div><div class="hint">${ib.familyOn?"Families see the At home side of every card on the Family page, with your highlights first.":"Families do not see these ideas yet. Turn them on when you are ready."}</div><div class="actions"><button class="btn small${ib.familyOn?" ghost":""}" data-ibfamily="${ib.familyOn?0:1}">${ib.familyOn?"Turn off for families":"Turn on for families"}</button></div></section>`:"";
   const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c?ibCardHtml(c):"";
   const phone=window.innerWidth<=900;
-  m.innerHTML=head+top+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+(phone&&(st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div>${right}`
+  m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+(phone&&(st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div>${right}`
     :`<div class="ibwrap"><div>${nav}</div><div>${ibListHtml()}</div><div id="ibright">${right}</div></div>`)}
 // a picked card on a phone shows on its own, with Back to the cards
 function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
@@ -160,7 +161,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t||!t.dataset)return
   if(t.dataset.ibpick){if(t.checked)ibPick.add(t.dataset.ibpick);else ibPick.delete(t.dataset.ibpick);renderMain();return}
   if(t.dataset.ibtype){const g=$("#"+t.dataset.ibtype+"-group");if(g&&ib)g.innerHTML=((ib.types||{})[t.value]||[]).map(x=>`<option>${esc(x)}</option>`).join("");return}
   if(t.dataset.ibsgf){const c=ibCard(t.dataset.ibsgf),ta=$("#ib-sgt");if(c&&ta){const v=ibAt(c,t.value);ta.value=Array.isArray(v)?v.join("\n"):v||""}return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily]");if(!t)return;const d=t.dataset;
   if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
@@ -183,6 +184,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
     if(isDirector()){startInquiry({name:b.label,ibNeeds:(b.needs||[]).slice(),ibSys:Object.fromEntries((b.supports||[]).map(s=>[s,mode])),ibMode:mode,ibFrom:b.id});return}
     try{ib=await window.FP_API("/api/staff/ideabank/suggest",{kind:"inquiry",behavior:b.id,room:myRoom()});ibIndex=null;toast("Sent. The director sees your suggestion to start a team inquiry.");renderMain()}catch(er){toast(er&&er.message||"That did not send.")}return}
   const call=async(path,body,ok)=>{try{ib=await window.FP_API("/api/staff/ideabank/"+path,body);ibIndex=null;if(ok)toast(ok);renderMain();return ib}catch(er){toast(er&&er.message||"That did not save.");return null}};
+  if(d.ibfamily!=null){await call("family",{on:d.ibfamily==="1"},d.ibfamily==="1"?"Families see Ideas to try at home now.":"Ideas to try at home is hidden from families.");return}
   if(d.ibhigh){const [id,on]=d.ibhigh.split("|");await call("highlight",{id,on:on==="1"},on==="1"?"Highlighted. Families see it first.":"Taken off the highlights.");return}
   if(d.ibremove){if(!confirm("Remove this card? It waits under Removed cards, where you can put it back."))return;const id=d.ibremove;if(await call("remove",{id},"Removed. It waits under Removed cards.")){ibSt.sel="";renderMain()}return}
   if(d.ibrestore){await call("restore",{id:d.ibrestore},"Put back.");return}

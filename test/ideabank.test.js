@@ -97,6 +97,10 @@ test('educators suggest, and the director approves or sets aside', async () => {
 test('families receive only the home side', async () => {
   const h = await loaded(PEOPLE);
   await call(h.staff, 'Dee', 'ideabank/highlight', { id: 'clay', on: true });
+  assert.strictEqual(h.staff.ideabank.forFamily().off, true, 'families see nothing until the director turns it on');
+  assert.strictEqual(h.staff.ideabank.familyOn(), false);
+  assert.strictEqual((await call(h.staff, 'Ann', 'ideabank/family', { on: true })).status, 403, 'only the director turns it on');
+  await call(h.staff, 'Dee', 'ideabank/family', { on: true }); assert.strictEqual(h.staff.ideabank.familyOn(), true);
   const f = h.staff.ideabank.forFamily();
   assert.strictEqual(f.cards.length, SEED.cards.filter(c => c.home).length); assert.deepStrictEqual(f.highlights, ['clay']);
   for (const c of f.cards) assert.deepStrictEqual(Object.keys(c).sort(), ['group', 'id', 'sections', 'title']);
