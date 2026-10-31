@@ -1620,6 +1620,7 @@ function renderList(){
 // the kitchen opens on the Kitchen page, where the month's menu is made
 let kLanded=false;
 function renderMain(){
+  queueMicrotask(()=>{try{awRestore()}catch(e){}});
   try{noteLeaving()}catch(e){}
   queueMicrotask(()=>{try{renderWaitBar()}catch(e){}});
   if(isKitchenUser()&&!kLanded){kLanded=true;if(!OPEN_AT&&view==="today"){view="kitchen";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}}
@@ -4525,6 +4526,33 @@ function draftCardHtml(d,dir){const f=d.form||{},n=1+(f.siblings||[]).length+(d.
     <div style="flex:1;min-width:0"><div>${words?esc(words.length>120?words.slice(0,120)+"…":words):`<span class="muted">No words written yet</span>`}</div>
     <div class="cnt">${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
     <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
+/* ---------- Words kept as drafts in the records ----------
+   A box whose words reach the records only when a button is pressed, such as Start a project, Final remarks on Today,
+   a note to families or a book suggestion, keeps what is typed in the person's own draft record as they type. Coming back
+   to the box, on this device or another, puts the words back. Once a button in the same card is pressed and the box comes
+   back empty, or the box is gone, the words are let go, since they were kept or put aside on purpose. */
+const AW_IDS=["tqtext","af-note","bk-w","sn-text","pt-note","bin-idea","g-binnote","bin-hlist","iq-fam","iq-look","pf-name","pf-exp","pf-under","pf-intent","pf-who"];
+const AW=new Map(),awPending=new Set();let awT=null,awLoaded=false;
+const awRecId=()=>{const n=String(whoAmI()||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");return n?"a-"+n:""};
+const awBox=el=>!!el&&!!el.id&&el.closest&&el.closest("#main")&&(AW_IDS.includes(el.id)||/^pkw-/.test(el.id));
+const awKey=el=>[view,currentId||"",view==="today"&&typeof tqOpen!=="undefined"?tqOpen:"",typeof inqId!=="undefined"&&inqId?inqId:"",el.id].join("|");
+function awLoad(){if(awLoaded||!me())return;const r=drafts.get(awRecId());if(!r)return;awLoaded=true;for(const [k,v] of Object.entries(r.words||{}))if(!AW.has(k)&&typeof v==="string")AW.set(k,v)}
+function awSoon(){clearTimeout(awT);awT=setTimeout(awNow,1200)}
+function awNow(){clearTimeout(awT);awT=null;if(VIEW_AS||!db||!window.FP_HOSTED||!me())return;const id=awRecId();if(!id)return;
+  const was=drafts.get(id),words=Object.fromEntries([...AW].filter(([,v])=>String(v).trim()));
+  if(!Object.keys(words).length&&!was)return;
+  const doc={id,by:whoAmI(),kind:"words",words,updatedAt:Date.now()};drafts.set(id,doc);Promise.resolve(db.doc("drafts/"+id).set(doc)).catch(()=>{})}
+document.addEventListener("input",e=>{const el=e.target;if(VIEW_AS||!awBox(el))return;awLoad();AW.set(awKey(el),el.value);awSoon()},true);
+// a button pressed in the card that holds a kept box: what happens to the box on the next drawing says whether to let go
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#main button");if(!b||!AW.size)return;const card=b.closest("section,.card,.sugg,.binadd")||document;
+  card.querySelectorAll("textarea,input").forEach(el=>{if(awBox(el))awPending.add(awKey(el))})},true);
+function awRestore(){if(VIEW_AS)return;awLoad();if(!AW.size)return;let ch=false;const m=$("#main");if(!m)return;
+  const here=new Set();m.querySelectorAll("textarea,input").forEach(el=>{if(!awBox(el))return;const k=awKey(el);here.add(k);if(!AW.has(k))return;const v=AW.get(k);
+    if(awPending.has(k)&&!el.value.trim()){AW.delete(k);ch=true;return}
+    if(String(v).trim()===String(el.value).trim()){AW.delete(k);ch=true;return}
+    if(!el.value.trim()&&String(v).trim()){el.value=v;try{autoGrow(el)}catch(er){}}});
+  for(const k of awPending)if(!here.has(k)&&AW.has(k)&&k.startsWith(view+"|")){AW.delete(k);ch=true}
+  awPending.clear();if(ch)awSoon()}
 function draftsList(){const open=view==="moments"&&noticeForm&&noticeForm.draftId;return [...drafts.values()].filter(d=>d&&d.form&&d.id!==open).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))}
 function draftsHtml(){if(VIEW_AS)return"";const dir=isDirector(),all=draftsList(),mine=all.filter(draftIsMine),others=dir?all.filter(d=>!draftIsMine(d)):[];
   let h="";
@@ -4600,7 +4628,7 @@ async function draftBoot(){if(draftReady||!draftWho())return;
       else toastAct("The observation you were writing is kept on this phone.","Open it",()=>{view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop()})}}
   draftReady=true;draftNote();if(view==="moments"&&!noticeForm&&!document.activeElement?.closest?.("#main"))renderMain();draftSend()}
 window.addEventListener("online",()=>{setTimeout(draftSend,800);if(pendingSaves.size){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,800)}});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)draftSend();else{if(noticeForm){obsDraftNow();serverDraftNow()}for(const id of Object.keys(pdTimers))planDraftNow(id)}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)draftSend();else{if(awT)awNow();try{const a=document.activeElement;if(a&&a.closest&&a.closest("#main")&&/^(TEXTAREA|INPUT)$/.test(a.tagName))a.blur()}catch(e){}if(noticeForm){obsDraftNow();serverDraftNow()}for(const id of Object.keys(pdTimers))planDraftNow(id)}});
 setInterval(draftSend,30000);
 // signing out with words not yet sent says so first. Signing out anyway keeps them on this phone for the next sign-in.
 window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const id of [...pendingSaves])await planDraftNow(id);
@@ -4651,7 +4679,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ccad568fad","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ad9896d1d0","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4664,7 +4692,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=ccad568fad","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=ad9896d1d0","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["artists","Artists"],["museums","Museums and cultural places"],["kitchen","Kitchen"]],
@@ -4676,7 +4704,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="b52910833767";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="977312b9f727";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -14699,7 +14727,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ccad568fad","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ad9896d1d0","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

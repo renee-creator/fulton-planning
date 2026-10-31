@@ -287,9 +287,22 @@ const draftKey=el=>{const own=el.id||Object.entries(el.dataset).map(([a,b])=>a+"
   const G=window.TreeGrowth&&TreeGrowth.st||{};const recs=view==="strec"||view==="stnew";
   return [view,recs?(view==="stnew"?st.newWho:st.who)||meName():"",view==="stpd"?st.piece+"/"+st.mod:"",POLV[view]?st.polSec+"@"+(view==="stfh"?st.fhYear:""):"",D()?G.sel:"",view==="stci"?G.ciWho:"",view==="stpdd"?G.pdSel:"",view==="stpres"?(window.TreePres&&TreePres.st.sel)||"":"",own].join("|")};
 const typed=el=>el&&el.closest&&el.closest("#main")&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&/^(text|search|url|number|)$/.test(el.type)));
-document.addEventListener("input",e=>{if(typeof view==="undefined"||!STAFF_VIEWS.includes(view)||!typed(e.target)||VIEW_AS)return;const k=draftKey(e.target);if(k)DRAFTS.set(k,e.target.value)},true);
-function restoreDrafts(m){if(!DRAFTS.size)return;m.querySelectorAll("textarea,input").forEach(el=>{if(!typed(el))return;const k=draftKey(el);if(!k||!DRAFTS.has(k))return;const v=DRAFTS.get(k);
-  if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v})}
+document.addEventListener("input",e=>{if(typeof view==="undefined"||!STAFF_VIEWS.includes(view)||!typed(e.target)||VIEW_AS)return;const k=draftKey(e.target);if(k){wordsLoad();DRAFTS.set(k,e.target.value);wordsSoon()}},true);
+/* the typing kept here is also the person's own draft in the records, as they type, so closing TREE, a reload or another
+   device brings it back. Only the person and the director receive a draft. It lets go the same way the page does, once
+   the words are saved. */
+const wordsId=()=>{const n=String((typeof whoAmI==="function"&&whoAmI())||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");return n?"w-"+n:""};
+let wordsT=null,wordsGot=false;
+function wordsLoad(){if(wordsGot||typeof drafts==="undefined")return;const id=wordsId();if(!id)return;const r=drafts.get(id);wordsGot=true;
+  if(r&&r.words)for(const [k,v] of Object.entries(r.words))if(!DRAFTS.has(k)&&typeof v==="string")DRAFTS.set(k,v)}
+function wordsSoon(){clearTimeout(wordsT);wordsT=setTimeout(wordsNow,1200)}
+function wordsNow(){clearTimeout(wordsT);wordsT=null;if(VIEW_AS||typeof db==="undefined"||!db||!window.FP_HOSTED)return;const id=wordsId();if(!id)return;
+  const was=typeof drafts!=="undefined"&&drafts.get(id),words=Object.fromEntries([...DRAFTS].filter(([,v])=>String(v).trim()));
+  if(!Object.keys(words).length&&!was)return;
+  const doc={id,by:whoAmI(),kind:"words",words,updatedAt:Date.now()};if(typeof drafts!=="undefined")drafts.set(id,doc);Promise.resolve(db.doc("drafts/"+id).set(doc)).catch(()=>{})}
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&wordsT)wordsNow()});
+function restoreDrafts(m){wordsLoad();if(!DRAFTS.size)return;const n0=DRAFTS.size;m.querySelectorAll("textarea,input").forEach(el=>{if(!typed(el))return;const k=draftKey(el);if(!k||!DRAFTS.has(k))return;const v=DRAFTS.get(k);
+  if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v});if(DRAFTS.size!==n0)wordsSoon()}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
 T._={W,W2,peBtn:(a,b,c)=>peBtn(a,b,c),tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
@@ -1088,7 +1101,7 @@ const INFLIGHT=new Set();
 function tapOnce(t,f){const k=Object.entries(t.dataset).map(([a,b])=>a+"="+b).join("&");if(INFLIGHT.has(k))return;
   let r;try{r=f()}catch(er){fail(er);return}
   if(!r||typeof r.then!=="function")return;INFLIGHT.add(k);t.setAttribute("aria-busy","true");
-  r.then(()=>{for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id)))DRAFTS.delete(x)},()=>{}).catch(()=>{});
+  r.then(()=>{let c=false;for(const x of [...DRAFTS.keys()])if(CREATE.some(id=>x.endsWith("|"+id))){DRAFTS.delete(x);c=true}if(c)wordsSoon()},()=>{}).catch(()=>{});
   r.catch(fail).finally(()=>{INFLIGHT.delete(k);t.removeAttribute("aria-busy")})}
 document.addEventListener("click",e=>{const t=e.target.closest("#tsubnav [data-tview],#ttab [data-tsec],#tnav [data-tsec]");if(!t)return;st.who="";st.doc=null;st.mod="";st.piece="";st.polSec="";st.polEdit=false;st.polHist=-1},true);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-stpieceready],[data-stperson],[data-stnew],[data-stgroup],[data-stgname],[data-stup],[data-stlink],[data-stopen][data-who],[data-sthadd],[data-sthdel],[data-streview],[data-stfocus],[data-stgoto],[data-staccess],[data-stfile],[data-stdrill],[data-stnewwho],[data-stdirpaper],[data-stck],[data-stread],[data-stwsave],[data-stmod],[data-stmodback],[data-stpiece],[data-stdone],[data-stpol],[data-stpoledit],[data-stpolsave],[data-stpolcancel],[data-stpolrm],[data-stpolhist],[data-stpolrestore],[data-stpolack],[data-stpolpiece],[data-stfhed],[data-stfhpub],[data-stfhnew],[data-stfhreview],[data-stfhpublic],[data-stprint],[data-stword],[data-stremind],[data-stforms],[data-streload],[data-stsw],[data-stformer],[data-stback]");
