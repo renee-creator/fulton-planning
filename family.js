@@ -70,7 +70,9 @@ function withoutRatings(text) {
 // small groups are added by the caller.
 const NOT_CHILDREN = new Set(('English Spanish French Chinese Mandarin Cantonese Vietnamese Tagalog Japanese Korean Arabic Portuguese Russian Hindi ' +
   'Halloween Thanksgiving Christmas Hanukkah Kwanzaa Easter Diwali Lunar Valentine Fall Spring Summer Winter Kindergarten Transitional ' +
-  'Santa Rosa Sonoma Sebastopol Petaluma Healdsburg Windsor California Pacific Studio Atelier Kitchen Library Meeting DRDP TK').split(/\s+/));
+  'Santa Rosa Sonoma Sebastopol Petaluma Healdsburg Windsor California Pacific Studio Atelier Kitchen Library Meeting DRDP TK ' +
+  'Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December ' +
+  'Responding Exploring Building Integrating Earlier Middle Later Emerging').split(/\s+/));
 // opt.keep, more words that are never a child, and opt.found, where each name taken out is listed for the director to see
 function withoutOthers(text, child, all, opt) {
   opt = opt || {}; const keep = new Set([...(opt.keep || [])].map(x => String(x || '').trim()).filter(Boolean)); const found = Array.isArray(opt.found) ? opt.found : null;
@@ -98,7 +100,8 @@ function withoutOthers(text, child, all, opt) {
     if (EVERYDAY.has(first.toLowerCase()) && start) return m; if (found) found.push(m.replace(/(\'s|’s)$/, '')); return 'a friend' + (pos ? '\'s' : ''); });
   // a name not in TREE's records, written in the middle of a sentence, is taken out too, so a child who has left or a
   // name spelled another way never reaches a family. One that starts a sentence is taken out when it also appears mid-sentence.
-  { const ok = w => own.has(w.toLowerCase()) || keep.has(w) || NEVER_NAMES.has(w) || NEAR_SKIP.has(w) || NOT_CHILDREN.has(w) || NOT_NAMES.has(w) || /^(A|An|I|Our|We|Their|His|Her|Its)$/.test(w);
+  // Only for a transition summary's family copy, opt.unknown.
+  if (opt.unknown) { const ok = w => own.has(w.toLowerCase()) || keep.has(w) || NEVER_NAMES.has(w) || NEAR_SKIP.has(w) || NOT_CHILDREN.has(w) || NOT_NAMES.has(w) || /^(A|An|I|Our|We|Their|His|Her|Its)$/.test(w);
     const mid = new Set(); t.replace(/(^|[^.!?\n\s]\s+)([A-Z][a-z]{2,})(?=\b)/g, (m, pre, w, at) => { if (pre && at > 0 && !ok(w)) mid.add(w); return m; });
     if (mid.size) { const l = [...mid].sort((a, b) => b.length - a.length).map(reEsc);
       t = t.replace(new RegExp('\\b(?:' + l.join('|') + ')\\b(\'s|’s)?', 'g'), (m, pos) => { if (found) found.push(m.replace(/(\'s|’s)$/, '')); return 'a friend' + (pos ? '\'s' : ''); }); } }

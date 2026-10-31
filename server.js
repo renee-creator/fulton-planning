@@ -2276,7 +2276,7 @@ async function handle(req, res) {
     const keep = [...accounts.list.map(a => a.name), ...(Array.isArray(ed.names) ? ed.names.map(x => x && x.name) : []), ...(Array.isArray(set.groups) ? set.groups.map(g => g && g.name) : []), ...oneLists().classrooms]
       .flatMap(n => String(n || '').split(/\s+/)).filter(w => /^[A-Z][a-z]{2,}$/.test(w));
     const sections = {}, found = {};
-    for (const [key, v] of Object.entries(ts.sections)) { const f = []; sections[key] = familyPage.withoutOthers(String(v || '').trim(), Object.assign({ id }, k), all, { keep, found: f }); if (f.length) found[key] = [...new Set(f)]; }
+    for (const [key, v] of Object.entries(ts.sections)) { const f = []; sections[key] = familyPage.withoutOthers(String(v || '').trim(), Object.assign({ id }, k), all, { keep, found: f, unknown: true }); if (f.length) found[key] = [...new Set(f)]; }
     json(req, res, 200, { sections, found }); return;
   }
   if (path === '/api/transition/nextschool') {

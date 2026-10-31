@@ -22,7 +22,7 @@ const more = put => {
 test('the family copy takes out every other name and keeps sentences', () => {
   const kids = [{ id: 'z', first: 'Zyah', last: 'Overby' }, { id: 'o', first: 'Opal', last: 'Reyes' }, { id: 'r', first: 'Rowan', last: 'Lee' }];
   const found = [];
-  const out = fam.withoutOthers("Zyah's friends include Zeleny, Zephyr and Grace. She played with Opal and R. Zyah joined small group with Hannah in Marigold. In Spanish she counts.", kids[0], kids, { keep: ['Hannah', 'Marigold'], found });
+  const out = fam.withoutOthers("Zyah's friends include Zeleny, Zephyr and Grace. She played with Opal and R. Zyah joined small group with Hannah in Marigold. In Spanish she counts.", kids[0], kids, { keep: ['Hannah', 'Marigold'], found, unknown: true });
   assert.doesNotMatch(out, /Zeleny|Zephyr|Grace|Opal|R\./);
   assert.match(out, /Zyah's friends include friends\./);
   assert.match(out, /played with friends\. Zyah joined/, 'the full stop stays when an initial ends a sentence');
