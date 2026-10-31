@@ -2607,7 +2607,7 @@ function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0;
   if(n)toast(n===1?"1 accepted.":n+" accepted.");drdpEdit="";renderMain();window.scrollTo(0,0)}
 document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen]");if(!t)return;e.preventDefault();e.stopPropagation();
   if(t.dataset.drpopen){kidOpen=t.dataset.drpopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
-  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);if(o)drpAccept([{c:o.c,xs:o.wait}]);return}
+  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?o.wait.filter(x=>!drpOff.has(o.c.id+"|"+x.id)):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
   drpAccept(drpKids().map(o=>({c:o.c,xs:drpOn(o)})))},true);
 document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
 function drdpKid(){return children.get(kidOpen)}
@@ -8616,7 +8616,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant")
   if(t.dataset.gptown!=null){await gWrite("producers",{list:{[t.dataset.gptown]:{name:t.dataset.gpn,town:t.value.trim()}}},{id:"producers",list:{}});renderGrant();return}
   if(t.dataset.gck){const q=gQ();if(!isQuarter(q))return;await gWrite("q-"+q,{checkin:{[t.dataset.gck]:t.value.trim()}},{id:"q-"+q,checkin:{}});return}
   if(t.dataset.gset){const v=t.type==="number"?Number(t.value)||0:t.value.trim();await gWrite("settings",{[t.dataset.gset]:v},Object.assign({id:"settings"},G_DEFAULT));renderGrant();return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace],[data-gfoffer],[data-gfofferno]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gdon],[data-gq],[data-gact],[data-gpf],[data-gfdel],[data-gok],[data-gdel],[data-grevuse],[data-grevkeep],[data-gplace],[data-gfoffer],[data-gfofferno]");if(!t||view!=="grant")return;e.stopImmediatePropagation();const d=t.dataset;
   if(d.gok){if(db)try{await db.doc("grant/"+d.gok).update({review:false,noDate:{__delete__:true},checkedBy:whoAmI(),checkedAt:Date.now()})}catch(err){toast("Could not save that.")}renderGrant();return}
   // the director counts an observation or plan for a food education goal, or sets it aside. Pressing the same choice again clears it.
   // a new reading of an order already checked, used in place of the lines kept, or set aside

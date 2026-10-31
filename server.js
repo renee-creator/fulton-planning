@@ -706,7 +706,7 @@ async function doLoadGraph() {
   const files = await gqlFiles(store.branch);
   const jobs = [];let accSha = '', rolesSha = '';
   for (const f of files) {
-    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/);
+    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/);
     if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
     if (f.path === DRDP_PATH) drdpSha = f.sha;
     if (f.path === ACCOUNTS_PATH) accSha = f.sha;
@@ -751,7 +751,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/);
+      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -1020,7 +1020,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
