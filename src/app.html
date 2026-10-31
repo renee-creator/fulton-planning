@@ -536,6 +536,17 @@ body{margin:0}
   #main{padding-bottom:150px}
   .ttop .who .savestate#conn{display:none}
   .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
+  /* October 31, 2026. On a phone the floating buttons stand in one column at the right, the round plus lowest, then
+     Proofread, then The evidence, so none sits on another. A message from TREE shows above all of them. */
+  .prooftab,.prooftab.up{left:auto;right:14px;bottom:calc(138px + env(safe-area-inset-bottom,0px));padding:9px 14px}
+  #evbtn{left:auto!important;right:14px!important;bottom:calc(192px + env(safe-area-inset-bottom,0px))!important;padding:9px 14px!important}
+  body:not(:has(.fab:not([hidden]):not(.away))) .prooftab{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  body:not(:has(.fab:not([hidden]):not(.away))) #evbtn{bottom:calc(130px + env(safe-area-inset-bottom,0px))!important}
+  body:not(:has(.prooftab:not([hidden]):not(.tucked))) #evbtn{bottom:calc(138px + env(safe-area-inset-bottom,0px))!important}
+  .toast,.sendask,.nextbar{z-index:150!important}
+  /* while typing, the bottom menu and the floating buttons step away, so the keyboard leaves room for the writing */
+  body.typing .tabbar,body.typing .fab,body.typing .prooftab,body.typing #evbtn{display:none!important}
+  body.typing #main{padding-bottom:24px}
 }
 /* each section has its own colour, so it is clear at a glance where you are */
 body{--acc:var(--moss);--acc-soft:var(--moss-soft)}
@@ -1196,7 +1207,8 @@ const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
 function planMissing(p){if(!sendable(p))return [];const F=FORMS[p.type];return SEND_NEED[p.type].filter(k=>!String((p.fields||{})[k]||"").trim()).map(k=>({k,label:(F.fields.find(f=>f.k===k)||{}).label||k}))}
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
-function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(needsRemarks);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+// only the last three weeks wait for Final remarks. Older ones are let go (October 31, 2026).
+function dueList(){const m=me().toLowerCase();const from=addDays(mondayOf(new Date()),-21);const all=[...plans.values()].filter(p=>needsRemarks(p)&&p.weekOf>=from);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
 /* Director feedback. Only the director writes it, the educator is told when a note is waiting, and can reply under it. */
 const myName=()=>{const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";return (isShared(s)?"":s)||me()||""};
 const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
@@ -1409,6 +1421,10 @@ function renderMain(){
 function proofTabClear(){const t=document.querySelector(".prooftab");if(!t||t.hidden)return;t.classList.remove("tucked");const r=t.getBoundingClientRect();if(!r.width)return;
   const under=[...document.querySelectorAll("#main input,#main select,#main textarea,#main button,#main .chip,#main a,#main label")].some(el=>{const q=el.getBoundingClientRect();return q.width&&q.height&&!(q.right<=r.left||q.left>=r.right||q.bottom<=r.top||q.top>=r.bottom)});
   t.classList.toggle("tucked",under)}
+// on a phone, typing in a box hides the bottom menu and the floating buttons until the box is left (October 31, 2026)
+{const typingBox=el=>!!el&&(el.tagName==="TEXTAREA"||el.isContentEditable||(el.tagName==="INPUT"&&!/^(checkbox|radio|button|submit|file|range|color|date|time|month|week)$/i.test(el.type||"")));
+ document.addEventListener("focusin",e=>{if(window.innerWidth<=760&&typingBox(e.target))document.body.classList.add("typing")});
+ document.addEventListener("focusout",()=>setTimeout(()=>{if(!typingBox(document.activeElement))document.body.classList.remove("typing")},80))}
 let ptT=null;const ptSoon=()=>{clearTimeout(ptT);ptT=setTimeout(proofTabClear,120)};
 window.addEventListener("scroll",ptSoon,{passive:true});window.addEventListener("resize",ptSoon);document.addEventListener("focusin",ptSoon);document.addEventListener("click",ptSoon);
 /* Family update for Kaymbu, Director feedback and Final remarks fold closed until they are used. Final remarks opens on
@@ -1868,6 +1884,7 @@ function showKept(n){if(view!=="moments"){renderAll();return ""}const said=[];
   if(!momentIn(n,nRoom)){nRoom="All";LS.set("fps.nroom",nRoom);said.push("every class")}
   if((n.at||0)<mSince()){mRange="all";said.push("everything kept")}
   const i=momentsIn().findIndex(x=>x.id===n.id);if(i>=0&&typeof mShow==="number")mShow=Math.max(mShow,i+10);
+  mReveal(n.id);
   renderAll();setTimeout(()=>{const el=document.getElementById("nw-"+n.id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400)}},120);
   return said.join(" and ")}
 // an observation opened from another page. Observations shows every class and everything kept, enough of the list to reach
@@ -4207,7 +4224,7 @@ function draftCardHtml(d,dir){const f=d.form||{},n=1+(f.siblings||[]).length+(d.
   return `<div class="origin" style="display:flex;gap:12px;align-items:center">${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">`:""}
     <div style="flex:1;min-width:0"><div>${words?esc(words.length>120?words.slice(0,120)+"…":words):`<span class="muted">No words written yet</span>`}</div>
     <div class="cnt">${d.editOf?"Changes to a kept observation, ":""}${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
-    <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
+    <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button><button class="linkbtn" data-draftdel="${esc(d.id)}">Delete</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
 /* ---------- Words kept as drafts in the records ----------
    A box whose words reach the records only when a button is pressed, such as Start a project, Final remarks on Today,
    a note to families or a book suggestion, keeps what is typed in the person's own draft record as they type. Coming back
@@ -4454,10 +4471,13 @@ function placeSubnav(){
    director's eight Plans tabs. The tabs inside it are the same buttons. */
 function tabFit(root){if(!root||window.innerWidth>700)return;
   for(const row of root.querySelectorAll(".subrow")){const bs=[...row.querySelectorAll(":scope > button")];if(bs.length<2)continue;
+    // the pages of one Educators group, four or fewer, stay as buttons, so Journal is one tap from Growth (October 31, 2026)
+    if(row.classList.contains("stpages")&&bs.length<=4){row.style.flexWrap="wrap";continue}
     const top=bs[0].offsetTop;if(!bs.some(b=>b.offsetTop>top+4))continue;
     const cur=bs.find(b=>b.getAttribute("aria-current")==="page"||b.getAttribute("aria-current")==="true")||bs[0];
     const d=document.createElement("details");d.className="tabdrop "+[...row.classList].filter(c=>c!=="subrow").join(" ");
-    d.innerHTML=`<summary><span>${esc(cur.textContent.trim())}</span><span class="cnt">${bs.length} pages</span></summary>`;
+    const grp=row.classList.contains("stgroups");
+    d.innerHTML=`<summary><span>${grp?"Educators, ":""}${esc(cur.textContent.trim())}</span><span class="cnt">${bs.length} ${grp?"sections":"pages"}</span></summary>`;
     const list=document.createElement("div");list.className="tabdrop-list";bs.forEach(b=>list.append(b));d.append(list);row.replaceWith(d)}}
 let tabFitW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-tabFitW)<40)return;tabFitW=window.innerWidth;const h=$("#tsubnav");if(h){h.__src=null;h.remove();placeSubnav()}});
 new MutationObserver(()=>{placeSubnav();phoneFoldSoon()}).observe(document.getElementById("main"),{childList:true});
@@ -4553,7 +4573,7 @@ function todayWaiting(){
   // observations started and not kept yet wait as drafts
   {const k=typeof draftsList==="function"?draftsList().filter(draftIsMine).length:0;
    if(k&&!VIEW_AS)out.push({dot:"mari",t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
-  const due=dueList();for(const p of due.list.slice(0,isDirector()?5:20))
+  const due=dueList();for(const p of due.list.slice(0,isDirector()?5:40))
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check",q:"photo|"+n.id});
@@ -7709,7 +7729,9 @@ function momentGroups(list){
     if(mGroup==="classroom"){const r=momentRooms(n);put(r.length?r.join("+"):"~",r.length?momentRoomsText(n):"No class named",n)}
     else if(mGroup==="educator")put(n.by||"~",n.by||"No name on it",n);
     // by the small group of the children tagged in it, whoever kept it. An observation with children from two groups is under both.
-    else if(mGroup==="group"){const gs=[...new Set([...(n.smallGroup?[n.smallGroup+"|"+((GROUPS.find(g=>g.name===n.smallGroup)||{}).room||n.classroom||"")]:[]),...(n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||""))])];
+    else if(mGroup==="group"){let gs=[...new Set([...(n.smallGroup?[n.smallGroup+"|"+((GROUPS.find(g=>g.name===n.smallGroup)||{}).room||n.classroom||"")]:[]),...(n.children||[]).map(id=>children.get(id)).filter(c=>c&&c.group).map(c=>c.group+"|"+(c.classroom||c.room||""))])];
+      // with one class chosen, only that class's small groups are listed (October 31, 2026)
+      if(nRoom&&nRoom!=="All"&&nRoom!=="none")gs=gs.filter(k=>{const r=k.split("|")[1];return !r||r===nRoom});
       if(!gs.length)put("~","No small group, since none is chosen and no child in a group is tagged",n);
       for(const k of gs){const [name,room]=k.split("|");const g=GROUPS.find(x=>x.name===name&&(!x.room||!room||x.room===room))||GROUPS.find(x=>x.name===name);
         put("g"+k,[name+" group",g&&g.educator,room?room+" class":(g&&g.room?g.room+" class":"")].filter(Boolean).join(", "),n)}}
@@ -7823,6 +7845,11 @@ function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p)
   saveThread(nt);for(const n of ns)if(!n.threadId)patchNotice(n.id,{threadId:nt.id});addNoticesToThread(nt,ns.filter(n=>n.threadId&&n.threadId!==nt.id),{via:"pattern",why:p.why})
   p.threadId=nt.id;saveScan(s);renderMain();toast("Following it as a thread. Write its question on the thread when the team is ready.")}
 let mShow=30;
+const mGShow={},mGOpen=new Set();
+// in a grouped view, the groups holding an observation open far enough to show it
+function mReveal(id){if(mGroup==="recent")return;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>n.id===id);if(i>=0){mGOpen.add(g.key);if(i>=(mGShow[g.key]||12))mGShow[g.key]=i+12}}}
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset||!d.dataset.mgkey||view!=="moments")return;const k=d.dataset.mgkey;if(d.open===mGOpen.has(k))return;if(d.open)mGOpen.add(k);else mGOpen.delete(k);const y=window.scrollY;renderMain();window.scrollTo(0,y)},true);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-mgmore]");if(!t||view!=="moments")return;e.stopImmediatePropagation();const k=t.dataset.mgmore;mGShow[k]=(mGShow[k]||12)+24;const y=window.scrollY;renderMain();window.scrollTo(0,y)},true);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-mmore]");if(!t||view!=="moments")return;e.stopImmediatePropagation();const y=window.scrollY;mShow+=30;renderMain();window.scrollTo(0,y)},true);
 function renderMoments(){
   const all=momentsIn();
@@ -7840,6 +7867,13 @@ function renderMoments(){
     ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   ${draftsHtml()}${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
+  // grouped, every group is listed at once, folded, with its count, and each opens twelve at a time (October 31, 2026)
+  if(mGroup!=="recent"){
+    for(const g of gs){const n=mGShow[g.key]||12,items=g.items.slice(0,n);
+      h+=`<details class="card" data-mgkey="${esc(g.key)}" ${mGOpen.has(g.key)?"open":""}><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">${esc(g.label)}</h3> <span class="cnt">${g.items.length} observation${g.items.length>1?"s":""}</span></summary>
+        <div style="display:grid;gap:12px;margin-top:10px">${mGOpen.has(g.key)?noticeCards(items):""}</div>
+        ${mGOpen.has(g.key)&&items.length<g.items.length?`<div class="actions" style="margin-top:8px"><button class="btn small ghost" data-mgmore="${esc(g.key)}">Show more</button><span class="cnt">Showing ${items.length} of ${g.items.length}</span></div>`:""}</details>`}
+    $("#main").innerHTML=h;return}
   // thirty at a time, so the page opens quickly, and Show more carries on in the same view
   for(const g of gs){
     if(shown>=mShow)break;
@@ -7920,7 +7954,11 @@ function noticeListHtml(list,title){
 }
 function noticesClick(t){
   if(t.dataset.draftopen){openDraft(t.dataset.draftopen);return true}
-  if(t.dataset.draftdel){const d=drafts.get(t.dataset.draftdel);if(!d||!isDirector()||VIEW_AS)return true;if(!confirm(`Remove ${d.by||"this educator"}'s draft? What they wrote will not be kept.`))return true;serverDraftEnd(d.id);renderMain();toast("Draft removed.");return true}
+  // her own draft she deletes herself, after a question (October 31, 2026). The director can remove anyone's.
+  if(t.dataset.draftdel){const d=drafts.get(t.dataset.draftdel);if(!d||VIEW_AS)return true;const own=draftIsMine(d);if(!own&&!isDirector())return true;
+    if(!confirm(own?"Delete this draft? What is in it will not be kept.":`Remove ${d.by||"this educator"}'s draft? What they wrote will not be kept.`))return true;
+    if(own&&noticeForm&&noticeForm.draftId===d.id){noticeForm=null;nQueue=[]}
+    serverDraftEnd(d.id);renderMain();toast(own?"Draft deleted.":"Draft removed.");return true}
   if(t.dataset.newfor){const c=children.get(t.dataset.newfor);if(c){noticeForm=Object.assign(newNotice(),{children:[c.id],classroom:c.classroom||myRoom()||""});view="moments";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}return}
   if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&(noticeForm.restored||!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim()));// kept from the bin page, the observation is linked to that week's bin
     if(!unfinished){const fromBin=view==="bin"&&typeof binCurrent==="function"&&binCurrent();noticeForm=fromBin?Object.assign(newNotice(),{bin:fromBin.id,classroom:binRoomNow()}):newNotice()}view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
@@ -7932,7 +7970,7 @@ function noticesClick(t){
     if(go())return true;if(!notices.has(id)){toast("That observation was removed.");return true}
     const at=()=>{let k=0;for(const g of momentGroups(momentsIn())){const i=g.items.findIndex(n=>n.id===id);if(i>=0)return k+i;k+=g.items.length}return -1};
     let i=at();if(i<0){nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";LS.set("fps.mrange",mRange);i=at()}
-    if(i>=0&&i>=mShow)mShow=Math.ceil((i+1)/30)*30;renderMain();setTimeout(()=>{if(!go())toast("That observation could not be found on this page.")},60);return true}
+    if(i>=0&&i>=mShow)mShow=Math.ceil((i+1)/30)*30;mReveal(id);renderMain();setTimeout(()=>{if(!go())toast("That observation could not be found on this page.")},60);return true}
   if(t.dataset.nfpick&&noticeForm&&noticeForm.pick){pickMomentPhotos(t.dataset.nfpick);return true}
   if(t.id==="nf-cancel"){const was=noticeForm;
     const isNew=was&&!notices.has(was.id),typed=isNew&&(String($("#nf-noticed")?.value??was.noticed??"").trim()||String($("#nf-wonder")?.value??was.wonder??"").trim()),hasPh=isNew&&formPhotos(was).some(x=>x.photo);
