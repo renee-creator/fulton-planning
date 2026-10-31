@@ -742,3 +742,4 @@ Every change to TREE updates the matching Help answer as part of the same change
 - **Calendar print.** Print on the Calendar prints the day, week or month showing, each day with its events and space sign-ups in time order.
 - **Changes to a kept observation** are the educator's own draft as she types, on any device, until Save changes. Everyone else sees the kept observation. Cancel asks before her changes are thrown away.
 - **Kaymbu names.** A moment in a small group always carries the group's lead, even when the subject names someone else, unless its name was chosen by hand in Kept by. Changing Kept by renames only the photo opened, and the others in the email from the educator's own class with no small group.
+- **Family page test code.** In test mode a tester's code shows right on the family page, with no email, as before October 26. Families still cannot sign in while test mode is on.

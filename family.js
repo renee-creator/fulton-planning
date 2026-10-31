@@ -170,12 +170,10 @@ module.exports = function family({ community, store, log, sign, noteChange, sche
     const code = String(crypto.randomInt(0, 1e6)).padStart(6, '0');
     if (kids.length) codes.set(e, { hash: crypto.createHash('sha256').update(code).digest('hex'), until: Date.now() + 15 * 60000, n: 0 });
     if (test) {
-      // in test mode only a tester is sent a code, by email the same as a family, and anyone else is told plainly the page
-      // is not open yet. The code shows on screen only on a test server, never to whoever types a tester's email.
+      // in test mode only a tester's email gets a code, and it shows right on the page, so the director can test without
+      // any email. Anyone else is told plainly the page is not open yet. Families never sign in while test mode is on.
       if (!kids.length) return { error: 'The Family page is not open yet.' };
-      if (process.env.FAMILY_SHOW_CODE === '1') return { ok: true, test: true, code };
-      try { await mailCode(e, code); } catch (er) { log('Family test code not sent,', er.message); return { error: 'The code could not be sent just now. Try again in a few minutes.' }; }
-      return { ok: true, test: true };
+      return { ok: true, test: true, code };
     }
     if (kids.length) { try { await mailCode(e, code); } catch (er) { log('Family code not sent,', er.message); return { error: 'The code could not be sent just now. Try again in a few minutes.' }; } }
     // the same answer whether or not the email is on file, so the page never tells a stranger who is enrolled
