@@ -552,6 +552,13 @@ ONCE.push(['butterKnife1030', () => {
   const r = store.recs.notices.get('nmvlg7cln1ad6a3'); if (!r || r.deleted || !r.doc) return;
   if (r.doc.by !== 'Lauren F') { r.doc.by = 'Lauren F'; noteChange('notices', 'nmvlg7cln1ad6a3'); scheduleSave('notices', 'nmvlg7cln1ad6a3'); log('Using a butter knife moved to Lauren F'); }
 }]);
+// October 31, 2026. A copy of a whole child record kept the old way for Clear test entries would put back an old record over
+// everything staff added since, such as Zyah's from October 10. Those copies are let go. New ones keep only what a tester changed.
+ONCE.push(['oldTestCopies1031', () => {
+  let n = 0;
+  for (const [id, r] of store.recs.participation) { const d = r.doc; if (r.deleted || !d || d.kind !== 'undo' || Array.isArray(d.keys)) continue; r.deleted = true; noteChange('participation', id); scheduleSave('participation', id); n++; }
+  log('Old whole-record test copies let go,', n);
+}]);
 // Ellie's photos from October 30 were kept, but the observations she was writing never left her phone. Each photo waits
 // for her as a draft, under Your drafts on Observations, so she can write it again.
 ONCE.push(['ellieDrafts1030', () => {
@@ -2033,7 +2040,7 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
@@ -2258,6 +2265,20 @@ async function handle(req, res) {
     list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || ''))); json(req, res, 200, { room, reports: list.slice(0, 26) }); return; }
   if (path === '/api/projects/suggest') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the threads for a project.'); return; }
     json(req, res, 200, await suggestForProject(String(body.id || ''), String(body.key || ''))); return; }
+  // the family's copy of a transition summary, shown to the director before she shares it, with each name taken out listed
+  if (path === '/api/transition/familycopy') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director shares a transition summary.'); return; }
+    const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;
+    const ts = k && k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary[String(body.year || '')] : null;
+    if (!ts || !ts.sections || typeof ts.sections !== 'object') { err(req, res, 404, 'There is no transition summary yet.'); return; }
+    const all = [...store.recs.children.entries()].filter(([, x]) => x && !x.deleted && x.doc).map(([cid, x]) => Object.assign({ id: cid }, x.doc));
+    const set = (store.recs.settings.get('main') || {}).doc || {}, ed = (store.recs.settings.get('educators') || {}).doc || {};
+    const keep = [...accounts.list.map(a => a.name), ...(Array.isArray(ed.names) ? ed.names.map(x => x && x.name) : []), ...(Array.isArray(set.groups) ? set.groups.map(g => g && g.name) : []), ...oneLists().classrooms]
+      .flatMap(n => String(n || '').split(/\s+/)).filter(w => /^[A-Z][a-z]{2,}$/.test(w));
+    const sections = {}, found = {};
+    for (const [key, v] of Object.entries(ts.sections)) { const f = []; sections[key] = familyPage.withoutOthers(String(v || '').trim(), Object.assign({ id }, k), all, { keep, found: f, unknown: true }); if (f.length) found[key] = [...new Set(f)]; }
+    json(req, res, 200, { sections, found }); return;
+  }
   if (path === '/api/transition/nextschool') {
     const id = String(body.id || ''), r = store.recs.children.get(id), k = r && !r.deleted && r.doc;
     const ts = k && k.transitionSummary && typeof k.transitionSummary === 'object' ? k.transitionSummary[String(body.year || '')] : null;

@@ -66,7 +66,16 @@ const RATING = /\bDRDP\b|\b(Responding|Exploring|Building|Integrating) (Earlier|
 function withoutRatings(text) {
   return String(text || '').split('\n').map(line => line.split(/(?<=[.!?])\s+/).filter(x => !RATING.test(x)).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
-function withoutOthers(text, child, all) {
+// words that look like names but are not children: places, languages, seasons and school words. Staff names, classes and
+// small groups are added by the caller.
+const NOT_CHILDREN = new Set(('English Spanish French Chinese Mandarin Cantonese Vietnamese Tagalog Japanese Korean Arabic Portuguese Russian Hindi ' +
+  'Halloween Thanksgiving Christmas Hanukkah Kwanzaa Easter Diwali Lunar Valentine Fall Spring Summer Winter Kindergarten Transitional ' +
+  'Santa Rosa Sonoma Sebastopol Petaluma Healdsburg Windsor California Pacific Studio Atelier Kitchen Library Meeting DRDP TK ' +
+  'Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December ' +
+  'Responding Exploring Building Integrating Earlier Middle Later Emerging').split(/\s+/));
+// opt.keep, more words that are never a child, and opt.found, where each name taken out is listed for the director to see
+function withoutOthers(text, child, all, opt) {
+  opt = opt || {}; const keep = new Set([...(opt.keep || [])].map(x => String(x || '').trim()).filter(Boolean)); const found = Array.isArray(opt.found) ? opt.found : null;
   let t = String(text || ''); if (!t) return t;
   const own = new Set([child.first, child.last, ...nicknamesOf(child)].filter(Boolean).map(x => String(x).toLowerCase()));
   const words = new Set(), inits = new Set();
@@ -88,8 +97,17 @@ function withoutOthers(text, child, all) {
   const list = [...words].sort((a, b) => b.length - a.length).map(reEsc);
   if (list.length) t = t.replace(new RegExp('\\b(?:' + list.join('|') + ')(?:\\s+(?:' + list.join('|') + '))?\\b(\'s|’s)?', 'g'), (m, pos, at, all) => {
     const first = m.split(/\s+/)[0].replace(/(\'s|’s)$/, ''); const start = !all.slice(0, at).trim() || /[.!?]["”]?\s*$|\n\s*$/.test(all.slice(0, at));
-    return EVERYDAY.has(first.toLowerCase()) && start ? m : 'a friend' + (pos ? '\'s' : ''); });
-  if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), '$1a friend');
+    if (EVERYDAY.has(first.toLowerCase()) && start) return m; if (found) found.push(m.replace(/(\'s|’s)$/, '')); return 'a friend' + (pos ? '\'s' : ''); });
+  // a name not in TREE's records, written in the middle of a sentence, is taken out too, so a child who has left or a
+  // name spelled another way never reaches a family. One that starts a sentence is taken out when it also appears mid-sentence.
+  // Only for a transition summary's family copy, opt.unknown.
+  if (opt.unknown) { const ok = w => own.has(w.toLowerCase()) || keep.has(w) || NEVER_NAMES.has(w) || NEAR_SKIP.has(w) || NOT_CHILDREN.has(w) || NOT_NAMES.has(w) || /^(A|An|I|Our|We|Their|His|Her|Its)$/.test(w);
+    const mid = new Set(); t.replace(/(^|[^.!?\n\s]\s+)([A-Z][a-z]{2,})(?=\b)/g, (m, pre, w, at) => { if (pre && at > 0 && !ok(w)) mid.add(w); return m; });
+    if (mid.size) { const l = [...mid].sort((a, b) => b.length - a.length).map(reEsc);
+      t = t.replace(new RegExp('\\b(?:' + l.join('|') + ')\\b(\'s|’s)?', 'g'), (m, pos) => { if (found) found.push(m.replace(/(\'s|’s)$/, '')); return 'a friend' + (pos ? '\'s' : ''); }); } }
+  if (inits.size) t = t.replace(new RegExp('(^|[\\s(,])(?:' + [...inits].sort((a, b) => b.length - a.length).join('|') + ')(?=[\\s,.;!?)]|$)', 'g'), (m, p1, at, all) => {
+    if (found) found.push(m.slice(p1.length)); const after = all.slice(at + m.length); const ends = /[.]$/.test(m) && (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after));
+    return p1 + 'a friend' + (ends ? '.' : ''); });
   // two friends named together read as friends, and a sentence that starts with one starts with a capital
   t = t.replace(/\ba friend(?:,\s*a friend)*,?\s+and\s+a friend\b/g, 'friends').replace(/\ba friend(?:,\s*a friend)+\b/g, 'friends').replace(/\ba friend\s+and\s+friends\b/g, 'friends');
   t = t.replace(/(^|[.!?]\s+|\n\s*)a friend/g, (m, p1) => p1 + 'A friend').replace(/(^|[.!?]\s+|\n\s*)friends\b/g, (m, p1) => p1 + 'Friends');
@@ -124,11 +142,19 @@ module.exports = function family({ community, store, log, sign, noteChange, sche
   const recs = () => store.recs[KIND];
   const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '' }; };
   const getRec = (kind, id) => { const r = store.recs[kind].get(id); return r && !r.deleted && r.doc ? r.doc : null; };
-  function saveRec(kind, id, doc) { const cur = store.recs[kind].get(id); store.recs[kind].set(id, { doc, sha: cur && cur.sha, path: `${kind}/${id}.json`, local: true }); noteChange(kind, id); scheduleSave(kind, id); }
+  // in test mode, each family save notes which parts of the record the tester changed, with what they were before, so
+  // Clear test entries puts back only those parts and never anything staff added since
+  function saveRec(kind, id, doc) { const cur = store.recs[kind].get(id);
+    const u = recs().get('undo-' + kind + '-' + id);
+    if (u && !u.deleted && u.doc && u.doc.kind === 'undo' && Array.isArray(u.doc.keys) && cur && cur.doc) {
+      const before = cur.doc, keys = new Set(u.doc.keys), was = Object.assign({}, u.doc.was || {});
+      for (const k of new Set([...Object.keys(before), ...Object.keys(doc)])) { if (k === 'updatedAt' || k === 'savedAt' || keys.has(k)) continue; if (JSON.stringify(before[k]) !== JSON.stringify(doc[k])) { keys.add(k); was[k] = k in before ? JSON.parse(JSON.stringify(before[k])) : null; } }
+      save(u.doc.id, Object.assign({}, u.doc, { keys: [...keys], was }));
+    } store.recs[kind].set(id, { doc, sha: cur && cur.sha, path: `${kind}/${id}.json`, local: true }); noteChange(kind, id); scheduleSave(kind, id); }
   // in test mode, what a family changes on a real child or conference is remembered once, so Clear test entries can put it back
   function remember(f, kind, id) {
     if (!f.test) return; const uid = 'undo-' + kind + '-' + id; if (recs().get(uid) && !recs().get(uid).deleted) return;
-    const prev = getRec(kind, id); save(uid, { id: uid, kind: 'undo', target: kind, tid: id, prev: prev ? JSON.parse(JSON.stringify(prev)) : null, test: true, at: nowIso() });
+    const prev = getRec(kind, id); save(uid, { id: uid, kind: 'undo', target: kind, tid: id, existed: !!prev, keys: [], was: {}, test: true, at: nowIso() });
   }
   function season(day) { const t = day ? new Date(day + 'T12:00:00') : new Date(); const y = t.getFullYear(), m = t.getMonth(); return m >= 7 ? { year: `${y}-${String(y + 1).slice(2)}`, term: 'Fall' } : { year: `${y - 1}-${String(y).slice(2)}`, term: 'Spring' }; }
   const confIdOf = (childId, p) => `${childId}--${p.year}-${p.term.toLowerCase()}`;
@@ -280,7 +306,7 @@ module.exports = function family({ community, store, log, sign, noteChange, sche
     const tsY = Object.keys(tsAll).filter(y => tsAll[y] && tsAll[y].shared && tsAll[y].shared.sections && typeof tsAll[y].shared.sections === 'object').sort().pop();
     const tsSh = tsY ? tsAll[tsY].shared : null;
     const others = tsSh ? [...store.recs.children.entries()].filter(([, r]) => r && !r.deleted && r.doc).map(([id, r]) => Object.assign({ id }, r.doc)) : [];
-    const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, withoutOthers(String(tsSh.sections[key] || '').trim(), Object.assign({ id: k.id }, k), others)]).filter(([, v]) => v) } : null;
+    const transition = tsSh ? { at: tsSh.at || '', next: TS_NEXT[tsSh.plan] || '', age: ageText(k.dob), sections: TS_SECTIONS.map(([key, l]) => [l, tsSh.family && typeof tsSh.family === 'object' ? String(tsSh.family[key] || '').trim() : withoutOthers(String(tsSh.sections[key] || '').trim(), Object.assign({ id: k.id }, k), others)]).filter(([, v]) => v) } : null;
     // the TK and kindergarten guide, for a family whose child is going to TK or kindergarten next year
     const nyA = (() => { const d = new Date(); return (d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1) + 1; })(); const nyKey = nyA + '-' + String(nyA + 1).slice(2);
     const nextPlan = ((k.transition || {})[nyKey] || {}).plan || '';

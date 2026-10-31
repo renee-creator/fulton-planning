@@ -101,7 +101,9 @@ test('Transition summary', async t => {
     const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280);
     s.p.on('dialog', dl => dl.accept()); await s.p.route('**/api/read', serve);
     await s.p.evaluate(() => { kidOpen = 'pip-test'; kidTab = 'details'; goView('child'); }); await s.p.waitForSelector('[data-tsshare]');
-    await s.p.click('[data-tsshare]'); await save();
+    await s.p.click('[data-tsshare]');
+    // October 31, 2026. The director reads the family's copy first, then shares it
+    await s.p.waitForSelector('[data-tsfamgo]'); await s.p.click('[data-tsfamgo]'); await save();
     const x = kid('pip-test').transitionSummary[YEAR];
     assert.strictEqual(x.shared.by, 'Dee'); assert.strictEqual(x.shared.sections.working, 'Pip is practicing waiting for a turn at the hose.');
     const d = await famData(pipFam); assert.strictEqual(d.children[0].transition.sections.length, 5);
